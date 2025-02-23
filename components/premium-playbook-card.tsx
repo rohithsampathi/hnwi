@@ -1,3 +1,5 @@
+// components/premium-playbook-card.tsx
+
 import { Card } from "@/components/ui/card"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
@@ -22,6 +24,14 @@ interface PremiumPlaybookCardProps {
 export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPlaybookCardProps) {
   const { theme } = useTheme()
 
+  // Function to get the correct image source
+  const getImageSource = (playbook: Playbook) => {
+    if (playbook.id === "pb_001") {
+      return "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+    }
+    return playbook.image || "/placeholder.svg"
+  }
+
   return (
     <div>
       <Card
@@ -32,11 +42,12 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
         <div className="relative h-48">
           <div className="absolute inset-0 bg-black bg-opacity-50 z-10"></div>
           <Image
-            src={playbook.image || "/placeholder.svg"}
+            src={getImageSource(playbook)}
             alt={playbook.title}
             layout="fill"
             objectFit="cover"
             className="absolute inset-0"
+            priority={playbook.id === "pb_001"}
           />
           <div className="absolute inset-0 flex flex-col justify-end p-4 z-20">
             <h3 className="text-xl font-bold font-heading text-white line-clamp-2 mb-2">{playbook.title}</h3>
@@ -58,4 +69,3 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
     </div>
   )
 }
-

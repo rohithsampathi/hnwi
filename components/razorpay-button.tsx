@@ -1,3 +1,5 @@
+// components/razorpay-button.tsx
+
 "use client"
 
 import { useEffect, useRef } from "react"
