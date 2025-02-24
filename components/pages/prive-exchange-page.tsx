@@ -1,11 +1,11 @@
 // components/pages/prive-exchange-page.tsx
 
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Layout } from "@/components/layout/layout"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { motion } from "framer-motion"
 import { 
@@ -16,56 +16,112 @@ import {
   Palmtree,
   Factory
 } from "lucide-react"
-import { regions } from "@/lib/invest-scan-data"
 import { Badge } from "@/components/ui/badge"
+import { getOpportunities, Opportunity } from "@/lib/api"
 
 interface PriveExchangePageProps {
-  onNavigate: (route: string) => void
+  onNavigate?: (route: string) => void
 }
 
-const regionIcons = {
-  na: { icon: Building2, label: "North America" },
-  eu: { icon: Factory, label: "Europe" },
-  ap: { icon: Mountain, label: "Asia Pacific" },
-  sa: { icon: LandPlot, label: "South America" },
-  me: { icon: Palmtree, label: "Middle East" },
-  global: { icon: Globe2, label: "Global" }
-} as const
+// Map region names to icons and IDs
+const regionIconMap = {
+  "North America": { icon: Building2, id: "na" },
+  "Europe": { icon: Factory, id: "eu" },
+  "Asia Pacific": { icon: Mountain, id: "ap" },
+  "South America": { icon: LandPlot, id: "sa" },
+  "Middle East": { icon: Palmtree, id: "me" },
+  "Global": { icon: Globe2, id: "global" }
+}
 
 export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Fetch all opportunities on component mount
+  useEffect(() => {
+    async function loadOpportunities() {
+      try {
+        setLoading(true)
+        const data = await getOpportunities()
+        setOpportunities(data)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to fetch opportunities:", err)
+        setError("Failed to load investment opportunities")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadOpportunities()
+  }, [])
 
   const handleRegionSelect = (region: string) => {
     setSelectedRegion(region)
   }
 
-  const handleNavigate = (route: string) => {
-    if (route === "back") {
-      setSelectedRegion(null)
-    } else {
-      router.push(route)
-    }
-  }
-
   // Group opportunities by region
-  const regionCounts = regions.reduce((acc, region) => {
-    acc[region.id] = region.opportunities.length
+  const regions = opportunities.reduce((acc, opp) => {
+    const region = opp.region
+    if (!acc[region]) {
+      acc[region] = []
+    }
+    acc[region].push(opp)
+    return acc
+  }, {} as Record<string, Opportunity[]>)
+
+  // Get region counts
+  const regionCounts = Object.keys(regions).reduce((acc, region) => {
+    acc[region] = regions[region].length
     return acc
   }, {} as Record<string, number>)
+
+  // Filter opportunities by selected region
+  const filteredOpportunities = selectedRegion ? regions[selectedRegion] || [] : []
+
+  if (loading) {
+    return (
+      <Layout title="Privé Exchange" onNavigate={onNavigate}>
+        <div className="flex items-center justify-center h-[50vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout title="Privé Exchange" onNavigate={onNavigate}>
+        <div className="text-center p-8">
+          <h3 className="text-xl font-medium text-red-500 mb-2">Error Loading Data</h3>
+          <p className="text-muted-foreground">{error}</p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout title="Privé Exchange" onNavigate={onNavigate}>
       <div className="flex flex-col h-full">
         <div className="flex-grow">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Object.entries(regionIcons).map(([regionId, { icon: Icon, label }]) => {
-              const count = regionCounts[regionId] || 0
-              const isSelected = selectedRegion === regionId
+            {Object.keys(regions).map((region) => {
+              const { icon: Icon, id } = regionIconMap[region as keyof typeof regionIconMap] || { 
+                icon: Globe2, 
+                id: region.toLowerCase().replace(/\s+/g, '-') 
+              }
+              const count = regionCounts[region] || 0
+              const isSelected = selectedRegion === region
 
               return (
                 <motion.div
-                  key={regionId}
+                  key={id}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -75,7 +131,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                         ? "ring-2 ring-primary shadow-lg bg-primary/5" 
                         : "hover:shadow-md hover:bg-accent/5"
                     }`}
-                    onClick={() => handleRegionSelect(regionId)}
+                    onClick={() => handleRegionSelect(region)}
                   >
                     <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                       <Icon 
@@ -86,7 +142,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                       <h3 className={`font-medium text-sm mb-2 ${
                         isSelected ? "text-primary" : "text-foreground"
                       }`}>
-                        {label}
+                        {region}
                       </h3>
                       <Badge 
                         variant={isSelected ? "default" : "secondary"}
@@ -118,37 +174,53 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                   Back to Regions
                 </Button>
                 <h2 className="text-2xl font-semibold">
-                  {regionIcons[selectedRegion as keyof typeof regionIcons].label} Opportunities
+                  {selectedRegion} Opportunities
                 </h2>
               </div>
               
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {regions
-                  .find(r => r.id === selectedRegion)
-                  ?.opportunities.map((opportunity) => (
+              {filteredOpportunities.length === 0 ? (
+                <div className="text-center p-6 bg-muted/20 rounded-lg">
+                  <p className="text-muted-foreground">No opportunities available in this region yet.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredOpportunities.map((opportunity) => (
                     <Card key={opportunity.id} className="bg-card flex flex-col">
                       <CardContent className="p-6 flex-grow">
                         <h3 className="text-lg font-semibold mb-2">{opportunity.title}</h3>
                         <p className="text-sm text-muted-foreground mb-4">
                           {opportunity.description}
                         </p>
-                        <div className="flex items-center gap-2 mb-4">
-                          <Badge variant="outline">{opportunity.type}</Badge>
-                          <Badge>{opportunity.value}</Badge>
+                        <div className="flex items-center gap-2 mb-4 flex-wrap">
+                          {opportunity.type && (
+                            <Badge variant="outline">{opportunity.type}</Badge>
+                          )}
+                          {opportunity.value && (
+                            <Badge>{opportunity.value}</Badge>
+                          )}
+                          {opportunity.riskLevel && (
+                            <Badge variant="secondary">{opportunity.riskLevel} Risk</Badge>
+                          )}
                         </div>
+                        {opportunity.expectedReturn && (
+                          <p className="text-xs text-muted-foreground">
+                            Expected Return: <span className="font-medium text-foreground">{opportunity.expectedReturn}</span>
+                          </p>
+                        )}
                       </CardContent>
                       <CardFooter className="px-6 pb-6 pt-0">
                         <Button 
                           className="w-full" 
                           variant="default"
-                          onClick={() => router.push(`/invest-scan/${selectedRegion}/${opportunity.id}`)}
+                          onClick={() => router.push(`/opportunity/${opportunity.id}`)}
                         >
                           Read More
                         </Button>
                       </CardFooter>
                     </Card>
                   ))}
-              </div>
+                </div>
+              )}
             </motion.div>
           )}
         </div>

@@ -44,8 +44,7 @@ export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse
   }
 }
 
-
-
+// Social Events
 export interface SocialEvent {
   id: string
   name: string
@@ -107,5 +106,68 @@ export async function getEvents(): Promise<SocialEvent[]> {
   } catch (error) {
     console.error('Error fetching events:', error)
     return []
+  }
+}
+
+// Investment Opportunities
+export interface Opportunity {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  industry?: string;
+  product?: string;
+  is_active: boolean;
+  region: string;
+  country: string;
+  type?: string;
+  value?: string;
+  riskLevel?: string;
+  expectedReturn?: string;
+  investmentHorizon?: string;
+  pros?: string[];
+  cons?: string[];
+  fullAnalysis?: string;
+}
+
+export async function getOpportunities(): Promise<Opportunity[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/opportunities`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching opportunities: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data as Opportunity[];
+  } catch (error) {
+    console.error("Failed to fetch opportunities:", error);
+    return [];
+  }
+}
+
+export async function getOpportunityById(id: string): Promise<Opportunity | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/opportunities/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error fetching opportunity: ${response.status}`);
+    }
+    
+    return await response.json() as Opportunity;
+  } catch (error) {
+    console.error(`Failed to fetch opportunity with ID ${id}:`, error);
+    return null;
   }
 }

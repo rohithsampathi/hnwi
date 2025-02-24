@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CalendarPlus, MapPin, Users, Tag, Clock, Building } from "lucide-react"
+import { CalendarPlus, MapPin, Users, Tag, Clock, Building, Check } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { Heading3, Paragraph } from "@/components/ui/typography"
@@ -15,6 +15,7 @@ import { colors } from "@/styles/colors"
 import { addEventToCalendar } from "@/utils/calendar-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { SocialEvent, getEvents } from "@/lib/api"
+import { getCategoryColorClass, getCategoryDarkColorClass } from "@/utils/color-utils"
 
 const PREMIUM_PATTERNS_LIGHT = [
   "bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-100 via-slate-50 to-slate-100",
@@ -45,6 +46,7 @@ export function SocialHub() {
   const [events, setEvents] = useState<SocialEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [addedEvents, setAddedEvents] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     async function loadEvents() {
@@ -65,19 +67,68 @@ export function SocialHub() {
   }, [])
 
   const addToCalendar = (event: SocialEvent) => {
-    addEventToCalendar({
-      id: event.id,
-      title: event.name,
-      date: new Date(event.start_date),
-      endDate: new Date(event.end_date),
-      category: event.category,
-      location: event.venue,
-      description: event.summary,
-    })
-    toast({
-      title: "Event Added",
-      description: "The event has been added to your calendar.",
-    })
+    try {
+      // Force toast to show with animation for better visibility
+      toast({
+        title: "Adding to Calendar...",
+        description: `Adding ${event.name} to your calendar`,
+        duration: 1500,
+      })
+      
+      // Add the event to the calendar
+      const isAdded = addEventToCalendar({
+        id: event.id,
+        title: event.name,
+        date: new Date(event.start_date),
+        endDate: new Date(event.end_date),
+        category: event.category,
+        location: event.location,
+        venue: event.venue,
+        description: event.summary,
+        attendees: event.attendees,
+        tags: event.tags,
+        metadata: {
+          capacity: event.metadata?.capacity,
+          source: "social-hub"
+        }
+      })
+      
+      // Keep track of added events
+      if (isAdded) {
+        setAddedEvents(prev => ({
+          ...prev,
+          [event.id]: true
+        }))
+        
+        // Show success toast with animation
+        setTimeout(() => {
+          toast({
+            title: (
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                <span>Event Added to Calendar</span>
+              </div>
+            ),
+            description: `${event.name} has been added to your calendar. View it in the Calendar section.`,
+            duration: 5000,
+          })
+        }, 1500)
+      } else {
+        toast({
+          title: "Already in Calendar",
+          description: `${event.name} is already in your calendar.`,
+          duration: 3000,
+        })
+      }
+    } catch (error) {
+      console.error("Error adding event to calendar:", error);
+      toast({
+        title: "Error Adding Event",
+        description: "There was a problem adding this event to your calendar.",
+        variant: "destructive",
+        duration: 5000,
+      })
+    }
   }
 
   const toggleEventExpansion = (eventId: string) => {
@@ -114,172 +165,175 @@ export function SocialHub() {
           {/* Vertical timeline line for medium+ screens */}
           <div className={`hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 ${colors.muted}`} />
 
-          {events.map((event, index) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`mb-8 md:flex ${index % 2 === 0 ? "md:flex-row-reverse" : ""}`}
-            >
-              {/* Card Column */}
-              <div className="md:w-1/2 p-4">
-                <Card
-                  className={`overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 
-                              ${getPatternClass(index, theme)}`}
-                >
-                  {/* Overlay adjusted for both themes */}
-                  <div
-                    className={`backdrop-blur-sm ${
-                      theme === "dark" ? "bg-black/30" : "bg-white/50"
-                    }`}
+          {events.map((event, index) => {
+            // Get category color class based on theme
+            const colorClass = theme === 'dark'
+              ? getCategoryDarkColorClass(event.category)
+              : getCategoryColorClass(event.category);
+            
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`mb-8 md:flex ${index % 2 === 0 ? "md:flex-row-reverse" : ""}`}
+              >
+                {/* Card Column */}
+                <div className="md:w-1/2 p-4">
+                  <Card
+                    className={`overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 
+                                ${getPatternClass(index, theme)}`}
                   >
-                    {/* Ensure text is readable in both themes */}
-                    <CardContent className="p-6 relative dark:text-white text-black">
-                      {/* Premium accent overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 opacity-20 pointer-events-none"></div>
+                    {/* Overlay adjusted for both themes */}
+                    <div
+                      className={`backdrop-blur-sm ${
+                        theme === "dark" ? "bg-black/30" : "bg-white/50"
+                      }`}
+                    >
+                      {/* Ensure text is readable in both themes */}
+                      <CardContent className="p-6 relative dark:text-white text-black">
+                        {/* Premium accent overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 opacity-20 pointer-events-none"></div>
 
-                      <div className="relative">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            {/* Category tag: black in light mode, white in dark mode */}
-                            <Badge
-                              className="
-                                mb-2
-                                dark:bg-white/10 dark:hover:bg-white/20 dark:text-white
-                                bg-black/10 hover:bg-black/20 text-black
-                              "
-                            >
-                              {event.category}
-                            </Badge>
-                            <Heading3
-                              className={`${fonts.heading} mb-1 dark:text-white text-black`}
-                            >
-                              {event.name}
-                            </Heading3>
-                            <div className="flex items-center gap-2 text-sm dark:text-white/70 text-black/70">
-                              <Clock className="w-4 h-4" />
-                              <span>{formatDateRange(event.start_date, event.end_date)}</span>
+                        <div className="relative">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              {/* Use utility function for category color */}
+                              <Badge
+                                className={`mb-2 ${colorClass} text-white`}
+                              >
+                                {event.category}
+                              </Badge>
+                              <Heading3
+                                className={`${fonts.heading} mb-1 dark:text-white text-black`}
+                              >
+                                {event.name}
+                              </Heading3>
+                              <div className="flex items-center gap-2 text-sm dark:text-white/70 text-black/70">
+                                <Clock className="w-4 h-4" />
+                                <span>{formatDateRange(event.start_date, event.end_date)}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="space-y-3 dark:text-white/90 text-black/90">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 dark:text-white/70 text-black/70" />
-                            <span>{event.location}</span>
+                          <div className="space-y-3 dark:text-white/90 text-black/90">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4 dark:text-white/70 text-black/70" />
+                              <span>{event.location}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Building className="w-4 h-4 dark:text-white/70 text-black/70" />
+                              <span>{event.venue}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1" />
+                              <span>
+                                {event.attendees && event.attendees.length > 0
+                                  ? event.attendees.join(", ")
+                                  : "Talk to Concierge"}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Building className="w-4 h-4 dark:text-white/70 text-black/70" />
-                            <span>{event.venue}</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1" />
-                            <span>
-                              {event.attendees && event.attendees.length > 0
-                                ? event.attendees.join(", ")
-                                : "Talk to Concierge"}
-                            </span>
-                          </div>
-                        </div>
 
-                        <AnimatePresence>
-                          {expandedEvent === event.id && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="mt-4"
+                          <AnimatePresence>
+                            {expandedEvent === event.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-4"
+                              >
+                                <Paragraph className="text-sm mb-4 dark:text-white/80 text-black/80">
+                                  {event.summary}
+                                </Paragraph>
+                                <div className="flex flex-wrap gap-2">
+                                  {event.tags?.map((tag) => (
+                                    <Badge
+                                      key={tag}
+                                      variant="outline"
+                                      className="flex items-center gap-1 
+                                                dark:bg-white/5 dark:border-white/20 dark:text-white/90
+                                                bg-black/10 border-black/20 text-black/90"
+                                    >
+                                      <Tag className="w-3 h-3" />
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                </div>
+
+                                {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
+                                {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (
+                                  <div className="mt-2 text-sm dark:text-white/70 text-black/70">
+                                    Capacity: {event.metadata.capacity} attendees
+                                  </div>
+                                ) : (
+                                  <div className="mt-2 text-sm dark:text-white/70 text-black/70">
+                                    Capacity: Talk to Concierge
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          <div className="flex justify-between items-center mt-6">
+                            {/* Show More/Less button */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleEventExpansion(event.id)}
+                              className={`
+                                dark:bg-white/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10
+                                bg-black/10 border-black/20 text-black hover:bg-black/20
+                              `}
                             >
-                              <Paragraph className="text-sm mb-4 dark:text-white/80 text-black/80">
-                                {event.summary}
-                              </Paragraph>
-                              <div className="flex flex-wrap gap-2">
-                                {event.tags?.map((tag) => (
-                                  <Badge
-                                    key={tag}
-                                    variant="outline"
-                                    className="flex items-center gap-1 
-                                               dark:bg-white/5 dark:border-white/20 dark:text-white/90
-                                               bg-black/10 border-black/20 text-black/90"
-                                  >
-                                    <Tag className="w-3 h-3" />
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-
-                              {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
-                              {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (
-                                <div className="mt-2 text-sm dark:text-white/70 text-black/70">
-                                  Capacity: {event.metadata.capacity} attendees
-                                </div>
-                              ) : (
-                                <div className="mt-2 text-sm dark:text-white/70 text-black/70">
-                                  Capacity: Talk to Concierge
-                                </div>
-                              )}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        <div className="flex justify-between items-center mt-6">
-                          {/* Show More/Less button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleEventExpansion(event.id)}
-                            className={`
-                              dark:bg-white/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10
-                              bg-black/10 border-black/20 text-black hover:bg-black/20
-                            `}
-                          >
-                            {expandedEvent === event.id ? "Show Less" : "Show More"}
-                          </Button>
-                          {/* Add to Calendar button */}
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => addToCalendar(event)}
-                            className={`
-                              dark:bg-white/10 dark:hover:bg-white/20 dark:text-white
-                              bg-black/10 hover:bg-black/20 text-black
-                            `}
-                          >
-                            <CalendarPlus className="w-4 h-4 mr-2" />
-                            Add to Calendar
-                          </Button>
+                              {expandedEvent === event.id ? "Show Less" : "Show More"}
+                            </Button>
+                            {/* Add to Calendar button */}
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => addToCalendar(event)}
+                              className={`
+                                ${addedEvents[event.id] ? 'bg-green-600 hover:bg-green-700' : 'dark:bg-white/10 dark:hover:bg-white/20 bg-black/10 hover:bg-black/20'} 
+                                dark:text-white text-black
+                              `}
+                            >
+                              <CalendarPlus className="w-4 h-4 mr-2" />
+                              {addedEvents[event.id] ? 'Added to Calendar' : 'Add to Calendar'}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Date Bubble Column (hidden on small) */}
-              <div className="hidden md:flex items-center justify-center w-1/2">
-                <div
-                  className={`w-32 h-32 rounded-full bg-gradient-to-br 
-                              from-purple-500/50 to-pink-500/50 
-                              flex items-center justify-center shadow-lg 
-                              backdrop-blur-sm 
-                              dark:border-white/10 border-black/10`}
-                >
-                  <div className="text-center dark:text-white text-white">
-                    <div className={`text-2xl ${fonts.heading} font-bold`}>
-                      {new Date(event.start_date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      </CardContent>
                     </div>
-                    <div className={`text-sm ${fonts.body}`}>
-                      {new Date(event.start_date).getFullYear()}
+                  </Card>
+                </div>
+
+                {/* Date Bubble Column (hidden on small) */}
+                <div className="hidden md:flex items-center justify-center w-1/2">
+                  <div
+                    className={`w-32 h-32 rounded-full bg-gradient-to-br 
+                                from-purple-500/50 to-pink-500/50 
+                                flex items-center justify-center shadow-lg 
+                                backdrop-blur-sm 
+                                dark:border-white/10 border-black/10`}
+                  >
+                    <div className="text-center dark:text-white text-white">
+                      <div className={`text-2xl ${fonts.heading} font-bold`}>
+                        {new Date(event.start_date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <div className={`text-sm ${fonts.body}`}>
+                        {new Date(event.start_date).getFullYear()}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            )
+          })}
         </div>
       </CardContent>
     </Card>

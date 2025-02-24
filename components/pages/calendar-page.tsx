@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react"
 import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CalendarIcon, ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DayView } from "@/components/calendar/day-view"
@@ -13,56 +13,40 @@ import { WeekView } from "@/components/calendar/week-view"
 import { MonthView } from "@/components/calendar/month-view"
 import { YearView } from "@/components/calendar/year-view"
 import { EventDetailsSection } from "@/components/calendar/event-details-section"
-import { Heading2 } from "@/components/ui/typography"
-import { getMonthYearString } from "@/utils/calendar"
-import type { CalendarEvent } from "@/types/calendar"
-import { AddEventDialog } from "@/components/calendar/add-event-dialog"
+import { Heading2, Heading3 } from "@/components/ui/typography"
+import { getMonthYearString, isSameDay } from "@/utils/calendar"
+import { format } from 'date-fns'
 
 type CalendarView = "day" | "week" | "month" | "year"
 
 export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => void }) {
   const [view, setView] = useState<CalendarView>("month")
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
-  const [isAddEventDialogOpen, setIsAddEventDialogOpen] = useState(false)
+  const [events, setEvents] = useState<any[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
+  const [selectedDateEvents, setSelectedDateEvents] = useState<any[]>([])
 
   useEffect(() => {
     const storedEvents = localStorage.getItem("userEvents")
     if (storedEvents) {
-      setEvents(JSON.parse(storedEvents))
+      try {
+        // Convert stored events back to proper objects with Date objects
+        const parsedEvents = JSON.parse(storedEvents).map((event: any) => ({
+          ...event,
+          date: new Date(event.date),
+          endDate: event.endDate ? new Date(event.endDate) : undefined
+        }))
+        setEvents(parsedEvents)
+      } catch (error) {
+        console.error("Error parsing stored events:", error)
+        // Initialize with empty array on error
+        setEvents([])
+        localStorage.setItem("userEvents", JSON.stringify([]))
+      }
     } else {
-      // Add placeholder events if no events are stored
-      const placeholderEvents: CalendarEvent[] = [
-        {
-          id: "1",
-          title: "Luxury Yacht Showcase",
-          date: new Date(new Date().setDate(new Date().getDate() + 7)),
-          category: "social",
-          location: "Monaco Harbor",
-          description:
-            "Experience the epitome of maritime luxury with the latest superyacht designs and cutting-edge marine technology.",
-        },
-        {
-          id: "2",
-          title: "Private Art Auction",
-          date: new Date(new Date().setDate(new Date().getDate() + 14)),
-          category: "personal",
-          location: "Gallery XYZ, New York",
-          description: "Exclusive auction featuring rare pieces from renowned artists and private collections.",
-        },
-        {
-          id: "3",
-          title: "HNWI Investment Summit",
-          date: new Date(new Date().setDate(new Date().getDate() + 21)),
-          category: "work",
-          location: "Ritz-Carlton, Singapore",
-          description:
-            "Annual gathering of global wealth managers and investment professionals discussing market trends and opportunities.",
-        },
-      ]
-      setEvents(placeholderEvents)
-      localStorage.setItem("userEvents", JSON.stringify(placeholderEvents))
+      // Initialize with empty array if no events
+      setEvents([])
+      localStorage.setItem("userEvents", JSON.stringify([]))
     }
   }, [])
 
@@ -108,18 +92,31 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
     setCurrentDate(newDate)
   }
 
-  const handleSelectEvent = (event: CalendarEvent) => {
+  const handleSelectEvent = (event: any) => {
     setSelectedEvent(event)
+    setSelectedDateEvents([]) // Clear multiple event selection when viewing a single event
   }
 
-  const handleAddEvent = () => {
-    setIsAddEventDialogOpen(true)
-  }
-
-  const handleEventAdded = (newEvent: CalendarEvent) => {
-    const updatedEvents = [...events, newEvent]
-    setEvents(updatedEvents)
-    localStorage.setItem("userEvents", JSON.stringify(updatedEvents))
+  const handleSelectDate = (date: Date) => {
+    // Set the current date to the selected date
+    setCurrentDate(date)
+    
+    // Filter events for the selected date
+    const dateEvents = events.filter(event => isSameDay(new Date(event.date), date))
+    
+    if (dateEvents.length === 1) {
+      // If only one event, select it directly
+      setSelectedEvent(dateEvents[0])
+      setSelectedDateEvents([])
+    } else if (dateEvents.length > 1) {
+      // If multiple events, show them in the list
+      setSelectedDateEvents(dateEvents)
+      setSelectedEvent(null) // Clear single event selection
+    } else {
+      // No events for this date
+      setSelectedDateEvents([])
+      setSelectedEvent(null)
+    }
   }
 
   const renderCalendarView = () => {
@@ -133,7 +130,7 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
           <MonthView
             date={currentDate}
             events={events}
-            onSelectDate={(date) => setCurrentDate(date)}
+            onSelectDate={handleSelectDate}
             onSelectEvent={handleSelectEvent}
           />
         )
@@ -152,6 +149,38 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
         return null
     }
   }
+
+  // Render the list of events for the selected date (used for Month view)
+  const renderSelectedDateEvents = () => {
+    if (view !== "month" || selectedDateEvents.length === 0) return null;
+    
+    return (
+      <div className="mt-6">
+        {/* Top heading for date with event count */}
+        <h2 className="text-2xl font-bold mb-4">
+          Events for {format(currentDate, 'EEEE, MMMM do, yyyy')} 
+          <span className="ml-2 text-muted-foreground text-base font-normal">
+            ({selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? 's' : ''})
+          </span>
+        </h2>
+        
+        {/* Single "Event Details" heading for all events */}
+        <h3 className="text-xl font-bold mb-4">Event Details</h3>
+        
+        {/* Map through events without individual headings */}
+        <div className="space-y-6">
+          {selectedDateEvents.map(event => (
+            <div key={event.id}>
+              <EventDetailsSection 
+                event={event} 
+                hideHeading={true} // Pass prop to hide the heading in the component
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout
@@ -178,13 +207,9 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
                 </Button>
               </div>
             </CardTitle>
-            <div className="flex items-center space-x-2">
+            <div>
               <Button variant="outline" onClick={navigateToToday}>
                 Today
-              </Button>
-              <Button onClick={handleAddEvent}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Event
               </Button>
             </div>
           </div>
@@ -199,16 +224,12 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
         </CardHeader>
         <CardContent>
           {renderCalendarView()}
-          <EventDetailsSection event={selectedEvent} />
+          {/* Display events for selected date in Month view */}
+          {renderSelectedDateEvents()}
+          {/* Display selected event details */}
+          {selectedEvent && !selectedDateEvents.length && <EventDetailsSection event={selectedEvent} />}
         </CardContent>
       </Card>
-      <AddEventDialog
-        isOpen={isAddEventDialogOpen}
-        onClose={() => setIsAddEventDialogOpen(false)}
-        onAddEvent={handleEventAdded}
-        initialDate={currentDate}
-      />
     </Layout>
   )
 }
-

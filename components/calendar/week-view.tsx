@@ -1,77 +1,130 @@
 // components/calendar/week-view.tsx
-
 "use client"
 
-import type { CalendarEvent } from "@/types/calendar"
-import { formatTime, getWeekDates, getCategoryColor } from "@/utils/calendar"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { motion } from "framer-motion"
+import { useMemo } from "react"
+import { format } from "date-fns"
+import { getWeekDates, isSameDay } from "@/utils/calendar"
+import { useTheme } from "@/contexts/theme-context"
+import { Users } from "lucide-react"
+import { getCategoryColorClass, getCategoryDarkColorClass, getDisplayCategory } from "@/utils/color-utils"
 
 interface WeekViewProps {
   date: Date
-  events: CalendarEvent[]
+  events: any[]
+  onSelectEvent: (event: any) => void
 }
 
-export function WeekView({ date, events }: WeekViewProps) {
-  const weekDays = getWeekDates(date)
+export function WeekView({ date, events, onSelectEvent }: WeekViewProps) {
+  const { theme } = useTheme()
+  const weekDays = useMemo(() => {
+    return getWeekDates(date)
+  }, [date])
+
   const hours = Array.from({ length: 24 }, (_, i) => i)
 
-  const getEventsForDayAndHour = (day: Date, hour: number) => {
-    return events.filter((event) => {
-      const eventDate = new Date(event.date)
-      return (
-        eventDate.getDate() === day.getDate() &&
-        eventDate.getMonth() === day.getMonth() &&
-        eventDate.getFullYear() === day.getFullYear() &&
-        eventDate.getHours() === hour
-      )
-    })
+  // Calculate event duration in minutes (default to 60 min if no end date)
+  const getEventDuration = (event: any) => {
+    if (!event.endDate) return 60;
+    
+    const start = new Date(event.date);
+    const end = new Date(event.endDate);
+    
+    return Math.max(
+      30, // Minimum height
+      (end.getTime() - start.getTime()) / (1000 * 60) // Duration in minutes
+    );
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-300px)]">
-      <div className="min-w-[900px]">
-        <div className="grid grid-cols-8 border-b border-border">
-          <div className="w-20" />
-          {weekDays.map((day, index) => (
-            <div key={index} className="py-2 text-center border-l border-border first:border-l-0">
-              <div className="font-semibold">{day.toLocaleDateString("en-US", { weekday: "short" })}</div>
-              <div className="text-sm text-muted-foreground">
-                {day.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+    <div className="mt-4 overflow-x-auto">
+      <div className="min-w-[800px]">
+        {/* Day headers */}
+        <div className="grid grid-cols-8 gap-px">
+          <div className="p-2 text-center font-medium"></div>
+          {weekDays.map((day) => (
+            <div key={day.toString()} className="p-2 text-center font-medium">
+              <div>{format(day, "EEE")}</div>
+              <div className={`text-sm ${isSameDay(day, new Date()) ? "bg-primary text-primary-foreground rounded-full px-2" : ""}`}>
+                {format(day, "d")}
               </div>
             </div>
           ))}
         </div>
-        <div>
-          {hours.map((hour) => (
-            <div key={hour} className="grid grid-cols-8 border-t border-border min-h-[60px]">
-              <div className="w-20 py-2 px-4 text-sm text-muted-foreground">
+
+        {/* Time grid */}
+        <div className="grid grid-cols-8 gap-px">
+          {/* Time labels */}
+          <div>
+            {hours.map(hour => (
+              <div key={hour} className="h-16 text-right pr-2 text-sm text-muted-foreground">
                 {hour === 0 ? "12 AM" : hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`}
               </div>
-              {weekDays.map((day, dayIndex) => (
-                <div key={dayIndex} className="border-l border-border first:border-l-0 p-1">
-                  {getEventsForDayAndHour(day, hour).map((event) => (
-                    <motion.div
-                      key={event.id}
-                      layoutId={event.id}
-                      className={`${getCategoryColor(
-                        event.category,
-                      )} text-white rounded-md p-2 text-sm mb-1 cursor-pointer hover:opacity-90 transition-opacity`}
-                    >
-                      <div className="font-semibold truncate">{event.title}</div>
-                      <div className="text-xs opacity-90">
-                        {formatTime(event.date)}
-                        {event.endDate && ` - ${formatTime(event.endDate)}`}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {weekDays.map((day, dayIndex) => (
+            <div key={day.toString()} className="relative">
+              {hours.map(hour => (
+                <div key={hour} className="h-16 border-t border-border"></div>
               ))}
+
+              {/* Events for this day */}
+              {events
+                .filter(event => isSameDay(new Date(event.date), day))
+                .map(event => {
+                  const eventDate = new Date(event.date)
+                  const hour = eventDate.getHours()
+                  const minute = eventDate.getMinutes()
+                  const topPosition = (hour * 60 + minute) * (16/60); // 16px per hour
+                  const duration = getEventDuration(event);
+                  const height = Math.min(24 * 60, duration) * (16/60); // Convert minutes to pixels (max 24h)
+
+                  // Get display category and color class
+                  const displayCategory = getDisplayCategory(event);
+                  const colorClass = theme === 'dark' 
+                    ? getCategoryDarkColorClass(displayCategory)
+                    : getCategoryColorClass(displayCategory);
+
+                  return (
+                    <div
+                      key={event.id}
+                      className={`
+                        absolute left-1 right-1 rounded shadow-sm overflow-hidden
+                        hover:shadow-md transition-shadow cursor-pointer
+                        ${colorClass}
+                      `}
+                      style={{
+                        top: `${topPosition}px`,
+                        height: `${Math.max(32, height)}px`, // Minimum height of 32px
+                        zIndex: 10
+                      }}
+                      onClick={() => onSelectEvent(event)}
+                    >
+                      <div className="h-full p-1 text-white">
+                        <div className="font-medium text-xs truncate">{event.title}</div>
+                        <div className="text-xs truncate">{format(eventDate, "h:mm a")}</div>
+                        
+                        {event.attendees && (
+                          <div className="text-xs truncate flex items-center">
+                            <Users className="w-3 h-3 mr-1" />
+                            {typeof event.attendees === 'string' 
+                              ? event.attendees 
+                              : Array.isArray(event.attendees) && event.attendees.length > 0
+                                ? (event.attendees.length > 1 
+                                    ? `${event.attendees[0]} +${event.attendees.length - 1}`
+                                    : event.attendees[0]) 
+                                : ""}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           ))}
         </div>
       </div>
-    </ScrollArea>
+    </div>
   )
 }
-

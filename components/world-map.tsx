@@ -1,3 +1,5 @@
+// components/world-map.tsx
+
 "use client"
 
 import { useState } from "react"

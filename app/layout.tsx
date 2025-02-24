@@ -89,6 +89,9 @@ export default function RootLayout({
           <OnboardingProvider>
             <ThemeProvider>
               {children}
+              <div id="toast-container" className="fixed top-0 right-0 z-50">
+                {/* Toast container for notifications */}
+              </div>
             </ThemeProvider>
           </OnboardingProvider>
         </AuthProvider>

@@ -1,3 +1,5 @@
+// lib/invest-scan-data.ts
+
 import { Building2, Briefcase, MapPin, DollarSign } from "lucide-react"
 
 export interface Opportunity {

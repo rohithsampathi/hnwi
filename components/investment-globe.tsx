@@ -1,3 +1,5 @@
+// components/investment-globe.tsx
+
 "use client"
 
 import { useRef, useEffect } from "react"

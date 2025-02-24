@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from "react"
 import { AppContent } from "./app-content"
+import { Toaster } from "@/components/ui/toaster"
 
 interface AppWrapperProps {
   // Add any props if needed
@@ -27,5 +28,10 @@ export default function AppWrapper(props: AppWrapperProps) {
     return null // Or a loading spinner component
   }
 
-  return <AppContent currentPage={currentPage} onNavigate={handleNavigate} />
+  return (
+    <>
+      <AppContent currentPage={currentPage} onNavigate={handleNavigate} />
+      <Toaster />
+    </>
+  )
 }
