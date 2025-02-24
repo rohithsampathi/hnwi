@@ -25,7 +25,7 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
       >
         <Card className="w-full bg-background text-foreground">
           <CardHeader>
-            <Heading2 className="text-2xl font-bold text-primary">HNWI Social Hub</Heading2>
+            <Heading2 className="text-2xl font-bold text-primary">The Social Hub</Heading2>
             <Paragraph className="text-sm text-muted-foreground mt-2">
               Connect with the elite HNWI community and explore exclusive events
             </Paragraph>

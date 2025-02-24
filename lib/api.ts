@@ -44,3 +44,68 @@ export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse
   }
 }
 
+
+
+export interface SocialEvent {
+  id: string
+  name: string
+  date: string
+  time: string
+  location: string
+  attendees: string[]
+  summary: string
+  category: string
+  start_date: string
+  end_date: string
+  venue: string
+  status: string
+  metadata?: {
+    capacity?: number
+    ticketing_url?: string
+    contact_email?: string
+  }
+  tags?: string[]
+}
+
+export async function getEvents(): Promise<SocialEvent[]> {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/events/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch events')
+    }
+
+    const data = await response.json()
+    return data.events.map((event: any) => ({
+      id: event.id,
+      name: event.name,
+      date: new Date(event.start_date).toLocaleDateString('en-US', { 
+        month: 'short',
+        day: 'numeric', 
+        year: 'numeric'
+      }),
+      time: new Date(event.start_date).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric'
+      }),
+      location: event.location,
+      attendees: event.attendees,
+      summary: event.summary,
+      category: event.category,
+      start_date: event.start_date,
+      end_date: event.end_date,
+      venue: event.venue,
+      status: event.status,
+      metadata: event.metadata,
+      tags: event.tags
+    }))
+  } catch (error) {
+    console.error('Error fetching events:', error)
+    return []
+  }
+}
