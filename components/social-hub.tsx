@@ -16,7 +16,6 @@ import { addEventToCalendar } from "@/utils/calendar-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { SocialEvent, getEvents } from "@/lib/api"
 
-// Light and Dark background patterns for better contrast:
 const PREMIUM_PATTERNS_LIGHT = [
   "bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-100 via-slate-50 to-slate-100",
   "bg-[conic-gradient(at_top,_var(--tw-gradient-stops))] from-gray-100 via-gray-50 to-white",
@@ -210,14 +209,14 @@ export function SocialHub() {
                                 ))}
                               </div>
 
-                              {/* Capacity: if valid number, show it; otherwise "Talk to Concierge" */}
+                              {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
                               {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (
                                 <div className="mt-2 text-sm dark:text-white/70 text-black/70">
                                   Capacity: {event.metadata.capacity} attendees
                                 </div>
                               ) : (
                                 <div className="mt-2 text-sm dark:text-white/70 text-black/70">
-                                  Talk to Concierge
+                                  Capacity: Talk to Concierge
                                 </div>
                               )}
                             </motion.div>
@@ -259,7 +258,6 @@ export function SocialHub() {
 
               {/* Date Bubble Column (hidden on small) */}
               <div className="hidden md:flex items-center justify-center w-1/2">
-                {/* Increased the gradient opacity for better visibility in light mode */}
                 <div
                   className={`w-32 h-32 rounded-full bg-gradient-to-br 
                               from-purple-500/50 to-pink-500/50 
