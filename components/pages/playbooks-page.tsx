@@ -94,11 +94,11 @@ export function PlayBooksPage({
       }
 
       const userData: UserData = await userResponse.json()
-      console.log("User data fetched:", userData)
+      // console.log("User data fetched:", userData)
 
       // Filter active purchased reports
       const activeReports = userData.purchased_reports.filter(report => report.is_active)
-      console.log("Active reports:", activeReports)
+      // console.log("Active reports:", activeReports)
 
       // Fetch details for each report
       const playbookPromises = activeReports.map(async (report) => {
@@ -116,7 +116,7 @@ export function PlayBooksPage({
           }
 
           const reportData: ReportData = await reportResponse.json()
-          console.log(`Report ${report.report_id} data:`, reportData)
+          // console.log(`Report ${report.report_id} data:`, reportData)
 
           return {
             id: report.report_id,
@@ -135,7 +135,7 @@ export function PlayBooksPage({
       })
 
       const resolvedPlaybooks = (await Promise.all(playbookPromises)).filter((book): book is Playbook => book !== null)
-      console.log("Final playbooks data:", resolvedPlaybooks)
+      // console.log("Final playbooks data:", resolvedPlaybooks)
       
       setPlaybooks(resolvedPlaybooks)
     } catch (error) {

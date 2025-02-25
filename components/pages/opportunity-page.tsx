@@ -1,5 +1,7 @@
 // components/pages/opportunity-page.tsx
 
+// components/pages/opportunity-page.tsx
+
 "use client"
 
 import React, { useState, useCallback, useEffect } from "react"
@@ -10,13 +12,13 @@ import { Badge } from "@/components/ui/badge"
 import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
-import { 
-  ChevronRight, Check, X, Loader2, DollarSign, Building2, 
-  PiggyBank, Timer, ThumbsUp, Phone 
+import {
+  Check, X, Loader2, DollarSign, Building2,
+  PiggyBank, Timer, ThumbsUp, Phone
 } from "lucide-react"
-import { getOpportunities, getOpportunityById, Opportunity } from "@/lib/api"
+import { getOpportunities, Opportunity } from "@/lib/api"  // removed any placeholders
 import { useAuth } from "@/components/auth-provider"
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,7 +34,7 @@ interface OpportunityPageProps {
 
 // Map opportunity types to icons
 const getOpportunityIcon = (type: string | undefined) => {
-  if (!type) return DollarSign;
+  if (!type) return DollarSign
   
   switch (type.toLowerCase()) {
     case "real estate":
@@ -55,17 +57,14 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
   const [allOpportunities, setAllOpportunities] = useState<Opportunity[]>([])
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
-  // Fetch all opportunities to get region data
+  // Fetch all opportunities to find the specific one
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true)
-        
-        // Get all opportunities to find the one we need
         const opportunities = await getOpportunities()
         setAllOpportunities(opportunities)
         
-        // Find our specific opportunity
         const foundOpportunity = opportunities.find(o => o.id === opportunityId)
         if (foundOpportunity) {
           setOpportunity(foundOpportunity)
@@ -79,14 +78,15 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
         setLoading(false)
       }
     }
-
     loadData()
   }, [opportunityId])
 
+  // Handle custom navigation
   const handleNavigation = useCallback(
     (path: string) => {
       if (path === "back") {
-        router.back()
+        // Always go to Privé Exchange
+        router.push("/prive-exchange")
       } else {
         router.push(`/${path.replace(/^\/+/, "")}`)
       }
@@ -98,23 +98,20 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
     e.preventDefault()
     setIsProcessing(true)
     
-    // Get user information from localStorage
     const userId = localStorage.getItem("userId") || ""
     const userEmail = localStorage.getItem("userEmail") || ""
     const userName = user?.name || "Unknown User"
     
     try {
-      // Send data to Formspree
+      // Send data to Formspree (example)
       const response = await fetch("https://formspree.io/f/xwpvjjpz", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           opportunityTitle: opportunity?.title,
-          userName: userName,
-          userId: userId,
-          userEmail: userEmail,
+          userName,
+          userId,
+          userEmail,
           opportunityId: opportunity?.id,
           opportunityType: opportunity?.type,
           opportunityValue: opportunity?.value,
@@ -127,10 +124,7 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
         throw new Error("Failed to submit concierge request")
       }
       
-      // Show success dialog
       setShowSuccessDialog(true)
-      
-      // Also show toast notification
       toast({
         title: "Concierge Notified",
         description: `Our concierge has been notified about your interest in ${opportunity?.title}.`,
@@ -166,17 +160,14 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
           <CardContent>
             <Heading2 className="text-2xl font-bold mb-4">Opportunity Not Found</Heading2>
             <Paragraph>{error || "The requested opportunity could not be found. Please try again."}</Paragraph>
-            <Button onClick={() => handleNavigation("invest-scan")} className="mt-4">
-              Return to Invest Scan
+            <Button onClick={() => handleNavigation("prive-exchange")} className="mt-4">
+              Return to Privé Exchange
             </Button>
           </CardContent>
         </Card>
       </Layout>
     )
   }
-
-  // Get the region name from the opportunity
-  const regionName = opportunity.region || "Unknown Region"
 
   return (
     <Layout
@@ -191,26 +182,9 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
     >
       <Card className="w-full bg-background text-foreground">
         <CardHeader>
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
-            <Button
-              variant="link"
-              className="p-0 text-sm text-muted-foreground hover:text-primary"
-              onClick={() => handleNavigation("invest-scan")}
-            >
-              Invest Scan
-            </Button>
-            <ChevronRight className="w-4 h-4" />
-            <Button
-              variant="link"
-              className="p-0 text-sm text-muted-foreground hover:text-primary"
-              onClick={() => handleNavigation("prive-exchange")}
-            >
-              {regionName}
-            </Button>
-            <ChevronRight className="w-4 h-4" />
-            <span>{opportunity.title}</span>
-          </div>
-          <CardTitle className="text-4xl font-black tracking-tight">{opportunity.title}</CardTitle>
+          <CardTitle className="text-4xl font-black tracking-tight">
+            {opportunity.title}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
@@ -223,7 +197,9 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
             </div>
             {opportunity.fullAnalysis && (
               <div>
-                <Heading3 className="text-xl font-semibold mb-2">What's this Opportunity?</Heading3>
+                <Heading3 className="text-xl font-semibold mb-2">
+                  What's this Opportunity?
+                </Heading3>
                 <Paragraph className="text-base">{opportunity.fullAnalysis}</Paragraph>
               </div>
             )}
@@ -296,17 +272,27 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
                   icon: <PiggyBank className="w-4 h-4" />,
                   valueColor: "text-emerald-500",
                 },
-              ].filter(item => item.value).map((item, index) => (
-                <Card key={index} className="bg-primary/5 border-primary/10 hover:bg-primary/10 transition-colors">
-                  <CardContent className="p-4">
-                    <Heading3 className="text-base font-black text-primary tracking-wide mb-2 flex items-center gap-2">
-                      {item.icon}
-                      {item.title}
-                    </Heading3>
-                    <Paragraph className={`text-2xl font-extrabold ${item.valueColor}`}>{item.value}</Paragraph>
-                  </CardContent>
-                </Card>
-              ))}
+              ]
+                // Only show items that have a value
+                .filter(item => item.value)
+                .map((item, index) => (
+                  <Card
+                    key={index}
+                    className="bg-primary/5 border-primary/10 hover:bg-primary/10 transition-colors"
+                  >
+                    <CardContent className="p-4">
+                      <Heading3 className="text-base font-black text-primary tracking-wide mb-2 text-center flex flex-col items-center justify-center">
+                        <span className="flex items-center justify-center gap-2 mb-1">
+                          {item.icon}
+                          {item.title}
+                        </span>
+                      </Heading3>
+                      <Paragraph className={`text-2xl font-bold text-center ${item.valueColor}`}>
+                        {item.value}
+                      </Paragraph>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           </div>
         </CardContent>
@@ -333,11 +319,15 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
               Concierge Notified
             </DialogTitle>
             <DialogDescription>
-              Our concierge has been informed about your interest in <span className="font-semibold">{opportunity?.title}</span>.
+              Our concierge has been informed about your interest in{" "}
+              <span className="font-semibold">{opportunity?.title}</span>.
             </DialogDescription>
           </DialogHeader>
           <div className="bg-muted/30 p-4 rounded-lg my-4">
-            <p className="text-sm">Our wealth management specialist will contact you shortly to discuss this investment opportunity in detail and answer any questions you may have.</p>
+            <p className="text-sm">
+              Our wealth management specialist will contact you shortly to discuss this investment opportunity in detail
+              and answer any questions you may have.
+            </p>
             <div className="flex items-center gap-2 mt-3 text-primary">
               <Phone className="h-4 w-4" />
               <p className="text-sm font-medium">Expect a call within 24 hours</p>
@@ -353,4 +343,3 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
     </Layout>
   )
 }
-
