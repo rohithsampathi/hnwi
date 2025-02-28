@@ -22,9 +22,9 @@ export function FooterNavigation({
 
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
-    // Fix the route path if needed
-    const correctedRoute = route === "dashboard" ? "/" : route
-    onNavigate(correctedRoute)
+    // Always use the actual route name, don't convert to "/"
+    // console.log("Footer navigation: navigating to", route);
+    onNavigate(route)
   }
 
   return (

@@ -11,6 +11,7 @@ const AppWrapper = dynamic(() => import("@/components/app-wrapper"), {
 
 export default function Home() {
   const [targetRoute, setTargetRoute] = useState<string | null>(null)
+  const [skipSplash, setSkipSplash] = useState<boolean>(false)
   
   useEffect(() => {
     // Check if there's a redirect target in localStorage
@@ -19,7 +20,16 @@ export default function Home() {
       setTargetRoute(redirectTo)
       localStorage.removeItem("redirectTo")
     }
+    
+    // Check if we should skip splash screen and go directly to dashboard
+    const skipSplashFlag = sessionStorage.getItem("skipSplash")
+    if (skipSplashFlag === "true") {
+      // console.log("Detected skipSplash flag, going directly to dashboard");
+      setTargetRoute("dashboard")
+      setSkipSplash(true)
+      sessionStorage.removeItem("skipSplash")
+    }
   }, [])
   
-  return <AppWrapper initialRoute={targetRoute} />
+  return <AppWrapper initialRoute={targetRoute} skipSplash={skipSplash} />
 }

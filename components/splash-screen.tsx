@@ -15,11 +15,12 @@ export function SplashScreen({ onLogin, onSignUp }: { onLogin: () => void; onSig
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    // First timer for removing the loading indicator
+    const loadingTimer = setTimeout(() => {
       setIsLoading(false)
     }, 3000)
 
-    return () => clearTimeout(timer)
+    return () => clearTimeout(loadingTimer)
   }, [])
 
   return (
@@ -85,25 +86,36 @@ export function SplashScreen({ onLogin, onSignUp }: { onLogin: () => void; onSig
             <Lead className="mb-8">Your Gateway to Global Wealth Intelligence</Lead>
 
             <div className="space-y-4">
+              {/* Always show login button */}
               <Button
-                onClick={onLogin}
+                onClick={() => {
+                  // console.log("Login button clicked in SplashScreen");
+                  onLogin(); // Call the passed onLogin prop
+                }}
                 className="gradient-button w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.5)] hover:shadow-[0_0_20px_rgba(66,165,245,0.7)] transition-shadow duration-300"
               >
                 Log In
               </Button>
 
+              {/* Show sign up button after loading completes */}
               {!isLoading && (
-                <Button
-                  onClick={onSignUp}
-                  variant="outline"
-                  className={`w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.3)] hover:shadow-[0_0_20px_rgba(66,165,245,0.5)] transition-shadow duration-300 ${
-                    theme === "dark"
-                      ? "text-[#BBDEFB] border-[#BBDEFB] hover:bg-[#BBDEFB]/10"
-                      : "text-[#424242] border-[#424242] hover:bg-[#424242]/10"
-                  }`}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
                 >
-                  Sign Up
-                </Button>
+                  <Button
+                    onClick={onSignUp}
+                    variant="outline"
+                    className={`w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.3)] hover:shadow-[0_0_20px_rgba(66,165,245,0.5)] transition-shadow duration-300 ${
+                      theme === "dark"
+                        ? "text-[#BBDEFB] border-[#BBDEFB] hover:bg-[#BBDEFB]/10"
+                        : "text-[#424242] border-[#424242] hover:bg-[#424242]/10"
+                    }`}
+                  >
+                    Sign Up
+                  </Button>
+                </motion.div>
               )}
             </div>
           </motion.div>
@@ -127,16 +139,18 @@ export function SplashScreen({ onLogin, onSignUp }: { onLogin: () => void; onSig
                 ease: "linear",
               }}
             >
+              {/* Crown icon that pulses/beats */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
-                fill="none"
+                fill="currentColor"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="0.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="animate-pulse"
               >
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
               </svg>
             </motion.div>
           </motion.div>

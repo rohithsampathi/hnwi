@@ -17,13 +17,24 @@ export default function Page({
   useEffect(() => {
     // Define a global navigation function for the app
     window.handleGlobalNavigation = (path: string) => {
+      // console.log("Global navigation handler called with path:", path);
+      
+      // Extract path without leading slashes for consistency
+      const normalizedPath = path.replace(/^\/+/, "");
+      
       if (path === "back") {
-        router.push("/prive-exchange")
-      } else if (path === "/" || path === "dashboard") {
-        window.location.href = "/"
-      } else {
-        localStorage.setItem("redirectTo", path)
-        window.location.href = "/"
+        router.push("/prive-exchange");
+      } 
+      // Special case for dashboard navigation
+      else if (path === "/" || path === "dashboard") {
+        // Instead of router.push which is causing issues, use the app's main route with a special flag
+        // that skips the splash screen and goes directly to dashboard
+        sessionStorage.setItem("skipSplash", "true");
+        router.push("/");
+      }
+      else {
+        // For all other routes, use direct router navigation
+        router.push(`/${normalizedPath}`);
       }
     }
     

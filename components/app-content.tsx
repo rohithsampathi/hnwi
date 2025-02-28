@@ -4,7 +4,6 @@
 
 import { useState, useEffect } from "react"
 import { HomeDashboard } from "./home-dashboard"
-import { LoginPage } from "./login-page"
 import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
 import { ProfilePage } from "./profile-page"
@@ -22,6 +21,8 @@ import { OpportunityPage } from "./pages/opportunity-page"
 import { SocialHubPage } from "./pages/social-hub-page"
 import { handleLogin, handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
+// Force direct import with explicit path
+import { LoginPage } from "@/components/login-page"
 
 interface User {
   id: string
@@ -85,15 +86,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     }
   }, [])
 
-  useEffect(() => {
-    if (isSessionCheckComplete && user && currentPage === "splash") {
-      const timer = setTimeout(() => {
-        handleNavigation("dashboard")
-      }, 100)
-
-      return () => clearTimeout(timer)
-    }
-  }, [isSessionCheckComplete, user, currentPage])
+  // Remove immediate redirect from splash screen to allow it to display
+  // The redirect will now be handled by app-wrapper.tsx with a 3-second delay
 
   const handleNavigation = (route: string) => {
     if (route.startsWith("playbook/")) {
@@ -114,7 +108,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   }
 
   const handleLoginClick = () => {
-    handleNavigation("login")
+    // console.log("Login button clicked, navigating to login page");
+    handleNavigation("login");
   }
 
   const handleSignUpClick = () => {
@@ -124,10 +119,36 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
   const handleLoginSuccessClick = async (loginData: { email: string; password: string }) => {
     try {
-      console.log("Login attempt for:", loginData.email) // Debug log
+      // console.log("Login attempt for:", loginData.email) // Debug log
+      
+      // Check if we have temporary token from before
+      const tempToken = sessionStorage.getItem("tempToken");
+      const tempUserId = sessionStorage.getItem("tempUserId");
+      
+      // If we used temporary storage, use that instead of logging in again
+      if (tempToken && tempUserId) {
+        // console.log("Restoring session from temporary storage");
+        localStorage.setItem("token", tempToken);
+        localStorage.setItem("userId", tempUserId);
+        sessionStorage.removeItem("tempToken");
+        sessionStorage.removeItem("tempUserId");
+        
+        // Set user info based on stored ID
+        setUser({
+          id: tempUserId,
+          email: loginData.email,
+          firstName: "User" // Placeholder, will be replaced when fetched from API
+        });
+        
+        handleNavigation("dashboard");
+        resetOnboarding();
+        return;
+      }
+      
+      // Normal login process
       const result = await handleLogin(loginData)
       if (result.success && result.user) {
-        console.log("Login successful, user ID:", result.user.id) // Debug log
+        // console.log("Login successful, user ID:", result.user.id) // Debug log
         setUser(result.user)
         // Store the ID exactly as received from handleLogin
         localStorage.setItem("userId", result.user.id)
@@ -135,7 +156,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (result.token) {
           localStorage.setItem("token", result.token)
         }
-        console.log("Login complete - User ID stored:", result.user.id) // Debug log
+        // console.log("Login complete - User ID stored:", result.user.id) // Debug log
         handleNavigation("dashboard")
         resetOnboarding()
       } else {
@@ -231,6 +252,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   }
 
   const renderPage = () => {
+    // console.log("Rendering page:", currentPage); // Debug which page is being rendered
+    
     switch (currentPage) {
       case "splash":
         return <SplashScreen onLogin={handleLoginClick} onSignUp={handleSignUpClick} />
@@ -243,7 +266,62 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           />
         )
       case "login":
-        return <LoginPage onLoginSuccess={handleLoginSuccessClick} onBack={() => handleNavigation("splash")} />
+        // console.log("Rendering login page"); // Debug login page rendering
+        try {
+          return <LoginPage onLoginSuccess={handleLoginSuccessClick} onBack={() => handleNavigation("splash")} />;
+        } catch (error) {
+          console.error("Error rendering LoginPage:", error);
+          // Fallback simple login form if there's an error with the LoginPage component
+          return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-blue-900 to-black">
+              <div className="w-full max-w-md bg-black/60 backdrop-blur-md p-8 rounded-xl border border-blue-500/30 shadow-xl">
+                <h2 className="text-2xl font-bold text-white mb-6 text-center">HNWI Chronicles Login</h2>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+                  const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+                  handleLoginSuccessClick({email, password});
+                }} className="space-y-4">
+                  <div>
+                    <input 
+                      type="email" 
+                      name="email"
+                      placeholder="Email Address" 
+                      className="w-full p-3 rounded bg-blue-950 text-white border border-blue-500/50 focus:border-blue-400"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input 
+                      type="password" 
+                      name="password"
+                      placeholder="Password" 
+                      className="w-full p-3 rounded bg-blue-950 text-white border border-blue-500/50 focus:border-blue-400"
+                      required
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="w-full p-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors"
+                  >
+                    Log In
+                  </button>
+                </form>
+                
+                <div className="mt-4 text-center">
+                  <button 
+                    onClick={() => handleNavigation("splash")}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Back to Home
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
       case "dashboard":
         return (
           user && (
