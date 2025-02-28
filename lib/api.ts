@@ -68,7 +68,7 @@ export interface SocialEvent {
 
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/events/`, {
+    const response = await fetch(`${API_BASE_URL}/api/events/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'

@@ -46,7 +46,11 @@ const getOpportunityIcon = (type: string | undefined) => {
   }
 }
 
-export function OpportunityPage({ region, opportunityId }: OpportunityPageProps) {
+export function OpportunityPage({ 
+  region, 
+  opportunityId, 
+  onNavigate 
+}: OpportunityPageProps & { onNavigate?: (route: string) => void }) {
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
@@ -81,17 +85,25 @@ export function OpportunityPage({ region, opportunityId }: OpportunityPageProps)
     loadData()
   }, [opportunityId])
 
-  // Handle custom navigation
+  // Use the passed onNavigate function if available, otherwise fallback
   const handleNavigation = useCallback(
     (path: string) => {
-      if (path === "back") {
-        // Always go to Privé Exchange
-        router.push("/prive-exchange")
+      if (onNavigate) {
+        // Use the onNavigate function passed from parent
+        onNavigate(path)
+      } else if (path === "back") {
+        // Default back navigation
+        if (region) {
+          router.push(`/invest-scan/${region}`)
+        } else {
+          router.push("/prive-exchange")
+        }
       } else {
+        // Fallback direct routing
         router.push(`/${path.replace(/^\/+/, "")}`)
       }
     },
-    [router],
+    [router, region, onNavigate],
   )
 
   const handleTalkToConcierge = async (e: React.MouseEvent<HTMLButtonElement>) => {

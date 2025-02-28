@@ -22,7 +22,9 @@ export function FooterNavigation({
 
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
-    onNavigate(route)
+    // Fix the route path if needed
+    const correctedRoute = route === "dashboard" ? "/" : route
+    onNavigate(correctedRoute)
   }
 
   return (

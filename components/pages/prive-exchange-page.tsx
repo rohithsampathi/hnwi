@@ -79,9 +79,12 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   // If we want to navigate outside or handle "back"
   const handleNavigation = (path: string) => {
     if (path === "back") {
-      // This would default to router.back()
-      // If you want always to go to /dashboard, do: router.push("/dashboard")
-      router.back()
+      // Always go to dashboard when back is clicked
+      router.push("/")
+    } else if (path === "calendar-page") {
+      router.push("/calendar-page")
+    } else if (path === "profile") {
+      router.push("/profile")
     } else if (onNavigate) {
       onNavigate(path)
     } else {
