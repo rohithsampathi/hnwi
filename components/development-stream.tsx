@@ -207,37 +207,32 @@ export function DevelopmentStream({
       const trimmedLine = line.trim()
       if (trimmedLine === "") return
 
-      if (trimmedLine.toUpperCase() === trimmedLine && trimmedLine !== "") {
+      // Check for markdown style ## headings and handle all uppercase headings
+      if ((trimmedLine.startsWith("##") || trimmedLine.toUpperCase() === trimmedLine) && trimmedLine !== "") {
         if (currentSection.title) {
           sections.push(currentSection)
           currentSection = { title: "", content: [] }
         }
-        currentSection.title = toTitleCase(trimmedLine)
+        // Remove ## prefix if present
+        const titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+        currentSection.title = toTitleCase(titleText)
       } else if (currentSection.title) {
-        const isBulletPoint = trimmedLine.startsWith("-") || /^\d+\.\s/.test(trimmedLine)
-        let formattedText = trimmedLine.replace(/^[-]\s*|^\d+\.\s*/, "")
+        const isBulletPoint = trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || /^\d+\.\s/.test(trimmedLine)
+        let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
         formattedText = formattedText.replace(
           /(Opportunities:|Risks:|Recommendations & Future Paths:)/g,
           "<strong>$1</strong>",
         )
 
-        // Only include bullet points for "Recommendations & Future Paths" section
-        if (currentSection.title === "Recommendations & Future Paths") {
-          if (isBulletPoint) {
-            currentSection.content.push({
-              text: formattedText,
-              isBullet: true,
-            })
-          }
-        } else {
-          // For other sections, include all content
-          currentSection.content.push({
-            text: formattedText,
-            isBullet: isBulletPoint,
-          })
-        }
+        // Include all content regardless of section, and mark bullets consistently
+        currentSection.content.push({
+          text: formattedText,
+          isBullet: isBulletPoint,
+        })
       } else {
-        summaryContent.push(trimmedLine)
+        // Remove ## prefix from summary content as well, if present
+        const formattedLine = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+        summaryContent.push(formattedLine)
       }
     })
 
@@ -259,17 +254,51 @@ export function DevelopmentStream({
         content.map((paragraph, index) => (
           <p key={`summary-${index}`} className="mb-2 leading-relaxed break-words">
             {paragraph.split("\n").map((line, lineIndex) => {
-              if (line.trim().endsWith(":")) {
+              // Remove ## prefix if present
+              const cleanedLine = line.startsWith("##") ? line.substring(2).trim() : line
+              
+              // Check for **Title**: format
+              const boldTitleRegex = /^\*\*(.*?)\*\*\:\s*(.*)/;
+              const hasBoldTitle = boldTitleRegex.test(cleanedLine);
+              
+              // Detect if this is a regular bullet point (not bold title format)
+              const isBulletPoint = !hasBoldTitle && (cleanedLine.startsWith("-") || cleanedLine.startsWith("•") || /^\d+\.\s/.test(cleanedLine))
+              // Clean bullet formats for consistent display
+              const bulletCleanedText = isBulletPoint ? cleanedLine.replace(/^[-•]\s*|^\d+\.\s*/, "") : cleanedLine
+              
+              if (hasBoldTitle) {
+                const matches = cleanedLine.match(boldTitleRegex);
+                const title = matches[1];
+                const content = matches[2];
                 return (
                   <React.Fragment key={`line-${lineIndex}`}>
-                    <strong>{line}</strong>
+                    <div className="mt-1">
+                      <strong>{title}:</strong> {content}
+                    </div>
+                    <br />
+                  </React.Fragment>
+                )
+              } else if (isBulletPoint) {
+                return (
+                  <React.Fragment key={`line-${lineIndex}`}>
+                    <div className="flex items-start">
+                      <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                      <span>{bulletCleanedText}</span>
+                    </div>
+                    <br />
+                  </React.Fragment>
+                )
+              } else if (cleanedLine.trim().endsWith(":")) {
+                return (
+                  <React.Fragment key={`line-${lineIndex}`}>
+                    <strong>{cleanedLine}</strong>
                     <br />
                   </React.Fragment>
                 )
               }
               return (
                 <React.Fragment key={`line-${lineIndex}`}>
-                  {line}
+                  {cleanedLine}
                   <br />
                 </React.Fragment>
               )
@@ -277,7 +306,9 @@ export function DevelopmentStream({
           </p>
         ))
       ) : (
-        <p className="mb-2 leading-relaxed">{content}</p>
+        <p className="mb-2 leading-relaxed">
+          {typeof content === 'string' && content.startsWith("##") ? content.substring(2).trim() : content}
+        </p>
       )}
     </div>
   )
@@ -348,24 +379,60 @@ export function DevelopmentStream({
                       <Card className="w-full">
                         <CardContent className="px-3 py-3 w-full">
                           <div className="space-y-2">
-                            <h4 className="text-base font-semibold">Analysis summary</h4>
+                            <h4 className="text-base font-semibold">HByte</h4>
                             <div className="text-sm text-muted-foreground max-h-60 overflow-y-auto pr-2 w-full">
                               {formatAnalysis(dev.summary)
                                 .summary.split("\n")
                                 .map((paragraph, index) => (
                                   <p key={`summary-${index}`} className="mb-2 leading-relaxed break-words">
                                     {paragraph.split("\n").map((line, lineIndex) => {
-                                      if (line.trim().endsWith(":")) {
+                                      // Remove ## prefix if present
+                                      const cleanedLine = line.startsWith("##") ? line.substring(2).trim() : line
+                                      
+                                      // Check for **Title**: format
+                                      const boldTitleRegex = /^\*\*(.*?)\*\*\:\s*(.*)/;
+                                      const hasBoldTitle = boldTitleRegex.test(cleanedLine);
+                                      
+                                      // Detect if this is a regular bullet point (not bold title format)
+                                      const isBulletPoint = !hasBoldTitle && (cleanedLine.startsWith("-") || cleanedLine.startsWith("•") || /^\d+\.\s/.test(cleanedLine))
+                                      // Clean bullet formats for consistent display
+                                      const bulletCleanedText = isBulletPoint ? cleanedLine.replace(/^[-•]\s*|^\d+\.\s*/, "") : cleanedLine
+                                      
+                                      if (hasBoldTitle) {
+                                        const matches = cleanedLine.match(boldTitleRegex);
+                                        const title = matches[1];
+                                        const content = matches[2];
                                         return (
                                           <React.Fragment key={`line-${lineIndex}`}>
-                                            <strong>{line}</strong>
+                                            <div className="mt-1">
+                                              <strong>{title}:</strong> {content}
+                                            </div>
+                                            <br />
+                                          </React.Fragment>
+                                        )
+                                      } else if (isBulletPoint) {
+                                        // Process bold markdown in bullets
+                                        const formattedText = bulletCleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                        return (
+                                          <React.Fragment key={`line-${lineIndex}`}>
+                                            <div className="flex items-start">
+                                              <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                                              <span dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                            </div>
+                                            <br />
+                                          </React.Fragment>
+                                        )
+                                      } else if (cleanedLine.trim().endsWith(":")) {
+                                        return (
+                                          <React.Fragment key={`line-${lineIndex}`}>
+                                            <strong>{cleanedLine}</strong>
                                             <br />
                                           </React.Fragment>
                                         )
                                       }
                                       return (
                                         <React.Fragment key={`line-${lineIndex}`}>
-                                          {line}
+                                          {cleanedLine}
                                           <br />
                                         </React.Fragment>
                                       )
@@ -384,18 +451,51 @@ export function DevelopmentStream({
                             </AccordionTrigger>
                             <AccordionContent className="bg-background/50 mt-1 p-2 rounded-md space-y-2">
                               <div className="space-y-2">
-                                {section.content.map((item, pIndex) => (
-                                  <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-muted-foreground">
-                                    {item.isBullet ? (
-                                      <div className="flex items-start">
-                                        <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                                        <span dangerouslySetInnerHTML={{ __html: item.text }}></span>
+                                {section.content.map((item, pIndex) => {
+                                  // Clean any ## prefixes from text content
+                                  const cleanedText = item.text.startsWith("##") ? 
+                                    item.text.substring(2).trim() : item.text;
+                                  
+                                  // Check for **Title**: format
+                                  const boldTitleRegex = /^\*\*(.*?)\*\*\:\s*(.*)/;
+                                  const hasBoldTitle = boldTitleRegex.test(cleanedText);
+                                  
+                                  // Use the lightbulb for all bullet points (that aren't bold title format) regardless of section 
+                                  const isLightbulbBullet = !hasBoldTitle && (item.isBullet || cleanedText.startsWith("-") || /^\d+\.\s/.test(cleanedText));
+                                  // Strip bullet markers from text for consistent formatting
+                                  const bulletCleanedText = isLightbulbBullet ? 
+                                    cleanedText.replace(/^[-•]\s*|^\d+\.\s*/, "") : cleanedText;
+                                  
+                                  // If "Why This Matters" section and bold title format, display specially
+                                  if (hasBoldTitle) {
+                                    const matches = cleanedText.match(boldTitleRegex);
+                                    const title = matches[1];
+                                    const content = matches[2];
+                                    return (
+                                      <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-muted-foreground">
+                                        <div className="mt-1">
+                                          <strong>{title}:</strong> {content}
+                                        </div>
                                       </div>
-                                    ) : (
-                                      <p dangerouslySetInnerHTML={{ __html: item.text }}></p>
-                                    )}
-                                  </div>
-                                ))}
+                                    );
+                                  }
+                                    
+                                  // Process the bulletCleanedText to handle **XXXX** formatting
+                                  const formattedText = bulletCleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                                  
+                                  return (
+                                    <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-muted-foreground">
+                                      {isLightbulbBullet ? (
+                                        <div className="flex items-start">
+                                          <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                                          <span dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                        </div>
+                                      ) : (
+                                        <p dangerouslySetInnerHTML={{ __html: cleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </AccordionContent>
                           </AccordionItem>
@@ -409,7 +509,7 @@ export function DevelopmentStream({
                           <ul className={`${queenBullet} space-y-2`}>
                             {dev.numerical_data.map((item, index) => (
                               <li key={`numerical-${index}`} className="text-sm text-muted-foreground flex items-start">
-                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1" />
+                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
                                 <span>
                                   <span className="font-medium">
                                     {item.number} {item.unit}

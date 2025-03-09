@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
+import { useBusinessMode } from "@/contexts/business-mode-context"
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -53,6 +54,7 @@ interface ExperienceZoneItem {
   description: string | React.ReactNode
   iconAnimation: any
   beta?: boolean
+  businessOnly?: boolean
 }
 
 const AnimatedIcon = ({
@@ -102,6 +104,7 @@ export function HomeDashboard({
   isFromSignupFlow: boolean
 }) {
   const { theme } = useTheme()
+  const { isBusinessMode } = useBusinessMode()
   const { toast } = useToast()
   const [spotlightIndex, setSpotlightIndex] = useState(0)
   const [developments, setDevelopments] = useState<Development[]>([])
@@ -171,9 +174,10 @@ export function HomeDashboard({
         </>
       ),
       iconAnimation: pulseAnimation,
+      businessOnly: true,
     },
     {
-      name: "Strategy Vault",
+      name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
       color: "linear-gradient(145deg, #005f40, #00331f)",
@@ -206,8 +210,12 @@ export function HomeDashboard({
       ),
       iconAnimation: pulseAnimation,
       beta: true,
+      businessOnly: true,
     },
   ]
+
+  // Filter items based on business mode
+  const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly)
 
   const crownWorldItems = [
     {
@@ -255,22 +263,42 @@ export function HomeDashboard({
       color: "linear-gradient(145deg, #8A2BE2, #9370DB)",
       description: "Access premium strategies",
       iconAnimation: pulseAnimation,
+      businessOnly: true,
     },
   ]
+
+  // Filter founders desk items based on business mode
+  const visibleFoundersDeskItems = foundersDeskItems.filter(item => isBusinessMode || !item.businessOnly)
 
   const handleNavigate = (e: React.MouseEvent, route: string, developmentId?: string) => {
     e.preventDefault()
     
+    // Handle onboarding steps if needed
     if (route === "play-books" && currentStep === "playbooks") {
       setCurrentStep("industryTrends")
     } else if (route === "strategy-vault" && currentStep === "industryTrends") {
       setCurrentStep("orangeStrategy")
     }
 
+    // Handle development ID if provided (for strategy vault navigation with context)
     if (developmentId) {
-      onNavigate(`strategy-vault?developmentId=${developmentId}&industry=All&timeRange=1w`)
-    } else {
-      onNavigate(route)
+      // Store the development ID in sessionStorage for the target page to access
+      sessionStorage.setItem("currentDevelopmentId", developmentId);
+      sessionStorage.setItem("nav_param_industry", "All");
+      sessionStorage.setItem("nav_param_timeRange", "1w");
+      
+      // Navigate directly to strategy vault
+      onNavigate("strategy-vault");
+    } 
+    // Handle opportunity navigation directly
+    else if (route.startsWith("opportunity/")) {
+      const opportunityId = route.split("/")[1];
+      sessionStorage.setItem("currentOpportunityId", opportunityId);
+      onNavigate("opportunity");
+    }
+    // All other regular navigation
+    else {
+      onNavigate(route);
     }
   }
 
@@ -345,50 +373,52 @@ export function HomeDashboard({
         </Card>
 
         {/* The Foundry Section */}
-        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Hammer className="w-6 h-6 text-primary" />
-              <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
-                The Foundry
-              </Heading2>
-            </div>
-            <CardDescription className="font-body tracking-wide">Where Winning Strategies Are Forged</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {experienceZone.map((item, index) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Button
-                    onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
-                    style={{
-                      background: item.color,
-                      color: "white",
-                    }}
+        {visibleExperienceZone.length > 0 && (
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Hammer className="w-6 h-6 text-primary" />
+                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
+                  The Foundry
+                </Heading2>
+              </div>
+              <CardDescription className="font-body tracking-wide">Where Winning Strategies Are Forged</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                {visibleExperienceZone.map((item, index) => (
+                  <motion.div
+                    key={item.name}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
                   >
-                    <div className="flex flex-col items-center">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
-                      <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
-                      <div className="text-xs md:text-base max-w-[150px] md:max-w-[200px] flex-grow">
-                        {typeof item.description === "string" ? item.description : item.description}
+                    <Button
+                      onClick={(e) => handleNavigate(e, item.route)}
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      style={{
+                        background: item.color,
+                        color: "white",
+                      }}
+                    >
+                      <div className="flex flex-col items-center">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
+                        <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
+                        <div className="text-xs md:text-base max-w-[150px] md:max-w-[200px] flex-grow">
+                          {typeof item.description === "string" ? item.description : item.description}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-center mt-2">
-                      <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
-                      <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
-                    </div>
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                      <div className="flex items-center justify-center mt-2">
+                        <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
+                        <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
+                      </div>
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Crown World Section */}
         <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
@@ -442,50 +472,52 @@ export function HomeDashboard({
         </Card>
 
         {/* Founder's Desk Section */}
-        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Briefcase className="w-6 h-6 text-primary" />
-              <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
-                Founder's Desk
-              </Heading2>
-            </div>
-            <CardDescription className="font-body tracking-wide">Your personal command center</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {foundersDeskItems.map((item, index) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Button
-                    onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
-                    style={{
-                      background: item.color,
-                      color: "white",
-                    }}
+        {visibleFoundersDeskItems.length > 0 && (
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Briefcase className="w-6 h-6 text-primary" />
+                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
+                  Founder's Desk
+                </Heading2>
+              </div>
+              <CardDescription className="font-body tracking-wide">Your personal command center</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {visibleFoundersDeskItems.map((item, index) => (
+                  <motion.div
+                    key={item.name}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
                   >
-                    <div className="flex flex-col items-center">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
-                      <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
-                      <div className="text-xs md:text-sm max-w-[150px] md:max-w-[200px] flex-grow">
-                        {item.description}
+                    <Button
+                      onClick={(e) => handleNavigate(e, item.route)}
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      style={{
+                        background: item.color,
+                        color: "white",
+                      }}
+                    >
+                      <div className="flex flex-col items-center">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
+                        <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
+                        <div className="text-xs md:text-sm max-w-[150px] md:max-w-[200px] flex-grow">
+                          {item.description}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-center mt-2">
-                      <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
-                      <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
-                    </div>
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                      <div className="flex items-center justify-center mt-2">
+                        <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
+                        <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
+                      </div>
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />}
       </div>

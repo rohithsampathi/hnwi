@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { ParticlesBackground } from "./particles-background"
@@ -10,18 +10,8 @@ import { ThemeToggle } from "./theme-toggle"
 import { Heading1, Lead, Paragraph } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 
-export function SplashScreen({ onLogin, onSignUp }: { onLogin: () => void; onSignUp: () => void }) {
+export function SplashScreen({ onLogin }: { onLogin: () => void }) {
   const { theme } = useTheme()
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    // First timer for removing the loading indicator
-    const loadingTimer = setTimeout(() => {
-      setIsLoading(false)
-    }, 3000)
-
-    return () => clearTimeout(loadingTimer)
-  }, [])
 
   return (
     <>
@@ -85,76 +75,26 @@ export function SplashScreen({ onLogin, onSignUp }: { onLogin: () => void; onSig
 
             <Lead className="mb-8">Your Gateway to Global Wealth Intelligence</Lead>
 
-            <div className="space-y-4">
-              {/* Always show login button */}
+            <div className="flex space-x-4 justify-center">
+              {/* Login button */}
               <Button
-                onClick={() => {
-                  // console.log("Login button clicked in SplashScreen");
-                  onLogin(); // Call the passed onLogin prop
-                }}
+                onClick={onLogin}
                 className="gradient-button w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.5)] hover:shadow-[0_0_20px_rgba(66,165,245,0.7)] transition-shadow duration-300"
               >
                 Log In
               </Button>
 
-              {/* Show sign up button after loading completes */}
-              {!isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+              {/* Subscribe button with gold gradient */}
+              <Link href="https://www.hnwichronicles.com/hnwi-world#pricing" target="_blank" rel="noopener noreferrer">
+                <Button
+                  className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-600 hover:to-amber-700 text-black font-bold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:shadow-[0_0_20px_rgba(251,191,36,0.7)] transition-shadow duration-300"
                 >
-                  <Button
-                    onClick={onSignUp}
-                    variant="outline"
-                    className={`w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.3)] hover:shadow-[0_0_20px_rgba(66,165,245,0.5)] transition-shadow duration-300 ${
-                      theme === "dark"
-                        ? "text-[#BBDEFB] border-[#BBDEFB] hover:bg-[#BBDEFB]/10"
-                        : "text-[#424242] border-[#424242] hover:bg-[#424242]/10"
-                    }`}
-                  >
-                    Sign Up
-                  </Button>
-                </motion.div>
-              )}
+                  Subscribe
+                </Button>
+              </Link>
             </div>
           </motion.div>
         </div>
-
-        {isLoading && (
-          <motion.div
-            className="absolute inset-x-0 bottom-16 flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.1 }}
-          >
-            <motion.div
-              className={`w-16 h-16 ${theme === "dark" ? "text-[#42A5F5]" : "text-[#1976D2]"}`}
-              animate={{
-                rotateY: 360,
-              }}
-              transition={{
-                duration: 2,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "linear",
-              }}
-            >
-              {/* Crown icon that pulses/beats */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                stroke="currentColor"
-                strokeWidth="0.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="animate-pulse"
-              >
-                <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
-              </svg>
-            </motion.div>
-          </motion.div>
-        )}
 
         <footer className={`w-full py-4 px-4 text-center z-10 absolute bottom-0`}>
           <Paragraph className={`text-xs ${theme === "dark" ? "text-[#666]" : "text-[#999]"}`}>

@@ -58,7 +58,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
       title={
         <div className="flex items-center space-x-2">
           <Globe className="w-6 h-6" />
-          <span>Strategy Vault</span>
+          <span>HNWI World</span>
         </div>
       }
       showBackButton
@@ -72,7 +72,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
       </p>
       <Card className="w-full mb-6">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">Strategy Vault</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary">HNWI World</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-6">

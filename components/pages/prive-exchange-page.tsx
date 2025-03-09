@@ -76,19 +76,47 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     regionCounts[region] = regions[region].length
   }
 
-  // If we want to navigate outside or handle "back"
+  // Unified navigation handler for all routes
   const handleNavigation = (path: string) => {
+    // IMPORTANT: Always use onNavigate when available for all routes
+    // This ensures proper handling by the app's navigation system
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    
+    // Only as a fallback when onNavigate is not provided (direct access via URL)
     if (path === "back") {
       // Always go to dashboard when back is clicked
-      router.push("/")
-    } else if (path === "calendar-page") {
-      router.push("/calendar-page")
-    } else if (path === "profile") {
-      router.push("/profile")
-    } else if (onNavigate) {
-      onNavigate(path)
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem("skipSplash", "true");
+      }
+      router.push("/");
     } else {
-      router.push(`/${path.replace(/^\/+/, "")}`)
+      // For all other routes, prefer the app's global navigation handler
+      if (typeof window !== 'undefined' && window.handleGlobalNavigation) {
+        window.handleGlobalNavigation(path);
+      } else {
+        // Last resort direct navigation - should rarely be used
+        // Set skipSplash to ensure we don't show splash when going to dashboard
+        if (path === "dashboard") {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem("skipSplash", "true");
+          }
+          router.push("/");
+        } else {
+          try {
+            router.push(`/${path.replace(/^\/+/, "")}`);
+          } catch (e) {
+            console.error("Navigation failed:", e);
+            // If navigation fails, go back to dashboard
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem("skipSplash", "true");
+            }
+            router.push("/");
+          }
+        }
+      }
     }
   }
 

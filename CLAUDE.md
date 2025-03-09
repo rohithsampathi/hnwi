@@ -28,5 +28,5 @@
 - **Invest Scan**: Interactive global investment map with region-based opportunity discovery
 - **Privé Exchange**: Premium marketplace for exclusive investment opportunities
 - **Social Hub**: Networking platform with elite events calendar and management
-- **Strategy Tools**: Investment planning engine, strategy vault, and playbooks
+- **Strategy Tools**: Investment planning engine, HNWI World, and playbooks
 - **Authentication**: JWT-based auth with session management for HNWI users

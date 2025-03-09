@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
+import { BusinessModeProvider } from "./business-mode-context"
 
 type Theme = "light" | "dark"
 
@@ -51,13 +52,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div
-        style={{
-          fontFamily: theme === "dark" ? darkTheme.fontFamily.body : lightTheme.fontFamily.body,
-        }}
-      >
-        {children}
-      </div>
+      <BusinessModeProvider>
+        <div
+          style={{
+            fontFamily: theme === "dark" ? darkTheme.fontFamily.body : lightTheme.fontFamily.body,
+          }}
+        >
+          {children}
+        </div>
+      </BusinessModeProvider>
     </ThemeContext.Provider>
   )
 }

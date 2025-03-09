@@ -4,7 +4,7 @@
 
 import { OpportunityPage } from "@/components/pages/opportunity-page"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 export default function Page({
   params: { id },
@@ -12,16 +12,31 @@ export default function Page({
   params: { id: string }
 }) {
   const router = useRouter()
+  const [isGlobalHandlerReady, setIsGlobalHandlerReady] = useState(false)
   
   // Set up a global navigation handler that works with all routes
   useEffect(() => {
     // Define a global navigation function for the app
     window.handleGlobalNavigation = (path: string) => {
-      // console.log("Global navigation handler called with path:", path);
+      // Parse route and handle query parameters if present
+      let baseRoute = path;
+      let queryParams = {};
+      
+      if (path.includes('?')) {
+        const [routePath, queryString] = path.split('?');
+        baseRoute = routePath;
+        
+        // Parse query parameters
+        const searchParams = new URLSearchParams('?' + queryString);
+        searchParams.forEach((value, key) => {
+          queryParams[key] = value;
+        });
+      }
       
       // Extract path without leading slashes for consistency
-      const normalizedPath = path.replace(/^\/+/, "");
+      const normalizedPath = baseRoute.replace(/^\/+/, "");
       
+      // Handle different route types
       if (path === "back") {
         router.push("/prive-exchange");
       } 
@@ -32,11 +47,18 @@ export default function Page({
         sessionStorage.setItem("skipSplash", "true");
         router.push("/");
       }
+      // Handle opportunity routes
+      else if (normalizedPath.startsWith("opportunity/")) {
+        const opportunityId = normalizedPath.split("/")[1];
+        router.push(`/opportunity/${opportunityId}`);
+      }
       else {
         // For all other routes, use direct router navigation
         router.push(`/${normalizedPath}`);
       }
     }
+    
+    setIsGlobalHandlerReady(true)
     
     return () => {
       // Clean up on unmount
@@ -48,10 +70,27 @@ export default function Page({
   const handleNavigation = (path: string) => {
     if (window.handleGlobalNavigation) {
       window.handleGlobalNavigation(path)
+    } else {
+      // Fallback to basic navigation if global handler not ready
+      console.warn("Global navigation handler not ready, using direct navigation");
+      if (path === "back") {
+        router.push("/prive-exchange");
+      } else if (path === "dashboard") {
+        sessionStorage.setItem("skipSplash", "true");
+        router.push("/");
+      } else {
+        const normalizedPath = path.replace(/^\/+/, "");
+        router.push(`/${normalizedPath}`);
+      }
     }
   }
 
-  // Pass a dummy region since we now fetch by ID, but provide proper navigation function
+  // Store the current opportunity ID in sessionStorage for consistent referencing
+  useEffect(() => {
+    sessionStorage.setItem("currentOpportunityId", id);
+  }, [id]);
+
+  // Pass proper navigation function to the opportunity page
   return <OpportunityPage region="" opportunityId={id} onNavigate={handleNavigation} />
 }
 

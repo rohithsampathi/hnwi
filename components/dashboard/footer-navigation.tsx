@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
+import { useBusinessMode } from "@/contexts/business-mode-context"
 import { Home, Shield, CalendarIcon, Crown, UserCircle2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
@@ -11,14 +12,18 @@ export function FooterNavigation({
   onNavigate: (route: string) => void
 }) {
   const { theme } = useTheme()
+  const { isBusinessMode } = useBusinessMode()
 
   const navItems = [
-    { name: "Home", icon: Home, route: "dashboard" },
-    { name: "War Room", icon: Shield, route: "war-room" },
-    { name: "Calendar", icon: CalendarIcon, route: "calendar-page" },
-    { name: "Privé Exchange", icon: Crown, route: "prive-exchange", beta: true },
-    { name: "Profile", icon: UserCircle2, route: "profile" },
+    { name: "Home", icon: Home, route: "dashboard", alwaysShow: true },
+    { name: "War Room", icon: Shield, route: "war-room", alwaysShow: false },
+    { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
+    { name: "Privé Exchange", icon: Crown, route: "prive-exchange", beta: true, alwaysShow: true },
+    { name: "Profile", icon: UserCircle2, route: "profile", alwaysShow: true },
   ]
+
+  // Filter items based on business mode
+  const visibleNavItems = navItems.filter(item => isBusinessMode || item.alwaysShow)
 
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
@@ -34,7 +39,7 @@ export function FooterNavigation({
       } py-2 md:py-4 px-2 md:px-4 border-t ${theme === "dark" ? "border-[#333]" : "border-[#E0E0E0]"}`}
     >
       <nav className="flex justify-around mt-1 md:mt-2">
-        {navItems.map((item, index) => (
+        {visibleNavItems.map((item, index) => (
           <Button
             key={index}
             variant="ghost"

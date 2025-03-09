@@ -85,22 +85,41 @@ export function OpportunityPage({
     loadData()
   }, [opportunityId])
 
-  // Use the passed onNavigate function if available, otherwise fallback
+  // Unified navigation handler that works in both contexts
   const handleNavigation = useCallback(
     (path: string) => {
+      // Always prefer the provided onNavigate function when available
       if (onNavigate) {
         // Use the onNavigate function passed from parent
-        onNavigate(path)
-      } else if (path === "back") {
+        // This ensures we use the app's navigation system when available
+        onNavigate(path);
+        return;
+      }
+      
+      // Fallback for direct Next.js navigation when we're in app router context
+      
+      // First try to use the global navigation handler if available
+      if (typeof window !== 'undefined' && window.handleGlobalNavigation) {
+        window.handleGlobalNavigation(path);
+        return;
+      }
+      
+      // Last resort - direct router navigation for specific cases
+      if (path === "back") {
         // Default back navigation
         if (region) {
-          router.push(`/invest-scan/${region}`)
+          router.push(`/invest-scan/${region}`);
         } else {
-          router.push("/prive-exchange")
+          router.push("/prive-exchange");
         }
+      } else if (path === "dashboard") {
+        // Special handling for dashboard to maintain state
+        sessionStorage.setItem("skipSplash", "true");
+        router.push("/");
       } else {
-        // Fallback direct routing
-        router.push(`/${path.replace(/^\/+/, "")}`)
+        // Normalize the path and navigate
+        const normalizedPath = path.replace(/^\/+/, "");
+        router.push(`/${normalizedPath}`);
       }
     },
     [router, region, onNavigate],

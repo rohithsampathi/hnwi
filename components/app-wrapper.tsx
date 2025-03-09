@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react"
 import { AppContent } from "./app-content"
 import { Toaster } from "@/components/ui/toaster"
+import { BusinessModeProvider } from "@/contexts/business-mode-context"
 
 interface AppWrapperProps {
   initialRoute?: string | null;
@@ -24,6 +25,13 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     // Ensures we're mounted and hydrated before showing content
     setIsInitialized(true)
     
+    // Make sure isInitialized is set immediately to prevent blank screens
+    setTimeout(() => {
+      if (!isInitialized) {
+        setIsInitialized(true);
+      }
+    }, 100)
+    
     // Check for token to determine if user is logged in
     const token = localStorage.getItem("token")
     const userId = localStorage.getItem("userId")
@@ -39,27 +47,17 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
       return; // Don't set up the timer
     }
     
-    // Only auto-redirect if there's been no user interaction
+    // Check if user is already logged in
     if (!userInteracted) {
-      // Show splash screen for 3 seconds before redirecting to dashboard/initial route
-      const timer = setTimeout(() => {
-        // If we're already on a specific page due to user interaction, don't override
-        if (forcePage) {
-          return;
-        }
-        
-        // Handle initial route if provided
-        if (initialRoute && token && userId) {
-          // If we have an initial route and user is logged in, navigate to it
-          setCurrentPage(initialRoute);
-        } else if (token && userId) {
-          // If user is logged in but no initial route, go to dashboard
-          setCurrentPage("dashboard");
-        } 
-        // IMPORTANT: If no token/userId, remain on splash screen
-      }, 3000); // 3 second delay to show splash screen
-      
-      return () => clearTimeout(timer);
+      // Handle initial route if provided
+      if (initialRoute && token && userId) {
+        // If we have an initial route and user is logged in, navigate to it
+        setCurrentPage(initialRoute);
+      } else if (token && userId) {
+        // If user is logged in but no initial route, go to dashboard
+        setCurrentPage("dashboard");
+      }
+      // IMPORTANT: If no token/userId, remain on splash screen
     }
   }, [initialRoute, userInteracted, forcePage, skipSplash])
 
@@ -98,10 +96,10 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     setCurrentPage(route)
   }
 
-  if (!isInitialized) {
-    return null // Or a loading spinner component
-  }
+  // Always show content, don't return null
+  // This prevents blank screens during initialization
 
+  // We've moved the BusinessModeProvider to the ThemeProvider in theme-context.tsx since they're related
   return (
     <>
       <AppContent currentPage={currentPage} onNavigate={handleNavigate} />

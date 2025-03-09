@@ -81,29 +81,85 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
     checkUserSession()
 
+    // Check for special navigation flags in sessionStorage
+    if (typeof window !== 'undefined') {
+      // Check if we need to show the profile page
+      const shouldShowProfile = sessionStorage.getItem('showProfile')
+      if (shouldShowProfile === 'true' && currentPage === 'dashboard') {
+        // If we're on dashboard and the flag is set, navigate to profile
+        handleNavigation('profile')
+        // Clear the flag
+        sessionStorage.removeItem('showProfile')
+      }
+    }
+
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [currentPage])
 
   // Remove immediate redirect from splash screen to allow it to display
   // The redirect will now be handled by app-wrapper.tsx with a 3-second delay
 
   const handleNavigation = (route: string) => {
-    if (route.startsWith("playbook/")) {
-      const playbookId = route.split("/")[1]
-      setCurrentPlaybookId(playbookId)
-      setNavigationHistory((prev) => [...prev, "playbook"])
-      onNavigate("playbook")
-    } else if (route === "back") {
-      const newHistory = [...navigationHistory]
-      newHistory.pop()
-      const previousPage = newHistory[newHistory.length - 1] || "splash"
-      setNavigationHistory(newHistory)
-      onNavigate(previousPage)
-    } else {
-      setNavigationHistory((prev) => [...prev, route])
-      onNavigate(route)
+    // Parse route and handle query parameters if present
+    let baseRoute = route;
+    let params = {};
+    
+    if (route.includes('?')) {
+      const [path, queryString] = route.split('?');
+      baseRoute = path;
+      
+      // Parse query parameters
+      const searchParams = new URLSearchParams('?' + queryString);
+      searchParams.forEach((value, key) => {
+        params[key] = value;
+      });
+    }
+    
+    // Special handling for opportunity routes
+    if (baseRoute.startsWith("opportunity/")) {
+      const opportunityId = baseRoute.split("/")[1];
+      setNavigationHistory((prev) => [...prev, "opportunity"]);
+      onNavigate("opportunity");
+      sessionStorage.setItem("currentOpportunityId", opportunityId);
+      return;
+    }
+    
+    // Handle playbook routes
+    if (baseRoute.startsWith("playbook/")) {
+      const playbookId = baseRoute.split("/")[1];
+      setCurrentPlaybookId(playbookId);
+      setNavigationHistory((prev) => [...prev, "playbook"]);
+      onNavigate("playbook");
+    } 
+    // Handle back navigation
+    else if (baseRoute === "back") {
+      const newHistory = [...navigationHistory];
+      newHistory.pop();
+      const previousPage = newHistory[newHistory.length - 1] || "splash";
+      setNavigationHistory(newHistory);
+      onNavigate(previousPage);
+    } 
+    // Handle regular navigation
+    else {
+      // Store any parameters in sessionStorage for the target page to access
+      if (Object.keys(params).length > 0) {
+        Object.entries(params).forEach(([key, value]) => {
+          sessionStorage.setItem(`nav_param_${key}`, value.toString());
+        });
+      }
+      
+      // For development view with ID parameter
+      if (baseRoute.includes('development-view/')) {
+        const devId = baseRoute.split('/')[1];
+        sessionStorage.setItem('currentDevelopmentId', devId);
+        setExpandedDevelopmentId(devId);
+        baseRoute = 'strategy-vault';
+      }
+      
+      setNavigationHistory((prev) => [...prev, baseRoute]);
+      onNavigate(baseRoute);
     }
   }
 
@@ -247,16 +303,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     }
   }
 
-  if (!hasCheckedSession) {
-    return null
-  }
+  // Always render content, even if session check hasn't completed
+  // This prevents blank screens
 
   const renderPage = () => {
     // console.log("Rendering page:", currentPage); // Debug which page is being rendered
     
     switch (currentPage) {
       case "splash":
-        return <SplashScreen onLogin={handleLoginClick} onSignUp={handleSignUpClick} />
+        return <SplashScreen onLogin={handleLoginClick} />
       case "onboarding":
         return (
           <OnboardingPage
@@ -368,7 +423,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       case "invest-scan":
         return <InvestScanPage onNavigate={handleNavigation} />
       case "opportunity":
-        return <OpportunityPage onNavigate={handleNavigation} />
+        // Retrieve the opportunityId from sessionStorage if available
+        const currentOpportunityId = typeof window !== 'undefined' ? 
+          sessionStorage.getItem("currentOpportunityId") : null;
+        
+        return <OpportunityPage 
+          region="" 
+          opportunityId={currentOpportunityId || ""} 
+          onNavigate={handleNavigation} 
+        />
       case "social-hub":
         return <SocialHubPage onNavigate={handleNavigation} />
       default:

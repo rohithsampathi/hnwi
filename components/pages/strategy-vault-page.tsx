@@ -58,8 +58,8 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
   return (
     <>
       <MetaTags
-        title="Strategy Vault | HNWI Chronicles"
-        description="Unlock the Strategy Vault: Real-time market insights, competitive intelligence, and strategic analysis for high-net-worth individuals."
+        title="HNWI World | HNWI Chronicles"
+        description="Unlock the HNWI World: Real-time market insights, competitive intelligence, and strategic analysis for high-net-worth individuals."
         image="https://hnwichronicles.com/strategy-vault-og-image.jpg" // Replace with actual image URL
         url="https://hnwichronicles.com/strategy-vault" // Replace with actual URL
       />
@@ -67,7 +67,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
         title={
           <div className="flex items-center space-x-2">
             <Globe className="w-6 h-6 text-primary" />
-            <Heading2>Strategy Vault</Heading2>
+            <Heading2>HNWI World</Heading2>
             <LiveButton />
           </div>
         }
@@ -77,7 +77,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
         <div className="font-body">
           <Card className="w-full mb-6 overflow-hidden border-none bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_24px_rgba(255,255,255,0.15)] transition-all duration-300">
             <CardHeader>
-              <Heading2 className="text-primary">Strategy Vault</Heading2>
+              <Heading2 className="text-primary">HNWI World</Heading2>
               <Paragraph className="text-sm text-muted-foreground mt-2 leading-tight">
                 Data Meets Strategy for the Wealthiest
               </Paragraph>
@@ -116,7 +116,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 <CardHeader>
                   <Heading3 className="text-primary flex items-center">
                     <span className="bg-primary text-primary-foreground p-1 rounded mr-2">📊</span>
-                    Sector Pulse
+                    Wealth Radar
                   </Heading3>
                 </CardHeader>
                 <CardContent>
@@ -133,7 +133,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           </Card>
           <Card className="w-full mt-8 overflow-hidden border-none bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_24px_rgba(255,255,255,0.15)] transition-all duration-300">
             <CardHeader>
-              <Heading3 className="text-primary">Strategy Deep Dives 🔍</Heading3>
+              <Heading3 className="text-primary">Insider Briefing 🔍</Heading3>
             </CardHeader>
             <CardContent>
               <DevelopmentStream

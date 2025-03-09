@@ -4,8 +4,11 @@
 
 import type { ReactNode } from "react"
 import { useTheme } from "@/contexts/theme-context"
+import { useBusinessMode } from "@/contexts/business-mode-context"
 import { FooterNavigation } from "../dashboard/footer-navigation"
 import { ThemeToggle } from "../theme-toggle"
+import { BusinessModeToggle } from "../business-mode-toggle"
+import { BusinessModeBanner } from "../business-mode-banner"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -78,10 +81,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
         </div>
 
         <div className="flex items-center space-x-2 md:space-x-4">
+          <BusinessModeToggle />
           <ThemeToggle />
         </div>
       </header>
 
+      <BusinessModeBanner />
+      
       <main className="flex-grow p-4 md:p-6 space-y-4 md:space-y-6 overflow-y-auto">{children}</main>
 
       <FooterNavigation onNavigate={onNavigate} />
