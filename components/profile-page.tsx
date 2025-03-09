@@ -82,15 +82,25 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   )
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("userId")
-    if (storedUserId) {
-      setUserId(storedUserId)
-      fetchUserData(storedUserId)
+    // First check if user data already has the correct ID
+    if (user && (user.user_id || user._id)) {
+      const userApiId = user.user_id || user._id
+      // Store the user ID from the API
+      localStorage.setItem("userId", userApiId)
+      setUserId(userApiId)
+      fetchUserData(userApiId)
     } else {
-      console.error("User ID is not available in localStorage")
-      setIsLoading(false)
+      // Fallback to stored ID if available
+      const storedUserId = localStorage.getItem("userId")
+      if (storedUserId) {
+        setUserId(storedUserId)
+        fetchUserData(storedUserId)
+      } else {
+        console.error("User ID is not available in user data or localStorage")
+        setIsLoading(false)
+      }
     }
-  }, [fetchUserData])
+  }, [fetchUserData, user])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditedUser({ ...editedUser, [e.target.name]: e.target.value })

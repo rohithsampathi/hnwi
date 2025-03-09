@@ -62,10 +62,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (isMounted) {
           if (data.user) {
             setUser(data.user)
-            // Store the ID exactly as received
-            localStorage.setItem("userId", data.user.id)
+            // Store the ID from API response (_id or user_id) if available
+            const userId = data.user.user_id || data.user._id || data.user.id;
+            localStorage.setItem("userId", userId)
             localStorage.setItem("token", data.token)
-            console.log("Session check - User ID set:", data.user.id)
+            console.log("Session check - User ID set:", userId)
           }
           setHasCheckedSession(true)
           setIsSessionCheckComplete(true)
@@ -175,7 +176,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
   const handleLoginSuccessClick = async (loginData: { email: string; password: string }) => {
     try {
-      // console.log("Login attempt for:", loginData.email) // Debug log
+      console.log("Login attempt for:", loginData.email) // Enable debug logging
       
       // Check if we have temporary token from before
       const tempToken = sessionStorage.getItem("tempToken");
@@ -206,12 +207,14 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       if (result.success && result.user) {
         // console.log("Login successful, user ID:", result.user.id) // Debug log
         setUser(result.user)
-        // Store the ID exactly as received from handleLogin
-        localStorage.setItem("userId", result.user.id)
+        // Store the ID from API response if available, fall back to id from auth
+        const userId = result.user.user_id || result.user._id || result.user.id;
+        localStorage.setItem("userId", userId)
         localStorage.setItem("userEmail", result.user.email)
         if (result.token) {
           localStorage.setItem("token", result.token)
         }
+        console.log("Login - User ID set:", userId)
         // console.log("Login complete - User ID stored:", result.user.id) // Debug log
         handleNavigation("dashboard")
         resetOnboarding()
@@ -233,12 +236,13 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       const result = await handleOnboardingComplete(newUser)
       if (result.success && result.user) {
         setUser(result.user)
-        // Store IDs and token exactly as received
-        localStorage.setItem("userId", result.user.id)
+        // Store the ID from API response if available, fall back to id from auth
+        const userId = result.user.user_id || result.user._id || result.user.id;
+        localStorage.setItem("userId", userId)
         if (result.token) {
           localStorage.setItem("token", result.token)
         }
-        console.log("Onboarding complete - User ID set:", result.user.id)
+        console.log("Onboarding complete - User ID set:", userId)
         handleNavigation("dashboard")
       } else {
         throw new Error(result.error || "Onboarding failed")
@@ -258,12 +262,13 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       const result = await handleUpdateUser(updatedUserData)
       if (result.success && result.user) {
         setUser(result.user)
-        // Store IDs and token exactly as received
-        localStorage.setItem("userId", result.user.id)
+        // Store the ID from API response if available, fall back to id from auth
+        const userId = result.user.user_id || result.user._id || result.user.id;
+        localStorage.setItem("userId", userId)
         if (result.token) {
           localStorage.setItem("token", result.token)
         }
-        console.log("User update - User ID set:", result.user.id)
+        console.log("User update - User ID set:", userId)
         toast({
           title: "Success",
           description: "Profile updated successfully",

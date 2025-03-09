@@ -48,10 +48,11 @@ export function LoginPage({
         setIsFromSignupFlow(false)
       } catch (error) {
         console.error("Error during login:", error)
-        setError("Login failed. Please check your credentials and try again.")
+        const errorMessage = error instanceof Error ? error.message : "Login failed. Please check your credentials and try again."
+        setError(errorMessage)
         toast({
           title: "Login Error",
-          description: "Unable to log in. Please try again later.",
+          description: errorMessage,
           variant: "destructive",
         })
       } finally {
