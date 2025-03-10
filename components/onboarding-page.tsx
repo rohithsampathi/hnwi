@@ -1,3 +1,4 @@
+// components/onboarding-page.tsx
 "use client"
 
 import { useState } from "react"
@@ -13,7 +14,7 @@ import { Header } from "./layout/header"
 import { Heading2, Heading3, Paragraph, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 
-const API_BASE_URL = "https://uwind.onrender.com"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
 const slides = [
   {
@@ -95,27 +96,96 @@ export function OnboardingPage({
     }
 
     try {
-      console.log("Sending user data:", JSON.stringify(userData, null, 2))
+      // Make sure we have complete data
+      if (!email || !password || !firstName) {
+        setError("Please fill in all required fields (email, password, first name)");
+        return;
+      }
+      
+      // Password validation - at least 8 chars with 1 uppercase, 1 lowercase, 1 number
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters");
+        return;
+      }
+      
+      if (!/[A-Z]/.test(password)) {
+        setError("Password must contain at least one uppercase letter");
+        return;
+      }
+      
+      if (!/[a-z]/.test(password)) {
+        setError("Password must contain at least one lowercase letter");
+        return;
+      }
+      
+      if (!/[0-9]/.test(password)) {
+        setError("Password must contain at least one number");
+        return;
+      }
+      
+      // Send data to the FastAPI backend
+      console.log("Sending user data to:", `${API_BASE_URL}/api/users/profile`);
+      console.log("User data:", JSON.stringify({
+        email,
+        name: `${firstName} ${lastName}`,
+        // Password is masked for logging
+      }, null, 2));
+      
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(userData),
-      })
+        body: JSON.stringify({
+          email,
+          password,
+          name: `${firstName} ${lastName}`.trim(),
+          net_worth: 0,
+          city: "Edit This Data",
+          country: "Edit This Data",
+          bio: "Edit This Data",
+          industries: selectedInterests,
+          phone_number: "Edit This Data",
+          office_address: "Edit This Data",
+          crypto_investor: isCryptoInvestor,
+          land_investor: isLandInvestor,
+          company_info: {
+            name: "Edit This Data",
+            about: "",
+            industry: "",
+            product_focus: "",
+            total_employees: 0,
+            locations: []
+          },
+          linkedin: "Edit This Data"
+        }),
+      });
 
-      const data = await response.json()
-      console.log("API Response data:", data)
+      console.log("API Response status:", response.status);
+      
+      // Get the raw response for better debugging
+      const responseText = await response.text();
+      console.log("API Response text:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log("API Response data:", data);
+      } catch (e) {
+        console.error("Error parsing JSON response:", e);
+        throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(data)}`)
       }
 
       if (data.status === "success" && data.user_id) {
+        console.log("User created successfully with ID:", data.user_id);
         onComplete({
           ...userData,
           user_id: data.user_id,
-        })
+        });
       } else {
         throw new Error("Unexpected response from server: " + JSON.stringify(data))
       }

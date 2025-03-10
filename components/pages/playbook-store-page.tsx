@@ -148,12 +148,20 @@ const PLACEHOLDER_PLAYBOOKS: Playbook[] = [
 export function PlaybookStorePage({
   onNavigate,
   userEmail,
-}: { onNavigate: (route: string) => void; userEmail: string }) {
+  userData,
+}: { 
+  onNavigate: (route: string) => void; 
+  userEmail: string;
+  userData?: any;
+}) {
   const { theme } = useTheme()
   const { markStepAsCompleted } = useOnboarding()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  
+  // Get purchased report IDs from user profile
+  const purchasedReportIds = userData?.profile?.purchased_reports?.map((report: any) => report.report_id) || []
 
   const fetchPlaybooks = useCallback(async () => {
     setIsLoading(true)
@@ -191,14 +199,7 @@ export function PlaybookStorePage({
 
       const updatedPlaybooks = allPlaybooks.map((playbook) => ({
         ...playbook,
-        isPurchased:
-          playbook.id === "pb_001" &&
-          userEmail &&
-          (userEmail === "rohith.sampathi@gmail.com" ||
-            userEmail === "goapropertyhub@gmail.com" ||
-            userEmail === "media@montaigne.co" ||
-            userEmail === "r.v.kharvannan@gmail.com" ||
-            userEmail === "info@ycombinator.com"),
+        isPurchased: purchasedReportIds.includes(playbook.id)
       }))
 
       const unpurchasedPlaybooks = updatedPlaybooks.filter((playbook) => !playbook.isPurchased)
@@ -215,22 +216,13 @@ export function PlaybookStorePage({
       })
       setPlaybooks(
         PLACEHOLDER_PLAYBOOKS.filter(
-          (playbook) =>
-            !(
-              playbook.id === "pb_001" &&
-              userEmail &&
-              (userEmail === "rohith.sampathi@gmail.com" ||
-                userEmail === "goapropertyhub@gmail.com" ||
-                userEmail === "media@montaigne.co" ||
-                userEmail === "r.v.kharvannan@gmail.com" ||
-                userEmail === "info@ycombinator.com")
-            ),
+          (playbook) => !purchasedReportIds.includes(playbook.id)
         ),
       )
     } finally {
       setIsLoading(false)
     }
-  }, [userEmail, toast])
+  }, [userEmail, toast, purchasedReportIds])
 
   useEffect(() => {
     markStepAsCompleted("playbooks")

@@ -24,7 +24,7 @@ interface StrategicDashboardProps {
   isLoading?: boolean
 }
 
-const MotionCard = motion(Card)
+const MotionCard = motion.create(Card)
 
 export function StrategicDashboard({ title, summary, sections, score, isLoading = false }: StrategicDashboardProps) {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})

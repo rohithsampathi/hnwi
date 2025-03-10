@@ -6,6 +6,7 @@ import { cookies } from "next/headers"
 import { SignJWT, jwtVerify } from "jose"
 import { redirect } from "next/navigation"
 
+// User interface to match what LoginPage.tsx expects
 interface User {
   id: string
   email: string
@@ -14,6 +15,9 @@ interface User {
   role?: string
   createdAt?: Date
   updatedAt?: Date
+  // Additional fields to match direct API response
+  user_id?: string
+  profile?: any
 }
 
 interface LoginData {
@@ -34,6 +38,7 @@ interface SessionResponse {
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
+// Update API base URL to use the FastAPI backend on render
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
 const COOKIE_OPTIONS = {
@@ -56,6 +61,7 @@ export async function verifyToken(token: string): Promise<User | null> {
     const verified = await jwtVerify(token, JWT_SECRET)
     return verified.payload as User
   } catch (err) {
+    console.error("Token verification failed:", err)
     return null
   }
 }
@@ -63,13 +69,16 @@ export async function verifyToken(token: string): Promise<User | null> {
 export async function getSession(): Promise<SessionResponse> {
   try {
     const session = cookies().get("session")
+    
     if (!session?.value) {
+      console.log("No session cookie found")
       return { user: null }
     }
-
+    
     const user = await verifyToken(session.value)
     return { user }
   } catch (error) {
+    console.error("Session retrieval error:", error)
     return { user: null, error: "Failed to get session" }
   }
 }
@@ -79,179 +88,54 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
     if (!loginData.email || !loginData.password) {
       return { success: false, error: "Email and password are required" }
     }
-
-    // Special handling for known user
-    if (loginData.email === "rohith.sampathi@gmail.com") {
-      const mockUser: User = {
-        id: "u201", // Explicitly set correct ID for this user
-        email: loginData.email,
-        firstName: "Rohith",
-        role: "user",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      const token = await createToken(mockUser)
-      cookies().set("session", token, COOKIE_OPTIONS)
-
-      return { 
-        success: true, 
-        user: mockUser,
-        token 
-      }
-    }
-
-    // Special handling for goapropertyhub@gmail.com based on your example
-    if (loginData.email === "goapropertyhub@gmail.com") {
-      console.log("Using direct lookup for:", loginData.email)
-      
-      // Try to fetch the user profile directly
-      const directUserUrl = `${API_BASE_URL}/api/users/67aabc05d052eb4ec6b02fde`;
-      try {
-        const userResponse = await fetch(directUserUrl);
-        
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          console.log("Found user profile directly")
-          
-          // Create User object from profile data
-          const user: User = {
-            id: userData._id || userData.user_id || "67aabc05d052eb4ec6b02fde",
-            email: userData.email || loginData.email,
-            firstName: userData.name?.split(' ')[0] || "Goa",
-            lastName: userData.name?.split(' ').slice(1).join(' ') || "Property Hub",
-            role: "user",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          }
-          
-          const token = await createToken(user)
-          cookies().set("session", token, COOKIE_OPTIONS)
-          
-          return { 
-            success: true, 
-            user,
-            token 
-          }
-        }
-      } catch (directError) {
-        console.error("Direct lookup failed:", directError)
-      }
-    }
     
-    // Special handling for info@ycombinator.com based on your example
-    if (loginData.email === "info@ycombinator.com") {
-      console.log("Using direct lookup for:", loginData.email)
-      
-      // Try to fetch the user profile directly
-      const directUserUrl = `${API_BASE_URL}/api/users/ae4122eb-30e1-4eb9-87f5-779ee7aff8bc`;
-      try {
-        const userResponse = await fetch(directUserUrl);
-        
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          console.log("Found user profile directly")
-          
-          // Create User object from profile data
-          const user: User = {
-            id: userData._id || userData.user_id || "ae4122eb-30e1-4eb9-87f5-779ee7aff8bc",
-            email: userData.email || loginData.email,
-            firstName: userData.name?.split(' ')[0] || "Y",
-            lastName: userData.name?.split(' ').slice(1).join(' ') || "Combinator",
-            role: "user",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          }
-          
-          const token = await createToken(user)
-          cookies().set("session", token, COOKIE_OPTIONS)
-          
-          return { 
-            success: true, 
-            user,
-            token 
-          }
-        }
-      } catch (directError) {
-        console.error("Direct lookup failed:", directError)
-      }
-    }
-
-    // Standard login attempt
     try {
-      console.log("Attempting standard login for:", loginData.email)
+      // Call the FastAPI backend login endpoint
+      let loginEndpoint = `${API_BASE_URL}/api/login`;
       
-      // Try both login endpoints
-      const endpoints = [
-        `${API_BASE_URL}/api/users/login`,
-        `${API_BASE_URL}/api/auth/login`
-      ];
+      let response = await fetch(loginEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData)
+      });
       
-      let success = false;
-      let data = null;
-      let statusCode = 0;
-      
-      // Try each endpoint
-      for (const endpoint of endpoints) {
-        try {
-          console.log("Trying login endpoint:", endpoint)
-          
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(loginData)
-          });
-          
-          statusCode = response.status;
-          console.log("Login response status:", statusCode)
-          
-          if (response.ok) {
-            data = await response.json();
-            success = true;
-            console.log("Login successful at endpoint:", endpoint)
-            break;
-          }
-        } catch (endpointError) {
-          console.error("Error with endpoint:", endpoint, endpointError)
-        }
+      // Get the data as JSON directly
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        return { 
+          success: false, 
+          error: `Invalid response from server: ${response.status} ${response.statusText}`
+        };
       }
       
-      if (success && data) {
-        // Extract user ID from response
-        let userId = null;
-        if (data.user) {
-          userId = data.user._id || data.user.user_id || data.user.id;
-          console.log("User ID from response:", userId)
-        }
+      if (response.ok) {
+        // Create a user object from the response data
+        const firstName = data.first_name || "User";
+        const lastName = data.last_name || "";
         
-        // Check if we have a valid user ID
-        if (!userId) {
-          console.error("No user ID found in API response")
-          
-          // Use email to guess ID based on known examples
-          if (loginData.email === "goapropertyhub@gmail.com") {
-            userId = "67aabc05d052eb4ec6b02fde";
-          } else if (loginData.email === "info@ycombinator.com") {
-            userId = "ae4122eb-30e1-4eb9-87f5-779ee7aff8bc";
-          } else {
-            return { 
-              success: false, 
-              error: "Invalid user data returned from server"
-            }
-          }
-        }
+        // Extract purchased reports from user profile if available
+        const purchasedReports = data.profile?.purchased_reports || [];
         
-        // Create a proper user object
+        // Create a user object compatible with both approaches
         const user: User = {
-          id: userId,
-          email: data.user?.email || loginData.email,
-          firstName: data.user?.name?.split(' ')[0] || "User",
-          lastName: data.user?.name?.split(' ').slice(1).join(' ') || "",
+          id: data.user_id,
+          email: data.email,
+          firstName: firstName,
+          lastName: lastName,
           role: "user",
           createdAt: new Date(),
           updatedAt: new Date(),
+          
+          // Fields from direct API call
+          user_id: data.user_id,
+          profile: {
+            ...(data.profile || {}),
+            purchased_reports: purchasedReports
+          }
         }
         
         const token = data.token || await createToken(user)
@@ -263,18 +147,23 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
           token
         }
       } else {
-        console.log("All login attempts failed, status:", statusCode)
+        // Handle authentication failure
+        let errorMessage = "Invalid credentials";
+        if (data) {
+          errorMessage = data.detail || data.message || data.error || errorMessage;
+        } else {
+          errorMessage = response.statusText || errorMessage;
+        }
+        
         return { 
           success: false, 
-          error: "Invalid credentials. Please verify your email and password."
+          error: errorMessage
         }
       }
     } catch (loginError) {
-      console.error("Login process failed:", loginError)
       return { success: false, error: "Login service unavailable" }
     }
   } catch (error) {
-    console.error("Login error:", error)
     return { success: false, error: "Login failed" }
   }
 }
@@ -285,34 +174,31 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
       return { success: false, error: "Email and first name are required" }
     }
 
-    // Special handling for known user
-    if (userData.email === "rohith.sampathi@gmail.com") {
-      const user: User = {
-        id: "u201",
-        email: userData.email,
-        firstName: userData.firstName,
-        role: "user",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      const token = await createToken(user)
-      cookies().set("session", token, COOKIE_OPTIONS)
-
-      return { success: true, user, token }
-    }
-
     try {
-      // Attempt real backend signup for other users
-      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+      // Prepare data for FastAPI user creation
+      const fullName = `${userData.firstName} ${userData.lastName || ''}`.trim();
+      
+      // Attempt FastAPI user creation
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email: userData.email,
-          name: `${userData.firstName} ${userData.lastName || ''}`.trim(),
-          password: userData.password || 'defaultPassword', // This should be provided in a real scenario
+          name: fullName,
+          password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
+          // Include other required UserCreate fields with default values
+          net_worth: userData.net_worth || 0,
+          city: userData.city || "",
+          country: userData.country || "",
+          bio: userData.bio || "",
+          industries: userData.industries || [],
+          phone_number: userData.phone_number || "",
+          office_address: userData.office_address || "",
+          crypto_investor: userData.crypto_investor || false,
+          land_investor: userData.land_investor || false,
+          linkedin: userData.linkedin || null
         })
       });
 
@@ -320,16 +206,32 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
         const data = await response.json();
         
         // Extract user ID from the response
-        const userId = data.user?.user_id || data.user?._id;
+        const userId = data.user_id;
         
         const user: User = {
           id: userId,
+          user_id: userId,
           email: userData.email,
           firstName: userData.firstName,
-          lastName: userData.lastName,
+          lastName: userData.lastName || "",
           role: "user",
           createdAt: new Date(),
           updatedAt: new Date(),
+          // Add profile data
+          profile: {
+            name: fullName,
+            email: userData.email,
+            net_worth: userData.net_worth || 0,
+            city: userData.city || "",
+            country: userData.country || "",
+            bio: userData.bio || "",
+            industries: userData.industries || [],
+            phone_number: userData.phone_number || "",
+            office_address: userData.office_address || "",
+            crypto_investor: userData.crypto_investor || false,
+            land_investor: userData.land_investor || false,
+            linkedin: userData.linkedin || null
+          }
         }
 
         const token = data.token || await createToken(user)
@@ -337,29 +239,48 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
 
         return { success: true, user, token }
       } else {
-        return { success: false, error: "Sign up failed with the backend" }
+        let errorMessage = "Sign up failed with the backend";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          // If we can't parse the error JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        return { success: false, error: errorMessage }
       }
     } catch (backendError) {
       console.error("Backend signup failed:", backendError)
-      
-      // Fallback to local signup if backend fails
-      const user: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: "user",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      const token = await createToken(user)
-      cookies().set("session", token, COOKIE_OPTIONS)
-
-      return { success: true, user, token }
+      return { success: false, error: "Sign up service unavailable" }
     }
   } catch (error) {
     return { success: false, error: "Sign up failed" }
+  }
+}
+
+export async function handleOnboardingComplete(newUser: any): Promise<AuthResponse> {
+  // Implementation for completing onboarding
+  try {
+    // Create a properly formatted user object 
+    const user: User = {
+      id: newUser.user_id || Math.random().toString(36).substr(2, 9),
+      user_id: newUser.user_id,
+      email: newUser.email,
+      firstName: newUser.firstName || newUser.name?.split(' ')[0] || "User",
+      lastName: newUser.lastName || (newUser.name?.split(' ').slice(1).join(' ') || ""),
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      profile: newUser.profile
+    }
+
+    const token = await createToken(user)
+    cookies().set("session", token, COOKIE_OPTIONS)
+    return { success: true, user, token }
+  } catch (error) {
+    console.error("Onboarding failed:", error)
+    return { success: false, error: "Onboarding failed" }
   }
 }
 
@@ -367,7 +288,8 @@ export async function getCurrentUser(): Promise<User | null> {
   try {
     const session = await getSession()
     return session.user
-  } catch {
+  } catch (error) {
+    console.error("Error getting current user:", error)
     return null
   }
 }
@@ -379,24 +301,9 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
       return { success: false, error: "Not authenticated" }
     }
 
-    // Special handling for known user
-    if (currentUser.email === "rohith.sampathi@gmail.com") {
-      const updatedUser: User = {
-        ...currentUser,
-        ...updatedUserData,
-        id: "u201", // Preserve the correct ID for this special user
-        updatedAt: new Date(),
-      }
-
-      const token = await createToken(updatedUser)
-      cookies().set("session", token, COOKIE_OPTIONS)
-
-      return { success: true, user: updatedUser, token }
-    }
-
     try {
       // Get the actual user ID from localStorage if available
-      let userId = currentUser.id;
+      let userId = currentUser.id || currentUser.user_id;
       if (typeof window !== "undefined") {
         const storedUserId = localStorage.getItem("userId");
         if (storedUserId) {
@@ -404,18 +311,42 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         }
       }
 
-      // Attempt real backend update for other users
+      // Format the data for FastAPI user update endpoint
+      const fullName = updatedUserData.firstName 
+        ? `${updatedUserData.firstName} ${updatedUserData.lastName || ''}`.trim()
+        : undefined;
+      
+      // Prepare the update data for FastAPI format
+      const updateData = {
+        name: fullName,
+        net_worth: updatedUserData.net_worth,
+        city: updatedUserData.city,
+        country: updatedUserData.country,
+        bio: updatedUserData.bio,
+        industries: updatedUserData.industries,
+        phone_number: updatedUserData.phone_number,
+        linkedin: updatedUserData.linkedin,
+        office_address: updatedUserData.office_address,
+        crypto_investor: updatedUserData.crypto_investor,
+        land_investor: updatedUserData.land_investor,
+        // Include company_info if needed
+        company_info: updatedUserData.company_info || {
+          name: updatedUserData.company || undefined
+        }
+      };
+
+      // Remove undefined fields to avoid overwriting with null
+      Object.keys(updateData).forEach(key => 
+        updateData[key] === undefined && delete updateData[key]
+      );
+
+      // Attempt FastAPI backend update
       const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...updatedUserData,
-          name: updatedUserData.firstName 
-            ? `${updatedUserData.firstName} ${updatedUserData.lastName || ''}`.trim()
-            : undefined
-        })
+        body: JSON.stringify(updateData)
       });
 
       if (response.ok) {
@@ -427,7 +358,25 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
           ...currentUser,
           ...updatedUserData,
           id: userId, // Preserve the user's real ID
+          user_id: userId,
           updatedAt: new Date(),
+          // Update profile data
+          profile: {
+            ...(currentUser.profile || {}),
+            name: fullName || currentUser.profile?.name,
+            net_worth: updatedUserData.net_worth || currentUser.profile?.net_worth,
+            city: updatedUserData.city || currentUser.profile?.city,
+            country: updatedUserData.country || currentUser.profile?.country,
+            bio: updatedUserData.bio || currentUser.profile?.bio,
+            industries: updatedUserData.industries || currentUser.profile?.industries,
+            phone_number: updatedUserData.phone_number || currentUser.profile?.phone_number,
+            linkedin: updatedUserData.linkedin || currentUser.profile?.linkedin,
+            office_address: updatedUserData.office_address || currentUser.profile?.office_address,
+            crypto_investor: updatedUserData.crypto_investor !== undefined ? 
+              updatedUserData.crypto_investor : currentUser.profile?.crypto_investor,
+            land_investor: updatedUserData.land_investor !== undefined ? 
+              updatedUserData.land_investor : currentUser.profile?.land_investor
+          }
         }
 
         const token = await createToken(updatedUser)
@@ -435,24 +384,23 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
 
         return { success: true, user: updatedUser, token }
       } else {
-        return { success: false, error: "Failed to update user on backend" }
+        let errorMessage = "Failed to update user on backend";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          // If we can't parse the error JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        return { success: false, error: errorMessage }
       }
     } catch (backendError) {
       console.error("Backend update failed:", backendError)
-      
-      // Fallback to local update if backend fails
-      const updatedUser: User = {
-        ...currentUser,
-        ...updatedUserData,
-        updatedAt: new Date(),
-      }
-
-      const token = await createToken(updatedUser)
-      cookies().set("session", token, COOKIE_OPTIONS)
-
-      return { success: true, user: updatedUser, token }
+      return { success: false, error: "Update service unavailable" }
     }
   } catch (error) {
+    console.error("User update failed:", error)
     return { success: false, error: "Update failed" }
   }
 }
@@ -462,6 +410,7 @@ export async function handleLogout() {
     cookies().delete("session")
     redirect("/auth/login")
   } catch (error) {
+    console.error("Logout error:", error)
     cookies().delete("session")
   }
 }
@@ -475,5 +424,30 @@ export async function requireAuth() {
 }
 
 export async function handleSessionRequest(): Promise<SessionResponse> {
-  return await getSession()
+  try {
+    // First try getting the session from cookies
+    const sessionResponse = await getSession();
+    
+    if (sessionResponse.user) {
+      return sessionResponse;
+    }
+    
+    // If no session in cookies, check if we have a token in cookies from the session/route.ts
+    const cookieStore = cookies();
+    const sessionToken = cookieStore.get('session_token')?.value;
+    
+    if (sessionToken) {
+      // Try to verify the token
+      const user = await verifyToken(sessionToken);
+      if (user) {
+        return { user };
+      }
+    }
+    
+    // If no valid session found
+    return { user: null };
+  } catch (error) {
+    console.error("Session request error:", error);
+    return { user: null, error: "Failed to get session" };
+  }
 }

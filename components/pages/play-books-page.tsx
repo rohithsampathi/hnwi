@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { PremiumPlaybookCard } from "@/components/premium-playbook-card"
@@ -28,9 +28,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onre
 export function PlayBooksPage({
   onNavigate,
   userEmail,
+  showOnlyPurchased = true,
 }: {
   onNavigate: (route: string) => void
   userEmail: string
+  showOnlyPurchased?: boolean
 }) {
   const { theme } = useTheme()
   const { markStepAsCompleted } = useOnboarding()
@@ -38,60 +40,84 @@ export function PlayBooksPage({
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
 
-  const fetchPlaybooks = async () => {
+  // Define playbook data for pb_001
+  const pb001Data = {
+    id: "pb_001",
+    title: "How to Sell 2 Crore Apartments in India",
+    description: "Master the art of selling luxury apartments in India's competitive real estate market.",
+    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: true,
+    industry: "Real Estate",
+    paymentButtonId: "pl_Pn7fgca55mS4zy"
+  };
+
+  // Use useCallback to prevent unnecessary rerenders
+  const fetchPlaybooks = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: userEmail,
-          type: "purchased"
-        })
-      })
+      // Hardcoded list of emails with access to pb_001
+      const pb001AccessEmails = [
+        "media@montaigne.co",
+        "info@montaigne.co",
+        "r.v.kharvannan@gmail.com",
+        "rohith.sampathi@gmail.com"
+      ];
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reports: ${response.status} ${response.statusText}`)
+      // Check if current user has access to pb_001
+      const hasPb001Access = pb001AccessEmails.includes(userEmail);
+      
+      // Create playbooks array
+      const userPlaybooks = [];
+      
+      // Add pb_001 for authorized emails
+      if (hasPb001Access) {
+        userPlaybooks.push(pb001Data);
       }
-
-      const data = await response.json()
-      const purchasedPlaybooks = data.reports.map((report: any) => ({
-        id: report.metadata.id,
-        title: report.metadata.title,
-        description: report.metadata.description,
-        image: report.metadata.image || "/placeholder.svg?height=200&width=300&text=Report",
-        isPurchased: true, // These are all purchased playbooks
-        industry: report.metadata.industry || "Unknown",
-        paymentButtonId: report.metadata.paymentButtonId,
-      }))
-
-      setPlaybooks(purchasedPlaybooks)
+      
+      setPlaybooks(userPlaybooks);
     } catch (error) {
-      console.error('Error fetching playbooks:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch your playbooks. Please try again later.",
-        variant: "destructive",
-      })
-      setPlaybooks([])
+      console.error('Error in fetchPlaybooks:', error);
+      setPlaybooks([]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  }, [userEmail])
 
   useEffect(() => {
     markStepAsCompleted("playbooks")
     fetchPlaybooks()
-  }, [markStepAsCompleted])
+  }, [markStepAsCompleted, fetchPlaybooks])
 
   const handlePlaybookClick = async (playbookId: string) => {
     try {
+      // Hardcoded list of emails with access to pb_001
+      const pb001AccessEmails = [
+        "media@montaigne.co", 
+        "info@montaigne.co", 
+        "r.v.kharvannan@gmail.com", 
+        "rohith.sampathi@gmail.com"
+      ];
+      
+      // Special handling for pb_001
+      if (playbookId === "pb_001") {
+        // Only authorized users can view this playbook
+        if (pb001AccessEmails.includes(userEmail)) {
+          onNavigate(`playbook/${playbookId}`);
+        } else {
+          toast({
+            title: "Access Denied",
+            description: "You don't have access to this playbook.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+      
+      // For other playbooks, fetch to verify it's available
       const response = await fetch(`${API_BASE_URL}/api/reports/${playbookId}`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
       })
 

@@ -1,4 +1,5 @@
 // components/login-page.tsx
+
 "use client"
 
 import type React from "react"
@@ -15,17 +16,11 @@ import { Heading2, Paragraph } from "@/components/ui/typography"
 import { ParticlesBackground } from "./particles-background"
 import { MetaTags } from "./meta-tags"
 
-interface LoginCredentials {
-  email: string
-  password: string
-}
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
 export function LoginPage({ 
   onLoginSuccess, 
   onBack 
-}: { 
-  onLoginSuccess: (loginData: LoginCredentials) => Promise<void>
-  onBack: () => void 
 }) {
   const { theme } = useTheme()
   const { resetOnboarding, setIsFromSignupFlow } = useOnboarding()
@@ -37,30 +32,80 @@ export function LoginPage({
   const { toast } = useToast()
 
   const handleLogin = useCallback(
-    async (e: React.FormEvent) => {
+    async (e) => {
       e.preventDefault()
       setIsLoading(true)
       setError("")
 
       try {
-        await onLoginSuccess({ email, password })
-        resetOnboarding()
-        setIsFromSignupFlow(false)
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        
+        // Get response as JSON directly
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          throw new Error("Invalid response from server. Please try again.");
+        }
+        
+        if (!response.ok) {
+          throw new Error(data.detail || data.error || "Login failed. Please check your credentials.");
+        }
+        
+        // Transform response to expected format for app-content.tsx
+        const userData = {
+          userId: data.user_id,
+          email: data.email,
+          firstName: data.first_name || "User",
+          lastName: data.last_name || "",
+          profile: data.profile || {},
+          token: data.token || ""
+        };
+        
+        // Store auth data in localStorage
+        localStorage.setItem("userId", userData.userId);
+        localStorage.setItem("userEmail", userData.email);
+        if (userData.token) {
+          localStorage.setItem("token", userData.token);
+        }
+        
+        // Call the success handler with the user data
+        onLoginSuccess(userData);
+        
+        // Reset onboarding state
+        resetOnboarding();
+        setIsFromSignupFlow(false);
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${userData.firstName}!`,
+          variant: "default",
+        });
       } catch (error) {
-        console.error("Error during login:", error)
-        const errorMessage = error instanceof Error ? error.message : "Login failed. Please check your credentials and try again."
-        setError(errorMessage)
+        console.error("Error during login:", error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : "Login failed. Please check your credentials and try again.";
+        
+        setError(errorMessage);
+        
         toast({
           title: "Login Error",
           description: errorMessage,
           variant: "destructive",
-        })
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     },
     [email, password, onLoginSuccess, resetOnboarding, setIsFromSignupFlow, toast]
-  )
+  );
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
