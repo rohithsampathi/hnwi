@@ -1,5 +1,5 @@
 // components/premium-playbook-card.tsx
-
+import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,10 @@ interface Playbook {
   id: string
   title: string
   description: string
-  image: string
+  image: string | JSX.Element | string
   isPurchased: boolean
-  paymentButtonId: string
+  industry: string
+  paymentButtonId?: string
 }
 
 interface PremiumPlaybookCardProps {
@@ -23,15 +24,25 @@ interface PremiumPlaybookCardProps {
 
 export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPlaybookCardProps) {
   const { theme } = useTheme()
-
+  const [imgError, setImgError] = useState(false);
+  
   // Function to get the correct image source
   const getImageSource = (playbook: Playbook) => {
+    if (imgError) {
+      // Return a safe fallback image
+      return "/placeholder.svg";
+    }
     if (playbook.id === "pb_001") {
       return "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
     }
-    return playbook.image || "/placeholder.svg"
+    return typeof playbook.image === 'string' ? playbook.image : "/placeholder.svg"
   }
-
+  
+  // Handler for image load errors
+  const handleImageError = () => {
+    setImgError(true);
+  }
+  
   return (
     <div>
       <Card
@@ -44,8 +55,9 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
           <Image
             src={getImageSource(playbook)}
             alt={playbook.title}
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{ objectFit: 'cover' }}
+            onError={handleImageError}
             className="absolute inset-0"
             priority={playbook.id === "pb_001"}
           />
@@ -60,7 +72,7 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
               <PaymentPopupButton
                 playbookId={playbook.id}
                 onSuccess={() => onPurchase(playbook.id)}
-                paymentButtonId={playbook.paymentButtonId}
+                paymentButtonId={playbook.paymentButtonId || ""}
               />
             )}
           </div>
