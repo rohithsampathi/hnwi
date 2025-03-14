@@ -152,7 +152,7 @@ export function HomeDashboard({
     // Only start the interval after developments are loaded
     const interval = setInterval(() => {
       setSpotlightIndex((prevIndex) => (prevIndex + 1) % developments.length)
-    }, 6000) // Slightly faster rotation for more engaging experience
+    }, 14000) // 14-second rotation interval
     
     return () => clearInterval(interval)
   }, [developments.length])
@@ -307,46 +307,48 @@ export function HomeDashboard({
                   {[0, 1, 2].map((offset) => {
                     const index = (spotlightIndex + offset) % developments.length;
                     return (
-                      <div key={`news-block-${offset}`} className="h-[130px] overflow-hidden relative news-block card-stack-item">
-                        <AnimatePresence mode="wait" initial={false}>
-                          <motion.div
-                            key={`card-${developments[index].id}-${spotlightIndex}`}
-                            initial={{ 
-                              y: 80,
-                              opacity: 0,
-                              scale: 0.98
-                            }}
-                            animate={{ 
-                              y: 0,
-                              opacity: 1,
-                              scale: 1
-                            }}
-                            exit={{ 
-                              y: -80,
-                              opacity: 0,
-                              scale: 0.98
-                            }}
-                            transition={{ 
-                              type: "tween",
-                              duration: 0.5,
-                              delay: offset * 0.1,
-                              ease: [0.16, 1, 0.3, 1]
-                            }}
-                            className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden h-full"
-                            style={{
-                              background: theme === "dark" ? 
-                                `linear-gradient(135deg, #695d7e ${offset * 8}%, #5d5073)` : 
-                                `linear-gradient(135deg, #d8d0e8 ${offset * 8}%, #c6b8e0)`,
-                              backdropFilter: "blur(12px)",
-                              color: theme === "dark" ? "white" : "#2c2144"
-                            }}
-                            onClick={(e) => handleNavigate(e, "strategy-vault", developments[index].id)}
-                          >
-                            <div className="flex flex-col h-full">
+                      <div key={`news-block-${offset}`} className="h-[143px] overflow-hidden relative news-block card-stack-item">
+                        <div 
+                          className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden h-full"
+                          style={{
+                            background: theme === "dark" ? 
+                              `linear-gradient(135deg, #695d7e ${offset * 8}%, #5d5073)` : 
+                              `linear-gradient(135deg, #d8d0e8 ${offset * 8}%, #c6b8e0)`,
+                            backdropFilter: "blur(12px)",
+                            color: theme === "dark" ? "white" : "#2c2144"
+                          }}
+                          onClick={(e) => handleNavigate(e, "strategy-vault", developments[index].id)}
+                        >
+                          <AnimatePresence mode="wait" initial={false}>
+                            <motion.div
+                              key={`card-content-${developments[index].id}-${spotlightIndex}`}
+                              initial={{ 
+                                rotateX: 90,
+                                opacity: 0
+                              }}
+                              animate={{ 
+                                rotateX: 0,
+                                opacity: 1
+                              }}
+                              exit={{ 
+                                rotateX: -90,
+                                opacity: 0
+                              }}
+                              transition={{ 
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 30,
+                                delay: offset * 0.1
+                              }}
+                              className="flex flex-col h-full"
+                              style={{
+                                transformOrigin: "center center"
+                              }}
+                            >
                               <h3 className="text-sm md:text-base font-semibold line-clamp-1">
                                 {developments[index].title}
                               </h3>
-                              <p className="text-xs md:text-sm mt-1 mb-2 line-clamp-2 flex-grow">
+                              <p className="text-xs md:text-sm mt-1 mb-2 line-clamp-3 flex-grow">
                                 {developments[index].description}
                               </p>
                               <div className="flex justify-between items-end mt-auto">
@@ -368,9 +370,9 @@ export function HomeDashboard({
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          </motion.div>
-                        </AnimatePresence>
+                            </motion.div>
+                          </AnimatePresence>
+                        </div>
                       </div>
                     );
                   })}

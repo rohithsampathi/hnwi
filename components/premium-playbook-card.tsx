@@ -101,10 +101,12 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
         {playbook.isPurchased ? (
           <Button 
             onClick={onClick} 
-            className="w-full bg-primary hover:bg-primary/90 text-white font-bold"
+            className={`w-full bg-primary hover:bg-primary/90 font-bold ${
+              theme === "dark" ? "text-black hover:text-black" : "text-white"
+            }`}
             variant="default"
           >
-            <BookOpen className="w-4 h-4 mr-2" />
+            <BookOpen className={`w-4 h-4 mr-2 ${theme === "dark" ? "text-black" : ""}`} />
             View Playbook
           </Button>
         ) : (

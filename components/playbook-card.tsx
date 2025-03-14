@@ -65,12 +65,14 @@ export function PlaybookCard({ playbook, onClick }: PlaybookCardProps) {
         <CardFooter className="pt-0">
           <Button 
             onClick={onClick} 
-            className="w-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300" 
+            className={`w-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ${
+              playbook.isPurchased && theme === "dark" ? "text-black hover:text-black" : ""
+            }`} 
             variant={playbook.isPurchased ? "default" : "secondary"}
           >
             {playbook.isPurchased ? (
               <>
-                <BookOpen className="w-4 h-4 mr-2" />
+                <BookOpen className={`w-4 h-4 mr-2 ${theme === "dark" ? "text-black" : ""}`} />
                 View Playbook
               </>
             ) : (
