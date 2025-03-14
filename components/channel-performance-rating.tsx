@@ -103,53 +103,53 @@ const initializeCategories = (config: any): ChannelCategory[] => {
   const stockScores = config.stockScores || defaultStockScores
   const tooltips = config.tooltips || defaultTooltips
 
-  const rawCategories: ChannelCategory[] = [
+  const rawCategories = [
     {
       name: "Signalling",
       icon: Megaphone,
       subChannels: [
-        { name: "Google Display", score: 0, color: "", tooltip: "" },
-        { name: "Meta Awareness", score: 0, color: "", tooltip: "" },
-        { name: "Billboards", score: 0, color: "", tooltip: "" },
-        { name: "AdOnMo", score: 0, color: "", tooltip: "" },
-        { name: "Mobile Signage", score: 0, color: "", tooltip: "" },
-        { name: "YouTube", score: 0, color: "", tooltip: "" },
+        { name: "Google Display", score: 0, color: "", tooltip: "Whitelist only premium finance and business sites. No mass placements." },
+        { name: "Meta Awareness", score: 0, color: "", tooltip: "Skip generic ‘luxury lifestyle’ targeting—HNIs blend in with aspirational buyers." },
+        { name: "Billboards", score: 0, color: "", tooltip: "Ensure high-traffic zones & dusk-to-dawn lighting. Late-night drives matter." },
+        { name: "AdOnMo", score: 0, color: "", tooltip: "Target premium office lobbies, not random residential elevators." },
+        { name: "Mobile Signage", score: 0, color: "", tooltip: "Luxury chauffeur fleets near 5-star hotels. Not autos, not public transit." },
+        { name: "YouTube", score: 0, color: "", tooltip: "Skip ‘top 10 luxury homes’ videos—viewers are just window shoppers." },
       ],
     },
     {
       name: "Lead Generation",
       icon: UserPlus,
       subChannels: [
-        { name: "Search Ads", score: 0, color: "", tooltip: "" },
-        { name: "Meta Leads", score: 0, color: "", tooltip: "" },
-        { name: "Email", score: 0, color: "", tooltip: "" },
-        { name: "Cold Calls", score: 0, color: "", tooltip: "" },
-        { name: "Partner Promotions", score: 0, color: "", tooltip: "" },
+        { name: "Search Ads", score: 0, color: "", tooltip: "Direct CTAs only. ‘Schedule a private walkthrough’ > ‘Explore Luxury’." },
+        { name: "Meta Leads", score: 0, color: "", tooltip: "Filter hard—HNIs don’t fill forms. Optimize for curated inquiries, not volume." },
+        { name: "Email", score: 0, color: "", tooltip: "No ‘Buy Now.’ Use ‘Private Preview Available’ instead. Subtle urgency." },
+        { name: "Cold Calls", score: 0, color: "", tooltip: "No prices upfront. Ask, ‘This is for select clients only—are you eligible?’" },
+        { name: "Partner Promotions", score: 0, color: "", tooltip: "Partners must pre-qualify leads. No bulk-blasting lists." },
       ],
     },
     {
       name: "Trust Creation",
       icon: Shield,
       subChannels: [
-        { name: "Influencers", score: 0, color: "", tooltip: "" },
-        { name: "Micro Influencers", score: 0, color: "", tooltip: "" },
-        { name: "Celebrities", score: 0, color: "", tooltip: "" },
-        { name: "Podcasts", score: 0, color: "", tooltip: "" },
-        { name: "Events", score: 0, color: "", tooltip: "" },
-        { name: "Awards", score: 0, color: "", tooltip: "" },
+        { name: "Influencers", score: 0, color: "", tooltip: "No paid hype—pick those with real HNI networks, not just high follower counts." },
+        { name: "Micro Influencers", score: 0, color: "", tooltip: "Skip influencers posting >2 collabs/week. If it feels like an ad, it’s ignored." },
+        { name: "Celebrities", score: 0, color: "", tooltip: "No generic endorsements. Script it around an actual purchase/use case." },
+        { name: "Podcasts", score: 0, color: "", tooltip: "Hosts must demo or discuss firsthand. HNIs tune out forced sponsorships." },
+        { name: "Events", score: 0, color: "", tooltip: "Venue, guest list, experience > everything. No budget events. No buffet lines." },
+        { name: "Awards", score: 0, color: "", tooltip: "No fake trophies. Jury credibility matters—stick to elite recognitions." },
       ],
     },
     {
       name: "Content Format",
       icon: Film,
       subChannels: [
-        { name: "Shorts", score: 0, color: "", tooltip: "" },
-        { name: "Snaps", score: 0, color: "", tooltip: "" },
-        { name: "Videos", score: 0, color: "", tooltip: "" },
-        { name: "Images", score: 0, color: "", tooltip: "" },
+        { name: "Shorts", score: 0, color: "", tooltip: "Make them sharp. No hard sells. Just insight and exclusivity." },
+        { name: "Snaps", score: 0, color: "", tooltip: "No overused stock photos. Original, premium-quality only." },
+        { name: "Videos", score: 0, color: "", tooltip: "Storytelling over selling. HNIs don’t respond to ‘Act Now’ tactics." },
+        { name: "Images", score: 0, color: "", tooltip: "Composition, lighting, and exclusivity > everything. Make it feel private." },
       ],
     },
-  ]
+  ];
 
   return rawCategories.map((category) => ({
     ...category,
@@ -158,7 +158,7 @@ const initializeCategories = (config: any): ChannelCategory[] => {
       score: 0,
       userScore: 0,
       color: getScoreColor(0),
-      tooltip: tooltips[subChannel.name] || "",
+      // Use tooltip from raw categories instead of default tooltips
     })),
   }))
 }
@@ -280,8 +280,8 @@ const RatingArc: React.FC<{
             <TooltipTrigger asChild>
               <Info className="w-4 h-4 text-muted-foreground cursor-help flex-shrink-0" />
             </TooltipTrigger>
-            <TooltipContent side="left" align="start" className="w-[200px] break-words text-xs">
-              <Paragraph className="font-normal">{subChannel.tooltip}</Paragraph>
+            <TooltipContent side="left" align="start" className="w-[200px] break-words text-xs p-2">
+              <p className="font-normal text-xs leading-tight m-0">{subChannel.tooltip}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
