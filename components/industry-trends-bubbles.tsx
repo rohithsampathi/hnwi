@@ -141,13 +141,24 @@ export function IndustryTrendsBubbles({
         .append("circle")
         .attr("r", (d) => adjustedRadiusScale(d.total_count))
         .style("fill", (d) => getIndustryColor(d.industry))
-        .style("filter", "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))")
+        .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))")
+        .style("cursor", "pointer")
+        .style("opacity", "0.95")
 
       // Add event listeners for both mouse and touch events
       bubbles
         .on("mouseover touchstart", (event, d) => {
           event.preventDefault() // Prevent default touch behavior
           const [x, y] = d3.pointer(event, container)
+          
+          // Apply hover effect
+          d3.select(event.currentTarget).select("circle")
+            .transition()
+            .duration(200)
+            .style("filter", "drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35))")
+            .style("opacity", "1")
+            .attr("r", (d) => adjustedRadiusScale(d.total_count) * 1.05);
+            
           setTooltipData({
             industry: d.industry,
             count: d.total_count,
@@ -155,7 +166,15 @@ export function IndustryTrendsBubbles({
             y,
           })
         })
-        .on("mouseout touchend", () => {
+        .on("mouseout touchend", (event) => {
+          // Remove hover effect
+          d3.select(event.currentTarget).select("circle")
+            .transition()
+            .duration(200)
+            .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))")
+            .style("opacity", "0.95")
+            .attr("r", (d) => adjustedRadiusScale(d.total_count));
+            
           setTooltipData(null)
         })
         .on("click", (_, d) => {
@@ -168,6 +187,10 @@ export function IndustryTrendsBubbles({
         .style("text-anchor", "middle")
         .style("fill", "white")
         .style("font-weight", "bold")
+        .style("text-shadow", "0px 1px 3px rgba(0,0,0,0.7)")
+        .style("paint-order", "stroke")
+        .style("stroke", "rgba(0,0,0,0.3)")
+        .style("stroke-width", "1px")
         .each(function (d) {
           const self = d3.select(this)
           const words = d.industry.split(/\s+/)
@@ -246,17 +269,17 @@ export function IndustryTrendsBubbles({
 
   if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardContent className="flex justify-center items-center h-[400px]">
+      <div className="w-full">
+        <div className="flex justify-center items-center h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card className="w-full shadow-lg">
-      <CardContent>
+    <div className="w-full">
+      <div className="p-4">
         <div ref={containerRef} className="h-[400px] w-full relative">
           <AnimatePresence>
             {tooltipData && (
@@ -269,8 +292,8 @@ export function IndustryTrendsBubbles({
             )}
           </AnimatePresence>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

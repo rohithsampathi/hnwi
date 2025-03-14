@@ -93,4 +93,176 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Standardize border radius & styles across the app */
+  .rounded-lg, .rounded-xl, .rounded-full {
+    border-radius: 0.25rem !important; /* Even less rounded than md */
+  }
+  
+  /* Apply consistent border style and remove all borders */
+  button, 
+  .btn, 
+  .card,
+  [class*="rounded"],
+  div[class*="bg-"],
+  .border {
+    border-radius: 0.25rem !important;
+    border: none !important;
+  }
+  
+  /* Override any border settings */
+  *:not(html, body, head) {
+    border-width: 0 !important;
+  }
+  
+  /* Create premium borderless card style */
+  .card {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+  
+  .dark .card {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+}
+
+@layer utilities {
+  .perspective-1200 {
+    perspective: 1200px;
+    transform-style: preserve-3d;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  .text-shadow {
+    text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* News blocks styling */
+.news-block {
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s ease;
+  will-change: transform, opacity;
+}
+
+/* Card stack container and items */
+.card-stack-item {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  mask-image: linear-gradient(to bottom, 
+    rgba(0,0,0,1) 0%, 
+    rgba(0,0,0,1) 90%, 
+    rgba(0,0,0,0.97) 100%
+  );
+  -webkit-mask-image: linear-gradient(to bottom, 
+    rgba(0,0,0,1) 0%, 
+    rgba(0,0,0,1) 90%, 
+    rgba(0,0,0,0.97) 100%
+  );
+}
+
+@media (max-width: 767px) {
+  .news-block {
+    margin-bottom: 0.75rem;
+  }
+  .news-block:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* News block hover effect - only for the entire card which is clickable */
+.news-block {
+  transition: transform 0.2s ease;
+  border: none;
+}
+
+.news-block:hover {
+  transform: translateY(-2px);
+}
+
+/* Standardized CTA Button styling for consistent clickability across app */
+.cta-button {
+  position: relative;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.cta-button:hover {
+  transform: scale(1.15);
+}
+
+/* Standard arrow styling for all clickable arrows in the app */
+.clickable-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  border-radius: 0.25rem;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.clickable-arrow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0));
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.clickable-arrow:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.clickable-arrow:hover::after {
+  transform: translateX(100%);
+}
+
+/* Make all arrow icons stand out with consistent styling */
+svg[stroke="currentColor"][height][width] {
+  transition: transform 0.2s ease;
+}
+
+button:hover svg[stroke="currentColor"][height][width],
+a:hover svg[stroke="currentColor"][height][width],
+.interactive:hover svg[stroke="currentColor"][height][width] {
+  transform: translateX(3px);
+}
+
+/* Dashboard section cards - NO shadows, only movement on hover */
+.dashboard-card {
+  box-shadow: none !important;
+  transition: transform 0.3s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Rotate chevron in accordions */
+[data-state="open"] .accordion-chevron {
+  transform: rotate(-180deg);
+}
+
+.accordion-chevron {
+  transition: transform 0.2s ease;
+}
+
+/* Override shadcn Card & Button components to remove shadows */
+.card, 
+.btn {
+  box-shadow: none !important;
 }

@@ -147,9 +147,13 @@ export function HomeDashboard({
   }, [])
 
   useEffect(() => {
+    if (developments.length === 0) return;
+    
+    // Only start the interval after developments are loaded
     const interval = setInterval(() => {
-      setSpotlightIndex((prevIndex) => (prevIndex + 1) % Math.max(developments.length, 1))
-    }, 10000)
+      setSpotlightIndex((prevIndex) => (prevIndex + 1) % developments.length)
+    }, 6000) // Slightly faster rotation for more engaging experience
+    
     return () => clearInterval(interval)
   }, [developments.length])
 
@@ -166,13 +170,8 @@ export function HomeDashboard({
       name: "War Room",
       icon: Shield,
       route: "war-room",
-      color: "linear-gradient(145deg, #8B0000, #B22222)",
-      description: (
-        <>
-          <p className="text-xs md:text-sm">Access your strategic</p>
-          <p className="text-xs md:text-sm">playbooks</p>
-        </>
-      ),
+      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
     },
@@ -180,34 +179,16 @@ export function HomeDashboard({
       name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
-      color: "linear-gradient(145deg, #005f40, #00331f)",
-      description: (
-        <>
-          <p className="text-xs md:text-sm">Where the Wealth World</p>
-          <p className="text-xs md:text-sm mb-2">Takes Center Stage</p>
-          <div className="mt-1">
-            <LiveButton />
-          </div>
-        </>
-      ),
+      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
       iconAnimation: pulseAnimation,
     },
     {
       name: "Tactics Lab",
       icon: Beaker,
       route: "strategy-engine",
-      color: "linear-gradient(145deg, #2C3E50, #4A5D70, #34495E)",
-      description: (
-        <>
-          <p className="text-xs md:text-sm text-white">Experiment.</p>
-          <p className="text-xs md:text-sm text-white mb-2">Master. Dominate.</p>
-          <div className="mt-1">
-            <Badge variant="secondary" className={`${theme === "dark" ? "text-white" : "text-black"}`}>
-              Beta
-            </Badge>
-          </div>
-        </>
-      ),
+      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      description: "Experiment with advanced wealth preservation and growth strategies in our premium simulation environment.",
       iconAnimation: pulseAnimation,
       beta: true,
       businessOnly: true,
@@ -222,13 +203,8 @@ export function HomeDashboard({
       name: "Privé Exchange",
       icon: Crown,
       route: "prive-exchange",
-      color: "linear-gradient(145deg, #FFD700, #FFA500)",
-      description: (
-        <>
-          <p>Exclusive marketplace</p>
-          <p>for elite assets</p>
-        </>
-      ),
+      color: theme === "dark" ? "#4a3e5b" : "#e6c1d5",
+      description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
       iconAnimation: pulseAnimation,
       showLive: true,
     },
@@ -236,13 +212,8 @@ export function HomeDashboard({
       name: "Social Hub",
       icon: Users,
       route: "social-hub",
-      color: "linear-gradient(145deg, #C0C0C0, #A9A9A9, #808080)",
-      description: (
-        <>
-          <p>Exclusive network for</p>
-          <p>elite connections</p>
-        </>
-      ),
+      color: theme === "dark" ? "#4a3e5b" : "#e6c1d5",
+      description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
       iconAnimation: pulseAnimation,
     },
   ]
@@ -252,16 +223,16 @@ export function HomeDashboard({
       name: "Calendar",
       icon: CalendarIcon,
       route: "calendar-page",
-      color: "linear-gradient(145deg, #0F52BA, #4169E1)",
-      description: "Manage your exclusive events",
+      color: theme === "dark" ? "#655552" : "#f3eae0",
+      description: "Manage your elite events calendar, including private showcases, exclusive gatherings, and invitation-only investment summits tailored to your interests.",
       iconAnimation: pulseAnimation,
     },
     {
       name: "Playbook Store",
       icon: BookOpen,
       route: "play-books",
-      color: "linear-gradient(145deg, #8A2BE2, #9370DB)",
-      description: "Access premium strategies",
+      color: theme === "dark" ? "#655552" : "#f3eae0",
+      description: "Discover and acquire premium investment playbooks and wealth preservation strategies developed by leading global experts and institutions.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
     },
@@ -314,8 +285,8 @@ export function HomeDashboard({
         image="https://hnwichronicles.com/dashboard-og-image.jpg"
         url="https://hnwichronicles.com/dashboard"
       />
-      <div className="space-y-4 md:space-y-6">
-        <Card className={`overflow-hidden ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"} font-body`}>
+      <div className="space-y-6 md:space-y-8">
+        <Card className={`overflow-hidden ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"} font-body`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
               <span role="img" aria-label="diamond">💎</span>
@@ -326,55 +297,87 @@ export function HomeDashboard({
             <Lead className="font-body font-regular tracking-wide">Your Daily Dose of Wealth Insights</Lead>
           </CardHeader>
           <CardContent>
-            <AnimatePresence mode="wait">
-              {developments[spotlightIndex] && (
-                <motion.div
-                  key={developments[spotlightIndex].id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.5 }}
-                  className="p-3 md:p-5 rounded-lg bg-gradient-to-br from-[#1A0F2E] to-[#2D1B4E] cursor-pointer hover:bg-gradient-to-tl hover:from-[#2D1B4E] hover:to-[#3D2A5C] transition-all"
-                  style={{
-                    boxShadow: "0 4px 15px rgba(45, 27, 78, 0.15)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    backdropFilter: "blur(12px)",
-                  }}
-                  onClick={(e) => handleNavigate(e, "strategy-vault", developments[spotlightIndex].id)}
-                >
-                  <h3 className="text-base md:text-lg font-semibold text-white">
-                    {developments[spotlightIndex].title}
-                  </h3>
-                  <p className="text-xs md:text-sm mb-2 md:mb-4 text-white">
-                    {developments[spotlightIndex].description}
-                  </p>
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-primary text-primary-foreground text-xs md:text-sm">
-                        {developments[spotlightIndex].industry}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-secondary text-secondary-foreground text-xs md:text-sm">
-                        {developments[spotlightIndex].product}
-                      </Badge>
-                    </div>
-                    <div className="text-xs md:text-sm text-white">
-                      Date:{" "}
-                      {new Date(developments[spotlightIndex].date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </div>
-                  </div>
-                </motion.div>
+            <div className="space-y-3">
+              {developments.length > 0 && (
+                <div className="flex flex-col space-y-4">
+                  {[0, 1, 2].map((offset) => {
+                    const index = (spotlightIndex + offset) % developments.length;
+                    return (
+                      <div key={`news-block-${offset}`} className="h-[130px] overflow-hidden relative news-block card-stack-item">
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.div
+                            key={`card-${developments[index].id}-${spotlightIndex}`}
+                            initial={{ 
+                              y: 80,
+                              opacity: 0,
+                              scale: 0.98
+                            }}
+                            animate={{ 
+                              y: 0,
+                              opacity: 1,
+                              scale: 1
+                            }}
+                            exit={{ 
+                              y: -80,
+                              opacity: 0,
+                              scale: 0.98
+                            }}
+                            transition={{ 
+                              type: "tween",
+                              duration: 0.5,
+                              delay: offset * 0.1,
+                              ease: [0.16, 1, 0.3, 1]
+                            }}
+                            className="p-3 md:p-4 rounded-md cursor-pointer transition-all duration-300 overflow-hidden h-full"
+                            style={{
+                              background: theme === "dark" ? 
+                                `linear-gradient(135deg, #4a3e5b ${offset * 8}%, #3d3250)` : 
+                                `linear-gradient(135deg, #e6c1d5 ${offset * 8}%, #d9b2c9)`,
+                              backdropFilter: "blur(12px)",
+                              color: theme === "dark" ? "white" : "black"
+                            }}
+                            onClick={(e) => handleNavigate(e, "strategy-vault", developments[index].id)}
+                          >
+                            <div className="flex flex-col h-full">
+                              <h3 className="text-sm md:text-base font-semibold line-clamp-1">
+                                {developments[index].title}
+                              </h3>
+                              <p className="text-xs md:text-sm mt-1 mb-2 line-clamp-2 flex-grow">
+                                {developments[index].description}
+                              </p>
+                              <div className="flex justify-between items-end mt-auto">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="bg-primary/80 text-primary-foreground text-xs">
+                                    {developments[index].industry}
+                                  </Badge>
+                                  <div className="text-xs md:text-sm font-medium whitespace-nowrap">
+                                    {new Date(developments[index].date).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric"
+                                    })}
+                                  </div>
+                                </div>
+                                <div className="cta-button">
+                                  <div className="clickable-arrow">
+                                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-            </AnimatePresence>
+            </div>
           </CardContent>
         </Card>
 
         {/* The Foundry Section */}
         {visibleExperienceZone.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
                 <Hammer className="w-6 h-6 text-primary" />
@@ -395,22 +398,24 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                       style={{
                         background: item.color,
-                        color: "white",
+                        color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-center">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
-                        <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
-                        <div className="text-xs md:text-base max-w-[150px] md:max-w-[200px] flex-grow">
+                      <div className="flex flex-col items-start w-full">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
+                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
                       </div>
-                      <div className="flex items-center justify-center mt-2">
-                        <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
-                        <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
+                      <div className="flex items-center mt-4 w-full justify-end">
+                        <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
+                        <div className="clickable-arrow ml-1">
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
                       </div>
                     </Button>
                   </motion.div>
@@ -421,7 +426,7 @@ export function HomeDashboard({
         )}
 
         {/* Crown World Section */}
-        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
+        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
               <Crown className="w-6 h-6 text-primary" />
@@ -442,27 +447,29 @@ export function HomeDashboard({
                 >
                   <Button
                     onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                     style={{
                       background: item.color,
-                      color: "white",
+                      color: theme === "dark" ? "white" : "black",
                     }}
                   >
-                    <div className="flex flex-col items-center">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
-                      <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
-                      <div className="text-xs md:text-sm max-w-[150px] md:max-w-[200px] flex-grow text-center flex flex-col items-center justify-center">
+                    <div className="flex flex-col items-start w-full">
+                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
+                      <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                      <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
                         {typeof item.description === "string" ? item.description : item.description}
                       </div>
                       {item.showLive && (
-                        <div className="mt-1">
+                        <div className="mt-2">
                           <LiveButton />
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center justify-center mt-2">
-                      <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
-                      <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
+                    <div className="flex items-center mt-4 w-full justify-end">
+                      <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
+                      <div className="clickable-arrow ml-1">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
                     </div>
                   </Button>
                 </motion.div>
@@ -473,7 +480,7 @@ export function HomeDashboard({
 
         {/* Founder's Desk Section */}
         {visibleFoundersDeskItems.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
                 <Briefcase className="w-6 h-6 text-primary" />
@@ -494,22 +501,24 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-center justify-between text-center rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                       style={{
                         background: item.color,
-                        color: "white",
+                        color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-center">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 md:mb-6" />
-                        <Heading3 className="mb-2 md:mb-4 mt-1 md:mt-2 text-shadow">{item.name}</Heading3>
-                        <div className="text-xs md:text-sm max-w-[150px] md:max-w-[200px] flex-grow">
+                      <div className="flex flex-col items-start w-full">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
+                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex items-center justify-center mt-2">
-                        <span className="mr-1 md:mr-2 text-sm md:text-lg font-button font-semibold">Explore</span>
-                        <ArrowRight className="w-4 h-4 md:w-6 md:h-6" />
+                      <div className="flex items-center mt-4 w-full justify-end">
+                        <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
+                        <div className="clickable-arrow ml-1">
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
                       </div>
                     </Button>
                   </motion.div>

@@ -101,20 +101,16 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
               </SelectContent>
             </Select>
           </div>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl font-bold text-primary">Trends Map</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <IndustryTrendsBubbles
-                duration={timeRange}
-                onIndustriesUpdate={handleIndustriesUpdate}
-                onBubbleClick={handleBubbleClick}
-                getIndustryColor={getIndustryColor}
-                selectedIndustry={selectedIndustry}
-              />
-            </CardContent>
-          </Card>
+          <div className="mt-4">
+            <h3 className="text-xl font-bold text-primary mb-4">Trends Map</h3>
+            <IndustryTrendsBubbles
+              duration={timeRange}
+              onIndustriesUpdate={handleIndustriesUpdate}
+              onBubbleClick={handleBubbleClick}
+              getIndustryColor={getIndustryColor}
+              selectedIndustry={selectedIndustry}
+            />
+          </div>
         </CardContent>
       </Card>
       <Card className="w-full">

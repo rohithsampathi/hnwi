@@ -75,20 +75,20 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
         onNavigate={onNavigate}
       >
         <div className="font-body">
-          <Card className="w-full mb-6 overflow-hidden border-none bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_24px_rgba(255,255,255,0.15)] transition-all duration-300">
-            <CardHeader>
+          <div className="w-full mb-6 overflow-hidden">
+            <div className="py-4">
               <Heading2 className="text-primary">HNWI World</Heading2>
               <Paragraph className="text-sm text-muted-foreground mt-2 leading-tight">
                 Data Meets Strategy for the Wealthiest
               </Paragraph>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="py-2">
               <div className="flex justify-between items-center mb-6">
                 <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
-                  <SelectTrigger className="w-[200px] bg-primary/5 hover:bg-primary/10 transition-all duration-300 shadow-[0_4px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_8px_rgba(255,255,255,0.1)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_16px_rgba(255,255,255,0.15)]">
+                  <SelectTrigger className="w-[200px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
-                  <SelectContent className="bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)]">
+                  <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
                     <SelectItem value="All">All Industries</SelectItem>
                     {availableIndustries.sort().map((industry) => (
                       <SelectItem key={industry} value={industry}>
@@ -100,10 +100,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 <div className="flex items-center space-x-4">
                   <LiveButton />
                   <Select onValueChange={handleTimeRangeChange} value={timeRange}>
-                    <SelectTrigger className="w-[180px] bg-primary/5 hover:bg-primary/10 transition-all duration-300 shadow-[0_4px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_8px_rgba(255,255,255,0.1)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_16px_rgba(255,255,255,0.15)]">
+                    <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
                       <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)]">
+                    <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
                       <SelectItem value="1d">Last 24 hours</SelectItem>
                       <SelectItem value="1w">Last week</SelectItem>
                       <SelectItem value="1m">Last month</SelectItem>
@@ -112,14 +112,14 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                   </Select>
                 </div>
               </div>
-              <Card className="bg-primary/5 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardHeader>
-                  <Heading3 className="text-primary flex items-center">
+              <div className="mt-4 pt-4 bg-white dark:bg-gray-800 rounded shadow-md">
+                <div className="px-6 pb-2">
+                  <Heading3 className="text-primary dark:text-white flex items-center mb-4">
                     <span className="bg-primary text-primary-foreground p-1 rounded mr-2">📊</span>
                     Wealth Radar
                   </Heading3>
-                </CardHeader>
-                <CardContent>
+                </div>
+                <div className="px-6 pb-6">
                   <IndustryTrendsBubbles
                     duration={timeRange}
                     onIndustriesUpdate={handleIndustriesUpdate}
@@ -127,23 +127,23 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                     getIndustryColor={getIndustryColor}
                     selectedIndustry={selectedIndustry}
                   />
-                </CardContent>
-              </Card>
-            </CardContent>
-          </Card>
-          <Card className="w-full mt-8 overflow-hidden border-none bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_24px_rgba(255,255,255,0.15)] transition-all duration-300">
-            <CardHeader>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="w-full mt-8 overflow-hidden">
+            <div className="py-4">
               <Heading3 className="text-primary">Insider Briefing 🔍</Heading3>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="py-2">
               <DevelopmentStream
                 selectedIndustry={selectedIndustry}
                 duration={timeRange}
                 getIndustryColor={getIndustryColor}
                 expandedDevelopmentId={expandedDevelopmentId}
               />
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </Layout>
     </>
