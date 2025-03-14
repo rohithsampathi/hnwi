@@ -193,43 +193,49 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
       showBackButton
       onNavigate={onNavigate}
     >
-      <Card>
-        <CardHeader className="space-y-4">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-bold">
-              <div className="flex items-center space-x-4">
-                <Button variant="outline" size="icon" onClick={navigatePrevious}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="min-w-[200px] text-center">{getMonthYearString(currentDate)}</span>
-                <Button variant="outline" size="icon" onClick={navigateNext}>
-                  <ChevronRight className="h-4 w-4" />
+      <div className="space-y-2 px-4 py-6">
+        <Heading2 className="text-primary">My Calendar</Heading2>
+        <p className="font-body tracking-wide text-xl text-muted-foreground">
+          Manage your premium events and appointments
+        </p>
+      </div>
+      <div className="px-4">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="text-2xl font-bold">
+                <div className="flex items-center space-x-4">
+                  <Button variant="outline" size="icon" onClick={navigatePrevious}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[200px] text-center">{getMonthYearString(currentDate)}</span>
+                  <Button variant="outline" size="icon" onClick={navigateNext}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Button variant="outline" onClick={navigateToToday}>
+                  Today
                 </Button>
               </div>
-            </CardTitle>
-            <div>
-              <Button variant="outline" onClick={navigateToToday}>
-                Today
-              </Button>
             </div>
+            <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)} className="w-full">
+              <TabsList className="grid w-full max-w-[400px] grid-cols-4">
+                <TabsTrigger value="day">Day</TabsTrigger>
+                <TabsTrigger value="week">Week</TabsTrigger>
+                <TabsTrigger value="month">Month</TabsTrigger>
+                <TabsTrigger value="year">Year</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)} className="w-full">
-            <TabsList className="grid w-full max-w-[400px] grid-cols-4">
-              <TabsTrigger value="day">Day</TabsTrigger>
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="year">Year</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </CardHeader>
-        <CardContent>
-          {renderCalendarView()}
-          {/* Display events for selected date in Month view */}
-          {renderSelectedDateEvents()}
-          {/* Display selected event details */}
-          {selectedEvent && !selectedDateEvents.length && <EventDetailsSection event={selectedEvent} />}
-        </CardContent>
-      </Card>
+          <div className="mt-4">
+            {renderCalendarView()}
+            {/* Display events for selected date in Month view */}
+            {renderSelectedDateEvents()}
+            {/* Display selected event details */}
+            {selectedEvent && !selectedDateEvents.length && <EventDetailsSection event={selectedEvent} />}
+          </div>
+      </div>
     </Layout>
   )
 }

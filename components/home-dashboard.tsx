@@ -170,7 +170,7 @@ export function HomeDashboard({
       name: "War Room",
       icon: Shield,
       route: "war-room",
-      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
       description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -179,15 +179,16 @@ export function HomeDashboard({
       name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
-      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
       description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
       iconAnimation: pulseAnimation,
+      live: true,
     },
     {
       name: "Tactics Lab",
       icon: Beaker,
       route: "strategy-engine",
-      color: theme === "dark" ? "#5b4d4a" : "#e6d5c1",
+      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
       description: "Experiment with advanced wealth preservation and growth strategies in our premium simulation environment.",
       iconAnimation: pulseAnimation,
       beta: true,
@@ -203,19 +204,21 @@ export function HomeDashboard({
       name: "Privé Exchange",
       icon: Crown,
       route: "prive-exchange",
-      color: theme === "dark" ? "#4a3e5b" : "#d8d0e8",
+      color: theme === "dark" ? "#695d7e" : "#d8d0e8",
       description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
       iconAnimation: pulseAnimation,
       beta: true,
+      live: true,
     },
     {
       name: "Social Hub",
       icon: Users,
       route: "social-hub",
-      color: theme === "dark" ? "#4a3e5b" : "#d8d0e8",
+      color: theme === "dark" ? "#695d7e" : "#d8d0e8",
       description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
       iconAnimation: pulseAnimation,
       beta: true,
+      live: true,
     },
   ]
 
@@ -224,7 +227,7 @@ export function HomeDashboard({
       name: "Calendar",
       icon: CalendarIcon,
       route: "calendar-page",
-      color: theme === "dark" ? "#655552" : "#f3eae0",
+      color: theme === "dark" ? "#877773" : "#f3eae0",
       description: "Manage your elite events calendar, including private showcases, exclusive gatherings, and invitation-only investment summits tailored to your interests.",
       iconAnimation: pulseAnimation,
     },
@@ -232,7 +235,7 @@ export function HomeDashboard({
       name: "Playbook Store",
       icon: BookOpen,
       route: "play-books",
-      color: theme === "dark" ? "#655552" : "#f3eae0",
+      color: theme === "dark" ? "#877773" : "#f3eae0",
       description: "Discover and acquire premium investment playbooks and wealth preservation strategies developed by leading global experts and institutions.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -332,7 +335,7 @@ export function HomeDashboard({
                             className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden h-full"
                             style={{
                               background: theme === "dark" ? 
-                                `linear-gradient(135deg, #4a3e5b ${offset * 8}%, #3d3250)` : 
+                                `linear-gradient(135deg, #695d7e ${offset * 8}%, #5d5073)` : 
                                 `linear-gradient(135deg, #d8d0e8 ${offset * 8}%, #c6b8e0)`,
                               backdropFilter: "blur(12px)",
                               color: theme === "dark" ? "white" : "#2c2144"
@@ -418,6 +421,11 @@ export function HomeDashboard({
                         <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
+                        {item.live && (
+                          <div className="mt-2">
+                            <LiveButton />
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center mt-4 w-full justify-end">
                         <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
@@ -474,7 +482,7 @@ export function HomeDashboard({
                       <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
                         {typeof item.description === "string" ? item.description : item.description}
                       </div>
-                      {item.showLive && (
+                      {item.live && (
                         <div className="mt-2">
                           <LiveButton />
                         </div>

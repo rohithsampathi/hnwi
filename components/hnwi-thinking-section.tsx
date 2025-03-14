@@ -65,17 +65,17 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
   }, [selectedLocation, industry, toast, duration]) // Added duration to dependencies
 
   return (
-    <Card className="w-full">
+    <Card className="w-full border-none bg-transparent shadow-none">
       {/* Removed CardHeader and CardTitle */}
       <CardContent>
         <div className="space-y-4 pt-6">
           {" "}
           {/* Added pt-6 for more top padding */}
           <Select onValueChange={setSelectedLocation} value={selectedLocation}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
               <SelectItem value="Mumbai">Mumbai</SelectItem>
               <SelectItem value="Delhi">Delhi</SelectItem>
               <SelectItem value="Bangalore">Bangalore</SelectItem>

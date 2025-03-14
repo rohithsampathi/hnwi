@@ -20,6 +20,8 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { getOpportunities, Opportunity } from "@/lib/api"  // no placeholders
+import { Heading2 } from "@/components/ui/typography"
+import { LiveButton } from "@/components/live-button"
 
 interface PriveExchangePageProps {
   onNavigate?: (route: string) => void
@@ -178,11 +180,22 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         <div className="flex items-center gap-2">
           <span>Privé Exchange</span>
           <Badge className="bg-primary">Beta</Badge>
+          <LiveButton />
         </div>
       } 
       showBackButton 
       onNavigate={handleNavigation}>
       <div className="flex flex-col h-full">
+        <div className="space-y-2 px-4 py-6">
+          <div className="flex items-center gap-2">
+            <Heading2 className="text-primary">Privé Exchange</Heading2>
+            <Badge className="bg-primary">Beta</Badge>
+            <LiveButton />
+          </div>
+          <p className="font-body tracking-wide text-xl text-muted-foreground">
+            Exclusive opportunities for elite investors
+          </p>
+        </div>
         <div className="flex-grow">
           {/* Region selection if none selected */}
           {!selectedRegion && (

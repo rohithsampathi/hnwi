@@ -486,7 +486,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
 
     return (
       <>
-        <Card className="mt-4">
+        <Card className="mt-4 bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
           <CardHeader>
             <h3 className="text-lg font-semibold mb-2">Key Property Launches</h3>
           </CardHeader>
@@ -516,7 +516,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
           </CardContent>
         </Card>
 
-        <Card className="mt-4">
+        <Card className="mt-4 bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
           <CardHeader>
             <h3 className="text-lg font-semibold mb-2">Key Completed Projects</h3>
           </CardHeader>
@@ -570,7 +570,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
         <IndiaPageData />
       ) : (
         <>
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
             <CardHeader>
               <h3 className="text-lg font-semibold mb-2">Average Quoted Capital (INR/SFT)</h3>
             </CardHeader>
@@ -581,7 +581,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
             <CardHeader>
               <h3 className="text-lg font-semibold mb-2">QOQ Growth by Micro Market</h3>
             </CardHeader>
@@ -592,7 +592,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
             <CardHeader>
               <h3 className="text-lg font-semibold mb-2">YOY Growth by Micro Market</h3>
             </CardHeader>
@@ -604,7 +604,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
           </Card>
 
           {data.segmentData && data.segmentData.yoyGrowth !== undefined && (
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
               <CardHeader>
                 <h3 className="text-lg font-semibold mb-2">YOY Growth</h3>
               </CardHeader>
@@ -625,7 +625,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
           )}
 
           {data.segmentData && (
-            <Card>
+            <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
               <CardHeader>
                 <h3 className="text-lg font-semibold mb-2">2024 Q4 Launches by Segment</h3>
               </CardHeader>

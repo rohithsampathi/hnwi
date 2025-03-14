@@ -76,13 +76,16 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
       >
         <div className="font-body">
           <div className="w-full mb-6 overflow-hidden">
-            <div className="py-4">
-              <Heading2 className="text-primary">HNWI World</Heading2>
-              <Paragraph className="text-sm text-muted-foreground mt-2 leading-tight">
+            <div className="space-y-2 px-4 py-6">
+              <div className="flex items-center gap-2">
+                <Heading2 className="text-primary">HNWI World</Heading2>
+                <LiveButton />
+              </div>
+              <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
                 Data Meets Strategy for the Wealthiest
               </Paragraph>
             </div>
-            <div className="py-2">
+            <div className="px-4 py-2">
               <div className="flex justify-between items-center mb-6">
                 <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
                   <SelectTrigger className="w-[200px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
@@ -98,7 +101,6 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                   </SelectContent>
                 </Select>
                 <div className="flex items-center space-x-4">
-                  <LiveButton />
                   <Select onValueChange={handleTimeRangeChange} value={timeRange}>
                     <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
                       <SelectValue placeholder="Select time range" />
@@ -115,7 +117,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
               <div className="mt-4 pt-4 bg-white dark:bg-gray-800 rounded shadow-md">
                 <div className="px-6 pb-2">
                   <Heading3 className="text-primary dark:text-white flex items-center mb-4">
-                    <span className="bg-primary text-primary-foreground p-1 rounded mr-2">📊</span>
+                    <span className="mr-2">📊</span>
                     Wealth Radar
                   </Heading3>
                 </div>

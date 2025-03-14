@@ -461,7 +461,7 @@ const ChannelPerformanceRating: React.FC = () => {
   console.log("Rendering with localCategories:", localCategories)
 
   return (
-    <div className="space-y-3 p-3">
+    <div className="space-y-3 p-3 bg-transparent">
       {isRefreshing && (
         <div className="fixed top-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md shadow-md">
           <span className="animate-pulse">Refreshing data...</span>
@@ -471,15 +471,15 @@ const ChannelPerformanceRating: React.FC = () => {
         const Icon = category.icon
         const topPerformer = getTopPerformer(category.subChannels)
         return (
-          <Card key={category.name} className="overflow-hidden mb-6">
+          <Card key={category.name} className="overflow-hidden mb-6 border-none bg-transparent shadow-none">
             <CardContent className="p-3">
               <Button
                 variant="ghost"
-                className="w-full p-6 justify-between hover:bg-transparent"
+                className="w-full p-6 justify-between hover:bg-transparent bg-white dark:bg-gray-800 rounded-lg shadow-sm"
                 onClick={() => toggleCategory(category.name)}
               >
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-primary/10 rounded-full flex-shrink-0">
+                  <div className="p-2 rounded-full flex-shrink-0">
                     <Icon className="w-5 h-5 text-primary" />
                   </div>
                   <span className="text-xl font-semibold font-heading">{category.name}</span>
@@ -498,7 +498,7 @@ const ChannelPerformanceRating: React.FC = () => {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 bg-transparent">
                       {category.subChannels.map((subChannel, subChannelIndex) => (
                         <RatingArc
                           key={subChannel.name}

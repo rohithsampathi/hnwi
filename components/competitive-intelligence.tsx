@@ -67,11 +67,11 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
   }, [fetchDevelopments])
 
   return (
-    <Card className="w-full mt-6 overflow-hidden border-none bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_12px_24px_rgba(255,255,255,0.15)] transition-all duration-300">
+    <Card className="w-full mt-6 overflow-hidden border-none bg-transparent shadow-none transition-all duration-300">
       <CardHeader>
         <div className="flex justify-between items-center">
           <Select onValueChange={setTimeRange} value={timeRange}>
-            <SelectTrigger className="w-[180px] bg-primary/5 hover:bg-primary/10 transition-all duration-300 shadow-[0_4px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_8px_rgba(255,255,255,0.1)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_8px_16px_rgba(255,255,255,0.15)]">
+            <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
             <SelectContent className="bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)]">

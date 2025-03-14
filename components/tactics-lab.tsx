@@ -212,7 +212,7 @@ export function TacticsLab() {
           <Heading2 className="text-3xl font-bold font-heading text-primary">Tactics Lab</Heading2>
           <Badge className="bg-primary">Beta</Badge>
         </div>
-        <Paragraph className="text-sm text-muted-foreground mt-2 mb-4 leading-tight font-body">
+        <Paragraph className="font-body tracking-wide text-xl text-muted-foreground mt-2 mb-4">
           Your AI-powered strategy assistant
         </Paragraph>
       </div>

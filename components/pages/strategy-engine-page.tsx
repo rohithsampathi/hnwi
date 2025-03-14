@@ -45,7 +45,7 @@ export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string)
             </motion.div>
             <Heading2 className="font-heading text-2xl">Tactics Lab</Heading2>
             <Badge variant="secondary">Beta</Badge>
-            <Paragraph className="text-sm text-muted-foreground mt-2 leading-tight font-body">
+            <Paragraph className="font-body tracking-wide text-xl text-muted-foreground mt-2">
               Experiment. Master. Dominate.
             </Paragraph>
           </div>

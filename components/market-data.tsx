@@ -741,11 +741,11 @@ const MarketData: React.FC = () => {
   }, [])
 
   return (
-    <Card className="w-full overflow-hidden">
+    <Card className="w-full overflow-hidden border-none bg-transparent shadow-none">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <BarChart2 className="w-6 h-6 text-primary" />
+            <span className="mr-2">📊</span>
             <Heading2 className="text-2xl font-bold text-primary">Market Data</Heading2>
           </div>
           <LiveButton />
@@ -757,10 +757,10 @@ const MarketData: React.FC = () => {
       <CardContent className="space-y-6">
         <div className="w-full max-w-xs">
           <Select onValueChange={handleCityChange} value={selectedCity || undefined}>
-            <SelectTrigger>
+            <SelectTrigger className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
               <SelectValue placeholder="Select a city" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
               <SelectItem value="India">India</SelectItem>
               {Object.keys(cityData).map((city) => (
                 <SelectItem key={city} value={city}>
@@ -774,14 +774,14 @@ const MarketData: React.FC = () => {
         {selectedCity ? (
           <CitySpecificData city={selectedCity} data={selectedCity === "India" ? cityData : cityData[selectedCity]} />
         ) : (
-          <Card>
-            <CardHeader>
+          <div>
+            <div className="pt-4 pb-2">
               <Heading3 className="text-lg font-semibold">Select a city to view market data</Heading3>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="pb-4">
               <Paragraph>Choose a city from the dropdown above to see detailed market insights.</Paragraph>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

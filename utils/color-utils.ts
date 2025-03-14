@@ -108,8 +108,8 @@ export const categoryToTailwind: Record<string, string> = {
 
 // Map of categories to dark Tailwind classes
 export const categoryToDarkTailwind: Record<string, string> = {
-  Jewelry: "bg-purple-700",
-  Collectibles: "bg-amber-700",
+  Jewelry: "bg-purple-400",
+  Collectibles: "bg-amber-400",
   Art: "bg-teal-700",
   "Fine Art": "bg-teal-800",
   "Private Art": "bg-teal-700",
@@ -117,11 +117,11 @@ export const categoryToDarkTailwind: Record<string, string> = {
   Fashion: "bg-pink-700",
   "Luxury Fashion": "bg-pink-800",
   Watches: "bg-blue-700",
-  Antiques: "bg-yellow-900",
+  Antiques: "bg-yellow-500",
   "Real Estate": "bg-green-700",
   "Yacht": "bg-blue-700",
   "Luxury Yacht": "bg-blue-700",
-  social: "bg-purple-700",
+  social: "bg-purple-400",
   work: "bg-blue-700",
   personal: "bg-green-700",
   entertainment: "bg-red-600",
@@ -183,21 +183,21 @@ function getCategoryFallbackColor(category: string): string {
 
 // Generate a dark fallback color based on the category string
 function getDarkCategoryFallbackColor(category: string): string {
-  if (!category) return "bg-purple-700"; // Default color
+  if (!category) return "bg-purple-400"; // Default color
   
   // Map the first character of the category to a color
   const firstChar = category.toLowerCase().charCodeAt(0) % 10;
   const colorMap = [
-    "bg-blue-700",      // 0
-    "bg-indigo-700",    // 1
-    "bg-purple-700",    // 2
-    "bg-pink-700",      // 3
-    "bg-rose-700",      // 4
-    "bg-red-700",       // 5
-    "bg-orange-700",    // 6
-    "bg-amber-700",     // 7
-    "bg-yellow-700",    // 8
-    "bg-teal-700"       // 9
+    "bg-blue-600",      // 0
+    "bg-indigo-600",    // 1
+    "bg-purple-400",    // 2
+    "bg-pink-600",      // 3
+    "bg-rose-600",      // 4
+    "bg-red-600",       // 5
+    "bg-orange-600",    // 6
+    "bg-amber-400",     // 7
+    "bg-yellow-500",    // 8
+    "bg-teal-600"       // 9
   ];
   
   return colorMap[firstChar];
