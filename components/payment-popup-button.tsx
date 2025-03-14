@@ -27,31 +27,29 @@ export function PaymentPopupButton({ playbookId, onSuccess, paymentButtonId }: P
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="w-full bg-gray-400 text-white hover:bg-gray-600 transition-colors duration-200"
+          className="w-full bg-primary hover:bg-primary/90 text-white font-bold"
           onClick={() => setIsOpen(true)}
         >
-          Purchase Playbook
+          Unlock Playbook
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] rounded-xl border shadow-xl">
         <DialogHeader>
-          <DialogTitle>Payment Information</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl font-heading tracking-tight text-[#121212] dark:text-white">Unlock Playbook</DialogTitle>
+          <DialogDescription className="text-sm text-[#121212] dark:text-white">
             Our transactions are securely facilitated by Razorpay, ensuring a seamless experience. International
             transactions are processed via PayPal for added convenience.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <p className="text-sm text-gray-500">For any queries regarding payments, feel free to reach out to us at:</p>
-          <p className="text-sm font-medium text-white">📧 info@montaigne.co</p>
+          <p className="text-sm text-[#121212] dark:text-white">For any queries regarding payments, feel free to reach out to us at:</p>
+          <p className="text-sm font-medium text-[#121212] dark:text-white">📧 info@montaigne.co</p>
         </div>
         <div className="flex justify-between items-center mt-4">
-          <Button variant="outline" onClick={() => setIsOpen(false)} className="text-white">
-            Close
+          <Button variant="outline" onClick={() => setIsOpen(false)} className="text-[#121212] dark:text-white border-[#121212] dark:border-white">
+            Cancel
           </Button>
           <div className="w-[200px]">
-            {" "}
-            {/* Fixed width container for Razorpay button */}
             <RazorpayButton
               playbookId={playbookId}
               onSuccess={(id) => {
