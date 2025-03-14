@@ -3,7 +3,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+// import { Card, CardContent } from "@/components/ui/card"
 import { useTheme } from "@/contexts/theme-context"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -71,7 +71,7 @@ const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; lev
     <div className={`${paddingClass} ${marginClass}`}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors border-0 border-primary shadow-[0_0_10px_rgba(var(--primary),_0.5)]"
+        className={`w-full flex items-center justify-between p-4 rounded-3xl ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-white hover:bg-gray-100"} transition-colors border-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.3)]`}
       >
         {level === 1 ? (
           <h2
@@ -84,7 +84,9 @@ const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; lev
             dangerouslySetInnerHTML={{ __html: element.content }}
           />
         )}
-        <ChevronDown className={`w-5 h-5 transform transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+        <div className="clickable-arrow">
+          <ChevronDown className={`w-5 h-5 transform transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+        </div>
       </button>
       <AnimatePresence>
         {isExpanded && (
@@ -93,7 +95,7 @@ const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; lev
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="overflow-hidden border-primary shadow-[0_0_10px_rgba(var(--primary),_0.5)]"
+            className="overflow-hidden border-transparent shadow-none bg-transparent"
           >
             <div className="p-4">
               {element.elements?.map((subElement, index) => (
@@ -242,8 +244,8 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
       )
     case "analysis_summary":
       return (
-        <Card className={`w-full ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-          <CardContent className="px-3 py-3">
+        <div className="w-full bg-transparent">
+          <div className="px-3 py-3">
             <div className="space-y-2">
               <h4 className="text-base font-semibold">Analysis summary</h4>
               <div className="text-sm text-muted-foreground max-h-60 overflow-y-auto pr-2">
@@ -256,8 +258,8 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
                   ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )
     case "market_overview":
       return (
@@ -389,12 +391,10 @@ export function PlaybookContent({ section, industry, analysisResult }: PlaybookC
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card
-        className={`w-full md:w-[calc(100%+2rem)] md:-ml-4 border-0 ${
-          theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"
-        } shadow-lg hover:shadow-xl transition-shadow duration-300`}
+      <div
+        className="w-full md:w-[calc(100%+2rem)] md:-ml-4 border-0"
       >
-        <CardContent className="p-3 md:p-6">
+        <div className="p-3 md:p-6">
           <div className="w-full space-y-6 px-0 md:px-4">
             {nonEmptyElements.map((element, elementIndex) => (
               <React.Fragment key={elementIndex}>{renderElement(element, theme, 0, industry)}</React.Fragment>
@@ -419,8 +419,8 @@ export function PlaybookContent({ section, industry, analysisResult }: PlaybookC
               </ol>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </motion.div>
   )
 }

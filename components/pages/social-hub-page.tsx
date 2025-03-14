@@ -9,33 +9,34 @@ import { Heading2 } from "@/components/ui/typography"
 import { Users } from "lucide-react"
 import { SocialHub } from "@/components/social-hub"
 import { Paragraph } from "@/components/ui/paragraph"
+import { Badge } from "@/components/ui/badge"
 
 export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => void }) {
   return (
-    <ThemeProvider>
-      <Layout
+    <Layout
         title={
           <div className="flex items-center space-x-2">
             <Users className="w-6 h-6 text-primary" />
             <Heading2>Social Hub</Heading2>
+            <Badge className="bg-primary">Beta</Badge>
           </div>
         }
         showBackButton
         onNavigate={onNavigate}
       >
-        <Card className="w-full bg-background text-foreground">
-          <CardHeader>
-            <Heading2 className="text-2xl font-bold text-primary">The Social Hub</Heading2>
+        <div className="w-full">
+          <div className="mb-6">
+            <div className="flex items-center gap-2">
+              <Heading2 className="text-2xl font-bold text-primary">The Social Hub</Heading2>
+              <Badge className="bg-primary">Beta</Badge>
+            </div>
             <Paragraph className="text-sm text-muted-foreground mt-2">
               Connect with the elite HNWI community and explore exclusive events
             </Paragraph>
-          </CardHeader>
-          <CardContent className="p-6">
-            <SocialHub />
-          </CardContent>
-        </Card>
+          </div>
+          <SocialHub />
+        </div>
       </Layout>
-    </ThemeProvider>
   )
 }
 

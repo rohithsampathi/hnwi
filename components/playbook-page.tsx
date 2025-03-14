@@ -12,7 +12,7 @@ const Report = ({ report }: { report: ReportData | null }) => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 rounded-3xl bg-gray-800 shadow-[0_8px_20px_rgba(0,0,0,0.2)]">
       <Heading2 className="text-3xl font-bold text-primary font-heading">
         {report?.metadata.title || "Loading Report..."}
       </Heading2>

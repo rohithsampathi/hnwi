@@ -94,25 +94,55 @@ body {
     @apply bg-background text-foreground;
   }
   
-  /* Standardize border radius & styles across the app */
-  .rounded-lg, .rounded-xl, .rounded-full {
-    border-radius: 0.25rem !important; /* Even less rounded than md */
+  /* Standardize border radius & styles across the app - UPDATED TO BE MORE ROUNDED */
+  .rounded-lg, .rounded-xl {
+    border-radius: 1.5rem !important;
   }
   
-  /* Apply consistent border style and remove all borders */
+  .rounded-full {
+    border-radius: 9999px !important;
+  }
+  
+  /* Apply consistent border style */
   button, 
   .btn, 
   .card,
   [class*="rounded"],
-  div[class*="bg-"],
-  .border {
-    border-radius: 0.25rem !important;
-    border: none !important;
+  div[class*="bg-"] {
+    border-radius: 1.5rem !important;
+  }
+  
+  /* Calendar day cells should be rectangular */
+  .rdp-day, 
+  .rdp-button, 
+  .rdp-day_selected, 
+  .rdp-day_today {
+    border-radius: 0 !important;
   }
   
   /* Override any border settings */
   *:not(html, body, head) {
     border-width: 0 !important;
+  }
+  
+  /* Desktop page margins and padding */
+  @media (min-width: 768px) {
+    header, footer {
+      padding-left: 3rem !important;
+      padding-right: 3rem !important;
+    }
+    
+    main, .app-content {
+      padding-left: 3rem !important;
+      padding-right: 3rem !important;
+      max-width: 100% !important;
+    }
+
+    /* Ensure content is properly padded */
+    .content-wrapper > div {
+      padding-left: 3rem !important;
+      padding-right: 3rem !important;
+    }
   }
   
   /* Create premium borderless card style */
@@ -188,11 +218,11 @@ body {
 .cta-button {
   position: relative;
   z-index: 5;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .cta-button:hover {
-  transform: scale(1.15);
+  transform: scale(1.15) translateY(-2px);
 }
 
 /* Standard arrow styling for all clickable arrows in the app */
@@ -201,13 +231,13 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0.4rem;
-  border-radius: 0.25rem;
+  border-radius: 9999px !important;
   background-color: var(--primary);
   color: var(--primary-foreground);
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .clickable-arrow::after {
@@ -223,8 +253,8 @@ body {
 }
 
 .clickable-arrow:hover {
-  transform: scale(1.1);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1) translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
 }
 
 .clickable-arrow:hover::after {
@@ -261,8 +291,53 @@ a:hover svg[stroke="currentColor"][height][width],
   transition: transform 0.2s ease;
 }
 
-/* Override shadcn Card & Button components to remove shadows */
-.card, 
-.btn {
+/* Add 3D drop shadows to buttons and cards */
+.card {
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.btn, button {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+  transition: all 0.3s ease;
+}
+
+.btn:hover, button:hover {
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-3px);
+}
+
+/* Footer navigation - remove shadows */
+footer nav button, footer nav div {
   box-shadow: none !important;
+}
+
+/* Set consistent content width and padding container */
+.content-container {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+  margin: 0 auto;
+}
+
+/* Enhanced Beta badge styling */
+.badge-beta {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+  transition: all 0.3s ease;
+}
+
+.badge-beta:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+  transform: translateY(-3px);
+}
+
+/* Add a style for gradient button used in login/splash screens */
+.gradient-button {
+  border-radius: 9999px !important;
+  box-shadow: 0 8px 25px rgba(75, 85, 99, 0.45) !important;
+  transition: all 0.3s ease;
+}
+
+.dark .gradient-button {
+  box-shadow: 0 8px 25px rgba(156, 163, 175, 0.45) !important;
 }

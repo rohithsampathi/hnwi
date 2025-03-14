@@ -341,16 +341,14 @@ export function PlayBooksPage({
         showBackButton
         onNavigate={onNavigate}
       >
-        <Card className={`w-full ${theme === "dark" ? "bg-[#121212] text-white" : "bg-white text-[#121212]"}`}>
-          <CardHeader>
-            <div className="space-y-1">
-              <Heading2 className="text-primary">Your Strategic Arsenal</Heading2>
-              <Paragraph className="text-sm text-muted-foreground">
-                Access your purchased playbooks and strategic guides
-              </Paragraph>
-            </div>
-          </CardHeader>
-          <CardContent>
+        <div className="w-full">
+          <div className="space-y-2 px-4 py-6">
+            <Heading2 className="text-primary">Your Strategic Arsenal</Heading2>
+            <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
+              Access your purchased playbooks and strategic guides
+            </Paragraph>
+          </div>
+          <div className="px-4">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -385,8 +383,8 @@ export function PlayBooksPage({
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </Layout>
     </>
   )

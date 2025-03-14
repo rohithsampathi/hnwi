@@ -159,8 +159,7 @@ export function SocialHub() {
   }
 
   return (
-    <Card className={`w-full ${colors.background} ${colors.foreground}`}>
-      <CardContent>
+    <div className="w-full">
         <div className="relative">
           {/* Vertical timeline line for medium+ screens */}
           <div className={`hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 ${colors.muted}`} />
@@ -183,33 +182,65 @@ export function SocialHub() {
                 <div className="md:w-1/2 p-4">
                   <Card
                     className={`overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 
-                                ${getPatternClass(index, theme)}`}
+                                ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
                   >
-                    {/* Overlay adjusted for both themes */}
+                    {/* Using Wealth Radar background colors */}
                     <div
-                      className={`backdrop-blur-sm ${
-                        theme === "dark" ? "bg-black/30" : "bg-white/50"
+                      className={`${
+                        theme === "dark" ? "bg-gray-800" : "bg-white"
                       }`}
                     >
                       {/* Ensure text is readable in both themes */}
                       <CardContent className="p-6 relative dark:text-white text-black">
-                        {/* Premium accent overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 opacity-20 pointer-events-none"></div>
+                        {/* Remove gradient overlay to match Wealth Radar style */}
 
                         <div className="relative">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              {/* Use utility function for category color */}
-                              <Badge
-                                className={`mb-2 ${colorClass} text-white`}
-                              >
-                                {event.category}
-                              </Badge>
                               <Heading3
                                 className={`${fonts.heading} mb-1 dark:text-white text-black`}
                               >
                                 {event.name}
                               </Heading3>
+                              
+                              {/* Tags displayed below the title */}
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {event.tags?.map((tag, tagIndex) => {
+                                  // Get a unique color for each tag based on the tag name
+                                  const colorClasses = [
+                                    "bg-amber-100 border-amber-200 text-amber-800",
+                                    "bg-teal-100 border-teal-200 text-teal-800",
+                                    "bg-purple-100 border-purple-200 text-purple-800",
+                                    "bg-blue-100 border-blue-200 text-blue-800",
+                                    "bg-pink-100 border-pink-200 text-pink-800",
+                                    "bg-indigo-100 border-indigo-200 text-indigo-800",
+                                    "bg-rose-100 border-rose-200 text-rose-800",
+                                    "bg-emerald-100 border-emerald-200 text-emerald-800"
+                                  ];
+                                  const colorClass = colorClasses[tagIndex % colorClasses.length];
+                                  
+                                  // In dark mode, keep the same vibrant colors as light mode
+                                  // but with transparency for better contrast
+                                  const darkModeColorClass = colorClass.replace(
+                                    /bg-(\w+)-100 border-(\w+)-200 text-(\w+)-800/,
+                                    "bg-$1-100/20 border-$1-300/30 text-$1-300"
+                                  );
+                                  
+                                  return (
+                                    <Badge
+                                      key={tag}
+                                      variant="outline"
+                                      className={`flex items-center gap-1 
+                                                ${theme === "dark" ? darkModeColorClass : colorClass} 
+                                                hover:opacity-80`}
+                                    >
+                                      <Tag className="w-3 h-3" />
+                                      {tag}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                              
                               <div className="flex items-center gap-2 text-sm dark:text-white/70 text-black/70">
                                 <Clock className="w-4 h-4" />
                                 <span>{formatDateRange(event.start_date, event.end_date)}</span>
@@ -247,20 +278,6 @@ export function SocialHub() {
                                 <Paragraph className="text-sm mb-4 dark:text-white/80 text-black/80">
                                   {event.summary}
                                 </Paragraph>
-                                <div className="flex flex-wrap gap-2">
-                                  {event.tags?.map((tag) => (
-                                    <Badge
-                                      key={tag}
-                                      variant="outline"
-                                      className="flex items-center gap-1 
-                                                dark:bg-white/5 dark:border-white/20 dark:text-white/90
-                                                bg-black/10 border-black/20 text-black/90"
-                                    >
-                                      <Tag className="w-3 h-3" />
-                                      {tag}
-                                    </Badge>
-                                  ))}
-                                </div>
 
                                 {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
                                 {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (
@@ -284,7 +301,7 @@ export function SocialHub() {
                               onClick={() => toggleEventExpansion(event.id)}
                               className={`
                                 dark:bg-white/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10
-                                bg-black/10 border-black/20 text-black hover:bg-black/20
+                                bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200
                               `}
                             >
                               {expandedEvent === event.id ? "Show Less" : "Show More"}
@@ -295,8 +312,12 @@ export function SocialHub() {
                               size="sm"
                               onClick={() => addToCalendar(event)}
                               className={`
-                                ${addedEvents[event.id] ? 'bg-green-600 hover:bg-green-700' : 'dark:bg-white/10 dark:hover:bg-white/20 bg-black/10 hover:bg-black/20'} 
-                                dark:text-white text-black
+                                ${addedEvents[event.id] 
+                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                                  : theme === "dark"
+                                    ? 'bg-white hover:bg-gray-200 text-black border border-neutral-200'
+                                    : 'bg-[#212121] hover:bg-[#121212] text-white'
+                                } 
                               `}
                             >
                               <CalendarPlus className="w-4 h-4 mr-2" />
@@ -335,7 +356,6 @@ export function SocialHub() {
             )
           })}
         </div>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

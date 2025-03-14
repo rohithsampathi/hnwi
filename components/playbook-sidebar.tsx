@@ -39,11 +39,10 @@ const SidebarItem: React.FC<{
   const cleanedContent = cleanSectionContent(section.content)
 
   const description = section.type === "competitive_intelligence" ? "Competitive Intelligence" : cleanedContent
-
   return (
     <Button
       variant={isActive ? "default" : "ghost"}
-      className="w-full justify-start items-start text-left h-auto py-2 px-3"
+      className={`w-full justify-start items-start text-left h-auto py-2 px-3 rounded-3xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.25)] transition-all transform hover:-translate-y-0.5 ${isActive ? "bg-gray-800" : "bg-transparent"} ${isActive && theme === "dark" ? "text-white" : ""}`}
       onClick={onClick}
     >
       <div className="flex items-start">
@@ -59,7 +58,7 @@ export function PlaybookSidebar({ sections, activeSection, onSectionChange }: Pl
 
   return (
     <ScrollArea className="h-[calc(100vh-8rem)]">
-      <div className={`w-full space-y-2 p-4 ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
+      <div className={`w-full space-y-2 p-4 ${theme === "dark" ? "bg-transparent text-white" : "bg-transparent text-[#121212]"}`}>
         {sections.map((section, index) => (
           <SidebarItem
             key={index}

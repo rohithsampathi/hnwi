@@ -18,10 +18,10 @@ export function ParticlesBackground() {
       fpsLimit: 120,
       particles: {
         color: {
-          value: theme === "dark" ? "#42A5F5" : "#1976D2",
+          value: theme === "dark" ? "#9CA3AF" : "#4B5563",
         },
         links: {
-          color: theme === "dark" ? "#42A5F5" : "#1976D2",
+          color: theme === "dark" ? "#9CA3AF" : "#4B5563",
           distance: 150,
           enable: true,
           opacity: 0.5,
@@ -45,11 +45,11 @@ export function ParticlesBackground() {
           value: 80,
         },
         opacity: {
-          value: 0.5,
+          value: 0.7,
           animation: {
             enable: true,
             speed: 1,
-            minimumValue: 0.1,
+            minimumValue: 0.3,
             sync: false,
           },
         },

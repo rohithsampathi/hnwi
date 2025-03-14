@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Layout } from "@/components/layout/layout"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+// import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { PremiumPlaybookCard } from "@/components/premium-playbook-card"
 import { useTheme } from "@/contexts/theme-context"
 import { useOnboarding } from "@/contexts/onboarding-context"
@@ -155,16 +155,16 @@ export function PlayBooksPage({
         showBackButton
         onNavigate={onNavigate}
       >
-        <Card className={`w-full ${theme === "dark" ? "bg-[#121212] text-white" : "bg-white text-[#121212]"}`}>
-          <CardHeader>
-            <div className="space-y-1">
+        <div className={`w-full ${theme === "dark" ? "text-white" : "text-[#121212]"} bg-transparent`}>
+          <div className="p-6">
+            <div className="space-y-1 mb-4">
               <Heading2 className="text-primary">Your Strategic Arsenal</Heading2>
               <Paragraph className="text-sm text-muted-foreground">
                 Access your purchased playbooks and strategic guides
               </Paragraph>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="px-6 pb-6">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -195,8 +195,8 @@ export function PlayBooksPage({
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </Layout>
     </>
   )

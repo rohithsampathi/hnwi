@@ -133,7 +133,7 @@ export function LoginPage({
           <Button
             variant="ghost"
             onClick={onBack}
-            className={`text-sm ${
+            className={`text-sm rounded-full shadow-[0_4px_8px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 ${
               theme === "dark"
                 ? "text-[#BBDEFB] hover:text-white hover:bg-[#1A1A1A]"
                 : "text-[#424242] hover:text-[#212121] hover:bg-[#E0E0E0]"
@@ -149,14 +149,14 @@ export function LoginPage({
             animate={{ opacity: 1, y: 0 }}
             className={`w-full max-w-md ${
               theme === "dark"
-                ? "bg-[#121212]/80 shadow-[0_0_15px_rgba(66,165,245,0.3)]"
-                : "bg-[#F5F5F5]/80 shadow-[0_0_15px_rgba(179,229,252,0.3)]"
-            } backdrop-blur-sm rounded-xl p-8`}
+                ? "bg-[#121212]/80 shadow-[0_15px_35px_rgba(156,163,175,0.3)]"
+                : "bg-[#F5F5F5]/80 shadow-[0_15px_35px_rgba(75,85,99,0.3)]"
+            } backdrop-blur-sm rounded-3xl p-8`}
             style={{
               boxShadow:
                 theme === "dark"
-                  ? "0 0 15px rgba(66,165,245,0.3), 0 0 30px rgba(66,165,245,0.2), 0 0 45px rgba(66,165,245,0.1)"
-                  : "0 0 15px rgba(25,118,210,0.3), 0 0 30px rgba(25,118,210,0.2), 0 0 45px rgba(25,118,210,0.1)",
+                  ? "0 15px 35px rgba(156,163,175,0.3), 0 8px 20px rgba(156,163,175,0.2), 0 4px 10px rgba(156,163,175,0.1)"
+                  : "0 15px 35px rgba(75,85,99,0.3), 0 8px 20px rgba(75,85,99,0.2), 0 4px 10px rgba(75,85,99,0.1)",
             }}
           >
             <Heading2
@@ -174,11 +174,11 @@ export function LoginPage({
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full p-3 rounded-md font-body ${
+                  className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
                     theme === "dark"
                       ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                       : "bg-white text-[#212121] border-[#DDD]"
-                  } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all`}
+                  } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
                   required
                 />
               </div>
@@ -188,11 +188,11 @@ export function LoginPage({
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full p-3 rounded-md font-body ${
+                  className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
                     theme === "dark"
                       ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                       : "bg-white text-[#212121] border-[#DDD]"
-                  } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all pr-10`}
+                  } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all pr-10 focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
                   required
                 />
                 <button
@@ -210,7 +210,7 @@ export function LoginPage({
 
               {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
-              <Button type="submit" className="gradient-button w-full h-12 text-lg rounded-full" disabled={isLoading}>
+              <Button type="submit" className="gradient-button w-full h-12 text-lg rounded-full shadow-[0_8px_20px_rgba(75,85,99,0.5)] hover:shadow-[0_12px_25px_rgba(75,85,99,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

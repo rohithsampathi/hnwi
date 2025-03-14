@@ -131,7 +131,15 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   // If loading
   if (loading) {
     return (
-      <Layout title="Privé Exchange" showBackButton onNavigate={handleNavigation}>
+      <Layout 
+        title={
+          <div className="flex items-center gap-2">
+            <span>Privé Exchange</span>
+            <Badge className="bg-primary">Beta</Badge>
+          </div>
+        } 
+        showBackButton 
+        onNavigate={handleNavigation}>
         <div className="flex items-center justify-center h-[50vh]">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -141,7 +149,15 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
 
   if (error) {
     return (
-      <Layout title="Privé Exchange" showBackButton onNavigate={handleNavigation}>
+      <Layout 
+        title={
+          <div className="flex items-center gap-2">
+            <span>Privé Exchange</span>
+            <Badge className="bg-primary">Beta</Badge>
+          </div>
+        } 
+        showBackButton 
+        onNavigate={handleNavigation}>
         <div className="text-center p-8">
           <h3 className="text-xl font-medium text-red-500 mb-2">Error Loading Data</h3>
           <p className="text-muted-foreground">{error}</p>
@@ -157,7 +173,15 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const regionNames = Object.keys(regions)
 
   return (
-    <Layout title="Privé Exchange" showBackButton onNavigate={handleNavigation}>
+    <Layout 
+      title={
+        <div className="flex items-center gap-2">
+          <span>Privé Exchange</span>
+          <Badge className="bg-primary">Beta</Badge>
+        </div>
+      } 
+      showBackButton 
+      onNavigate={handleNavigation}>
       <div className="flex flex-col h-full">
         <div className="flex-grow">
           {/* Region selection if none selected */}

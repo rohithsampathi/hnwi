@@ -88,22 +88,22 @@ export const categoryToTailwind: Record<string, string> = {
   Jewelry: "bg-purple-600",
   Collectibles: "bg-amber-600",
   Art: "bg-teal-600",
-  "Fine Art": "bg-teal-700",
+  "Fine Art": "bg-emerald-600",
   "Private Art": "bg-teal-600",
   Lifestyle: "bg-cyan-600",
   Fashion: "bg-pink-600",
-  "Luxury Fashion": "bg-pink-700",
+  "Luxury Fashion": "bg-rose-600",
   Watches: "bg-blue-600",
-  Antiques: "bg-yellow-800",
+  Antiques: "bg-yellow-600",
   "Real Estate": "bg-green-600", 
   "Yacht": "bg-blue-600",
-  "Luxury Yacht": "bg-blue-600",
+  "Luxury Yacht": "bg-indigo-600",
   social: "bg-purple-600",
   work: "bg-blue-600",
   personal: "bg-green-600",
-  entertainment: "bg-red-500",
-  wellness: "bg-teal-500",
-  education: "bg-amber-500",
+  entertainment: "bg-red-600",
+  wellness: "bg-teal-600",
+  education: "bg-amber-600",
 }
 
 // Map of categories to dark Tailwind classes
@@ -131,12 +131,76 @@ export const categoryToDarkTailwind: Record<string, string> = {
 
 // Function to get Tailwind color classes for categories
 export function getCategoryColorClass(category: string): string {
-  return getCategoryColorClassWithFallback(category, categoryToTailwind, "bg-gray-600");
+  // Special handling for Real Estate category
+  if (category && category.toLowerCase().includes("real estate")) {
+    return "bg-green-600";
+  }
+  
+  // Generate a color based on the category string if not found in the map
+  return getCategoryColorClassWithFallback(
+    category, 
+    categoryToTailwind, 
+    getCategoryFallbackColor(category)
+  );
 }
 
 // Function to get Tailwind dark mode color classes for categories
 export function getCategoryDarkColorClass(category: string): string {
-  return getCategoryColorClassWithFallback(category, categoryToDarkTailwind, "bg-gray-700");
+  // Special handling for Real Estate category
+  if (category && category.toLowerCase().includes("real estate")) {
+    return "bg-green-700";
+  }
+  
+  // Generate a color based on the category string if not found in the map
+  return getCategoryColorClassWithFallback(
+    category, 
+    categoryToDarkTailwind, 
+    getDarkCategoryFallbackColor(category)
+  );
+}
+
+// Generate a fallback color based on the category string
+function getCategoryFallbackColor(category: string): string {
+  if (!category) return "bg-purple-600"; // Default color
+  
+  // Map the first character of the category to a color
+  const firstChar = category.toLowerCase().charCodeAt(0) % 10;
+  const colorMap = [
+    "bg-blue-600",      // 0
+    "bg-indigo-600",    // 1
+    "bg-purple-600",    // 2
+    "bg-pink-600",      // 3
+    "bg-rose-600",      // 4
+    "bg-red-600",       // 5
+    "bg-orange-600",    // 6
+    "bg-amber-600",     // 7
+    "bg-yellow-600",    // 8
+    "bg-teal-600"       // 9
+  ];
+  
+  return colorMap[firstChar];
+}
+
+// Generate a dark fallback color based on the category string
+function getDarkCategoryFallbackColor(category: string): string {
+  if (!category) return "bg-purple-700"; // Default color
+  
+  // Map the first character of the category to a color
+  const firstChar = category.toLowerCase().charCodeAt(0) % 10;
+  const colorMap = [
+    "bg-blue-700",      // 0
+    "bg-indigo-700",    // 1
+    "bg-purple-700",    // 2
+    "bg-pink-700",      // 3
+    "bg-rose-700",      // 4
+    "bg-red-700",       // 5
+    "bg-orange-700",    // 6
+    "bg-amber-700",     // 7
+    "bg-yellow-700",    // 8
+    "bg-teal-700"       // 9
+  ];
+  
+  return colorMap[firstChar];
 }
 
 // Smart category matching function that handles case insensitivity and partial matches

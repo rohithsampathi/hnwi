@@ -5,7 +5,9 @@ import type React from "react"
 import { useState, useCallback, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/config/api"
@@ -180,27 +182,23 @@ export function TacticsLab() {
               {analysisResult.supporting_data.vector_results.length} secondary sources. All secondary sources used in
               the analysis are listed below.
             </Paragraph>
-            <Card className={`mt-2 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-              <CardHeader>
-                <CardTitle className="text-xl font-bold font-heading text-primary">Sources</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="list-decimal list-inside space-y-2">
-                  {analysisResult.supporting_data.vector_results.map((source, index) => (
-                    <li key={index} className="text-sm">
-                      <a
-                        href={source.metadata.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {source.metadata.title}
-                      </a>
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
+            <div className="mt-6 mb-4">
+              <h3 className="text-xl font-bold font-heading text-primary mb-4">Sources</h3>
+              <ol className="list-decimal list-inside space-y-2">
+                {analysisResult.supporting_data.vector_results.map((source, index) => (
+                  <li key={index} className="text-sm">
+                    <a
+                      href={source.metadata.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      {source.metadata.title}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </>
         )}
       </>
@@ -208,27 +206,30 @@ export function TacticsLab() {
   }
 
   return (
-    <Card className={`w-full ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-      <CardHeader>
-        <Heading2 className="text-3xl font-bold font-heading text-primary">Tactics Lab</Heading2>
-        <Paragraph className="text-sm text-muted-foreground mt-2 leading-tight font-body">
+    <div className="w-full p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <Heading2 className="text-3xl font-bold font-heading text-primary">Tactics Lab</Heading2>
+          <Badge className="bg-primary">Beta</Badge>
+        </div>
+        <Paragraph className="text-sm text-muted-foreground mt-2 mb-4 leading-tight font-body">
           Your AI-powered strategy assistant
         </Paragraph>
-      </CardHeader>
-      <CardContent className="font-body">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
-            <Input
-              placeholder="What strategy are we solving today?"
+      </div>
+      <div className="font-body w-full">
+        <form onSubmit={handleSubmit} className="mb-12">
+          <div className="flex flex-col md:flex-row items-end space-y-4 md:space-y-0 md:space-x-4 max-w-5xl ml-0">
+            <Textarea
+              placeholder="What would you like to analyze today?"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className={`flex-grow ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#121212]"}`}
+              className={`flex-grow ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold placeholder:font-semibold text-lg p-4 border-2 border-primary/20 focus:border-primary/70 shadow-lg min-h-[60px] resize-y`}
             />
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger
-                className={`w-full md:w-[180px] ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#121212]"}`}
+                className={`w-full md:w-[180px] ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold h-[36px]`}
               >
-                <SelectValue placeholder="Select time range" />
+                <SelectValue placeholder="Select time period" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1w">Last 7 days</SelectItem>
@@ -237,10 +238,10 @@ export function TacticsLab() {
                 <SelectItem value="1y">Last 1 year</SelectItem>
               </SelectContent>
             </Select>
-            <Button type="submit" disabled={isAnalyzing} className="w-full md:w-auto">
+            <Button type="submit" disabled={isAnalyzing} className="w-full md:w-auto h-[36px] px-6 text-sm font-bold">
               {isAnalyzing ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   Analyzing...
                 </>
               ) : (
@@ -249,56 +250,60 @@ export function TacticsLab() {
             </Button>
           </div>
         </form>
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-8 mt-6 text-sm opacity-75">
         {isFirstQuestion && (
-          <Card className="mt-6 mb-4">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold font-heading">Latest Update v1.2</CardTitle>
-              <CardDescription>Last Updated: January 22, 2024</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Heading3 className="font-semibold font-heading mb-2">Improvements:</Heading3>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Knowledge base now has multiple query capabilities</li>
-                <li>Mixture of Experts has been successfully updated with 5 Engines working in sync</li>
-                <li>Engine now scores over 87% confidence for queries related to Real Estate and Financial Services</li>
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-        {isFirstQuestion && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold font-heading">How to Use the Strategy Engine</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Paragraph className="mb-4">
-                The Strategy Engine is designed to assist you with complex strategic questions. Here are some examples
-                of questions you can ask:
-              </Paragraph>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>
-                  "What are the emerging trends in luxury real estate for high-net-worth individuals in major global
-                  cities?"
-                </li>
-                <li>
-                  "How might changes in global tax regulations impact wealth management strategies for international
-                  HNWIs?"
-                </li>
-                <li>
-                  "What are the potential implications of increasing ESG focus on investment strategies for
-                  ultra-high-net-worth families?"
-                </li>
-                <li>
-                  "How can wealth managers leverage AI and machine learning to provide more personalized services to
-                  HNWI clients?"
-                </li>
-              </ul>
-              <Paragraph className="mt-4">
-                Feel free to ask about market trends, investment strategies, regulatory impacts, or any other strategic
-                concerns related to high-net-worth individuals and wealth management.
-              </Paragraph>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            <div className="mb-6">
+              <Heading3 className="text-xl font-bold font-heading mb-3 text-primary/80">Latest Update v1.2</Heading3>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-xs text-muted-foreground">Last Updated: January 22, 2024</p>
+                <Badge className="bg-primary">New</Badge>
+              </div>
+              <div className="border-l border-gray-200 dark:border-gray-700 pl-4 py-3 my-4">
+                <p className="text-sm font-medium mb-2">Improvements:</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  <li>Knowledge base now has multiple query capabilities</li>
+                  <li>Mixture of Experts has been successfully updated with 5 Engines working in sync</li>
+                  <li>Engine now scores over 87% confidence for queries related to Real Estate and Financial Services</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <Heading3 className="text-lg font-bold font-heading mb-3 text-primary/80">How to Use the Tactics Lab</Heading3>
+              <div className="border-l border-primary/40 pl-3 mb-4">
+                <p className="text-sm mb-2">
+                  The Tactics Lab is designed to assist you with complex strategic questions. Here are some examples:
+                </p>
+              </div>
+              <div className="bg-gray-50/50 dark:bg-gray-800/20 p-3 rounded-md">
+                <ul className="list-disc pl-5 space-y-2 text-xs">
+                  <li>
+                    "What are the emerging trends in luxury real estate for high-net-worth individuals in major global
+                    cities?"
+                  </li>
+                  <li>
+                    "How might changes in global tax regulations impact wealth management strategies for international
+                    HNWIs?"
+                  </li>
+                  <li>
+                    "What are the potential implications of increasing ESG focus on investment strategies for
+                    ultra-high-net-worth families?"
+                  </li>
+                  <li>
+                    "How can wealth managers leverage AI and machine learning to provide more personalized services to
+                    HNWI clients?"
+                  </li>
+                </ul>
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-3">
+                <p className="text-xs italic text-muted-foreground">
+                  Feel free to ask the Tactics Lab about market trends, investment strategies, regulatory impacts, or any other strategic
+                  concerns related to high-net-worth individuals and wealth management.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
         <AnimatePresence mode="wait">
           {isAnalyzing && (
@@ -316,7 +321,7 @@ export function TacticsLab() {
                 animate={{ opacity: showThinking ? 1 : 0 }}
                 transition={{ duration: 0.3 }}
               >
-                Analyzing... This may take up to 3 minutes for complex queries.
+                Tactics Lab analyzing... This may take up to 3 minutes for complex queries.
               </motion.p>
             </motion.div>
           )}
@@ -357,8 +362,9 @@ export function TacticsLab() {
             </motion.div>
           )}
         </AnimatePresence>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   )
 }
 

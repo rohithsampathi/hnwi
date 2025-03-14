@@ -356,13 +356,13 @@ export function DevelopmentStream({
           {developments.map((dev) => (
             <Card
               key={dev.id}
-              className="mb-2 overflow-hidden border-none bg-white dark:bg-gray-900 transition-all duration-300 w-full md:w-[calc(100%+2rem)] md:-ml-4 shadow-sm"
+              className="mb-2 overflow-hidden border-none bg-white dark:bg-gray-800 transition-all duration-300 w-full md:w-[calc(100%+2rem)] md:-ml-4 shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
             >
               <CardContent className="p-3 md:p-4">
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-bold font-heading text-primary dark:text-white flex-grow pr-4">{dev.title}</h3>
                   <Button 
-                    className={`shadow-md hover:shadow-lg transition-all border ${theme === "dark" ? "bg-white hover:bg-gray-100 dark:text-gray-800 border-gray-200" : "bg-primary hover:bg-primary/90 text-white border-primary/30"}`}
+                    className={`transition-all border transform hover:-translate-y-1 active:translate-y-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.4)] rounded-full ${theme === "dark" ? "bg-white hover:bg-gray-100 dark:text-gray-800 border-gray-200" : "bg-primary hover:bg-primary/90 text-white border-primary/30"}`}
                     size="sm" 
                     onClick={() => toggleCardExpansion(dev.id)}
                   >
@@ -386,8 +386,11 @@ export function DevelopmentStream({
                     style={{
                       backgroundColor: getIndustryColor(dev.industry),
                       color: "white",
-                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
-                      padding: "0.35rem 0.7rem"
+                      boxShadow: "0 8px 16px rgba(0, 0, 0, 0.35)",
+                      padding: "0.35rem 0.7rem",
+                      transform: "translateY(0)",
+                      transition: "all 0.2s ease",
+                      borderRadius: "9999px"
                     }}
                   >
                     {dev.industry || "Unknown Industry"}
@@ -396,11 +399,14 @@ export function DevelopmentStream({
                     variant="outline"
                     className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                     style={{
-                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                      boxShadow: "0 8px 16px rgba(0, 0, 0, 0.25)",
                       padding: "0.35rem 0.7rem",
                       backgroundColor: "white",
                       color: "#333",
-                      border: "1px solid rgba(0, 0, 0, 0.1)"
+                      border: "1px solid rgba(0, 0, 0, 0.1)",
+                      transform: "translateY(0)",
+                      transition: "all 0.2s ease",
+                      borderRadius: "9999px"
                     }}
                   >
                     {dev.product || "Unknown Product"}
@@ -413,7 +419,7 @@ export function DevelopmentStream({
                       href={dev.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center bg-primary/10 hover:bg-primary/20 text-primary dark:text-primary-foreground dark:bg-primary/30 dark:hover:bg-primary/40 px-3 py-1 rounded-md shadow-sm hover:shadow-md transition-all"
+                      className="flex items-center bg-primary/10 hover:bg-primary/20 text-primary dark:text-primary-foreground dark:bg-primary/30 dark:hover:bg-primary/40 px-3 py-1 rounded-3xl shadow-[0_3px_8px_rgba(0,0,0,0.12)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.2)] transition-all transform hover:-translate-y-0.5 border border-primary/10 dark:border-primary/30"
                     >
                       <span className="font-medium">Source</span> <ExternalLink className="ml-1 h-4 w-4" />
                     </a>

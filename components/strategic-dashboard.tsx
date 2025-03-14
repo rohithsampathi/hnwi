@@ -57,31 +57,21 @@ export function StrategicDashboard({ title, summary, sections, score, isLoading 
 
   return (
     <div className="grid gap-6 mt-8">
-      <MotionCard
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}
-      >
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="mt-4">
+        <h2 className="text-2xl font-bold text-primary mb-4">{title}</h2>
+        <div className="mb-6">
           {isLoading ? <Skeleton className="w-full h-24" /> : <p className="text-lg leading-relaxed">{summary}</p>}
-        </CardContent>
-      </MotionCard>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {sections.map((section, index) => (
-          <MotionCard
+          <div
             key={section.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-            className={`col-span-1 md:col-span-2 ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}
+            className="col-span-1 md:col-span-2 mb-6"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-xl font-bold text-primary">{section.title}</CardTitle>
+            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <h3 className="text-xl font-bold text-primary">{section.title}</h3>
               <Button variant="ghost" size="sm" onClick={() => toggleSection(section.title)}>
                 {expandedSections[section.title] ? (
                   <ChevronUp className="h-4 w-4" />
@@ -89,8 +79,8 @@ export function StrategicDashboard({ title, summary, sections, score, isLoading 
                   <ChevronDown className="h-4 w-4" />
                 )}
               </Button>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="mt-2">
               <AnimatePresence>
                 {expandedSections[section.title] && (
                   <motion.div
@@ -106,21 +96,14 @@ export function StrategicDashboard({ title, summary, sections, score, isLoading 
               {!expandedSections[section.title] && (
                 <p className="text-sm text-muted-foreground">Click to expand and view details.</p>
               )}
-            </CardContent>
-          </MotionCard>
+            </div>
+          </div>
         ))}
       </div>
 
-      <MotionCard
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className={theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}
-      >
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">Analysis Score</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="mt-6">
+        <h2 className="text-2xl font-bold text-primary mb-4">Analysis Score</h2>
+        <div>
           <div className="flex items-center justify-center">
             <div className="relative w-48 h-48">
               <svg className="w-full h-full" viewBox="0 0 100 100">
@@ -172,8 +155,8 @@ export function StrategicDashboard({ title, summary, sections, score, isLoading 
           >
             {isLoading ? <Skeleton className="w-32 h-6 mx-auto" /> : score.label}
           </motion.p>
-        </CardContent>
-      </MotionCard>
+        </div>
+      </div>
     </div>
   )
 }

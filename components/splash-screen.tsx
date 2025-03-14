@@ -69,17 +69,18 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               />
             </motion.div>
 
-            <Heading1 className={`text-3xl sm:text-5xl mb-4 ${theme === "dark" ? "text-white" : "text-black"}`}>
-              HNWI CHRONICLES
+            <Heading1 className={`text-3xl sm:text-5xl mb-4`}>
+              <span style={{ color: theme === "dark" ? "#e6d5c1" : "#5b4d4a" }}>HNWI</span>{" "}
+              <span style={{ color: theme === "dark" ? "#ffffff" : "#121212" }}>CHRONICLES</span>
             </Heading1>
 
-            <Lead className="mb-8">Your Gateway to Global Wealth Intelligence</Lead>
+            <Lead className="mb-8">Your Private HNWI Intelligence Ally</Lead>
 
             <div className="flex space-x-4 justify-center">
               {/* Login button */}
               <Button
                 onClick={onLogin}
-                className="gradient-button w-[200px] h-[50px] text-lg rounded-full shadow-[0_0_15px_rgba(66,165,245,0.5)] hover:shadow-[0_0_20px_rgba(66,165,245,0.7)] transition-shadow duration-300"
+                className="gradient-button w-[200px] h-[50px] text-lg rounded-full shadow-[0_8px_20px_rgba(156,163,175,0.5)] hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
               >
                 Log In
               </Button>
@@ -87,7 +88,7 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               {/* Subscribe button with gold gradient */}
               <Link href="https://www.hnwichronicles.com/hnwi-world#pricing" target="_blank" rel="noopener noreferrer">
                 <Button
-                  className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-600 hover:to-amber-700 text-black font-bold shadow-[0_0_15px_rgba(251,191,36,0.5)] hover:shadow-[0_0_20px_rgba(251,191,36,0.7)] transition-shadow duration-300"
+                  className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-600 hover:to-amber-700 text-black font-bold shadow-[0_8px_20px_rgba(251,191,36,0.5)] hover:shadow-[0_12px_25px_rgba(251,191,36,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5 border border-amber-300/30"
                 >
                   Subscribe
                 </Button>

@@ -38,12 +38,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = window.document.documentElement
     root.classList.remove("light", "dark")
     root.classList.add(theme)
+  }, [theme])
+  
+  // Initialize theme from localStorage or system preference once on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme
+    if (savedTheme) {
+      setTheme(savedTheme)
+    } else {
+      // Only use system preference if no saved theme
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+      setTheme(mediaQuery.matches ? "dark" : "light")
+    }
+  }, [])
 
-    // Check system preference
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-    const handleChange = () => setTheme(mediaQuery.matches ? "dark" : "light")
-    mediaQuery.addListener(handleChange)
-    return () => mediaQuery.removeListener(handleChange)
+  // We've moved this logic to the initial mount effect above
+
+  // When theme changes, save to localStorage
+  useEffect(() => {
+    localStorage.setItem('theme', theme)
   }, [theme])
 
   const toggleTheme = () => {

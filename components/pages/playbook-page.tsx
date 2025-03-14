@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Layout } from "@/components/layout/layout"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
@@ -162,8 +161,8 @@ export function PlaybookPage({
   if (!report && !isLoading) {
     return (
       <Layout title="Report Not Found" showBackButton onNavigate={() => onNavigate("my-playbooks")}>
-        <Card className={`w-full ${theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#121212]"}`}>
-          <CardContent>
+        <div className={`w-full ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
+          <div className="p-6">
             <div className="text-center py-8">
               <Paragraph className="text-red-500">The requested report could not be found.</Paragraph>
               <Button variant="outline" onClick={() => onNavigate("my-playbooks")} className="mt-4">
@@ -171,8 +170,8 @@ export function PlaybookPage({
                 Return to Reports
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </Layout>
     )
   }
@@ -180,8 +179,15 @@ export function PlaybookPage({
   return (
     <Layout
       title={
-        <div className="flex items-center space-x-2">
-          <Heading2>{report?.metadata.title || "Loading Report..."}</Heading2>
+        <div>
+          <div className="flex items-center space-x-2">
+            <Heading2>{report?.metadata.title || "Loading Report..."}</Heading2>
+          </div>
+          {report?.metadata.industry && (
+            <Paragraph className="text-sm text-muted-foreground mt-1">
+              Industry: {report.metadata.industry}
+            </Paragraph>
+          )}
         </div>
       }
       showBackButton
@@ -233,26 +239,21 @@ export function PlaybookPage({
               className="flex flex-col md:flex-row gap-6"
             >
               <div className="md:w-1/4 md:max-w-xs">
-                <Card className={`h-full ${theme === "dark" ? "bg-[#1E1E1E] text-white" : "bg-white text-[#121212]"}`}>
-                  <CardHeader>
-                    <Heading3>{report.metadata.title}</Heading3>
-                    {report.metadata.industry && (
-                      <Paragraph className="text-xs text-muted-foreground">
-                        Industry: {report.metadata.industry}
-                      </Paragraph>
-                    )}
-                  </CardHeader>
+                <div className="h-full">
+                  <div className="mb-2">
+                    {/* Header moved to main layout title */}
+                  </div>
                   <PlaybookSidebar
                     sections={report.structure}
                     activeSection={activeSection}
                     onSectionChange={setActiveSection}
                   />
-                </Card>
+                </div>
               </div>
 
               <div className="flex-grow md:w-3/4">
-                <Card className={`h-full ${theme === "dark" ? "bg-[#1E1E1E] text-white" : "bg-white text-[#121212]"}`}>
-                  <CardContent>
+                <div className="h-full">
+                  <div>
                     {report.structure.length === 0 ? (
                       <Paragraph>No sections found in this report.</Paragraph>
                     ) : (
@@ -261,8 +262,8 @@ export function PlaybookPage({
                         industry={report.metadata.industry}
                       />
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

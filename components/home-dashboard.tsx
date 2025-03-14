@@ -203,18 +203,19 @@ export function HomeDashboard({
       name: "Privé Exchange",
       icon: Crown,
       route: "prive-exchange",
-      color: theme === "dark" ? "#4a3e5b" : "#e6c1d5",
+      color: theme === "dark" ? "#4a3e5b" : "#d8d0e8",
       description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
       iconAnimation: pulseAnimation,
-      showLive: true,
+      beta: true,
     },
     {
       name: "Social Hub",
       icon: Users,
       route: "social-hub",
-      color: theme === "dark" ? "#4a3e5b" : "#e6c1d5",
+      color: theme === "dark" ? "#4a3e5b" : "#d8d0e8",
       description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
       iconAnimation: pulseAnimation,
+      beta: true,
     },
   ]
 
@@ -285,7 +286,7 @@ export function HomeDashboard({
         image="https://hnwichronicles.com/dashboard-og-image.jpg"
         url="https://hnwichronicles.com/dashboard"
       />
-      <div className="space-y-6 md:space-y-8">
+      <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
         <Card className={`overflow-hidden ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"} font-body`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
@@ -328,13 +329,13 @@ export function HomeDashboard({
                               delay: offset * 0.1,
                               ease: [0.16, 1, 0.3, 1]
                             }}
-                            className="p-3 md:p-4 rounded-md cursor-pointer transition-all duration-300 overflow-hidden h-full"
+                            className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden h-full"
                             style={{
                               background: theme === "dark" ? 
                                 `linear-gradient(135deg, #4a3e5b ${offset * 8}%, #3d3250)` : 
-                                `linear-gradient(135deg, #e6c1d5 ${offset * 8}%, #d9b2c9)`,
+                                `linear-gradient(135deg, #d8d0e8 ${offset * 8}%, #c6b8e0)`,
                               backdropFilter: "blur(12px)",
-                              color: theme === "dark" ? "white" : "black"
+                              color: theme === "dark" ? "white" : "#2c2144"
                             }}
                             onClick={(e) => handleNavigate(e, "strategy-vault", developments[index].id)}
                           >
@@ -347,7 +348,7 @@ export function HomeDashboard({
                               </p>
                               <div className="flex justify-between items-end mt-auto">
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="bg-primary/80 text-primary-foreground text-xs">
+                                  <Badge variant="secondary" className="bg-primary/80 text-primary-foreground text-xs shadow-[0_8px_16px_rgba(0,0,0,0.3)] rounded-full transform hover:-translate-y-0.5 transition-all hover:shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
                                     {developments[index].industry}
                                   </Badge>
                                   <div className="text-xs md:text-sm font-medium whitespace-nowrap">
@@ -385,7 +386,7 @@ export function HomeDashboard({
                   The Foundry
                 </Heading2>
               </div>
-              <CardDescription className="font-body tracking-wide">Where Winning Strategies Are Forged</CardDescription>
+              <CardDescription className="font-body tracking-wide text-xl font-normal">Where Winning Strategies Are Forged</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -398,7 +399,7 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
@@ -406,8 +407,15 @@ export function HomeDashboard({
                     >
                       <div className="flex flex-col items-start w-full">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
-                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
-                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                          {item.beta && (
+                            <Badge variant="secondary" className="ml-1 badge-beta">
+                              Beta
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
                       </div>
@@ -434,7 +442,7 @@ export function HomeDashboard({
                 Crown World
               </Heading2>
             </div>
-            <CardDescription className="font-body tracking-wide">Exclusive opportunities for the elite</CardDescription>
+            <CardDescription className="font-body tracking-wide text-xl font-normal">Exclusive opportunities for the elite</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -447,7 +455,7 @@ export function HomeDashboard({
                 >
                   <Button
                     onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                     style={{
                       background: item.color,
                       color: theme === "dark" ? "white" : "black",
@@ -455,8 +463,15 @@ export function HomeDashboard({
                   >
                     <div className="flex flex-col items-start w-full">
                       <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
-                      <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
-                      <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        {item.beta && (
+                          <Badge variant="secondary" className="ml-1 badge-beta">
+                            Beta
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
                         {typeof item.description === "string" ? item.description : item.description}
                       </div>
                       {item.showLive && (
@@ -488,7 +503,7 @@ export function HomeDashboard({
                   Founder's Desk
                 </Heading2>
               </div>
-              <CardDescription className="font-body tracking-wide">Your personal command center</CardDescription>
+              <CardDescription className="font-body tracking-wide text-xl font-normal">Your personal command center</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -501,7 +516,7 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
@@ -510,7 +525,7 @@ export function HomeDashboard({
                       <div className="flex flex-col items-start w-full">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
                         <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
-                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden">
+                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
                           {item.description}
                         </div>
                       </div>
