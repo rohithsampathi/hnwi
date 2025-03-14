@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/config/api"
 import { motion, AnimatePresence } from "framer-motion"
-import { Loader2 } from "lucide-react"
+import { Loader2, Lightbulb } from "lucide-react"
 import { StrategicDashboard } from "./strategic-dashboard"
 import { KeyInsights } from "./key-insights"
 import type { StrategicAnalysisResponse } from "@/types/strategic-analysis"
@@ -225,12 +225,12 @@ export function TacticsLab() {
     <div className="w-full p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <h1 className="text-headline text-primary">Tactics Lab</h1>
+          <Heading2 className="text-primary">Tactics Lab</Heading2>
           <Badge className="bg-primary">Beta</Badge>
         </div>
-        <p className="text-body-large text-muted-foreground mt-2 mb-4">
+        <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
           Your AI-powered strategy assistant
-        </p>
+        </Paragraph>
       </div>
       <div className="font-body w-full">
         <form onSubmit={handleSubmit} className="mb-12">
@@ -272,45 +272,71 @@ export function TacticsLab() {
         {isFirstQuestion && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
             <div className="mb-6">
-              <h3 className="text-subtitle mb-3 text-primary/80">Latest Update v1.2</h3>
+              <h3 className="text-subtitle mb-3 text-primary/80"><strong>Current Version:</strong> v1.5</h3>
               <div className="flex justify-between items-center mb-3">
-                <p className="text-caption">Last Updated: January 22, 2024</p>
+                <p className="text-caption"><strong>Last Updated:</strong> March 14, 2025</p>
                 <Badge className="bg-primary">New</Badge>
               </div>
               <div className="border-l border-gray-200 dark:border-gray-700 pl-4 py-3 my-4">
-                <p className="text-label mb-2">Improvements:</p>
-                <ul className="list-disc pl-5 space-y-1 text-body-small">
-                  <li>Knowledge base now has multiple query capabilities</li>
-                  <li>Mixture of Experts has been successfully updated with 5 Engines working in sync</li>
-                  <li>Engine now scores over 87% confidence for queries related to Real Estate and Financial Services</li>
+                <p className="text-label mb-2 font-bold">Improvements:</p>
+                <ul className="pl-5 space-y-1 text-body-small">
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Knowledge base now supports multi-industry query capabilities</span>
+                </li>  
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Mixture of Experts upgraded—7 Agentic Engines now work in sync</span>
+                </li>  
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Agentic AIs now leverage Claude 3.7, OpenAI GPT-4.5, and DeepSeek R1 for precision</span>
+                </li>  
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Engine now delivers over 90% confidence in Real Estate & Financial Services intelligence</span>
+                </li>  
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Hidden Insights are now enhanced with First-hand intelligence from top industry experts</span>
+                </li>  
+                <li className="flex items-start">
+                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                  <span>Tactics Strategies now powered by Deep Research LLMs for real-world execution</span>
+                </li>  
+
                 </ul>
               </div>
             </div>
             
             <div className="mb-6">
-              <h3 className="text-subtitle mb-3 text-primary/80">How to Use the Tactics Lab</h3>
+              <h3 className="text-subtitle mb-3 text-primary/80 font-bold">How to Use the Tactics Lab</h3>
               <div className="border-l border-primary/40 pl-3 mb-4">
                 <p className="text-body-small mb-2">
                   The Tactics Lab is designed to assist you with complex strategic questions. Here are some examples:
                 </p>
               </div>
-              <div className="bg-gray-50/50 dark:bg-gray-800/20 p-3 rounded-md">
-                <ul className="list-disc pl-5 space-y-2 text-caption">
-                  <li>
-                    "What are the emerging trends in luxury real estate for high-net-worth individuals in major global
-                    cities?"
+              <div className="">
+                <ul className="pl-5 space-y-2 text-caption">
+                  <li className="flex items-start">
+                    <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                    <span>"What are the emerging trends in luxury real estate for high-net-worth individuals in major global
+                    cities?"</span>
                   </li>
-                  <li>
-                    "How might changes in global tax regulations impact wealth management strategies for international
-                    HNWIs?"
+                  <li className="flex items-start">
+                    <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                    <span>"How might changes in global tax regulations impact wealth management strategies for international
+                    HNWIs?"</span>
                   </li>
-                  <li>
-                    "What are the potential implications of increasing ESG focus on investment strategies for
-                    ultra-high-net-worth families?"
+                  <li className="flex items-start">
+                    <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                    <span>"What are the potential implications of increasing ESG focus on investment strategies for
+                    ultra-high-net-worth families?"</span>
                   </li>
-                  <li>
-                    "How can wealth managers leverage AI and machine learning to provide more personalized services to
-                    HNWI clients?"
+                  <li className="flex items-start">
+                    <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                    <span>"How can wealth managers leverage AI and machine learning to provide more personalized services to
+                    HNWI clients?"</span>
                   </li>
                 </ul>
               </div>
