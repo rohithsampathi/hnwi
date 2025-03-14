@@ -354,10 +354,11 @@ export function HomeDashboard({
                                   <Badge variant="secondary" className="bg-primary/80 text-primary-foreground text-xs shadow-[0_8px_16px_rgba(0,0,0,0.3)] rounded-full transform hover:-translate-y-0.5 transition-all hover:shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
                                     {developments[index].industry}
                                   </Badge>
-                                  <div className="text-xs md:text-sm font-medium whitespace-nowrap">
+                                  <div className="text-xs md:text-sm font-bold whitespace-nowrap bg-black/10 dark:bg-white/10 px-2 py-0.5 rounded-md inline-block">
                                     {new Date(developments[index].date).toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric"
+                                      month: "long",
+                                      day: "numeric",
+                                      year: "numeric"
                                     })}
                                   </div>
                                 </div>
