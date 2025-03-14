@@ -38,7 +38,11 @@ export function BusinessModeBanner() {
             animation: "shimmer 2s linear infinite",
           }}
         >
-          <Zap className={`mr-2 h-5 w-5 ${isBusinessMode ? "text-amber-200" : "text-blue-200"}`} />
+          <Zap className={`mr-2 h-5 w-5 ${
+            isBusinessMode 
+              ? theme === "dark" ? "text-amber-200" : "text-gray-900" 
+              : "text-white"
+          }`} />
           <span className="font-bold tracking-wide">
             {isBusinessMode ? "Business Mode" : "Standard Mode"} Activated
           </span>
