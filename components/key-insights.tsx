@@ -16,16 +16,31 @@ interface KeyInsightsProps {
 export function KeyInsights({ insights, isLoading }: KeyInsightsProps) {
   const { theme } = useTheme()
 
-  const renderInsight = (insight: InsightData) => (
-    <Card className={theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#121212]"}>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold text-primary">{insight.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm">{insight.details}</p>
-      </CardContent>
-    </Card>
-  )
+  const renderInsight = (insight: InsightData) => {
+    if (!insight || insight.title === "Insight Parsing Error") {
+      return (
+        <Card className={theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"}>
+          <CardHeader>
+            <CardTitle className="card-title text-yellow-500">Processing Insight</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-body">Additional insight data is being processed. Please check back in a moment.</p>
+          </CardContent>
+        </Card>
+      )
+    }
+    
+    return (
+      <Card className={theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"}>
+        <CardHeader>
+          <CardTitle className="card-title text-primary">{insight.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-body">{insight.details}</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -33,7 +48,7 @@ export function KeyInsights({ insights, isLoading }: KeyInsightsProps) {
         Array(4)
           .fill(0)
           .map((_, index) => (
-            <Card key={index} className={theme === "dark" ? "bg-[#2A2A2A]" : "bg-white"}>
+            <Card key={index} className={theme === "dark" ? "bg-gray-800" : "bg-white"}>
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
               </CardHeader>

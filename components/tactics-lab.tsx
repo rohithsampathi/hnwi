@@ -122,11 +122,26 @@ export function TacticsLab() {
   const renderAnalysisContent = () => {
     if (!analysisResult) return null
 
-    const insights = analysisResult.supporting_data.insights
+    // Ensure insights exist and have the right structure
+    const insights = analysisResult.supporting_data?.insights || {
+      insight_one: { title: "Insight Parsing Error", details: "Unable to parse insights" },
+      insight_two: { title: "Insight Parsing Error", details: "Unable to parse insights" },
+      insight_three: { title: "Insight Parsing Error", details: "Unable to parse insights" },
+      insight_four: { title: "Insight Parsing Error", details: "Unable to parse insights" }
+    }
+    
     const isLoading =
-      !insights.insight_one || !insights.insight_two || !insights.insight_three || !insights.insight_four
+      !insights.insight_one || !insights.insight_two || !insights.insight_three || !insights.insight_four ||
+      insights.insight_one.title === "Insight Parsing Error" ||
+      insights.insight_two.title === "Insight Parsing Error" ||
+      insights.insight_three.title === "Insight Parsing Error" ||
+      insights.insight_four.title === "Insight Parsing Error"
 
     const getSourceIndices = (content: string, url: string) => {
+      if (!analysisResult.supporting_data?.vector_results?.length) {
+        return []
+      }
+      
       return analysisResult.supporting_data.vector_results
         .map((result, index) => ({ index: index + 1, url: result.metadata.url }))
         .filter((source) => source.url === url)
@@ -136,12 +151,12 @@ export function TacticsLab() {
     return (
       <>
         <div className="mt-8 mb-6 font-body">
-          <Heading2 className={`text-3xl font-bold font-heading ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
+          <h2 className={`text-title ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
             The 4
-          </Heading2>
-          <Paragraph className={`mt-2 ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+          </h2>
+          <p className={`mt-2 text-body-small ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
             Key insights from the analysis
-          </Paragraph>
+          </p>
         </div>
         <KeyInsights insights={insights} isLoading={isLoading} />
         <StrategicDashboard
@@ -175,29 +190,30 @@ export function TacticsLab() {
             label: "Confidence Score",
           }}
         />
-        {analysisResult.supporting_data.vector_results && (
+        {analysisResult.supporting_data?.vector_results?.length > 0 && (
           <>
-            <Paragraph className={`mt-6 font-body ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
+            <p className={`mt-6 text-body-small ${theme === "dark" ? "text-gray-300" : "text-gray-600"}`}>
               This analysis is based on HNWI Chronicles Knowledge Base, Expert Validation Insights, and{" "}
               {analysisResult.supporting_data.vector_results.length} secondary sources. All secondary sources used in
               the analysis are listed below.
-            </Paragraph>
-            <div className="mt-6 mb-4">
-              <h3 className="text-xl font-bold font-heading text-primary mb-4">Sources</h3>
-              <ol className="list-decimal list-inside space-y-2">
+            </p>
+            <div className="mt-6">
+              <h2 className="text-subtitle text-primary mb-4">Sources</h2>
+              <div className="space-y-1">
                 {analysisResult.supporting_data.vector_results.map((source, index) => (
-                  <li key={index} className="text-sm">
-                    <a
-                      href={source.metadata.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {source.metadata.title}
-                    </a>
-                  </li>
+                  <a
+                    key={index}
+                    href={source.metadata?.url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center p-1 rounded-md text-blue-500 dark:text-blue-400 
+                    hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-all text-body"
+                  >
+                    <span className="mr-2 font-semibold text-muted-foreground">{index + 1}.</span>
+                    <span>{source.metadata?.title || `Source ${index + 1}`}</span>
+                  </a>
                 ))}
-              </ol>
+              </div>
             </div>
           </>
         )}
@@ -209,59 +225,61 @@ export function TacticsLab() {
     <div className="w-full p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center gap-2">
-          <Heading2 className="text-3xl font-bold font-heading text-primary">Tactics Lab</Heading2>
+          <h1 className="text-headline text-primary">Tactics Lab</h1>
           <Badge className="bg-primary">Beta</Badge>
         </div>
-        <Paragraph className="font-body tracking-wide text-xl text-muted-foreground mt-2 mb-4">
+        <p className="text-body-large text-muted-foreground mt-2 mb-4">
           Your AI-powered strategy assistant
-        </Paragraph>
+        </p>
       </div>
       <div className="font-body w-full">
         <form onSubmit={handleSubmit} className="mb-12">
-          <div className="flex flex-col md:flex-row items-end space-y-4 md:space-y-0 md:space-x-4 max-w-5xl ml-0">
+          <div className="flex flex-col max-w-5xl ml-0">
             <Textarea
               placeholder="What would you like to analyze today?"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className={`flex-grow ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold placeholder:font-semibold text-lg p-4 border-2 border-primary/20 focus:border-primary/70 shadow-lg min-h-[60px] resize-y`}
+              className={`flex-grow ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold placeholder:font-semibold text-body-large p-4 border-2 border-primary/20 focus:border-primary/70 shadow-lg h-[120px] resize-none mb-4`}
             />
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger
-                className={`w-full md:w-[180px] ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold h-[36px]`}
-              >
-                <SelectValue placeholder="Select time period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1w">Last 7 days</SelectItem>
-                <SelectItem value="1m">Last 1 month</SelectItem>
-                <SelectItem value="6m">Last 6 months</SelectItem>
-                <SelectItem value="1y">Last 1 year</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={isAnalyzing} className="w-full md:w-auto h-[36px] px-6 text-sm font-bold">
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                "Analyze"
-              )}
-            </Button>
+            <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger
+                  className={`w-full md:w-[180px] ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold h-[40px]`}
+                >
+                  <SelectValue placeholder="Select time period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1w">Last 7 days</SelectItem>
+                  <SelectItem value="1m">Last 1 month</SelectItem>
+                  <SelectItem value="6m">Last 6 months</SelectItem>
+                  <SelectItem value="1y">Last 1 year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button type="submit" disabled={isAnalyzing} className="w-full md:w-auto h-[40px] px-6 text-sm font-bold">
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Analyze"
+                )}
+              </Button>
+            </div>
           </div>
         </form>
         <div className="border-t border-gray-200 dark:border-gray-700 pt-8 mt-6 text-sm opacity-75">
         {isFirstQuestion && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
             <div className="mb-6">
-              <Heading3 className="text-xl font-bold font-heading mb-3 text-primary/80">Latest Update v1.2</Heading3>
+              <h3 className="text-subtitle mb-3 text-primary/80">Latest Update v1.2</h3>
               <div className="flex justify-between items-center mb-3">
-                <p className="text-xs text-muted-foreground">Last Updated: January 22, 2024</p>
+                <p className="text-caption">Last Updated: January 22, 2024</p>
                 <Badge className="bg-primary">New</Badge>
               </div>
               <div className="border-l border-gray-200 dark:border-gray-700 pl-4 py-3 my-4">
-                <p className="text-sm font-medium mb-2">Improvements:</p>
-                <ul className="list-disc pl-5 space-y-1 text-sm">
+                <p className="text-label mb-2">Improvements:</p>
+                <ul className="list-disc pl-5 space-y-1 text-body-small">
                   <li>Knowledge base now has multiple query capabilities</li>
                   <li>Mixture of Experts has been successfully updated with 5 Engines working in sync</li>
                   <li>Engine now scores over 87% confidence for queries related to Real Estate and Financial Services</li>
@@ -270,14 +288,14 @@ export function TacticsLab() {
             </div>
             
             <div className="mb-6">
-              <Heading3 className="text-lg font-bold font-heading mb-3 text-primary/80">How to Use the Tactics Lab</Heading3>
+              <h3 className="text-subtitle mb-3 text-primary/80">How to Use the Tactics Lab</h3>
               <div className="border-l border-primary/40 pl-3 mb-4">
-                <p className="text-sm mb-2">
+                <p className="text-body-small mb-2">
                   The Tactics Lab is designed to assist you with complex strategic questions. Here are some examples:
                 </p>
               </div>
               <div className="bg-gray-50/50 dark:bg-gray-800/20 p-3 rounded-md">
-                <ul className="list-disc pl-5 space-y-2 text-xs">
+                <ul className="list-disc pl-5 space-y-2 text-caption">
                   <li>
                     "What are the emerging trends in luxury real estate for high-net-worth individuals in major global
                     cities?"
@@ -297,7 +315,7 @@ export function TacticsLab() {
                 </ul>
               </div>
               <div className="border-t border-gray-200 dark:border-gray-700 mt-4 pt-3">
-                <p className="text-xs italic text-muted-foreground">
+                <p className="text-caption italic text-muted-foreground">
                   Feel free to ask the Tactics Lab about market trends, investment strategies, regulatory impacts, or any other strategic
                   concerns related to high-net-worth individuals and wealth management.
                 </p>
@@ -316,7 +334,7 @@ export function TacticsLab() {
             >
               <StrategyAtomAnimation />
               <motion.p
-                className="text-center mt-4 text-lg font-semibold font-heading"
+                className="text-center mt-4 text-body-large font-semibold font-heading"
                 initial={{ opacity: 1 }}
                 animate={{ opacity: showThinking ? 1 : 0 }}
                 transition={{ duration: 0.3 }}
@@ -335,10 +353,10 @@ export function TacticsLab() {
                 theme === "dark" ? "bg-red-900 text-red-100" : "bg-red-100 text-red-700"
               } rounded-md`}
             >
-              <Heading3 className="font-semibold font-heading">Error:</Heading3>
-              <Paragraph>{error}</Paragraph>
+              <h3 className="text-subtitle font-heading">Error:</h3>
+              <p className="text-body">{error}</p>
               <div className="mt-4 flex justify-between items-center">
-                <Paragraph className="text-sm">Please try again or contact support if the issue persists.</Paragraph>
+                <p className="text-caption">Please try again or contact support if the issue persists.</p>
                 <Button
                   onClick={handleSubmit}
                   variant="outline"

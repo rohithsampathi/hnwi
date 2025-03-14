@@ -116,10 +116,13 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
               </div>
               <div className="mt-4 pt-4 bg-white dark:bg-gray-800 rounded shadow-md">
                 <div className="px-6 pb-2">
-                  <Heading3 className="text-primary dark:text-white flex items-center mb-4">
+                  <Heading3 className="text-primary dark:text-white flex items-center mb-2">
                     <span className="mr-2">📊</span>
                     Wealth Radar
                   </Heading3>
+                  <p className="text-body-small text-muted-foreground mb-4">
+                    Industry wise HNWI Peer Movements and Market Actions
+                  </p>
                 </div>
                 <div className="px-6 pb-6">
                   <IndustryTrendsBubbles
@@ -135,7 +138,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           </div>
           <div className="w-full mt-8 overflow-hidden">
             <div className="py-4">
-              <Heading3 className="text-primary">Insider Briefing 🔍</Heading3>
+              <Heading3 className="text-primary mb-2">Insider Briefing 🔍</Heading3>
+              <p className="text-body-small text-muted-foreground mb-4">
+                Your Private Intelligence Ally Talking
+              </p>
             </div>
             <div className="py-2">
               <DevelopmentStream

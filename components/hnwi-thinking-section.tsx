@@ -91,7 +91,7 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
           {isAnalyzing && (
             <div className="flex flex-col items-center justify-center mt-4">
               <StrategyAtomAnimation />
-              <p className="mt-2 text-center text-sm text-muted-foreground">
+              <p className="mt-2 text-center text-caption">
                 Analyzing HNWI Preferences. This might take 45 seconds to 3 minutes.
               </p>
             </div>
@@ -114,32 +114,29 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
               />
               {analysisResult.supporting_data.vector_results && (
                 <>
-                  <Paragraph className="mt-6 font-body text-muted-foreground">
+                  <p className="mt-6 text-body-small text-muted-foreground">
                     This analysis is based on HNWI Chronicles Knowledge Base, Expert Validation Insights, and{" "}
                     {analysisResult.supporting_data.vector_results.length} secondary sources. All secondary sources used
                     in the analysis are listed below.
-                  </Paragraph>
-                  <Card className="mt-2">
-                    <CardHeader>
-                      <CardTitle className="text-xl font-bold font-heading text-primary">Sources</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ol className="list-decimal list-inside space-y-2">
-                        {analysisResult.supporting_data.vector_results.map((source, index) => (
-                          <li key={index} className="text-sm">
-                            <a
-                              href={source.metadata.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {source.metadata.title}
-                            </a>
-                          </li>
-                        ))}
-                      </ol>
-                    </CardContent>
-                  </Card>
+                  </p>
+                  <div className="mt-6">
+                    <h2 className="text-subtitle text-primary mb-4">Sources</h2>
+                    <div className="space-y-1">
+                      {analysisResult.supporting_data.vector_results.map((source, index) => (
+                        <a
+                          key={index}
+                          href={source.metadata?.url || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center p-1 rounded-md text-blue-500 dark:text-blue-400 
+                          hover:underline hover:text-blue-700 dark:hover:text-blue-300 transition-all text-body"
+                        >
+                          <span className="mr-2 font-semibold text-muted-foreground">{index + 1}.</span>
+                          <span>{source.metadata?.title || `Source ${index + 1}`}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
