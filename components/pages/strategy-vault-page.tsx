@@ -150,8 +150,12 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                     <span className="mr-2">📊</span>
                     Wealth Radar
                   </Heading3>
-                  <p className="text-body-small text-muted-foreground mb-4">
+                  <p className="text-body-small text-muted-foreground mb-1">
                     Industry wise HNWI Peer Movements and Market Actions
+                  </p>
+                  {/* Stats display right below the section subtitle */}
+                  <p className="text-xs text-gray-500 mb-4">
+                    {availableIndustries.length} industries • Updated: {new Date().toLocaleTimeString()}
                   </p>
                 </div>
                 <div className="px-6 pb-6">
@@ -161,6 +165,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                     onBubbleClick={handleBubbleClick}
                     getIndustryColor={getIndustryColor}
                     selectedIndustry={selectedIndustry}
+                    renderStatsOutside={true}
                   />
                 </div>
               </div>

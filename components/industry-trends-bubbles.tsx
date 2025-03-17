@@ -21,6 +21,7 @@ interface IndustryTrendsBubblesProps {
   onBubbleClick: (industry: string) => void
   getIndustryColor: (industry: string) => string
   selectedIndustry: string
+  renderStatsOutside?: boolean
 }
 
 interface TooltipData {
@@ -39,6 +40,7 @@ export function IndustryTrendsBubbles({
   onBubbleClick,
   getIndustryColor,
   selectedIndustry,
+  renderStatsOutside = true,
 }: IndustryTrendsBubblesProps) {
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -185,6 +187,8 @@ export function IndustryTrendsBubbles({
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`)
 
+      // Stats are now displayed directly in the HTML above the visualization
+      
       // Set up force simulation
       const simulation = d3
         .forceSimulation(industryTrends)
@@ -364,30 +368,37 @@ export function IndustryTrendsBubbles({
     )
   }
 
+  // Get stats text for display
+  const statsText = `${industryTrends.length} industries${lastUpdated ? ` • Updated: ${lastUpdated.toLocaleTimeString()}` : ''}`;
+
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center px-4 mb-2">
-        <div className="text-sm text-muted-foreground">
-          <span>{industryTrends.length} industries</span>
-          {lastUpdated && (
-            <span className="ml-2 text-xs">
-              Updated: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-        <button 
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
-          title="Refresh data"
-        >
-          <RefreshCw 
-            className={`h-5 w-5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} 
-          />
-        </button>
-      </div>
-      <div className="p-4">
+      <div className="px-4">
+        {/* Don't render stats text here if renderStatsOutside is true */}
+        {!renderStatsOutside && (
+          <div className="text-xs text-gray-500 mb-1">
+            {statsText}
+          </div>
+        )}
         <div ref={containerRef} className="h-[400px] w-full relative">
+          {/* Export stats for parent component to use */}
+          <div className="hidden">{/* Used to pass data to the parent */}
+            <span id="industry-stats-text" data-stats={statsText}></span>
+          </div>
+          
+          {/* Refresh button added as an overlay in the top-right of the chart */}
+          <div className="absolute top-2 right-2 z-10">
+            <button 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-full bg-white/80 hover:bg-gray-100 dark:bg-gray-800/80 dark:hover:bg-gray-700 transition-colors shadow-sm"
+              title="Refresh data"
+            >
+              <RefreshCw 
+                className={`h-5 w-5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} 
+              />
+            </button>
+          </div>
           <AnimatePresence>
             {tooltipData && (
               <IndustryBubbleTooltip
