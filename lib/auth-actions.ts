@@ -38,8 +38,8 @@ interface SessionResponse {
 }
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
-// Update API base URL to use the FastAPI backend on render
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+// Import from config to ensure consistency
+import { API_BASE_URL } from "@/config/api"
 
 const COOKIE_OPTIONS = {
   httpOnly: true,

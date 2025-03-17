@@ -112,6 +112,36 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                       <SelectItem value="1y">Last 365 days</SelectItem>
                     </SelectContent>
                   </Select>
+                  {/* Force refresh button to clear cache and fetch fresh data */}
+                  <button 
+                    onClick={() => {
+                      // Force a new time range to trigger a refetch
+                      const currentTimeRange = timeRange
+                      setTimeRange("temp")
+                      setTimeout(() => setTimeRange(currentTimeRange), 10)
+                    }}
+                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    aria-label="Refresh data"
+                    title="Force refresh of Wealth Radar data"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="20" 
+                      height="20" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      className="text-black dark:text-white"
+                    >
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                      <path d="M16 16h5v5"></path>
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div className="mt-4 pt-4 bg-white dark:bg-gray-800 rounded shadow-md">

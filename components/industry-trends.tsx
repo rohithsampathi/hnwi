@@ -46,7 +46,8 @@ interface TimeSeriesResponse {
   end_date: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+// Import from config to ensure consistency
+import { API_BASE_URL } from "@/config/api"
 
 function classifyProducts(products: Product): { [key: string]: string[] } {
   const productNames = Object.keys(products)
@@ -144,13 +145,31 @@ export function IndustryTrends() {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/industry-trends/time-series`, {
+      // Enhanced cache-busting with random UUID and timestamp
+      const timestamp = new Date().getTime()
+      const random = Math.random().toString(36).substring(2, 15)
+      const cacheKey = `${timestamp}-${random}`
+      
+      // Clear any existing browser cache for this endpoint
+      const url = `${API_BASE_URL}/api/industry-trends/time-series?_t=${cacheKey}`
+      
+      const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          // Strengthened cache control headers
+          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+          "Pragma": "no-cache",
+          "Expires": "0",
+          // Add unique request ID
+          "X-Request-ID": cacheKey
+        },
         body: JSON.stringify({
           time_range: timeRange,
           include_developments: true,
           include_previous_period: true,
+          _timestamp: timestamp,
+          _cache_key: cacheKey, // Add more randomness to body
         }),
       })
 

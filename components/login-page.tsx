@@ -16,7 +16,8 @@ import { Heading2, Paragraph } from "@/components/ui/typography"
 import { ParticlesBackground } from "./particles-background"
 import { MetaTags } from "./meta-tags"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+// Import from config to ensure consistency
+import { API_BASE_URL } from "@/config/api"
 
 export function LoginPage({ 
   onLoginSuccess, 
