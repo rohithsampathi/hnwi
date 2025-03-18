@@ -425,27 +425,27 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                      className="w-full h-[280px] md:h-[330px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
+                      <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
+                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
                           {item.beta && (
                             <Badge variant="secondary" className="ml-1 badge-beta">
                               Beta
                             </Badge>
                           )}
                         </div>
-                        <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
+                        <div className="text-sm md:text-sm max-w-full line-clamp-6 md:line-clamp-8 lg:line-clamp-7 overflow-hidden whitespace-normal break-words font-normal h-[100px] md:h-[120px] lg:h-[110px]">
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center w-full mb-2">
+                      <div className="flex justify-between items-center w-full mb-4 mt-2">
                         {item.live && (
                           <div>
                             <LiveButton />
@@ -488,27 +488,27 @@ export function HomeDashboard({
                 >
                   <Button
                     onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                    className="w-full h-[280px] md:h-[330px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                     style={{
                       background: item.color,
                       color: theme === "dark" ? "white" : "black",
                     }}
                   >
-                    <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
+                    <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
+                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
+                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
                         {item.beta && (
                           <Badge variant="secondary" className="ml-1 badge-beta">
                             Beta
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
+                      <div className="text-sm md:text-sm max-w-full line-clamp-6 md:line-clamp-8 lg:line-clamp-7 overflow-hidden whitespace-normal break-words font-normal h-[100px] md:h-[120px] lg:h-[110px]">
                         {typeof item.description === "string" ? item.description : item.description}
                       </div>
                     </div>
-                    <div className="flex justify-between items-center w-full mb-2">
+                    <div className="flex justify-between items-center w-full mb-4 mt-2">
                       {item.live && (
                         <div>
                           <LiveButton />
@@ -551,20 +551,20 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                      className="w-full h-[280px] md:h-[330px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
-                        <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
-                        <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
+                      <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
+                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        <div className="text-sm md:text-sm max-w-full line-clamp-6 md:line-clamp-8 lg:line-clamp-7 overflow-hidden whitespace-normal break-words font-normal h-[100px] md:h-[120px] lg:h-[110px]">
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex items-center w-full justify-end mb-2">
+                      <div className="flex items-center w-full justify-end mb-4 mt-2">
                         <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
                         <div className="clickable-arrow ml-1 flex-shrink-0">
                           <ArrowRight className="w-4 h-4" />
