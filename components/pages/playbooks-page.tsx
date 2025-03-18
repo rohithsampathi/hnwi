@@ -85,14 +85,6 @@ export function PlayBooksPage({
   const hasCompletedStep = useRef(false)
   const fetchAttempted = useRef(false)
 
-  // A way to check known users with purchased playbooks
-  const hasDefaultPlaybook = 
-    userEmail === "info@montaigne.co" || 
-    userEmail === "rohith.sampathi@gmail.com" ||
-    userEmail === "goapropertyhub@gmail.com" ||
-    userEmail === "r.v.kharvannan@gmail.com" ||
-    userEmail === "info@ycombinator.com";
-
   // Extract purchased reports from userData if available
   const getPurchasedReports = useCallback(() => {
     // First try to get from userData directly
@@ -108,6 +100,18 @@ export function PlayBooksPage({
     // Return an empty array if no purchased reports found
     return [];
   }, [userData]);
+  
+  // A way to check known users with purchased playbooks - now also verifies purchased_reports
+  const hasDefaultPlaybook = useCallback(() => {
+    const hasPurchasedReports = getPurchasedReports().length > 0;
+    return (
+      (userEmail === "info@montaigne.co" && hasPurchasedReports) || 
+      userEmail === "rohith.sampathi@gmail.com" ||
+      userEmail === "goapropertyhub@gmail.com" ||
+      userEmail === "r.v.kharvannan@gmail.com" ||
+      userEmail === "info@ycombinator.com"
+    );
+  }, [userEmail, getPurchasedReports]);
 
   const fetchPlaybooks = useCallback(async () => {
     if (fetchAttempted.current) return;
@@ -229,7 +233,7 @@ export function PlayBooksPage({
       }
       
       // Fallback: If the user is known to have pb_001
-      if (hasDefaultPlaybook) {
+      if (hasDefaultPlaybook()) {
         const oneMonthFromNow = new Date();
         oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
         
@@ -247,7 +251,7 @@ export function PlayBooksPage({
       console.error('Error fetching playbooks:', error);
       
       // Fallback for known users even if everything else fails
-      if (hasDefaultPlaybook) {
+      if (hasDefaultPlaybook()) {
         const oneMonthFromNow = new Date();
         oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
         
@@ -300,7 +304,7 @@ export function PlayBooksPage({
         setIsLoading(false);
         
         // Show fallback for known users
-        if (hasDefaultPlaybook) {
+        if (hasDefaultPlaybook()) {
           const oneMonthFromNow = new Date();
           oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
           

@@ -27,7 +27,7 @@ export function PaymentPopupButton({ playbookId, onSuccess, paymentButtonId }: P
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold"
+          className="w-full bg-primary hover:bg-primary/90 dark:text-black text-white font-bold"
           onClick={() => setIsOpen(true)}
         >
           Unlock Playbook

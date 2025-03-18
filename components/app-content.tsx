@@ -265,50 +265,63 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         }
         
         const data = await response.json();
+        console.log("Login API response data:", JSON.stringify(data, null, 2));
+        
+        // Handle direct API login data format (from the Postman example)
+        // Extract user info from the response - could be in data.user or directly in data
+        const userData = data.user || data;
         
         // Extract profile data from the response
-        const profile = data.user.profile || {};
+        const profile = userData.profile || {};
+        
+        // Get user ID from the most likely location
+        const userId = userData.user_id || userData.id || profile.user_id;
         
         // Split name into parts for first/last name
         const nameParts = profile.name?.split(" ") || ["User", ""];
-        const firstName = data.user.firstName || nameParts[0] || "User";
-        const lastName = data.user.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+        const firstName = userData.firstName || userData.first_name || nameParts[0] || "User";
+        const lastName = userData.lastName || userData.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
         
-        // Create a user object with consistent structure
+        // Create a user object with consistent structure that works with ProfilePage
         const userObject = {
-          id: data.user.id || data.user.user_id,
-          user_id: data.user.user_id || data.user.id,
-          email: data.user.email,
+          id: userId,
+          user_id: userId,
+          email: userData.email || profile.email || loginData.email,
           firstName: firstName,
           lastName: lastName,
           role: "user",
-          // Include profile data 
-          profile: profile,
+          // Include all fields needed directly by ProfilePage
+          name: profile.name || `${firstName} ${lastName}`.trim(),
           net_worth: profile.net_worth || 0,
           city: profile.city || "",
           country: profile.country || "",
           bio: profile.bio || "",
           industries: profile.industries || [],
-          company: profile.company?.name || "",
+          company: profile.company_info?.name || profile.company || "",
           phone_number: profile.phone_number || "",
           linkedin: profile.linkedin || "",
           office_address: profile.office_address || "",
           crypto_investor: profile.crypto_investor || false,
           land_investor: profile.land_investor || false,
+          // Keep the full profile for reference
+          profile: profile
         };
+        
+        console.log("Created user object:", JSON.stringify(userObject, null, 2));
         
         // Set user in state
         setUser(userObject);
         
         // Store user data in localStorage
-        localStorage.setItem("userId", data.user_id);
-        localStorage.setItem("userEmail", data.email);
+        localStorage.setItem("userId", userId);
+        localStorage.setItem("userEmail", userObject.email);
+        localStorage.setItem("userObject", JSON.stringify(userObject));
         
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
         
-        console.log("Login complete - User ID stored:", data.user_id);
+        console.log("Login complete - User ID stored:", userId);
         
         // Navigate to dashboard
         handleNavigation("dashboard");
@@ -367,23 +380,75 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
   const handleUpdateUserClick = async (updatedUserData: Partial<User>) => {
     try {
-      const result = await handleUpdateUser(updatedUserData)
-      if (result.success && result.user) {
-        setUser(result.user)
-        // Store the ID from API response if available, fall back to id from auth
-        const userId = result.user.user_id || result.user._id || result.user.id;
-        localStorage.setItem("userId", userId)
-        if (result.token) {
-          localStorage.setItem("token", result.token)
+      // First attempt to use the server-side handler
+      try {
+        const result = await handleUpdateUser(updatedUserData)
+        if (result.success && result.user) {
+          setUser(result.user)
+          // Store the ID from API response if available, fall back to id from auth
+          const userId = result.user.user_id || result.user._id || result.user.id;
+          localStorage.setItem("userId", userId)
+          if (result.token) {
+            localStorage.setItem("token", result.token)
+          }
+          console.log("User update - User ID set:", userId)
+          
+          // Store the updated user object in localStorage
+          localStorage.setItem("userObject", JSON.stringify(result.user));
+          
+          toast({
+            title: "Success",
+            description: "Profile updated successfully",
+          })
+          return // Success, so return early
         }
-        console.log("User update - User ID set:", userId)
-        toast({
-          title: "Success",
-          description: "Profile updated successfully",
-        })
-      } else {
-        throw new Error(result.error || "Update failed")
+      } catch (serverUpdateError) {
+        console.log("Server-side update failed, using client-side update:", serverUpdateError)
       }
+      
+      // If we reach here, the server-side update failed or wasn't successful
+      // Just directly update the user in state and localStorage
+      // This means we're accepting the profile-page component's direct API update
+      
+      // Get current user
+      const currentUser = { ...user }
+      
+      // Merge updated data
+      const mergedUser = {
+        ...currentUser,
+        ...updatedUserData,
+        // Ensure critical fields are preserved
+        id: currentUser.id,
+        user_id: currentUser.user_id,
+        // Update profile subobject if it exists
+        ...(currentUser.profile ? {
+          profile: {
+            ...currentUser.profile,
+            // Map any profile-specific fields
+            name: updatedUserData.name || currentUser.profile.name,
+            net_worth: updatedUserData.net_worth || currentUser.profile.net_worth,
+            city: updatedUserData.city || currentUser.profile.city,
+            country: updatedUserData.country || currentUser.profile.country,
+            bio: updatedUserData.bio || currentUser.profile.bio,
+            industries: updatedUserData.industries || currentUser.profile.industries,
+            phone_number: updatedUserData.phone_number || currentUser.profile.phone_number,
+            linkedin: updatedUserData.linkedin || currentUser.profile.linkedin,
+            office_address: updatedUserData.office_address || currentUser.profile.office_address,
+            crypto_investor: updatedUserData.crypto_investor !== undefined ? 
+              updatedUserData.crypto_investor : currentUser.profile.crypto_investor,
+            land_investor: updatedUserData.land_investor !== undefined ? 
+              updatedUserData.land_investor : currentUser.profile.land_investor,
+          }
+        } : {})
+      }
+      
+      // Update user in state
+      setUser(mergedUser)
+      
+      // Store updated user in localStorage
+      localStorage.setItem("userObject", JSON.stringify(mergedUser))
+      
+      console.log("Client-side user update complete")
     } catch (error) {
       console.error("User update failed:", error)
       toast({
@@ -433,29 +498,32 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   // Handle successful login from LoginPage
   const handleLoginSuccess = (userData) => {
     try {
+      console.log("Login success userData:", JSON.stringify(userData, null, 2));
+      
       // Extract profile from the response
       const profile = userData.profile || {};
       
       // Split name for first/last name if needed
       const nameParts = profile.name?.split(" ") || ["User", ""];
-      const firstName = userData.firstName || nameParts[0] || "User";
-      const lastName = userData.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+      const firstName = userData.firstName || userData.first_name || nameParts[0] || "User";
+      const lastName = userData.lastName || userData.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
       
       // Set user directly with all required profile fields
       const userObject = {
-        id: userData.user_id || userData.userId,
-        user_id: userData.user_id || userData.userId,
-        email: userData.email,
+        id: userData.user_id || userData.userId || profile.user_id,
+        user_id: userData.user_id || userData.userId || profile.user_id,
+        email: userData.email || profile.email,
         firstName: firstName,
         lastName: lastName,
         role: "user",
         // Include all profile fields that might be needed by ProfilePage
+        name: profile.name || `${firstName} ${lastName}`.trim(),
         net_worth: profile.net_worth || 0,
         city: profile.city || "",
         country: profile.country || "",
         bio: profile.bio || "",
         industries: profile.industries || [],
-        company: profile.company?.name || profile.company || "",
+        company: profile.company_info?.name || profile.company || "",
         phone_number: profile.phone_number || "",
         linkedin: profile.linkedin || "",
         office_address: profile.office_address || "",
@@ -465,6 +533,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         profile: profile
       };
       
+      console.log("Created user object:", JSON.stringify(userObject, null, 2));
+      
       // Set user in state
       setUser(userObject);
       
@@ -472,16 +542,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setHasCheckedSession(true);
       setIsSessionCheckComplete(true);
       
-      // Store user info in localStorage if not already stored by LoginPage
-      if (!localStorage.getItem("userId")) {
-        localStorage.setItem("userId", userData.userId);
-      }
+      // Store user info in localStorage
+      localStorage.setItem("userId", userObject.user_id);
+      localStorage.setItem("userEmail", userObject.email);
       
-      if (!localStorage.getItem("userEmail")) {
-        localStorage.setItem("userEmail", userData.email);
-      }
-      
-      if (userData.token && !localStorage.getItem("token")) {
+      if (userData.token) {
         localStorage.setItem("token", userData.token);
       }
       
@@ -499,6 +564,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         variant: "default",
       });
     } catch (error) {
+      console.error("Error processing login data:", error);
       toast({
         title: "Login Error",
         description: "Error processing login data. Please try again.",
@@ -588,7 +654,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         return (
           user && (
             <Layout title={`Welcome, ${user.firstName}`} onNavigate={handleNavigation}>
-              <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} />
+              <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} userData={user} />
             </Layout>
           )
         )
@@ -632,10 +698,10 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         return <CalendarPage onNavigate={handleNavigation} />
 
       case "war-room":
-        return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} />
+        return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} userData={user} />
 
       case "my-playbooks":
-        return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} showOnlyPurchased={true} />
+        return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} userData={user} showOnlyPurchased={true} />
 
       case "invest-scan":
         return <InvestScanPage onNavigate={handleNavigation} />

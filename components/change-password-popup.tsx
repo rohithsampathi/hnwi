@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
+import { Eye, EyeOff } from "lucide-react"
+import { useTheme } from "@/contexts/theme-context"
 
 interface ChangePasswordPopupProps {
   isOpen: boolean
@@ -19,7 +21,13 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showOldPassword, setShowOldPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { toast } = useToast()
+  const { theme } = useTheme()
+
+  const API_BASE_URL = "https://uwind.onrender.com"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,28 +81,65 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
           <DialogTitle>Change Password</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="password"
-            placeholder="Current Password"
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="New Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-          />
-          <Input
-            type="password"
-            placeholder="Confirm New Password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-          <Button type="submit" disabled={isLoading}>
+          <div className="relative">
+            <Input
+              type={showOldPassword ? "text" : "password"}
+              placeholder="Current Password"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              required
+            />
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
+              onClick={() => setShowOldPassword(!showOldPassword)}
+            >
+              {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </Button>
+          </div>
+          
+          <div className="relative">
+            <Input
+              type={showNewPassword ? "text" : "password"}
+              placeholder="New Password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
+              onClick={() => setShowNewPassword(!showNewPassword)}
+            >
+              {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </Button>
+          </div>
+          
+          <div className="relative">
+            <Input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirm New Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </Button>
+          </div>
+          
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            style={{ background: theme === "dark" ? "#7f6e6b" : "#e6d5c1", color: theme === "dark" ? "white" : "black" }}
+          >
             {isLoading ? "Updating..." : "Update Password"}
           </Button>
         </form>

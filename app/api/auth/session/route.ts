@@ -18,20 +18,27 @@ export async function GET() {
       return NextResponse.json({ user: null }, { status: 200 });
     }
     
-    // Mock user data - in a real implementation you would decode and validate the token
-    // For now, return hardcoded user data to fix the blank screen issue
-    
-    // This is for demo/development purposes only
-    // In production, you would properly validate the token and fetch real user data
-    return NextResponse.json({ 
-      user: {
-        id: "user-id-from-session",
-        email: "user@example.com",
-        firstName: "Demo",
-        lastName: "User",
-        role: "user"
+    // Check if we need to validate a token or extract user from cookies
+    if (sessionToken || traditionaSession) {
+      try {
+        // If you have stored user data in session_user cookie, retrieve it
+        const userDataCookie = cookieStore.get('session_user')?.value;
+        if (userDataCookie) {
+          const userData = JSON.parse(userDataCookie);
+          return NextResponse.json({ user: userData });
+        }
+        
+        // For API token validation, you would need to implement proper validation here
+        // For now, don't fall back to demo user if there's a token present but invalid
+        // that would make it impossible to see actual login results
+      } catch (error) {
+        console.error('Error parsing user session data:', error);
+        return NextResponse.json({ user: null }, { status: 200 });
       }
-    });
+    }
+    
+    // If no valid session found, return null (not demo user)
+    return NextResponse.json({ user: null }, { status: 200 });
     
   } catch (error) {
     return NextResponse.json({ user: null }, { status: 200 });

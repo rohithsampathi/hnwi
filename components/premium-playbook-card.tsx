@@ -68,8 +68,8 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
         
         {isPremium && (
           <div className="absolute top-4 right-4 z-30">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-primary to-primary/80 text-white">
-              <Star className="w-3 h-3 mr-1 fill-white stroke-primary" />
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-primary to-primary/80 ${theme === "dark" ? "text-black" : "text-white"}`}>
+              <Star className={`w-3 h-3 mr-1 ${theme === "dark" ? "fill-black stroke-primary" : "fill-white stroke-primary"}`} />
               PREMIUM
             </span>
           </div>

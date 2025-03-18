@@ -204,7 +204,7 @@ export function SocialHub() {
                               </Heading3>
                               
                               {/* Tags displayed below the title */}
-                              <div className="flex flex-wrap gap-2 mb-3">
+                              <div className="flex flex-wrap gap-1 md:gap-2 mb-3 max-w-full overflow-hidden">
                                 {event.tags?.map((tag, tagIndex) => {
                                   // Get a unique color for each tag based on the tag name
                                   const colorClasses = [
@@ -230,11 +230,11 @@ export function SocialHub() {
                                     <Badge
                                       key={tag}
                                       variant="outline"
-                                      className={`flex items-center gap-1 
+                                      className={`flex items-center gap-1 text-xs
                                                 ${theme === "dark" ? darkModeColorClass : colorClass} 
                                                 hover:opacity-80`}
                                     >
-                                      <Tag className="w-3 h-3" />
+                                      <Tag className="w-2 h-2 md:w-3 md:h-3" />
                                       {tag}
                                     </Badge>
                                   );
@@ -250,16 +250,16 @@ export function SocialHub() {
 
                           <div className="space-y-3 dark:text-white/90 text-black/90">
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 dark:text-white/70 text-black/70" />
-                              <span>{event.location}</span>
+                              <MapPin className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
+                              <span className="text-sm line-clamp-1">{event.location}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Building className="w-4 h-4 dark:text-white/70 text-black/70" />
-                              <span>{event.venue}</span>
+                              <Building className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
+                              <span className="text-sm line-clamp-1">{event.venue}</span>
                             </div>
                             <div className="flex items-start gap-2">
-                              <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1" />
-                              <span>
+                              <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1 flex-shrink-0" />
+                              <span className="text-sm line-clamp-2">
                                 {event.attendees && event.attendees.length > 0
                                   ? event.attendees.join(", ")
                                   : "Talk to Concierge"}
@@ -318,10 +318,11 @@ export function SocialHub() {
                                     ? 'bg-white hover:bg-gray-200 text-black border border-neutral-200'
                                     : 'bg-[#212121] hover:bg-[#121212] text-white'
                                 } 
+                                text-xs md:text-sm whitespace-nowrap
                               `}
                             >
-                              <CalendarPlus className="w-4 h-4 mr-2" />
-                              {addedEvents[event.id] ? 'Added to Calendar' : 'Add to Calendar'}
+                              <CalendarPlus className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" />
+                              {addedEvents[event.id] ? 'Added' : 'Add to Calendar'}
                             </Button>
                           </div>
                         </div>

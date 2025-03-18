@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
@@ -22,8 +22,8 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
-import { OnboardingWizard } from "./onboarding-wizard"
-import { useOnboarding } from "@/contexts/onboarding-context"
+// import { OnboardingWizard } from "./onboarding-wizard"
+// import { useOnboarding } from "@/contexts/onboarding-context"
 import { LiveButton } from "@/components/live-button"
 import { Heading2, Heading3, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
@@ -98,18 +98,36 @@ export function HomeDashboard({
   user,
   onNavigate,
   isFromSignupFlow,
+  userData,
 }: {
   user: User
   onNavigate: (route: string) => void
   isFromSignupFlow: boolean
+  userData?: any
 }) {
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const { toast } = useToast()
   const [spotlightIndex, setSpotlightIndex] = useState(0)
   const [developments, setDevelopments] = useState<Development[]>([])
-  const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
-  const [showOnboardingWizard, setShowOnboardingWizard] = useState(isFromSignupFlow && !isWizardCompleted)
+  // Commenting out onboarding popup code
+  // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
+  // const [showOnboardingWizard, setShowOnboardingWizard] = useState(isFromSignupFlow && !isWizardCompleted)
+
+  // Check if user has purchased reports
+  const hasPurchasedReports = useCallback(() => {
+    // First try to get from userData directly
+    if (userData?.purchased_reports && userData.purchased_reports.length > 0) {
+      return true;
+    }
+    
+    // Then try profile path
+    if (userData?.profile?.purchased_reports && userData.profile.purchased_reports.length > 0) {
+      return true;
+    }
+    
+    return false;
+  }, [userData]);
 
   const fetchDevelopments = async () => {
     try {
@@ -157,12 +175,13 @@ export function HomeDashboard({
     return () => clearInterval(interval)
   }, [developments.length])
 
-  useEffect(() => {
-    return () => {
-      setShowOnboardingWizard(false)
-      setIsFromSignupFlow(false)
-    }
-  }, [setIsFromSignupFlow])
+  // Commenting out onboarding cleanup effect
+  // useEffect(() => {
+  //   return () => {
+  //     setShowOnboardingWizard(false)
+  //     setIsFromSignupFlow(false)
+  //   }
+  // }, [setIsFromSignupFlow])
 
   // All available sections
   const experienceZone: ExperienceZoneItem[] = [
@@ -196,8 +215,8 @@ export function HomeDashboard({
     },
   ]
 
-  // Filter items based on business mode
-  const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly)
+  // Filter items based on business mode only (War Room will be shown in business mode)
+  const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly);
 
   const crownWorldItems = [
     {
@@ -242,18 +261,18 @@ export function HomeDashboard({
     },
   ]
 
-  // Filter founders desk items based on business mode
-  const visibleFoundersDeskItems = foundersDeskItems.filter(item => isBusinessMode || !item.businessOnly)
+  // Filter founders desk items based on business mode only (Playbook Store will be shown in business mode)
+  const visibleFoundersDeskItems = foundersDeskItems.filter(item => isBusinessMode || !item.businessOnly);
 
   const handleNavigate = (e: React.MouseEvent, route: string, developmentId?: string) => {
     e.preventDefault()
     
-    // Handle onboarding steps if needed
-    if (route === "play-books" && currentStep === "playbooks") {
-      setCurrentStep("industryTrends")
-    } else if (route === "strategy-vault" && currentStep === "industryTrends") {
-      setCurrentStep("orangeStrategy")
-    }
+    // Commenting out onboarding steps
+    // if (route === "play-books" && currentStep === "playbooks") {
+    //   setCurrentStep("industryTrends")
+    // } else if (route === "strategy-vault" && currentStep === "industryTrends") {
+    //   setCurrentStep("orangeStrategy")
+    // }
 
     // Handle development ID if provided (for strategy vault navigation with context)
     if (developmentId) {
@@ -277,9 +296,10 @@ export function HomeDashboard({
     }
   }
 
-  const handleCloseOnboardingWizard = () => {
-    setShowOnboardingWizard(false)
-  }
+  // Commenting out onboarding wizard close handler
+  // const handleCloseOnboardingWizard = () => {
+  //   setShowOnboardingWizard(false)
+  // }
 
   return (
     <>
@@ -405,35 +425,37 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-start w-full">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
-                        <div className="flex items-center gap-2">
-                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                      <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
                           {item.beta && (
                             <Badge variant="secondary" className="ml-1 badge-beta">
                               Beta
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
+                        <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
+                      </div>
+                      <div className="flex justify-between items-center w-full mb-2">
                         {item.live && (
-                          <div className="mt-2">
+                          <div>
                             <LiveButton />
                           </div>
                         )}
-                      </div>
-                      <div className="flex items-center mt-4 w-full justify-end">
-                        <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
-                        <div className="clickable-arrow ml-1">
-                          <ArrowRight className="w-4 h-4" />
+                        <div className="flex items-center ml-auto">
+                          <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
+                          <div className="clickable-arrow ml-1 flex-shrink-0">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
                         </div>
                       </div>
                     </Button>
@@ -466,35 +488,37 @@ export function HomeDashboard({
                 >
                   <Button
                     onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                    className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                     style={{
                       background: item.color,
                       color: theme === "dark" ? "white" : "black",
                     }}
                   >
-                    <div className="flex flex-col items-start w-full">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
-                      <div className="flex items-center gap-2">
-                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                    <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
+                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
                         {item.beta && (
                           <Badge variant="secondary" className="ml-1 badge-beta">
                             Beta
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
+                      <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
                         {typeof item.description === "string" ? item.description : item.description}
                       </div>
+                    </div>
+                    <div className="flex justify-between items-center w-full mb-2">
                       {item.live && (
-                        <div className="mt-2">
+                        <div>
                           <LiveButton />
                         </div>
                       )}
-                    </div>
-                    <div className="flex items-center mt-4 w-full justify-end">
-                      <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
-                      <div className="clickable-arrow ml-1">
-                        <ArrowRight className="w-4 h-4" />
+                      <div className="flex items-center ml-auto">
+                        <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
+                        <div className="clickable-arrow ml-1 flex-shrink-0">
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
                       </div>
                     </div>
                   </Button>
@@ -527,22 +551,22 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full h-[200px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold"
+                      className="w-full h-[260px] md:h-[300px] p-4 md:p-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
                       style={{
                         background: item.color,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
-                      <div className="flex flex-col items-start w-full">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2" />
-                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
-                        <div className="text-xs md:text-sm max-w-full line-clamp-4 overflow-hidden whitespace-normal break-words font-normal">
+                      <div className="flex flex-col items-start w-full overflow-hidden h-[160px]">
+                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-3 mt-4" />
+                        <Heading3 className="mb-2 mt-0 text-shadow">{item.name}</Heading3>
+                        <div className="text-sm md:text-sm max-w-full line-clamp-4 md:line-clamp-3 overflow-hidden whitespace-normal break-words font-normal">
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex items-center mt-4 w-full justify-end">
-                        <span className="mr-1 md:mr-2 text-sm font-button font-semibold">Explore</span>
-                        <div className="clickable-arrow ml-1">
+                      <div className="flex items-center w-full justify-end mb-2">
+                        <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
+                        <div className="clickable-arrow ml-1 flex-shrink-0">
                           <ArrowRight className="w-4 h-4" />
                         </div>
                       </div>
@@ -554,7 +578,8 @@ export function HomeDashboard({
           </Card>
         )}
 
-        {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />}
+        {/* Commenting out onboarding wizard */}
+        {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}
       </div>
     </>
   )
