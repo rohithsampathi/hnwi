@@ -15,6 +15,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark")
+  const [isInitialized, setIsInitialized] = useState(false)
 
   const darkTheme = {
     background: "linear-gradient(to bottom, #004d40, #00695c, #121212)",
@@ -34,30 +35,40 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     },
   }
 
+  // Apply theme to document when theme changes
   useEffect(() => {
-    const root = window.document.documentElement
-    root.classList.remove("light", "dark")
-    root.classList.add(theme)
+    if (typeof window !== 'undefined') {
+      const root = window.document.documentElement
+      root.classList.remove("light", "dark")
+      root.classList.add(theme)
+    }
   }, [theme])
   
   // Initialize theme from localStorage or system preference once on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme
-    if (savedTheme) {
-      setTheme(savedTheme)
-    } else {
-      // Only use system preference if no saved theme
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-      setTheme(mediaQuery.matches ? "dark" : "light")
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as Theme
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setTheme(savedTheme)
+      } else {
+        // Only use system preference if no saved theme
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+        const systemTheme = mediaQuery.matches ? "dark" : "light"
+        setTheme(systemTheme)
+        // Save system preference as initial value
+        localStorage.setItem('theme', systemTheme)
+      }
+      setIsInitialized(true)
     }
   }, [])
 
-  // We've moved this logic to the initial mount effect above
-
   // When theme changes, save to localStorage
+  // Only save after initial load completes
   useEffect(() => {
-    localStorage.setItem('theme', theme)
-  }, [theme])
+    if (typeof window !== 'undefined' && isInitialized) {
+      localStorage.setItem('theme', theme)
+    }
+  }, [theme, isInitialized])
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"))

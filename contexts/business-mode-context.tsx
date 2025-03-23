@@ -12,8 +12,32 @@ type BusinessModeContextType = {
 const BusinessModeContext = createContext<BusinessModeContextType | undefined>(undefined)
 
 export function BusinessModeProvider({ children }: { children: React.ReactNode }) {
-  const [isBusinessMode, setIsBusinessMode] = useState<boolean>(true)
+  const [isBusinessMode, setIsBusinessMode] = useState<boolean>(false)
   const [showBanner, setShowBanner] = useState<boolean>(false)
+  const [isInitialized, setIsInitialized] = useState<boolean>(false)
+  
+  // Load business mode from localStorage on initial render
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedBusinessMode = localStorage.getItem('businessMode');
+      if (savedBusinessMode !== null) {
+        setIsBusinessMode(savedBusinessMode === 'true');
+      } else {
+        // Set default if no saved value
+        localStorage.setItem('businessMode', 'true');
+        setIsBusinessMode(true);
+      }
+      setIsInitialized(true);
+    }
+  }, []);
+  
+  // Save business mode state to localStorage whenever it changes
+  // Only save after initial load is complete
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isInitialized) {
+      localStorage.setItem('businessMode', isBusinessMode.toString());
+    }
+  }, [isBusinessMode, isInitialized]);
 
   const toggleBusinessMode = () => {
     setIsBusinessMode((prev) => !prev)

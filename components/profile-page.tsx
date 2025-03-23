@@ -339,13 +339,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                 {isEditing ? "Edit Profile" : `${editedUser.name}`}
               </Heading2>
             </div>
-            {/* Onboarding wizard button removed - might need it in the future
-            <div className="flex space-x-2">
-              <Button variant="ghost" style={{ color: theme === "dark" ? "white" : "black" }} className="hover:bg-white/20" onClick={toggleOnboardingWizard}>
-                <HelpCircle className="w-5 h-5 mr-2" />
-                Onboarding Wizard
-              </Button>
-            </div> */}
+            {/* Onboarding wizard button removed */}
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
@@ -621,7 +615,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
           </CardContent>
           {/* Removed absolute positioned logout button to prevent overlap */}
         </Card>
-        {showOnboardingWizard && <OnboardingWizard />}
+        {/* Onboarding wizard disabled */}
         <ChangePasswordPopup
           isOpen={isChangePasswordOpen}
           onClose={() => setIsChangePasswordOpen(false)}

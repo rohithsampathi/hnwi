@@ -3,6 +3,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTheme } from "@/contexts/theme-context"
 import { HomeDashboard } from "./home-dashboard"
 import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
@@ -70,69 +71,95 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { toast } = useToast()
+  const { theme } = useTheme()
 
   useEffect(() => {
     let isMounted = true
 
     const checkUserSession = async () => {
       try {
+        if (currentPage === "loading") {
+          // Skip loading while we're in initial loading state
+          return;
+        }
+        
         // First check if we have a user object stored in localStorage from a successful login
         const storedUserObject = localStorage.getItem("userObject");
-        if (storedUserObject) {
+        if (storedUserObject && !user) { // Only set if we don't already have a user
           try {
             const userObj = JSON.parse(storedUserObject);
             setUser(userObj);
             setHasCheckedSession(true);
             setIsSessionCheckComplete(true);
             setIsLoading(false);
+            
+            // Ensure token and userId are still in localStorage
+            if (userObj.id) {
+              localStorage.setItem("userId", userObj.id);
+              localStorage.setItem("userEmail", userObj.email || "");
+              
+              // Ensure token exists - very important for session persistence
+              if (!localStorage.getItem("token")) {
+                localStorage.setItem("token", "recovered-session-token");
+              }
+            }
+            
             return; // Skip API call if we have a stored user
           } catch (e) {
             // Continue with API call if parsing fails
+            // Error parsing stored user object
           }
         }
         
-        setIsLoading(true);
-        const response = await fetch("/api/auth/session")
-        const data = await response.json()
-
-        if (isMounted) {
-          if (data.user) {
-            // Create consistent user object
-            const userObj = {
-              id: data.user.id,
-              email: data.user.email,
-              firstName: data.user.firstName,
-              lastName: data.user.lastName || "",
-              role: data.user.role || "user",
-              // Fields from API
-              user_id: data.user.user_id || data.user.id,
-              // Add any profile information
-              ...(data.user.profile && { profile: data.user.profile })
-            };
-            
-            setUser(userObj);
-
-            // Store the ID from API response (user_id or id if available)
-            const userId = data.user.user_id || data.user.id;
-            if (userId) {
-              localStorage.setItem("userId", userId);
-              localStorage.setItem("userEmail", data.user.email);
+        // Only proceed with API session check if we don't already have a user
+        if (!user && !hasCheckedSession) {
+          setIsLoading(true);
+          const response = await fetch("/api/auth/session")
+          const data = await response.json()
+  
+          if (isMounted) {
+            if (data.user) {
+              // Create consistent user object
+              const userObj = {
+                id: data.user.id,
+                email: data.user.email,
+                firstName: data.user.firstName,
+                lastName: data.user.lastName || "",
+                role: data.user.role || "user",
+                // Fields from API
+                user_id: data.user.user_id || data.user.id,
+                // Add any profile information
+                ...(data.user.profile && { profile: data.user.profile })
+              };
               
-              if (data.token) {
-                localStorage.setItem("token", data.token);
+              setUser(userObj);
+  
+              // Store the ID from API response (user_id or id if available)
+              const userId = data.user.user_id || data.user.id;
+              if (userId) {
+                localStorage.setItem("userId", userId);
+                localStorage.setItem("userEmail", data.user.email);
+                
+                // Always ensure we have a token for session persistence
+                if (data.token) {
+                  localStorage.setItem("token", data.token);
+                } else {
+                  localStorage.setItem("token", "session-token-" + Date.now());
+                }
+                
+                // Store the complete user object for future session recovery
+                localStorage.setItem("userObject", JSON.stringify(userObj));
               }
-              
-              // Store the complete user object for future session recovery
-              localStorage.setItem("userObject", JSON.stringify(userObj));
+            } else {
+              setUser(null);
             }
-          } else {
-            setUser(null);
+            
+            setHasCheckedSession(true);
+            setIsSessionCheckComplete(true);
           }
-          
-          setHasCheckedSession(true);
-          setIsSessionCheckComplete(true);
         }
       } catch (error) {
+        // Error checking session
         if (isMounted) {
           setUser(null);
           setHasCheckedSession(true);
@@ -162,7 +189,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     return () => {
       isMounted = false
     }
-  }, [currentPage])
+  }, [currentPage, hasCheckedSession])
 
   // Remove immediate redirect from splash screen to allow it to display
   // The redirect will now be handled by app-wrapper.tsx with a 3-second delay
@@ -245,7 +272,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setIsLoading(true);
       setError("");
 
-      console.log("Direct login attempt for:", loginData.email);
 
       // Use the NextJS API route which will call the FastAPI backend
       try {
@@ -257,7 +283,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           body: JSON.stringify(loginData)
         });
         
-        console.log("Login API response status:", response.status);
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -265,7 +290,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         }
         
         const data = await response.json();
-        console.log("Login API response data:", JSON.stringify(data, null, 2));
         
         // Handle direct API login data format (from the Postman example)
         // Extract user info from the response - could be in data.user or directly in data
@@ -307,7 +331,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           profile: profile
         };
         
-        console.log("Created user object:", JSON.stringify(userObject, null, 2));
         
         // Set user in state
         setUser(userObject);
@@ -321,7 +344,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           localStorage.setItem("token", data.token);
         }
         
-        console.log("Login complete - User ID stored:", userId);
         
         // Navigate to dashboard
         handleNavigation("dashboard");
@@ -546,12 +568,19 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       localStorage.setItem("userId", userObject.user_id);
       localStorage.setItem("userEmail", userObject.email);
       
+      // Always ensure a token is stored
       if (userData.token) {
         localStorage.setItem("token", userData.token);
+      } else {
+        // Create a fallback token to maintain session
+        localStorage.setItem("token", "session-token-" + Date.now());
       }
       
       // Also store the complete user object for session recovery
       localStorage.setItem("userObject", JSON.stringify(userObject));
+      
+      // Store current page for refresh persistence
+      sessionStorage.setItem("currentPage", "dashboard");
       
       // Navigate to dashboard
       handleNavigation("dashboard");
@@ -576,6 +605,45 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   // Always render content, even if session check hasn't completed
   // This prevents blank screens
   const renderPage = () => {
+    // Handle loading state with consistent loading screen
+    if (currentPage === "loading") {
+      return (
+        <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-300 ${
+          theme === "dark" ? "bg-[#121212]" : "bg-[#F5F5F5]"
+        }`}>
+          {/* Add particles background for consistent look with splash screen */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/40 z-10"></div>
+            <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] z-0"></div>
+          </div>
+          
+          <div className="z-10 flex flex-col items-center justify-center">
+            {/* Rotating logo */}
+            <div className="relative w-32 h-32 mb-6">
+              <img 
+                src="/logo.png" 
+                alt="HNWI Chronicles Logo" 
+                className="w-full h-full object-contain"
+                style={{ 
+                  animation: "spin 8s linear infinite" 
+                }}
+              />
+            </div>
+            
+            {/* Loading text */}
+            <div className="text-center">
+              <h2 className={`text-2xl font-bold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                Brewing & Updating the Latest Juice
+              </h2>
+              <p className={`${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}>
+                Please wait while we prepare your experience...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     switch (currentPage) {
       case "splash":
         return <SplashScreen onLogin={handleLoginClick} />
@@ -651,12 +719,32 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         }
 
       case "dashboard":
+        // If not authenticated but trying to view dashboard, redirect to splash
+        if (!user) {
+          // Only redirect if we've finished checking the session
+          if (isSessionCheckComplete) {
+            // Redirect to splash
+            setTimeout(() => handleNavigation("splash"), 0);
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-black">
+                <div className="text-blue-400 text-xl">Redirecting to login...</div>
+              </div>
+            );
+          } else {
+            // Still checking auth, show loading
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-black">
+                <div className="text-blue-400 text-xl">Loading...</div>
+              </div>
+            );
+          }
+        }
+        
+        // User is authenticated, show dashboard
         return (
-          user && (
-            <Layout title={`Welcome, ${user.firstName}`} onNavigate={handleNavigation}>
-              <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} userData={user} />
-            </Layout>
-          )
+          <Layout title={`Welcome, ${user.firstName}`} onNavigate={handleNavigation}>
+            <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} userData={user} />
+          </Layout>
         )
 
       case "profile":

@@ -15,63 +15,125 @@ interface AppWrapperProps {
 
 export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrapperProps) {
   // If skipSplash is true, start on dashboard page, else splash
-  const [currentPage, setCurrentPage] = useState<string>(skipSplash ? "dashboard" : "splash")
+  const [currentPage, setCurrentPage] = useState<string>("loading") // Start with loading state
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
   const [userInteracted, setUserInteracted] = useState<boolean>(false)
   const [forcePage, setForcePage] = useState<string | null>(null)
 
   // This effect handles initial setup and auto-redirect
   useEffect(() => {
+    // Safety check for SSR
+    if (typeof window === 'undefined') return;
+    
     // Ensures we're mounted and hydrated before showing content
     setIsInitialized(true)
     
-    // Make sure isInitialized is set immediately to prevent blank screens
-    setTimeout(() => {
-      if (!isInitialized) {
-        setIsInitialized(true);
-      }
-    }, 100)
+    // Get auth status once on mount
+    const getAuthStatus = () => {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      const userObject = localStorage.getItem("userObject");
+      return {
+        token,
+        userId,
+        userObject,
+        isAuthenticated: !!(token && userId)
+      };
+    };
     
-    // Check for token to determine if user is logged in
-    const token = localStorage.getItem("token")
-    const userId = localStorage.getItem("userId")
+    const { token, userId, userObject, isAuthenticated } = getAuthStatus();
     
-    // If skipSplash is true, immediately set the page to initialRoute or dashboard
-    if (skipSplash) {
-      // console.log("Skipping splash screen as requested");
-      if (initialRoute) {
-        setCurrentPage(initialRoute);
-      } else if (token && userId) {
-        setCurrentPage("dashboard");
+    
+    // Session recovery - do this only once on mount
+    if (!token && userObject) {
+      try {
+        const parsedUser = JSON.parse(userObject);
+        if (parsedUser && parsedUser.id) {
+          localStorage.setItem("userId", parsedUser.id);
+          localStorage.setItem("token", "recovered-session-token");
+          // We won't re-render since this effect only runs once on mount
+        }
+      } catch (e) {
+        // Error parsing userObject
       }
-      return; // Don't set up the timer
     }
     
-    // Check if user is already logged in
-    if (!userInteracted) {
-      // Handle initial route if provided
-      if (initialRoute && token && userId) {
-        // If we have an initial route and user is logged in, navigate to it
-        setCurrentPage(initialRoute);
-      } else if (token && userId) {
-        // If user is logged in but no initial route, go to dashboard
-        setCurrentPage("dashboard");
+    // Page determination logic - only run once on component mount
+    const determineInitialPage = () => {
+      try {
+        // Always use initialRoute if explicitly provided (from parent)
+        if (initialRoute) {
+          // Store for future refreshes unless it's splash/login
+          if (initialRoute !== "splash" && initialRoute !== "login") {
+            sessionStorage.setItem("currentPage", initialRoute);
+          }
+          return initialRoute;
+        }
+        
+        // Check for a previously persisted page (from navigation or refresh)
+        const persistedPage = sessionStorage.getItem("currentPage");
+        
+        // For authenticated users
+        if (isAuthenticated) {
+          if (persistedPage && persistedPage !== "splash" && persistedPage !== "login") {
+            return persistedPage;
+          } else {
+            // No persisted page, use the URL to determine the page
+            const currentPath = window.location.pathname;
+            let derivedPage = "dashboard"; // Default for authenticated users
+            
+            // Map URL paths to corresponding pages
+            if (currentPath.includes('/invest-scan')) {
+              derivedPage = "invest-scan";
+            } else if (currentPath.includes('/prive-exchange')) {
+              derivedPage = "prive-exchange";
+            } else if (currentPath.includes('/opportunity')) {
+              derivedPage = "opportunity";
+              // Extract and store opportunity ID if present
+              const opportunityId = currentPath.split('/').pop();
+              if (opportunityId) {
+                sessionStorage.setItem("currentOpportunityId", opportunityId);
+              }
+            } else if (currentPath.includes('/calendar-page')) {
+              derivedPage = "calendar-page";
+            } else if (currentPath.includes('/profile')) {
+              derivedPage = "profile";
+            }
+            
+            sessionStorage.setItem("currentPage", derivedPage);
+            return derivedPage;
+          }
+        } else {
+          // User is not authenticated - show splash
+          sessionStorage.removeItem("currentPage");
+          return "splash";
+        }
+      } catch (error) {
+        // Fallback to splash screen if there's any error (e.g. localStorage blocked)
+        // Error in initialization
+        return "splash";
       }
-      // IMPORTANT: If no token/userId, remain on splash screen
-    }
-  }, [initialRoute, userInteracted, forcePage, skipSplash])
+    };
+    
+    // Set the page once
+    const initialPage = determineInitialPage();
+    setCurrentPage(initialPage);
+    
+  // No dependencies - we only want this to run once on mount
+  }, [])
 
   const handleNavigate = (route: string) => {
     // Mark that user has interacted when they navigate
     setUserInteracted(true)
+    
+    // Store the current page in sessionStorage to persist across refreshes
+    sessionStorage.setItem("currentPage", route);
     
     // Explicitly set forcePage to prevent auto-redirects
     setForcePage(route)
     
     // Special case for login - need to handle it specially so it doesn't get overridden
     if (route === 'login') {
-      // console.log('Forcing navigation to login page');
-      
       // Force removal of stored auth info to prevent automatic redirection
       const hasToken = localStorage.getItem("token");
       if (hasToken) {
@@ -86,6 +148,7 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
         // Remove from localStorage to prevent auto-redirect
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
+        localStorage.removeItem("userObject");
       }
     } else if (route === 'splash' && !isInitialized) {
       // Skip updating page if it's an initial splash navigation
