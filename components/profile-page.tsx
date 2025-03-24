@@ -68,7 +68,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         return; // Prevent fetching more than once per minute
       }
 
-      console.log("Fetching user data for ID:", userId);
+      // Fetching user data
       setIsRefreshing(true)
       try {
         const token = localStorage.getItem("token");
@@ -84,7 +84,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         }
         
         const userData = await response.json();
-        console.log("Fetched user data:", JSON.stringify(userData));
+        // User data fetched successfully
         
         // Enhance user data with company info handling
         const enhancedUserData = {
@@ -96,7 +96,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         setEditedUser(enhancedUserData);
         onUpdateUser(enhancedUserData);
         setLastFetchTime(now);
-        console.log("User data fetch complete and state updated");
+        // User data fetch complete and state updated;
       } catch (error) {
         console.error("Error fetching user data:", error)
         toast({
@@ -546,7 +546,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         <span className="font-medium">Name:</span> {editedUser.name}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Net Worth:</span> {editedUser.net_worth ? `$${editedUser.net_worth.toLocaleString()}` : 'Not specified'}
+                        <span className="font-medium">Net Worth:</span> {editedUser.net_worth && typeof editedUser.net_worth === 'number' ? `$${editedUser.net_worth.toLocaleString()}` : 'Not specified'}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
                         <span className="font-medium">City:</span> {editedUser.city || 'Not specified'}

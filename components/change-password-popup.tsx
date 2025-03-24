@@ -91,9 +91,10 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
             />
             <Button 
               type="button" 
-              variant="ghost" 
+              variant="outline" 
               className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
               onClick={() => setShowOldPassword(!showOldPassword)}
+              style={{ background: theme === "dark" ? "#2A2A2A" : "#f5f5f5", color: theme === "dark" ? "#ffffff" : "#000000", boxShadow: "none" }}
             >
               {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </Button>
@@ -109,9 +110,10 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
             />
             <Button 
               type="button" 
-              variant="ghost" 
+              variant="outline" 
               className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
               onClick={() => setShowNewPassword(!showNewPassword)}
+              style={{ background: theme === "dark" ? "#2A2A2A" : "#f5f5f5", color: theme === "dark" ? "#ffffff" : "#000000", boxShadow: "none" }}
             >
               {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </Button>
@@ -127,9 +129,10 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
             />
             <Button 
               type="button" 
-              variant="ghost" 
+              variant="outline" 
               className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0" 
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{ background: theme === "dark" ? "#2A2A2A" : "#f5f5f5", color: theme === "dark" ? "#ffffff" : "#000000", boxShadow: "none" }}
             >
               {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </Button>
