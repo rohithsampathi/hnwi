@@ -546,31 +546,31 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         <span className="font-medium">Name:</span> {editedUser.name}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Net Worth:</span> ${editedUser.net_worth.toLocaleString()}
+                        <span className="font-medium">Net Worth:</span> {editedUser.net_worth ? `$${editedUser.net_worth.toLocaleString()}` : 'Not specified'}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">City:</span> {editedUser.city}
+                        <span className="font-medium">City:</span> {editedUser.city || 'Not specified'}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Country:</span> {editedUser.country}
+                        <span className="font-medium">Country:</span> {editedUser.country || 'Not specified'}
                       </Paragraph>
                     </div>
                     <div>
                       <Heading3 className="text-lg font-semibold font-heading mb-2">Professional Information</Heading3>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Industries:</span> {editedUser.industries.join(", ")}
+                        <span className="font-medium">Industries:</span> {editedUser.industries && editedUser.industries.length > 0 ? editedUser.industries.join(", ") : 'Not specified'}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Company:</span> {editedUser.company_info?.name || editedUser.company || ""}
+                        <span className="font-medium">Company:</span> {editedUser.company_info?.name || editedUser.company || "Not specified"}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Phone:</span> {editedUser.phone_number}
+                        <span className="font-medium">Phone:</span> {editedUser.phone_number || "Not specified"}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">LinkedIn:</span> {editedUser.linkedin}
+                        <span className="font-medium">LinkedIn:</span> {editedUser.linkedin || "Not specified"}
                       </Paragraph>
                       <Paragraph className="text-sm font-body">
-                        <span className="font-medium">Office Address:</span> {editedUser.office_address}
+                        <span className="font-medium">Office Address:</span> {editedUser.office_address || "Not specified"}
                       </Paragraph>
                     </div>
                   </div>
@@ -585,7 +585,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   </div>
                   <div>
                     <Heading3 className="text-lg font-semibold font-heading mb-2">Bio</Heading3>
-                    <Paragraph className="text-sm font-body">{editedUser.bio}</Paragraph>
+                    <Paragraph className="text-sm font-body">{editedUser.bio || "No bio provided"}</Paragraph>
                   </div>
                   <Button onClick={() => setIsEditing(true)} className="mt-6 text-white" style={{ background: theme === "dark" ? "#695d7e" : "#d8d0e8", color: theme === "dark" ? "white" : "black", borderColor: theme === "dark" ? "#695d7e" : "#d8d0e8" }}>
                     <Edit2 className="w-4 h-4 mr-2" />
