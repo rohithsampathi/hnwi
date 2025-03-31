@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, Shield, CalendarIcon, Crown, UserCircle2, Users2 } from "lucide-react"
+import { Home, Shield, CalendarIcon, Crown, UserCircle2, Users2, Globe, Store } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 export function FooterNavigation({
@@ -18,8 +18,9 @@ export function FooterNavigation({
     { name: "Home", icon: Home, route: "dashboard", alwaysShow: true },
     { name: "War Room", icon: Shield, route: "war-room", alwaysShow: false },
     // { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
+    { name: "HNWI World", icon: Globe, route: "strategy-vault", live: true, alwaysShow: true },
     { name: "Social Hub", icon: Users2, route: "social-hub", beta: true, alwaysShow: true },
-    { name: "Privé Exchange", icon: Crown, route: "prive-exchange", beta: true, alwaysShow: true },
+    { name: "Privé Exchange", icon: Store, route: "prive-exchange", beta: true, alwaysShow: true },
     { name: "Profile", icon: UserCircle2, route: "profile", alwaysShow: true },
   ]
 

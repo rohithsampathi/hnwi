@@ -19,6 +19,7 @@ import {
   BookOpen,
   Crown,
   Users,
+  Store,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -186,6 +187,15 @@ export function HomeDashboard({
   // All available sections
   const experienceZone: ExperienceZoneItem[] = [
     {
+      name: "HNWI World",
+      icon: Globe,
+      route: "strategy-vault",
+      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1", // Changed to match Foundry colors
+      description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
+      iconAnimation: pulseAnimation,
+      live: true,
+    },
+    {
       name: "War Room",
       icon: Shield,
       route: "war-room",
@@ -194,7 +204,6 @@ export function HomeDashboard({
       iconAnimation: pulseAnimation,
       businessOnly: true,
     },
-    // HNWI World moved to Crown Zone
     // Tactics Lab moved to Founder's Desk
   ]
 
@@ -204,7 +213,7 @@ export function HomeDashboard({
   const crownZoneItems = [
     {
       name: "Privé Exchange",
-      icon: Crown,
+      icon: Store,
       route: "prive-exchange",
       color: theme === "dark" ? "#695d7e" : "#d8d0e8",
       description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
@@ -221,16 +230,7 @@ export function HomeDashboard({
       iconAnimation: pulseAnimation,
       beta: true,
       live: true,
-    },
-    {
-      name: "HNWI World",
-      icon: Globe,
-      route: "strategy-vault",
-      color: theme === "dark" ? "#695d7e" : "#d8d0e8", // Changed to match Crown Zone colors
-      description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
-      iconAnimation: pulseAnimation,
-      live: true,
-    },
+    }
   ]
 
   const foundersDeskItems = [
@@ -562,7 +562,14 @@ export function HomeDashboard({
                     >
                       <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
-                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                          {item.beta && (
+                            <Badge variant="secondary" className="ml-1 badge-beta">
+                              Beta
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-sm md:text-sm max-w-full line-clamp-6 md:line-clamp-8 lg:line-clamp-7 overflow-hidden whitespace-normal break-words font-normal h-[100px] md:h-[120px] lg:h-[110px]">
                           {item.description}
                         </div>
