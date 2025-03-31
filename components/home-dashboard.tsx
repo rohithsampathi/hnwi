@@ -194,31 +194,14 @@ export function HomeDashboard({
       iconAnimation: pulseAnimation,
       businessOnly: true,
     },
-    {
-      name: "HNWI World",
-      icon: Globe,
-      route: "strategy-vault",
-      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
-      description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
-      iconAnimation: pulseAnimation,
-      live: true,
-    },
-    {
-      name: "Tactics Lab",
-      icon: Beaker,
-      route: "strategy-engine",
-      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
-      description: "Experiment with advanced wealth preservation and growth strategies in our premium simulation environment.",
-      iconAnimation: pulseAnimation,
-      beta: true,
-      businessOnly: true,
-    },
+    // HNWI World moved to Crown Zone
+    // Tactics Lab moved to Founder's Desk
   ]
 
   // Filter items based on business mode only (War Room will be shown in business mode)
   const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly);
 
-  const crownWorldItems = [
+  const crownZoneItems = [
     {
       name: "Privé Exchange",
       icon: Crown,
@@ -239,17 +222,27 @@ export function HomeDashboard({
       beta: true,
       live: true,
     },
+    {
+      name: "HNWI World",
+      icon: Globe,
+      route: "strategy-vault",
+      color: theme === "dark" ? "#695d7e" : "#d8d0e8", // Changed to match Crown Zone colors
+      description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
+      iconAnimation: pulseAnimation,
+      live: true,
+    },
   ]
 
   const foundersDeskItems = [
-    {
+    // Calendar card removed/commented out
+    /*{
       name: "Calendar",
       icon: CalendarIcon,
       route: "calendar-page",
       color: theme === "dark" ? "#877773" : "#f3eae0",
       description: "Manage your elite events calendar, including private showcases, exclusive gatherings, and invitation-only investment summits tailored to your interests.",
       iconAnimation: pulseAnimation,
-    },
+    },*/
     {
       name: "Playbook Store",
       icon: BookOpen,
@@ -257,6 +250,16 @@ export function HomeDashboard({
       color: theme === "dark" ? "#877773" : "#f3eae0",
       description: "Discover and acquire premium investment playbooks and wealth preservation strategies developed by leading global experts and institutions.",
       iconAnimation: pulseAnimation,
+      businessOnly: true,
+    },
+    {
+      name: "Tactics Lab",
+      icon: Beaker,
+      route: "strategy-engine",
+      color: theme === "dark" ? "#877773" : "#f3eae0", // Changed to match Founder's Desk colors
+      description: "Experiment with advanced wealth preservation and growth strategies in our premium simulation environment.",
+      iconAnimation: pulseAnimation,
+      beta: true,
       businessOnly: true,
     },
   ]
@@ -466,20 +469,20 @@ export function HomeDashboard({
           </Card>
         )}
 
-        {/* Crown World Section */}
+        {/* Crown Zone Section */}
         <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
               <Crown className="w-6 h-6 text-primary" />
               <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
-                Crown World
+                Crown Zone
               </Heading2>
             </div>
             <CardDescription className="font-body tracking-wide text-xl font-normal">Exclusive opportunities for the elite</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {crownWorldItems.map((item, index) => (
+              {crownZoneItems.map((item, index) => (
                 <motion.div
                   key={item.name}
                   initial={{ opacity: 0, y: 20 }}

@@ -6,16 +6,25 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CalendarPlus, MapPin, Users, Tag, Clock, Building, Check } from "lucide-react"
+import { MapPin, Users, Tag, Clock, Building, Check, Loader2, ThumbsUp, Phone } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { Heading3, Paragraph } from "@/components/ui/typography"
 import { fonts } from "@/styles/fonts"
 import { colors } from "@/styles/colors"
-import { addEventToCalendar } from "@/utils/calendar-utils"
+// import { addEventToCalendar } from "@/utils/calendar-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { SocialEvent, getEvents } from "@/lib/api"
 import { getCategoryColorClass, getCategoryDarkColorClass } from "@/utils/color-utils"
+import { useAuth } from "@/components/auth-provider"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog"
 
 const PREMIUM_PATTERNS_LIGHT = [
   "bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-100 via-slate-50 to-slate-100",
@@ -42,11 +51,14 @@ function getPatternClass(index: number, theme: string) {
 export function SocialHub() {
   const { theme } = useTheme()
   const { toast } = useToast()
+  const { user } = useAuth()
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
   const [events, setEvents] = useState<SocialEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [addedEvents, setAddedEvents] = useState<Record<string, boolean>>({})
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<SocialEvent | null>(null)
 
   useEffect(() => {
     async function loadEvents() {
@@ -66,68 +78,54 @@ export function SocialHub() {
     loadEvents()
   }, [])
 
-  const addToCalendar = (event: SocialEvent) => {
+  const handleTalkToConcierge = async (event: SocialEvent) => {
+    setIsProcessing(true)
+    setSelectedEvent(event)
+    
+    const userId = localStorage.getItem("userId") || ""
+    const userEmail = localStorage.getItem("userEmail") || ""
+    const userName = user?.name || "Unknown User"
+    
     try {
-      // Force toast to show with animation for better visibility
-      toast({
-        title: "Adding to Calendar...",
-        description: `Adding ${event.name} to your calendar`,
-        duration: 1500,
+      // Send data to Formspree (example)
+      const response = await fetch("https://formspree.io/f/xwpvjjpz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventName: event.name,
+          userName,
+          userId,
+          userEmail,
+          eventId: event.id,
+          eventCategory: event.category,
+          eventLocation: event.location,
+          eventVenue: event.venue,
+          eventDate: event.start_date,
+          eventEndDate: event.end_date,
+          timestamp: new Date().toISOString(),
+        }),
       })
       
-      // Add the event to the calendar
-      const isAdded = addEventToCalendar({
-        id: event.id,
-        title: event.name,
-        date: new Date(event.start_date),
-        endDate: new Date(event.end_date),
-        category: event.category,
-        location: event.location,
-        venue: event.venue,
-        description: event.summary,
-        attendees: event.attendees,
-        tags: event.tags,
-        metadata: {
-          capacity: event.metadata?.capacity,
-          source: "social-hub"
-        }
-      })
-      
-      // Keep track of added events
-      if (isAdded) {
-        setAddedEvents(prev => ({
-          ...prev,
-          [event.id]: true
-        }))
-        
-        // Show success toast with animation
-        setTimeout(() => {
-          toast({
-            title: (
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
-                <span>Event Added to Calendar</span>
-              </div>
-            ),
-            description: `${event.name} has been added to your calendar. View it in the Calendar section.`,
-            duration: 5000,
-          })
-        }, 1500)
-      } else {
-        toast({
-          title: "Already in Calendar",
-          description: `${event.name} is already in your calendar.`,
-          duration: 3000,
-        })
+      if (!response.ok) {
+        throw new Error("Failed to submit concierge request")
       }
-    } catch (error) {
-      console.error("Error adding event to calendar:", error);
+      
+      setShowSuccessDialog(true)
       toast({
-        title: "Error Adding Event",
-        description: "There was a problem adding this event to your calendar.",
+        title: "Concierge Notified",
+        description: `Our concierge has been notified about your interest in ${event.name}.`,
+        duration: 5000,
+      })
+    } catch (error) {
+      console.error("Error submitting concierge request:", error)
+      toast({
+        title: "Request Failed",
+        description: "We couldn't process your request. Please try again later.",
         variant: "destructive",
         duration: 5000,
       })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -306,23 +304,31 @@ export function SocialHub() {
                             >
                               {expandedEvent === event.id ? "Show Less" : "Show More"}
                             </Button>
-                            {/* Add to Calendar button */}
+                            {/* Talk to Concierge button */}
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => addToCalendar(event)}
+                              onClick={() => handleTalkToConcierge(event)}
                               className={`
-                                ${addedEvents[event.id] 
-                                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                                  : theme === "dark"
-                                    ? 'bg-white hover:bg-gray-200 text-black border border-neutral-200'
-                                    : 'bg-[#212121] hover:bg-[#121212] text-white'
+                                ${theme === "dark"
+                                  ? 'bg-white hover:bg-gray-200 text-black border border-neutral-200'
+                                  : 'bg-[#212121] hover:bg-[#121212] text-white'
                                 } 
                                 text-xs md:text-sm whitespace-nowrap
                               `}
+                              disabled={isProcessing && selectedEvent?.id === event.id}
                             >
-                              <CalendarPlus className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" />
-                              {addedEvents[event.id] ? 'Added' : 'Add to Calendar'}
+                              {isProcessing && selectedEvent?.id === event.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-1 md:mr-2 animate-spin flex-shrink-0" />
+                                  Processing
+                                </>
+                              ) : (
+                                <>
+                                  <Phone className="w-4 h-4 mr-1 md:mr-2 flex-shrink-0" />
+                                  Talk to Concierge
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -357,6 +363,37 @@ export function SocialHub() {
             )
           })}
         </div>
+        
+        {/* Success Dialog */}
+        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ThumbsUp className="h-5 w-5 text-green-500" />
+                Concierge Notified
+              </DialogTitle>
+              <DialogDescription>
+                Our concierge has been informed about your interest in{" "}
+                <span className="font-semibold">{selectedEvent?.name}</span>.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-muted/30 p-4 rounded-lg my-4">
+              <p className="text-sm">
+                Our events specialist will contact you shortly to discuss this event in detail
+                and answer any questions you may have about attending.
+              </p>
+              <div className="flex items-center gap-2 mt-3 text-primary">
+                <Phone className="h-4 w-4" />
+                <p className="text-sm font-medium">Expect a call within 24 hours</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowSuccessDialog(false)}>
+                Continue Exploring
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }

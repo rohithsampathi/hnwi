@@ -27,7 +27,31 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
   const handleOnboardingComplete = (userData) => {
     // Handle successful registration
     console.log("User registered:", userData)
-    onLogin() // Redirect to login
+    
+    // Instead of redirecting to login, automatically log the user in
+    const authData = {
+      userId: userData.user_id,
+      email: userData.email,
+      firstName: userData.firstName || userData.name?.split(' ')[0] || "User",
+      lastName: userData.lastName || (userData.name?.split(' ').slice(1).join(' ') || ""),
+      profile: userData.profile || {},
+      token: userData.token || "auto-login-token"
+    }
+    
+    // Store auth data in localStorage (same pattern as login-page.tsx)
+    localStorage.setItem("userId", authData.userId);
+    localStorage.setItem("userEmail", authData.email);
+    localStorage.setItem("token", authData.token);
+    
+    // Store user object for recovery if needed
+    localStorage.setItem("userObject", JSON.stringify(authData));
+    
+    // Set skipSplash flag to bypass login screen on page refresh
+    sessionStorage.setItem("skipSplash", "true");
+    sessionStorage.setItem("currentPage", "dashboard");
+    
+    // Navigate to dashboard after signup
+    window.location.href = "/";
   }
 
   if (showOnboarding) {

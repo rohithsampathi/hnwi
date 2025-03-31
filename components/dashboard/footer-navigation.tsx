@@ -17,7 +17,7 @@ export function FooterNavigation({
   const navItems = [
     { name: "Home", icon: Home, route: "dashboard", alwaysShow: true },
     { name: "War Room", icon: Shield, route: "war-room", alwaysShow: false },
-    { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
+    // { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
     { name: "Social Hub", icon: Users2, route: "social-hub", beta: true, alwaysShow: true },
     { name: "Privé Exchange", icon: Crown, route: "prive-exchange", beta: true, alwaysShow: true },
     { name: "Profile", icon: UserCircle2, route: "profile", alwaysShow: true },
