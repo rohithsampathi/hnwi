@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import { AppContent } from "./app-content"
 import { Toaster } from "@/components/ui/toaster"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
+import MixpanelTracker from "@/lib/mixpanel"
 
 interface AppWrapperProps {
   initialRoute?: string | null;
@@ -119,6 +120,27 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     const initialPage = determineInitialPage();
     setCurrentPage(initialPage);
     
+    // Track initial page view
+    MixpanelTracker.pageView(initialPage);
+    
+    // If user is logged in, identify them in Mixpanel
+    if (userId) {
+      MixpanelTracker.identify(userId);
+      
+      if (userObject) {
+        try {
+          const user = JSON.parse(userObject);
+          MixpanelTracker.setProfile({
+            $name: user.name || 'Unknown User',
+            $email: user.email || '',
+            userId: user.id
+          });
+        } catch (e) {
+          // Error parsing user object
+        }
+      }
+    }
+    
   // No dependencies - we only want this to run once on mount
   }, [])
 
@@ -157,6 +179,9 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     
     // Update the current page
     setCurrentPage(route)
+    
+    // Track page view in Mixpanel
+    MixpanelTracker.pageView(route)
   }
 
   // Always show content, don't return null

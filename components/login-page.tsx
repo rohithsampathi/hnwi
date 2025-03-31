@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { ParticlesBackground } from "./particles-background"
 import { MetaTags } from "./meta-tags"
+import { login as loginWithAnalytics } from "@/utils/auth"
 
 // Import from config to ensure consistency
 import { API_BASE_URL } from "@/config/api"
@@ -69,12 +70,8 @@ export function LoginPage({
           token: data.token || ""
         };
         
-        // Store auth data in localStorage
-        localStorage.setItem("userId", userData.userId);
-        localStorage.setItem("userEmail", userData.email);
-        if (userData.token) {
-          localStorage.setItem("token", userData.token);
-        }
+        // Use our helper function to login with Mixpanel tracking
+        loginWithAnalytics(userData, userData.token);
         
         // Call the success handler with the user data
         onLoginSuccess(userData);
