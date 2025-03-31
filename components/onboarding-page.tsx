@@ -10,7 +10,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { ThemeToggle } from "./theme-toggle"
 import type { User } from "@/types/user"
 import { ParticlesBackground } from "./particles-background"
-import { Header } from "./layout/header"
+import { ChevronLeft, Shield, Globe, Users } from "lucide-react"
 import { Heading2, Heading3, Paragraph, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 
@@ -23,19 +23,26 @@ const slides = [
     description: "Tailored playbooks and actionable insights designed to fuel your growth ambitions.",
   },
   {
-    title: "Unlock Powerful HNWI Strategies",
+    title: "Be one with the HNWI Ecosystem",
+    description: "Your gateway to an exclusive world of private intelligence, global networks, and strategic resources.",
     sections: [
       {
-        title: "Actionable Playbooks",
-        description: "Step-by-step frameworks to penetrate HNWI markets with precision.",
+        title: "War Room",
+        icon: "Shield",
+        description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
+        color: "#7f6e6b",
       },
       {
-        title: "Global Market Insights",
-        description: "Track wealth flows, trends, and opportunities across industries.",
+        title: "HNWI World",
+        icon: "Globe",
+        description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
+        color: "#695d7e",
       },
       {
-        title: "Orange Strategy Engine",
-        description: "Ask complex questions and receive data-backed insights to drive strategic decisions.",
+        title: "Social Hub",
+        icon: "Users",
+        description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
+        color: "#877773",
       },
     ],
   },
@@ -45,7 +52,7 @@ const slides = [
   },
 ]
 
-const primaryInterests = ["Real Estate", "Collectibles", "Fashion", "Wealth Management"]
+const primaryInterests = ["Real Estate", "Collectibles", "Fashion", "Wealth Management", "Other"]
 
 export function OnboardingPage({
   onComplete,
@@ -55,6 +62,7 @@ export function OnboardingPage({
   const { theme } = useTheme()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
+  const [otherInterest, setOtherInterest] = useState("")
   const [isCryptoInvestor, setIsCryptoInvestor] = useState(false)
   const [isLandInvestor, setIsLandInvestor] = useState(false)
   const [firstName, setFirstName] = useState("")
@@ -73,7 +81,10 @@ export function OnboardingPage({
     if (currentSlide > 0) {
       setCurrentSlide(currentSlide - 1)
     } else {
-      onBack()
+      // Make sure onBack is properly passed from parent
+      if (typeof onBack === 'function') {
+        onBack()
+      }
     }
   }
 
@@ -86,7 +97,9 @@ export function OnboardingPage({
       city: "Edit This Data",
       country: "Edit This Data",
       bio: "Edit This Data",
-      industries: selectedInterests,
+      industries: selectedInterests.includes("Other") && otherInterest 
+        ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
+        : selectedInterests,
       company: "Edit This Data",
       phone_number: "Edit This Data",
       linkedin: "Edit This Data",
@@ -144,7 +157,9 @@ export function OnboardingPage({
           city: "Edit This Data",
           country: "Edit This Data",
           bio: "Edit This Data",
-          industries: selectedInterests,
+          industries: selectedInterests.includes("Other") && otherInterest 
+            ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
+            : selectedInterests,
           phone_number: "Edit This Data",
           office_address: "Edit This Data",
           crypto_investor: isCryptoInvestor,
@@ -196,7 +211,7 @@ export function OnboardingPage({
   }
 
   const renderForm = () => (
-    <div className="space-y-4 mb-6">
+    <div className="space-y-6 mb-6">
       <div>
         <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}>
           First Name
@@ -205,7 +220,11 @@ export function OnboardingPage({
           type="text"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          className={`w-full ${theme === "dark" ? "bg-[#121212] text-[#E0E0E0]" : "bg-white text-[#212121]"}`}
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
+            theme === "dark"
+              ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
+              : "bg-white text-[#212121] border-[#DDD]"
+          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
           required
         />
       </div>
@@ -217,7 +236,11 @@ export function OnboardingPage({
           type="text"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          className={`w-full ${theme === "dark" ? "bg-[#121212] text-[#E0E0E0]" : "bg-white text-[#212121]"}`}
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
+            theme === "dark"
+              ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
+              : "bg-white text-[#212121] border-[#DDD]"
+          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
           required
         />
       </div>
@@ -229,7 +252,11 @@ export function OnboardingPage({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`w-full ${theme === "dark" ? "bg-[#121212] text-[#E0E0E0]" : "bg-white text-[#212121]"}`}
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
+            theme === "dark"
+              ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
+              : "bg-white text-[#212121] border-[#DDD]"
+          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
           required
         />
       </div>
@@ -241,7 +268,11 @@ export function OnboardingPage({
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={`w-full ${theme === "dark" ? "bg-[#121212] text-[#E0E0E0]" : "bg-white text-[#212121]"}`}
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
+            theme === "dark"
+              ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
+              : "bg-white text-[#212121] border-[#DDD]"
+          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
           required
         />
       </div>
@@ -249,7 +280,7 @@ export function OnboardingPage({
         <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}>
           What are your primary interests?
         </label>
-        <div className="space-y-2">
+        <div className="space-y-2 pl-1">
           {primaryInterests.map((interest) => (
             <div key={interest} className="flex items-center">
               <Checkbox
@@ -262,6 +293,7 @@ export function OnboardingPage({
                     setSelectedInterests(selectedInterests.filter((i) => i !== interest))
                   }
                 }}
+                className={`${theme === "dark" ? "border-[#666]" : "border-[#999]"}`}
               />
               <label
                 htmlFor={interest}
@@ -269,6 +301,18 @@ export function OnboardingPage({
               >
                 {interest}
               </label>
+              {interest === "Other" && selectedInterests.includes("Other") && (
+                <Input
+                  className={`ml-3 p-2 w-32 text-sm rounded-xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
+                    theme === "dark"
+                      ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
+                      : "bg-white text-[#212121] border-[#DDD]"
+                  } focus:outline-none focus:ring-1 focus:ring-[#42A5F5]`}
+                  placeholder="Please specify"
+                  value={otherInterest}
+                  onChange={(e) => setOtherInterest(e.target.value)}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -277,12 +321,13 @@ export function OnboardingPage({
         <label className={`block text-sm font-medium mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}>
           What are your investment interests?
         </label>
-        <div className="space-y-2">
+        <div className="space-y-2 pl-1">
           <div className="flex items-center space-x-2">
             <Checkbox
               id="cryptoInvestor"
               checked={isCryptoInvestor}
               onCheckedChange={(checked) => setIsCryptoInvestor(checked as boolean)}
+              className={`${theme === "dark" ? "border-[#666]" : "border-[#999]"}`}
             />
             <label
               htmlFor="cryptoInvestor"
@@ -296,6 +341,7 @@ export function OnboardingPage({
               id="landInvestor"
               checked={isLandInvestor}
               onCheckedChange={(checked) => setIsLandInvestor(checked as boolean)}
+              className={`${theme === "dark" ? "border-[#666]" : "border-[#999]"}`}
             />
             <label
               htmlFor="landInvestor"
@@ -306,7 +352,11 @@ export function OnboardingPage({
           </div>
         </div>
       </div>
-      {error && <div className="mt-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+      {error && (
+        <div className="mt-4 p-3 bg-red-100/80 backdrop-blur-sm border border-red-400 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
     </div>
   )
 
@@ -324,9 +374,27 @@ export function OnboardingPage({
         }`}
       >
         <ParticlesBackground />
-        <Header title="Onboarding" showBackButton={true} onNavigate={handleBack}>
+        
+        <div className="fixed top-4 right-4 z-50">
           <ThemeToggle />
-        </Header>
+        </div>
+        
+        <div className="fixed top-4 left-4 z-50">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            type="button"
+            className={`text-sm rounded-full shadow-[0_4px_8px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 ${
+              theme === "dark"
+                ? "text-[#BBDEFB] hover:text-white hover:bg-[#1A1A1A]"
+                : "text-[#424242] hover:text-[#212121] hover:bg-[#E0E0E0]"
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+        
         <main className="flex-grow flex items-center justify-center p-4 relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
@@ -335,38 +403,101 @@ export function OnboardingPage({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.5 }}
-              className="max-w-md w-full z-10"
+              className={`max-w-md w-full z-10 rounded-3xl p-8 backdrop-blur-sm ${
+                theme === "dark"
+                  ? "bg-[#121212]/80 shadow-[0_15px_35px_rgba(156,163,175,0.3)]"
+                  : "bg-[#F5F5F5]/80 shadow-[0_15px_35px_rgba(75,85,99,0.3)]"
+              }`}
+              style={{
+                boxShadow:
+                  theme === "dark"
+                    ? "0 15px 35px rgba(156,163,175,0.3), 0 8px 20px rgba(156,163,175,0.2), 0 4px 10px rgba(156,163,175,0.1)"
+                    : "0 15px 35px rgba(75,85,99,0.3), 0 8px 20px rgba(75,85,99,0.2), 0 4px 10px rgba(75,85,99,0.1)",
+              }}
             >
               {slides[currentSlide].title && (
-                <Heading2 className={`text-3xl mb-4 ${theme === "dark" ? "text-white" : "text-black"}`}>
+                <Heading2 
+                  className={`text-3xl font-bold font-heading mb-4 text-center ${
+                    theme === "dark" ? "text-white" : "text-black"
+                  } ${
+                    slides[currentSlide].title === "Be one with the HNWI Ecosystem" ? 
+                    "relative pb-3 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:transform after:-translate-x-1/2 after:w-24 after:h-1 after:bg-gradient-to-r after:from-[#695d7e] after:to-[#7f6e6b] after:rounded-full" : ""
+                  }`}
+                >
                   {slides[currentSlide].title}
                 </Heading2>
               )}
 
               {slides[currentSlide].subtitle && (
-                <Lead className={`text-xl mb-6 ${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
+                <Lead className={`text-xl mb-6 text-center ${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
                   {slides[currentSlide].subtitle}
                 </Lead>
               )}
 
               {slides[currentSlide].description && (
-                <Paragraph className={`mb-6 ${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
+                <Paragraph className={`mb-6 text-center ${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
                   {slides[currentSlide].description}
                 </Paragraph>
               )}
 
               {slides[currentSlide].sections && (
-                <div className="space-y-4 mb-6">
-                  {slides[currentSlide].sections.map((section, index) => (
-                    <div key={index}>
-                      <Heading3 className={`text-lg ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}>
-                        {section.title}
-                      </Heading3>
-                      <p className={`${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
-                        {section.description}
-                      </p>
-                    </div>
-                  ))}
+                <div className="space-y-6 mb-6">
+                  {slides[currentSlide].sections.map((section, index) => {
+                    // Get the icon component based on the icon name
+                    let IconComponent;
+                    switch(section.icon) {
+                      case 'Shield': IconComponent = Shield; break;
+                      case 'Globe': IconComponent = Globe; break;
+                      case 'Users': IconComponent = Users; break;
+                      default: IconComponent = Shield;
+                    }
+                    
+                    return (
+                      <motion.div 
+                        key={index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: index * 0.2 }}
+                        className={`p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-102 hover:shadow-lg ${
+                          theme === "dark" ? "bg-opacity-20 bg-white/5" : "bg-opacity-20 bg-black/5"
+                        }`}
+                        style={{
+                          borderLeft: `4px solid ${section.color}`,
+                        }}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <motion.div 
+                            className="p-2 rounded-full"
+                            style={{ 
+                              backgroundColor: theme === "dark" ? `${section.color}40` : `${section.color}30`,
+                              color: section.color 
+                            }}
+                            whileHover={{ scale: 1.1 }}
+                            animate={{ 
+                              scale: [1, 1.05, 1],
+                              opacity: [1, 0.9, 1] 
+                            }}
+                            transition={{
+                              duration: 3,
+                              repeat: Infinity,
+                              delay: index * 0.5,
+                              ease: "easeInOut"
+                            }}
+                          >
+                            <IconComponent className="w-6 h-6" />
+                          </motion.div>
+                          <div className="flex-1">
+                            <Heading3 className={`text-lg font-semibold ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}>
+                              {section.title}
+                            </Heading3>
+                            <p className={`mt-1 text-sm ${theme === "dark" ? "text-[#E0E0E0]" : "text-[#424242]"}`}>
+                              {section.description}
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -383,8 +514,8 @@ export function OnboardingPage({
                         setError(null)
                         handleGetStarted()
                       }}
-                      className="gradient-button w-full h-12 text-lg rounded-full mt-6"
-                      disabled={!firstName || !lastName || !email || !password || selectedInterests.length === 0}
+                      className="gradient-button w-full h-12 text-lg rounded-full mt-6 shadow-[0_8px_20px_rgba(75,85,99,0.5)] hover:shadow-[0_12px_25px_rgba(75,85,99,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
+                      disabled={!firstName || !lastName || !email || !password || selectedInterests.length === 0 || (selectedInterests.includes("Other") && !otherInterest)}
                     >
                       Let's Get Started
                     </Button>
@@ -393,7 +524,10 @@ export function OnboardingPage({
               )}
 
               {currentSlide < slides.length - 1 && !slides[currentSlide].form && (
-                <Button onClick={handleNext} className="gradient-button w-full h-12 text-lg rounded-full mt-6">
+                <Button 
+                  onClick={handleNext} 
+                  className="gradient-button w-full h-12 text-lg rounded-full mt-6 shadow-[0_8px_20px_rgba(75,85,99,0.5)] hover:shadow-[0_12px_25px_rgba(75,85,99,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
+                >
                   Next
                 </Button>
               )}

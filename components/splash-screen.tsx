@@ -1,17 +1,38 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { ParticlesBackground } from "./particles-background"
 import { ThemeToggle } from "./theme-toggle"
 import { Heading1, Lead, Paragraph } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
+import { OnboardingPage } from "./onboarding-page"
 
 export function SplashScreen({ onLogin }: { onLogin: () => void }) {
   const { theme } = useTheme()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  const handleCreateAccount = () => {
+    setShowOnboarding(true)
+  }
+
+  const handleBack = () => {
+    console.log("Going back to splash screen")
+    setShowOnboarding(false)
+  }
+
+  const handleOnboardingComplete = (userData) => {
+    // Handle successful registration
+    console.log("User registered:", userData)
+    onLogin() // Redirect to login
+  }
+
+  if (showOnboarding) {
+    return <OnboardingPage onComplete={handleOnboardingComplete} onLogin={onLogin} onBack={handleBack} />
+  }
 
   return (
     <>
@@ -85,14 +106,13 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
                 Log In
               </Button>
 
-              {/* Subscribe button with gold gradient */}
-              <Link href="https://www.hnwichronicles.com/hnwi-world#pricing" target="_blank" rel="noopener noreferrer">
-                <Button
-                  className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 hover:from-amber-400 hover:via-yellow-600 hover:to-amber-700 text-black font-bold shadow-[0_8px_20px_rgba(251,191,36,0.5)] hover:shadow-[0_12px_25px_rgba(251,191,36,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5 border border-amber-300/30"
-                >
-                  Subscribe
-                </Button>
-              </Link>
+              {/* Sign Up button */}
+              <Button
+                onClick={handleCreateAccount}
+                className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-[#695d7e] via-[#5d5073] to-[#483c5e] hover:from-[#7a6a90] hover:via-[#695d7e] hover:to-[#5d5073] text-white font-bold shadow-[0_8px_20px_rgba(93,80,115,0.5)] hover:shadow-[0_12px_25px_rgba(93,80,115,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
+              >
+                Sign Up
+              </Button>
             </div>
           </motion.div>
         </div>
