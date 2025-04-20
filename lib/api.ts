@@ -158,7 +158,9 @@ export async function getOpportunityById(id: string): Promise<Opportunity | null
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      // Make sure this works in both client and server components
+      cache: 'no-store'
     });
     
     if (!response.ok) {

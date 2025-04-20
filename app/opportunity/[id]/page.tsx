@@ -1,102 +1,71 @@
 // app/opportunity/[id]/page.tsx
 
-"use client"
+import { Metadata } from "next"
+import { getOpportunityById } from "@/lib/api"
+import ClientPage from "./client"
 
-import { OpportunityPage } from "@/components/pages/opportunity-page"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+// Generate dynamic metadata based on the opportunity
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: { id: string } 
+}): Promise<Metadata> {
+  const id = params.id
+  
+  try {
+    // Fetch the opportunity data
+    const opportunity = await getOpportunityById(id)
+    
+    if (!opportunity) {
+      return {
+        title: "Opportunity Not Found | HNWI Chronicles",
+        description: "The requested investment opportunity could not be found."
+      }
+    }
+    
+    // Determine the base URL for canonical and og:url
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"
+    
+    return {
+      title: opportunity.title,
+      description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+      openGraph: {
+        title: opportunity.title,
+        description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+        url: `${baseUrl}/opportunity/${id}`,
+        siteName: "HNWI Chronicles",
+        type: "website",
+        images: [{
+          url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png", // Default image
+          width: 1200,
+          height: 630,
+          alt: opportunity.title,
+        }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: opportunity.title,
+        description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+        images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+      },
+      alternates: {
+        canonical: `${baseUrl}/opportunity/${id}`,
+      },
+    }
+  } catch (error) {
+    console.error("Error generating metadata:", error)
+    return {
+      title: "Investment Opportunity | HNWI Chronicles",
+      description: "Explore exclusive investment opportunities for high-net-worth individuals.",
+    }
+  }
+}
 
+// Server component that renders the client component
 export default function Page({
   params: { id },
 }: {
   params: { id: string }
 }) {
-  const router = useRouter()
-  const [isGlobalHandlerReady, setIsGlobalHandlerReady] = useState(false)
-  
-  // Set up a global navigation handler that works with all routes
-  useEffect(() => {
-    // Define a global navigation function for the app
-    window.handleGlobalNavigation = (path: string) => {
-      // Parse route and handle query parameters if present
-      let baseRoute = path;
-      let queryParams = {};
-      
-      if (path.includes('?')) {
-        const [routePath, queryString] = path.split('?');
-        baseRoute = routePath;
-        
-        // Parse query parameters
-        const searchParams = new URLSearchParams('?' + queryString);
-        searchParams.forEach((value, key) => {
-          queryParams[key] = value;
-        });
-      }
-      
-      // Extract path without leading slashes for consistency
-      const normalizedPath = baseRoute.replace(/^\/+/, "");
-      
-      // Handle different route types
-      if (path === "back") {
-        router.push("/prive-exchange");
-      } 
-      // Special case for dashboard navigation
-      else if (path === "/" || path === "dashboard") {
-        // Instead of router.push which is causing issues, use the app's main route with a special flag
-        // that skips the splash screen and goes directly to dashboard
-        sessionStorage.setItem("skipSplash", "true");
-        router.push("/");
-      }
-      // Handle opportunity routes
-      else if (normalizedPath.startsWith("opportunity/")) {
-        const opportunityId = normalizedPath.split("/")[1];
-        router.push(`/opportunity/${opportunityId}`);
-      }
-      else {
-        // For all other routes, use direct router navigation
-        router.push(`/${normalizedPath}`);
-      }
-    }
-    
-    setIsGlobalHandlerReady(true)
-    
-    return () => {
-      // Clean up on unmount
-      delete window.handleGlobalNavigation
-    }
-  }, [router])
-  
-  // Create the navigation handler that uses the global function
-  const handleNavigation = (path: string) => {
-    if (window.handleGlobalNavigation) {
-      window.handleGlobalNavigation(path)
-    } else {
-      // Fallback to basic navigation if global handler not ready
-      console.warn("Global navigation handler not ready, using direct navigation");
-      if (path === "back") {
-        router.push("/prive-exchange");
-      } else if (path === "dashboard") {
-        sessionStorage.setItem("skipSplash", "true");
-        router.push("/");
-      } else {
-        const normalizedPath = path.replace(/^\/+/, "");
-        router.push(`/${normalizedPath}`);
-      }
-    }
-  }
-
-  // Store the current opportunity ID in sessionStorage for consistent referencing
-  useEffect(() => {
-    sessionStorage.setItem("currentOpportunityId", id);
-  }, [id]);
-
-  // Pass proper navigation function to the opportunity page
-  return <OpportunityPage region="" opportunityId={id} onNavigate={handleNavigation} />
-}
-
-// Extend Window interface to add our global handler
-declare global {
-  interface Window {
-    handleGlobalNavigation?: (path: string) => void;
-  }
+  return <ClientPage id={id} />
 }
