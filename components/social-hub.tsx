@@ -179,14 +179,16 @@ export function SocialHub() {
                 {/* Card Column */}
                 <div className="md:w-1/2 p-4">
                   <Card
-                    className={`overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 
-                                ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+                    className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
+                    style={{
+                      backgroundColor: theme === "dark" ? "hsl(165, 46%, 8%)" : "white"
+                    }}
                   >
-                    {/* Using Wealth Radar background colors */}
+                    {/* Using same dark green as Elite Pulse cards in dark mode, white in light mode */}
                     <div
-                      className={`${
-                        theme === "dark" ? "bg-gray-800" : "bg-white"
-                      }`}
+                      style={{
+                        backgroundColor: theme === "dark" ? "hsl(165, 46%, 8%)" : "white"
+                      }}
                     >
                       {/* Ensure text is readable in both themes */}
                       <CardContent className="p-6 relative dark:text-white text-black">
@@ -298,8 +300,10 @@ export function SocialHub() {
                               size="sm"
                               onClick={() => toggleEventExpansion(event.id)}
                               className={`
-                                dark:bg-white/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10
-                                bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200
+                                ${theme === "dark"
+                                  ? 'bg-green-600/20 border-green-500/30 text-green-300 hover:bg-green-600/30'
+                                  : 'bg-green-100 border-green-300 text-green-700 hover:bg-green-200'
+                                }
                               `}
                             >
                               {expandedEvent === event.id ? "Show Less" : "Show More"}
@@ -311,8 +315,8 @@ export function SocialHub() {
                               onClick={() => handleTalkToConcierge(event)}
                               className={`
                                 ${theme === "dark"
-                                  ? 'bg-white hover:bg-gray-200 text-black border border-neutral-200'
-                                  : 'bg-[#212121] hover:bg-[#121212] text-white'
+                                  ? 'bg-green-600 hover:bg-green-700 text-white border border-green-500'
+                                  : 'bg-green-500 hover:bg-green-600 text-white border border-green-400'
                                 } 
                                 text-xs md:text-sm whitespace-nowrap
                               `}
@@ -340,11 +344,12 @@ export function SocialHub() {
                 {/* Date Bubble Column (hidden on small) */}
                 <div className="hidden md:flex items-center justify-center w-1/2">
                   <div
-                    className={`w-32 h-32 rounded-full bg-gradient-to-br 
-                                from-purple-500/50 to-pink-500/50 
-                                flex items-center justify-center shadow-lg 
-                                backdrop-blur-sm 
-                                dark:border-white/10 border-black/10`}
+                    className={`w-32 h-32 rounded-full flex items-center justify-center shadow-lg 
+                                backdrop-blur-sm border
+                                ${theme === "dark" 
+                                  ? "bg-gradient-to-br from-green-600/60 to-green-800/60 border-white/10" 
+                                  : "bg-gradient-to-br from-green-400/60 to-green-600/60 border-black/10"
+                                }`}
                   >
                     <div className="text-center dark:text-white text-white">
                       <div className={`text-2xl ${fonts.heading} font-bold`}>

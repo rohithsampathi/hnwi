@@ -72,7 +72,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
       </p>
       <Card className="w-full mb-6">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">HNWI World</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary dark:text-primary-foreground">HNWI World</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-center mb-6">
@@ -102,7 +102,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
             </Select>
           </div>
           <div className="mt-4">
-            <h3 className="text-xl font-bold text-primary mb-4">Trends Map</h3>
+            <h3 className="text-xl font-bold text-primary dark:text-primary-foreground mb-4">Trends Map</h3>
             <IndustryTrendsBubbles
               duration={timeRange}
               onIndustriesUpdate={handleIndustriesUpdate}
@@ -115,7 +115,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
       </Card>
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary">Market Developments</CardTitle>
+          <CardTitle className="text-2xl font-bold text-primary dark:text-primary-foreground">Market Developments</CardTitle>
         </CardHeader>
         <CardContent>
           <DevelopmentStream

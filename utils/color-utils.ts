@@ -39,13 +39,13 @@ export const baseIndustryColors: Record<string, string> = {
   "Food & Beverages": "#BA55D3",
   
   // Technology & Digital
-  Cybersecurity: "#4169E1",
-  "Social Media": "#1E90FF",
+  Cybersecurity: "#3CB371",
+  "Social Media": "#2E8B57",
   
   // Automotive & Transportation
-  Automotive: "#483D8B",
-  "Luxury Vehicles": "#6A5ACD",
-  Aviation: "#4682B4",
+  Automotive: "#228B22",
+  "Luxury Vehicles": "#32CD32",
+  Aviation: "#3CB371",
   
   // Tourism & Hospitality
   Tourism: "#FF6347",
@@ -60,7 +60,7 @@ export const baseIndustryColors: Record<string, string> = {
   Collectibles: "#D35400", // Orange-brown for collectibles
   "Fine Art": "#1ABC9C", // Turquoise for fine art
   Antiques: "#996515", // Dark gold for antiques
-  Watches: "#2471A3", // Deep blue for watches
+  Watches: "#2E8B57", // Deep green for watches
   "Luxury Fashion": "#B03A2E", // Deep red for luxury fashion
   
   // Base industries
@@ -71,7 +71,7 @@ export const baseIndustryColors: Record<string, string> = {
   
   // Event categories
   social: "#8E44AD", // Purple
-  work: "#3498DB",   // Blue
+  work: "#2ECC71",   // Green
   personal: "#2ECC71", // Green
   entertainment: "#E74C3C", // Red
   wellness: "#1ABC9C", // Turquoise
@@ -93,13 +93,13 @@ export const categoryToTailwind: Record<string, string> = {
   Lifestyle: "bg-cyan-600",
   Fashion: "bg-pink-600",
   "Luxury Fashion": "bg-rose-600",
-  Watches: "bg-blue-600",
+  Watches: "bg-green-600",
   Antiques: "bg-yellow-600",
   "Real Estate": "bg-green-600", 
-  "Yacht": "bg-blue-600",
-  "Luxury Yacht": "bg-indigo-600",
+  "Yacht": "bg-green-600",
+  "Luxury Yacht": "bg-green-600",
   social: "bg-purple-600",
-  work: "bg-blue-600",
+  work: "bg-green-600",
   personal: "bg-green-600",
   entertainment: "bg-red-600",
   wellness: "bg-teal-600",
@@ -116,13 +116,13 @@ export const categoryToDarkTailwind: Record<string, string> = {
   Lifestyle: "bg-cyan-700",
   Fashion: "bg-pink-700",
   "Luxury Fashion": "bg-pink-800",
-  Watches: "bg-blue-700",
+  Watches: "bg-green-700",
   Antiques: "bg-yellow-500",
   "Real Estate": "bg-green-700",
-  "Yacht": "bg-blue-700",
-  "Luxury Yacht": "bg-blue-700",
+  "Yacht": "bg-green-700",
+  "Luxury Yacht": "bg-green-700",
   social: "bg-purple-400",
-  work: "bg-blue-700",
+  work: "bg-green-700",
   personal: "bg-green-700",
   entertainment: "bg-red-600",
   wellness: "bg-teal-600",
@@ -166,7 +166,7 @@ function getCategoryFallbackColor(category: string): string {
   // Map the first character of the category to a color
   const firstChar = category.toLowerCase().charCodeAt(0) % 10;
   const colorMap = [
-    "bg-blue-600",      // 0
+    "bg-green-600",     // 0
     "bg-indigo-600",    // 1
     "bg-purple-600",    // 2
     "bg-pink-600",      // 3
@@ -188,7 +188,7 @@ function getDarkCategoryFallbackColor(category: string): string {
   // Map the first character of the category to a color
   const firstChar = category.toLowerCase().charCodeAt(0) % 10;
   const colorMap = [
-    "bg-blue-600",      // 0
+    "bg-green-600",     // 0
     "bg-indigo-600",    // 1
     "bg-purple-400",    // 2
     "bg-pink-600",      // 3

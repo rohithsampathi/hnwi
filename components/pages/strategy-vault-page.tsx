@@ -88,10 +88,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
             <div className="px-4 py-2">
               <div className="flex justify-between items-center mb-6">
                 <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
-                  <SelectTrigger className="w-[200px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
+                  <SelectTrigger className="w-[200px] bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 transition-all duration-300 shadow-sm dark:text-white">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
+                  <SelectContent className="bg-white dark:bg-primary-800 border dark:border-primary-600">
                     <SelectItem value="All">All Industries</SelectItem>
                     {availableIndustries.sort().map((industry) => (
                       <SelectItem key={industry} value={industry}>
@@ -102,10 +102,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 </Select>
                 <div className="flex items-center space-x-4">
                   <Select onValueChange={handleTimeRangeChange} value={timeRange}>
-                    <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
+                    <SelectTrigger className="w-[180px] bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 transition-all duration-300 shadow-sm dark:text-white">
                       <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
+                    <SelectContent className="bg-white dark:bg-primary-800 border dark:border-primary-600">
                       <SelectItem value="1d">Last 24 hours</SelectItem>
                       <SelectItem value="1w">Last week</SelectItem>
                       <SelectItem value="1m">Last month</SelectItem>
@@ -120,7 +120,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                       setTimeRange("temp")
                       setTimeout(() => setTimeRange(currentTimeRange), 10)
                     }}
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-primary-700 transition-colors"
                     aria-label="Refresh data"
                     title="Force refresh of Wealth Radar data"
                   >
@@ -144,17 +144,17 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                   </button>
                 </div>
               </div>
-              <div className="mt-4 pt-4 bg-white dark:bg-gray-800 rounded shadow-md">
+              <div className="mt-4 pt-4 bg-white dark:bg-primary-800 rounded shadow-md">
                 <div className="px-6 pb-2">
                   <Heading3 className="text-primary dark:text-white flex items-center mb-2">
                     <span className="mr-2">📊</span>
                     Wealth Radar
                   </Heading3>
-                  <p className="text-body-small text-muted-foreground mb-1">
+                  <p className="text-body-small text-muted-foreground dark:text-gray-300 mb-1">
                     Industry wise HNWI Peer Movements and Market Actions
                   </p>
                   {/* Stats display right below the section subtitle */}
-                  <p className="text-xs text-gray-500 mb-4">
+                  <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">
                     {availableIndustries.length} industries • Updated: {new Date().toLocaleTimeString()}
                   </p>
                 </div>
@@ -173,8 +173,8 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           </div>
           <div className="w-full mt-8 overflow-hidden">
             <div className="py-4">
-              <Heading3 className="text-primary mb-2">Insider Briefing 🔍</Heading3>
-              <p className="text-body-small text-muted-foreground mb-4">
+              <Heading3 className="text-foreground mb-2">Insider Briefing 🔍</Heading3>
+              <p className="text-body-small text-foreground mb-4">
                 Your Private Intelligence Ally Talking
               </p>
             </div>

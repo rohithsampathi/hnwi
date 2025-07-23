@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import * as d3 from "d3"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { AnimatePresence } from "framer-motion"
 import { IndustryBubbleTooltip } from "./industry-bubble-tooltip"
 
@@ -386,19 +386,6 @@ export function IndustryTrendsBubbles({
             <span id="industry-stats-text" data-stats={statsText}></span>
           </div>
           
-          {/* Refresh button added as an overlay in the top-right of the chart */}
-          <div className="absolute top-2 right-2 z-10">
-            <button 
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="p-2 rounded-full bg-white/80 hover:bg-gray-100 dark:bg-gray-800/80 dark:hover:bg-gray-700 transition-colors shadow-sm"
-              title="Refresh data"
-            >
-              <RefreshCw 
-                className={`h-5 w-5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} 
-              />
-            </button>
-          </div>
           <AnimatePresence>
             {tooltipData && (
               <IndustryBubbleTooltip

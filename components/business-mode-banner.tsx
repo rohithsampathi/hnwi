@@ -14,10 +14,10 @@ export function BusinessModeBanner() {
     ? "bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-700 text-white"
     : "bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-gray-900";
     
-  // Metallic sapphire gradient for standard mode
-  const sapphireMetallicGradient = theme === "dark"
-    ? "bg-gradient-to-r from-blue-800 via-blue-500 to-blue-800 text-white"
-    : "bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 text-white";
+  // Metallic green gradient for standard mode
+  const greenMetallicGradient = theme === "dark"
+    ? "bg-gradient-to-r from-green-800 via-green-500 to-green-800 text-white"
+    : "bg-gradient-to-r from-green-500 via-green-400 to-green-500 text-white";
 
   return (
     <AnimatePresence>
@@ -28,12 +28,12 @@ export function BusinessModeBanner() {
           exit={{ opacity: 0, y: -50 }}
           transition={{ duration: 0.5 }}
           className={`fixed top-16 left-0 right-0 z-50 p-3 flex items-center justify-center w-full shadow-lg ${
-            isBusinessMode ? goldMetallicGradient : sapphireMetallicGradient
+            isBusinessMode ? goldMetallicGradient : greenMetallicGradient
           }`}
           style={{
             boxShadow: isBusinessMode
               ? "0 4px 15px rgba(212, 175, 55, 0.5)"
-              : "0 4px 15px rgba(59, 130, 246, 0.5)",
+              : "0 4px 15px rgba(34, 197, 94, 0.5)",
             backgroundSize: "200% 100%",
             animation: "shimmer 2s linear infinite",
           }}

@@ -36,20 +36,14 @@ export function FooterNavigation({
 
   return (
     <footer
-      className={`${
-        theme === "dark" ? "bg-[#1A1A1A]" : "bg-white"
-      } py-2 md:py-4 px-2 md:px-4 border-t ${theme === "dark" ? "border-[#333]" : "border-[#E0E0E0]"}`}
+      className="bg-background py-2 md:py-4 px-2 md:px-4 border-t border-border"
     >
       <div className="max-w-7xl mx-auto w-full">
         <nav className="flex justify-around mt-1 md:mt-2">
           {visibleNavItems.map((item, index) => (
             <div
               key={index}
-              className={`flex flex-col items-center transition-all duration-300 p-1 md:p-2 cursor-pointer ${
-                theme === "dark"
-                  ? "text-[#E0E0E0] hover:text-[#BBDEFB]"
-                  : "text-[#424242] hover:text-[#1976D2]"
-              }`}
+              className="flex flex-col items-center transition-all duration-300 p-1 md:p-2 cursor-pointer text-muted-foreground hover:text-primary"
               onClick={(e) => handleNavigate(e, item.route)}
               style={{ boxShadow: "none !important" }}
             >

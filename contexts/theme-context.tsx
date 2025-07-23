@@ -17,23 +17,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark")
   const [isInitialized, setIsInitialized] = useState(false)
 
-  const darkTheme = {
-    background: "linear-gradient(to bottom, #004d40, #00695c, #121212)",
-    color: "#fff",
-    fontFamily: {
-      heading: "'Cormorant Garamond', serif",
-      body: "'Proza Libre', sans-serif",
-    },
-  }
-
-  const lightTheme = {
-    background: "linear-gradient(to bottom, #b2dfdb, #80cbc4, #ffffff)",
-    color: "#000",
-    fontFamily: {
-      heading: "'Cormorant Garamond', serif",
-      body: "'Proza Libre', sans-serif",
-    },
-  }
+  // Themes now managed entirely through CSS variables in globals.css
+  // No need for hardcoded theme objects
 
   // Apply theme to document when theme changes
   useEffect(() => {
@@ -77,13 +62,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <BusinessModeProvider>
-        <div
-          style={{
-            fontFamily: theme === "dark" ? darkTheme.fontFamily.body : lightTheme.fontFamily.body,
-          }}
-        >
-          {children}
-        </div>
+        {children}
       </BusinessModeProvider>
     </ThemeContext.Provider>
   )

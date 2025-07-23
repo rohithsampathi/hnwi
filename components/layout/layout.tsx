@@ -36,16 +36,10 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-montserrat ${
-        theme === "dark" ? "bg-[#121212] text-white" : "bg-[#F5F5F5] text-[#212121]"
-      }`}
+      className="min-h-screen flex flex-col font-sans bg-background text-foreground"
     >
       <header
-        className={`p-2 md:p-6 flex justify-between items-center relative z-20 ${
-          theme === "dark"
-            ? "bg-[#121212] shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),_0_2px_4px_-1px_rgba(255,255,255,0.06)]"
-            : "bg-[#F5F5F5] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_2px_4px_-1px_rgba(0,0,0,0.06)]"
-        }`}
+        className="p-2 md:p-6 flex justify-between items-center relative z-20 bg-background border-b border-border"
       >
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center px-4">
           <div className="flex items-center">
@@ -54,11 +48,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
                 variant="ghost"
                 size="icon"
                 onClick={handleBackClick}
-                className={`mr-2 ${
-                  theme === "dark"
-                    ? "text-[#BBDEFB] hover:text-white hover:bg-[#1A1A1A]"
-                    : "text-[#424242] hover:text-[#212121] hover:bg-[#E0E0E0]"
-                }`}
+                className="mr-2 text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
               </Button>
@@ -74,8 +64,8 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
               <h1
                 className={`text-xl md:text-2xl font-bold font-heading`}
               >
-                <span style={{ color: theme === "dark" ? "#e6d5c1" : "#5b4d4a" }}>HNWI</span>{" "}
-                <span style={{ color: theme === "dark" ? "#ffffff" : "#121212" }}>CHRONICLES</span>
+                <span className="text-primary">HNWI</span>{" "}
+                <span className="text-secondary">CHRONICLES</span>
               </h1>
             </div>
           </div>

@@ -608,9 +608,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     // Handle loading state with consistent loading screen
     if (currentPage === "loading") {
       return (
-        <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-300 ${
-          theme === "dark" ? "bg-[#121212]" : "bg-[#F5F5F5]"
-        }`}>
+        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-background">
           {/* Add particles background for consistent look with splash screen */}
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/40 z-10"></div>
@@ -632,10 +630,10 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
             
             {/* Loading text */}
             <div className="text-center">
-              <h2 className={`text-2xl font-bold mb-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+              <h2 className="text-2xl font-bold mb-2 text-foreground">
                 Brewing & Updating the Latest Juice
               </h2>
-              <p className={`${theme === "dark" ? "text-blue-400" : "text-blue-600"}`}>
+              <p className="text-primary">
                 Please wait while we prepare your experience...
               </p>
             </div>

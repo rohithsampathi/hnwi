@@ -67,9 +67,7 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
         url="https://montaigne.co/hnwichronicles"
       />
       <div
-        className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300 ${
-          theme === "dark" ? "bg-[#121212]" : "bg-[#F5F5F5]"
-        }`}
+        className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300 bg-background`}
       >
         <ParticlesBackground />
 
@@ -105,8 +103,8 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               }}
             >
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"
-                alt="HNWI Chronicles Globe"
+                src="/logo.png"
+                alt="HNWI Chronicles"
                 width={256}
                 height={256}
                 className="w-full h-full"
@@ -114,35 +112,35 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               />
             </motion.div>
 
-            <Heading1 className={`text-3xl sm:text-5xl mb-4`}>
-              <span style={{ color: theme === "dark" ? "#e6d5c1" : "#5b4d4a" }}>HNWI</span>{" "}
-              <span style={{ color: theme === "dark" ? "#ffffff" : "#121212" }}>CHRONICLES</span>
+            <Heading1 className="text-3xl sm:text-5xl mb-4 text-foreground">
+              <span className="text-primary">HNWI</span>{" "}
+              <span className="text-secondary">CHRONICLES</span>
             </Heading1>
 
-            <Lead className="mb-8">Your Private HNWI Intelligence Ally</Lead>
+            <Lead className="mb-8 text-muted-foreground">Your Private HNWI Intelligence Ally</Lead>
 
             <div className="flex space-x-4 justify-center">
               {/* Login button */}
               <Button
                 onClick={onLogin}
-                className="gradient-button w-[200px] h-[50px] text-lg rounded-full shadow-[0_8px_20px_rgba(156,163,175,0.5)] hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
+                className="w-[200px] h-[50px] text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
                 Log In
               </Button>
 
-              {/* Sign Up button */}
+              {/* Join HNWI button */}
               <Button
-                onClick={handleCreateAccount}
-                className="w-[200px] h-[50px] text-lg rounded-full bg-gradient-to-r from-[#695d7e] via-[#5d5073] to-[#483c5e] hover:from-[#7a6a90] hover:via-[#695d7e] hover:to-[#5d5073] text-white font-bold shadow-[0_8px_20px_rgba(93,80,115,0.5)] hover:shadow-[0_12px_25px_rgba(93,80,115,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
+                onClick={() => window.open('https://www.hnwichronicles.com/hnwi-world#pricing', '_blank')}
+                className="w-[200px] h-[50px] text-lg rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
-                Sign Up
+                Join HNWI
               </Button>
             </div>
           </motion.div>
         </div>
 
-        <footer className={`w-full py-4 px-4 text-center z-10 absolute bottom-0`}>
-          <Paragraph className={`text-xs ${theme === "dark" ? "text-[#666]" : "text-[#999]"}`}>
+        <footer className="w-full py-4 px-4 text-center z-10 absolute bottom-0">
+          <Paragraph className="text-xs text-muted-foreground">
             © 2025 All Rights Reserved. HNWI Chronicles.
           </Paragraph>
         </footer>

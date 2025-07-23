@@ -195,10 +195,13 @@ export function DevelopmentStream({
   }
 
   const toTitleCase = (str: string) => {
-    return str
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ")
+    // Remove ** formatting
+    const cleanStr = str.replace(/\*\*/g, '');
+    // Convert to title case (capitalize first letter of each word)
+    return cleanStr
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   }
 
   const formatAnalysis = (summary: string): FormattedAnalysis => {
@@ -341,7 +344,7 @@ export function DevelopmentStream({
     <CardContent className="p-1 md:p-2">
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary dark:text-primary-foreground" />
         </div>
       ) : error ? (
         <div className="text-center py-8">
@@ -356,11 +359,11 @@ export function DevelopmentStream({
           {developments.map((dev) => (
             <Card
               key={dev.id}
-              className="mb-2 overflow-hidden border-none bg-white dark:bg-gray-800 transition-all duration-300 w-full md:w-[calc(100%+2rem)] md:-ml-4 shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
+              className="mb-2 overflow-hidden border-none bg-white dark:bg-primary-800 transition-all duration-300 w-full md:w-[calc(100%+2rem)] md:-ml-4 shadow-[0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.25)]"
             >
               <CardContent className="p-3 md:p-4">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-bold font-heading text-primary dark:text-white flex-grow pr-4">{dev.title}</h3>
+                  <h3 className="text-xl font-bold font-heading text-foreground flex-grow pr-4">{dev.title}</h3>
                   <Button 
                     className={`transition-all border transform hover:-translate-y-1 active:translate-y-0.5 shadow-[0_8px_20px_rgba(0,0,0,0.25)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.4)] rounded-full ${theme === "dark" ? "bg-white hover:bg-gray-100 dark:text-gray-800 border-gray-200" : "bg-primary hover:bg-primary/90 text-white border-primary/30"}`}
                     size="sm" 
@@ -392,17 +395,18 @@ export function DevelopmentStream({
                       transition: "all 0.2s ease",
                       borderRadius: "9999px"
                     }}
+                    className="text-white"
                   >
                     {dev.industry || "Unknown Industry"}
                   </Badge>
                   <Badge 
                     variant="outline"
-                    className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                    className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
                     style={{
                       boxShadow: "0 8px 16px rgba(0, 0, 0, 0.25)",
                       padding: "0.35rem 0.7rem",
-                      backgroundColor: "white",
-                      color: "#333",
+                      backgroundColor: theme === "dark" ? "transparent" : "white",
+                      color: theme === "dark" ? "white" : "#333",
                       border: "1px solid rgba(0, 0, 0, 0.1)",
                       transform: "translateY(0)",
                       transition: "all 0.2s ease",
@@ -419,7 +423,7 @@ export function DevelopmentStream({
                       href={dev.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center bg-primary/10 hover:bg-primary/20 text-primary dark:text-primary-foreground dark:bg-primary/30 dark:hover:bg-primary/40 px-3 py-1 rounded-3xl shadow-[0_3px_8px_rgba(0,0,0,0.12)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.2)] transition-all transform hover:-translate-y-0.5 border border-primary/10 dark:border-primary/30"
+                      className="flex items-center bg-primary/10 hover:bg-primary/20 text-primary dark:text-white dark:bg-primary/30 dark:hover:bg-primary/40 px-3 py-1 rounded-3xl shadow-[0_3px_8px_rgba(0,0,0,0.12)] hover:shadow-[0_5px_12px_rgba(0,0,0,0.2)] transition-all transform hover:-translate-y-0.5 border border-primary/10 dark:border-primary/30"
                     >
                       <span className="font-medium">Source</span> <ExternalLink className="ml-1 h-4 w-4" />
                     </a>
@@ -434,11 +438,11 @@ export function DevelopmentStream({
                       transition={{ duration: 0.3 }}
                       className="mt-4 space-y-2"
                     >
-                      <div className="w-full bg-white dark:bg-gray-900 rounded-md">
+                      <div className="w-full bg-white dark:bg-primary-700 rounded-md border dark:border-primary-600">
                         <div className="px-4 py-4 w-full">
                           <div className="space-y-2">
-                            <h4 className="text-base font-semibold dark:text-white">HByte</h4>
-                            <div className="text-sm text-muted-foreground dark:text-gray-100 max-h-60 overflow-y-auto pr-2 w-full">
+                            <h4 className="text-base font-bold dark:text-white bg-primary/10 dark:bg-primary-600 px-3 py-1 rounded-md inline-block">HByte</h4>
+                            <div className="text-sm text-gray-900 dark:text-gray-100 max-h-60 overflow-y-auto pr-2 w-full">
                               {formatAnalysis(dev.summary)
                                 .summary.split("\n")
                                 .map((paragraph, index) => (
@@ -462,7 +466,7 @@ export function DevelopmentStream({
                                         const content = matches[2];
                                         return (
                                           <React.Fragment key={`line-${lineIndex}`}>
-                                            <div className="mt-1 dark:text-white">
+                                            <div className="mt-1 text-gray-900 dark:text-white">
                                               <strong>{title}:</strong> {content}
                                             </div>
                                             <br />
@@ -474,8 +478,8 @@ export function DevelopmentStream({
                                         return (
                                           <React.Fragment key={`line-${lineIndex}`}>
                                             <div className="flex items-start">
-                                              <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
-                                              <span className="dark:text-white" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                              <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-primary-foreground" />
+                                              <span className="text-gray-900 dark:text-white" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
                                             </div>
                                             <br />
                                           </React.Fragment>
@@ -483,14 +487,14 @@ export function DevelopmentStream({
                                       } else if (cleanedLine.trim().endsWith(":")) {
                                         return (
                                           <React.Fragment key={`line-${lineIndex}`}>
-                                            <strong className="dark:text-white">{cleanedLine}</strong>
+                                            <strong className="text-gray-900 dark:text-white">{cleanedLine}</strong>
                                             <br />
                                           </React.Fragment>
                                         )
                                       }
                                       return (
                                         <React.Fragment key={`line-${lineIndex}`}>
-                                          <span className="dark:text-white">{cleanedLine}</span>
+                                          <span className="text-gray-900 dark:text-white">{cleanedLine}</span>
                                           <br />
                                         </React.Fragment>
                                       )
@@ -504,15 +508,15 @@ export function DevelopmentStream({
                       <Accordion type="multiple" className="w-full space-y-2">
                         {formatAnalysis(dev.summary).sections.map((section, index) => (
                           <AccordionItem key={`section-${index}`} value={`section-${index}`} className="border-none">
-                            <CustomAccordionTrigger className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 px-4 py-3 rounded-md text-left shadow-md hover:shadow-lg transition-all">
+                            <CustomAccordionTrigger className="bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 px-4 py-3 rounded-md text-left shadow-md hover:shadow-lg transition-all">
                               <div className="flex justify-between items-center w-full">
-                                <span className="text-base font-semibold dark:text-white">{section.title}</span>
+                                <span className="text-base font-bold dark:text-white bg-primary/5 dark:bg-primary-600 px-2 py-1 rounded">{section.title}</span>
                                 <div className="flex items-center justify-center p-1 rounded-full bg-primary/10 dark:bg-primary/30 text-primary dark:text-white">
                                   <ChevronDown className="h-5 w-5 accordion-chevron" />
                                 </div>
                               </div>
                             </CustomAccordionTrigger>
-                            <AccordionContent className="bg-white/90 dark:bg-gray-900/90 mt-1 p-4 rounded-md space-y-2">
+                            <AccordionContent className="bg-white/90 dark:bg-primary-700 mt-1 p-4 rounded-md space-y-2">
                               <div className="space-y-2 dark:text-white">
                                 {section.content.map((item, pIndex) => {
                                   // Clean any ## prefixes from text content
@@ -535,9 +539,9 @@ export function DevelopmentStream({
                                     const title = matches[1];
                                     const content = matches[2];
                                     return (
-                                      <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-muted-foreground dark:text-gray-100">
+                                      <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-gray-900 dark:text-gray-100">
                                         <div className="mt-1">
-                                          <strong className="dark:text-white">{title}:</strong> <span className="dark:text-gray-100">{content}</span>
+                                          <strong className="text-gray-900 dark:text-white">{title}:</strong> <span className="text-gray-900 dark:text-gray-100">{content}</span>
                                         </div>
                                       </div>
                                     );
@@ -547,14 +551,14 @@ export function DevelopmentStream({
                                   const formattedText = bulletCleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                                   
                                   return (
-                                    <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-muted-foreground dark:text-gray-100">
+                                    <div key={`paragraph-${index}-${pIndex}`} className="text-sm text-gray-900 dark:text-gray-100">
                                       {isLightbulbBullet ? (
                                         <div className="flex items-start">
-                                          <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
-                                          <span className="dark:text-gray-100" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                          <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-primary-foreground" />
+                                          <span className="text-gray-900 dark:text-gray-100" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
                                         </div>
                                       ) : (
-                                        <p className="dark:text-gray-100" dangerouslySetInnerHTML={{ __html: cleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+                                        <p className="text-gray-900 dark:text-gray-100" dangerouslySetInnerHTML={{ __html: cleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
                                       )}
                                     </div>
                                   );
@@ -565,14 +569,14 @@ export function DevelopmentStream({
                         ))}
                       </Accordion>
                       {dev.numerical_data && dev.numerical_data.length > 0 && (
-                        <div className="bg-muted dark:bg-gray-800 p-4 rounded-md mt-4">
+                        <div className="bg-muted dark:bg-primary-800 p-4 rounded-md mt-4">
                           <h4 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
                             Numerical data
                           </h4>
                           <ul className={`${queenBullet} space-y-2`}>
                             {dev.numerical_data.map((item, index) => (
                               <li key={`numerical-${index}`} className="text-sm text-muted-foreground dark:text-gray-100 flex items-start">
-                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-white" />
+                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-primary-foreground" />
                                 <span>
                                   <span className="font-medium dark:text-white">
                                     {item.number} {item.unit}

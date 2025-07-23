@@ -20,6 +20,7 @@ import {
   Crown,
   Users,
   Store,
+  Diamond,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -190,7 +191,7 @@ export function HomeDashboard({
       name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
-      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1", // Changed to match Foundry colors
+      color: theme === "dark" ? "hsl(43, 50%, 55%)" : "hsl(43, 50%, 75%)", // Golden yellow in both modes
       description: "Explore global wealth insights and exclusive market intelligence curated specifically for high-net-worth individuals and their advisors.",
       iconAnimation: pulseAnimation,
       live: true,
@@ -199,7 +200,7 @@ export function HomeDashboard({
       name: "War Room",
       icon: Shield,
       route: "war-room",
-      color: theme === "dark" ? "#7f6e6b" : "#e6d5c1",
+      color: theme === "dark" ? "hsl(43, 50%, 55%)" : "hsl(43, 50%, 75%)",
       description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -215,7 +216,7 @@ export function HomeDashboard({
       name: "Privé Exchange",
       icon: Store,
       route: "prive-exchange",
-      color: theme === "dark" ? "#695d7e" : "#d8d0e8",
+      color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
       description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
       iconAnimation: pulseAnimation,
       beta: true,
@@ -225,7 +226,7 @@ export function HomeDashboard({
       name: "Social Hub",
       icon: Users,
       route: "social-hub",
-      color: theme === "dark" ? "#695d7e" : "#d8d0e8",
+      color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
       description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
       iconAnimation: pulseAnimation,
       beta: true,
@@ -239,7 +240,7 @@ export function HomeDashboard({
       name: "Calendar",
       icon: CalendarIcon,
       route: "calendar-page",
-      color: theme === "dark" ? "#877773" : "#f3eae0",
+      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "#f3eae0",
       description: "Manage your elite events calendar, including private showcases, exclusive gatherings, and invitation-only investment summits tailored to your interests.",
       iconAnimation: pulseAnimation,
     },*/
@@ -247,7 +248,7 @@ export function HomeDashboard({
       name: "Playbook Store",
       icon: BookOpen,
       route: "play-books",
-      color: theme === "dark" ? "#877773" : "#f3eae0",
+      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)",
       description: "Discover and acquire premium investment playbooks and wealth preservation strategies developed by leading global experts and institutions.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -256,7 +257,7 @@ export function HomeDashboard({
       name: "Tactics Lab",
       icon: Beaker,
       route: "strategy-engine",
-      color: theme === "dark" ? "#877773" : "#f3eae0", // Changed to match Founder's Desk colors
+      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)", // Golden yellow in both modes
       description: "Experiment with advanced wealth preservation and growth strategies in our premium simulation environment.",
       iconAnimation: pulseAnimation,
       beta: true,
@@ -313,11 +314,11 @@ export function HomeDashboard({
         url="https://hnwichronicles.com/dashboard"
       />
       <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
-        <Card className={`overflow-hidden ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"} font-body`}>
+        <Card className="overflow-hidden bg-card text-card-foreground font-body">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <span role="img" aria-label="diamond">💎</span>
-              <Heading2 className={`text-xl md:text-2xl font-heading font-bold tracking-wide ${theme === "dark" ? "text-white" : "text-black"}`}>
+              <Diamond className="w-6 h-6 text-primary" />
+              <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-card-foreground">
                 Elite Pulse
               </Heading2>
             </div>
@@ -335,8 +336,8 @@ export function HomeDashboard({
                           className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden h-full"
                           style={{
                             background: theme === "dark" ? 
-                              `linear-gradient(135deg, #695d7e ${offset * 8}%, #5d5073)` : 
-                              `linear-gradient(135deg, #d8d0e8 ${offset * 8}%, #c6b8e0)`,
+                              "hsl(165, 46%, 8%)" : 
+                              `linear-gradient(135deg, hsl(165, 46%, 85%) ${offset * 8}%, hsl(165, 46%, 75%))`,
                             backdropFilter: "blur(12px)",
                             color: theme === "dark" ? "white" : "#2c2144"
                           }}
@@ -376,7 +377,7 @@ export function HomeDashboard({
                               </p>
                               <div className="flex justify-between items-end mt-auto">
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="bg-primary/80 text-primary-foreground text-xs shadow-[0_8px_16px_rgba(0,0,0,0.3)] rounded-full transform hover:-translate-y-0.5 transition-all hover:shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
+                                  <Badge variant="secondary" className="bg-primary/80 text-white dark:text-white text-xs shadow-[0_8px_16px_rgba(0,0,0,0.3)] rounded-full transform hover:-translate-y-0.5 transition-all hover:shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
                                     {developments[index].industry}
                                   </Badge>
                                   <div className="text-xs md:text-sm font-bold whitespace-nowrap bg-black/10 dark:bg-white/10 px-2 py-0.5 rounded-md inline-block">
@@ -407,11 +408,11 @@ export function HomeDashboard({
 
         {/* The Foundry Section */}
         {visibleExperienceZone.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
+          <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
                 <Hammer className="w-6 h-6 text-primary" />
-                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
+                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-card-foreground">
                   The Foundry
                 </Heading2>
               </div>
@@ -437,7 +438,7 @@ export function HomeDashboard({
                       <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                          <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
                           {item.beta && (
                             <Badge variant="secondary" className="ml-1 badge-beta">
                               Beta
@@ -470,11 +471,11 @@ export function HomeDashboard({
         )}
 
         {/* Crown Zone Section */}
-        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
+        <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
               <Crown className="w-6 h-6 text-primary" />
-              <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
+              <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-card-foreground">
                 Crown Zone
               </Heading2>
             </div>
@@ -500,7 +501,7 @@ export function HomeDashboard({
                     <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
                       <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                        <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
                         {item.beta && (
                           <Badge variant="secondary" className="ml-1 badge-beta">
                             Beta
@@ -533,11 +534,11 @@ export function HomeDashboard({
 
         {/* Founder's Desk Section */}
         {visibleFoundersDeskItems.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-darkPrimary-600 text-white" : "bg-primary-50 text-black"}`}>
+          <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
                 <Briefcase className="w-6 h-6 text-primary" />
-                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-primary">
+                <Heading2 className="text-xl md:text-2xl font-heading font-bold tracking-wide text-card-foreground">
                   Founder's Desk
                 </Heading2>
               </div>
@@ -563,7 +564,7 @@ export function HomeDashboard({
                       <div className="flex flex-col items-start w-full overflow-hidden h-[200px] md:h-[220px] lg:h-[200px] pt-4">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className="mb-2 mt-1 text-shadow">{item.name}</Heading3>
+                          <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
                           {item.beta && (
                             <Badge variant="secondary" className="ml-1 badge-beta">
                               Beta

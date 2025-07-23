@@ -326,16 +326,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       />
       <div className="container mx-auto px-4 py-8">
         <Card
-          className={`w-full max-w-4xl mx-auto overflow-hidden relative ${
-            theme === "dark" ? "bg-[#1A1A1A] text-white" : "bg-white text-[#212121]"
-          }`}
+          className="w-full max-w-4xl mx-auto overflow-hidden relative bg-card text-card-foreground"
         >
-          <CardHeader className="flex flex-row items-center justify-between p-6" style={{ background: theme === "dark" ? "#695d7e" : "#d8d0e8" }}>
+          <CardHeader className="flex flex-row items-center justify-between p-6 bg-primary text-primary-foreground">
             <div className="flex items-center space-x-4">
-              <div className="p-2 bg-white rounded-full">
-                <UserIcon className="w-8 h-8" style={{ color: theme === "dark" ? "#695d7e" : "#d8d0e8" }} />
+              <div className="p-2 bg-primary-foreground rounded-full">
+                <UserIcon className="w-8 h-8 text-primary" />
               </div>
-              <Heading2 className="text-3xl font-bold font-heading" style={{ color: theme === "dark" ? "white" : "black" }}>
+              <Heading2 className="text-3xl font-bold font-heading text-primary-foreground">
                 {isEditing ? "Edit Profile" : `${editedUser.name}`}
               </Heading2>
             </div>
@@ -348,7 +346,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Full Name
                       </label>
@@ -357,12 +355,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.name}
                         onChange={handleInputChange}
                         placeholder="Full Name"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Net Worth
                       </label>
@@ -372,12 +370,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.net_worth}
                         onChange={handleNumberInputChange}
                         placeholder="Net Worth"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         City
                       </label>
@@ -386,12 +384,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.city}
                         onChange={handleInputChange}
                         placeholder="City"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Country
                       </label>
@@ -400,12 +398,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.country}
                         onChange={handleInputChange}
                         placeholder="Country"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Industries
                       </label>
@@ -414,12 +412,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.industries.join(", ")}
                         onChange={(e) => handleIndustriesChange(e.target.value)}
                         placeholder="Industries (comma-separated)"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Company Name
                       </label>
@@ -439,12 +437,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           });
                         }}
                         placeholder="Company Name"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Phone Number
                       </label>
@@ -453,12 +451,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.phone_number}
                         onChange={handleInputChange}
                         placeholder="Phone Number"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         LinkedIn URL
                       </label>
@@ -467,12 +465,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.linkedin}
                         onChange={handleInputChange}
                         placeholder="LinkedIn URL"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Office Address
                       </label>
@@ -481,12 +479,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         value={editedUser.office_address}
                         onChange={handleInputChange}
                         placeholder="Office Address"
-                        className={`w-full ${theme === "dark" ? "bg-[#2A2A2A] text-white" : "bg-white text-[#212121]"}`}
+                        className="w-full bg-input text-foreground border border-border"
                       />
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Crypto Investor
                       </label>
@@ -500,7 +498,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     </div>
                     <div>
                       <label
-                        className={`block text-sm font-semibold font-body mb-2 ${theme === "dark" ? "text-[#BBDEFB]" : "text-[#212121]"}`}
+                        className="block text-sm font-semibold font-body mb-2 text-card-foreground"
                       >
                         Land Investor
                       </label>
@@ -531,7 +529,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     <Button onClick={() => setIsEditing(false)} variant="outline">
                       Cancel
                     </Button>
-                    <Button onClick={handleSave} style={{ background: theme === "dark" ? "#695d7e" : "#d8d0e8", color: theme === "dark" ? "white" : "black" }}>
+                    <Button onClick={handleSave} style={{ background: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)", color: "white" }}>
                       <Save className="w-4 h-4 mr-2" />
                       Save Changes
                     </Button>
@@ -587,14 +585,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     <Heading3 className="text-lg font-semibold font-heading mb-2">Bio</Heading3>
                     <Paragraph className="text-sm font-body">{editedUser.bio || "No bio provided"}</Paragraph>
                   </div>
-                  <Button onClick={() => setIsEditing(true)} className="mt-6 text-white" style={{ background: theme === "dark" ? "#695d7e" : "#d8d0e8", color: theme === "dark" ? "white" : "black", borderColor: theme === "dark" ? "#695d7e" : "#d8d0e8" }}>
+                  <Button onClick={() => setIsEditing(true)} className="mt-6" style={{ background: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)", color: "white", borderColor: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)" }}>
                     <Edit2 className="w-4 h-4 mr-2" />
                     Edit Profile
                   </Button>
                   <Button
                     onClick={handleChangePassword}
                     className="mt-6 ml-4"
-                    style={{ background: theme === "dark" ? "#7f6e6b" : "#e6d5c1", color: theme === "dark" ? "white" : "black" }}
+                    style={{ background: theme === "dark" ? "hsl(43, 50%, 55%)" : "hsl(43, 50%, 75%)", color: "white" }}
                   >
                     <Key className="w-4 h-4 mr-2" />
                     Change Password
