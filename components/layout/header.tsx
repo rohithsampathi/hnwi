@@ -56,7 +56,7 @@ export function Header({ showBackButton = false, onNavigate, children }: HeaderP
               transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
             >
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"
+                src="/logo.png"
                 alt="HNWI Chronicles Globe"
                 width={24}
                 height={24}

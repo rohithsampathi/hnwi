@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         type: "website",
         images: [
           {
-            url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png",
+            url: "/logo.png",
             width: 1200,
             height: 630,
             alt: `${opportunity.title} - Exclusive Investment Opportunity`,
@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         card: "summary_large_image",
         title: opportunity.title,
         description,
-        images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+        images: ["/logo.png"],
       },
     }
   } catch (error) {

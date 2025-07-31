@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png",
+        url: "/logo.png",
         width: 1200,
         height: 630,
         alt: "Privé Exchange - Exclusive Investment Opportunities",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Privé Exchange | Exclusive Investment Opportunities",
     description: "Access exclusive, curated investment opportunities for high-net-worth individuals. Premium marketplace featuring strategic investments across global markets.",
-    images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+    images: ["/logo.png"],
   },
 }
 

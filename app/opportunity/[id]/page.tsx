@@ -26,7 +26,7 @@ export async function generateMetadata({
           type: "website",
           images: [
             {
-              url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png",
+              url: "/logo.png",
               width: 1200,
               height: 630,
               alt: "HNWI Chronicles - Investment Opportunities",
@@ -38,7 +38,7 @@ export async function generateMetadata({
           card: "summary_large_image",
           title: "Investment Opportunity - HNWI Chronicles",
           description: "Explore exclusive investment opportunities for high-net-worth individuals. Access premium deals with comprehensive analysis and risk assessment.",
-          images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+          images: ["/logo.png"],
         },
       }
     }
@@ -61,7 +61,7 @@ export async function generateMetadata({
         siteName: "HNWI Chronicles",
         type: "website",
         images: [{
-          url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png", // Default image
+          url: "/logo.png", // Default image
           width: 1200,
           height: 630,
           alt: opportunity.title,
@@ -71,7 +71,7 @@ export async function generateMetadata({
         card: "summary_large_image",
         title: opportunity.title,
         description,
-        images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+        images: ["/logo.png"],
       },
       alternates: {
         canonical: `${baseUrl}/opportunity/${id}`,
