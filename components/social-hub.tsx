@@ -82,15 +82,31 @@ export function SocialHub() {
     setIsProcessing(true)
     setSelectedEvent(event)
     
-    const userId = localStorage.getItem("userId") || ""
-    const userEmail = localStorage.getItem("userEmail") || ""
-    const userName = user?.name || "Unknown User"
+    const userId = user?.id || localStorage.getItem("userId") || ""
+    const userEmail = user?.email || localStorage.getItem("userEmail") || ""
+    const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
+    
+    console.log("Submitting event form to Formspree with data:", {
+      eventName: event.name,
+      userName,
+      userId,
+      userEmail,
+      eventId: event.id,
+      eventCategory: event.category,
+      eventLocation: event.location,
+      eventVenue: event.venue,
+      eventDate: event.start_date,
+      eventEndDate: event.end_date,
+      timestamp: new Date().toISOString(),
+    })
     
     try {
-      // Send data to Formspree (example)
       const response = await fetch("https://formspree.io/f/xwpvjjpz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           eventName: event.name,
           userName,
@@ -103,11 +119,19 @@ export function SocialHub() {
           eventDate: event.start_date,
           eventEndDate: event.end_date,
           timestamp: new Date().toISOString(),
+          _subject: `Talk to Concierge: ${event.name}`,
+          message: `User ${userName} (${userEmail}) wants to talk to concierge about event: ${event.name}. Details: Category: ${event.category}, Location: ${event.location}, Venue: ${event.venue}, Date: ${event.start_date}`
         }),
       })
       
+      console.log("Formspree response status:", response.status)
+      console.log("Formspree response headers:", response.headers)
+      
+      const responseData = await response.text()
+      console.log("Formspree response data:", responseData)
+      
       if (!response.ok) {
-        throw new Error("Failed to submit concierge request")
+        throw new Error(`Failed to submit concierge request: ${response.status} ${responseData}`)
       }
       
       setShowSuccessDialog(true)

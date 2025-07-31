@@ -127,15 +127,34 @@ export function OpportunityPage({
     e.preventDefault()
     setIsProcessing(true)
     
-    const userId = localStorage.getItem("userId") || ""
-    const userEmail = localStorage.getItem("userEmail") || ""
-    const userName = user?.name || "Unknown User"
+    const userId = user?.id || localStorage.getItem("userId") || ""
+    const userEmail = user?.email || localStorage.getItem("userEmail") || ""
+    const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
+    
+    console.log("Submitting form to Formspree with data:", {
+      opportunityTitle: opportunity?.title,
+      userName,
+      userId,
+      userEmail,
+      opportunityId: opportunity?.id,
+      opportunityType: opportunity?.type,
+      opportunityValue: opportunity?.value,
+      region: opportunity?.region,
+      timestamp: new Date().toISOString(),
+    })
     
     try {
-      // Send data to Formspree (example)
-      const response = await fetch("https://formspree.io/f/xwpvjjpz", {
+      // Use Express Interest endpoint for all opportunities
+      const formspreeEndpoint = "https://formspree.io/f/xldgwozd"  // Express Interest endpoint for all opportunities
+        
+      console.log("Using Formspree endpoint:", formspreeEndpoint)
+      
+      const response = await fetch(formspreeEndpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           opportunityTitle: opportunity?.title,
           userName,
@@ -145,12 +164,21 @@ export function OpportunityPage({
           opportunityType: opportunity?.type,
           opportunityValue: opportunity?.value,
           region: opportunity?.region,
+          source: region ? "Privé Exchange" : "General Opportunity",
           timestamp: new Date().toISOString(),
+          _subject: `Express Interest: ${opportunity?.title}`,
+          message: `User ${userName} (${userEmail}) has expressed interest in the investment opportunity: ${opportunity?.title}. Source: ${region ? "Privé Exchange" : "General Opportunity"}. Details: Type: ${opportunity?.type}, Value: ${opportunity?.value}, Region: ${opportunity?.region}`
         }),
       })
       
+      console.log("Formspree response status:", response.status)
+      console.log("Formspree response headers:", response.headers)
+      
+      const responseData = await response.text()
+      console.log("Formspree response data:", responseData)
+      
       if (!response.ok) {
-        throw new Error("Failed to submit concierge request")
+        throw new Error(`Failed to submit concierge request: ${response.status} ${responseData}`)
       }
       
       setShowSuccessDialog(true)

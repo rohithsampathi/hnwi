@@ -137,7 +137,9 @@ export async function getOpportunities(): Promise<Opportunity[]> {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      // Prevent caching issues in server-side rendering
+      cache: 'no-store'
     });
     
     if (!response.ok) {
@@ -154,20 +156,17 @@ export async function getOpportunities(): Promise<Opportunity[]> {
 
 export async function getOpportunityById(id: string): Promise<Opportunity | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/opportunities/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      // Make sure this works in both client and server components
-      cache: 'no-store'
-    });
+    // Since the API doesn't support individual opportunity endpoints,
+    // fetch all opportunities and find the one with matching ID
+    const opportunities = await getOpportunities();
+    const opportunity = opportunities.find(opp => opp.id === id);
     
-    if (!response.ok) {
-      throw new Error(`Error fetching opportunity: ${response.status}`);
+    if (!opportunity) {
+      console.log(`Opportunity with ID ${id} not found in the collection`);
+      return null;
     }
     
-    return await response.json() as Opportunity;
+    return opportunity;
   } catch (error) {
     console.error(`Failed to fetch opportunity with ID ${id}:`, error);
     return null;

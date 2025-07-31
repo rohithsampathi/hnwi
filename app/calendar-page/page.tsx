@@ -1,78 +1,34 @@
 // app/calendar-page/page.tsx
 
-"use client"
+import type { Metadata } from "next"
+import { CalendarPageWrapper } from "./calendar-page-wrapper"
 
-import { CalendarPage } from "@/components/pages/calendar-page"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-
-export default function Page() {
-  const router = useRouter()
-  const [isGlobalHandlerReady, setIsGlobalHandlerReady] = useState(false)
-  
-  // Set up a global navigation handler for proper routing from this page
-  useEffect(() => {
-    // Define a global navigation function for the app
-    window.handleGlobalNavigation = (path: string) => {
-      // Handle different route types
-      if (path === "back") {
-        sessionStorage.setItem("skipSplash", "true")
-        router.push("/")
-      } 
-      // Special case for dashboard navigation
-      else if (path === "/" || path === "dashboard") {
-        sessionStorage.setItem("skipSplash", "true")
-        router.push("/")
-      }
-      // Handle opportunity routes
-      else if (path.startsWith("opportunity/")) {
-        const opportunityId = path.split("/")[1]
-        sessionStorage.setItem("currentOpportunityId", opportunityId)
-        router.push(`/opportunity/${opportunityId}`)
-      }
-      else {
-        // For all other routes, use direct router navigation
-        try {
-          const normalizedPath = path.replace(/^\/+/, "")
-          router.push(`/${normalizedPath}`)
-        } catch (e) {
-          console.error("Navigation failed:", e)
-          // Fallback to dashboard on error
-          sessionStorage.setItem("skipSplash", "true")
-          router.push("/")
-        }
-      }
-    }
-    
-    setIsGlobalHandlerReady(true)
-    
-    return () => {
-      // Clean up on unmount
-      delete window.handleGlobalNavigation
-    }
-  }, [router])
-  
-  // Create the navigation handler that uses the global function
-  const handleNavigation = (path: string) => {
-    if (window.handleGlobalNavigation) {
-      window.handleGlobalNavigation(path)
-    } else {
-      // Fallback to basic navigation if global handler not ready
-      if (path === "dashboard") {
-        sessionStorage.setItem("skipSplash", "true")
-        router.push("/")
-      } else {
-        router.push("/")
-      }
-    }
-  }
-
-  return <CalendarPage onNavigate={handleNavigation} />
+export const metadata: Metadata = {
+  title: "Social Hub | Elite Events & Networking - HNWI Chronicles",
+  description: "Access exclusive high-net-worth events, elite networking opportunities, and premium social gatherings. Connect with fellow HNWIs at carefully curated events worldwide.",
+  keywords: ["HNWI events", "elite networking", "exclusive events", "high-net-worth social", "premium gatherings", "luxury events"],
+  openGraph: {
+    title: "Social Hub | Elite Events & Networking",
+    description: "Access exclusive high-net-worth events, elite networking opportunities, and premium social gatherings. Connect with fellow HNWIs at carefully curated events worldwide.",
+    type: "website",
+    images: [
+      {
+        url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png",
+        width: 1200,
+        height: 630,
+        alt: "Social Hub - Elite Events & Networking",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Social Hub | Elite Events & Networking",
+    description: "Access exclusive high-net-worth events, elite networking opportunities, and premium social gatherings. Connect with fellow HNWIs at carefully curated events worldwide.",
+    images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+  },
 }
 
-// Extend Window interface to add our global handler
-declare global {
-  interface Window {
-    handleGlobalNavigation?: (path: string) => void;
-  }
+export default function Page() {
+  return <CalendarPageWrapper />
 }

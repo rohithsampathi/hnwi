@@ -18,20 +18,45 @@ export async function generateMetadata({
     
     if (!opportunity) {
       return {
-        title: "Opportunity Not Found | HNWI Chronicles",
-        description: "The requested investment opportunity could not be found."
+        title: "Investment Opportunity - HNWI Chronicles",
+        description: "Explore exclusive investment opportunities for high-net-worth individuals. Access premium deals with comprehensive analysis and risk assessment.",
+        openGraph: {
+          title: "Investment Opportunity - HNWI Chronicles",
+          description: "Explore exclusive investment opportunities for high-net-worth individuals. Access premium deals with comprehensive analysis and risk assessment.",
+          type: "website",
+          images: [
+            {
+              url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png",
+              width: 1200,
+              height: 630,
+              alt: "HNWI Chronicles - Investment Opportunities",
+              type: "image/png",
+            },
+          ],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Investment Opportunity - HNWI Chronicles",
+          description: "Explore exclusive investment opportunities for high-net-worth individuals. Access premium deals with comprehensive analysis and risk assessment.",
+          images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
+        },
       }
     }
     
     // Determine the base URL for canonical and og:url
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"
     
+    const title = `${opportunity.title} | HNWI Chronicles`
+    const description = opportunity.description 
+      ? `${opportunity.description.slice(0, 155)}${opportunity.description.length > 155 ? '...' : ''}`
+      : "Exclusive investment opportunity for high-net-worth individuals."
+
     return {
-      title: opportunity.title,
-      description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+      title,
+      description,
       openGraph: {
         title: opportunity.title,
-        description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+        description,
         url: `${baseUrl}/opportunity/${id}`,
         siteName: "HNWI Chronicles",
         type: "website",
@@ -45,7 +70,7 @@ export async function generateMetadata({
       twitter: {
         card: "summary_large_image",
         title: opportunity.title,
-        description: opportunity.description || "Exclusive investment opportunity for high-net-worth individuals.",
+        description,
         images: ["https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-tNPttW3utosqgVlbJRBssjJUTRJPM6.png"],
       },
       alternates: {
