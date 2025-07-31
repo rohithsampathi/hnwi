@@ -32,6 +32,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       }
     }
 
+    // Determine the base URL for canonical and og:url
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"
+    
+    // Create a more suitable OG image URL with fallback
+    const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.type || 'Investment')}`
+    const fallbackImageUrl = `${baseUrl}/logo.png`
+
     const title = `${opportunity.title} | Invest Scan - HNWI Chronicles`
     const description = opportunity.description 
       ? `${opportunity.description.slice(0, 155)}${opportunity.description.length > 155 ? '...' : ''}`
@@ -52,22 +59,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       openGraph: {
         title: opportunity.title,
         description,
+        url: `${baseUrl}/invest-scan/${region}/${opportunityId}`,
+        siteName: "HNWI Chronicles",
         type: "website",
         images: [
           {
-            url: "/logo.png",
+            url: ogImageUrl,
             width: 1200,
             height: 630,
-            alt: `${opportunity.title} - Investment Opportunity`,
-            type: "image/png",
+            alt: opportunity.title,
           },
+          {
+            url: fallbackImageUrl,
+            width: 1200,
+            height: 630,
+            alt: opportunity.title,
+          }
         ],
       },
       twitter: {
         card: "summary_large_image",
         title: opportunity.title,
         description,
-        images: ["/logo.png"],
+        images: [ogImageUrl],
+      },
+      alternates: {
+        canonical: `${baseUrl}/invest-scan/${region}/${opportunityId}`,
       },
     }
   } catch (error) {
