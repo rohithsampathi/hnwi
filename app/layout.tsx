@@ -9,8 +9,8 @@ import { AuthProvider } from "@/components/auth-provider"
 import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://hnwichronicles.vercel.app"),
-  title: "HNWI Chronicles | Global Wealth Intelligence Platform",
+  metadataBase: new URL("https://app.hnwichronicles.com"),
+  title: "HNWI Chronicles | Your Alternative Wealth Intelligence Ally",
   description:
     "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
   keywords: ["HNWI", "wealth management", "financial intelligence", "strategic insights", "market analysis"],
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://hnwichronicles.vercel.app",
+    url: "https://app.hnwichronicles.com",
     siteName: "HNWI Chronicles",
-    title: "HNWI Chronicles | Global Wealth Intelligence Platform",
+    title: "HNWI Chronicles | Your Alternative Wealth Intelligence Ally",
     description:
       "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
     images: [
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "HNWI Chronicles - Global Wealth Intelligence Platform",
+        alt: "HNWI Chronicles - Your Alternative Wealth Intelligence Ally",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "HNWI Chronicles | Global Wealth Intelligence Platform",
+    title: "HNWI Chronicles | Your Alternative Wealth Intelligence Ally",
     description:
       "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
     site: "@hnwichronicles",

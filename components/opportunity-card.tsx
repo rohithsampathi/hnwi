@@ -17,11 +17,11 @@ export function OpportunityCard({
   showNewRibbon = false 
 }: OpportunityCardProps) {
   return (
-    <Card className="bg-card flex flex-col relative overflow-hidden">
+    <Card className="bg-card flex flex-col relative">
       {/* New Ribbon */}
       {showNewRibbon && (
-        <div className="absolute top-0 right-0 z-10">
-          <div className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 transform rotate-12 translate-x-2 -translate-y-1 shadow-sm">
+        <div className="absolute top-2 right-2 z-10">
+          <div className="bg-primary text-primary-foreground text-xs font-semibold px-2 py-1 rounded-sm shadow-sm">
             New
           </div>
         </div>

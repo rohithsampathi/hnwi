@@ -26,7 +26,7 @@ export async function generateMetadata({
           type: "website",
           images: [
             {
-              url: "/logo.png",
+              url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"}/logo.png`,
               width: 1200,
               height: 630,
               alt: "HNWI Chronicles - Investment Opportunities",
@@ -38,13 +38,17 @@ export async function generateMetadata({
           card: "summary_large_image",
           title: "Investment Opportunity - HNWI Chronicles",
           description: "Explore exclusive investment opportunities for high-net-worth individuals. Access premium deals with comprehensive analysis and risk assessment.",
-          images: ["/logo.png"],
+          images: [`${process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"}/logo.png`],
         },
       }
     }
     
     // Determine the base URL for canonical and og:url
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"
+    
+    // Create a more suitable OG image URL with fallback
+    const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.type || 'Investment')}`
+    const fallbackImageUrl = `${baseUrl}/logo.png`
     
     const title = `${opportunity.title} | HNWI Chronicles`
     const description = opportunity.description 
@@ -60,18 +64,26 @@ export async function generateMetadata({
         url: `${baseUrl}/opportunity/${id}`,
         siteName: "HNWI Chronicles",
         type: "website",
-        images: [{
-          url: "/logo.png", // Default image
-          width: 1200,
-          height: 630,
-          alt: opportunity.title,
-        }],
+        images: [
+          {
+            url: ogImageUrl,
+            width: 1200,
+            height: 630,
+            alt: opportunity.title,
+          },
+          {
+            url: fallbackImageUrl,
+            width: 1200,
+            height: 630,
+            alt: opportunity.title,
+          }
+        ],
       },
       twitter: {
         card: "summary_large_image",
         title: opportunity.title,
         description,
-        images: ["/logo.png"],
+        images: [ogImageUrl],
       },
       alternates: {
         canonical: `${baseUrl}/opportunity/${id}`,
