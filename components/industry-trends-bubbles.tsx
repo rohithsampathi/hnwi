@@ -46,6 +46,7 @@ export function IndustryTrendsBubbles({
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null)
+  
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
@@ -260,7 +261,12 @@ export function IndustryTrendsBubbles({
           setTooltipData(null)
         })
         .on("click", (_, d) => {
-          onBubbleClick(d.industry)
+          // Toggle selection like Opportunity Atlas does
+          if (selectedIndustry === d.industry) {
+            onBubbleClick("All") // Reset to show all industries
+          } else {
+            onBubbleClick(d.industry) // Select this industry
+          }
         })
 
       // Add text labels to bubbles

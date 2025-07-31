@@ -15,53 +15,53 @@ export function generateConsistentColor(str: string): string {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`
 }
 
-// Base color mapping for known categories and industries
+// Base color mapping for known categories and industries - Premium bright colors
 export const baseIndustryColors: Record<string, string> = {
-  // Financial Sector
+  // Financial Sector - Gold and orange tones
   Finance: "#FFD700",
-  "Financial Services": "#DAA520",
-  "Financial Technology": "#FFA500",
-  Banking: "#FF8C00",
-  Fintech: "#FFB6C1",
-  Insurance: "#FF7F50",
-  "Government Finance/Taxation": "#F4A460",
+  "Financial Services": "#FF8C00",
+  "Financial Technology": "#FF6B35",
+  Banking: "#FF4500",
+  Fintech: "#FF69B4",
+  Insurance: "#FF1493",
+  "Government Finance/Taxation": "#FF7F50",
   
-  // Real Estate & Infrastructure
-  "Real Estate": "#32CD32",
-  "Real Estate Development": "#228B22",
-  Infrastructure: "#3CB371",
-  "Transportation Infrastructure": "#2E8B57",
+  // Real Estate & Infrastructure - Emerald and green tones
+  "Real Estate": "#10B981",
+  "Real Estate Development": "#059669",
+  Infrastructure: "#047857",
+  "Transportation Infrastructure": "#065F46",
   
-  // Retail & Consumer
-  Retail: "#9932CC",
-  "Luxury Goods": "#8A2BE2",
-  Fashion: "#9370DB",
-  "Food & Beverages": "#BA55D3",
+  // Retail & Consumer - Purple and violet tones
+  Retail: "#8B5CF6",
+  "Luxury Goods": "#7C3AED",
+  Fashion: "#6D28D9",
+  "Food & Beverages": "#5B21B6",
   
-  // Technology & Digital
-  Cybersecurity: "#3CB371",
-  "Social Media": "#2E8B57",
+  // Technology & Digital - Cyan and blue tones
+  Cybersecurity: "#06B6D4",
+  "Social Media": "#0891B2",
   
-  // Automotive & Transportation
-  Automotive: "#228B22",
-  "Luxury Vehicles": "#32CD32",
-  Aviation: "#3CB371",
+  // Automotive & Transportation - Blue tones
+  Automotive: "#3B82F6",
+  "Luxury Vehicles": "#2563EB",
+  Aviation: "#1D4ED8",
   
-  // Tourism & Hospitality
-  Tourism: "#FF6347",
-  "Tourism & Immigration": "#FF4500",
-  "Immigration Services": "#FF7F50",
-  Hospitality: "#FF7F50",
+  // Tourism & Hospitality - Red and coral tones
+  Tourism: "#EF4444",
+  "Tourism & Immigration": "#DC2626",
+  "Immigration Services": "#B91C1C",
+  Hospitality: "#991B1B",
   
-  // Art & Lifestyle
-  Art: "#20B2AA",
-  Lifestyle: "#48D1CC",
-  Jewelry: "#8E44AD", // Purple for jewelry
-  Collectibles: "#D35400", // Orange-brown for collectibles
-  "Fine Art": "#1ABC9C", // Turquoise for fine art
-  Antiques: "#996515", // Dark gold for antiques
-  Watches: "#2E8B57", // Deep green for watches
-  "Luxury Fashion": "#B03A2E", // Deep red for luxury fashion
+  // Art & Lifestyle - Teal and specialty tones
+  Art: "#14B8A6",
+  Lifestyle: "#0D9488",
+  Jewelry: "#A855F7", // Bright purple for jewelry
+  Collectibles: "#F59E0B", // Bright amber for collectibles
+  "Fine Art": "#06B6D4", // Bright cyan for fine art
+  Antiques: "#D97706", // Bright orange for antiques
+  Watches: "#10B981", // Bright emerald for watches
+  "Luxury Fashion": "#DC2626", // Bright red for luxury fashion
   
   // Base industries
   "Real Estate": "#32CD32",

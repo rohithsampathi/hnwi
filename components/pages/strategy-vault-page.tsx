@@ -144,21 +144,21 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                   </button>
                 </div>
               </div>
-              <div className="mt-4 pt-4 bg-white dark:bg-primary-800 rounded shadow-md">
-                <div className="px-6 pb-2">
-                  <Heading3 className="text-primary dark:text-white flex items-center mb-2">
-                    <span className="mr-2">📊</span>
-                    Wealth Radar
-                  </Heading3>
-                  <p className="text-body-small text-muted-foreground dark:text-gray-300 mb-1">
-                    Industry wise HNWI Peer Movements and Market Actions
-                  </p>
-                  {/* Stats display right below the section subtitle */}
-                  <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">
-                    {availableIndustries.length} industries • Updated: {new Date().toLocaleTimeString()}
+              {/* Wealth Radar - matching Opportunity Atlas structure */}
+              <div className="relative bg-card rounded-lg border border-border">
+                {/* Header inside the box - left aligned like Opportunity Atlas */}
+                <div className="pt-6 pb-4 px-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xl">📊</span>
+                    <Heading3 className="text-primary dark:text-white">Wealth Radar</Heading3>
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    Industry wise HNWI Peer Movements and Market Actions • {availableIndustries.length} industries available
                   </p>
                 </div>
-                <div className="px-6 pb-6">
+                
+                {/* Visualization area */}
+                <div className="px-6">
                   <IndustryTrendsBubbles
                     duration={timeRange}
                     onIndustriesUpdate={handleIndustriesUpdate}
@@ -167,6 +167,18 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                     selectedIndustry={selectedIndustry}
                     renderStatsOutside={true}
                   />
+                </div>
+                
+                {/* Footer with updated timestamp and disclaimer */}
+                <div className="px-6 pb-4">
+                  <div className="text-center border-t border-border pt-3">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Last updated: {new Date().toLocaleTimeString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Information only—HNWI Chronicles is not a broker-dealer
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
