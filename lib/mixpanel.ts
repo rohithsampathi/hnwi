@@ -2,7 +2,10 @@ import mixpanel from 'mixpanel-browser';
 
 // Initialize Mixpanel with your project token
 // Replace YOUR_TOKEN with your actual Mixpanel token
-mixpanel.init('e6df9ca97b553d8a7954cda47f2f6516', { debug: process.env.NODE_ENV !== 'production' });
+mixpanel.init('e6df9ca97b553d8a7954cda47f2f6516', { 
+  debug: false, // Disable debug logging to reduce console noise
+  verbose: false // Disable verbose logging
+});
 
 // Helper functions for tracking
 export const MixpanelTracker = {

@@ -97,6 +97,8 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
               }
             } else if (currentPath.includes('/calendar-page')) {
               derivedPage = "calendar-page";
+            } else if (currentPath.includes('/crown-vault')) {
+              derivedPage = "crown-vault";
             } else if (currentPath.includes('/profile')) {
               derivedPage = "profile";
             }

@@ -21,6 +21,7 @@ import {
   Users,
   Store,
   Diamond,
+  Vault,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -57,6 +58,7 @@ interface ExperienceZoneItem {
   iconAnimation: any
   beta?: boolean
   businessOnly?: boolean
+  live?: boolean
 }
 
 const AnimatedIcon = ({
@@ -219,22 +221,29 @@ export function HomeDashboard({
       color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
       description: "Access our exclusive marketplace for premium alternative assets, private equity opportunities, and bespoke investment vehicles not available to the general public.",
       iconAnimation: pulseAnimation,
-      beta: true,
       live: true,
     },
     {
-      name: "Social Hub",
-      icon: Users,
-      route: "social-hub",
+      name: "Crown Vault",
+      icon: Vault,
+      route: "crown-vault",
       color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
-      description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
+      description: "Discreetly organize your legacy with bank-grade encryption. Secure asset management and heir planning for high-net-worth individuals.",
       iconAnimation: pulseAnimation,
-      beta: true,
       live: true,
     }
   ]
 
   const foundersDeskItems = [
+    {
+      name: "Social Hub",
+      icon: Users,
+      route: "social-hub",
+      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)",
+      description: "Connect with fellow elite investors, family offices, and wealth managers in our private network designed for high-value relationship building and deal flow.",
+      iconAnimation: pulseAnimation,
+      live: true,
+    },
     // Calendar card removed/commented out
     /*{
       name: "Calendar",
@@ -575,10 +584,17 @@ export function HomeDashboard({
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex items-center w-full justify-end mb-4 mt-2">
-                        <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
-                        <div className="clickable-arrow ml-1 flex-shrink-0">
-                          <ArrowRight className="w-4 h-4" />
+                      <div className="flex justify-between items-center w-full mb-4 mt-2">
+                        {item.live && (
+                          <div>
+                            <LiveButton />
+                          </div>
+                        )}
+                        <div className="flex items-center ml-auto">
+                          <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
+                          <div className="clickable-arrow ml-1 flex-shrink-0">
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
                         </div>
                       </div>
                     </Button>

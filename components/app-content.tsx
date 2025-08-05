@@ -20,6 +20,7 @@ import { PlayBooksPage } from "./pages/playbooks-page"
 import { InvestScanPage } from "./pages/invest-scan-page"
 import { OpportunityPage } from "./pages/opportunity-page"
 import { SocialHubPage } from "./pages/social-hub-page"
+import { CrownVaultPage } from "./pages/crown-vault-page"
 import { handleLogin, handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -805,6 +806,9 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
       case "social-hub":
         return <SocialHubPage onNavigate={handleNavigation} />
+
+      case "crown-vault":
+        return <CrownVaultPage onNavigate={handleNavigation} />
 
       default:
         return <div>Page not found</div>
