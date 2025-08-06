@@ -473,6 +473,17 @@ export async function createHeir(
 ): Promise<CrownVaultHeir> {
   try {
     const userId = ownerId || getCurrentUserId();
+    
+    // Filter out empty email and phone fields to avoid backend validation errors
+    const filteredData = Object.entries(heirData).reduce((acc, [key, value]) => {
+      if ((key === 'email' || key === 'phone') && value === '') {
+        // Don't include empty email or phone fields
+        return acc;
+      }
+      acc[key] = value;
+      return acc;
+    }, {} as any);
+    
     // Use backend API directly for heir creation
     const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}`, {
       method: 'POST',
@@ -480,7 +491,7 @@ export async function createHeir(
         'Content-Type': 'application/json',
         'X-User-ID': userId
       },
-      body: JSON.stringify(heirData)
+      body: JSON.stringify(filteredData)
     });
 
     if (!response.ok) {
@@ -519,13 +530,24 @@ export async function updateHeir(
 ): Promise<CrownVaultHeir> {
   try {
     const userId = ownerId || getCurrentUserId();
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/${heirId}`, {
+    
+    // Filter out empty email and phone fields to avoid backend validation errors
+    const filteredData = Object.entries(heirData).reduce((acc, [key, value]) => {
+      if ((key === 'email' || key === 'phone') && value === '') {
+        // Don't include empty email or phone fields
+        return acc;
+      }
+      acc[key] = value;
+      return acc;
+    }, {} as any);
+    
+    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'X-User-ID': userId
       },
-      body: JSON.stringify(heirData)
+      body: JSON.stringify(filteredData)
     });
 
     if (!response.ok) {
@@ -536,13 +558,13 @@ export async function updateHeir(
     const data = await response.json();
     
     return {
-      id: data.id,
-      name: data.name,
-      relationship: data.relationship,
-      email: data.email || '',
-      phone: data.phone || '',
-      notes: data.notes || '',
-      created_at: data.created_at || new Date().toISOString()
+      id: data.heir?.id || heirId,
+      name: data.heir?.name || heirData.name || '',
+      relationship: data.heir?.relationship || heirData.relationship || '',
+      email: data.heir?.email || heirData.email || '',
+      phone: data.heir?.phone || heirData.phone || '',
+      notes: data.heir?.notes || heirData.notes || '',
+      created_at: data.heir?.created_at || new Date().toISOString()
     };
   } catch (error) {
     console.error('Failed to update heir:', error);

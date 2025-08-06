@@ -34,7 +34,7 @@ import {
   Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { SecurePieChart } from "@/components/ui/secure-pie-chart";
 import { 
   getCrownVaultAssets, 
   getCrownVaultStats, 
@@ -49,6 +49,7 @@ import {
   CrownVaultStats,
   BatchAssetResponse
 } from "@/lib/api";
+import { processAssetCategories } from "@/lib/category-utils";
 interface CrownVaultPageProps {
   onNavigate?: (route: string) => void;
 }
@@ -90,10 +91,78 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   });
   const [customRelationship, setCustomRelationship] = useState("");
   const [editingHeir, setEditingHeir] = useState<string | null>(null);
+  const [editingHeirData, setEditingHeirData] = useState<{
+    name: string;
+    relationship: string;
+    email: string;
+    phone: string;
+    notes: string;
+  } | null>(null);
   const [deletingHeirs, setDeletingHeirs] = useState<Set<string>>(new Set());
   const [updatingHeirs, setUpdatingHeirs] = useState<Set<string>>(new Set());
+  const [heirValidationErrors, setHeirValidationErrors] = useState<Record<string, string>>({});
   
   const { toast } = useToast();
+
+  // Validation functions for heir editing
+  const validateHeirData = (data: any) => {
+    const errors: Record<string, string> = {};
+    
+    if (!data.name?.trim()) {
+      errors.name = 'Name is required';
+    } else if (data.name.trim().length < 2) {
+      errors.name = 'Name must be at least 2 characters';
+    }
+    
+    if (!data.relationship?.trim()) {
+      errors.relationship = 'Relationship is required';
+    }
+    
+    if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      errors.email = 'Invalid email format';
+    }
+    
+    if (data.phone && !/^[\+]?[\d\s\-\(\)]{10,}$/.test(data.phone)) {
+      errors.phone = 'Invalid phone number format';
+    }
+    
+    return errors;
+  };
+
+  const startHeirEditing = (heir: CrownVaultHeir) => {
+    setEditingHeir(heir.id);
+    setEditingHeirData({
+      name: heir.name || '',
+      relationship: heir.relationship || '',
+      email: heir.email || '',
+      phone: heir.phone || '',
+      notes: heir.notes || ''
+    });
+    setHeirValidationErrors({});
+  };
+
+  const cancelHeirEditing = () => {
+    setEditingHeir(null);
+    setEditingHeirData(null);
+    setHeirValidationErrors({});
+  };
+
+  const updateEditingHeirData = (field: string, value: string) => {
+    if (!editingHeirData) return;
+    
+    const newData = { ...editingHeirData, [field]: value };
+    setEditingHeirData(newData);
+    
+    // Clear validation error for this field
+    if (heirValidationErrors[field]) {
+      setHeirValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
   // Load initial data on page load with parallel API calls
   useEffect(() => {
     const loadInitialData = async () => {
@@ -157,19 +226,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     }, 0);
   };
   const getAssetsByCategory = () => {
-    const categoryMap: Record<string, number> = {};
-    
-    assets.forEach(asset => {
-      if (asset?.asset_data?.asset_type && asset?.asset_data?.value) {
-        const category = asset.asset_data.asset_type;
-        categoryMap[category] = (categoryMap[category] || 0) + asset.asset_data.value;
-      }
-    });
-    return Object.entries(categoryMap).map(([name, value]) => ({
-      name,
-      value,
-      percentage: ((value / getTotalValue()) * 100).toFixed(1)
-    }));
+    return processAssetCategories(assets);
   };
   const COLORS = [
     'hsl(var(--primary))',
@@ -363,11 +420,22 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     }
   };
 
-  const handleUpdateHeir = async (heirId: string, updatedData: Partial<CrownVaultHeir>) => {
+  const handleUpdateHeir = async (heirId: string, updatedData?: Partial<CrownVaultHeir>) => {
     try {
+      // Use editing data if no specific data provided
+      const dataToUpdate = updatedData || editingHeirData;
+      if (!dataToUpdate) return;
+
+      // Validate the data
+      const errors = validateHeirData(dataToUpdate);
+      if (Object.keys(errors).length > 0) {
+        setHeirValidationErrors(errors);
+        return;
+      }
+
       setUpdatingHeirs(prev => new Set([...prev, heirId]));
       
-      const updatedHeir = await updateHeir(heirId, updatedData);
+      const updatedHeir = await updateHeir(heirId, dataToUpdate);
       
       // Update the heir in state
       setHeirs(prevHeirs => 
@@ -382,7 +450,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         variant: "default"
       });
 
-      setEditingHeir(null);
+      cancelHeirEditing();
     } catch (error) {
       console.error('Update heir error:', error);
       toast({
@@ -734,64 +802,15 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-12 items-center">
-                    {/* Responsive Pie Chart */}
+                    {/* AES-256 Secured Pie Chart */}
                     <div className="relative">
-                      <div className="h-[400px] sm:h-[500px] xl:h-[600px] relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={getAssetsByCategory()}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              outerRadius="75%"
-                              innerRadius="35%"
-                              fill="#8884d8"
-                              dataKey="value"
-                              stroke="hsl(var(--background))"
-                              strokeWidth={4}
-                            >
-                              {getAssetsByCategory().map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={COLORS[index % COLORS.length]}
-                                  className="hover:opacity-80 transition-opacity cursor-pointer drop-shadow-lg"
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              wrapperStyle={{ zIndex: 99999 }}
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const data = payload[0];
-                                  return (
-                                    <div className="bg-popover border-2 border-primary rounded-2xl p-4 shadow-2xl" style={{ zIndex: 99999, position: 'relative' }}>
-                                      <div className="text-center">
-                                        <div className="font-bold text-lg text-foreground">{data.name}</div>
-                                        <div className="text-2xl font-bold text-primary mt-1">{formatValue(Number(data.value))}</div>
-                                        <div className="text-sm text-muted-foreground mt-1">
-                                          {((Number(data.value) / getTotalValue()) * 100).toFixed(1)}% of portfolio
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      {/* Center Total Value Display - Responsive */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
-                        <div className="text-center">
-                          <p className="text-sm sm:text-base xl:text-lg text-foreground/70 font-bold">Total Portfolio</p>
-                          <p className="text-2xl sm:text-3xl xl:text-5xl font-bold text-primary mt-2 drop-shadow-lg">{formatValue(getTotalValue())}</p>
-                          <p className="text-xs sm:text-sm text-foreground/60 font-semibold mt-1">
-                            {assets.length} {assets.length === 1 ? 'Asset' : 'Assets'}
-                          </p>
-                        </div>
-                      </div>
+                      <SecurePieChart
+                        data={getAssetsByCategory()}
+                        totalValue={getTotalValue()}
+                        centerLabel="Crown Vault"
+                        height={500}
+                        className="w-full"
+                      />
                     </div>
                     {/* Premium Category List */}
                     <div className="space-y-4">
@@ -808,9 +827,9 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent" />
                               </div>
                               <div>
-                                <span className="font-bold text-foreground">{category.name}</span>
+                                <span className="font-bold text-foreground">{category.displayName || category.name}</span>
                                 <p className="text-xs text-foreground/60 font-medium">
-                                  {assets.filter(a => a.asset_data?.asset_type === category.name).length} assets
+                                  {category.count} assets
                                 </p>
                               </div>
                             </div>
@@ -1315,7 +1334,11 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingHeir(isEditing ? null : heir.id);
+                          if (isEditing) {
+                            cancelHeirEditing();
+                          } else {
+                            startHeirEditing(heir);
+                          }
                         }}
                         disabled={isDeleting || isUpdating}
                         className="h-8 w-8 p-0 hover:bg-secondary/20"
@@ -1345,30 +1368,139 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                         {heir.name || 'Unknown Heir'}
                       </CardTitle>
                       
-                      {isEditing ? (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Input
-                            defaultValue={heir.relationship}
-                            placeholder="Enter relationship"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleUpdateHeir(heir.id, { relationship: e.currentTarget.value });
-                              }
-                              if (e.key === 'Escape') {
-                                setEditingHeir(null);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              if (e.target.value !== heir.relationship) {
-                                handleUpdateHeir(heir.id, { relationship: e.target.value });
-                              } else {
-                                setEditingHeir(null);
-                              }
-                            }}
-                            className="text-sm"
-                            autoFocus
-                          />
-                          {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {isEditing && editingHeirData ? (
+                        <div className="space-y-4 mt-4 p-4 border rounded-lg bg-muted/20">
+                          {/* Name Field */}
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-foreground">Name</label>
+                            <Input
+                              value={editingHeirData.name}
+                              onChange={(e) => updateEditingHeirData('name', e.target.value)}
+                              placeholder="Enter heir name"
+                              className={`text-sm ${heirValidationErrors.name ? 'border-destructive' : ''}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateHeir(heir.id);
+                                }
+                                if (e.key === 'Escape') {
+                                  cancelHeirEditing();
+                                }
+                              }}
+                            />
+                            {heirValidationErrors.name && (
+                              <p className="text-xs text-destructive">{heirValidationErrors.name}</p>
+                            )}
+                          </div>
+
+                          {/* Relationship Field */}
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-foreground">Relationship</label>
+                            <Input
+                              value={editingHeirData.relationship}
+                              onChange={(e) => updateEditingHeirData('relationship', e.target.value)}
+                              placeholder="e.g., Son, Daughter, Spouse"
+                              className={`text-sm ${heirValidationErrors.relationship ? 'border-destructive' : ''}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateHeir(heir.id);
+                                }
+                                if (e.key === 'Escape') {
+                                  cancelHeirEditing();
+                                }
+                              }}
+                            />
+                            {heirValidationErrors.relationship && (
+                              <p className="text-xs text-destructive">{heirValidationErrors.relationship}</p>
+                            )}
+                          </div>
+
+                          {/* Email Field */}
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-foreground">Email (Optional)</label>
+                            <Input
+                              value={editingHeirData.email}
+                              onChange={(e) => updateEditingHeirData('email', e.target.value)}
+                              placeholder="heir@example.com"
+                              type="email"
+                              className={`text-sm ${heirValidationErrors.email ? 'border-destructive' : ''}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateHeir(heir.id);
+                                }
+                                if (e.key === 'Escape') {
+                                  cancelHeirEditing();
+                                }
+                              }}
+                            />
+                            {heirValidationErrors.email && (
+                              <p className="text-xs text-destructive">{heirValidationErrors.email}</p>
+                            )}
+                          </div>
+
+                          {/* Phone Field */}
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-foreground">Phone (Optional)</label>
+                            <Input
+                              value={editingHeirData.phone}
+                              onChange={(e) => updateEditingHeirData('phone', e.target.value)}
+                              placeholder="+1 (555) 123-4567"
+                              type="tel"
+                              className={`text-sm ${heirValidationErrors.phone ? 'border-destructive' : ''}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleUpdateHeir(heir.id);
+                                }
+                                if (e.key === 'Escape') {
+                                  cancelHeirEditing();
+                                }
+                              }}
+                            />
+                            {heirValidationErrors.phone && (
+                              <p className="text-xs text-destructive">{heirValidationErrors.phone}</p>
+                            )}
+                          </div>
+
+                          {/* Notes Field */}
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium text-foreground">Notes (Optional)</label>
+                            <Textarea
+                              value={editingHeirData.notes}
+                              onChange={(e) => updateEditingHeirData('notes', e.target.value)}
+                              placeholder="Additional information about this heir..."
+                              rows={2}
+                              className="text-sm resize-none"
+                            />
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateHeir(heir.id)}
+                              disabled={isUpdating}
+                              className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+                            >
+                              {isUpdating ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Save Changes
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelHeirEditing}
+                              disabled={isUpdating}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <CardDescription className="text-foreground/70 dark:text-muted-foreground font-medium">

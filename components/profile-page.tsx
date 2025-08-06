@@ -47,8 +47,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { ChangePasswordPopup } from "./change-password-popup"
 import { MetaTags } from "./meta-tags"
 import { motion } from "framer-motion"
-import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats } from "@/lib/api"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats, type CrownVaultAsset } from "@/lib/api"
+import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
+import { processAssetCategories } from "@/lib/category-utils"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -86,19 +87,36 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   const [lastFetchTime, setLastFetchTime] = useState(0)
   const [activeTab, setActiveTab] = useState("crown-vault")
   const [vaultStats, setVaultStats] = useState<CrownVaultStats | null>(null)
+  const [vaultAssets, setVaultAssets] = useState<CrownVaultAsset[]>([])
   const [vaultLoading, setVaultLoading] = useState(false)
 
   const fetchVaultStats = useCallback(async () => {
     try {
       setVaultLoading(true)
-      const stats = await getCrownVaultStats()
+      // Fetch both stats and assets like Crown Vault page does
+      const [stats, assets] = await Promise.all([
+        getCrownVaultStats(),
+        getCrownVaultAssets()
+      ])
       setVaultStats(stats)
+      setVaultAssets(assets)
     } catch (error) {
-      console.error("Error fetching Crown Vault stats:", error)
+      console.error("Error fetching Crown Vault data:", error)
     } finally {
       setVaultLoading(false)
     }
   }, [])
+
+  // Data processing functions like Crown Vault page
+  const getTotalValue = () => {
+    return vaultStats?.total_value || vaultAssets.reduce((total, asset) => {
+      return total + (asset?.asset_data?.value || 0);
+    }, 0);
+  };
+
+  const getAssetsByCategory = () => {
+    return processAssetCategories(vaultAssets);
+  };
 
   const fetchUserData = useCallback(
     async (userId: string) => {
@@ -408,7 +426,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     {getInitials(editedUser.name || "User")}
                   </AvatarFallback>
                 </Avatar>
-                {vaultStats?.total_value && vaultStats.total_value > 10000000 && (
+                {getTotalValue() > 10000000 && (
                   <Badge className="absolute -bottom-2 -right-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white border-0">
                     Ultra HNWI
                   </Badge>
@@ -433,11 +451,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       <span className="text-sm">{editedUser.city}, {editedUser.country}</span>
                     </div>
                   )}
-                  {vaultStats?.total_value && (
+                  {getTotalValue() > 0 && (
                     <div className="flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
                       <span className="text-sm font-semibold">
-                        {formatCurrency(vaultStats.total_value)}
+                        {formatCurrency(getTotalValue())}
                       </span>
                       <Badge className="ml-1 bg-green-500/10 text-green-600 text-xs">
                         Secured
@@ -758,7 +776,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                                   </div>
                                 </div>
                                 <p className="text-sm text-foreground/80 font-semibold mb-2">Total Portfolio Value</p>
-                                <p className="text-3xl font-bold text-secondary mb-1">{formatCurrency(vaultStats.total_value)}</p>
+                                <p className="text-3xl font-bold text-secondary mb-1">{formatCurrency(getTotalValue())}</p>
                                 <p className="text-xs text-foreground/60 font-semibold">Encrypted & secured</p>
                               </div>
                             </div>
@@ -781,96 +799,23 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                             </div>
                           </div>
 
-                          {/* Portfolio Allocation Chart */}
-                          {vaultStats.asset_breakdown && Object.keys(vaultStats.asset_breakdown).length > 0 && (
-                            <Card className="bg-gradient-to-br from-background to-muted/10 border border-primary/20">
-                              <CardHeader className="text-center pb-2">
-                                <h3 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                                  Portfolio Allocation
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  Strategic distribution across asset categories
-                                </p>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="relative">
-                                  <div className="h-[300px] sm:h-[400px] relative">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <PieChart>
-                                        <Pie
-                                          data={Object.entries(vaultStats.asset_breakdown).map(([name, data]) => ({
-                                            name,
-                                            value: data.total_value,
-                                            count: data.count,
-                                            percentage: ((data.total_value / vaultStats.total_value) * 100).toFixed(1)
-                                          }))}
-                                          cx="50%"
-                                          cy="50%"
-                                          labelLine={false}
-                                          outerRadius="70%"
-                                          innerRadius="35%"
-                                          fill="#8884d8"
-                                          dataKey="value"
-                                          stroke="hsl(var(--background))"
-                                          strokeWidth={4}
-                                        >
-                                          {Object.entries(vaultStats.asset_breakdown).map((entry, index) => (
-                                            <Cell 
-                                              key={`cell-${index}`} 
-                                              fill={[
-                                                'hsl(var(--primary))',
-                                                'hsl(var(--secondary))', 
-                                                'hsl(var(--accent))',
-                                                '#22c55e', // emerald-500
-                                                '#f59e0b', // amber-500
-                                                '#8b5cf6', // violet-500
-                                                '#ef4444', // red-500
-                                                '#06b6d4'  // cyan-500
-                                              ][index % 8]}
-                                              className="hover:opacity-80 transition-opacity cursor-pointer drop-shadow-lg"
-                                            />
-                                          ))}
-                                        </Pie>
-                                        <Tooltip 
-                                          wrapperStyle={{ zIndex: 99999 }}
-                                          content={({ active, payload }) => {
-                                            if (active && payload && payload.length) {
-                                              const data = payload[0];
-                                              return (
-                                                <div className="bg-popover border-2 border-primary rounded-2xl p-4 shadow-2xl" style={{ zIndex: 99999, position: 'relative' }}>
-                                                  <div className="text-center">
-                                                    <div className="font-bold text-lg text-foreground capitalize">{data.payload.name.replace('_', ' ')}</div>
-                                                    <div className="text-2xl font-bold text-primary mt-1">{formatCurrency(Number(data.value))}</div>
-                                                    <div className="text-sm text-muted-foreground mt-1">
-                                                      {data.payload.percentage}% of portfolio
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground mt-1">
-                                                      {data.payload.count} {data.payload.count === 1 ? 'asset' : 'assets'}
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              );
-                                            }
-                                            return null;
-                                          }}
-                                        />
-                                      </PieChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                  {/* Center Total Value Display */}
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
-                                    <div className="text-center">
-                                      <p className="text-sm sm:text-base text-foreground/70 font-bold">Total Portfolio</p>
-                                      <p className="text-2xl sm:text-3xl font-bold text-primary mt-1 drop-shadow-lg">{formatCurrency(vaultStats.total_value)}</p>
-                                      <p className="text-xs sm:text-sm text-foreground/60 font-semibold mt-1">
-                                        {Object.keys(vaultStats.asset_breakdown).length} {Object.keys(vaultStats.asset_breakdown).length === 1 ? 'Category' : 'Categories'}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
+                          {/* Portfolio Allocation Overview */}
+                          <Card className="bg-gradient-to-br from-background to-muted/10 border border-primary/20">
+                            <CardHeader className="text-center pb-2">
+                              <h3 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                                Portfolio Allocation
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Strategic distribution across asset categories
+                              </p>
+                            </CardHeader>
+                            <CardContent>
+                              <PortfolioCategoryGrid
+                                data={getAssetsByCategory()}
+                                className="w-full"
+                              />
+                            </CardContent>
+                          </Card>
 
                           {/* Recent Activity */}
                           {vaultStats.recent_activity && vaultStats.recent_activity.length > 0 && (
@@ -971,12 +916,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         </div>
                       </div>
                       <div className="space-y-4">
-                        {vaultStats?.total_value && (
+                        {getTotalValue() > 0 && (
                           <div>
                             <p className="text-sm text-muted-foreground mb-1">Secured Net Worth</p>
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-xl text-primary">
-                                {formatCurrency(vaultStats.total_value)}
+                                {formatCurrency(getTotalValue())}
                               </p>
                               <Badge className="bg-green-500/10 text-green-600 text-xs">
                                 Crown Vault

@@ -428,7 +428,7 @@ export function HomeDashboard({
               <CardDescription className="font-body tracking-wide text-xl font-normal">Where Winning Strategies Are Forged</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {visibleExperienceZone.map((item, index) => (
                   <motion.div
                     key={item.name}
