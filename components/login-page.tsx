@@ -155,6 +155,7 @@ export function LoginPage({
                 width={80}
                 height={80}
                 className="mb-4"
+                priority
               />
               <Heading2
                 className="text-3xl font-bold font-heading text-center text-card-foreground"

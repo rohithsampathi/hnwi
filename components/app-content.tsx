@@ -3,6 +3,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { useTheme } from "@/contexts/theme-context"
 import { HomeDashboard } from "./home-dashboard"
 import { SplashScreen } from "./splash-screen"
@@ -521,7 +522,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   // Handle successful login from LoginPage
   const handleLoginSuccess = (userData) => {
     try {
-      console.log("Login success userData:", JSON.stringify(userData, null, 2));
       
       // Extract profile from the response
       const profile = userData.profile || {};
@@ -556,7 +556,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         profile: profile
       };
       
-      console.log("Created user object:", JSON.stringify(userObject, null, 2));
       
       // Set user in state
       setUser(userObject);
@@ -619,13 +618,16 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           <div className="z-10 flex flex-col items-center justify-center">
             {/* Rotating logo */}
             <div className="relative w-32 h-32 mb-6">
-              <img 
+              <Image 
                 src="/logo.png" 
                 alt="HNWI Chronicles Logo" 
+                width={128}
+                height={128}
                 className="w-full h-full object-contain"
                 style={{ 
                   animation: "spin 8s linear infinite" 
                 }}
+                priority
               />
             </div>
             

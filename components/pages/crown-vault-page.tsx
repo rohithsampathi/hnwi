@@ -27,7 +27,11 @@ import {
   Vault,
   Network,
   Activity,
-  Loader2
+  Loader2,
+  Edit2,
+  Trash2,
+  X,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -37,6 +41,9 @@ import {
   getCrownVaultHeirs,
   processCrownVaultAssetsBatch,
   updateAssetHeirs,
+  createHeir,
+  updateHeir,
+  deleteHeir,
   CrownVaultAsset,
   CrownVaultHeir,
   CrownVaultStats,
@@ -72,6 +79,19 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
   const [selectedHeir, setSelectedHeir] = useState<CrownVaultHeir | null>(null);
   const [isHeirDetailOpen, setIsHeirDetailOpen] = useState(false);
+  const [isAddHeirModalOpen, setIsAddHeirModalOpen] = useState(false);
+  const [isCreatingHeir, setIsCreatingHeir] = useState(false);
+  const [newHeirData, setNewHeirData] = useState({
+    name: "",
+    relationship: "",
+    email: "",
+    phone: "",
+    notes: ""
+  });
+  const [customRelationship, setCustomRelationship] = useState("");
+  const [editingHeir, setEditingHeir] = useState<string | null>(null);
+  const [deletingHeirs, setDeletingHeirs] = useState<Set<string>>(new Set());
+  const [updatingHeirs, setUpdatingHeirs] = useState<Set<string>>(new Set());
   
   const { toast } = useToast();
   // Load initial data on page load with parallel API calls
@@ -175,6 +195,18 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
       // Make the actual API call
       const result: BatchAssetResponse = await processCrownVaultAssetsBatch(rawText, context);
       
+      
+      // Check if result has assets
+      if (!result || !result.assets || result.assets.length === 0) {
+        toast({
+          title: "No Assets Detected",
+          description: "Could not extract any assets from your input. Please provide more details.",
+          variant: "destructive"
+        });
+        setIsProcessing(false);
+        return;
+      }
+      
       // Update state with new assets
       const updatedAssets = [...assets, ...result.assets];
       setAssets(updatedAssets);
@@ -183,24 +215,45 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
       const newAssetIds = new Set(result.assets.map(a => a.asset_id));
       setNewlyAddedAssets(newAssetIds);
       
-      // Update stats by refetching
-      const updatedStats = await getCrownVaultStats();
-      setStats(updatedStats);
-      // Show success notification
+      // Update stats and heirs by refetching
+      try {
+        const [updatedStats, updatedHeirs] = await Promise.allSettled([
+          getCrownVaultStats(),
+          getCrownVaultHeirs()
+        ]);
+        
+        if (updatedStats.status === 'fulfilled') {
+          setStats(updatedStats.value);
+        } else {
+          console.error('Failed to update stats:', updatedStats.reason);
+        }
+        
+        if (updatedHeirs.status === 'fulfilled') {
+          setHeirs(updatedHeirs.value);
+        } else {
+          console.error('Failed to update heirs:', updatedHeirs.reason);
+        }
+      } catch (error) {
+        console.error('Failed to update stats and heirs:', error);
+      }
+      
+      // Show premium success notification
       toast({
-        title: "✓ Assets Secured Successfully",
-        description: `${result.assets.length} asset${result.assets.length > 1 ? 's' : ''} added to your vault`,
+        title: "✓ Assets Added to Your Vault",
+        description: `${result.assets.length} premium asset${result.assets.length > 1 ? 's' : ''} secured with enterprise-grade encryption. Welcome to the exclusive HNWI Chronicles Crown Vault experience.`,
         variant: "default"
       });
-      // Reset form and navigate to summary tab
+      
+      // Reset form and navigate to assets tab to see new items
       setRawText("");
       setContext("");
       setIsAddModalOpen(false);
-      setActiveTab("summary");
-      // Remove highlighting after 3 seconds
+      setActiveTab("assets");
+      
+      // Remove highlighting after 5 seconds
       setTimeout(() => {
         setNewlyAddedAssets(new Set());
-      }, 3000);
+      }, 5000);
     } catch (error) {
       console.error('Asset processing error:', error);
       toast({
@@ -253,6 +306,140 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const handleHeirClick = (heir: CrownVaultHeir) => {
     setSelectedHeir(heir);
     setIsHeirDetailOpen(true);
+  };
+
+  const handleCreateHeir = async () => {
+    const finalRelationship = newHeirData.relationship === "custom" ? customRelationship : newHeirData.relationship;
+    
+    if (!newHeirData.name.trim() || !finalRelationship.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Name and relationship are required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingHeir(true);
+      
+      const newHeir = await createHeir({
+        name: newHeirData.name.trim(),
+        relationship: finalRelationship.trim(),
+        email: newHeirData.email.trim() || undefined,
+        phone: newHeirData.phone.trim() || undefined,
+        notes: newHeirData.notes.trim() || undefined
+      });
+
+      // Add the new heir to the state
+      setHeirs(prevHeirs => [...prevHeirs, newHeir]);
+
+      toast({
+        title: "✓ Heir Added Successfully",
+        description: `${newHeir.name} has been added as a designated heir.`,
+        variant: "default"
+      });
+
+      // Reset form and close modal
+      setNewHeirData({
+        name: "",
+        relationship: "",
+        email: "",
+        phone: "",
+        notes: ""
+      });
+      setCustomRelationship("");
+      setIsAddHeirModalOpen(false);
+
+    } catch (error) {
+      console.error('Create heir error:', error);
+      toast({
+        title: "Creation Failed",
+        description: error instanceof Error ? error.message : "Failed to create heir. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingHeir(false);
+    }
+  };
+
+  const handleUpdateHeir = async (heirId: string, updatedData: Partial<CrownVaultHeir>) => {
+    try {
+      setUpdatingHeirs(prev => new Set([...prev, heirId]));
+      
+      const updatedHeir = await updateHeir(heirId, updatedData);
+      
+      // Update the heir in state
+      setHeirs(prevHeirs => 
+        prevHeirs.map(heir => 
+          heir.id === heirId ? updatedHeir : heir
+        )
+      );
+
+      toast({
+        title: "✓ Heir Updated",
+        description: `${updatedHeir.name}'s information has been updated.`,
+        variant: "default"
+      });
+
+      setEditingHeir(null);
+    } catch (error) {
+      console.error('Update heir error:', error);
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update heir. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingHeirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(heirId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteHeir = async (heirId: string, heirName: string) => {
+    if (!confirm(`Are you sure you want to delete ${heirName}? This will remove them from all assigned assets.`)) {
+      return;
+    }
+
+    try {
+      setDeletingHeirs(prev => new Set([...prev, heirId]));
+      
+      await deleteHeir(heirId);
+      
+      // Remove the heir from state
+      setHeirs(prevHeirs => prevHeirs.filter(heir => heir.id !== heirId));
+
+      // Refetch assets to update heir assignments
+      try {
+        const updatedAssets = await getCrownVaultAssets();
+        setAssets(updatedAssets);
+      } catch (error) {
+        console.error('Failed to refresh assets after heir deletion:', error);
+      }
+
+      toast({
+        title: "✓ Heir Deleted",
+        description: `${heirName} has been removed from your legacy plan.`,
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Delete heir error:', error);
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete heir. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingHeirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(heirId);
+        return newSet;
+      });
+    }
   };
   const getHeirAssets = (heirId: string) => {
     return assets.filter(asset => asset.heir_ids && asset.heir_ids.includes(heirId));
@@ -378,10 +565,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
             </div>
             <p className="text-muted-foreground">Discreetly organize your legacy with bank-grade encryption</p>
           </div>
-          <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Assets
-          </Button>
         </div>
         {/* Tab Navigation */}
         <div className="flex justify-center">
@@ -739,6 +922,10 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
               </div>
               
               <div className="flex items-center gap-2">
+                <Button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Assets
+                </Button>
                 <Select value={filterBy} onValueChange={setFilterBy}>
                   <SelectTrigger className="w-40 border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 transition-colors">
                     <SelectValue placeholder="Filter by" />
@@ -796,70 +983,285 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                       key={asset.asset_id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={isNewlyAdded ? "ring-2 ring-primary shadow-lg" : ""}
+                      transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="group relative"
                     >
+                      {/* ======= ULTRA-PREMIUM CROWN VAULT ASSET CARD ======= */}
+                      
+                      {/* Multi-Layer Background System - Like Swiss Watch Faces */}
+                      <div className="absolute -inset-2 bg-gradient-to-br from-slate-900/5 via-blue-900/5 to-purple-900/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                      <div className="absolute -inset-1 bg-gradient-to-br from-amber-400/8 via-gold-400/6 to-amber-600/8 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                      <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 rounded-lg blur-sm opacity-60 group-hover:opacity-100 transition-all duration-400" />
+                      
+                      {/* New Asset Announcement */}
+                      {isNewlyAdded && (
+                        <div className="absolute -top-3 -right-3 z-10">
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full blur-md animate-pulse" />
+                            <Badge className="relative bg-gradient-to-br from-emerald-500 to-emerald-700 text-white font-bold text-xs px-3 py-1 shadow-xl border border-emerald-400/30">
+                              ✦ ACQUIRED
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* The Crown Vault Card Sanctuary */}
                       <Card 
-                        className="h-full hover:shadow-lg transition-shadow cursor-pointer" 
+                        className="relative h-full cursor-pointer overflow-hidden
+                                   bg-gradient-to-br from-background/95 via-background/98 to-slate-50/30
+                                   dark:from-slate-900/95 dark:via-slate-900/98 dark:to-slate-800/30
+                                   border-2 border-slate-200/40 dark:border-slate-700/40
+                                   backdrop-blur-md shadow-xl
+                                   hover:shadow-2xl hover:shadow-primary/10
+                                   hover:border-amber-400/30 hover:bg-gradient-to-br hover:from-background hover:to-amber-50/20
+                                   dark:hover:to-amber-950/10
+                                   transition-all duration-500 ease-out
+                                   group-hover:scale-[1.02] group-hover:-translate-y-1"
                         onClick={() => handleAssetClick(asset)}
                       >
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <IconComponent className="h-5 w-5 text-primary" />
-                              <Badge variant="outline" className="text-xs border-2 border-primary/30 bg-primary/10 text-primary font-semibold dark:border-primary/60 dark:bg-primary/20 dark:text-white">
-                                {asset.asset_data.asset_type || 'Unknown'}
-                              </Badge>
+                        {/* Floating Ambient Elements - Museum Quality */}
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-400/6 via-gold-400/4 to-transparent rounded-full blur-3xl" />
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-blue-600/4 via-indigo-600/3 to-transparent rounded-full blur-2xl" />
+                        <div className="absolute top-1/2 right-1/4 w-24 h-24 bg-gradient-to-bl from-purple-500/3 to-transparent rounded-full blur-xl" />
+                        
+                        <CardContent className="relative p-8 space-y-6">
+                          
+                          {/* ======= CROWN HEADER: ASSET IDENTITY & SECURITY ======= */}
+                          <div className="flex items-start justify-between mb-1">
+                            
+                            {/* Asset Crown: Icon + Classification */}
+                            <div className="flex items-center gap-4">
+                              {/* Levitating Asset Icon */}
+                              <div className="relative group/icon">
+                                <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-primary/30 rounded-xl blur-lg opacity-40 group-hover/icon:opacity-70 transition-opacity duration-300" />
+                                <div className="relative p-3 bg-gradient-to-br from-card via-background to-card
+                                               border-2 border-secondary/20 rounded-xl shadow-lg
+                                               group-hover/icon:shadow-xl group-hover/icon:scale-105 group-hover/icon:border-secondary/40
+                                               transition-all duration-300">
+                                  <IconComponent className="h-6 w-6 text-secondary drop-shadow-sm" />
+                                </div>
+                              </div>
+                              
+                              {/* Asset Classification Badge */}
+                              <div className="space-y-1">
+                                <Badge variant="outline" 
+                                       className="text-xs font-bold border-2 border-border 
+                                                  bg-gradient-to-r from-card to-muted
+                                                  text-foreground shadow-sm px-3 py-1
+                                                  hover:border-secondary/50 hover:bg-gradient-to-r hover:from-secondary/10 hover:to-secondary/5
+                                                  transition-all duration-300">
+                                  {asset.asset_data.asset_type || 'Premium Asset'}
+                                </Badge>
+                              </div>
+                            </div>
+                            
+                            {/* Fort Knox Security Indicator */}
+                            <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/20
+                                           border border-emerald-200/50 dark:border-emerald-700/30 rounded-full shadow-sm">
+                              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-sm" />
+                              <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 tracking-wide">VAULT</span>
                             </div>
                           </div>
-                          <CardTitle className="text-lg">{asset.asset_data.name || 'Unnamed Asset'}</CardTitle>
-                          <div className="text-2xl font-bold text-primary">
-                            {formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
+
+                          {/* ======= THE VALUE THRONE: HERO ELEMENT ======= */}
+                          <div className="space-y-3">
+                            {/* Asset Name - Sophisticated Typography */}
+                            <h3 className="font-bold text-xl leading-tight text-foreground 
+                                          line-clamp-2 tracking-tight hover:text-secondary 
+                                          transition-colors duration-300 cursor-pointer">
+                              {asset.asset_data.name || 'Unnamed Crown Asset'}
+                            </h3>
+                            
+                            {/* The Value Crown - Absolute Hero */}
+                            <div className="relative group/value">
+                              <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 to-primary/15 blur-xl opacity-0 group-hover/value:opacity-100 transition-opacity duration-500" />
+                              <div className="relative flex items-baseline gap-3 py-2">
+                                <span className="text-4xl font-black bg-gradient-to-br from-secondary via-secondary to-primary 
+                                                bg-clip-text text-transparent drop-shadow-lg tracking-tight
+                                                group-hover/value:from-secondary/90 group-hover/value:to-primary/90
+                                                transition-all duration-300 cursor-pointer">
+                                  {formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
+                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-bold text-muted-foreground tracking-wider">
+                                    {asset.asset_data.currency || 'USD'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground/80 font-medium">VALUATION</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Geographic Provenance */}
+                            {asset.asset_data.location && (
+                              <div className="flex items-start gap-3 px-3 py-2 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/10
+                                             border border-blue-200/40 dark:border-blue-800/30 rounded-lg shadow-sm">
+                                <div className="w-3 h-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full shadow-sm flex-shrink-0 mt-0.5" />
+                                <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 tracking-wide leading-relaxed">
+                                  {asset.asset_data.location}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* ======= CONFIDENTIAL VAULT NOTES ======= */}
+                            {asset.asset_data.notes && (
+                              <div className="relative group/notes">
+                                <div className="absolute inset-0 bg-gradient-to-br from-secondary/8 to-secondary/6 rounded-xl blur-sm 
+                                               opacity-60 group-hover/notes:opacity-100 transition-opacity duration-300" />
+                                
+                                <div className="relative bg-gradient-to-br from-secondary/5 via-secondary/3 to-secondary/8 
+                                               border-2 border-secondary/20 rounded-xl p-5 shadow-sm
+                                               hover:shadow-md hover:border-secondary/30
+                                               transition-all duration-300 backdrop-blur-sm">
+                                  
+                                  <div className="flex items-start gap-4">
+                                    {/* Confidential Seal */}
+                                    <div className="w-7 h-7 bg-gradient-to-br from-secondary to-primary rounded-lg 
+                                                   flex items-center justify-center flex-shrink-0 shadow-md group-hover/notes:scale-105 
+                                                   transition-transform duration-300">
+                                      <div className="w-2.5 h-2.5 bg-white rounded-full" />
+                                    </div>
+                                    
+                                    <div className="flex-1 space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-black text-secondary tracking-widest">
+                                          CONFIDENTIAL NOTES
+                                        </span>
+                                        <div className="w-1 h-1 bg-secondary rounded-full" />
+                                      </div>
+                                      <p className="text-sm text-foreground/90 leading-relaxed font-medium 
+                                                   tracking-wide">
+                                        {asset.asset_data.notes}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          {asset.asset_data.location && (
-                            <Badge variant="secondary" className="w-fit bg-secondary/20 text-secondary-foreground border border-secondary/40 font-medium dark:bg-secondary/30 dark:border-secondary/60 dark:text-white">
-                              {asset.asset_data.location}
-                            </Badge>
-                          )}
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-sm font-medium text-foreground/70 dark:text-muted-foreground">Assigned to:</p>
+
+                          {/* ======= HEIR DIPLOMATIC ASSIGNMENT ======= */}
+                          <div className="bg-gradient-to-r from-muted/30 to-muted/10 
+                                         rounded-2xl p-5 border border-border/30 shadow-sm">
+                            
+                            <div className="flex items-center justify-between">
+                              {/* Left side: Label + Heir Info */}
+                              <div className="flex items-center gap-4">
+                                <span className="text-sm font-bold text-foreground/80 tracking-wide">Heir Designate</span>
+                                
+                                {/* Heir Details - OUTSIDE dropdown */}
+                                {asset.heir_names && asset.heir_names.length > 0 ? (
+                                  <div className="space-y-0.5">
+                                    <div className="text-base font-bold text-foreground tracking-wide">
+                                      {asset.heir_names[0]}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                                      {heirs.find(h => h.id === asset.heir_ids?.[0])?.relationship || 'Beneficiary'}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-0.5">
+                                    <div className="text-base font-semibold text-muted-foreground italic">
+                                      Awaiting Assignment
+                                    </div>
+                                    <div className="text-xs text-muted-foreground/60 font-medium uppercase tracking-wider">
+                                      Undesignated
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Right side: Avatar Dropdown */}
                               <div onClick={(e) => e.stopPropagation()}>
                                 <Select
                                   value={(asset.heir_ids && asset.heir_ids[0]) || ""}
                                   onValueChange={(heirId) => handleHeirReassignment(asset.asset_id, [heirId])}
                                   disabled={isUpdating}
                                 >
-                                  <SelectTrigger className="w-full border-2 border-border/50 dark:border-border bg-background/60 dark:bg-background text-foreground hover:border-primary/30 transition-colors">
-                                    <SelectValue 
-                                      placeholder={
-                                        isUpdating ? (
-                                          <div className="flex items-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Updating...
+                                  <SelectTrigger className="w-auto h-auto border-0 bg-transparent p-0 hover:bg-transparent focus:ring-0 focus:ring-offset-0">
+                                    <div className="group/heir">
+                                      {asset.heir_names && asset.heir_names.length > 0 ? (
+                                        <div className="relative">
+                                          <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-primary/30 rounded-full blur-md opacity-60 group-hover/heir:opacity-90 transition-opacity duration-300" />
+                                          <div className="relative w-10 h-10 bg-gradient-to-br from-secondary via-secondary to-primary 
+                                                         rounded-full flex items-center justify-center text-secondary-foreground font-black text-sm shadow-lg
+                                                         border-2 border-secondary/30 group-hover/heir:scale-105 group-hover/heir:shadow-xl 
+                                                         transition-all duration-300 cursor-pointer">
+                                            {isUpdating ? (
+                                              <Loader2 className="h-4 w-4 animate-spin text-secondary-foreground" />
+                                            ) : (
+                                              asset.heir_names[0].charAt(0).toUpperCase()
+                                            )}
                                           </div>
-                                        ) : (asset.heir_names && asset.heir_names.length > 0) 
-                                            ? asset.heir_names.join(", ") 
-                                            : "Unassigned"
-                                      } 
-                                    />
+                                        </div>
+                                      ) : (
+                                        <div className="w-10 h-10 bg-muted border-2 border-dashed border-border
+                                                       rounded-full flex items-center justify-center hover:border-secondary/60 transition-colors duration-300 cursor-pointer">
+                                          <Users className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                    </div>
                                   </SelectTrigger>
-                                  <SelectContent className="bg-popover border-2 border-border/50 shadow-xl">
-                                    {heirs.map((heir) => (
-                                      <SelectItem key={heir.id} value={heir.id} className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">
-                                        {heir.name} ({heir.relationship})
-                                      </SelectItem>
-                                    ))}
+                                  <SelectContent className="bg-popover border-2 border-border 
+                                                           shadow-2xl min-w-64 rounded-xl backdrop-blur-md">
+                                    {heirs.map((heir) => {
+                                      const isSelected = asset.heir_ids?.includes(heir.id);
+                                      return (
+                                        <SelectItem key={heir.id} value={heir.id} 
+                                                    className="py-4 px-4 hover:bg-secondary/10 
+                                                             focus:bg-secondary/10 rounded-lg mx-1 my-1
+                                                             transition-all duration-200 relative overflow-hidden
+                                                             [&_[data-radix-select-item-indicator]]:!hidden
+                                                             [&_.lucide-check]:!hidden
+                                                             [&_[data-state=checked]]:!hidden
+                                                             before:absolute before:inset-0 before:z-10 before:bg-transparent">
+                                          <div className="flex items-center gap-4 w-full">
+                                            <div className="w-8 h-8 bg-gradient-to-br from-secondary to-primary rounded-full 
+                                                           flex items-center justify-center text-secondary-foreground font-bold text-sm shadow-md">
+                                              {heir.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 space-y-0.5">
+                                              <div className="flex items-center gap-2">
+                                                <span className="font-bold text-popover-foreground text-sm">
+                                                  {heir.name}
+                                                </span>
+                                                {isSelected && (
+                                                  <div className="w-2 h-2 bg-secondary rounded-full shadow-sm" />
+                                                )}
+                                              </div>
+                                              <div className="text-xs text-muted-foreground font-semibold capitalize">
+                                                {heir.relationship}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </SelectItem>
+                                      );
+                                    })}
                                   </SelectContent>
                                 </Select>
                               </div>
                             </div>
-                            {asset.asset_data.notes && (
-                              <p className="text-sm text-foreground/80 dark:text-muted-foreground font-medium">{asset.asset_data.notes}</p>
-                            )}
                           </div>
+
+                          {/* ======= PROVENANCE FOOTER ======= */}
+                          <div className="flex items-center justify-center pt-4 border-t-2 border-slate-200/30 dark:border-slate-700/30">
+                            
+                            {/* Combined Secured Status */}
+                            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 
+                                           dark:from-emerald-950/30 dark:to-green-950/20 border border-emerald-200/50 
+                                           dark:border-emerald-700/30 rounded-full shadow-sm">
+                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                              <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 tracking-widest">
+                                SECURED ON {new Date(asset.created_at || Date.now()).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                }).toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                          
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -870,44 +1272,139 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
               </div>
             )}
             {activeTab === 'heirs' && (
+              <div className="space-y-6">
+            {/* Heirs Header with Add Button */}
+            <div className="flex justify-between items-center">
               <div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {heirs.map((heir) => (
-                <Card 
-                  key={heir.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleHeirClick(heir)}
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      {heir.name || 'Unknown Heir'}
-                    </CardTitle>
-                    <CardDescription className="text-foreground/70 dark:text-muted-foreground font-medium">{heir.relationship || 'Family Member'}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p className="text-sm text-foreground/80 dark:text-muted-foreground font-medium">
-                        {getHeirAssets(heir.id).length} assets assigned
-                      </p>
-                      <p className="text-lg font-bold text-primary">
-                        {formatValue(getHeirAssets(heir.id).reduce((total, asset) => total + (asset?.asset_data?.value || 0), 0))}
-                      </p>
-                      {heir.email && (
-                        <p className="text-sm text-foreground/70 dark:text-muted-foreground">
-                          Email: {heir.email}
-                        </p>
-                      )}
-                      {heir.phone && (
-                        <p className="text-sm text-foreground/70 dark:text-muted-foreground">
-                          Phone: {heir.phone}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                <h2 className="text-2xl font-bold text-foreground">Designated Heirs</h2>
+                <p className="text-muted-foreground">Manage your legacy beneficiaries</p>
+              </div>
+              <Button onClick={() => setIsAddHeirModalOpen(true)} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add Heir
+              </Button>
             </div>
+
+            {/* Heirs Grid */}
+            {heirs.length === 0 ? (
+              <Card className="p-12 text-center">
+                <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Heirs Designated</h3>
+                <p className="text-muted-foreground mb-4">Add beneficiaries to secure your legacy distribution</p>
+                <Button onClick={() => setIsAddHeirModalOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Heir
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {heirs.map((heir) => {
+                const isEditing = editingHeir === heir.id;
+                const isDeleting = deletingHeirs.has(heir.id);
+                const isUpdating = updatingHeirs.has(heir.id);
+                
+                return (
+                  <Card 
+                    key={heir.id}
+                    className="hover:shadow-lg transition-shadow relative group"
+                  >
+                    {/* Action buttons */}
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingHeir(isEditing ? null : heir.id);
+                        }}
+                        disabled={isDeleting || isUpdating}
+                        className="h-8 w-8 p-0 hover:bg-secondary/20"
+                      >
+                        {isEditing ? <X className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteHeir(heir.id, heir.name);
+                        }}
+                        disabled={isDeleting || isUpdating}
+                        className="h-8 w-8 p-0 hover:bg-destructive/20 hover:text-destructive"
+                      >
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+
+                    <CardHeader 
+                      className="cursor-pointer hover:bg-muted/20 transition-colors rounded-t-lg"
+                      onClick={() => !isEditing && handleHeirClick(heir)}
+                    >
+                      <CardTitle className="flex items-center gap-2 pr-16">
+                        <Users className="h-5 w-5" />
+                        {heir.name || 'Unknown Heir'}
+                      </CardTitle>
+                      
+                      {isEditing ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            defaultValue={heir.relationship}
+                            placeholder="Enter relationship"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleUpdateHeir(heir.id, { relationship: e.currentTarget.value });
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingHeir(null);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value !== heir.relationship) {
+                                handleUpdateHeir(heir.id, { relationship: e.target.value });
+                              } else {
+                                setEditingHeir(null);
+                              }
+                            }}
+                            className="text-sm"
+                            autoFocus
+                          />
+                          {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                        </div>
+                      ) : (
+                        <CardDescription className="text-foreground/70 dark:text-muted-foreground font-medium">
+                          {heir.relationship || 'Family Member'}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    
+                    <CardContent 
+                      className={`cursor-pointer hover:bg-muted/20 transition-colors rounded-b-lg ${isEditing ? 'pointer-events-none' : ''}`}
+                      onClick={() => !isEditing && handleHeirClick(heir)}
+                    >
+                      <div className="space-y-2">
+                        <p className="text-sm text-foreground/80 dark:text-muted-foreground font-medium">
+                          {getHeirAssets(heir.id).length} assets assigned
+                        </p>
+                        <p className="text-lg font-bold text-primary">
+                          {formatValue(getHeirAssets(heir.id).reduce((total, asset) => total + (asset?.asset_data?.value || 0), 0))}
+                        </p>
+                        {heir.email && (
+                          <p className="text-sm text-foreground/70 dark:text-muted-foreground">
+                            Email: {heir.email}
+                          </p>
+                        )}
+                        {heir.phone && (
+                          <p className="text-sm text-foreground/70 dark:text-muted-foreground">
+                            Phone: {heir.phone}
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              </div>
+            )}
               </div>
             )}
             {activeTab === 'activity' && (
@@ -987,6 +1484,12 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         {/* Processing Modal */}
         <Dialog open={isProcessing} onOpenChange={() => {}}>
           <DialogContent className="max-w-md">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Processing Assets</DialogTitle>
+              <DialogDescription>
+                Your assets are being processed and secured. Please wait while we complete this operation.
+              </DialogDescription>
+            </DialogHeader>
             <div className="text-center py-8">
               <div className="mb-4">
                 {processingPhases[processingPhase] && (() => {
@@ -1105,11 +1608,25 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                               <SelectValue placeholder="Select heir..." />
                             </SelectTrigger>
                             <SelectContent className="bg-popover border-2 border-border/50 shadow-xl">
-                              {heirs.map((heir) => (
-                                <SelectItem key={heir.id} value={heir.id} className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">
-                                  {heir.name} ({heir.relationship})
-                                </SelectItem>
-                              ))}
+                              {heirs.map((heir) => {
+                                const isSelected = selectedAsset.heir_ids?.includes(heir.id);
+                                return (
+                                  <SelectItem key={heir.id} value={heir.id} 
+                                              className="text-foreground hover:bg-primary/10 hover:text-primary font-medium relative overflow-hidden
+                                                         [&_[data-radix-select-item-indicator]]:!hidden
+                                                         [&_.lucide-check]:!hidden
+                                                         [&_[data-state=checked]]:!hidden
+                                                         before:absolute before:inset-0 before:z-10 before:bg-transparent">
+                                    <div className="flex items-center gap-2 w-full">
+                                      <span>{heir.name}</span>
+                                      {isSelected && (
+                                        <div className="w-2 h-2 bg-primary rounded-full shadow-sm" />
+                                      )}
+                                      <span className="text-xs text-muted-foreground">({heir.relationship})</span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1291,6 +1808,113 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                 </div>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Heir Modal */}
+        <Dialog open={isAddHeirModalOpen} onOpenChange={setIsAddHeirModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Add New Heir
+              </DialogTitle>
+              <DialogDescription>
+                Add a beneficiary to your Crown Vault legacy plan
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Name *</label>
+                <Input
+                  placeholder="Enter heir's full name"
+                  value={newHeirData.name}
+                  onChange={(e) => setNewHeirData({ ...newHeirData, name: e.target.value })}
+                  className="border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 focus:border-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Relationship *</label>
+                <Select value={newHeirData.relationship} onValueChange={(value) => {
+                  setNewHeirData({ ...newHeirData, relationship: value });
+                  if (value !== "custom") {
+                    setCustomRelationship("");
+                  }
+                }}>
+                  <SelectTrigger className="border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 transition-colors">
+                    <SelectValue placeholder="Select relationship" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-2 border-border/50 shadow-xl">
+                    <SelectItem value="spouse" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Spouse</SelectItem>
+                    <SelectItem value="child" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Child</SelectItem>
+                    <SelectItem value="parent" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Parent</SelectItem>
+                    <SelectItem value="sibling" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Sibling</SelectItem>
+                    <SelectItem value="grandchild" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Grandchild</SelectItem>
+                    <SelectItem value="friend" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Friend</SelectItem>
+                    <SelectItem value="charity" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Charity</SelectItem>
+                    <SelectItem value="custom" className="text-foreground hover:bg-primary/10 hover:text-primary font-medium">Custom...</SelectItem>
+                  </SelectContent>
+                </Select>
+                {newHeirData.relationship === "custom" && (
+                  <Input
+                    placeholder="Enter custom relationship"
+                    value={customRelationship}
+                    onChange={(e) => setCustomRelationship(e.target.value)}
+                    className="mt-2 border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 focus:border-primary transition-colors"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Email</label>
+                <Input
+                  type="email"
+                  placeholder="heir@example.com"
+                  value={newHeirData.email}
+                  onChange={(e) => setNewHeirData({ ...newHeirData, email: e.target.value })}
+                  className="border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 focus:border-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Phone</label>
+                <Input
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={newHeirData.phone}
+                  onChange={(e) => setNewHeirData({ ...newHeirData, phone: e.target.value })}
+                  className="border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 focus:border-primary transition-colors"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Notes</label>
+                <Textarea
+                  placeholder="Additional notes about this heir..."
+                  value={newHeirData.notes}
+                  onChange={(e) => setNewHeirData({ ...newHeirData, notes: e.target.value })}
+                  className="min-h-20 resize-none border-2 border-border/50 bg-background/80 text-foreground hover:border-primary/30 focus:border-primary transition-colors"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsAddHeirModalOpen(false)} disabled={isCreatingHeir}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateHeir}
+                  disabled={!newHeirData.name.trim() || (!newHeirData.relationship.trim() || (newHeirData.relationship === "custom" && !customRelationship.trim())) || isCreatingHeir}
+                >
+                  {isCreatingHeir ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-4 w-4 mr-2" />
+                      Add Heir
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -59,7 +59,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
               >
-                <Image src="/logo.png" alt="HNWI Chronicles Globe" width={24} height={24} className="md:w-8 md:h-8" />
+                <Image src="/logo.png" alt="HNWI Chronicles Globe" width={32} height={32} className="w-8 h-8" priority />
               </motion.div>
               <h1
                 className={`text-xl md:text-2xl font-bold font-heading`}

@@ -3,6 +3,7 @@
 
 import dynamic from "next/dynamic"
 import React, { useEffect, useState } from "react"
+import Image from "next/image"
 
 // Add a professional loading component with rotating logo
 const LoadingComponent = () => {
@@ -35,13 +36,16 @@ const LoadingComponent = () => {
       <div className="z-10 flex flex-col items-center justify-center">
         {/* Rotating logo */}
         <div className="relative w-32 h-32 mb-6">
-          <img 
+          <Image 
             src="/logo.png" 
             alt="HNWI Chronicles Logo" 
+            width={128}
+            height={128}
             className="w-full h-full object-contain animate-spin-slow"
             style={{ 
               animation: "spin 8s linear infinite" 
             }}
+            priority
           />
         </div>
         

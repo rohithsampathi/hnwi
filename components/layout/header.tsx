@@ -58,9 +58,10 @@ export function Header({ showBackButton = false, onNavigate, children }: HeaderP
               <Image
                 src="/logo.png"
                 alt="HNWI Chronicles Globe"
-                width={24}
-                height={24}
-                className="md:w-8 md:h-8"
+                width={32}
+                height={32}
+                className="w-8 h-8"
+                priority
               />
             </motion.div>
             <Heading1 className={`text-xl md:text-2xl font-bold`}>

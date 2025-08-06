@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
+
 interface HeirAssignmentRequest {
   heir_ids: string[];
 }
@@ -27,46 +29,62 @@ export async function PUT(
       );
     }
 
-    // In a real implementation, this would:
-    // 1. Validate that the asset exists and belongs to the user
-    // 2. Validate that all heir_ids exist and belong to the user
-    // 3. Update the asset's heir assignments in the database
-    // 4. Log the activity for audit trail
-    // 5. Send notifications if required
+    // Get user ID from request headers
+    const userId = request.headers.get('X-User-ID');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
-    // Mock heir name lookup with more comprehensive mapping
-    const heirNames = body.heir_ids.map(id => {
-      switch (id) {
-        case "heir_1": return "Priya Sharma";
-        case "heir_2": return "Rahul Sharma";
-        case "heir_3": return "Arjun Sharma";
-        case "heir-1": return "Priya Sharma";
-        case "heir-2": return "Rahul Sharma";
-        case "heir-3": return "Arjun Sharma";
-        // Handle dynamic heir IDs
-        default: {
-          // Try to extract heir name from ID or return a fallback
-          if (id.includes('heir')) {
-            const heirNum = parseInt(id.replace(/[^0-9]/g, ''));
-            const heirNames = ["Priya Sharma", "Rahul Sharma", "Arjun Sharma"];
-            return heirNames[heirNum - 1] || "Family Member";
-          }
-          return "Family Member";
-        }
+    // Proxy to backend API
+    const backendUrl = `${BACKEND_URL}/api/crown-vault/assets/${assetId}/heirs`;
+    
+    console.log('Proxying heir assignment request to:', backendUrl);
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    console.log('User ID:', userId);
+
+    try {
+      const response = await fetch(backendUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-User-ID': userId,
+        },
+        body: JSON.stringify(body.heir_ids), // Send heir_ids array directly, not wrapped in object
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      console.log('Backend response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        
+        return NextResponse.json(
+          { error: `Backend error: ${response.status} ${response.statusText}`, details: errorText },
+          { status: response.status }
+        );
       }
-    });
 
-    // Simulate database update delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+      const data = await response.json();
+      console.log('Backend response data:', JSON.stringify(data, null, 2));
+      return NextResponse.json(data, { status: 200 });
 
-    return NextResponse.json({
-      success: true,
-      asset_id: assetId,
-      heir_ids: body.heir_ids,
-      heir_names: heirNames,
-      updated_at: new Date().toISOString(),
-      message: `Asset reassigned to ${heirNames.join(", ")}`
-    }, { status: 200 });
+    } catch (error) {
+      console.error('Backend request failed with error:', error);
+      return NextResponse.json(
+        { error: 'Backend service unavailable. Please try again later.' },
+        { status: 503 }
+      );
+    }
 
   } catch (error) {
     console.error('Crown Vault heir assignment error:', error);
@@ -91,16 +109,59 @@ export async function GET(
       );
     }
 
-    // In a real implementation, this would fetch current heir assignments from database
-    // For now, return mock data
-    const mockAssignment = {
-      asset_id: assetId,
-      heir_ids: ["heir_1"],
-      heir_names: ["Priya Sharma"],
-      last_updated: "2024-01-15T10:30:00Z"
-    };
+    // Get user ID from request headers
+    const userId = request.headers.get('X-User-ID');
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
-    return NextResponse.json(mockAssignment, { status: 200 });
+    // Proxy to backend API
+    const backendUrl = `${BACKEND_URL}/api/crown-vault/assets/${assetId}/heirs`;
+    
+    console.log('Fetching heir assignment from:', backendUrl);
+    console.log('User ID:', userId);
+
+    try {
+      const response = await fetch(backendUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-User-ID': userId,
+        },
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+
+      console.log('Backend response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        
+        return NextResponse.json(
+          { error: `Backend error: ${response.status} ${response.statusText}`, details: errorText },
+          { status: response.status }
+        );
+      }
+
+      const data = await response.json();
+      console.log('Backend response data:', JSON.stringify(data, null, 2));
+      return NextResponse.json(data, { status: 200 });
+
+    } catch (error) {
+      console.error('Backend request failed with error:', error);
+      return NextResponse.json(
+        { error: 'Backend service unavailable. Please try again later.' },
+        { status: 503 }
+      );
+    }
 
   } catch (error) {
     console.error('Crown Vault heir assignment fetch error:', error);
