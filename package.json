@@ -64,7 +64,7 @@
     "react-hook-form": "^7.54.1",
     "react-particles": "latest",
     "react-resizable-panels": "^2.1.7",
-    "react-simple-maps": "^1.0.0",
+    "react-simple-maps": "^3.0.0",
     "recharts": "latest",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
@@ -82,5 +82,11 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
+  },
+  "overrides": {
+    "react-simple-maps": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }
