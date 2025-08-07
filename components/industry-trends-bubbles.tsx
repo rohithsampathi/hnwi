@@ -53,6 +53,9 @@ export function IndustryTrendsBubbles({
   
   // Keep track of raw data for debugging
   const rawApiData = useRef<any[]>([])
+  
+  // Ref to store current selectedIndustry for event handlers (avoids stale closure)
+  const selectedIndustryRef = useRef(selectedIndustry)
 
   // Fetch all data from the time series endpoint
   const fetchIndustryTrends = useCallback(async (forceRefresh = false) => {
@@ -68,7 +71,6 @@ export function IndustryTrendsBubbles({
       // Construct URL with cache-busting
       const url = `${API_BASE_URL}/api/industry-trends/time-series?_t=${cacheKey}`
       
-      console.log(`Fetching trends data for duration: ${duration}`, url)
       
       const response = await fetch(url, {
         method: "POST",
@@ -94,7 +96,6 @@ export function IndustryTrendsBubbles({
       const result = await response.json()
       
       if (!result.data || !Array.isArray(result.data)) {
-        console.error("Invalid API response format:", result)
         throw new Error("Invalid API response format")
       }
       
@@ -115,8 +116,6 @@ export function IndustryTrendsBubbles({
         }
       })
       
-      console.log(`Found ${uniqueIndustries.size} unique industries in API:`, 
-        Array.from(uniqueIndustries).sort())
 
       // Convert map to array for visualization
       const processedData = Array.from(industriesMap.entries())
@@ -127,7 +126,6 @@ export function IndustryTrendsBubbles({
         .filter(item => item.total_count > 0)
         .sort((a, b) => b.total_count - a.total_count)
       
-      console.log(`Processed ${processedData.length} industry trends`)
       
       // Update state
       setIndustryTrends(processedData)
@@ -137,7 +135,6 @@ export function IndustryTrendsBubbles({
       onIndustriesUpdate(processedData.map(item => item.industry))
       
     } catch (error) {
-      console.error("Error fetching industry trends:", error)
       toast({
         title: "Error",
         description: "Failed to fetch industry trends. Please try again.",
@@ -148,6 +145,11 @@ export function IndustryTrendsBubbles({
       setIsRefreshing(false)
     }
   }, [duration, onIndustriesUpdate, toast])
+
+  // Keep ref in sync with selectedIndustry prop
+  useEffect(() => {
+    selectedIndustryRef.current = selectedIndustry
+  }, [selectedIndustry])
 
   // Initial load and when duration changes
   useEffect(() => {
@@ -185,6 +187,7 @@ export function IndustryTrendsBubbles({
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
+        .style("pointer-events", "auto")
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`)
 
@@ -204,11 +207,8 @@ export function IndustryTrendsBubbles({
             .iterations(4)
         )
 
-      // Filter data if a specific industry is selected
-      const filteredTrends =
-        selectedIndustry === "All"
-          ? industryTrends
-          : industryTrends.filter((trend) => trend.industry === selectedIndustry)
+      // Show all trends initially, filtering will be handled by separate effect
+      const filteredTrends = industryTrends
 
       // Create bubble groups
       const bubbles = svg
@@ -228,14 +228,14 @@ export function IndustryTrendsBubbles({
         .style("cursor", "pointer")
         .style("opacity", "0.95")
 
-      // Add event listeners
-      bubbles
+      // Add event listeners to circles for center clicking
+      circles
         .on("mouseover touchstart", (event, d) => {
           event.preventDefault() // Prevent default touch behavior
           const [x, y] = d3.pointer(event, container)
           
           // Apply hover effect
-          d3.select(event.currentTarget).select("circle")
+          d3.select(event.currentTarget)
             .transition()
             .duration(200)
             .style("filter", "drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35))")
@@ -249,9 +249,9 @@ export function IndustryTrendsBubbles({
             y,
           })
         })
-        .on("mouseout touchend", (event) => {
+        .on("mouseout touchend", (event, d) => {
           // Remove hover effect
-          d3.select(event.currentTarget).select("circle")
+          d3.select(event.currentTarget)
             .transition()
             .duration(200)
             .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))")
@@ -260,9 +260,11 @@ export function IndustryTrendsBubbles({
             
           setTooltipData(null)
         })
-        .on("click", (_, d) => {
+        .on("click", (event, d) => {
+          event.stopPropagation()
+          const currentSelection = selectedIndustryRef.current
           // Toggle selection like Opportunity Atlas does
-          if (selectedIndustry === d.industry) {
+          if (currentSelection === d.industry) {
             onBubbleClick("All") // Reset to show all industries
           } else {
             onBubbleClick(d.industry) // Select this industry
@@ -270,7 +272,7 @@ export function IndustryTrendsBubbles({
         })
 
       // Add text labels to bubbles
-      bubbles
+      const textLabels = bubbles
         .append("text")
         .attr("dy", ".3em")
         .style("text-anchor", "middle")
@@ -280,6 +282,7 @@ export function IndustryTrendsBubbles({
         .style("paint-order", "stroke")
         .style("stroke", "rgba(0,0,0,0.3)")
         .style("stroke-width", "1px")
+        .style("cursor", "pointer")
         .each(function (d) {
           const self = d3.select(this)
           const words = d.industry.split(/\s+/)
@@ -321,6 +324,16 @@ export function IndustryTrendsBubbles({
               .text(lineWords.join(" "))
           })
         })
+        .on("click", (event, d) => {
+          event.stopPropagation()
+          const currentSelection = selectedIndustryRef.current
+          // Toggle selection like Opportunity Atlas does
+          if (currentSelection === d.industry) {
+            onBubbleClick("All") // Reset to show all industries
+          } else {
+            onBubbleClick(d.industry) // Select this industry
+          }
+        })
 
       // Add pulsing animation
       function pulse() {
@@ -356,7 +369,31 @@ export function IndustryTrendsBubbles({
 
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
-  }, [industryTrends, isLoading, onBubbleClick, getIndustryColor, selectedIndustry])
+  }, [industryTrends, isLoading, onBubbleClick, getIndustryColor])
+
+  // Separate effect to handle selectedIndustry changes without full re-render
+  useEffect(() => {
+    if (!containerRef.current || isLoading || industryTrends.length === 0) return
+    
+    const container = containerRef.current
+    const svg = d3.select(container).select("svg")
+    
+    if (svg.empty()) return // Wait for initial render
+    
+    const currentSelection = selectedIndustryRef.current
+    
+    // Update bubble visibility efficiently
+    svg.selectAll(".bubble")
+      .style("opacity", (d: any) => {
+        const shouldShow = currentSelection === "All" || d.industry === currentSelection
+        return shouldShow ? "1" : "0.1"
+      })
+      .style("pointer-events", (d: any) => {
+        const shouldShow = currentSelection === "All" || d.industry === currentSelection
+        return shouldShow ? "auto" : "none"
+      })
+    
+  }, [selectedIndustry, industryTrends, isLoading])
 
   // Handle manual refresh
   const handleRefresh = () => {

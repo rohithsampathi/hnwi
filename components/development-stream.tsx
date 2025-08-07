@@ -479,7 +479,7 @@ export function DevelopmentStream({
                                           <React.Fragment key={`line-${lineIndex}`}>
                                             <div className="flex items-start">
                                               <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-primary-foreground" />
-                                              <span className="text-gray-900 dark:text-white" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                              <span className="text-gray-900 dark:text-white">{formattedText.replace(/<[^>]*>/g, '')}</span>
                                             </div>
                                             <br />
                                           </React.Fragment>
@@ -555,10 +555,10 @@ export function DevelopmentStream({
                                       {isLightbulbBullet ? (
                                         <div className="flex items-start">
                                           <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary dark:text-primary-foreground" />
-                                          <span className="text-gray-900 dark:text-gray-100" dangerouslySetInnerHTML={{ __html: formattedText }}></span>
+                                          <span className="text-gray-900 dark:text-gray-100">{formattedText.replace(/<[^>]*>/g, '')}</span>
                                         </div>
                                       ) : (
-                                        <p className="text-gray-900 dark:text-gray-100" dangerouslySetInnerHTML={{ __html: cleanedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}></p>
+                                        <p className="text-gray-900 dark:text-gray-100"><strong>{cleanedText.replace(/\*\*(.*?)\*\*/g, '$1')}</strong></p>
                                       )}
                                     </div>
                                   );

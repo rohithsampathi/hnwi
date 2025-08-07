@@ -39,7 +39,6 @@ export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse
     const data: CryptoResponse = await response.json()
     return data
   } catch (error) {
-    console.error("Error fetching crypto data:", error)
     throw error
   }
 }
@@ -104,7 +103,6 @@ export async function getEvents(): Promise<SocialEvent[]> {
       tags: event.tags
     }))
   } catch (error) {
-    console.error('Error fetching events:', error)
     return []
   }
 }
@@ -149,7 +147,6 @@ export async function getOpportunities(): Promise<Opportunity[]> {
     const data = await response.json();
     return data as Opportunity[];
   } catch (error) {
-    console.error("Failed to fetch opportunities:", error);
     return [];
   }
 }
@@ -162,13 +159,11 @@ export async function getOpportunityById(id: string): Promise<Opportunity | null
     const opportunity = opportunities.find(opp => opp.id === id);
     
     if (!opportunity) {
-      console.log(`Opportunity with ID ${id} not found in the collection`);
       return null;
     }
     
     return opportunity;
   } catch (error) {
-    console.error(`Failed to fetch opportunity with ID ${id}:`, error);
     return null;
   }
 }
@@ -231,7 +226,18 @@ export interface BatchAssetResponse {
 // Get user ID from multiple sources (localStorage, session, mixpanel)
 function getCurrentUserId(): string {
   if (typeof window !== 'undefined') {
-    // First try localStorage
+    // First try SecureStorage (new auth system)
+    try {
+      const { SecureStorage } = require('@/lib/security/encryption');
+      const userId = SecureStorage.getItem('userId');
+      if (userId && userId !== 'dev_user_id') {
+        return userId;
+      }
+    } catch (error) {
+      // SecureStorage not available, continue with localStorage
+    }
+    
+    // Then try localStorage (old auth system)
     let userId = localStorage.getItem('userId');
     if (userId && userId !== 'dev_user_id') {
       return userId;
@@ -305,7 +311,6 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       created_at: asset.created_at || new Date().toISOString()
     }));
   } catch (error) {
-    console.error('Failed to fetch Crown Vault assets:', error);
     return [];
   }
 }
@@ -348,8 +353,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
 
     const statsData = await statsResponse.json();
     const heirsData = heirsResponse.ok ? await heirsResponse.json() : [];
-    const heirsCount = Array.isArray(heirsData) ? heirsData.length : 0;
+    // Backend returns direct array, not wrapped in {heirs: []}
+    const heirsArray = Array.isArray(heirsData) ? heirsData : (heirsData.heirs || []);
+    const heirsCount = heirsArray.length;
     const assetsData = assetsResponse.ok ? await assetsResponse.json() : [];
+    
 
     // Generate recent activity from assets (most recent first)
     const recentActivity = Array.isArray(assetsData) ? assetsData
@@ -367,16 +375,17 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
       })) : [];
 
     // Transform backend stats format to match frontend expectations
-    return {
+    const finalStats = {
       total_assets: statsData.total_assets || 0,
       total_value: statsData.total_value_usd || 0,
       total_heirs: heirsCount,
       last_updated: statsData.last_snapshot || new Date().toISOString(),
       asset_breakdown: statsData.assets_by_type || {},
-      recent_activity: recentActivity
+      recent_activity: statsData.recent_activity || recentActivity || []  // Try statsData first, fallback to generated
     };
+    
+    return finalStats;
   } catch (error) {
-    console.error('Failed to fetch Crown Vault stats:', error);
     return {
       total_assets: 0,
       total_value: 0,
@@ -391,8 +400,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
 export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHeir[]> {
   try {
     const userId = ownerId || getCurrentUserId();
-    // Call backend API directly to get heirs from MongoDB
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}`, {
+    
+    // Call backend API directly (backend requires trailing slash)
+    const url = `${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}&t=${Date.now()}`;
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -406,25 +418,28 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
     }
 
     const data = await response.json();
-    const heirs = data.heirs || data || [];
+    
+    // Backend returns direct array, not wrapped in {heirs: []}
+    const heirs = Array.isArray(data) ? data : (data.heirs || []);
     
     // Ensure each heir has proper structure
     const filteredHeirs = heirs.filter((heir: any) => 
       heir && (heir.id || heir.heir_id) && heir.name
     );
     
-    return filteredHeirs.map((heir: any) => ({
+    const finalHeirs = filteredHeirs.map((heir: any) => ({
       id: heir.id || heir.heir_id,
-      name: heir.name || 'Unknown Heir',
-      relationship: heir.relationship || 'Family Member',
-      email: heir.email || '',
-      phone: heir.phone || '',
-      notes: heir.notes || '',
-      created_at: heir.created_at || new Date().toISOString(),
+      name: heir.name,
+      relationship: heir.relationship,
+      email: heir.email,
+      phone: heir.phone,
+      notes: heir.notes,
+      created_at: heir.created_at,
       ...heir
     }));
+    
+    return finalHeirs;
   } catch (error) {
-    console.error('Failed to fetch Crown Vault heirs:', error);
     return [];
   }
 }
@@ -456,7 +471,6 @@ export async function processCrownVaultAssetsBatch(
 
     return await response.json();
   } catch (error) {
-    console.error('Failed to process Crown Vault assets batch:', error);
     throw error;
   }
 }
@@ -512,7 +526,6 @@ export async function createHeir(
       created_at: data.created_at || new Date().toISOString()
     };
   } catch (error) {
-    console.error('Failed to create heir:', error);
     throw error;
   }
 }
@@ -567,7 +580,6 @@ export async function updateHeir(
       created_at: data.heir?.created_at || new Date().toISOString()
     };
   } catch (error) {
-    console.error('Failed to update heir:', error);
     throw error;
   }
 }
@@ -588,7 +600,6 @@ export async function deleteHeir(heirId: string, ownerId?: string): Promise<void
       throw new Error(`Error deleting heir: ${response.status} - ${errorText}`);
     }
   } catch (error) {
-    console.error('Failed to delete heir:', error);
     throw error;
   }
 }
@@ -615,7 +626,6 @@ export async function updateAssetHeirs(
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Backend error response:', errorText);
       throw new Error(`Error updating asset heirs: ${response.status} - ${errorText}`);
     }
 
@@ -627,7 +637,6 @@ export async function updateAssetHeirs(
       heir_names: data.heir_names || []
     };
   } catch (error) {
-    console.error('Failed to update asset heirs:', error);
     throw error;
   }
 }

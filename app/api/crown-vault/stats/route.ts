@@ -106,6 +106,13 @@ export async function GET(request: NextRequest) {
         recent_activity: recentActivity
       };
 
+      console.log('Crown Vault stats generated:', {
+        total_assets: totalAssets,
+        total_heirs: uniqueHeirIds.size,
+        recent_activity_count: recentActivity.length,
+        first_activity: recentActivity[0] || 'None'
+      });
+
       return NextResponse.json(stats, { status: 200 });
 
     } catch (fetchError) {

@@ -91,7 +91,7 @@ export function OpportunityAtlas({
           </p>
           <div className="border-t border-border pt-4">
             <p className="text-xs text-muted-foreground">
-              Information only—HNWI Chronicles is not a broker-dealer
+              For Information only. HNWI Chronicles is not a broker-dealer
             </p>
           </div>
         </div>
@@ -416,7 +416,7 @@ export function OpportunityAtlas({
           {/* Disclaimer */}
           <div className="text-center border-t border-border pt-3">
             <p className="text-xs text-muted-foreground">
-              Information only—HNWI Chronicles is not a broker-dealer
+              For Information only. HNWI Chronicles is not a broker-dealer
             </p>
           </div>
         </div>

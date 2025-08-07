@@ -56,7 +56,20 @@ const SectionContent: React.FC<{ content: string; elements?: PlaybookSection[] }
     <div className="mt-4">
       <div
         className={`prose ${theme === "dark" ? "prose-invert" : ""} max-w-none`}
-        dangerouslySetInnerHTML={{ __html: formatContent(content) }}
+      >
+        {content.split('\n').map((line, idx) => (
+          <div key={idx}>
+            {line.startsWith('**') && line.endsWith('**') ? (
+              <strong>{line.replace(/\*\*/g, '')}</strong>
+            ) : line.startsWith('*') && line.endsWith('*') ? (
+              <em>{line.replace(/\*/g, '')}</em>
+            ) : line.startsWith('- ') ? (
+              <li>{line.substring(2)}</li>
+            ) : (
+              line
+            )}
+          </div>
+        ))}
       />
       {elements && elements.length > 0 && (
         <Accordion type="single" collapsible className="w-full mt-4">

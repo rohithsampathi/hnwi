@@ -108,6 +108,7 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
                 width={256}
                 height={256}
                 className="w-full h-full"
+                style={{ height: "auto" }}
                 priority
               />
             </motion.div>

@@ -203,7 +203,7 @@ export function SocialHub() {
                 {/* Card Column */}
                 <div className="md:w-1/2 p-4">
                   <Card
-                    className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 min-h-[400px]"
                     style={{
                       backgroundColor: theme === "dark" ? "hsl(165, 46%, 8%)" : "white"
                     }}
@@ -228,7 +228,7 @@ export function SocialHub() {
                               </Heading3>
                               
                               {/* Tags displayed below the title */}
-                              <div className="flex flex-wrap gap-1 md:gap-2 mb-3 max-w-full overflow-hidden">
+                              <div className="flex flex-wrap gap-1 md:gap-2 mb-3 max-w-full">
                                 {event.tags?.map((tag, tagIndex) => {
                                   // Get a unique color for each tag based on the tag name
                                   const colorClasses = [
@@ -275,15 +275,15 @@ export function SocialHub() {
                           <div className="space-y-3 dark:text-white/90 text-black/90">
                             <div className="flex items-center gap-2">
                               <MapPin className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
-                              <span className="text-sm line-clamp-1">{event.location}</span>
+                              <span className="text-sm">{event.location}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Building className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
-                              <span className="text-sm line-clamp-1">{event.venue}</span>
+                              <span className="text-sm">{event.venue}</span>
                             </div>
                             <div className="flex items-start gap-2">
                               <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1 flex-shrink-0" />
-                              <span className="text-sm line-clamp-2">
+                              <span className="text-sm">
                                 {event.attendees && event.attendees.length > 0
                                   ? event.attendees.join(", ")
                                   : "Talk to Concierge"}

@@ -176,7 +176,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                       Last updated: {new Date().toLocaleTimeString()}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Information only—HNWI Chronicles is not a broker-dealer
+                      For Information only. HNWI Chronicles is not a broker-dealer
                     </p>
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
             <div className="py-4">
               <Heading3 className="text-foreground mb-2">Insider Briefing 🔍</Heading3>
               <p className="text-body-small text-foreground mb-4">
-                Your Private Intelligence Ally Talking
+                Your private intelligence ally delivering sophisticated insights for ultra-high-net-worth portfolios
               </p>
             </div>
             <div className="py-2">

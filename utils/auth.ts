@@ -13,33 +13,23 @@ type User = {
   role?: string
 }
 
-const MOCK_USER = {
-  email: "rohith@bhai.ai",
-  password: "rohith@bhai.ai",
-  name: "Rohith",
-}
+// REMOVED: Hardcoded credentials are a critical security vulnerability
+// Authentication must be handled through secure server-side endpoints only
 
 export async function authenticateUser(email: string, password: string): Promise<User | null> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-
-  if (email === MOCK_USER.email && password === MOCK_USER.password) {
-    return {
-      email: MOCK_USER.email,
-      name: MOCK_USER.name,
-    }
-  }
-
-  return null
+  // SECURITY NOTICE: Client-side authentication is disabled for security
+  // All authentication must be handled server-side through secure endpoints
+  throw new Error("Client-side authentication disabled for security. Use server-side auth endpoints.");
 }
 
-// Login helper
+// Login helper - DEPRECATED: Insecure localStorage usage
 export const login = (userData: any, token: string) => {
-  // Store auth data in localStorage
+  console.warn("SECURITY WARNING: This function uses insecure localStorage. Use secure-auth.ts instead.");
+  // SECURITY NOTICE: localStorage is vulnerable to XSS attacks
+  // Tokens should be stored in secure, httpOnly cookies server-side
   if (userData && token) {
-    localStorage.setItem("userId", userData.id || userData.user_id);
-    localStorage.setItem("token", token);
-    localStorage.setItem("userObject", JSON.stringify(userData));
+    // DEPRECATED: Do not store sensitive data in localStorage
+    console.error("BLOCKED: Storing auth tokens in localStorage is a security vulnerability");
     
     // Track login event in Mixpanel
     MixpanelTracker.identify(userData.id || userData.user_id);

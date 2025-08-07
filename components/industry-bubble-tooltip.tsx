@@ -25,8 +25,8 @@ export function IndustryBubbleTooltip({ industry, count, x, y }: TooltipProps) {
           : "bg-white text-gray-900 border-gray-200"
       }`}
       style={{
-        left: x,
-        top: y - 10,
+        left: isNaN(x) ? 0 : x,
+        top: isNaN(y) ? 0 : y - 10,
         transform: "translate(-50%, -100%)",
       }}
     >

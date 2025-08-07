@@ -521,7 +521,7 @@ export function OpportunityPage({
             {/* 7. On-Page Legal Footnote */}
             <div className="text-center pt-8 mt-12 border-t border-border/50">
               <Paragraph className="text-xs text-muted-foreground">
-                Information only · HNWI Chronicles is not a broker-dealer and does not provide personalised investment advice.
+                For Information only · HNWI Chronicles is not a broker-dealer and does not provide personalised investment advice.
               </Paragraph>
             </div>
           </CardContent>

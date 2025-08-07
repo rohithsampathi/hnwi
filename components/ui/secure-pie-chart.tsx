@@ -74,8 +74,8 @@ export function SecurePieChart({
               cx="50%"
               cy="50%"
               labelLine={false}
-              outerRadius={180}
-              innerRadius={80}
+              outerRadius={"103.5%"}
+              innerRadius={"44%"}
               fill="#8884d8"
               dataKey="value"
               stroke="hsl(var(--background))"
@@ -85,7 +85,8 @@ export function SecurePieChart({
                 <Cell 
                   key={`cell-${index}`} 
                   fill={colors[index % colors.length]}
-                  className="hover:opacity-80 transition-opacity cursor-pointer drop-shadow-lg"
+                  className="hover:opacity-80 transition-opacity drop-shadow-lg"
+                  style={{ outline: 'none' }}
                 />
               ))}
             </Pie>

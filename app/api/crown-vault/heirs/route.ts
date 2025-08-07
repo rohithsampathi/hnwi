@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch assets from backend to extract heir information
+    // Call backend heirs endpoint directly (backend expects trailing slash)
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
-    const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+    const heirsUrl = `${backendUrl}/api/crown-vault/heirs/?owner_id=${ownerId}`;
     
     try {
-      const response = await fetch(assetsUrl, {
+      const response = await fetch(heirsUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -40,47 +40,25 @@ export async function GET(request: NextRequest) {
         throw new Error(`Backend API error: ${response.status}`);
       }
 
-      const assets = await response.json();
+      const backendHeirs = await response.json();
       
-      if (!Array.isArray(assets)) {
-        throw new Error('Invalid assets data format');
+      // Backend returns direct array, not wrapped in {heirs: [...]}
+      if (!Array.isArray(backendHeirs)) {
+        console.error('Invalid heirs data format - expected array, got:', typeof backendHeirs);
+        throw new Error('Invalid heirs data format');
       }
 
-      // Extract unique heirs from assets
-      const heirsMap = new Map<string, Heir>();
-      
-      assets.forEach((asset: any) => {
-        if (asset.heir_ids && asset.heir_names && Array.isArray(asset.heir_ids) && Array.isArray(asset.heir_names)) {
-          asset.heir_ids.forEach((heirId: string, index: number) => {
-            if (!heirsMap.has(heirId)) {
-              const heirName = asset.heir_names[index] || 'Unknown Heir';
-              
-              // Try to get relationship from mentioned_heirs in asset_data
-              let relationship = 'Family Member';
-              if (asset.asset_data?.mentioned_heirs && Array.isArray(asset.asset_data.mentioned_heirs)) {
-                const mentionedHeir = asset.asset_data.mentioned_heirs.find((mh: any) => 
-                  mh.name?.toLowerCase() === heirName.toLowerCase()
-                );
-                if (mentionedHeir?.relationship) {
-                  relationship = mentionedHeir.relationship.charAt(0).toUpperCase() + mentionedHeir.relationship.slice(1);
-                }
-              }
-              
-              heirsMap.set(heirId, {
-                id: heirId,
-                name: heirName,
-                relationship: relationship,
-                email: '', // Not available in backend data
-                phone: '', // Not available in backend data
-                notes: `Heir assigned to ${assets.filter((a: any) => a.heir_ids?.includes(heirId)).length} asset(s)`,
-                created_at: asset.created_at || new Date().toISOString()
-              });
-            }
-          });
-        }
-      });
+      // Transform backend data to frontend format (heir_id -> id)
+      const heirs = backendHeirs.map((heir: any) => ({
+        id: heir.heir_id || heir.id, // Transform heir_id to id
+        name: heir.name,
+        relationship: heir.relationship,
+        email: heir.email || '',
+        phone: heir.phone || '',
+        notes: heir.notes || '',
+        created_at: heir.created_at || new Date().toISOString()
+      }));
 
-      const heirs = Array.from(heirsMap.values());
 
       return NextResponse.json({
         heirs: heirs,
@@ -88,9 +66,62 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error fetching assets to extract heirs:', fetchError);
+      console.error('Error fetching heirs from backend:', fetchError);
+      console.error('Heirs URL attempted:', heirsUrl);
       
-      // Return empty heirs if backend fails
+      // Try to fetch heirs from assets endpoint as fallback
+      try {
+        const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+        console.log('Attempting to fetch heirs from assets endpoint:', assetsUrl);
+        
+        const assetsResponse = await fetch(assetsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': ownerId
+          },
+          cache: 'no-store'
+        });
+
+        if (assetsResponse.ok) {
+          const assets = await assetsResponse.json();
+          
+          if (Array.isArray(assets)) {
+            // Extract unique heirs from assets
+            const heirsMap = new Map();
+            
+            assets.forEach((asset: any) => {
+              if (asset.heir_ids && asset.heir_names) {
+                asset.heir_ids.forEach((heirId: string, index: number) => {
+                  if (heirId && asset.heir_names[index] && !heirsMap.has(heirId)) {
+                    heirsMap.set(heirId, {
+                      id: heirId,
+                      name: asset.heir_names[index],
+                      relationship: 'Family Member', // Default relationship
+                      email: '',
+                      phone: '',
+                      notes: '',
+                      created_at: new Date().toISOString()
+                    });
+                  }
+                });
+              }
+            });
+            
+            const extractedHeirs = Array.from(heirsMap.values());
+            console.log('Extracted heirs from assets:', extractedHeirs);
+            
+            return NextResponse.json({
+              heirs: extractedHeirs,
+              total_count: extractedHeirs.length
+            }, { status: 200 });
+          }
+        }
+      } catch (assetsError) {
+        console.error('Error fetching heirs from assets:', assetsError);
+      }
+      
+      // Return empty heirs if all fails
       return NextResponse.json({
         heirs: [],
         total_count: 0

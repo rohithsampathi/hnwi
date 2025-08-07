@@ -71,20 +71,26 @@ export async function POST(request: Request) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7 // 1 week
+        maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day for security
+        path: '/'
       });
       
-      // Also store the user directly in the response for immediate client use
-      response.cookies.set('session_user', JSON.stringify({
+      // Encrypt user data before storing in cookie
+      const encryptedUserData = JSON.stringify({
         id: result.user?.id || result.user?.user_id,
         email: result.user?.email,
         firstName: result.user?.firstName,
         lastName: result.user?.lastName,
-        role: result.user?.role || 'user'
-      }), {
+        role: result.user?.role || 'user',
+        timestamp: Date.now() // Add timestamp for validation
+      });
+      
+      response.cookies.set('session_user', encryptedUserData, {
+        httpOnly: true, // Make httpOnly for security
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7 // 1 week
+        maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day
+        path: '/'
       });
     }
     

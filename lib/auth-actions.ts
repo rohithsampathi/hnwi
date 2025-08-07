@@ -37,7 +37,15 @@ interface SessionResponse {
   error?: string
 }
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key")
+function getJWTSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("CRITICAL: JWT_SECRET environment variable must be set in production");
+  }
+  return new TextEncoder().encode(
+    secret || "dev-jwt-secret-change-in-production-minimum-32-characters-long"
+  );
+}
 // Import from config to ensure consistency
 import { API_BASE_URL } from "@/config/api"
 
@@ -53,12 +61,12 @@ async function createToken(user: Partial<User>): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
-    .sign(JWT_SECRET)
+    .sign(getJWTSecret())
 }
 
 export async function verifyToken(token: string): Promise<User | null> {
   try {
-    const verified = await jwtVerify(token, JWT_SECRET)
+    const verified = await jwtVerify(token, getJWTSecret())
     return verified.payload as User
   } catch (err) {
     console.error("Token verification failed:", err)
