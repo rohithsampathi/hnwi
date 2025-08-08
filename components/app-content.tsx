@@ -278,12 +278,27 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         // Extract profile data from the response
         const profile = userData.profile || {};
         
-        // Get user ID from the most likely location and validate it exists
-        const userId = userData.user_id || userData.id || profile.user_id;
+        // Debug: Log the direct API login response
+        console.log("Direct API login userData:", JSON.stringify(userData, null, 2));
+        console.log("Direct API profile data:", JSON.stringify(profile, null, 2));
+        
+        // Try multiple possible user ID fields from the backend response
+        const userId = userData.user_id || 
+                      userData.userId || 
+                      userData.id || 
+                      profile.user_id || 
+                      profile.userId || 
+                      profile.id ||
+                      userData._id ||
+                      profile._id;
         
         if (!userId) {
+          console.error("Direct API - No user ID found. Available userData fields:", Object.keys(userData));
+          console.error("Direct API - Available profile fields:", Object.keys(profile));
           throw new Error("No valid user ID received from server. Please try logging in again.");
         }
+        
+        console.log("Direct API using user ID:", userId);
         
         // Split name into parts for first/last name
         const nameParts = profile.name?.split(" ") || ["User", ""];
@@ -507,11 +522,27 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       // Extract profile from the response
       const profile = userData.profile || {};
       
-      // Validate that we have a user ID from the backend
-      const userId = userData.user_id || userData.userId || profile.user_id;
+      // Debug: Log the userData structure to see what we're receiving
+      console.log("Login response userData:", JSON.stringify(userData, null, 2));
+      console.log("Profile data:", JSON.stringify(profile, null, 2));
+      
+      // Try multiple possible user ID fields from the backend response
+      const userId = userData.user_id || 
+                    userData.userId || 
+                    userData.id || 
+                    profile.user_id || 
+                    profile.userId || 
+                    profile.id ||
+                    userData._id ||
+                    profile._id;
+                    
       if (!userId) {
+        console.error("No user ID found in any expected field. Available fields:", Object.keys(userData));
+        console.error("Profile fields:", Object.keys(profile));
         throw new Error("No valid user ID received from server. Please try logging in again.");
       }
+      
+      console.log("Using user ID:", userId);
       
       // Split name for first/last name if needed
       const nameParts = profile.name?.split(" ") || ["User", ""];
