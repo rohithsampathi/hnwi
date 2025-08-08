@@ -15,14 +15,26 @@ interface SummarySectionProps {
 }
 
 const COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--secondary))', 
-  'hsl(var(--accent))',
-  '#22c55e', // emerald-500
-  '#f59e0b', // amber-500
-  '#8b5cf6', // violet-500
-  '#ef4444', // red-500
-  '#06b6d4'  // cyan-500
+  'hsl(var(--primary))',     // Forest green
+  'hsl(var(--secondary))',   // Warm gold
+  '#2D5A4F',                 // Deep forest green
+  '#D4AF37',                 // Antique gold
+  '#8B4513',                 // Saddle brown (luxury leather)
+  '#4682B4',                 // Steel blue (premium metal)
+  '#800020',                 // Burgundy (wine/luxury)
+  '#556B2F',                 // Dark olive green
+  '#B8860B',                 // Dark golden rod
+  '#2F4F4F',                 // Dark slate gray
+  '#8B7355',                 // Dark khaki (earth tones)
+  '#A0522D',                 // Sienna (warm brown)
+  '#708090',                 // Slate gray (platinum)
+  '#6B8E23',                 // Olive drab
+  '#BC8F8F',                 // Rosy brown
+  '#8FBC8F',                 // Dark sea green
+  '#DEB887',                 // Burlywood
+  '#5F8A5F',                 // Dark sea green variant
+  '#CD853F',                 // Peru (warm earth)
+  '#696969'                  // Dim gray (charcoal)
 ];
 
 const formatValue = (value: number, currency: string = "USD") => {
