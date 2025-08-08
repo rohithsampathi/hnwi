@@ -309,18 +309,6 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       </div>
                     </div>
                     
-                    {/* Asset Classification Badge */}
-                    <div className="mb-6">
-                      <Badge variant="outline" 
-                             className="text-xs font-bold border-2 border-secondary/30 
-                                        bg-gradient-to-r from-secondary/10 to-secondary/5
-                                        text-secondary shadow-lg px-4 py-2 rounded-xl
-                                        hover:border-secondary/50 hover:bg-gradient-to-r hover:from-secondary/20 hover:to-secondary/10
-                                        transition-all duration-300">
-                        {formatAssetType(asset.asset_data.asset_type || 'Premium Asset')}
-                      </Badge>
-                    </div>
-
                     {/* ======= PREMIUM ASSET VALUE DISPLAY - Matching Summary Cards ======= */}
                     <div className="space-y-6">
                       {/* Asset Name - Premium Typography */}
@@ -331,6 +319,18 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                           {asset.asset_data.name || 'Unnamed Crown Asset'}
                         </h3>
                         <div className="w-full h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
+                      </div>
+
+                      {/* Asset Classification Badge */}
+                      <div className="mb-6">
+                        <Badge variant="outline" 
+                               className="text-xs font-bold border-2 border-secondary/30 
+                                          bg-gradient-to-r from-secondary/10 to-secondary/5
+                                          text-secondary shadow-lg px-4 py-2 rounded-xl
+                                          hover:border-secondary/50 hover:bg-gradient-to-r hover:from-secondary/20 hover:to-secondary/10
+                                          transition-all duration-300">
+                          {formatAssetType(asset.asset_data.asset_type || 'Premium Asset')}
+                        </Badge>
                       </div>
                       
                       {/* Asset Value - Ultra Premium Display Matching Summary Cards */}
