@@ -1,5 +1,7 @@
 // components/app-content.tsx
 
+// components/app-content.tsx
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -22,7 +24,7 @@ import { InvestScanPage } from "./pages/invest-scan-page"
 import { OpportunityPage } from "./pages/opportunity-page"
 import { SocialHubPage } from "./pages/social-hub-page"
 import CrownVaultPage from "./pages/crown-vault-page"
-import { handleLogin, handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
+import { handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 
 // LoginPage is now consolidated into SplashScreen
@@ -37,8 +39,10 @@ interface User {
   updatedAt?: Date
   // For compatibility with direct API login
   user_id?: string
+  _id?: string
   profile?: any
   // Adding required profile fields to fix profile page errors
+  name?: string
   net_worth?: number
   city?: string
   country?: string
@@ -106,7 +110,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           if (isMounted) {
             if (data.user) {
               // Create consistent user object
-              const userObj = {
+              const userObj: User = {
                 id: data.user.id,
                 email: data.user.email,
                 firstName: data.user.firstName,
@@ -175,7 +179,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   const handleNavigation = (route: string) => {
     // Parse route and handle query parameters if present
     let baseRoute = route;
-    let params = {};
+    const params: Record<string, string> = {};
 
     if (route.includes('?')) {
       const [path, queryString] = route.split('?');
@@ -218,7 +222,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       // Store any parameters in sessionStorage for the target page to access
       if (Object.keys(params).length > 0) {
         Object.entries(params).forEach(([key, value]) => {
-          sessionStorage.setItem(`nav_param_${key}`, value.toString());
+          sessionStorage.setItem(`nav_param_${key}`, value);
         });
       }
 
@@ -250,7 +254,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setIsLoading(true);
       setError("");
 
-
       // Use the NextJS API route which will call the FastAPI backend
       try {
         const response = await fetch(`/api/auth/login`, {
@@ -260,7 +263,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           },
           body: JSON.stringify(loginData)
         });
-        
         
         if (!response.ok) {
           const errorData = await response.json();
@@ -285,7 +287,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         const lastName = userData.lastName || userData.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
         
         // Create a user object with consistent structure that works with ProfilePage
-        const userObject = {
+        const userObject: User = {
           id: userId,
           user_id: userId,
           email: userData.email || profile.email || loginData.email,
@@ -309,7 +311,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           profile: profile
         };
         
-        
         // Set user in state
         setUser(userObject);
         
@@ -321,7 +322,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
-        
         
         // Navigate to dashboard
         handleNavigation("dashboard");
@@ -358,7 +358,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       if (result.success && result.user) {
         setUser(result.user)
         // Store the ID from API response if available, fall back to id from auth
-        const userId = result.user.user_id || result.user._id || result.user.id;
+        const userId = result.user.user_id || (result.user as any)._id || result.user.id;
         localStorage.setItem("userId", userId)
         if (result.token) {
           localStorage.setItem("token", result.token)
@@ -386,7 +386,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (result.success && result.user) {
           setUser(result.user)
           // Store the ID from API response if available, fall back to id from auth
-          const userId = result.user.user_id || result.user._id || result.user.id;
+          const userId = result.user.user_id || (result.user as any)._id || result.user.id;
           localStorage.setItem("userId", userId)
           if (result.token) {
             localStorage.setItem("token", result.token)
@@ -411,14 +411,16 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       // This means we're accepting the profile-page component's direct API update
       
       // Get current user
-      const currentUser = { ...user }
+      const currentUser = { ...user } as User
       
       // Merge updated data
-      const mergedUser = {
+      const mergedUser: User = {
         ...currentUser,
         ...updatedUserData,
         // Ensure critical fields are preserved
         id: currentUser.id,
+        email: currentUser.email!,
+        firstName: currentUser.firstName!,
         user_id: currentUser.user_id,
         // Update profile subobject if it exists
         ...(currentUser.profile ? {
@@ -496,9 +498,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   }
 
   // Handle successful login from LoginPage
-  const handleLoginSuccess = (userData) => {
+  const handleLoginSuccess = (userData: any) => {
     try {
-      
       // Extract profile from the response
       const profile = userData.profile || {};
       
@@ -508,7 +509,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       const lastName = userData.lastName || userData.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
       
       // Set user directly with all required profile fields
-      const userObject = {
+      const userObject: User = {
         id: userData.user_id || userData.userId || profile.user_id,
         user_id: userData.user_id || userData.userId || profile.user_id,
         email: userData.email || profile.email,
@@ -532,7 +533,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         profile: profile
       };
       
-      
       // Set user in state
       setUser(userObject);
       
@@ -541,7 +541,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setIsSessionCheckComplete(true);
       
       // Store user info in localStorage
-      localStorage.setItem("userId", userObject.user_id);
+      localStorage.setItem("userId", userObject.user_id || '');
       localStorage.setItem("userEmail", userObject.email);
       
       // Always ensure a token is stored
@@ -636,7 +636,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
       case "login":
         // Login is now handled within SplashScreen
-        return <SplashScreen onLoginSuccess={handleLoginSuccess} />
+        return <SplashScreen onLogin={handleLoginClick} onLoginSuccess={handleLoginSuccess} />
 
       case "dashboard":
         // If not authenticated but trying to view dashboard, redirect to splash
