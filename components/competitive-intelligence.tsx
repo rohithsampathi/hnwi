@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DevelopmentStream } from "@/components/development-stream"
 import { getIndustryColor } from "@/utils/color-utils"
 import { useToast } from "@/components/ui/use-toast"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 interface CompetitiveIntelligenceProps {
   industry: string
@@ -25,27 +24,14 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
   const fetchDevelopments = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/developments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          industry: industry, // Use the provided industry
-          time_range: timeRange,
-          page: 1,
-          page_size: 100, // Set to maximum allowed page size
-          sort_by: "date",
-          sort_order: "desc",
-        }),
+      const data = await secureApi.post('/api/developments', {
+        industry: industry, // Use the provided industry
+        time_range: timeRange,
+        page: 1,
+        page_size: 100, // Set to maximum allowed page size
+        sort_by: "date",
+        sort_order: "desc",
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-      }
-
-      const data = await response.json()
       const allDevelopments = data.developments || []
       setDevelopments(allDevelopments)
     } catch (error) {

@@ -13,8 +13,7 @@ import { ParticlesBackground } from "./particles-background"
 import { ChevronLeft, Shield, Globe, Users } from "lucide-react"
 import { Heading2, Heading3, Paragraph, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 const slides = [
   {
@@ -141,64 +140,36 @@ export function OnboardingPage({
         return;
       }
       
-      // Send data to the FastAPI backend
-      console.log("Sending user data to:", `${API_BASE_URL}/api/users/profile`);
-      console.log("User data:", JSON.stringify({
+      // Send data to the FastAPI backend using secure API
+      console.log("Creating user profile with secure API");
+      
+      const data = await secureApi.post('/api/users/profile', {
         email,
-        name: `${firstName} ${lastName}`,
-        // Password is masked for logging
-      }, null, 2));
-      
-      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+        password,
+        name: `${firstName} ${lastName}`.trim(),
+        net_worth: 0,
+        city: "Edit This Data",
+        country: "Edit This Data",
+        bio: "Edit This Data",
+        industries: selectedInterests.includes("Other") && otherInterest 
+          ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
+          : selectedInterests,
+        phone_number: "Edit This Data",
+        office_address: "Edit This Data",
+        crypto_investor: isCryptoInvestor,
+        land_investor: isLandInvestor,
+        company_info: {
+          name: "Edit This Data",
+          about: "",
+          industry: "",
+          product_focus: "",
+          total_employees: 0,
+          locations: []
         },
-        body: JSON.stringify({
-          email,
-          password,
-          name: `${firstName} ${lastName}`.trim(),
-          net_worth: 0,
-          city: "Edit This Data",
-          country: "Edit This Data",
-          bio: "Edit This Data",
-          industries: selectedInterests.includes("Other") && otherInterest 
-            ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
-            : selectedInterests,
-          phone_number: "Edit This Data",
-          office_address: "Edit This Data",
-          crypto_investor: isCryptoInvestor,
-          land_investor: isLandInvestor,
-          company_info: {
-            name: "Edit This Data",
-            about: "",
-            industry: "",
-            product_focus: "",
-            total_employees: 0,
-            locations: []
-          },
-          linkedin: "Edit This Data"
-        }),
+        linkedin: "Edit This Data"
       });
-
-      console.log("API Response status:", response.status);
       
-      // Get the raw response for better debugging
-      const responseText = await response.text();
-      console.log("API Response text:", responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
-      
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log("API Response data:", data);
-      } catch (e) {
-        console.error("Error parsing JSON response:", e);
-        throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(data)}`)
-      }
+      console.log("API Response data:", data);
 
       if (data.status === "success" && data.user_id) {
         console.log("User created successfully with ID:", data.user_id);

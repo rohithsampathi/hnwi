@@ -1,8 +1,7 @@
 // app/layout.tsx
-
-// app/layout.tsx
 import type { Metadata, Viewport } from "next"
 import type React from "react"
+import { headers } from "next/headers"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
@@ -82,8 +81,26 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Get nonce from middleware for CSP
+  const headersList = headers()
+  const nonce = headersList.get('X-CSP-Nonce') || undefined
+  
   return (
     <html lang="en">
+      <head>
+        {/* Add nonce to any necessary inline scripts */}
+        {nonce && (
+          <script
+            nonce={nonce}
+            dangerouslySetInnerHTML={{
+              __html: `
+                // CSP nonce available for Next.js
+                window.__CSP_NONCE__ = '${nonce}';
+              `
+            }}
+          />
+        )}
+      </head>
       <body>
         <AuthProvider>
           <OnboardingProvider>

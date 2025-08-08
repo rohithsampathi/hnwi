@@ -14,6 +14,7 @@ import { TopPerformerBadge } from "./top-performer-badge"
 import { useToast } from "@/components/ui/use-toast"
 import { StrategyAtomAnimation } from "./strategy-atom-animation"
 import { Paragraph } from "@/components/ui/typography"
+import { secureApi } from "@/lib/secure-api"
 
 interface SubChannel {
   name: string
@@ -312,7 +313,6 @@ const ChannelPerformanceRating: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { toast } = useToast()
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
   const updateRating = useCallback(
     async (channel: string, score: number) => {
@@ -327,21 +327,10 @@ const ChannelPerformanceRating: React.FC = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/ratings/${userId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            channel,
-            score,
-          }),
+        await secureApi.put(`/api/ratings/${userId}`, {
+          channel,
+          score,
         })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || "Failed to update rating")
-        }
 
         toast({
           title: "Success",
@@ -356,7 +345,7 @@ const ChannelPerformanceRating: React.FC = () => {
         })
       }
     },
-    [toast, API_BASE_URL],
+    [toast],
   )
 
   const handleScoreChange = useCallback(
@@ -380,11 +369,7 @@ const ChannelPerformanceRating: React.FC = () => {
       setIsRefreshing(true)
       setIsLoading(true)
       try {
-        const response = await fetch(`${API_BASE_URL}/api/ratings/aggregated`)
-        if (!response.ok) {
-          throw new Error("Failed to fetch aggregated ratings")
-        }
-        const data = await response.json()
+        const data = await secureApi.get('/api/ratings/aggregated')
         console.log("Fetched aggregated ratings:", data)
 
         if (data.status === "success" && Array.isArray(data.data)) {
@@ -427,7 +412,7 @@ const ChannelPerformanceRating: React.FC = () => {
     }
 
     fetchAggregatedRatings()
-  }, [API_BASE_URL, toast, refreshTrigger])
+  }, [toast, refreshTrigger])
 
   useEffect(() => {
     //Removed console.log statement here

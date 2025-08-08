@@ -50,6 +50,7 @@ import { motion } from "framer-motion"
 import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats, type CrownVaultAsset } from "@/lib/api"
 import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
 import { processAssetCategories } from "@/lib/category-utils"
+import { secureApi } from "@/lib/secure-api"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -60,7 +61,6 @@ const formatLinkedInUrl = (url: string): string => {
   return url
 }
 
-const API_BASE_URL = "https://uwind.onrender.com"
 
 interface ProfilePageProps {
   user: User
@@ -134,19 +134,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       // Fetching user data
       setIsRefreshing(true)
       try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-          headers: {
-            ...(token && { "Authorization": `Bearer ${token}` })
-          }
-        });
-        
-        if (!response.ok) {
-          console.error("User data fetch failed with status:", response.status);
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        const userData = await response.json();
+        const userData = await secureApi.get(`/api/users/${userId}`);
         // User data fetched successfully
         
         // Enhance user data with company info handling
@@ -272,33 +260,9 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       // This ensures MongoDB is updated even if the local update succeeded
 
       // Direct API call as a fallback - using simplified payload like Postman
-      console.log("Making direct API PUT request to:", `${API_BASE_URL}/api/users/${userId}`);
-      const token = localStorage.getItem("token");
-      console.log("Using authentication token:", token ? "Yes (token exists)" : "No (token missing)");
+      console.log("Making secure API PUT request to update user profile");
       
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { "Authorization": `Bearer ${token}` })
-        },
-        body: JSON.stringify(apiPayload),
-      })
-
-      if (!response.ok) {
-        console.error("API request failed with status:", response.status);
-        try {
-          const errorText = await response.text();
-          console.error("Error response:", errorText);
-        } catch (e) {
-          console.error("Couldn't read error response");
-        }
-        throw new Error(`Failed to update user profile: ${response.status} ${response.statusText}`);
-      }
-
-      console.log("API response status:", response.status);
-
-      const responseData = await response.json();
+      const responseData = await secureApi.put(`/api/users/${userId}`, apiPayload);
       console.log("API response data:", JSON.stringify(responseData));
       
       // Create merged user object

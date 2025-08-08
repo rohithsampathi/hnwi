@@ -9,8 +9,7 @@ import { StrategyAtomAnimation } from "./strategy-atom-animation"
 import { KeyInsights } from "./key-insights"
 import { StrategicDashboard } from "./strategic-dashboard"
 import { Paragraph } from "@/components/ui/typography"
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 interface HNWIThinkingSectionProps {
   industry: string
@@ -38,19 +37,10 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
 
     try {
       const query = `What are HNWIs thinking about ${selectedLocation} ${industry}?`
-      const response = await fetch(`${API_BASE_URL}/api/strategic-analysis`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, time_range: duration }), // Updated to include duration
+      const data = await secureApi.post('/api/strategic-analysis', { 
+        query, 
+        time_range: duration 
       })
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch analysis")
-      }
-
-      const data = await response.json()
       setAnalysisResult(data)
     } catch (error) {
       console.error("Error fetching analysis:", error)

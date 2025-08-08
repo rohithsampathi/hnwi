@@ -32,7 +32,7 @@ import { Heading2, Heading3, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import type React from "react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 interface User {
   firstName: string
@@ -135,27 +135,15 @@ export function HomeDashboard({
 
   const fetchDevelopments = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/developments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          page: 1,
-          page_size: 10,
-          sort_by: "date",
-          sort_order: "desc"
-        })
+      const data = await secureApi.post('/api/developments', {
+        page: 1,
+        page_size: 10,
+        sort_by: "date",
+        sort_order: "desc"
       });
-  
-      if (!response.ok) {
-        throw new Error(`Failed to fetch developments: ${response.status}`)
-      }
-  
-      const data = await response.json()
+      
       setDevelopments(data.developments || [])
     } catch (error) {
-      console.error("Error fetching developments:", error)
       toast({
         title: "Error",
         description: "Failed to fetch latest developments. Please try again later.",

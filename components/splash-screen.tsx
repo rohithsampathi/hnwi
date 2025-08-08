@@ -1,30 +1,61 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useTheme } from "@/contexts/theme-context"
 import { ParticlesBackground } from "./particles-background"
 import { ThemeToggle } from "./theme-toggle"
-import { Heading1, Lead, Paragraph } from "@/components/ui/typography"
+import { Heading1, Lead, Paragraph, Heading2 } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import { OnboardingPage } from "./onboarding-page"
+import { useOnboarding } from "@/contexts/onboarding-context"
+import { useToast } from "@/components/ui/use-toast"
+import { Shield, Lock, CheckCircle, Globe, Eye, Database, Key, ChevronLeft, Loader2, EyeOff } from "lucide-react"
 
-export function SplashScreen({ onLogin }: { onLogin: () => void }) {
+interface SplashScreenProps {
+  onLogin?: () => void;
+  onLoginSuccess?: (userData: any) => void;
+}
+
+export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
   const { theme } = useTheme()
+  const { resetOnboarding, setIsFromSignupFlow } = useOnboarding()
+  const { toast } = useToast()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleCreateAccount = () => {
     setShowOnboarding(true)
   }
 
+  const handleLoginClick = () => {
+    if (onLogin) {
+      onLogin()
+    } else {
+      setShowLoginForm(true)
+    }
+  }
+
   const handleBack = () => {
     console.log("Going back to splash screen")
     setShowOnboarding(false)
+    setShowLoginForm(false)
+    setError("")
   }
 
-  const handleOnboardingComplete = (userData) => {
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
+  const handleOnboardingComplete = (userData: any) => {
     // Handle successful registration
     console.log("User registered:", userData)
     
@@ -50,12 +81,278 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
     sessionStorage.setItem("skipSplash", "true");
     sessionStorage.setItem("currentPage", "dashboard");
     
-    // Navigate to dashboard after signup
-    window.location.href = "/";
+    // Call the onLoginSuccess callback if provided
+    if (onLoginSuccess) {
+      onLoginSuccess(authData)
+    } else {
+      // Fallback: Navigate to dashboard after signup
+      window.location.href = "/"
+    }
   }
 
+  const handleLogin = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      setIsLoading(true)
+      setError("")
+
+      try {
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+        })
+        
+        let data
+        try {
+          data = await response.json()
+        } catch (jsonError) {
+          throw new Error("Invalid response from server. Please try again.")
+        }
+        
+        if (!response.ok) {
+          throw new Error(data.detail || data.error || "Login failed. Please check your credentials.")
+        }
+        
+        const userData = {
+          userId: data.user_id,
+          email: data.email,
+          firstName: data.first_name || "User",
+          lastName: data.last_name || "",
+          profile: data.profile || {},
+          token: data.token || ""
+        }
+        
+        if (onLoginSuccess) {
+          onLoginSuccess(userData)
+        }
+        
+        resetOnboarding()
+        setIsFromSignupFlow(false)
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${userData.firstName}!`,
+          variant: "default",
+        })
+      } catch (error) {
+        console.error("Error during login:", error)
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : "Login failed. Please check your credentials and try again."
+        
+        setError(errorMessage)
+        
+        toast({
+          title: "Login Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [email, password, onLoginSuccess, resetOnboarding, setIsFromSignupFlow, toast]
+  )
+
   if (showOnboarding) {
-    return <OnboardingPage onComplete={handleOnboardingComplete} onLogin={onLogin} onBack={handleBack} />
+    return <OnboardingPage onComplete={handleOnboardingComplete} onLogin={handleLoginClick} onBack={handleBack} />
+  }
+
+  if (showLoginForm) {
+    return (
+      <>
+        <MetaTags
+          title="Login | HNWI Chronicles"
+          description="Access your HNWI Chronicles account. Dive into wealth intelligence and strategic insights for high-net-worth individuals."
+          image="https://hnwichronicles.com/login-og-image.jpg"
+          url="https://hnwichronicles.com/login"
+        />
+        <div className="min-h-screen flex flex-col bg-background">
+          <ParticlesBackground />
+
+          <div className="absolute top-4 right-4 z-10">
+            <ThemeToggle />
+          </div>
+          <div className="absolute top-4 left-4 z-10">
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              className="text-sm rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5"
+            >
+              <ChevronLeft className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+              Back
+            </Button>
+          </div>
+          <div className="flex-grow flex items-center justify-center p-4 pb-32 md:pb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md bg-card shadow-lg backdrop-blur-sm rounded-3xl p-6 md:p-8"
+              style={{
+                boxShadow:
+                  theme === "dark"
+                    ? "0 15px 35px rgba(156,163,175,0.3), 0 8px 20px rgba(156,163,175,0.2), 0 4px 10px rgba(156,163,175,0.1)"
+                    : "0 15px 35px rgba(75,85,99,0.3), 0 8px 20px rgba(75,85,99,0.2), 0 4px 10px rgba(75,85,99,0.1)",
+              }}
+            >
+              <div className="flex flex-col items-center mb-6">
+                <Image
+                  src="/logo.png"
+                  alt="HNWI Chronicles"
+                  width={80}
+                  height={80}
+                  className="mb-4"
+                  priority
+                />
+                <Heading2 className="text-3xl font-bold font-heading text-center text-card-foreground">
+                  Welcome Back
+                </Heading2>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div>
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+
+                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                <Button type="submit" className="w-full h-12 text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-1 md:mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Log In"
+                  )}
+                </Button>
+              </form>
+
+              <Paragraph className="text-sm mt-4 block mx-auto font-body text-center text-muted-foreground hover:text-primary cursor-pointer">
+                Forgot Password?
+              </Paragraph>
+            </motion.div>
+          </div>
+        
+          {/* Security Standards Section - Full Screen Width */}
+          <div className="w-full flex justify-center py-6 md:py-8 border-t border-border/20">
+            <div className="w-full max-w-7xl px-4">
+              <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
+                Enterprise Security Standards
+              </p>
+              
+              {/* Auto-scrolling container optimized for 55" screens */}
+              <div className="relative overflow-hidden w-full h-20">
+                <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
+                  {/* Security badges with larger sizing for 55" display */}
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
+                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
+                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
+                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
+                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
+                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
+                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  </div>
+                  
+                  {/* Duplicate set for seamless loop */}
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
+                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
+                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
+                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
+                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
+                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
+                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
+            <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
+              <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
+                A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className="font-semibold text-secondary">Market Unwinded AI</span>
+              </Paragraph>
+              <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
+                © 2025 All Rights Reserved. HNWI Chronicles.
+              </Paragraph>
+            </div>
+          </footer>
+        </div>
+      </>
+    )
   }
 
   return (
@@ -63,7 +360,7 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
       <MetaTags
         title="HNWI Chronicles – Your Gateway to Global Wealth Intelligence"
         description="Unlock exclusive insights, playbooks, and strategic intelligence tailored for High-Net-Worth and Ultra-High-Net-Worth Individuals. HNWI Chronicles empowers you with data-driven strategies, industry trends, and actionable frameworks to navigate the world of wealth and influence."
-        image="https://hnwichronicles.com/og-image.jpg" // Replace with actual image URL
+        image="https://hnwichronicles.com/og-image.jpg"
         url="https://montaigne.co/hnwichronicles"
       />
       <div
@@ -75,12 +372,12 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
           <ThemeToggle />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pb-32 md:pb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
-            className="z-10 text-center"
+            className="z-10 text-center w-full max-w-4xl"
           >
             {/* Globe animation */}
             <motion.div
@@ -118,13 +415,13 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               <span className="text-secondary">CHRONICLES</span>
             </Heading1>
 
-            <Lead className="mb-8 text-muted-foreground">Your Private HNWI Intelligence Ally</Lead>
+            <Lead className="mb-8 text-muted-foreground">Built for UHNWI and HNWI to build their legacy and chronicles</Lead>
 
-            <div className="flex space-x-4 justify-center">
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center items-center px-4">
               {/* Login button */}
               <Button
-                onClick={onLogin}
-                className="w-[200px] h-[50px] text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                onClick={handleLoginClick}
+                className="w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
                 Log In
               </Button>
@@ -132,21 +429,100 @@ export function SplashScreen({ onLogin }: { onLogin: () => void }) {
               {/* Join HNWI button */}
               <Button
                 onClick={() => window.open('https://www.hnwichronicles.com/hnwi-world#pricing', '_blank')}
-                className="w-[200px] h-[50px] text-lg rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                className="w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
               >
                 Join HNWI
               </Button>
             </div>
+
           </motion.div>
+          
+          {/* Security Standards Section - Centered and Full Width for 55" Display */}
+          <div className="w-full flex justify-center mt-8 md:mt-12 py-6 md:py-8 border-t border-border/20">
+            <div className="w-full max-w-7xl px-4">
+              <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
+                Enterprise Security Standards
+              </p>
+              
+              {/* Auto-scrolling container optimized for 55" screens */}
+              <div className="relative overflow-hidden w-full h-20">
+                <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
+                  {/* Security badges with larger sizing for 55" display */}
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
+                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
+                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
+                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
+                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
+                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
+                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  </div>
+                  
+                  {/* Duplicate set for seamless loop */}
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
+                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
+                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
+                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
+                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
+                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
+                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  </div>
+                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
+                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
+                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <footer className="w-full py-4 px-4 text-center z-10 absolute bottom-0">
-          <Paragraph className="text-xs text-muted-foreground">
-            © 2025 All Rights Reserved. HNWI Chronicles.
-          </Paragraph>
+        <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
+          <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
+            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
+              A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className="font-semibold text-secondary">Market Unwinded AI</span>
+            </Paragraph>
+            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
+              © 2025 All Rights Reserved. HNWI Chronicles.
+            </Paragraph>
+          </div>
         </footer>
       </div>
     </>
   )
 }
-

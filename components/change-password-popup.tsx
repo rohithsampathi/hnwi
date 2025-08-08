@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { Eye, EyeOff } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
+import { secureApi } from "@/lib/secure-api"
 
 interface ChangePasswordPopupProps {
   isOpen: boolean
@@ -27,8 +28,6 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
   const { toast } = useToast()
   const { theme } = useTheme()
 
-  const API_BASE_URL = "https://uwind.onrender.com"
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
@@ -42,20 +41,10 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
 
     setIsLoading(true)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}/password`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          current_password: oldPassword,
-          new_password: newPassword,
-        }),
+      await secureApi.put(`/api/users/${userId}/password`, {
+        current_password: oldPassword,
+        new_password: newPassword,
       })
-
-      if (!response.ok) {
-        throw new Error("Failed to change password")
-      }
 
       toast({
         title: "Success",

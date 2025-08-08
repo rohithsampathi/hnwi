@@ -1,6 +1,6 @@
 // lib/api.ts
 
-import { API_BASE_URL } from "@/config/api"
+import { SecureAPI } from "@/lib/secure-api"
 
 export interface CryptoData {
   symbol: string
@@ -31,12 +31,9 @@ export interface CryptoResponse {
 
 export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/financial/crypto?time_range=${timeRange}`)
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-    }
-    const data: CryptoResponse = await response.json()
+    const data: CryptoResponse = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/financial/crypto`, { time_range: timeRange })
+    )
     return data
   } catch (error) {
     throw error
@@ -67,18 +64,9 @@ export interface SocialEvent {
 
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/events/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch events')
-    }
-
-    const data = await response.json()
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/events/`)
+    )
     return data.events.map((event: any) => ({
       id: event.id,
       name: event.name,
@@ -131,20 +119,10 @@ export interface Opportunity {
 
 export async function getOpportunities(): Promise<Opportunity[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/opportunities`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      // Prevent caching issues in server-side rendering
-      cache: 'no-store'
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error fetching opportunities: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/opportunities`),
+      { cache: 'no-store' }
+    );
     return data as Opportunity[];
   } catch (error) {
     return [];
@@ -273,20 +251,17 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
   try {
     const userId = ownerId || getCurrentUserId();
     // Call backend API directly for assets
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/assets/detailed?owner_id=${userId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error fetching Crown Vault assets: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/assets/detailed`, { owner_id: userId }),
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        cache: 'no-store'
+      }
+    );
     const assets = data.assets || data || [];
     
     // Ensure each asset has proper structure
@@ -320,43 +295,49 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     const userId = ownerId || getCurrentUserId();
     
     // Fetch stats, heirs, and assets in parallel  
-    const [statsResponse, heirsResponse, assetsResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/crown-vault/stats?owner_id=${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': userId
-        },
-        cache: 'no-store'
-      }),
-      fetch(`${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': userId
-        },
-        cache: 'no-store'
-      }),
-      fetch(`${API_BASE_URL}/api/crown-vault/assets/detailed?owner_id=${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': userId
-        },
-        cache: 'no-store'
-      })
+    const [statsData, heirsData, assetsData] = await Promise.all([
+      SecureAPI.secureJsonFetch(
+        SecureAPI.buildUrl(`/api/crown-vault/stats`, { owner_id: userId }),
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          cache: 'no-store'
+        }
+      ).catch(() => null),
+      SecureAPI.secureJsonFetch(
+        SecureAPI.buildUrl(`/api/crown-vault/heirs/`, { owner_id: userId }),
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          cache: 'no-store'
+        }
+      ).catch(() => []),
+      SecureAPI.secureJsonFetch(
+        SecureAPI.buildUrl(`/api/crown-vault/assets/detailed`, { owner_id: userId }),
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId
+          },
+          cache: 'no-store'
+        }
+      ).catch(() => [])
     ]);
 
-    if (!statsResponse.ok) {
-      throw new Error(`Error fetching Crown Vault stats: ${statsResponse.status}`);
+    if (!statsData) {
+      throw new Error(`Error fetching Crown Vault stats`);
     }
 
-    const statsData = await statsResponse.json();
-    const heirsData = heirsResponse.ok ? await heirsResponse.json() : [];
     // Backend returns direct array, not wrapped in {heirs: []}
-    const heirsArray = Array.isArray(heirsData) ? heirsData : (heirsData.heirs || []);
+    const heirsArray = Array.isArray(heirsData) ? heirsData : (heirsData?.heirs || []);
     const heirsCount = heirsArray.length;
-    const assetsData = assetsResponse.ok ? await assetsResponse.json() : [];
     
 
     // Generate recent activity from assets (most recent first)
@@ -402,22 +383,17 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
     const userId = ownerId || getCurrentUserId();
     
     // Call backend API directly (backend requires trailing slash)
-    const url = `${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}&t=${Date.now()}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error fetching Crown Vault heirs: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/heirs/`, { owner_id: userId, t: Date.now().toString() }),
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        cache: 'no-store'
+      }
+    );
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);
@@ -452,24 +428,20 @@ export async function processCrownVaultAssetsBatch(
   try {
     const userId = ownerId || getCurrentUserId();
     // Call backend API directly for asset batch processing
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/assets/batch?owner_id=${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      body: JSON.stringify({
-        raw_text: rawText,
-        context: context || ''
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error processing assets: ${response.status} - ${errorText}`);
-    }
-
-    return await response.json();
+    return await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/assets/batch`, { owner_id: userId }),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        body: JSON.stringify({
+          raw_text: rawText,
+          context: context || ''
+        })
+      }
+    );
   } catch (error) {
     throw error;
   }
@@ -499,21 +471,17 @@ export async function createHeir(
     }, {} as any);
     
     // Use backend API directly for heir creation
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/?owner_id=${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      body: JSON.stringify(filteredData)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error creating heir: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/heirs/`, { owner_id: userId }),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        body: JSON.stringify(filteredData)
+      }
+    );
     
     // Transform backend response to match frontend interface
     return {
@@ -554,21 +522,17 @@ export async function updateHeir(
       return acc;
     }, {} as any);
     
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
-      },
-      body: JSON.stringify(filteredData)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error updating heir: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/heirs/${heirId}`, { owner_id: userId }),
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        },
+        body: JSON.stringify(filteredData)
+      }
+    );
     
     return {
       id: data.heir?.id || heirId,
@@ -587,18 +551,16 @@ export async function updateHeir(
 export async function deleteHeir(heirId: string, ownerId?: string): Promise<void> {
   try {
     const userId = ownerId || getCurrentUserId();
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId
+    await SecureAPI.secureFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/heirs/${heirId}`, { owner_id: userId }),
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId
+        }
       }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error deleting heir: ${response.status} - ${errorText}`);
-    }
+    );
   } catch (error) {
     throw error;
   }
@@ -614,22 +576,17 @@ export async function updateAssetHeirs(
     const userId = ownerId || getCurrentUserId();
     
     // Backend needs current user ID as query parameter for authentication and ownership validation
-    const response = await fetch(`${API_BASE_URL}/api/crown-vault/assets/${assetId}/heirs?owner_id=${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId  // Send actual current user ID
-      },
-      body: JSON.stringify(heirIds) // Array of heir ID strings
-    });
-
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error updating asset heirs: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
+    const data = await SecureAPI.secureJsonFetch(
+      SecureAPI.buildUrl(`/api/crown-vault/assets/${assetId}/heirs`, { owner_id: userId }),
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId  // Send actual current user ID
+        },
+        body: JSON.stringify(heirIds) // Array of heir ID strings
+      }
+    );
     
     return {
       success: data.success || true,

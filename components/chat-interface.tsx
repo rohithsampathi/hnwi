@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/components/ui/use-toast"
-import { API_BASE_URL } from "@/config/api"
+import { secureApi } from "@/lib/secure-api"
 import { Loader2, Send } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "@/contexts/theme-context"
@@ -39,21 +39,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat/message/${conversationId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: input }),
+      const data = await secureApi.post(`/api/chat/message/${conversationId}`, { 
+        message: input 
       })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
       if (!data || !data.response) {
         console.error("Invalid response format:", data)
         throw new Error("Invalid response format from server")

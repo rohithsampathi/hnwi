@@ -7,6 +7,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { redirect } from "next/navigation"
 import { logger } from "./secure-logger"
 import { SessionManager } from "./session-manager"
+import { secureApi } from "./secure-api"
 
 // User interface to match what LoginPage.tsx expects
 interface User {
@@ -59,8 +60,7 @@ function getJWTSecret(): Uint8Array {
   
   return new TextEncoder().encode(secret);
 }
-// Import from config to ensure consistency
-import { API_BASE_URL } from "@/config/api"
+// Using secure API wrapper to prevent URL exposure
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -119,78 +119,48 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
     }
     
     try {
-      // Call the FastAPI backend login endpoint
-      let loginEndpoint = `${API_BASE_URL}/api/login`;
+      // Use secure API wrapper to prevent URL exposure
+      const data = await secureApi.post('/api/login', loginData);
       
-      let response = await fetch(loginEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData)
-      });
+      // If we get here, the request was successful (secureApi throws on failure)
       
-      // Get the data as JSON directly
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        return { 
-          success: false, 
-          error: `Invalid response from server: ${response.status} ${response.statusText}`
-        };
+      // Create a user object from the response data
+      const firstName = data.first_name || "User";
+      const lastName = data.last_name || "";
+      
+      // Extract purchased reports from user profile if available
+      const purchasedReports = data.profile?.purchased_reports || [];
+      
+      // Create a user object compatible with both approaches
+      const user: User = {
+        id: data.user_id,
+        email: data.email,
+        firstName: firstName,
+        lastName: lastName,
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        
+        // Fields from direct API call
+        user_id: data.user_id,
+        profile: {
+          ...(data.profile || {}),
+          purchased_reports: purchasedReports
+        }
       }
       
-      if (response.ok) {
-        // Create a user object from the response data
-        const firstName = data.first_name || "User";
-        const lastName = data.last_name || "";
-        
-        // Extract purchased reports from user profile if available
-        const purchasedReports = data.profile?.purchased_reports || [];
-        
-        // Create a user object compatible with both approaches
-        const user: User = {
-          id: data.user_id,
-          email: data.email,
-          firstName: firstName,
-          lastName: lastName,
-          role: "user",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          
-          // Fields from direct API call
-          user_id: data.user_id,
-          profile: {
-            ...(data.profile || {}),
-            purchased_reports: purchasedReports
-          }
-        }
-        
-        const token = data.token || await createToken(user)
-        cookies().set("session", token, COOKIE_OPTIONS)
-        
-        return { 
-          success: true, 
-          user,
-          token
-        }
-      } else {
-        // Handle authentication failure
-        let errorMessage = "Invalid credentials";
-        if (data) {
-          errorMessage = data.detail || data.message || data.error || errorMessage;
-        } else {
-          errorMessage = response.statusText || errorMessage;
-        }
-        
-        return { 
-          success: false, 
-          error: errorMessage
-        }
+      const token = data.token || await createToken(user)
+      cookies().set("session", token, COOKIE_OPTIONS)
+      
+      return { 
+        success: true, 
+        user,
+        token
       }
     } catch (loginError) {
-      return { success: false, error: "Login service unavailable" }
+      // Secure API wrapper provides safe error messages
+      const errorMessage = loginError instanceof Error ? loginError.message : "Authentication failed";
+      return { success: false, error: errorMessage }
     }
   } catch (error) {
     return { success: false, error: "Login failed" }
@@ -207,32 +177,25 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
       // Prepare data for FastAPI user creation
       const fullName = `${userData.firstName} ${userData.lastName || ''}`.trim();
       
-      // Attempt FastAPI user creation
-      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: userData.email,
-          name: fullName,
-          password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
-          // Include other required UserCreate fields with default values
-          net_worth: userData.net_worth || 0,
-          city: userData.city || "",
-          country: userData.country || "",
-          bio: userData.bio || "",
-          industries: userData.industries || [],
-          phone_number: userData.phone_number || "",
-          office_address: userData.office_address || "",
-          crypto_investor: userData.crypto_investor || false,
-          land_investor: userData.land_investor || false,
-          linkedin: userData.linkedin || null
-        })
+      // Use secure API for user creation
+      const data = await secureApi.post('/api/users/profile', {
+        email: userData.email,
+        name: fullName,
+        password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
+        // Include other required UserCreate fields with default values
+        net_worth: userData.net_worth || 0,
+        city: userData.city || "",
+        country: userData.country || "",
+        bio: userData.bio || "",
+        industries: userData.industries || [],
+        phone_number: userData.phone_number || "",
+        office_address: userData.office_address || "",
+        crypto_investor: userData.crypto_investor || false,
+        land_investor: userData.land_investor || false,
+        linkedin: userData.linkedin || null
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      // If we get here, the request was successful
         
         // Extract user ID from the response
         const userId = data.user_id;
@@ -267,21 +230,10 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
         cookies().set("session", token, COOKIE_OPTIONS)
 
         return { success: true, user, token }
-      } else {
-        let errorMessage = "Sign up failed with the backend";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch (e) {
-          // If we can't parse the error JSON, use the status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        
-        return { success: false, error: errorMessage }
-      }
     } catch (backendError) {
-      console.error("Backend signup failed:", backendError)
-      return { success: false, error: "Sign up service unavailable" }
+      // Secure API wrapper provides safe error messages
+      const errorMessage = backendError instanceof Error ? backendError.message : "Sign up failed";
+      return { success: false, error: errorMessage }
     }
   } catch (error) {
     return { success: false, error: "Sign up failed" }
@@ -369,18 +321,8 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         updateData[key] === undefined && delete updateData[key]
       );
 
-      // Attempt FastAPI backend update
-      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      if (response.ok) {
-        // Get updated data from the backend
-        const data = await response.json();
+      // Use secure API for user update
+      const data = await secureApi.put(`/api/users/${userId}`, updateData);
         
         // Create updated user object preserving the correct ID
         const updatedUser: User = {
@@ -412,24 +354,12 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         cookies().set("session", token, COOKIE_OPTIONS)
 
         return { success: true, user: updatedUser, token }
-      } else {
-        let errorMessage = "Failed to update user on backend";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch (e) {
-          // If we can't parse the error JSON, use the status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        
-        return { success: false, error: errorMessage }
-      }
     } catch (backendError) {
-      console.error("Backend update failed:", backendError)
-      return { success: false, error: "Update service unavailable" }
+      // Secure API wrapper provides safe error messages
+      const errorMessage = backendError instanceof Error ? backendError.message : "Update failed";
+      return { success: false, error: errorMessage }
     }
   } catch (error) {
-    console.error("User update failed:", error)
     return { success: false, error: "Update failed" }
   }
 }

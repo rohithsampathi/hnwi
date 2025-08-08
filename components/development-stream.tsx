@@ -53,7 +53,7 @@ interface DevelopmentStreamProps {
   expandedDevelopmentId: string | null
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 export function DevelopmentStream({
   selectedIndustry,
@@ -84,20 +84,7 @@ export function DevelopmentStream({
         time_range: duration,
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/developments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-      }
-
-      const data = await response.json()
+      const data = await secureApi.post('/api/developments', requestBody);
       if (data.developments && Array.isArray(data.developments)) {
         const invalidDateEntries = data.developments.filter(
           (dev) => !dev.date || dev.date === "" || isNaN(new Date(dev.date).getTime()),

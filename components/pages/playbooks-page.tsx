@@ -12,6 +12,7 @@ import { Loader2, Shield } from "lucide-react"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { useToast } from "@/components/ui/use-toast"
 import { MetaTags } from "../meta-tags"
+import { secureApi } from "@/lib/secure-api"
 
 interface PurchasedReport {
   report_id: string
@@ -66,7 +67,6 @@ const FALLBACK_PLAYBOOK: Playbook = {
   industry: "Real Estate",
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
 export function PlayBooksPage({
   onNavigate,
@@ -159,54 +159,27 @@ export function PlayBooksPage({
       if (userId && token) {
         try {
           // First fetch user data to get purchased reports
-          const userResponse = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          if (userResponse.ok) {
-            const userDataResponse: UserData = await userResponse.json();
+          const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`);
             
-            // Filter active purchased reports
-            const activeReports = userDataResponse.purchased_reports.filter(report => report.is_active);
-            
-            // If there are active reports, fetch details for each
-            if (activeReports.length > 0) {
-              const playbookPromises = activeReports.map(async (report) => {
-                try {
-                  const reportResponse = await fetch(`${API_BASE_URL}/api/reports/${report.report_id}`, {
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`
-                    }
-                  });
-
-                  if (reportResponse.ok) {
-                    const reportData: ReportData = await reportResponse.json();
+          // Filter active purchased reports
+          const activeReports = userDataResponse.purchased_reports.filter(report => report.is_active);
+          
+          // If there are active reports, fetch details for each
+          if (activeReports.length > 0) {
+            const playbookPromises = activeReports.map(async (report) => {
+              try {
+                const reportData: ReportData = await secureApi.get(`/api/reports/${report.report_id}`);
                     
-                    return {
-                      id: report.report_id,
-                      title: reportData.metadata?.title || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.title : 'Untitled Playbook'),
-                      description: reportData.metadata?.description || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.description : ''),
-                      image: reportData.metadata?.image || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.image : "/placeholder.svg?height=200&width=300&text=Report"),
-                      isPurchased: true,
-                      industry: reportData.metadata?.industry || (report.report_id === "pb_001" ? "Real Estate" : "Unknown"),
-                      valid_until: report.valid_until,
-                      purchased_at: report.purchased_at
-                    };
-                  } else {
-                    // If API fails for a specific report, use fallback for known reports
-                    if (report.report_id === "pb_001") {
-                      return {
-                        ...FALLBACK_PLAYBOOK,
-                        valid_until: report.valid_until,
-                        purchased_at: report.purchased_at
-                      };
-                    }
-                    return null;
-                  }
+                return {
+                  id: report.report_id,
+                  title: reportData.metadata?.title || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.title : 'Untitled Playbook'),
+                  description: reportData.metadata?.description || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.description : ''),
+                  image: reportData.metadata?.image || (report.report_id === "pb_001" ? FALLBACK_PLAYBOOK.image : "/placeholder.svg?height=200&width=300&text=Report"),
+                  isPurchased: true,
+                  industry: reportData.metadata?.industry || (report.report_id === "pb_001" ? "Real Estate" : "Unknown"),
+                  valid_until: report.valid_until,
+                  purchased_at: report.purchased_at
+                };
                 } catch (error) {
                   // If error fetching report details, use fallback for known reports
                   if (report.report_id === "pb_001") {
@@ -225,7 +198,6 @@ export function PlayBooksPage({
               setIsLoading(false);
               return;
             }
-          }
         } catch (apiError) {
           console.error("API error:", apiError);
           // Continue to fallback handling

@@ -25,8 +25,7 @@ import CrownVaultPage from "./pages/crown-vault-page"
 import { handleLogin, handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 
-// Force direct import with explicit path
-import { LoginPage } from "@/components/login-page"
+// LoginPage is now consolidated into SplashScreen
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
 
@@ -626,7 +625,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     
     switch (currentPage) {
       case "splash":
-        return <SplashScreen onLogin={handleLoginClick} />
+        return <SplashScreen onLogin={handleLoginClick} onLoginSuccess={handleLoginSuccess} />
 
       case "onboarding":
         return (
@@ -638,65 +637,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         )
 
       case "login":
-        try {
-          // Use the LoginPage with direct API call
-          return <LoginPage
-            onLoginSuccess={handleLoginSuccess}
-            onBack={() => handleNavigation("splash")}
-          />;
-        } catch (error) {
-          console.error("Error rendering LoginPage:", error);
-          // Fallback simple login form if there's an error with the LoginPage component
-          return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-blue-900 to-black">
-              <div className="w-full max-w-md bg-black/60 backdrop-blur-md p-8 rounded-xl border border-blue-500/30 shadow-xl">
-                <h2 className="text-2xl font-bold text-white mb-6 text-center">HNWI Chronicles Login</h2>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const form = e.target as HTMLFormElement;
-                  const email = (form.elements.namedItem('email') as HTMLInputElement).value;
-                  const password = (form.elements.namedItem('password') as HTMLInputElement).value;
-                  handleLoginSuccessClick({email, password});
-                }} className="space-y-4">
-                  <div>
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Email Address"
-                      className="w-full p-3 rounded bg-blue-950 text-white border border-blue-500/50 focus:border-blue-400"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="password"
-                      name="password"
-                      placeholder="Password"
-                      className="w-full p-3 rounded bg-blue-950 text-white border border-blue-500/50 focus:border-blue-400"
-                      required
-                    />
-                  </div>
-                  {error && <div className="text-red-500 text-sm">{error}</div>}
-                  <button
-                    type="submit"
-                    className="w-full p-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? "Logging in..." : "Log In"}
-                  </button>
-                </form>
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => handleNavigation("splash")}
-                    className="text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    Back to Home
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        }
+        // Login is now handled within SplashScreen
+        return <SplashScreen onLoginSuccess={handleLoginSuccess} />
 
       case "dashboard":
         // If not authenticated but trying to view dashboard, redirect to splash

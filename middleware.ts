@@ -23,12 +23,23 @@ export function middleware(request: NextRequest) {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
 
-  // Enhanced Content Security Policy with nonce support
+  // Enhanced Content Security Policy with nonce and hash support
   const isDev = process.env.NODE_ENV !== "production";
+  
+  // Specific hashes for Next.js inline scripts (from the error messages)
+  const nextJsHashes = [
+    "'sha256-Q+8tPsjVtiDsjF/Cv8FMOpg2Yg91oKFKDAJat1PPb2g='",
+    "'sha256-KVGCjOWd6A4YXQjBVaM9km5TM69ci9SPmTA9fM0c+TI='", 
+    "'sha256-hDLTg33Ow2YmZMgUT11FSMjnOrvW8RFwQIxTAyUO4TE='",
+    "'sha256-gKmPYQ60ilP/jPs99aSTUzZHdLDWMaHvFHi8vtyqnUY='",
+    "'sha256-dWyLesJo+5wsXLVIIo8A+eHgP5Ekxez/vXrqYE4wlK8='",
+    "'sha256-IYQwQlCS7tlDdfed8qCp+uGm3rBPumW7jftgB2PJ+k0='"
+  ];
+  
   const cspDirectives = [
     "default-src 'self'",
-    // Use nonce for inline scripts instead of unsafe-inline
-    `script-src 'self' 'nonce-${nonce}' ${isDev ? "'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
+    // Include both nonce and specific hashes for Next.js inline scripts
+    `script-src 'self' 'nonce-${nonce}' ${nextJsHashes.join(' ')} ${isDev ? "'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
     // Style sources with nonce support
     `style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
