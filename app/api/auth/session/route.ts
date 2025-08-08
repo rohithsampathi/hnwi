@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server'
 import { handleLogin } from '@/lib/auth-actions'
 import { cookies } from 'next/headers'
+import { logger } from '@/lib/secure-logger'
 
 // GET handler for retrieving the session
 export async function GET() {
@@ -32,7 +33,7 @@ export async function GET() {
         // For now, don't fall back to demo user if there's a token present but invalid
         // that would make it impossible to see actual login results
       } catch (error) {
-        console.error('Error parsing user session data:', error);
+        logger.error('Error parsing user session data', { error: error instanceof Error ? error.message : String(error) });
         return NextResponse.json({ user: null }, { status: 200 });
       }
     }

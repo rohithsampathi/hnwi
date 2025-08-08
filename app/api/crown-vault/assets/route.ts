@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { validateInput, assetSchema, queryParamSchema } from '@/lib/validation';
+import { logger } from '@/lib/secure-logger';
+import { ApiAuth } from '@/lib/api-auth';
 
 interface Asset {
   asset_id: string;
@@ -16,15 +19,55 @@ interface Asset {
   created_at: string;
 }
 
-export async function GET(request: NextRequest) {
+// Protected GET handler using authentication middleware
+export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
   try {
+    // Validate request size
+    if (!ApiAuth.validateRequestSize(request)) {
+      return NextResponse.json(
+        { error: 'Request too large' },
+        { status: 413 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
-    const ownerId = searchParams.get('owner_id');
+    
+    // Validate query parameters
+    const queryValidation = validateInput(queryParamSchema, {
+      owner_id: searchParams.get('owner_id'),
+      page: searchParams.get('page'),
+      limit: searchParams.get('limit')
+    });
+    
+    if (!queryValidation.success) {
+      logger.warn("Asset GET validation failed", { 
+        errors: queryValidation.errors,
+        userId: user.id
+      });
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: queryValidation.errors },
+        { status: 400 }
+      );
+    }
+
+    const { owner_id: ownerId } = queryValidation.data!;
     
     if (!ownerId) {
       return NextResponse.json(
         { error: 'Owner ID is required' },
         { status: 400 }
+      );
+    }
+
+    // Validate ownership - users can only access their own assets
+    if (!await ApiAuth.validateOwnership(user.id, ownerId)) {
+      logger.warn("Asset access denied - ownership validation failed", {
+        userId: user.id,
+        requestedOwnerId: ownerId
+      });
+      return NextResponse.json(
+        { error: 'Access denied - insufficient permissions' },
+        { status: 403 }
       );
     }
 
@@ -92,25 +135,43 @@ export async function GET(request: NextRequest) {
       return sum + (asset.asset_data?.value || 0);
     }, 0);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       assets: transformedAssets,
       total_count: transformedAssets.length,
       total_value: totalValue
     }, { status: 200 });
 
+    return ApiAuth.addSecurityHeaders(response);
+
   } catch (error) {
-    console.error('Crown Vault assets fetch error:', error);
+    logger.error('Crown Vault assets fetch error', { 
+      error: error instanceof Error ? error.message : String(error),
+      userId: user.id
+    });
     // Return empty assets on error to prevent UI breaking
-    return NextResponse.json({
+    return ApiAuth.addSecurityHeaders(NextResponse.json({
       assets: [],
       total_count: 0,
       total_value: 0
-    }, { status: 200 });
+    }, { status: 200 }));
   }
-}
+}, { 
+  requireAuth: true, 
+  rateLimit: 'standard',
+  auditLog: true 
+});
 
-export async function POST(request: NextRequest) {
+// Protected POST handler using authentication middleware  
+export const POST = ApiAuth.withAuth(async (request: NextRequest, user) => {
   try {
+    // Validate request size
+    if (!ApiAuth.validateRequestSize(request)) {
+      return NextResponse.json(
+        { error: 'Request too large' },
+        { status: 413 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const ownerId = searchParams.get('owner_id');
     
@@ -121,34 +182,69 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate ownership - users can only create assets for themselves
+    if (!await ApiAuth.validateOwnership(user.id, ownerId)) {
+      logger.warn("Asset creation denied - ownership validation failed", {
+        userId: user.id,
+        requestedOwnerId: ownerId
+      });
+      return NextResponse.json(
+        { error: 'Access denied - insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const assetData = await request.json();
     
-    // In a real implementation, this would validate and save to database
+    // Validate asset data
+    const validation = validateInput(assetSchema, assetData);
+    if (!validation.success) {
+      logger.warn("Asset POST validation failed", { 
+        errors: validation.errors,
+        userId: user.id
+      });
+      return NextResponse.json(
+        { error: 'Invalid asset data', details: validation.errors },
+        { status: 400 }
+      );
+    }
+    
+    // Create asset with validated data
+    const validatedData = validation.data!;
     const newAsset: Asset = {
       asset_id: `asset_${Date.now()}`,
       asset_data: {
-        name: assetData.name || "Unnamed Asset",
-        asset_type: assetData.asset_type || "Other",
-        value: assetData.value || 0,
-        currency: assetData.currency || "USD",
-        location: assetData.location,
-        notes: assetData.notes
+        name: validatedData.name,
+        asset_type: validatedData.asset_type,
+        value: validatedData.value,
+        currency: validatedData.currency,
+        location: validatedData.location || '',
+        notes: validatedData.notes || ''
       },
-      heir_ids: assetData.heir_ids || [],
-      heir_names: assetData.heir_names || [],
+      heir_ids: validatedData.heir_ids || [],
+      heir_names: validatedData.heir_names || [],
       created_at: new Date().toISOString()
     };
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       asset: newAsset
     }, { status: 201 });
 
+    return ApiAuth.addSecurityHeaders(response);
+
   } catch (error) {
-    console.error('Crown Vault asset creation error:', error);
-    return NextResponse.json(
+    logger.error('Crown Vault asset creation error', { 
+      error: error instanceof Error ? error.message : String(error),
+      userId: user.id
+    });
+    return ApiAuth.addSecurityHeaders(NextResponse.json(
       { error: 'Failed to create asset' },
       { status: 500 }
-    );
+    ));
   }
-}
+}, { 
+  requireAuth: true, 
+  rateLimit: 'strict',
+  auditLog: true 
+});

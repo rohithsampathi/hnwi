@@ -85,39 +85,26 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           return;
         }
         
-        // First check if we have a user object stored in localStorage from a successful login
-        const storedUserObject = localStorage.getItem("userObject");
-        if (storedUserObject && !user) { // Only set if we don't already have a user
+        // SECURITY: Check for display data in sessionStorage (non-sensitive only)
+        const storedUserDisplay = sessionStorage.getItem("userDisplay");
+        if (storedUserDisplay && !user) {
           try {
-            const userObj = JSON.parse(storedUserObject);
-            setUser(userObj);
-            setHasCheckedSession(true);
-            setIsSessionCheckComplete(true);
-            setIsLoading(false);
-            
-            // Ensure token and userId are still in localStorage
-            if (userObj.id) {
-              localStorage.setItem("userId", userObj.id);
-              localStorage.setItem("userEmail", userObj.email || "");
-              
-              // Ensure token exists - very important for session persistence
-              if (!localStorage.getItem("token")) {
-                localStorage.setItem("token", "recovered-session-token");
-              }
-            }
-            
-            return; // Skip API call if we have a stored user
+            const userDisplay = JSON.parse(storedUserDisplay);
+            // This is just display data - still need to verify with server
+            // Continue with API validation below
           } catch (e) {
-            // Continue with API call if parsing fails
-            // Error parsing stored user object
+            // Clear invalid display data
+            sessionStorage.removeItem("userDisplay");
           }
         }
         
-        // Only proceed with API session check if we don't already have a user
-        if (!user && !hasCheckedSession) {
+        // Always validate session with server (secure approach)
+        if (!hasCheckedSession) {
           setIsLoading(true);
-          const response = await fetch("/api/auth/session")
-          const data = await response.json()
+          const response = await fetch("/api/auth/session", {
+            credentials: 'include' // Include httpOnly cookies
+          });
+          const data = await response.json();
   
           if (isMounted) {
             if (data.user) {
@@ -136,24 +123,16 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               
               setUser(userObj);
   
-              // Store the ID from API response (user_id or id if available)
-              const userId = data.user.user_id || data.user.id;
-              if (userId) {
-                localStorage.setItem("userId", userId);
-                localStorage.setItem("userEmail", data.user.email);
-                
-                // Always ensure we have a token for session persistence
-                if (data.token) {
-                  localStorage.setItem("token", data.token);
-                } else {
-                  localStorage.setItem("token", "session-token-" + Date.now());
-                }
-                
-                // Store the complete user object for future session recovery
-                localStorage.setItem("userObject", JSON.stringify(userObj));
-              }
+              // SECURITY: Store only non-sensitive display data in sessionStorage
+              sessionStorage.setItem("userDisplay", JSON.stringify({
+                firstName: userObj.firstName,
+                lastName: userObj.lastName,
+                email: userObj.email,
+                role: userObj.role
+              }));
             } else {
               setUser(null);
+              sessionStorage.removeItem("userDisplay");
             }
             
             setHasCheckedSession(true);

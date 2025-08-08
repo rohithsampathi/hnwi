@@ -97,77 +97,93 @@ export default function Home() {
       return "dashboard"; // Default for root path when authenticated
     };
     
-    // Check for authentication
-    const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
-    const userObject = localStorage.getItem("userObject");
-    
-    
-    // Handle authentication state without triggering infinite loop
-    const isAuthenticated = !!(token && userId);
-    
-    // Only update the logged in state if it's different
-    if (isAuthenticated !== isLoggedIn) {
-      setIsLoggedIn(isAuthenticated);
-    }
-    
-    // Force authentication recovery if we have a userObject but missing token
-    // But don't set state again to avoid infinite loop
-    if (!token && userObject) {
+    // SECURITY: Check authentication via server-side session instead of client storage
+    const checkAuthStatus = async () => {
       try {
-        const parsedUser = JSON.parse(userObject);
-        if (parsedUser && parsedUser.id) {
-          localStorage.setItem("userId", parsedUser.id);
-          localStorage.setItem("token", "recovered-session-token");
-          // Don't set isLoggedIn here - we'll pick it up on the next render cycle naturally
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include', // Include httpOnly cookies
+        });
+        
+        if (response.ok) {
+          const sessionData = await response.json();
+          const isAuthenticated = !!sessionData.user;
+          
+          // Only update state if different
+          if (isAuthenticated !== isLoggedIn) {
+            setIsLoggedIn(isAuthenticated);
+          }
+          
+          // Store only display data in sessionStorage
+          if (sessionData.user) {
+            sessionStorage.setItem("userDisplay", JSON.stringify({
+              firstName: sessionData.user.firstName,
+              lastName: sessionData.user.lastName,
+              email: sessionData.user.email,
+              role: sessionData.user.role
+            }));
+          }
+          return isAuthenticated;
+        } else {
+          if (isLoggedIn) {
+            setIsLoggedIn(false);
+          }
+          sessionStorage.removeItem("userDisplay");
+          return false;
         }
-      } catch (e) {
-        // Error parsing userObject
+      } catch (error) {
+        if (isLoggedIn) {
+          setIsLoggedIn(false);
+        }
+        sessionStorage.removeItem("userDisplay");
+        return false;
       }
-    }
-    
-    // Determine the target route
-    if (isAuthenticated) {
-      // For authenticated users
-      
-      // Priority 1: Check for explicit redirect request
-      const redirectTo = localStorage.getItem("redirectTo");
-      if (redirectTo) {
-        console.log("Using redirectTo:", redirectTo);
-        setTargetRoute(redirectTo);
-        localStorage.removeItem("redirectTo");
-      } 
-      // Priority 2: Use persisted page from session storage (for refresh cases)
-      else {
-        const currentPage = sessionStorage.getItem("currentPage");
-        if (currentPage && currentPage !== "splash" && currentPage !== "login") {
-          setTargetRoute(currentPage);
+    };
+
+    // Execute auth check and handle routing
+    checkAuthStatus().then(isAuthenticated => {
+      // Determine the target route based on auth status
+      if (isAuthenticated) {
+        // For authenticated users
+        
+        // Priority 1: Check for explicit redirect request (secure fallback)
+        const redirectTo = sessionStorage.getItem("redirectTo");
+        if (redirectTo) {
+          setTargetRoute(redirectTo);
+          sessionStorage.removeItem("redirectTo");
         } 
-        // Priority 3: Extract route from current URL path
+        // Priority 2: Use persisted page from session storage (for refresh cases)
         else {
-          const routeFromPath = getRouteFromPath();
-          setTargetRoute(routeFromPath);
-          // Save this for future refreshes
-          sessionStorage.setItem("currentPage", routeFromPath);
+          const currentPage = sessionStorage.getItem("currentPage");
+          if (currentPage && currentPage !== "splash" && currentPage !== "login") {
+            setTargetRoute(currentPage);
+          } 
+          // Priority 3: Extract route from current URL path
+          else {
+            const routeFromPath = getRouteFromPath();
+            setTargetRoute(routeFromPath);
+            // Save this for future refreshes
+            sessionStorage.setItem("currentPage", routeFromPath);
+          }
         }
+        
+        // Always skip splash for authenticated users
+        setSkipSplash(true);
+      } else {
+        // For non-authenticated users, always show splash
+        setTargetRoute("splash");
+        setSkipSplash(false);
+        sessionStorage.removeItem("currentPage");
       }
       
-      // Always skip splash for authenticated users
-      setSkipSplash(true);
-    } else {
-      // For non-authenticated users, always show splash
-      setTargetRoute("splash");
-      setSkipSplash(false);
-      sessionStorage.removeItem("currentPage");
-    }
-    
-    // Special override: forcibly skip splash if requested
-    const skipSplashFlag = sessionStorage.getItem("skipSplash");
-    if (skipSplashFlag === "true") {
-      setTargetRoute("dashboard");
-      setSkipSplash(true);
-      sessionStorage.removeItem("skipSplash");
-    }
+      // Special override: forcibly skip splash if requested
+      const skipSplashFlag = sessionStorage.getItem("skipSplash");
+      if (skipSplashFlag === "true") {
+        setTargetRoute("dashboard");
+        setSkipSplash(true);
+        sessionStorage.removeItem("skipSplash");
+      }
+    });
   }, [])
   
   return <AppWrapper initialRoute={targetRoute} skipSplash={skipSplash} />

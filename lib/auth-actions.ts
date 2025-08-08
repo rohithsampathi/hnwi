@@ -5,6 +5,8 @@
 import { cookies } from "next/headers"
 import { SignJWT, jwtVerify } from "jose"
 import { redirect } from "next/navigation"
+import { logger } from "./secure-logger"
+import { SessionManager } from "./session-manager"
 
 // User interface to match what LoginPage.tsx expects
 interface User {
@@ -39,12 +41,23 @@ interface SessionResponse {
 
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("CRITICAL: JWT_SECRET environment variable must be set in production");
+  
+  // Require JWT_SECRET in all environments for security
+  if (!secret) {
+    throw new Error("CRITICAL: JWT_SECRET environment variable must be set. Generate a secure 32+ character secret.");
   }
-  return new TextEncoder().encode(
-    secret || "dev-jwt-secret-change-in-production-minimum-32-characters-long"
-  );
+  
+  // Validate minimum security requirements
+  if (secret.length < 32) {
+    throw new Error("SECURITY: JWT_SECRET must be at least 32 characters long for adequate security");
+  }
+  
+  // Warn about weak secrets
+  if (secret.includes("dev-jwt-secret") || secret.includes("change-in-production")) {
+    throw new Error("SECURITY: Default JWT_SECRET detected. Must use a unique, cryptographically secure secret");
+  }
+  
+  return new TextEncoder().encode(secret);
 }
 // Import from config to ensure consistency
 import { API_BASE_URL } from "@/config/api"
@@ -69,25 +82,33 @@ export async function verifyToken(token: string): Promise<User | null> {
     const verified = await jwtVerify(token, getJWTSecret())
     return verified.payload as User
   } catch (err) {
-    console.error("Token verification failed:", err)
+    logger.error("Token verification failed", { error: err instanceof Error ? err.message : String(err) })
     return null
   }
 }
 
 export async function getSession(): Promise<SessionResponse> {
   try {
-    const session = cookies().get("session")
+    const currentUser = await SessionManager.getCurrentUser();
     
-    if (!session?.value) {
-      console.log("No session cookie found")
-      return { user: null }
+    if (!currentUser) {
+      logger.debug("No valid session found");
+      return { user: null };
     }
-    
-    const user = await verifyToken(session.value)
-    return { user }
+
+    // Convert to expected User format
+    const user: User = {
+      id: currentUser.id,
+      email: currentUser.email,
+      firstName: '', // Will be populated from display data
+      lastName: '',
+      role: currentUser.role
+    };
+
+    return { user };
   } catch (error) {
-    console.error("Session retrieval error:", error)
-    return { user: null, error: "Failed to get session" }
+    logger.error("Session retrieval error", { error: error instanceof Error ? error.message : String(error) });
+    return { user: null, error: "Failed to get session" };
   }
 }
 
@@ -415,20 +436,25 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
 
 export async function handleLogout() {
   try {
-    cookies().delete("session")
-    redirect("/auth/login")
+    await SessionManager.destroySession();
+    logger.info("User logged out successfully");
+    redirect("/auth/login");
   } catch (error) {
-    console.error("Logout error:", error)
-    cookies().delete("session")
+    logger.error("Logout error", { error: error instanceof Error ? error.message : String(error) });
+    await SessionManager.destroySession(); // Force cleanup
+    redirect("/auth/login");
   }
 }
 
 export async function requireAuth() {
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/auth/login")
+  try {
+    await SessionManager.requireAuth();
+    const user = await getCurrentUser();
+    return user;
+  } catch (error) {
+    logger.warn("Authentication required - redirecting to login");
+    redirect("/auth/login");
   }
-  return user
 }
 
 export async function handleSessionRequest(): Promise<SessionResponse> {

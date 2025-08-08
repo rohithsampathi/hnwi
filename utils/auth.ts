@@ -22,16 +22,19 @@ export async function authenticateUser(email: string, password: string): Promise
   throw new Error("Client-side authentication disabled for security. Use server-side auth endpoints.");
 }
 
-// Login helper - DEPRECATED: Insecure localStorage usage
+// Secure login helper - uses server-side session management
 export const login = (userData: any, token: string) => {
-  console.warn("SECURITY WARNING: This function uses insecure localStorage. Use secure-auth.ts instead.");
-  // SECURITY NOTICE: localStorage is vulnerable to XSS attacks
-  // Tokens should be stored in secure, httpOnly cookies server-side
-  if (userData && token) {
-    // DEPRECATED: Do not store sensitive data in localStorage
-    console.error("BLOCKED: Storing auth tokens in localStorage is a security vulnerability");
+  // SECURITY: No client-side token storage - all handled server-side via httpOnly cookies
+  if (userData) {
+    // Only store non-sensitive user display data in sessionStorage (cleared on browser close)
+    sessionStorage.setItem("userDisplay", JSON.stringify({
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      role: userData.role
+    }));
     
-    // Track login event in Mixpanel
+    // Track login event in Mixpanel (no sensitive data)
     MixpanelTracker.identify(userData.id || userData.user_id);
     MixpanelTracker.track("User Login", {
       userId: userData.id || userData.user_id,
@@ -49,13 +52,17 @@ export const login = (userData: any, token: string) => {
   }
 };
 
-// Signup helper
+// Secure signup helper - uses server-side session management
 export const signup = (userData: any, token: string) => {
-  // Store auth data in localStorage
-  if (userData && token) {
-    localStorage.setItem("userId", userData.id || userData.user_id);
-    localStorage.setItem("token", token);
-    localStorage.setItem("userObject", JSON.stringify(userData));
+  // SECURITY: No client-side token storage - all handled server-side via httpOnly cookies
+  if (userData) {
+    // Only store non-sensitive user display data in sessionStorage
+    sessionStorage.setItem("userDisplay", JSON.stringify({
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      role: userData.role
+    }));
     
     // Track signup event in Mixpanel
     MixpanelTracker.identify(userData.id || userData.user_id);
@@ -75,51 +82,73 @@ export const signup = (userData: any, token: string) => {
   }
 };
 
-// Logout helper
+// Secure logout helper
 export const logout = () => {
   // Track logout event before clearing user data
-  const userId = localStorage.getItem("userId");
-  if (userId) {
-    MixpanelTracker.track("User Logout", {
-      userId
-    });
+  const userDisplay = sessionStorage.getItem("userDisplay");
+  if (userDisplay) {
+    try {
+      const userData = JSON.parse(userDisplay);
+      MixpanelTracker.track("User Logout", {
+        email: userData.email
+      });
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
   }
   
-  // Clear auth data from localStorage
-  localStorage.removeItem("userId");
-  localStorage.removeItem("token");
-  localStorage.removeItem("userObject");
+  // Clear display data from sessionStorage (tokens handled server-side)
+  sessionStorage.removeItem("userDisplay");
+  
+  // Clear any remaining localStorage items for security
+  const keysToRemove = ["userId", "token", "userObject"];
+  keysToRemove.forEach(key => localStorage.removeItem(key));
 };
 
-// Profile update helper
+// Secure profile update helper
 export const updateProfile = (userData: any) => {
-  // Update user object in localStorage
-  const currentUserData = localStorage.getItem("userObject");
-  if (currentUserData && userData) {
-    const parsedUserData = JSON.parse(currentUserData);
-    const updatedUserData = { ...parsedUserData, ...userData };
-    localStorage.setItem("userObject", JSON.stringify(updatedUserData));
-    
-    // Track profile update in Mixpanel
-    MixpanelTracker.track("Profile Updated", {
-      userId: updatedUserData.id || updatedUserData.user_id,
-      updatedFields: Object.keys(userData)
-    });
-    
-    // Update user profile in Mixpanel
-    MixpanelTracker.setProfile({
-      $name: `${updatedUserData.firstName || ''} ${updatedUserData.lastName || ''}`.trim() || updatedUserData.email,
-      $email: updatedUserData.email
-    });
+  // Update display data in sessionStorage (non-sensitive only)
+  const currentUserDisplay = sessionStorage.getItem("userDisplay");
+  if (currentUserDisplay && userData) {
+    try {
+      const parsedUserData = JSON.parse(currentUserDisplay);
+      const updatedUserData = { 
+        ...parsedUserData, 
+        firstName: userData.firstName || parsedUserData.firstName,
+        lastName: userData.lastName || parsedUserData.lastName,
+        email: userData.email || parsedUserData.email,
+        role: userData.role || parsedUserData.role
+      };
+      sessionStorage.setItem("userDisplay", JSON.stringify(updatedUserData));
+      
+      // Track profile update in Mixpanel
+      MixpanelTracker.track("Profile Updated", {
+        email: updatedUserData.email,
+        updatedFields: Object.keys(userData)
+      });
+      
+      // Update user profile in Mixpanel
+      MixpanelTracker.setProfile({
+        $name: `${updatedUserData.firstName || ''} ${updatedUserData.lastName || ''}`.trim() || updatedUserData.email,
+        $email: updatedUserData.email
+      });
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
   }
 };
 
-// Add tracking for other user events
+// Secure event tracking helper
 export const trackEvent = (eventName: string, properties: Record<string, any> = {}) => {
-  // Add user ID to properties if available
-  const userId = localStorage.getItem("userId");
-  if (userId) {
-    properties.userId = userId;
+  // Add user email to properties if available (no sensitive IDs)
+  const userDisplay = sessionStorage.getItem("userDisplay");
+  if (userDisplay) {
+    try {
+      const userData = JSON.parse(userDisplay);
+      properties.email = userData.email;
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
   }
   
   // Track the event in Mixpanel
