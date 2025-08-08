@@ -25,3 +25,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# streamlit files (local development only)
+*.py
+requirements.txt
+requirements-dev.txt
+__pycache__/
+*.pyc
+.streamlit/
+streamlit_app.py
+pages/*.py
+.env.streamlit

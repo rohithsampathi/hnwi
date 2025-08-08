@@ -23,26 +23,31 @@ interface SecurePieChartProps {
 }
 
 const defaultColors = [
-  'hsl(var(--primary))',     // Forest green
-  'hsl(var(--secondary))',   // Warm gold
-  '#2D5A4F',                 // Deep forest green
-  '#D4AF37',                 // Antique gold
-  '#8B4513',                 // Saddle brown (luxury leather)
-  '#4682B4',                 // Steel blue (premium metal)
-  '#800020',                 // Burgundy (wine/luxury)
-  '#556B2F',                 // Dark olive green
-  '#B8860B',                 // Dark golden rod
-  '#2F4F4F',                 // Dark slate gray
-  '#8B7355',                 // Dark khaki (earth tones)
-  '#A0522D',                 // Sienna (warm brown)
-  '#708090',                 // Slate gray (platinum)
-  '#6B8E23',                 // Olive drab
-  '#BC8F8F',                 // Rosy brown
-  '#8FBC8F',                 // Dark sea green
-  '#DEB887',                 // Burlywood
-  '#5F8A5F',                 // Dark sea green variant
-  '#CD853F',                 // Peru (warm earth)
-  '#696969'                  // Dim gray (charcoal)
+  'hsl(var(--primary))',     // Primary brand color
+  '#FF6B35',                 // Vibrant orange-red
+  '#4ECDC4',                 // Teal
+  '#45B7D1',                 // Sky blue
+  '#F7DC6F',                 // Bright yellow
+  '#BB6BD9',                 // Purple
+  '#2ECC71',                 // Emerald green
+  '#E74C3C',                 // Red
+  '#F39C12',                 // Orange
+  '#9B59B6',                 // Violet
+  '#1ABC9C',                 // Turquoise
+  '#34495E',                 // Dark blue-gray
+  '#E67E22',                 // Carrot orange
+  '#3498DB',                 // Blue
+  '#E91E63',                 // Pink
+  '#00BCD4',                 // Cyan
+  '#8BC34A',                 // Light green
+  '#FF9800',                 // Amber
+  '#607D8B',                 // Blue grey
+  '#795548',                 // Brown
+  '#FF5722',                 // Deep orange
+  '#9C27B0',                 // Deep purple
+  '#009688',                 // Dark teal
+  '#FFC107',                 // Golden yellow
+  '#673AB7'                  // Indigo
 ]
 
 export function SecurePieChart({

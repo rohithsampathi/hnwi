@@ -183,7 +183,7 @@ export function HeirsSection({
                       <div className="pt-2 border-t">
                         <div className="flex items-start gap-2">
                           <FileText className="h-3 w-3 text-muted-foreground mt-0.5" />
-                          <p className="text-xs text-muted-foreground line-clamp-2">
+                          <p className="text-xs text-muted-foreground truncate">
                             {heir.notes}
                           </p>
                         </div>
