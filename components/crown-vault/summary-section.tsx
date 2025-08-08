@@ -79,77 +79,191 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
               <p className="text-xl text-muted-foreground font-medium">Your legacy secured with military-grade encryption</p>
             </div>
             
-            {/* Stats Grid */}
+            {/* Premium Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {/* Total Value Card */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                <div className="relative bg-background/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-6 hover:border-primary/40 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-primary/10 rounded-xl">
-                      <DollarSign className="h-8 w-8 text-primary" />
+              {/* Total Value Card - Ultra Premium */}
+              <div className="group relative overflow-hidden">
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-tl from-amber-500/20 via-transparent to-primary/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+                </div>
+                
+                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-primary/30 rounded-3xl p-8 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:scale-105 transform-gpu">
+                  {/* Top section with icon and status */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-lg animate-pulse" />
+                      <div className="relative p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl border border-primary/30">
+                        <DollarSign className="h-10 w-10 text-primary drop-shadow-lg" />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-lg shadow-primary/50" />
+                      <div className="w-1 h-1 bg-primary/70 rounded-full animate-ping" />
                     </div>
                   </div>
-                  <p className="text-sm text-foreground/80 font-semibold mb-2">Total Portfolio Value</p>
-                  <p className="text-3xl font-bold text-primary mb-1">{formatValue(totalValue)}</p>
-                  <p className="text-xs text-foreground/60 font-semibold">Secured in vault</p>
+                  
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Total Portfolio Value</p>
+                    <div className="relative">
+                      <p className="text-4xl font-black bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent drop-shadow-sm">
+                        ${formatValue(totalValue)}
+                      </p>
+                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-px bg-primary/60" />
+                      <p className="text-xs text-primary font-bold tracking-widest uppercase">Secured in Vault</p>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-amber-500 to-primary rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
               </div>
               
-              {/* Total Assets Card */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-secondary/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                <div className="relative bg-background/80 backdrop-blur-sm border border-secondary/20 rounded-2xl p-6 hover:border-secondary/40 transition-all duration-300 hover:shadow-xl hover:shadow-secondary/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-secondary/10 rounded-xl">
-                      <Vault className="h-8 w-8 text-secondary" />
+              {/* Total Assets Card - Ultra Premium */}
+              <div className="group relative overflow-hidden">
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 via-secondary/20 to-secondary/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-tl from-orange-500/20 via-transparent to-secondary/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-100" />
+                </div>
+                
+                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-secondary/30 rounded-3xl p-8 hover:border-secondary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-secondary/20 hover:scale-105 transform-gpu">
+                  {/* Top section */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-secondary/20 rounded-2xl blur-lg animate-pulse" />
+                      <div className="relative p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-2xl border border-secondary/30">
+                        <Vault className="h-10 w-10 text-secondary drop-shadow-lg" />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="w-2 h-2 bg-secondary rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-secondary rounded-full animate-pulse shadow-lg shadow-secondary/50" />
+                      <div className="w-1 h-1 bg-secondary/70 rounded-full animate-ping" />
                     </div>
                   </div>
-                  <p className="text-sm text-foreground/80 font-semibold mb-2">Total Assets</p>
-                  <p className="text-3xl font-bold text-secondary mb-1">{stats?.total_assets || assets.length}</p>
-                  <p className="text-xs text-blue-600 font-semibold">Across {assetCategories.length} {assetCategories.length === 1 ? 'category' : 'categories'}</p>
+                  
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Total Assets</p>
+                    <div className="relative">
+                      <p className="text-4xl font-black bg-gradient-to-r from-secondary to-orange-600 bg-clip-text text-transparent drop-shadow-sm">
+                        {stats?.total_assets || assets.length}
+                      </p>
+                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-secondary/50 via-secondary/20 to-transparent" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-px bg-secondary/60" />
+                      <p className="text-xs text-secondary font-bold tracking-widest uppercase">
+                        Across {assetCategories.length} {assetCategories.length === 1 ? 'Category' : 'Categories'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-secondary via-orange-500 to-secondary rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
               </div>
               
-              {/* Heirs Card */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-accent/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                <div className="relative bg-background/80 backdrop-blur-sm border border-accent/20 rounded-2xl p-6 hover:border-accent/40 transition-all duration-300 hover:shadow-xl hover:shadow-accent/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-accent/10 rounded-xl">
-                      <Users className="h-8 w-8 text-accent" />
+              {/* Heirs Card - Ultra Premium */}
+              <div className="group relative overflow-hidden">
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 via-purple-500/20 to-purple-500/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/20 via-transparent to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-200" />
+                </div>
+                
+                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-105 transform-gpu">
+                  {/* Top section */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-purple-500/20 rounded-2xl blur-lg animate-pulse" />
+                      <div className="relative p-4 bg-gradient-to-br from-purple-500/20 to-purple-500/10 rounded-2xl border border-purple-500/30">
+                        <Users className="h-10 w-10 text-purple-500 drop-shadow-lg" />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse shadow-lg shadow-purple-500/50" />
+                      <div className="w-1 h-1 bg-purple-500/70 rounded-full animate-ping" />
                     </div>
                   </div>
-                  <p className="text-sm text-foreground/80 font-semibold mb-2">Designated Heirs</p>
-                  <p className="text-3xl font-bold text-accent mb-1">{stats?.total_heirs || 0}</p>
-                  <p className="text-xs text-purple-600 font-semibold">Legacy planning active</p>
+                  
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Designated Heirs</p>
+                    <div className="relative">
+                      <p className="text-4xl font-black bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent drop-shadow-sm">
+                        {stats?.total_heirs || 0}
+                      </p>
+                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-purple-500/50 via-purple-500/20 to-transparent" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-px bg-purple-500/60" />
+                      <p className="text-xs text-purple-500 font-bold tracking-widest uppercase">Legacy Planning Active</p>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
               </div>
               
-              {/* Security Card */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 to-green-500/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                <div className="relative bg-background/80 backdrop-blur-sm border border-green-500/20 rounded-2xl p-6 hover:border-green-500/40 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-green-500/10 rounded-xl">
-                      <Shield className="h-8 w-8 text-green-500" />
+              {/* Security Card - Ultra Premium */}
+              <div className="group relative overflow-hidden">
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 via-emerald-500/20 to-emerald-500/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-tl from-green-400/20 via-transparent to-emerald-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-300" />
+                </div>
+                
+                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-emerald-500/30 rounded-3xl p-8 hover:border-emerald-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 hover:scale-105 transform-gpu">
+                  {/* Top section */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-emerald-500/20 rounded-2xl blur-lg animate-pulse" />
+                      <div className="relative p-4 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-2xl border border-emerald-500/30">
+                        <Shield className="h-10 w-10 text-emerald-500 drop-shadow-lg" />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                      <div className="w-1 h-1 bg-emerald-500/70 rounded-full animate-ping" />
                     </div>
                   </div>
-                  <p className="text-sm text-foreground/80 font-semibold mb-2">Security Level</p>
-                  <p className="text-2xl font-bold text-green-600 mb-1">256-bit AES</p>
-                  <p className="text-xs text-green-600 font-semibold">Military-grade encryption</p>
+                  
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Security Level</p>
+                    <div className="relative">
+                      <p className="text-3xl font-black bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent drop-shadow-sm">
+                        256-bit AES
+                      </p>
+                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-emerald-500/50 via-emerald-500/20 to-transparent" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-px bg-emerald-500/60" />
+                      <p className="text-xs text-emerald-500 font-bold tracking-widest uppercase">Military-Grade Encryption</p>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom accent */}
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
               </div>
             </div>

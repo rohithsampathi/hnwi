@@ -623,7 +623,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     
     switch (currentPage) {
       case "splash":
-        return <SplashScreen onLogin={handleLoginClick} onLoginSuccess={handleLoginSuccess} />
+        return <SplashScreen onLoginSuccess={handleLoginSuccess} />
 
       case "onboarding":
         return (
@@ -635,8 +635,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         )
 
       case "login":
-        // Login is now handled within SplashScreen
-        return <SplashScreen onLogin={handleLoginClick} onLoginSuccess={handleLoginSuccess} />
+        // Show splash screen with login form enabled
+        return <SplashScreen onLogin={() => {}} onLoginSuccess={handleLoginSuccess} showLogin={true} />
 
       case "dashboard":
         // If not authenticated but trying to view dashboard, redirect to splash

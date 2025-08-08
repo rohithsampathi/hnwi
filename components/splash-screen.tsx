@@ -18,14 +18,15 @@ import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, Chev
 interface SplashScreenProps {
   onLogin?: () => void;
   onLoginSuccess?: (userData: any) => void;
+  showLogin?: boolean;
 }
 
-export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
+export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: SplashScreenProps) {
   const { theme } = useTheme()
   const { resetOnboarding, setIsFromSignupFlow } = useOnboarding()
   const { toast } = useToast()
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [showLoginForm, setShowLoginForm] = useState(showLogin)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)

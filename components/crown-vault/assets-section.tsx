@@ -243,14 +243,19 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="group relative"
+                className="group relative overflow-hidden"
               >
                 {/* ======= ULTRA-PREMIUM CROWN VAULT ASSET CARD ======= */}
                 
-                {/* Multi-Layer Background System - Like Swiss Watch Faces */}
-                <div className="absolute -inset-2 bg-gradient-to-br from-slate-900/5 via-blue-900/5 to-purple-900/5 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
-                <div className="absolute -inset-1 bg-gradient-to-br from-amber-400/8 via-gold-400/6 to-amber-600/8 rounded-xl blur-md opacity-0 group-hover:opacity-100 transition-all duration-500" />
-                <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 rounded-lg blur-sm opacity-60 group-hover:opacity-100 transition-all duration-400" />
+                {/* Multi-Layer Background System - Matching Summary Cards */}
+                <div className="absolute -inset-3 bg-gradient-to-br from-primary/15 via-secondary/10 to-accent/15 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                <div className="absolute -inset-2 bg-gradient-to-br from-primary/20 via-secondary/15 to-accent/20 rounded-2xl blur-lg opacity-60 group-hover:opacity-90 transition-all duration-500" />
+                <div className="absolute -inset-1 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 rounded-xl blur-md opacity-80 group-hover:opacity-100 transition-all duration-400" />
+                
+                {/* Shimmer effect - Matching Summary Cards */}
+                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+                </div>
                 
                 {/* New Asset Announcement */}
                 {isNewlyAdded && (
@@ -264,108 +269,138 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                   </div>
                 )}
 
-                {/* The Crown Vault Card Sanctuary */}
+                {/* Ultra-Premium Asset Card - Matching Summary Cards */}
                 <Card 
                   className="relative h-full cursor-pointer overflow-hidden
-                             bg-gradient-to-br from-card via-background to-card/90
-                             dark:from-slate-900/95 dark:via-slate-900/98 dark:to-slate-800/95
-                             border-2 border-primary/10 dark:border-primary/20
+                             bg-gradient-to-br from-background via-background/98 to-background/95
+                             dark:from-slate-900/98 dark:via-slate-900/95 dark:to-slate-800/98
+                             border-2 border-primary/30 dark:border-primary/40
                              backdrop-blur-xl shadow-2xl
-                             hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)]
-                             hover:border-primary/30 hover:bg-gradient-to-br hover:from-card hover:to-primary/5
+                             hover:shadow-[0_25px_60px_rgba(34,_197,_94,_0.15)]
+                             hover:border-primary/50 hover:bg-gradient-to-br hover:from-background hover:to-primary/5
                              dark:hover:to-primary/10
                              transition-all duration-500 ease-out
-                             group-hover:scale-[1.01] group-hover:-translate-y-0.5"
+                             group-hover:scale-[1.02] group-hover:-translate-y-1"
                   onClick={() => onAssetClick(asset)}
                 >
-                  {/* Floating Ambient Elements - Museum Quality */}
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-amber-400/6 via-gold-400/4 to-transparent rounded-full blur-3xl" />
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-blue-600/4 via-indigo-600/3 to-transparent rounded-full blur-2xl" />
-                  <div className="absolute top-1/2 right-1/4 w-24 h-24 bg-gradient-to-bl from-purple-500/3 to-transparent rounded-full blur-xl" />
+                  {/* Floating Ambient Elements - App Theme Colors */}
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-secondary/8 via-secondary/4 to-transparent rounded-full blur-3xl" />
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-primary/6 via-primary/3 to-transparent rounded-full blur-2xl" />
+                  <div className="absolute top-1/3 right-1/3 w-28 h-28 bg-gradient-to-bl from-accent/4 to-transparent rounded-full blur-xl" />
                   
-                  <CardContent className="relative p-8 space-y-6">
+                  <CardContent className="relative p-8 space-y-8">
                     
-                    {/* ======= CROWN HEADER: ASSET IDENTITY & SECURITY ======= */}
-                    <div className="flex items-start justify-between mb-1">
-                      
-                      {/* Asset Crown: Icon + Classification */}
-                      <div className="flex items-center gap-4">
-                        {/* Levitating Asset Icon */}
-                        <div className="relative group/icon">
-                          <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-primary/30 rounded-xl blur-lg opacity-40 group-hover/icon:opacity-70 transition-opacity duration-300" />
-                          <div className="relative p-3 bg-gradient-to-br from-card via-background to-card
-                                         border-2 border-secondary/20 rounded-xl shadow-lg
-                                         group-hover/icon:shadow-xl group-hover/icon:scale-105 group-hover/icon:border-secondary/40
-                                         transition-all duration-300">
-                            <IconComponent className="h-6 w-6 text-secondary drop-shadow-sm" />
-                          </div>
-                        </div>
-                        
-                        {/* Asset Classification Badge */}
-                        <div className="space-y-1">
-                          <Badge variant="outline" 
-                                 className="text-xs font-bold border-2 border-border 
-                                            bg-gradient-to-r from-card to-muted
-                                            text-foreground shadow-sm px-3 py-1
-                                            hover:border-secondary/50 hover:bg-gradient-to-r hover:from-secondary/10 hover:to-secondary/5
-                                            transition-all duration-300">
-                            {formatAssetType(asset.asset_data.asset_type || 'Premium Asset')}
-                          </Badge>
+                    {/* ======= PREMIUM ASSET HEADER - Matching Summary Cards ======= */}
+                    <div className="flex items-center justify-between mb-6">
+                      {/* Premium Asset Icon */}
+                      <div className="relative group/icon">
+                        <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-primary/20 rounded-2xl blur-lg opacity-60 group-hover/icon:opacity-90 transition-opacity duration-300" />
+                        <div className="relative p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-2xl border-2 border-secondary/30 shadow-xl
+                                       group-hover/icon:shadow-2xl group-hover/icon:scale-105 group-hover/icon:border-secondary/50
+                                       transition-all duration-300">
+                          <IconComponent className="h-8 w-8 text-secondary drop-shadow-lg" />
                         </div>
                       </div>
                       
+                      {/* Asset Status Indicators */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                        <div className="w-1 h-1 bg-emerald-400/70 rounded-full animate-ping" />
+                      </div>
+                    </div>
+                    
+                    {/* Asset Classification Badge */}
+                    <div className="mb-6">
+                      <Badge variant="outline" 
+                             className="text-xs font-bold border-2 border-secondary/30 
+                                        bg-gradient-to-r from-secondary/10 to-secondary/5
+                                        text-secondary shadow-lg px-4 py-2 rounded-xl
+                                        hover:border-secondary/50 hover:bg-gradient-to-r hover:from-secondary/20 hover:to-secondary/10
+                                        transition-all duration-300">
+                        {formatAssetType(asset.asset_data.asset_type || 'Premium Asset')}
+                      </Badge>
                     </div>
 
-                    {/* ======= THE VALUE THRONE: HERO ELEMENT ======= */}
-                    <div className="space-y-3">
-                      {/* Asset Name - Sophisticated Typography */}
-                      <h3 className="font-bold text-xl leading-tight text-foreground 
-                                    line-clamp-2 tracking-tight hover:text-secondary 
-                                    transition-colors duration-300 cursor-pointer">
-                        {asset.asset_data.name || 'Unnamed Crown Asset'}
-                      </h3>
+                    {/* ======= PREMIUM ASSET VALUE DISPLAY - Matching Summary Cards ======= */}
+                    <div className="space-y-6">
+                      {/* Asset Name - Premium Typography */}
+                      <div className="space-y-3">
+                        <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Asset Name</p>
+                        <h3 className="text-2xl font-black text-foreground leading-tight tracking-tight line-clamp-2 
+                                      hover:text-secondary transition-colors duration-300">
+                          {asset.asset_data.name || 'Unnamed Crown Asset'}
+                        </h3>
+                        <div className="w-full h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
+                      </div>
                       
-                      {/* Asset Value - Premium Display */}
-                      <div className="py-4 px-5 bg-gradient-to-br from-primary/5 via-secondary/3 to-accent/5 rounded-xl border border-primary/10">
-                        <div className="flex items-baseline gap-3">
-                          <div className="relative">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary/20 rounded blur-sm" />
-                            <span className="relative text-4xl font-black bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent tracking-tight leading-none">
-                              ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
-                            </span>
+                      {/* Asset Value - Ultra Premium Display Matching Summary Cards */}
+                      <div className="relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 rounded-2xl blur-sm" />
+                        <div className="relative p-6 bg-gradient-to-br from-primary/5 via-secondary/3 to-accent/5 rounded-2xl border-2 border-primary/20
+                                       hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl">
+                              <DollarSign className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wider text-primary/80 font-bold">Asset Value</p>
+                            </div>
                           </div>
-                          <div className="px-2.5 py-1 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-md border border-primary/20">
-                            <span className="text-xs font-bold text-primary">
-                              {asset.asset_data.currency || 'USD'}
-                            </span>
+                          
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-secondary/30 rounded blur-lg" />
+                              <span className="relative text-4xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent drop-shadow-sm">
+                                ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
+                              </span>
+                              <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-px bg-primary/60" />
+                              <span className="text-xs font-bold text-primary tracking-widest uppercase">
+                                {asset.asset_data.currency || 'USD'} Secured
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                       
                       {/* Location - Premium Display */}
                       {asset.asset_data.location && (
-                        <div className="flex items-center gap-2 py-2">
-                          <div className="p-2 bg-gradient-to-br from-muted/50 to-muted/30 rounded-lg">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">
-                              {asset.asset_data.location}
-                            </p>
+                        <div className="relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-accent/5 to-transparent rounded-2xl blur-sm" />
+                          <div className="relative p-4 bg-gradient-to-br from-accent/5 to-accent/3 rounded-2xl border-2 border-accent/20
+                                         hover:border-accent/40 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-gradient-to-br from-accent/20 to-accent/10 rounded-xl">
+                                <MapPin className="h-5 w-5 text-accent" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs uppercase tracking-wider text-accent/80 font-bold">Location</p>
+                                <p className="text-lg font-black text-accent">
+                                  {asset.asset_data.location}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Notes */}
+                      {/* Notes - Premium Display */}
                       {asset.asset_data.notes && (
-                        <div className="py-3 border-t border-border/30">
-                          <div className="space-y-2">
-                            <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                              Notes
-                            </p>
-                            <p className="text-sm text-foreground leading-relaxed">
-                              {asset.asset_data.notes}
-                            </p>
+                        <div className="relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 via-secondary/5 to-transparent rounded-2xl blur-sm" />
+                          <div className="relative p-4 bg-gradient-to-br from-secondary/5 to-secondary/3 rounded-2xl border-2 border-secondary/20
+                                         hover:border-secondary/40 hover:shadow-lg hover:shadow-secondary/10 transition-all duration-300">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-px bg-secondary/60" />
+                                <p className="text-xs uppercase tracking-widest text-secondary/80 font-bold">Asset Notes</p>
+                              </div>
+                              <p className="text-sm text-foreground leading-relaxed font-medium">
+                                {asset.asset_data.notes}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -464,24 +499,25 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       </div>
                     </div>
 
-                    {/* ======= PROVENANCE FOOTER ======= */}
-                    <div className="flex items-center justify-center pt-4 border-t-2 border-slate-200/30 dark:border-slate-700/30">
-                      
-                      {/* Combined Secured Status */}
-                      <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 
-                                     dark:from-emerald-950/30 dark:to-green-950/20 border border-emerald-200/50 
-                                     dark:border-emerald-700/30 rounded-full shadow-sm">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                        <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 tracking-widest">
-                          SECURED ON {new Date(asset.created_at || Date.now()).toLocaleDateString('en-US', {
+                    {/* ======= PREMIUM FOOTER - Matching Summary Cards ======= */}
+                    <div className="flex items-center justify-center pt-6 border-t-2 border-primary/20">
+                      <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-emerald-50 to-green-50 
+                                     dark:from-emerald-950/30 dark:to-green-950/20 border-2 border-emerald-200/50 
+                                     dark:border-emerald-700/30 rounded-full shadow-lg">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                        <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 tracking-widest uppercase">
+                          Secured On {new Date(asset.created_at || Date.now()).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
-                          }).toUpperCase()}
+                          })}
                         </span>
                       </div>
                     </div>
+                    
+                    {/* Bottom accent bar - Matching Summary Cards */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-accent rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                     
                   </CardContent>
                 </Card>
