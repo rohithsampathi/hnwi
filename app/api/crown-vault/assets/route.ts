@@ -79,7 +79,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
     const apiUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
     
-    const response = await fetch(apiUrl, {
+    const backendResponse = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       cache: 'no-store'
     });
 
-    if (!response.ok) {
+    if (!backendResponse.ok) {
       // Fallback to empty assets if backend fails
       return NextResponse.json({
         assets: [],
@@ -98,7 +98,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       }, { status: 200 });
     }
 
-    const backendAssets = await response.json();
+    const backendAssets = await backendResponse.json();
 
     // Map asset types to match frontend expectations
     const mapAssetType = (type: string) => {
