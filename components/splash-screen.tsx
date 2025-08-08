@@ -13,7 +13,7 @@ import { MetaTags } from "./meta-tags"
 import { OnboardingPage } from "./onboarding-page"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
-import { Shield, Lock, CheckCircle, Globe, Eye, Database, Key, ChevronLeft, Loader2, EyeOff } from "lucide-react"
+import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock } from "lucide-react"
 
 interface SplashScreenProps {
   onLogin?: () => void;
@@ -184,11 +184,11 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
               Back
             </Button>
           </div>
-          <div className="flex-grow flex items-center justify-center p-4">
+          <div className="flex-grow flex items-start justify-center p-4 pt-24">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-md bg-card shadow-lg backdrop-blur-sm rounded-3xl p-6 md:p-8"
+              className="w-full max-w-md bg-card shadow-lg backdrop-blur-sm rounded-3xl p-6 md:p-8 mt-8"
               style={{
                 boxShadow:
                   theme === "dark"
@@ -274,63 +274,147 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
               <div className="relative overflow-hidden w-full h-20">
                 <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
                   {/* Security badges with larger sizing for 55" display */}
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
-                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
+                      alt="SOC 2"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
-                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
+                      alt="ISO"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
-                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
+                      alt="PCI DSS"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
-                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
+                      alt="GDPR"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
-                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
+                      alt="CCPA"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
-                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
+                      alt="AES-256"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
-                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
+                      alt="Zero-Trust"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                   
                   {/* Duplicate set for seamless loop */}
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
-                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
+                      alt="SOC 2"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
-                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
+                      alt="ISO"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
-                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
+                      alt="PCI DSS"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
-                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
+                      alt="GDPR"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
-                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
+                      alt="CCPA"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
-                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
+                      alt="AES-256"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
-                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
+                      alt="Zero-Trust"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                 </div>
               </div>
@@ -369,16 +453,16 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
           <ThemeToggle />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        <div className="flex-1 flex flex-col items-center justify-start px-4 py-8 pt-32">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1 }}
-            className="z-10 text-center w-full max-w-4xl"
+            className="z-10 text-center w-full max-w-4xl mt-20"
           >
-            {/* Globe animation */}
+            {/* Earth animation */}
             <motion.div
-              className="globe-container relative w-48 h-48 sm:w-64 sm:h-64 mb-6 mx-auto"
+              className="globe-container relative w-24 h-24 sm:w-32 sm:h-32 mb-6 mx-auto"
               animate={{
                 rotate: 360,
                 scale: [1, 1.1, 1],
@@ -445,63 +529,147 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
               <div className="relative overflow-hidden w-full h-20">
                 <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
                   {/* Security badges with larger sizing for 55" display */}
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
-                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
+                      alt="SOC 2"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
-                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
+                      alt="ISO"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
-                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
+                      alt="PCI DSS"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
-                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
+                      alt="GDPR"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
-                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
+                      alt="CCPA"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
-                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
+                      alt="AES-256"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
-                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
+                      alt="Zero-Trust"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                   
                   {/* Duplicate set for seamless loop */}
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl md:rounded-2xl border border-blue-500/20 backdrop-blur-sm">
-                    <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">SOC 2 Type II</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
+                      alt="SOC 2"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 rounded-xl md:rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
-                    <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">ISO 27001</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
+                      alt="ISO"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl md:rounded-2xl border border-purple-500/20 backdrop-blur-sm">
-                    <Key className="w-6 h-6 md:w-8 md:h-8 text-purple-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">PCI DSS</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
+                      alt="PCI DSS"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl md:rounded-2xl border border-orange-500/20 backdrop-blur-sm">
-                    <Globe className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">GDPR</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
+                      alt="GDPR"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 rounded-xl md:rounded-2xl border border-cyan-500/20 backdrop-blur-sm">
-                    <Eye className="w-6 h-6 md:w-8 md:h-8 text-cyan-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">CCPA</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
+                      alt="CCPA"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-red-500/10 to-red-600/10 rounded-xl md:rounded-2xl border border-red-500/20 backdrop-blur-sm">
-                    <Lock className="w-6 h-6 md:w-8 md:h-8 text-red-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">AES-256</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
+                      alt="AES-256"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-indigo-500/10 to-indigo-600/10 rounded-xl md:rounded-2xl border border-indigo-500/20 backdrop-blur-sm">
-                    <Database className="w-6 h-6 md:w-8 md:h-8 text-indigo-500 mr-3 md:mr-4" />
-                    <span className="text-sm md:text-base font-bold text-foreground">Zero-Trust</span>
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                    <Image
+                      src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
+                      alt="Zero-Trust"
+                      width={24}
+                      height={24}
+                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                    />
+                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                 </div>
               </div>
