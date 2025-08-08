@@ -18,13 +18,16 @@ import { ParticlesBackground } from "./particles-background"
 import { MetaTags } from "./meta-tags"
 import { login as loginWithAnalytics } from "@/utils/auth"
 
-// Import from config to ensure consistency
-import { API_BASE_URL } from "@/config/api"
+
+interface LoginPageProps {
+  onLoginSuccess: (userData: any) => void;
+  onBack: () => void;
+}
 
 export function LoginPage({ 
   onLoginSuccess, 
   onBack 
-}) {
+}: LoginPageProps) {
   const { theme } = useTheme()
   const { resetOnboarding, setIsFromSignupFlow } = useOnboarding()
   const [email, setEmail] = useState("")
@@ -35,17 +38,18 @@ export function LoginPage({
   const { toast } = useToast()
 
   const handleLogin = useCallback(
-    async (e) => {
+    async (e: React.FormEvent) => {
       e.preventDefault()
       setIsLoading(true)
       setError("")
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/login`, {
+        const response = await fetch('/api/auth/session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({ email, password }),
         });
         

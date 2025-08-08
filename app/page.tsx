@@ -97,24 +97,23 @@ export default function Home() {
       return "dashboard"; // Default for root path when authenticated
     };
     
-    // SECURITY: Check authentication via server-side session instead of client storage
+    // Check authentication via server-side session with fallback to localStorage
     const checkAuthStatus = async () => {
       try {
+        // First check server-side session
         const response = await fetch('/api/auth/session', {
           method: 'GET',
-          credentials: 'include', // Include httpOnly cookies
+          credentials: 'include',
         });
         
         if (response.ok) {
           const sessionData = await response.json();
           const isAuthenticated = !!sessionData.user;
           
-          // Only update state if different
           if (isAuthenticated !== isLoggedIn) {
             setIsLoggedIn(isAuthenticated);
           }
           
-          // Store only display data in sessionStorage
           if (sessionData.user) {
             sessionStorage.setItem("userDisplay", JSON.stringify({
               firstName: sessionData.user.firstName,
@@ -124,20 +123,25 @@ export default function Home() {
             }));
           }
           return isAuthenticated;
-        } else {
-          if (isLoggedIn) {
-            setIsLoggedIn(false);
-          }
-          sessionStorage.removeItem("userDisplay");
-          return false;
         }
       } catch (error) {
-        if (isLoggedIn) {
-          setIsLoggedIn(false);
-        }
-        sessionStorage.removeItem("userDisplay");
-        return false;
+        console.warn("Session check failed, falling back to localStorage:", error);
       }
+      
+      // Fallback to localStorage check for backward compatibility
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      const isAuthenticatedFallback = !!(token && userId);
+      
+      if (isAuthenticatedFallback !== isLoggedIn) {
+        setIsLoggedIn(isAuthenticatedFallback);
+      }
+      
+      if (!isAuthenticatedFallback) {
+        sessionStorage.removeItem("userDisplay");
+      }
+      
+      return isAuthenticatedFallback;
     };
 
     // Execute auth check and handle routing
