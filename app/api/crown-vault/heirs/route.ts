@@ -67,12 +67,13 @@ export async function GET(request: NextRequest) {
 
     } catch (fetchError) {
       console.error('Error fetching heirs from backend:', fetchError);
-      console.error('Heirs URL attempted:', heirsUrl);
       
       // Try to fetch heirs from assets endpoint as fallback
       try {
         const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
-        console.log('Attempting to fetch heirs from assets endpoint:', assetsUrl);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Attempting to fetch heirs from assets endpoint: /api/crown-vault/assets/detailed');
+        }
         
         const assetsResponse = await fetch(assetsUrl, {
           method: 'GET',

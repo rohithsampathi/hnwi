@@ -21,8 +21,11 @@ class APIError extends Error {
 export class SecureAPI {
   private static logSafeError(endpoint: string, status?: number, error?: string): void {
     // Log without exposing full URLs - only show endpoint paths
-    const safeEndpoint = endpoint.replace(API_BASE_URL, '/api');
-    console.error(`API Error: ${safeEndpoint} - Status: ${status || 'Unknown'} - ${error || 'Request failed'}`);
+    const safeEndpoint = endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/]+/, '/api');
+    // Don't log in production to avoid any URL exposure in browser console
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`API Error: ${safeEndpoint} - Status: ${status || 'Unknown'} - ${error || 'Request failed'}`);
+    }
   }
 
   static async secureFetch(
@@ -109,7 +112,12 @@ export class SecureAPI {
 // Create a safe error message that doesn't expose the URL
 const createSecureError = (message: string, statusCode?: number): Error => {
   const secureMessage = `API Error: ${message}${statusCode ? ` (${statusCode})` : ''}`;
-  return new Error(secureMessage);
+  const error = new Error(secureMessage);
+  // Ensure no URL leaks in stack traces
+  if (error.stack) {
+    error.stack = error.stack.replace(/https?:\/\/[^\/\s]+/g, '[REDACTED]');
+  }
+  return error;
 };
 
 // Secure fetch wrapper

@@ -27,8 +27,6 @@ import { useToast } from "@/components/ui/use-toast"
 
 // LoginPage is now consolidated into SplashScreen
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
-
 interface User {
   id: string
   email: string

@@ -23,7 +23,7 @@ interface Playbook {
   paymentButtonId?: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 // Update button IDs
 const DEFAULT_RAZORPAY_BUTTON_ID = "pl_Pn7fgca55mS4zy" // Default button
@@ -240,49 +240,38 @@ export function PlaybookStorePage({
       
       // Try GET first (even though it gave 405 before)
       try {
-        const response = await fetch(`${API_BASE_URL}/api/reports`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { "Authorization": `Bearer ${token}` })
-          },
-          signal: controller.signal
-        });
+        const data = await secureApi.get("/api/reports");
         
         clearTimeout(timeoutId);
+        // Process response and set playbooks...
         
-        if (response.ok) {
-          // Process response and set playbooks...
-          const data = await response.json();
-          
-          let apiPlaybooks = [];
-          if (Array.isArray(data.reports)) {
-            apiPlaybooks = data.reports.map((report: any) => ({
-              id: report.metadata.id,
-              title: report.metadata.title,
-              description: report.metadata.description,
-              image: report.metadata.image || "/placeholder.svg?height=200&width=300&text=Report",
-              isPurchased: report.metadata.isPurchased || false,
-              industry: report.metadata.industry || "Unknown",
-              paymentButtonId: report.metadata.paymentButtonId || DEFAULT_RAZORPAY_BUTTON_ID,
-            }));
-          }
-          
-          const allPlaybooks = [
-            ...apiPlaybooks,
-            ...PLACEHOLDER_PLAYBOOKS.filter((p) => !apiPlaybooks.find((ap) => ap.id === p.id)),
-          ];
-          
-          const updatedPlaybooks = allPlaybooks.map((playbook) => ({
-            ...playbook,
-            isPurchased: purchasedReportIds.includes(playbook.id)
+        let apiPlaybooks = [];
+        if (Array.isArray(data.reports)) {
+          apiPlaybooks = data.reports.map((report: any) => ({
+            id: report.metadata.id,
+            title: report.metadata.title,
+            description: report.metadata.description,
+            image: report.metadata.image || "/placeholder.svg?height=200&width=300&text=Report",
+            isPurchased: report.metadata.isPurchased || false,
+            industry: report.metadata.industry || "Unknown",
+            paymentButtonId: report.metadata.paymentButtonId || DEFAULT_RAZORPAY_BUTTON_ID,
           }));
-          
-          const unpurchasedPlaybooks = updatedPlaybooks.filter((playbook) => !playbook.isPurchased);
-          setPlaybooks(unpurchasedPlaybooks);
-          setIsLoading(false);
-          return;
         }
+        
+        const allPlaybooks = [
+          ...apiPlaybooks,
+          ...PLACEHOLDER_PLAYBOOKS.filter((p) => !apiPlaybooks.find((ap) => ap.id === p.id)),
+        ];
+        
+        const updatedPlaybooks = allPlaybooks.map((playbook) => ({
+          ...playbook,
+          isPurchased: purchasedReportIds.includes(playbook.id)
+        }));
+        
+        const unpurchasedPlaybooks = updatedPlaybooks.filter((playbook) => !playbook.isPurchased);
+        setPlaybooks(unpurchasedPlaybooks);
+        setIsLoading(false);
+        return;
       } catch (error) {
         console.warn("GET API request failed:", error);
       }
@@ -292,55 +281,41 @@ export function PlaybookStorePage({
         const controller2 = new AbortController();
         const timeoutId2 = setTimeout(() => controller2.abort(), 3000);
         
-        const response = await fetch(`${API_BASE_URL}/api/reports`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token && { "Authorization": `Bearer ${token}` })
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            userId: userData?.user_id || userData?.profile?.user_id || localStorage.getItem("userId")
-          }),
-          signal: controller2.signal
+        const data = await secureApi.post("/api/reports", {
+          email: userEmail,
+          userId: userData?.user_id || userData?.profile?.user_id || localStorage.getItem("userId")
         });
         
         clearTimeout(timeoutId2);
+        // Process response and set playbooks...
         
-        if (response.ok) {
-          // Process response and set playbooks...
-          const data = await response.json();
-          
-          let apiPlaybooks = [];
-          if (Array.isArray(data.reports)) {
-            apiPlaybooks = data.reports.map((report: any) => ({
-              id: report.metadata.id,
-              title: report.metadata.title,
-              description: report.metadata.description,
-              image: report.metadata.image || "/placeholder.svg?height=200&width=300&text=Report",
-              isPurchased: report.metadata.isPurchased || false,
-              industry: report.metadata.industry || "Unknown",
-              paymentButtonId: report.metadata.paymentButtonId || DEFAULT_RAZORPAY_BUTTON_ID,
-            }));
-          }
-          
-          const allPlaybooks = [
-            ...apiPlaybooks,
-            ...PLACEHOLDER_PLAYBOOKS.filter((p) => !apiPlaybooks.find((ap) => ap.id === p.id)),
-          ];
-          
-          const updatedPlaybooks = allPlaybooks.map((playbook) => ({
-            ...playbook,
-            isPurchased: purchasedReportIds.includes(playbook.id)
+        let apiPlaybooks = [];
+        if (Array.isArray(data.reports)) {
+          apiPlaybooks = data.reports.map((report: any) => ({
+            id: report.metadata.id,
+            title: report.metadata.title,
+            description: report.metadata.description,
+            image: report.metadata.image || "/placeholder.svg?height=200&width=300&text=Report",
+            isPurchased: report.metadata.isPurchased || false,
+            industry: report.metadata.industry || "Unknown",
+            paymentButtonId: report.metadata.paymentButtonId || DEFAULT_RAZORPAY_BUTTON_ID,
           }));
-          
-          const unpurchasedPlaybooks = updatedPlaybooks.filter((playbook) => !playbook.isPurchased);
-          setPlaybooks(unpurchasedPlaybooks);
-          setIsLoading(false);
-          return;
-        } else {
-          console.warn("POST API request failed with status:", response.status);
         }
+        
+        const allPlaybooks = [
+          ...apiPlaybooks,
+          ...PLACEHOLDER_PLAYBOOKS.filter((p) => !apiPlaybooks.find((ap) => ap.id === p.id)),
+        ];
+        
+        const updatedPlaybooks = allPlaybooks.map((playbook) => ({
+          ...playbook,
+          isPurchased: purchasedReportIds.includes(playbook.id)
+        }));
+        
+        const unpurchasedPlaybooks = updatedPlaybooks.filter((playbook) => !playbook.isPurchased);
+        setPlaybooks(unpurchasedPlaybooks);
+        setIsLoading(false);
+        return;
       } catch (error) {
         console.warn("POST API request failed:", error);
       }

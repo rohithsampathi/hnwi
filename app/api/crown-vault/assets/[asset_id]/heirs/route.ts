@@ -42,9 +42,11 @@ export async function PUT(
     // Proxy to backend API
     const backendUrl = `${BACKEND_URL}/api/crown-vault/assets/${assetId}/heirs`;
     
-    console.log('Proxying heir assignment request to:', backendUrl);
-    console.log('Request body:', JSON.stringify(body, null, 2));
-    console.log('User ID:', userId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Proxying heir assignment request to: /api/crown-vault/assets/[id]/heirs');
+      console.log('Request body:', JSON.stringify(body, null, 2));
+      console.log('User ID:', userId);
+    }
 
     try {
       const response = await fetch(backendUrl, {
@@ -122,8 +124,10 @@ export async function GET(
     // Proxy to backend API
     const backendUrl = `${BACKEND_URL}/api/crown-vault/assets/${assetId}/heirs`;
     
-    console.log('Fetching heir assignment from:', backendUrl);
-    console.log('User ID:', userId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Fetching heir assignment from: /api/crown-vault/assets/[id]/heirs');
+      console.log('User ID:', userId);
+    }
 
     try {
       const response = await fetch(backendUrl, {

@@ -23,7 +23,7 @@ interface Playbook {
   paymentButtonId?: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 export function PlayBooksPage({
   onNavigate,
@@ -114,18 +114,7 @@ export function PlayBooksPage({
       }
       
       // For other playbooks, fetch to verify it's available
-      const response = await fetch(`${API_BASE_URL}/api/reports/${playbookId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch report: ${response.status} ${response.statusText}`)
-      }
-
-      await response.json() // Verify we can get the data
+      await secureApi.get(`/api/reports/${playbookId}`) // Verify we can get the data
       onNavigate(`playbook/${playbookId}`)
     } catch (error) {
       console.error('Error fetching playbook:', error)

@@ -45,7 +45,6 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
   }
 
   const handleBack = () => {
-    console.log("Going back to splash screen")
     setShowOnboarding(false)
     setShowLoginForm(false)
     setError("")
@@ -57,7 +56,6 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
 
   const handleOnboardingComplete = (userData: any) => {
     // Handle successful registration
-    console.log("User registered:", userData)
     
     // Instead of redirecting to login, automatically log the user in
     const authData = {
@@ -139,7 +137,6 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
           variant: "default",
         })
       } catch (error) {
-        console.error("Error during login:", error)
         const errorMessage = error instanceof Error 
           ? error.message 
           : "Login failed. Please check your credentials and try again."
@@ -187,7 +184,7 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
               Back
             </Button>
           </div>
-          <div className="flex-grow flex items-center justify-center p-4 pb-32 md:pb-16">
+          <div className="flex-grow flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -372,7 +369,7 @@ export function SplashScreen({ onLogin, onLoginSuccess }: SplashScreenProps) {
           <ThemeToggle />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pb-32 md:pb-16">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

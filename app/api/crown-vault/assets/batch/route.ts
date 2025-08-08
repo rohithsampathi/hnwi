@@ -26,8 +26,10 @@ export async function POST(request: NextRequest) {
     // Proxy the request to the real backend
     const backendUrl = `${BACKEND_URL}/api/crown-vault/assets/batch?owner_id=${ownerId}`;
     
-    console.log('Proxying Crown Vault batch request to:', backendUrl);
-    console.log('Request body:', JSON.stringify(body, null, 2));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Proxying Crown Vault batch request to: /api/crown-vault/assets/batch');
+      console.log('Request body:', JSON.stringify(body, null, 2));
+    }
     
     try {
       const response = await fetch(backendUrl, {

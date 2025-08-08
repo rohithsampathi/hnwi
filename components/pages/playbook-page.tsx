@@ -39,7 +39,7 @@ interface Report {
   structure: PlaybookSection[]
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+import { secureApi } from "@/lib/secure-api"
 
 export function PlaybookPage({ 
   playbookId, 
@@ -67,15 +67,7 @@ export function PlaybookPage({
         headers.Authorization = `Bearer ${token}`
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/reports/${playbookId}`, {
-        headers
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report")
-      }
-
-      const data = await response.json()
+      const data = await secureApi.get(`/api/reports/${playbookId}`)
       
       setReport({
         metadata: {
