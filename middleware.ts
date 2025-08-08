@@ -17,16 +17,12 @@ export function middleware(request: NextRequest) {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
 
-  // Generate nonce for this request
-  const nonce = crypto.randomUUID();
-  
   // Content Security Policy - relaxed for development, strict for production
   const isDev = process.env.NODE_ENV !== "production";
   const cspDirectives = [
     "default-src 'self'",
-    isDev 
-      ? "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com"
-      : `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com`,
+    // Allow unsafe-inline for Next.js inline scripts in production
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 interface VaultStats {
   total_assets: number;
@@ -31,6 +32,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get session token for authentication
+    const sessionCookie = cookies().get('session');
+    const authToken = sessionCookie?.value || '';
+    
     // Fetch assets from real backend to calculate stats
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
     const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
@@ -40,7 +45,8 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': ownerId
+          'X-User-ID': ownerId,
+          'Authorization': `Bearer ${authToken}`
         },
         cache: 'no-store'
       });
