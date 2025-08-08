@@ -21,6 +21,19 @@ interface User {
   // Additional fields to match direct API response
   user_id?: string
   profile?: any
+  // Profile fields for compatibility
+  net_worth?: number
+  city?: string
+  country?: string
+  bio?: string
+  industries?: string[]
+  phone_number?: string
+  linkedin?: string
+  office_address?: string
+  crypto_investor?: boolean
+  land_investor?: boolean
+  company?: string
+  company_info?: any
 }
 
 interface LoginData {
@@ -65,7 +78,7 @@ function getJWTSecret(): Uint8Array {
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
+  sameSite: "strict" as const,
   maxAge: 60 * 60 * 24, // 24 hours
 }
 
@@ -123,6 +136,12 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
       const data = await secureApi.post('/api/login', loginData);
       
       // If we get here, the request was successful (secureApi throws on failure)
+      
+      // Validate that we received a user_id from the backend
+      if (!data.user_id) {
+        logger.error("Login failed: No user_id provided from backend", { email: loginData.email });
+        return { success: false, error: "Invalid response from server. Please try again." };
+      }
       
       // Create a user object from the response data
       const firstName = data.first_name || "User";
@@ -197,8 +216,12 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
 
       // If we get here, the request was successful
         
-        // Extract user ID from the response
+        // Extract user ID from the response and validate
         const userId = data.user_id;
+        if (!userId) {
+          logger.error("Sign up failed: No user_id provided from backend", { email: userData.email });
+          return { success: false, error: "Invalid response from server. Please try again." };
+        }
         
         const user: User = {
           id: userId,
@@ -243,9 +266,15 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
 export async function handleOnboardingComplete(newUser: any): Promise<AuthResponse> {
   // Implementation for completing onboarding
   try {
-    // Create a properly formatted user object 
+    // Validate that we have a user_id from the backend
+    if (!newUser.user_id) {
+      logger.error("Onboarding failed: No user_id provided from backend", { email: newUser.email });
+      return { success: false, error: "Invalid user data received. Please try again." };
+    }
+
+    // Create a properly formatted user object with backend-provided ID only
     const user: User = {
-      id: newUser.user_id || Math.random().toString(36).substr(2, 9),
+      id: newUser.user_id,
       user_id: newUser.user_id,
       email: newUser.email,
       firstName: newUser.firstName || newUser.name?.split(' ')[0] || "User",
@@ -258,9 +287,18 @@ export async function handleOnboardingComplete(newUser: any): Promise<AuthRespon
 
     const token = await createToken(user)
     cookies().set("session", token, COOKIE_OPTIONS)
+    
+    logger.info("Onboarding completed successfully", { 
+      userId: user.id, 
+      email: user.email 
+    });
+    
     return { success: true, user, token }
   } catch (error) {
-    console.error("Onboarding failed:", error)
+    logger.error("Onboarding failed", { 
+      error: error instanceof Error ? error.message : String(error),
+      email: newUser?.email 
+    });
     return { success: false, error: "Onboarding failed" }
   }
 }
@@ -283,9 +321,15 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
     }
 
     try {
-      // Get the actual user ID from localStorage if available
-      let userId = currentUser.id || currentUser.user_id;
-      if (typeof window !== "undefined") {
+      // Use the current user's backend-provided ID (never generate new ones)
+      let userId = currentUser.user_id || currentUser.id;
+      if (!userId) {
+        logger.error("Update user failed: No valid user_id found", { email: currentUser.email });
+        return { success: false, error: "Invalid user session. Please login again." };
+      }
+      
+      // Only use stored userId as fallback if no ID in current user object
+      if (typeof window !== "undefined" && !userId) {
         const storedUserId = localStorage.getItem("userId");
         if (storedUserId) {
           userId = storedUserId;
@@ -318,7 +362,7 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
 
       // Remove undefined fields to avoid overwriting with null
       Object.keys(updateData).forEach(key => 
-        updateData[key] === undefined && delete updateData[key]
+        updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]
       );
 
       // Use secure API for user update

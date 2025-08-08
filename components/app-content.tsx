@@ -278,8 +278,12 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         // Extract profile data from the response
         const profile = userData.profile || {};
         
-        // Get user ID from the most likely location
+        // Get user ID from the most likely location and validate it exists
         const userId = userData.user_id || userData.id || profile.user_id;
+        
+        if (!userId) {
+          throw new Error("No valid user ID received from server. Please try logging in again.");
+        }
         
         // Split name into parts for first/last name
         const nameParts = profile.name?.split(" ") || ["User", ""];
@@ -503,6 +507,12 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       // Extract profile from the response
       const profile = userData.profile || {};
       
+      // Validate that we have a user ID from the backend
+      const userId = userData.user_id || userData.userId || profile.user_id;
+      if (!userId) {
+        throw new Error("No valid user ID received from server. Please try logging in again.");
+      }
+      
       // Split name for first/last name if needed
       const nameParts = profile.name?.split(" ") || ["User", ""];
       const firstName = userData.firstName || userData.first_name || nameParts[0] || "User";
@@ -510,8 +520,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       
       // Set user directly with all required profile fields
       const userObject: User = {
-        id: userData.user_id || userData.userId || profile.user_id,
-        user_id: userData.user_id || userData.userId || profile.user_id,
+        id: userId,
+        user_id: userId,
         email: userData.email || profile.email,
         firstName: firstName,
         lastName: lastName,
@@ -541,7 +551,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setIsSessionCheckComplete(true);
       
       // Store user info in localStorage
-      localStorage.setItem("userId", userObject.user_id || '');
+      localStorage.setItem("userId", userId);
       localStorage.setItem("userEmail", userObject.email);
       
       // Always ensure a token is stored
