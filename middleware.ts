@@ -40,8 +40,8 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     // Include both nonce and specific hashes for Next.js inline scripts
     `script-src 'self' ${isDev ? `'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'` : `'nonce-${nonce}' ${nextJsHashes.join(' ')}`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
-    // Style sources with nonce support
-    `style-src 'self' ${isDev ? `'nonce-${nonce}' 'unsafe-inline'` : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
+    // Style sources with nonce support - allow unsafe-inline for development
+    `style-src 'self' ${isDev ? `'unsafe-inline'` : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://api.razorpay.com https://*.vercel.app wss://*.vercel.app https://uwind.onrender.com https://api-js.mixpanel.com",

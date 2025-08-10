@@ -11,6 +11,15 @@ const LoadingComponent = () => {
   const [completedSteps, setCompletedSteps] = React.useState<number[]>([]);
   const [time, setTime] = React.useState("");
   const [isComplete, setIsComplete] = React.useState(false);
+  const [floatingElements, setFloatingElements] = React.useState<Array<{
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+    rotation: number;
+    duration: number;
+    delay: number;
+  }>>([]);
 
   // Compact checklist items - 1 second total experience
   const checklistItems = [
@@ -49,6 +58,22 @@ const LoadingComponent = () => {
         const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         setTheme(isDarkMode ? "dark" : "light");
       }
+    }
+  }, []);
+
+  // Generate floating elements only on client side to avoid hydration mismatch
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const elements = Array.from({ length: 15 }, () => ({
+        width: Math.random() * 4 + 2,
+        height: Math.random() * 4 + 2,
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        rotation: Math.random() * 360,
+        duration: 8 + Math.random() * 6,
+        delay: Math.random() * 5
+      }));
+      setFloatingElements(elements);
     }
   }, []);
 
@@ -91,21 +116,21 @@ const LoadingComponent = () => {
         }`}></div>
         
         {/* Floating geometric elements */}
-        {[...Array(15)].map((_, i) => (
+        {floatingElements.map((element, i) => (
           <div
             key={i}
-            className={`absolute opacity-20 ${
+            className={`absolute opacity-20 animate-float ${
               isDark ? "bg-gradient-to-br from-slate-400 to-slate-600" : "bg-gradient-to-br from-slate-300 to-slate-500"
             }`}
             style={{
-              width: `${Math.random() * 4 + 2}px`,
-              height: `${Math.random() * 4 + 2}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              transform: `rotate(${Math.random() * 360}deg)`,
-              animation: `float ${8 + Math.random() * 6}s linear infinite`,
-              animationDelay: `${Math.random() * 5}s`
-            }}
+              '--element-width': `${element.width}px`,
+              '--element-height': `${element.height}px`,
+              '--element-left': `${element.left}%`,
+              '--element-top': `${element.top}%`,
+              '--element-rotation': `${element.rotation}deg`,
+              '--element-duration': `${element.duration}s`,
+              '--element-delay': `${element.delay}s`
+            } as React.CSSProperties}
           />
         ))}
       </div>

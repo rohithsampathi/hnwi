@@ -407,7 +407,13 @@ footer nav button, footer nav div {
 
 /* Loading animation utilities */
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  width: var(--element-width);
+  height: var(--element-height);
+  left: var(--element-left);
+  top: var(--element-top);
+  transform: rotate(var(--element-rotation));
+  animation: float var(--element-duration) linear infinite;
+  animation-delay: var(--element-delay);
 }
 
 .animate-premium-pulse {
