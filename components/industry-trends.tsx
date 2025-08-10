@@ -48,6 +48,7 @@ interface TimeSeriesResponse {
 
 // Import from config to ensure consistency
 import { API_BASE_URL } from "@/config/api"
+import { secureApi } from "@/lib/secure-api"
 
 function classifyProducts(products: Product): { [key: string]: string[] } {
   const productNames = Object.keys(products)
@@ -151,33 +152,11 @@ export function IndustryTrends() {
       const cacheKey = `${timestamp}-${random}`
       
       // Clear any existing browser cache for this endpoint
-      const url = `${API_BASE_URL}/api/industry-trends/time-series?_t=${cacheKey}`
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          // Strengthened cache control headers
-          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-          "Pragma": "no-cache",
-          "Expires": "0",
-          // Add unique request ID
-          "X-Request-ID": cacheKey
-        },
-        body: JSON.stringify({
-          time_range: timeRange,
-          include_developments: true,
-          include_previous_period: true,
-          _timestamp: timestamp,
-          _cache_key: cacheKey, // Add more randomness to body
-        }),
+      // Use correct POST format as expected by backend
+      const data: TimeSeriesResponse = await secureApi.post(`/api/industry-trends/time-series`, {
+        time_range: timeRange,
+        include_developments: true
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data: TimeSeriesResponse = await response.json()
 
       if (data.data.length === 0) {
         setError("No industry data available for the selected time range.")

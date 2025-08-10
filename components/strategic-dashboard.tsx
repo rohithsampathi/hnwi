@@ -202,13 +202,12 @@ export function StrategicDashboard({ title, summary, sections, score, isLoading 
                     cy="50"
                     r="40"
                     fill="transparent"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: isLoading ? 0 : score.value }}
-                    transition={{ duration: 2, ease: "easeInOut", delay: 0.5 }}
-                    style={{
+                    initial={{ strokeDasharray: `${2 * Math.PI * 40}`, strokeDashoffset: `${2 * Math.PI * 40}` }}
+                    animate={{ 
                       strokeDasharray: `${2 * Math.PI * 40}`,
-                      strokeDashoffset: `${2 * Math.PI * 40 * (1 - (isLoading ? 0 : score.value))}`,
+                      strokeDashoffset: `${2 * Math.PI * 40 * (1 - (isLoading ? 0 : score.value))}`
                     }}
+                    transition={{ duration: 2, ease: "easeInOut", delay: 0.5 }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">

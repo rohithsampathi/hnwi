@@ -48,7 +48,7 @@ export function FooterNavigation({
             >
               <>
                 <div className="flex items-center mb-1">
-                  <item.icon className="h-4 w-4 md:h-5 md:w-5 font-bold" />
+                  <item.icon className="h-6 w-6 md:h-5 md:w-5 font-bold" />
                   {(item.beta || item.live) && (
                     <Badge variant="secondary" className="ml-1 text-[6px] md:text-[8px] px-1 py-0 badge-beta">
                       {item.beta ? "Beta" : "Live"}

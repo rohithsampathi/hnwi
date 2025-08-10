@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, User, Mail, Phone, FileText, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, User, Mail, Phone, FileText, ChevronRight, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CrownVaultHeir, CrownVaultAsset } from "@/lib/api";
 
@@ -58,7 +58,7 @@ export function HeirsSection({
       </div>
 
       {/* Heirs Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {heirs.length === 0 ? (
           /* Clean Empty State */
           <div className="col-span-full">
@@ -96,7 +96,7 @@ export function HeirsSection({
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <Card 
-                  className="relative hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                  className="relative hover:shadow-md transition-shadow duration-200 cursor-pointer w-full min-w-0"
                   onClick={() => {
                     setSelectedHeir(heir);
                     setIsHeirDetailOpen(true);
@@ -104,7 +104,7 @@ export function HeirsSection({
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Clean Avatar */}
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <span className="text-sm font-semibold text-primary">
@@ -112,8 +112,8 @@ export function HeirsSection({
                           </span>
                         </div>
                         
-                        <div>
-                          <CardTitle className="text-base font-semibold">
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="text-base font-semibold truncate">
                             {heir.name}
                           </CardTitle>
                           <Badge 
@@ -126,7 +126,7 @@ export function HeirsSection({
                       </div>
                       
                       {/* Action Buttons */}
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                         <Button 
                           variant="ghost" 
                           size="sm"
@@ -205,24 +205,63 @@ export function HeirsSection({
         )}
       </div>
       
-      {/* Summary Stats */}
+      {/* NYC Standard Summary Stats */}
       {heirs.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-          <div className="text-center">
-            <p className="text-2xl font-semibold">{heirs.length}</p>
-            <p className="text-xs text-muted-foreground">Total Heirs</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-semibold">{assets.length}</p>
-            <p className="text-xs text-muted-foreground">Total Assets</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-semibold">
-              {formatValue(assets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0))}
-            </p>
-            <p className="text-xs text-muted-foreground">Total Value</p>
-          </div>
-        </div>
+        <Card className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900/50 dark:to-gray-900/50 border-slate-200/60 dark:border-slate-700/60">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-3 gap-8">
+              <div className="text-center group">
+                <div className="mb-2">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-3 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/40 transition-colors">
+                    <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    {heirs.length}
+                  </p>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    Total Heirs
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-center group border-l border-r border-slate-200 dark:border-slate-700">
+                <div className="mb-2">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full mb-3 group-hover:bg-emerald-200 dark:group-hover:bg-emerald-800/40 transition-colors">
+                    <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    {assets.length}
+                  </p>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    Total Assets
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-center group">
+                <div className="mb-2">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-full mb-3 group-hover:bg-amber-200 dark:group-hover:bg-amber-800/40 transition-colors">
+                    <DollarSign className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                    {formatValue(assets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0))}
+                  </p>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    Total Value
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="text-center">
+                <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  Inheritance Planning Overview
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

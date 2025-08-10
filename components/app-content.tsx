@@ -123,6 +123,13 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               };
               
               setUser(userObj);
+
+              // Store the token for API calls if provided
+              if (data.token) {
+                localStorage.setItem("token", data.token);
+                // Store user ID for API calls
+                localStorage.setItem("userId", userObj.user_id || userObj.id);
+              }
   
               // SECURITY: Store only non-sensitive display data in sessionStorage
               sessionStorage.setItem("userDisplay", JSON.stringify({
@@ -134,6 +141,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
             } else {
               setUser(null);
               sessionStorage.removeItem("userDisplay");
+              localStorage.removeItem("token");
+              localStorage.removeItem("userId");
             }
             
             setHasCheckedSession(true);
@@ -642,9 +651,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
                 alt="HNWI Chronicles Logo" 
                 width={128}
                 height={128}
-                className="w-full h-full object-contain"
+                className="w-auto h-auto object-contain"
                 style={{ 
-                  animation: "spin 8s linear infinite" 
+                  animation: "spin 8s linear infinite",
+                  width: '128px',
+                  height: '128px'
                 }}
                 priority
               />

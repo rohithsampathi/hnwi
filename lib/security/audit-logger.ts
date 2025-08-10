@@ -309,3 +309,26 @@ export class AuditLogger {
     ].join("\n");
   }
 }
+
+// Create and export audit logger instance
+export const auditLogger = {
+  log: async (data: { action: string; resource?: string; ip?: string; error?: string; timestamp: string; userId?: string }) => {
+    try {
+      AuditLogger.log(
+        SecurityEventType.API_CALL,
+        SeverityLevel.INFO,
+        data.action,
+        data.resource || '',
+        true,
+        {
+          ip: data.ip,
+          error: data.error,
+          userId: data.userId
+        }
+      );
+    } catch (error) {
+      // Silent fail for audit logging to prevent breaking app functionality
+      console.warn('Audit logging failed:', error);
+    }
+  }
+};

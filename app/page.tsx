@@ -138,11 +138,9 @@ const LoadingComponent = () => {
               alt="HNWI Chronicles" 
               width={160}
               height={160}
-              className="relative z-10 animate-spin"
+              className="relative z-10 animate-spin w-auto h-auto"
               style={{ 
-                animation: "spin 8s linear infinite",
-                width: "auto",
-                height: "auto"
+                animation: "spin 8s linear infinite"
               }}
               priority
             />

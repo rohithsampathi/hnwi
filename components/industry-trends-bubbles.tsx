@@ -33,6 +33,7 @@ interface TooltipData {
 
 // Import from config to ensure consistency
 import { API_BASE_URL } from "@/config/api"
+import { secureApi } from "@/lib/secure-api"
 
 export function IndustryTrendsBubbles({
   duration,
@@ -68,32 +69,11 @@ export function IndustryTrendsBubbles({
       const random = Math.random().toString(36).substring(2, 15)
       const cacheKey = `${timestamp}-${random}`
       
-      // Construct URL with cache-busting
-      const url = `${API_BASE_URL}/api/industry-trends/time-series?_t=${cacheKey}`
-      
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-          "Pragma": "no-cache",
-          "Expires": "0",
-          "X-Request-ID": cacheKey
-        },
-        body: JSON.stringify({
-          time_range: duration,
-          include_developments: false,
-          _timestamp: timestamp,
-          _cache_key: cacheKey,
-        }),
+      // Use correct POST format as expected by backend  
+      const result = await secureApi.post(`/api/industry-trends/time-series`, {
+        time_range: duration,
+        include_developments: false
       })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
       
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error("Invalid API response format")

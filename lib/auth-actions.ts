@@ -132,8 +132,8 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
     }
     
     try {
-      // Use secure API wrapper to prevent URL exposure
-      const data = await secureApi.post('/api/login', loginData);
+      // Use secure API wrapper to prevent URL exposure (login doesn't require auth)
+      const data = await secureApi.post('/api/auth/login', loginData, false);
       
       // If we get here, the request was successful (secureApi throws on failure)
       
@@ -168,13 +168,19 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
         }
       }
       
-      const token = data.token || await createToken(user)
+      const token = data.access_token || data.token || await createToken(user)
       cookies().set("session", token, COOKIE_OPTIONS)
       
       return { 
         success: true, 
         user,
-        token
+        token,
+        // Include backend response fields for frontend compatibility
+        user_id: data.user_id,
+        email: data.email,
+        first_name: firstName,
+        last_name: lastName,
+        profile: data.profile || {}
       }
     } catch (loginError) {
       // Secure API wrapper provides safe error messages

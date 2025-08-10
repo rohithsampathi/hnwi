@@ -5,9 +5,15 @@ import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { 
-  Crown, Shield, Plus, Lock, Brain, Database
+  Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText, 
+  Edit, X, Save, Building, DollarSign
 } from "lucide-react";
 
 // Component imports
@@ -24,6 +30,7 @@ import {
   getCrownVaultHeirs,
   processCrownVaultAssetsBatch,
   createHeir,
+  updateHeir,
   deleteHeir,
   type CrownVaultAsset,
   type CrownVaultHeir,
@@ -316,6 +323,43 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     });
   };
 
+  const handleUpdateHeir = async (heirId: string, data: any) => {
+    try {
+      await updateHeir(heirId, data);
+      
+      // Update heirs list
+      setHeirs(prev => prev.map(heir => 
+        heir.id === heirId 
+          ? { ...heir, ...data }
+          : heir
+      ));
+      
+      // Reset editing state
+      setEditingHeir(null);
+      setEditingHeirData(null);
+      
+      toast({
+        title: "Success",
+        description: "Heir updated successfully",
+      });
+      
+      // Refresh heirs data
+      try {
+        const updatedHeirs = await getCrownVaultHeirs();
+        setHeirs(updatedHeirs);
+      } catch (error) {
+        console.error('Failed to refresh heirs data:', error);
+      }
+    } catch (error) {
+      console.error('Failed to update heir:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to update heir. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Tab content renderer
   const renderTabContent = () => {
     if (activeTab === 'summary') {
@@ -460,10 +504,276 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           processingPhase={processingPhase}
         />
 
-        {/* TODO: Add other modal components */}
-        {/* <AssetDetailModal /> */}
-        {/* <HeirDetailModal /> */}
-        {/* <AddHeirModal /> */}
+        {/* Heir Detail Modal */}
+        <Dialog open={isHeirDetailOpen} onOpenChange={setIsHeirDetailOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <DialogTitle className="text-xl font-semibold">Heir Details</DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsHeirDetailOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+
+            {selectedHeir && (
+              <div className="space-y-6">
+                {/* Header Card */}
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-2xl font-bold text-primary">
+                            {selectedHeir.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <h2 className="text-2xl font-bold text-foreground">{selectedHeir.name}</h2>
+                          <Badge variant="secondary" className="mt-1">
+                            {selectedHeir.relationship}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setIsHeirDetailOpen(false);
+                          startHeirEditing(selectedHeir);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Contact Information */}
+                <Card>
+                  <CardHeader>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Contact Information
+                    </h3>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {selectedHeir.email && (
+                      <div className="flex items-center gap-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-foreground">{selectedHeir.email}</span>
+                      </div>
+                    )}
+                    {selectedHeir.phone && (
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-foreground">{selectedHeir.phone}</span>
+                      </div>
+                    )}
+                    {!selectedHeir.email && !selectedHeir.phone && (
+                      <p className="text-muted-foreground text-sm">No contact information provided</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Inheritance Summary */}
+                <Card>
+                  <CardHeader>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Building className="h-5 w-5" />
+                      Inheritance Summary
+                    </h3>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const heirAssets = getHeirAssets(selectedHeir.id);
+                      const totalValue = heirAssets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0);
+                      const formatValue = (value: number) => {
+                        if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+                        return `$${value.toLocaleString()}`;
+                      };
+                      
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-primary">{heirAssets.length}</p>
+                              <p className="text-sm text-muted-foreground">Assets</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-primary">{formatValue(totalValue)}</p>
+                              <p className="text-sm text-muted-foreground">Total Value</p>
+                            </div>
+                          </div>
+
+                          {heirAssets.length > 0 ? (
+                            <div className="space-y-2">
+                              <h4 className="font-medium text-foreground mb-2">Inherited Assets:</h4>
+                              {heirAssets.map((asset) => (
+                                <div key={asset.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                                  <div>
+                                    <p className="font-medium text-foreground">{asset.asset_data.name}</p>
+                                    <p className="text-sm text-muted-foreground">{asset.asset_data.asset_type}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-semibold text-foreground">{formatValue(asset.asset_data.value || 0)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground text-sm">No assets assigned yet</p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
+                {/* Notes */}
+                {selectedHeir.notes && (
+                  <Card>
+                    <CardHeader>
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Notes
+                      </h3>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-foreground whitespace-pre-wrap">{selectedHeir.notes}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <div className="text-center text-sm text-muted-foreground">
+                  Added on {new Date(selectedHeir.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Heir Edit Modal */}
+        <Dialog open={editingHeir !== null} onOpenChange={() => {
+          setEditingHeir(null);
+          setEditingHeirData(null);
+        }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Edit Heir
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditingHeir(null);
+                  setEditingHeirData(null);
+                }}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogHeader>
+
+            {editingHeirData && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                if (editingHeir && editingHeirData) {
+                  handleUpdateHeir(editingHeir, editingHeirData);
+                }
+              }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input
+                    id="name"
+                    value={editingHeirData.name}
+                    onChange={(e) => setEditingHeirData({...editingHeirData, name: e.target.value})}
+                    placeholder="Enter heir's name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="relationship">Relationship *</Label>
+                  <Select value={editingHeirData.relationship} onValueChange={(value) => setEditingHeirData({...editingHeirData, relationship: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select relationship" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Spouse", "Child", "Parent", "Sibling", "Grandchild", "Grandparent", "Other Family", "Friend", "Business Partner", "Charitable Organization", "Trust", "Other"].map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={editingHeirData.email}
+                    onChange={(e) => setEditingHeirData({...editingHeirData, email: e.target.value})}
+                    placeholder="Enter email address"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={editingHeirData.phone}
+                    onChange={(e) => setEditingHeirData({...editingHeirData, phone: e.target.value})}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={editingHeirData.notes}
+                    onChange={(e) => setEditingHeirData({...editingHeirData, notes: e.target.value})}
+                    placeholder="Add any additional notes..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingHeir(null);
+                      setEditingHeirData(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!editingHeirData.name.trim() || !editingHeirData.relationship}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

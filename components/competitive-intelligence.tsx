@@ -7,6 +7,7 @@ import { DevelopmentStream } from "@/components/development-stream"
 import { getIndustryColor } from "@/utils/color-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { secureApi } from "@/lib/secure-api"
+import { isAuthenticated } from "@/lib/auth-utils"
 
 interface CompetitiveIntelligenceProps {
   industry: string
@@ -22,6 +23,14 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
   const { toast } = useToast()
 
   const fetchDevelopments = useCallback(async () => {
+    // Check authentication before making API call
+    if (!isAuthenticated()) {
+      console.log('User not authenticated - skipping developments fetch in competitive intelligence');
+      setDevelopments([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true)
     try {
       const data = await secureApi.post('/api/developments', {
@@ -34,8 +43,17 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
       })
       const allDevelopments = data.developments || []
       setDevelopments(allDevelopments)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching developments:", error)
+      
+      // Check if it's an authentication error
+      if (error.message?.includes('Authentication required') || error.status === 401) {
+        console.log('Authentication required for competitive intelligence data');
+        setDevelopments([]);
+        setError(null); // Don't show error to user for auth issues
+        return;
+      }
+      
       const errorMessage = error instanceof Error ? error.message : String(error)
       setError(errorMessage)
       toast({

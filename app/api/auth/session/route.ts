@@ -26,7 +26,11 @@ export async function GET() {
         const userDataCookie = cookieStore.get('session_user')?.value;
         if (userDataCookie) {
           const userData = JSON.parse(userDataCookie);
-          return NextResponse.json({ user: userData });
+          // Also provide the session token for frontend localStorage
+          return NextResponse.json({ 
+            user: userData,
+            token: sessionToken || traditionaSession 
+          });
         }
         
         // For API token validation, you would need to implement proper validation here
@@ -64,7 +68,12 @@ export async function POST(request: Request) {
     }
     
     // Set the session cookie on the response
-    const response = NextResponse.json(result);
+    // Include the token in the response so frontend can store it in localStorage
+    const responseData = {
+      ...result,
+      token: result.token // Ensure token is available for frontend localStorage
+    };
+    const response = NextResponse.json(responseData);
     
     // Store token in cookie for session management
     if (result.token) {

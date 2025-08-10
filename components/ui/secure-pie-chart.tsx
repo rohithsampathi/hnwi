@@ -26,7 +26,6 @@ const defaultColors = [
   'hsl(var(--primary))',     // Primary brand color
   '#FF6B35',                 // Vibrant orange-red
   '#4ECDC4',                 // Teal
-  '#45B7D1',                 // Sky blue
   '#F7DC6F',                 // Bright yellow
   '#BB6BD9',                 // Purple
   '#2ECC71',                 // Emerald green
@@ -36,9 +35,7 @@ const defaultColors = [
   '#1ABC9C',                 // Turquoise
   '#34495E',                 // Dark blue-gray
   '#E67E22',                 // Carrot orange
-  '#3498DB',                 // Blue
   '#E91E63',                 // Pink
-  '#00BCD4',                 // Cyan
   '#8BC34A',                 // Light green
   '#FF9800',                 // Amber
   '#607D8B',                 // Blue grey

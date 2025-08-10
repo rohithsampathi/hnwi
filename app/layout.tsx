@@ -87,20 +87,7 @@ export default function RootLayout({
   
   return (
     <html lang="en">
-      <head>
-        {/* Add nonce to any necessary inline scripts */}
-        {nonce && (
-          <script
-            nonce={nonce}
-            dangerouslySetInnerHTML={{
-              __html: `
-                // CSP nonce available for Next.js
-                window.__CSP_NONCE__ = '${nonce}';
-              `
-            }}
-          />
-        )}
-      </head>
+      <head />
       <body>
         <AuthProvider>
           <OnboardingProvider>

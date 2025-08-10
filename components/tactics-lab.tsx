@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { API_BASE_URL } from "@/config/api"
+import { getValidToken } from "@/lib/auth-utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { Loader2, Lightbulb, ExternalLink, FileText, ChevronRight, Brain, Sparkles, Zap, TrendingUp } from "lucide-react"
 import { StrategicDashboard } from "./strategic-dashboard"
@@ -87,14 +88,23 @@ export function TacticsLab() {
       setIsFirstQuestion(false)
 
       try {
+        const token = getValidToken();
+        if (!token) {
+          throw new Error("Authentication required. Please log in to use Strategy Engine.");
+        }
+
         const response = await fetchWithTimeout(
-          `${API_BASE_URL}/api/strategic-analysis`,
+          `${API_BASE_URL}/api/chat/strategic-analysis`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
             },
-            body: JSON.stringify({ query, time_range: timeRange }),
+            body: JSON.stringify({
+              query: query,
+              time_range: timeRange
+            }),
           },
           180000, // Updated timeout to 3 minutes
           3,

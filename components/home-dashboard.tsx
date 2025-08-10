@@ -33,6 +33,7 @@ import { MetaTags } from "./meta-tags"
 import type React from "react"
 
 import { secureApi } from "@/lib/secure-api"
+import { isAuthenticated } from "@/lib/auth-utils"
 
 interface User {
   firstName: string
@@ -134,6 +135,13 @@ export function HomeDashboard({
   }, [userData]);
 
   const fetchDevelopments = async () => {
+    // Check authentication before making API call
+    if (!isAuthenticated()) {
+      console.log('User not authenticated - skipping developments fetch');
+      setDevelopments([]);
+      return;
+    }
+
     try {
       const data = await secureApi.post('/api/developments', {
         page: 1,
@@ -143,7 +151,15 @@ export function HomeDashboard({
       });
       
       setDevelopments(data.developments || [])
-    } catch (error) {
+    } catch (error: any) {
+      // Check if it's an authentication error
+      if (error.message?.includes('Authentication required') || error.status === 401) {
+        console.log('Authentication required for developments data');
+        setDevelopments([]);
+        return;
+      }
+      
+      // For other errors, show toast
       toast({
         title: "Error",
         description: "Failed to fetch latest developments. Please try again later.",

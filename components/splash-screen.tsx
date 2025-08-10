@@ -117,12 +117,18 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         }
         
         const userData = {
-          userId: data.user_id,
-          email: data.email,
-          firstName: data.first_name || "User",
-          lastName: data.last_name || "",
-          profile: data.profile || {},
-          token: data.token || ""
+          userId: data.user_id || data.user?.id,
+          email: data.email || data.user?.email,
+          firstName: data.first_name || data.user?.firstName || "User",
+          lastName: data.last_name || data.user?.lastName || "",
+          profile: data.profile || data.user?.profile || {},
+          token: data.token || data.access_token || ""
+        }
+        
+        // Store token in localStorage for API calls
+        if (userData.token) {
+          localStorage.setItem("token", userData.token);
+          localStorage.setItem("userId", userData.userId);
         }
         
         if (onLoginSuccess) {
@@ -203,7 +209,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                   alt="HNWI Chronicles"
                   width={80}
                   height={80}
-                  className="mb-4"
+                  className="mb-4 w-auto h-auto"
+                  style={{ width: '80px', height: '80px' }}
                   priority
                 />
                 <Heading2 className="text-3xl font-bold font-heading text-center text-card-foreground">
@@ -486,8 +493,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                 alt="HNWI Chronicles"
                 width={256}
                 height={256}
-                className="w-full h-full"
-                style={{ height: "auto" }}
+                className="w-auto h-auto"
+                style={{ width: "256px", height: "auto" }}
                 priority
               />
             </motion.div>

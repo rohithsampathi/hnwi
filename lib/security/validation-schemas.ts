@@ -298,3 +298,57 @@ export const sanitizers = {
     }
   }
 };
+
+// Request validation function
+export interface ValidationResult {
+  isValid: boolean;
+  errors?: string[];
+}
+
+export function validateRequest(endpoint: string, data: any): ValidationResult {
+  try {
+    switch (endpoint) {
+      case 'developments':
+        // Validate developments request
+        const developmentsSchema = z.object({
+          start_date: z.string().optional(),
+          end_date: z.string().optional(),
+          industry: z.string().optional(),
+          product: z.string().optional(),
+          page: z.number().min(1).optional(),
+          page_size: z.number().min(1).max(100).optional(),
+          sort_by: z.string().optional(),
+          sort_order: z.enum(['asc', 'desc']).optional(),
+          time_range: z.string().optional()
+        });
+        developmentsSchema.parse(data);
+        return { isValid: true };
+
+      case 'opportunities':
+        // Validate opportunities request
+        const opportunitiesSchema = z.object({
+          region: z.string().optional(),
+          industry: z.string().optional(),
+          riskLevel: z.string().optional(),
+          page: z.number().min(1).optional(),
+          page_size: z.number().min(1).max(100).optional()
+        });
+        opportunitiesSchema.parse(data);
+        return { isValid: true };
+
+      default:
+        // Generic validation for unknown endpoints
+        const genericSchema = z.object({}).passthrough();
+        genericSchema.parse(data);
+        return { isValid: true };
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { 
+        isValid: false, 
+        errors: error.errors.map(e => `${e.path.join(".")}: ${e.message}`)
+      };
+    }
+    return { isValid: false, errors: ["Validation failed"] };
+  }
+}

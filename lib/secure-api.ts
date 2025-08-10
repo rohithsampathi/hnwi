@@ -2,6 +2,7 @@
 
 // Security wrapper for API calls to prevent URL exposure in console logs
 import { API_BASE_URL } from "@/config/api";
+import { getValidToken, clearInvalidToken } from "@/lib/auth-utils";
 
 interface SecureFetchOptions extends RequestInit {
   timeout?: number;
@@ -120,23 +121,44 @@ const createSecureError = (message: string, statusCode?: number): Error => {
   return error;
 };
 
-// Secure fetch wrapper
+// Secure fetch wrapper that matches backend expectations
 export const secureApiCall = async (
   endpoint: string, 
-  options: RequestInit = {}
+  options: RequestInit = {},
+  requireAuth: boolean = true
 ): Promise<Response> => {
   try {
+    // Clear any invalid tokens first
+    clearInvalidToken();
+    
     const url = `${API_BASE_URL}${endpoint}`;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    // Check for valid token if auth is required
+    if (requireAuth) {
+      const token = getValidToken();
+      
+      if (!token) {
+        // No valid token - throw auth error instead of making failed request
+        throw new APIError('Authentication required - please log in', 401, endpoint);
+      }
+      
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
 
     return response;
   } catch (error) {
+    if (error instanceof APIError) {
+      throw error;
+    }
     // Don't expose the actual URL in error messages
     throw createSecureError('Connection failed', 0);
   }
@@ -144,12 +166,12 @@ export const secureApiCall = async (
 
 // Secure API methods
 export const secureApi = {
-  async post(endpoint: string, data: any): Promise<any> {
+  async post(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
     try {
       const response = await secureApiCall(endpoint, {
         method: 'POST',
         body: JSON.stringify(data),
-      });
+      }, requireAuth);
 
       if (!response.ok) {
         throw createSecureError('Request failed', response.status);
@@ -164,11 +186,11 @@ export const secureApi = {
     }
   },
 
-  async get(endpoint: string): Promise<any> {
+  async get(endpoint: string, requireAuth: boolean = true): Promise<any> {
     try {
       const response = await secureApiCall(endpoint, {
         method: 'GET',
-      });
+      }, requireAuth);
 
       if (!response.ok) {
         throw createSecureError('Request failed', response.status);
@@ -183,18 +205,42 @@ export const secureApi = {
     }
   },
 
-  async put(endpoint: string, data: any): Promise<any> {
+  async put(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
     try {
       const response = await secureApiCall(endpoint, {
         method: 'PUT',
         body: JSON.stringify(data),
-      });
+      }, requireAuth);
 
       if (!response.ok) {
         throw createSecureError('Request failed', response.status);
       }
 
       return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw createSecureError('Unknown error occurred');
+    }
+  },
+
+  async delete(endpoint: string, requireAuth: boolean = true): Promise<any> {
+    try {
+      const response = await secureApiCall(endpoint, {
+        method: 'DELETE',
+      }, requireAuth);
+
+      if (!response.ok) {
+        throw createSecureError('Request failed', response.status);
+      }
+
+      // DELETE responses might not have JSON body
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return { success: true };
     } catch (error) {
       if (error instanceof Error) {
         throw error;
