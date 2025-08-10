@@ -390,11 +390,11 @@ export function TacticsLab() {
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
               <div className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-subtitle text-primary font-bold">Current Version: v1.5</h3>
-                  <Badge className="bg-primary shadow-lg">New</Badge>
+                  <h3 className="text-subtitle text-primary font-bold">Current Version: v1.6</h3>
+                  <Badge className="bg-primary shadow-lg">Updated</Badge>
                 </div>
                 <p className="text-caption text-muted-foreground mb-6">
-                  <strong>Last Updated:</strong> March 14, 2025
+                  <strong>Last Updated:</strong> August 10, 2025
                 </p>
                 <div className={`relative rounded-xl p-4 
                   ${theme === "dark" ? "bg-gray-800/50" : "bg-white/50"} 
@@ -403,12 +403,12 @@ export function TacticsLab() {
                   <p className="text-label mb-4 font-bold text-primary">Latest Improvements:</p>
                   <div className="space-y-3">
                     {[
-                      "Knowledge base now supports multi-industry query capabilities",
-                      "Mixture of Experts upgraded—7 Agentic Engines now work in sync",
-                      "Agentic AIs now leverage Claude 3.7, OpenAI GPT-4.5, and DeepSeek R1 for precision",
-                      "Engine now delivers over 90% confidence in Real Estate & Financial Services intelligence",
-                      "Hidden Insights are now enhanced with First-hand intelligence from top industry experts",
-                      "Tactics Strategies now powered by Deep Research LLMs for real-world execution"
+                      "Improved knowledge base response confidence with enhanced accuracy scoring",
+                      "Expanded knowledge base capacity for more comprehensive market intelligence",
+                      "Smarter answering engine using state-of-the-art LLMs for superior analysis",
+                      "Enhanced multi-industry query capabilities across all major sectors",
+                      "Upgraded Mixture of Experts—7 Agentic Engines now work in perfect sync",
+                      "Advanced AI models now leverage Opus 4.1, Sonnet 4.0, DeepSeek R3, and GPT-5"
                     ].map((improvement, index) => (
                       <motion.div
                         key={index}
