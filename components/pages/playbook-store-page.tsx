@@ -9,6 +9,7 @@ import { PremiumPlaybookCard } from "@/components/premium-playbook-card"
 import { useTheme } from "@/contexts/theme-context"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { Loader2, BookOpen } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { Heading2 } from "@/components/ui/typography"
 import { useToast } from "@/components/ui/use-toast"
 import { MetaTags } from "../meta-tags"
@@ -393,7 +394,7 @@ export function PlaybookStorePage({
           <div className="px-4">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <CrownLoader size="lg" text="Loading exclusive playbooks..." />
               </div>
             ) : (
               <div>

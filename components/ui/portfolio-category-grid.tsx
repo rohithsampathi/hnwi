@@ -66,7 +66,7 @@ const getCategoryIcon = (categoryName: string) => {
 
 const getCategoryColor = (index: number) => {
   const colors = [
-    'from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-600',
+    'from-green-500/20 to-green-600/20 border-green-500/30 text-green-600',
     'from-emerald-500/20 to-emerald-600/20 border-emerald-500/30 text-emerald-600',
     'from-amber-500/20 to-amber-600/20 border-amber-500/30 text-amber-600',
     'from-violet-500/20 to-violet-600/20 border-violet-500/30 text-violet-600',

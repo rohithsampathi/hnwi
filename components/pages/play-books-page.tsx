@@ -9,6 +9,7 @@ import { PremiumPlaybookCard } from "@/components/premium-playbook-card"
 import { useTheme } from "@/contexts/theme-context"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { Loader2, Shield } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { useToast } from "@/components/ui/use-toast"
 import { MetaTags } from "../meta-tags"
@@ -156,7 +157,7 @@ export function PlayBooksPage({
           <div className="px-6 pb-6">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <CrownLoader size="lg" text="Loading your strategic arsenal..." />
               </div>
             ) : (
               <>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, ChevronDown, ChevronUp, ExternalLink, Lightbulb } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -348,7 +349,7 @@ export function DevelopmentStream({
     <CardContent className="p-1 md:p-2">
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary dark:text-primary-foreground" />
+          <CrownLoader size="lg" text="Loading development updates..." />
         </div>
       ) : error ? (
         <div className="text-center py-8">

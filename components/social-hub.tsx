@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Tag, Clock, Building, Check, Loader2, ThumbsUp, Phone } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { Heading3, Paragraph } from "@/components/ui/typography"
@@ -167,7 +168,7 @@ export function SocialHub() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <CrownLoader size="lg" text="Loading elite events..." />
       </div>
     )
   }
@@ -235,9 +236,9 @@ export function SocialHub() {
                                     "bg-amber-100 border-amber-200 text-amber-800",
                                     "bg-teal-100 border-teal-200 text-teal-800",
                                     "bg-purple-100 border-purple-200 text-purple-800",
-                                    "bg-blue-100 border-blue-200 text-blue-800",
+                                    "bg-green-100 border-green-200 text-green-800",
                                     "bg-pink-100 border-pink-200 text-pink-800",
-                                    "bg-indigo-100 border-indigo-200 text-indigo-800",
+                                    "bg-green-100 border-green-200 text-green-800",
                                     "bg-rose-100 border-rose-200 text-rose-800",
                                     "bg-emerald-100 border-emerald-200 text-emerald-800"
                                   ];

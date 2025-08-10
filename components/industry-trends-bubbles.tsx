@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import * as d3 from "d3"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { AnimatePresence } from "framer-motion"
 import { IndustryBubbleTooltip } from "./industry-bubble-tooltip"
 
@@ -385,7 +386,7 @@ export function IndustryTrendsBubbles({
     return (
       <div className="w-full">
         <div className="flex justify-center items-center h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <CrownLoader size="lg" text="Loading wealth radar..." />
         </div>
       </div>
     )

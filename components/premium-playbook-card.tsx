@@ -93,7 +93,11 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
             <TrendingUp className="w-4 h-4 mr-2 text-primary" />
             <span className="text-sm font-medium">High ROI Potential</span>
           </div>
-          <div className="text-xs font-medium px-2 py-1 bg-secondary/10 text-secondary-foreground rounded">
+          <div className={`text-xs font-medium px-3 py-1 rounded-full ${
+            theme === "dark" 
+              ? "bg-primary/20 text-primary border border-primary/30" 
+              : "bg-secondary/20 text-secondary-foreground border border-secondary/30"
+          }`}>
             Exclusive Content
           </div>
         </div>

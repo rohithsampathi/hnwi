@@ -58,7 +58,7 @@ export function SecurityMonitor() {
       case SeverityLevel.WARNING:
         return "text-yellow-600";
       default:
-        return "text-blue-600";
+        return "text-green-600";
     }
   };
 
@@ -108,7 +108,7 @@ export function SecurityMonitor() {
 
         <div className="metric-card p-4 bg-black/30 rounded border border-[#FFE666]/10">
           <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-blue-500" />
+            <Users className="w-4 h-4 text-green-500" />
             <span className="text-xs text-gray-400">Active Sessions</span>
           </div>
           <div className="text-2xl font-bold text-white">{metrics.activeSessions}</div>

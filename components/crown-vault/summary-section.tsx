@@ -98,14 +98,14 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                   {/* Top section with icon and status */}
                   <div className="flex items-center justify-between mb-6">
                     <div className="relative">
-                      <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-lg animate-pulse" />
+                      <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-lg premium-pulse" />
                       <div className="relative p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl border border-primary/30">
                         <DollarSign className="h-10 w-10 text-primary drop-shadow-lg" />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-lg shadow-primary/50" />
-                      <div className="w-1 h-1 bg-primary/70 rounded-full animate-ping" />
+                      <div className="w-2 h-2 bg-primary rounded-full premium-pulse shadow-lg shadow-primary/50" />
+                      <div className="w-1 h-1 bg-primary/70 rounded-full premium-ping" />
                     </div>
                   </div>
                   

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Filter, Loader2 } from "lucide-react";
+import { CrownLoader } from "@/components/ui/crown-loader";
 import { Badge } from "@/components/ui/badge";
 import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
@@ -260,7 +261,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         onNavigate={handleNavigation}
       >
         <div className="flex items-center justify-center h-[50vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <CrownLoader size="lg" text="Loading investment opportunities..." />
         </div>
       </Layout>
     );

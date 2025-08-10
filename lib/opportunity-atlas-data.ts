@@ -76,7 +76,7 @@ const baseCategories = [
   {
     id: "private-equity", 
     name: "Private Equity",
-    color: "#4F46E5", // Bright indigo
+    color: "#059669", // Bright green
     description: "Direct investment in private companies and buyout opportunities"
   },
   {

@@ -200,7 +200,7 @@ export function OnboardingPage({
             theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
+          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -216,7 +216,7 @@ export function OnboardingPage({
             theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
+          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -232,7 +232,7 @@ export function OnboardingPage({
             theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)]`}
+          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -249,7 +249,7 @@ export function OnboardingPage({
               theme === "dark"
                 ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                 : "bg-white text-[#212121] border-[#DDD]"
-            } focus:outline-none focus:ring-2 focus:ring-[#42A5F5] transition-all focus:shadow-[0_4px_10px_rgba(66,165,245,0.25)] pr-10`}
+            } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)] pr-10`}
             required
           />
           <button
@@ -302,7 +302,7 @@ export function OnboardingPage({
                     theme === "dark"
                       ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                       : "bg-white text-[#212121] border-[#DDD]"
-                  } focus:outline-none focus:ring-1 focus:ring-[#42A5F5]`}
+                  } focus:outline-none focus:ring-1 focus:ring-[#059669]`}
                   placeholder="Please specify"
                   value={otherInterest}
                   onChange={(e) => setOtherInterest(e.target.value)}

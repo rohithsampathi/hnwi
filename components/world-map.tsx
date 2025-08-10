@@ -31,11 +31,11 @@ export function WorldMap({ theme }: { theme: "dark" | "light" }) {
                     outline: "none",
                   },
                   hover: {
-                    fill: theme === "dark" ? "#42A5F5" : "#B3E5FC",
+                    fill: theme === "dark" ? "#22C55E" : "#A7F3D0",
                     outline: "none",
                   },
                   pressed: {
-                    fill: theme === "dark" ? "#1E88E5" : "#81D4FA",
+                    fill: theme === "dark" ? "#059669" : "#6EE7B7",
                     outline: "none",
                   },
                 }}

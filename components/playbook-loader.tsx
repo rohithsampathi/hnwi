@@ -16,7 +16,7 @@ export function PlaybookLoader() {
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         >
-          <Loader2 className="w-16 h-16 text-blue-500" />
+          <Loader2 className="w-16 h-16 text-green-500" />
         </motion.div>
         <motion.p
           initial={{ opacity: 0 }}

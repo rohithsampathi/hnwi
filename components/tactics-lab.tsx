@@ -596,7 +596,7 @@ export function TacticsLab() {
                           transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
                         >
                           <div className={`w-2 h-2 rounded-full 
-                            ${theme === "dark" ? "bg-blue-400" : "bg-blue-500"}`} />
+                            ${theme === "dark" ? "bg-primary" : "bg-primary"}`} />
                           <span>Expert Insights</span>
                         </motion.div>
                         <motion.div 

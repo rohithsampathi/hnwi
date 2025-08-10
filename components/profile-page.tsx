@@ -46,6 +46,7 @@ import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
 import { ChangePasswordPopup } from "./change-password-popup"
 import { MetaTags } from "./meta-tags"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { motion } from "framer-motion"
 import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats, type CrownVaultAsset } from "@/lib/api"
 import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
@@ -355,7 +356,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <CrownLoader size="lg" text="Loading your profile..." />
       </div>
     )
   }
@@ -688,7 +689,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     <div className="space-y-6">
                   {vaultLoading ? (
                     <div className="flex justify-center py-12">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <CrownLoader size="md" text="Loading vault data..." />
                     </div>
                   ) : vaultStats && vaultStats.total_assets > 0 ? (
                     <div className="space-y-8">

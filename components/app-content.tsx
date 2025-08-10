@@ -639,7 +639,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-background">
           {/* Add particles background for consistent look with splash screen */}
           <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/40 z-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/20 to-black/40 z-10"></div>
             <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] z-0"></div>
           </div>
           
@@ -700,15 +700,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
             // Redirect to splash
             setTimeout(() => handleNavigation("splash"), 0);
             return (
-              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-black">
-                <div className="text-blue-400 text-xl">Redirecting to login...</div>
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-emerald-900 to-black">
+                <div className="text-emerald-400 text-xl">Redirecting to login...</div>
               </div>
             );
           } else {
             // Still checking auth, show loading
             return (
-              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-black">
-                <div className="text-blue-400 text-xl">Loading...</div>
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-emerald-900 to-black">
+                <div className="text-emerald-400 text-xl">Loading...</div>
               </div>
             );
           }

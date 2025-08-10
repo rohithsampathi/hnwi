@@ -111,7 +111,7 @@ export function OnboardingWizard({ onClose }: OnboardingWizardProps) {
                         key={step.key}
                         className={`w-8 h-8 rounded-full flex items-center justify-center shadow-[0_4px_8px_rgba(0,0,0,0.15)] ${
                           index === currentStepIndex
-                            ? "bg-blue-500"
+                            ? "bg-primary"
                             : index < currentStepIndex
                               ? "bg-green-500"
                               : "bg-gray-300"

@@ -304,8 +304,8 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       
                       {/* Asset Status Indicators */}
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
-                        <div className="w-1 h-1 bg-emerald-400/70 rounded-full animate-ping" />
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full premium-pulse shadow-lg shadow-emerald-500/50" />
+                        <div className="w-1 h-1 bg-emerald-400/70 rounded-full premium-ping" />
                       </div>
                     </div>
                     
@@ -504,7 +504,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-emerald-50 to-green-50 
                                      dark:from-emerald-950/30 dark:to-green-950/20 border-2 border-emerald-200/50 
                                      dark:border-emerald-700/30 rounded-full shadow-lg">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full premium-pulse shadow-lg shadow-emerald-500/50" />
                         <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 tracking-widest uppercase">
                           Secured On {new Date(asset.created_at || Date.now()).toLocaleDateString('en-US', {

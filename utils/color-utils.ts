@@ -167,7 +167,7 @@ function getCategoryFallbackColor(category: string): string {
   const firstChar = category.toLowerCase().charCodeAt(0) % 10;
   const colorMap = [
     "bg-green-600",     // 0
-    "bg-indigo-600",    // 1
+    "bg-green-600",    // 1
     "bg-purple-600",    // 2
     "bg-pink-600",      // 3
     "bg-rose-600",      // 4
@@ -189,7 +189,7 @@ function getDarkCategoryFallbackColor(category: string): string {
   const firstChar = category.toLowerCase().charCodeAt(0) % 10;
   const colorMap = [
     "bg-green-600",     // 0
-    "bg-indigo-600",    // 1
+    "bg-green-600",    // 1
     "bg-purple-400",    // 2
     "bg-pink-600",      // 3
     "bg-rose-600",      // 4

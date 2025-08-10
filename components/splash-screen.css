@@ -23,10 +23,10 @@
 }
 
 .dark .globe-container::after {
-  background: radial-gradient(circle, rgba(66, 165, 245, 0.4) 0%, rgba(66, 165, 245, 0) 70%);
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.4) 0%, rgba(34, 197, 94, 0) 70%);
 }
 
 .light .globe-container::after {
-  background: radial-gradient(circle, rgba(25, 118, 210, 0.2) 0%, rgba(25, 118, 210, 0) 70%);
+  background: radial-gradient(circle, rgba(5, 150, 105, 0.2) 0%, rgba(5, 150, 105, 0) 70%);
 }
 

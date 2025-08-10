@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { LiveButton } from "@/components/live-button"
 import { Heading2, Heading3, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import type React from "react"
 
 import { secureApi } from "@/lib/secure-api"
@@ -115,6 +116,7 @@ export function HomeDashboard({
   const { toast } = useToast()
   const [spotlightIndex, setSpotlightIndex] = useState(0)
   const [developments, setDevelopments] = useState<Development[]>([])
+  const [developmentsLoading, setDevelopmentsLoading] = useState(true)
   // Commenting out onboarding popup code
   // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
   // const [showOnboardingWizard, setShowOnboardingWizard] = useState(isFromSignupFlow && !isWizardCompleted)
@@ -135,10 +137,12 @@ export function HomeDashboard({
   }, [userData]);
 
   const fetchDevelopments = async () => {
+    setDevelopmentsLoading(true)
     // Check authentication before making API call
     if (!isAuthenticated()) {
       console.log('User not authenticated - skipping developments fetch');
       setDevelopments([]);
+      setDevelopmentsLoading(false)
       return;
     }
 
@@ -156,6 +160,7 @@ export function HomeDashboard({
       if (error.message?.includes('Authentication required') || error.status === 401) {
         console.log('Authentication required for developments data');
         setDevelopments([]);
+        setDevelopmentsLoading(false)
         return;
       }
       
@@ -165,6 +170,8 @@ export function HomeDashboard({
         description: "Failed to fetch latest developments. Please try again later.",
         variant: "destructive",
       })
+    } finally {
+      setDevelopmentsLoading(false)
     }
   }
 
@@ -343,7 +350,13 @@ export function HomeDashboard({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {developments.length > 0 && (
+              {developmentsLoading ? (
+                <div className="flex flex-col space-y-4">
+                  <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <CrownLoader size="lg" text="Loading your strategic insights..." />
+                  </div>
+                </div>
+              ) : developments.length > 0 && (
                 <div className="flex flex-col space-y-4">
                   {[0, 1, 2].map((offset) => {
                     const index = (spotlightIndex + offset) % developments.length;
