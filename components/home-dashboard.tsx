@@ -321,10 +321,14 @@ export function HomeDashboard({
   return (
     <>
       <MetaTags
-        title="Dashboard | HNWI Chronicles"
-        description="Access your personalized wealth intelligence dashboard."
-        image="https://hnwichronicles.com/dashboard-og-image.jpg"
-        url="https://hnwichronicles.com/dashboard"
+        title="HNWI Chronicles | Inside the Mind of Smart Wealth"
+        description="Institutional intelligence. Off-market access. Generational continuity. Join remaining founding members at $1000/year lifetime rate."
+        image="https://app.hnwichronicles.com/images/logo.png"
+        url="https://app.hnwichronicles.com"
+        ogTitle="HNWI Chronicles - What the world's top 1% realise before others know"
+        ogDescription="Institutional intelligence. Off-market access. Generational continuity. Global wealth intelligence for the global top 1%."
+        twitterTitle="HNWI Chronicles - What the world's top 1% realise before markets know"
+        twitterDescription="Institutional intelligence. Off-market access. Generational continuity."
       />
       <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
         <Card className="overflow-hidden bg-card text-card-foreground font-body">

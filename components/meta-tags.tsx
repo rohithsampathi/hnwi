@@ -5,17 +5,30 @@ interface MetaTagsProps {
   description: string
   image: string
   url: string
+  ogTitle?: string
+  ogDescription?: string
+  twitterTitle?: string
+  twitterDescription?: string
 }
 
-export function MetaTags({ title, description, image, url }: MetaTagsProps) {
+export function MetaTags({ 
+  title, 
+  description, 
+  image, 
+  url, 
+  ogTitle, 
+  ogDescription, 
+  twitterTitle, 
+  twitterDescription 
+}: MetaTagsProps) {
   return (
     <Head>
       <title>{title}</title>
       <meta name="description" content={description} />
 
       {/* OpenGraph / Facebook / WhatsApp */}
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
+      <meta property="og:title" content={ogTitle || title} />
+      <meta property="og:description" content={ogDescription || description} />
       <meta property="og:image" content={image} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
@@ -26,8 +39,8 @@ export function MetaTags({ title, description, image, url }: MetaTagsProps) {
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
+      <meta name="twitter:title" content={twitterTitle || ogTitle || title} />
+      <meta name="twitter:description" content={twitterDescription || ogDescription || description} />
       <meta name="twitter:image" content={image} />
 
       {/* Additional WhatsApp specific */}

@@ -302,10 +302,10 @@ export function PlayBooksPage({
   return (
     <>
       <MetaTags
-        title="War Room | HNWI Chronicles"
-        description="Access your strategic playbooks for high-net-worth individuals."
-        image="https://hnwichronicles.com/war-room-og-image.jpg"
-        url="https://hnwichronicles.com/war-room"
+        title="War Room: Strategic Playbooks & Intelligence | HNWI Chronicles"
+        description="Institutional-grade strategic intelligence and exclusive playbooks. Where smart wealth accesses the insights that create generational advantage."
+        image="https://app.hnwichronicles.com/images/war-room-og.png"
+        url="https://app.hnwichronicles.com/war-room"
       />
       <Layout
         title={

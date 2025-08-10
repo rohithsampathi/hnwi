@@ -368,10 +368,10 @@ export function PlaybookStorePage({
   return (
     <>
       <MetaTags
-        title="Playbook Store | HNWI Chronicles"
-        description="Explore and purchase strategic playbooks for high-net-worth individuals."
-        image="https://hnwichronicles.com/playbook-store-og-image.jpg"
-        url="https://hnwichronicles.com/playbook-store"
+        title="Playbook Store: Exclusive Strategic Intelligence | HNWI Chronicles"
+        description="Acquire institutional-grade strategic playbooks. Off-market intelligence and generational wealth-building strategies for the global top 1%."
+        image="https://app.hnwichronicles.com/images/playbook-store-og.png"
+        url="https://app.hnwichronicles.com/playbook-store"
       />
       <Layout
         title={

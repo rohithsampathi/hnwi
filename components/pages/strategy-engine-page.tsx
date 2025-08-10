@@ -32,10 +32,10 @@ export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string)
   return (
     <>
       <MetaTags
-        title="Tactics Lab | HNWI Chronicles"
-        description="Experiment with AI-powered strategies in the Tactics Lab. Develop and test cutting-edge wealth management tactics for high-net-worth individuals."
-        image="https://hnwichronicles.com/tactics-lab-og-image.jpg" // Replace with actual image URL
-        url="https://hnwichronicles.com/tactics-lab" // Replace with actual URL
+        title="Tactics Lab: Strategic Intelligence Engine | HNWI Chronicles"
+        description="Where smart wealth goes for strategic intelligence. AI-powered analysis engine delivering institutional-grade insights and strategic implications before markets catch up."
+        image="https://app.hnwichronicles.com/images/tactics-lab-og.png"
+        url="https://app.hnwichronicles.com/tactics-lab"
       />
       <Layout
         title={

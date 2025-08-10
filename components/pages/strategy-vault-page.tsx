@@ -58,10 +58,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
   return (
     <>
       <MetaTags
-        title="HNWI World | HNWI Chronicles"
-        description="Unlock the HNWI World: Real-time market insights, competitive intelligence, and strategic analysis for high-net-worth individuals."
-        image="https://hnwichronicles.com/strategy-vault-og-image.jpg" // Replace with actual image URL
-        url="https://hnwichronicles.com/strategy-vault" // Replace with actual URL
+        title="HNWI World: Private Wealth Intelligence, Every Day | HNWI Chronicles"
+        description="The briefing smart wealth reads first. What's moving, why it matters, and where the next opportunity is—before the rest catch up."
+        image="https://app.hnwichronicles.com/images/hnwi-world-og.png"
+        url="https://app.hnwichronicles.com/hnwi-world"
       />
       <Layout
         title={
