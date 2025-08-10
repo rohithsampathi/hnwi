@@ -69,11 +69,11 @@ export function IndustryTrendsBubbles({
       const random = Math.random().toString(36).substring(2, 15)
       const cacheKey = `${timestamp}-${random}`
       
-      // Use correct POST format as expected by backend  
+      // Use correct POST format as expected by backend with caching
       const result = await secureApi.post(`/api/industry-trends/time-series`, {
         time_range: duration,
         include_developments: false
-      })
+      }, true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes cache for industry trends
       
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error("Invalid API response format")

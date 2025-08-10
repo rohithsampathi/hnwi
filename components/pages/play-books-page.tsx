@@ -114,7 +114,7 @@ export function PlayBooksPage({
       }
       
       // For other playbooks, fetch to verify it's available
-      await secureApi.get(`/api/reports/${playbookId}`) // Verify we can get the data
+      await secureApi.get(`/api/reports/${playbookId}`, true, { enableCache: true, cacheDuration: 600000 }) // Verify we can get the data (10 minutes cache)
       onNavigate(`playbook/${playbookId}`)
     } catch (error) {
       console.error('Error fetching playbook:', error)

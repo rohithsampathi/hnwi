@@ -93,7 +93,7 @@ export function DevelopmentStream({
         time_range: duration,
       }
 
-      const data = await secureApi.post('/api/developments', requestBody);
+      const data = await secureApi.post('/api/developments', requestBody, true, { enableCache: true, cacheDuration: 300000 }); // 5 minutes cache for developments
       if (data.developments && Array.isArray(data.developments)) {
         const invalidDateEntries = data.developments.filter(
           (dev) => !dev.date || dev.date === "" || isNaN(new Date(dev.date).getTime()),

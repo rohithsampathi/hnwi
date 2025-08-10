@@ -77,8 +77,16 @@ export function OpportunityAtlas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   
-  // Show only selected category or all categories
-  const displayCategories = selectedCategory ? [selectedCategory] : categories;
+  // Ref to store current selectedCategory for event handlers (avoids stale closure)
+  const selectedCategoryRef = useRef(selectedCategory);
+  
+  // Keep ref in sync with selectedCategory prop
+  useEffect(() => {
+    selectedCategoryRef.current = selectedCategory;
+  }, [selectedCategory]);
+  
+  // Always show all categories (like industry bubbles), but control opacity separately
+  const displayCategories = categories;
   const maxDealCount = Math.max(...displayCategories.map(c => c.liveDealCount), 1);
   
   if (categories.length === 0) {
@@ -128,6 +136,7 @@ export function OpportunityAtlas({
         .attr("height", height + margin.top + margin.bottom)
         .attr("role", "img")
         .attr("aria-label", "Interactive opportunity atlas showing asset categories")
+        .style("outline", "none")
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
       
@@ -152,16 +161,18 @@ export function OpportunityAtlas({
         .enter()
         .append("g")
         .attr("class", "bubble")
-        .style("cursor", "pointer");
+        .style("cursor", "pointer")
+        .style("outline", "none")
+        .style("user-select", "none");
       
       // Add outer ring for risk indication
       bubbles
         .append("circle")
         .attr("class", "risk-ring")
-        .attr("r", (d: any) => radiusScale(d.liveDealCount) + (selectedCategory?.id === d.id ? 8 : 4))
+        .attr("r", (d: any) => radiusScale(d.liveDealCount) + (selectedCategoryRef.current?.id === d.id ? 8 : 4))
         .attr("fill", "none")
         .attr("stroke", (d: any) => getRiskColor(d.medianRisk))
-        .attr("stroke-width", (d: any) => selectedCategory?.id === d.id ? 4 : 2)
+        .attr("stroke-width", (d: any) => selectedCategoryRef.current?.id === d.id ? 4 : 2)
         .attr("opacity", 0.8);
       
       // Add main bubbles
@@ -171,7 +182,19 @@ export function OpportunityAtlas({
         .attr("r", (d: any) => radiusScale(d.liveDealCount))
         .attr("fill", (d: any) => d.color)
         .attr("opacity", 0.85)
-        .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15))");
+        .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15))")
+        .style("outline", "none")
+        .style("cursor", "pointer")
+        .on("click", (event, d: any) => {
+          event.stopPropagation();
+          const currentSelection = selectedCategoryRef.current;
+          // Toggle selection like wealth radar bubbles
+          if (currentSelection && currentSelection.id === d.id) {
+            onCategorySelect(null); // Deselect if already selected
+          } else {
+            onCategorySelect(d); // Select this category
+          }
+        });
       
       // Add deal count badges
       bubbles
@@ -208,6 +231,7 @@ export function OpportunityAtlas({
         .style("stroke", "rgba(0,0,0,0.5)")
         .style("stroke-width", "0.5px")
         .style("paint-order", "stroke fill")
+        .style("cursor", "pointer")
         .each(function(d: any) {
           const text = d3.select(this);
           const words = d.name.split(/\s+/);
@@ -235,6 +259,16 @@ export function OpportunityAtlas({
                 .attr("y", startY + i * fontSize * lineHeight)
                 .text(word);
             });
+          }
+        })
+        .on("click", (event, d: any) => {
+          event.stopPropagation();
+          const currentSelection = selectedCategoryRef.current;
+          // Toggle selection like wealth radar bubbles
+          if (currentSelection && currentSelection.id === d.id) {
+            onCategorySelect(null); // Deselect if already selected
+          } else {
+            onCategorySelect(d); // Select this category
           }
         });
       
@@ -274,45 +308,24 @@ export function OpportunityAtlas({
           d3.select(this).select(".risk-ring")
             .transition()
             .duration(200)
-            .attr("stroke-width", selectedCategory?.id === d.id ? 4 : 2);
+            .attr("stroke-width", selectedCategoryRef.current?.id === d.id ? 4 : 2);
           
           setTooltip(null);
-        })
-        .on("click", function(event, d: any) {
-          if (selectedCategory?.id === d.id) {
-            onCategorySelect(null);
-          } else {
-            onCategorySelect(d);
-          }
         });
       
       // Ensure proper event handling on all elements
       bubbles.selectAll("circle")
-        .style("pointer-events", "all");
+        .style("pointer-events", "all")
+        .style("outline", "none"); // Remove any default focus outline
       
       bubbles.selectAll("text")
-        .style("pointer-events", "none");
-      
-      // Add keyboard support
-      bubbles
-        .attr("tabindex", 0)
-        .attr("role", "button")
-        .attr("aria-label", (d: any) => `${d.name} asset category with ${d.liveDealCount} live deals, ${d.medianRisk} risk, median return ${d.medianReturn}`)
-        .on("keydown", function(event, d: any) {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            if (selectedCategory?.id === d.id) {
-              onCategorySelect(null);
-            } else {
-              onCategorySelect(d);
-            }
-          }
-        });
+        .style("pointer-events", "all")
+        .style("outline", "none");
       
       // Update selection state
       bubbles.select(".risk-ring")
-        .attr("r", (d: any) => radiusScale(d.liveDealCount) + (selectedCategory?.id === d.id ? 8 : 4))
-        .attr("stroke-width", (d: any) => selectedCategory?.id === d.id ? 4 : 2);
+        .attr("r", (d: any) => radiusScale(d.liveDealCount) + (selectedCategoryRef.current?.id === d.id ? 8 : 4))
+        .attr("stroke-width", (d: any) => selectedCategoryRef.current?.id === d.id ? 4 : 2);
       
       // Run simulation
       simulation.nodes(displayCategories).on("tick", () => {
@@ -335,6 +348,30 @@ export function OpportunityAtlas({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [displayCategories, selectedCategory, onCategorySelect, maxDealCount]);
+
+  // Separate effect to handle selectedCategory changes for opacity without full re-render
+  useEffect(() => {
+    if (!containerRef.current || displayCategories.length === 0) return
+    
+    const container = containerRef.current
+    const svg = d3.select(container).select("svg")
+    
+    if (svg.empty()) return // Wait for initial render
+    
+    const currentSelection = selectedCategoryRef.current
+    
+    // Update bubble opacity efficiently 
+    svg.selectAll(".bubble")
+      .style("opacity", (d: any) => {
+        const shouldShow = !currentSelection || d.id === currentSelection.id
+        return shouldShow ? "1" : "0.15"
+      })
+      .style("pointer-events", (d: any) => {
+        const shouldShow = !currentSelection || d.id === currentSelection.id
+        return shouldShow ? "auto" : "auto" // Keep all bubbles clickable for toggling
+      })
+    
+  }, [selectedCategory, displayCategories]);
   
   return (
     <div className={`relative ${className}`}>
@@ -382,7 +419,11 @@ export function OpportunityAtlas({
           <div 
             ref={containerRef} 
             className="w-full h-80 relative"
-            style={{ minHeight: "320px" }}
+            style={{ 
+              minHeight: "320px",
+              outline: "none",
+              userSelect: "none"
+            }}
           />
           
           {tooltip && (

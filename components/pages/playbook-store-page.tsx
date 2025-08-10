@@ -240,7 +240,7 @@ export function PlaybookStorePage({
       
       // Try GET first (even though it gave 405 before)
       try {
-        const data = await secureApi.get("/api/reports");
+        const data = await secureApi.get("/api/reports", true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for playbooks/reports
         
         clearTimeout(timeoutId);
         // Process response and set playbooks...

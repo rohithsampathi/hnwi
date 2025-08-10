@@ -67,7 +67,7 @@ export function PlaybookPage({
         headers.Authorization = `Bearer ${token}`
       }
 
-      const data = await secureApi.get(`/api/reports/${playbookId}`)
+      const data = await secureApi.get(`/api/reports/${playbookId}`, true, { enableCache: true, cacheDuration: 600000 }) // 10 minutes for individual reports
       
       setReport({
         metadata: {

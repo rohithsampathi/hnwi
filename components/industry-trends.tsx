@@ -152,11 +152,11 @@ export function IndustryTrends() {
       const cacheKey = `${timestamp}-${random}`
       
       // Clear any existing browser cache for this endpoint
-      // Use correct POST format as expected by backend
+      // Use correct POST format as expected by backend with caching
       const data: TimeSeriesResponse = await secureApi.post(`/api/industry-trends/time-series`, {
         time_range: timeRange,
         include_developments: true
-      })
+      }, true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes cache for industry trends
 
       if (data.data.length === 0) {
         setError("No industry data available for the selected time range.")

@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': ownerId
-        },
-        cache: 'no-store'
+          'X-User-ID': ownerId,
+          'Cache-Control': 'max-age=30, stale-while-revalidate=60'
+        }
       });
 
       if (!response.ok) {
@@ -79,9 +79,9 @@ export async function GET(request: NextRequest) {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'X-User-ID': ownerId
-          },
-          cache: 'no-store'
+            'X-User-ID': ownerId,
+            'Cache-Control': 'max-age=30, stale-while-revalidate=60'
+          }
         });
 
         if (assetsResponse.ok) {

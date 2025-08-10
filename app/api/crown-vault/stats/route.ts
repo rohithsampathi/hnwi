@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'X-User-ID': ownerId,
-          'Authorization': `Bearer ${authToken}`
-        },
-        cache: 'no-store'
+          'Authorization': `Bearer ${authToken}`,
+          'Cache-Control': 'max-age=30, stale-while-revalidate=60'
+        }
       });
 
       if (!response.ok) {

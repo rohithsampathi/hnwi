@@ -369,7 +369,7 @@ const ChannelPerformanceRating: React.FC = () => {
       setIsRefreshing(true)
       setIsLoading(true)
       try {
-        const data = await secureApi.get('/api/ratings/aggregated')
+        const data = await secureApi.get('/api/ratings/aggregated', true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes for ratings
         console.log("Fetched aggregated ratings:", data)
 
         if (data.status === "success" && Array.isArray(data.data)) {

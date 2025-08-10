@@ -1,6 +1,6 @@
 // lib/api.ts
 
-import { SecureAPI, secureApi } from "@/lib/secure-api"
+import { SecureAPI, secureApi, CacheControl } from "@/lib/secure-api"
 
 export interface CryptoData {
   symbol: string
@@ -32,7 +32,8 @@ export interface CryptoResponse {
 export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse> {
   try {
     const data: CryptoResponse = await SecureAPI.secureJsonFetch(
-      SecureAPI.buildUrl(`/api/financial/crypto`, { time_range: timeRange })
+      SecureAPI.buildUrl(`/api/financial/crypto`, { time_range: timeRange }),
+      { enableCache: true, cacheDuration: 180000 } // 3 minutes for market data
     )
     return data
   } catch (error) {
@@ -65,7 +66,8 @@ export interface SocialEvent {
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
     const data = await SecureAPI.secureJsonFetch(
-      SecureAPI.buildUrl(`/api/events/`)
+      SecureAPI.buildUrl(`/api/events/`),
+      { enableCache: true, cacheDuration: 300000 } // 5 minutes for social events
     )
     return data.events.map((event: any) => ({
       id: event.id,
@@ -122,7 +124,7 @@ export async function getOpportunities(): Promise<Opportunity[]> {
   try {
     const data = await SecureAPI.secureJsonFetch(
       SecureAPI.buildUrl(`/api/opportunities`),
-      { cache: 'no-store' }
+      { enableCache: true, cacheDuration: 300000 } // 5 minutes for investment opportunities
     );
     return data as Opportunity[];
   } catch (error) {
@@ -255,8 +257,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
-    // Call backend API directly for assets using authenticated client
-    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`);
+    // Call backend API directly for assets using authenticated client with 10-minute caching
+    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
     const assets = data.assets || data || [];
     
     // Ensure each asset has proper structure
@@ -293,11 +295,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Fetch stats, heirs, and assets in parallel using authenticated API
+    // Fetch stats, heirs, and assets in parallel with 10-minute caching for optimal UX
     const [statsData, heirsData, assetsData] = await Promise.all([
-      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`).catch(() => null),
-      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`).catch(() => []),
-      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`).catch(() => [])
+      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
+      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
     ]);
 
     if (!statsData) {
@@ -349,8 +351,8 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Call backend API directly using authenticated client
-    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}&t=${Date.now()}`);
+    // Call backend API directly using authenticated client with 10-minute caching  
+    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);
@@ -382,17 +384,22 @@ export async function processCrownVaultAssetsBatch(
   rawText: string,
   context?: string,
   ownerId?: string
-): Promise<BatchAssetResponse> {
+): Promise<BatchAssetResponse & { refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     // Call backend API directly for asset batch processing using authenticated client
-    return await secureApi.post(`/api/crown-vault/assets/batch?owner_id=${userId}`, {
+    const batchResult = await secureApi.post(`/api/crown-vault/assets/batch?owner_id=${userId}`, {
       raw_text: rawText,
       context: context || ''
     });
+    
+    // Get fresh data after successful batch processing
+    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    
+    return { ...batchResult, refreshedData };
   } catch (error) {
     throw error;
   }
@@ -407,7 +414,7 @@ export async function createHeir(
     notes?: string;
   },
   ownerId?: string
-): Promise<CrownVaultHeir> {
+): Promise<{ heir: CrownVaultHeir; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
@@ -427,8 +434,11 @@ export async function createHeir(
     // Use backend API directly for heir creation using authenticated client
     const data = await secureApi.post(`/api/crown-vault/heirs?owner_id=${userId}`, filteredData);
     
+    // Get fresh data after successful creation
+    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    
     // Transform backend response to match frontend interface
-    return {
+    const heir = {
       id: data.id,
       name: data.name,
       relationship: data.relationship,
@@ -437,6 +447,8 @@ export async function createHeir(
       notes: data.notes || '',
       created_at: data.created_at || new Date().toISOString()
     };
+    
+    return { heir, refreshedData };
   } catch (error) {
     throw error;
   }
@@ -452,7 +464,7 @@ export async function updateHeir(
     notes?: string;
   },
   ownerId?: string
-): Promise<CrownVaultHeir> {
+): Promise<{ heir: CrownVaultHeir; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
@@ -471,7 +483,10 @@ export async function updateHeir(
     
     const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, filteredData);
     
-    return {
+    // Get fresh data after successful update
+    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    
+    const heir = {
       id: data.heir?.id || heirId,
       name: data.heir?.name || heirData.name || '',
       relationship: data.heir?.relationship || heirData.relationship || '',
@@ -480,18 +495,25 @@ export async function updateHeir(
       notes: data.heir?.notes || heirData.notes || '',
       created_at: data.heir?.created_at || new Date().toISOString()
     };
+    
+    return { heir, refreshedData };
   } catch (error) {
     throw error;
   }
 }
 
-export async function deleteHeir(heirId: string, ownerId?: string): Promise<void> {
+export async function deleteHeir(heirId: string, ownerId?: string): Promise<{ refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     await secureApi.delete(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`);
+    
+    // Get fresh data after successful deletion
+    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    
+    return { refreshedData };
   } catch (error) {
     throw error;
   }
@@ -501,7 +523,7 @@ export async function updateAssetHeirs(
   assetId: string,
   heirIds: string[],
   ownerId?: string
-): Promise<{ success: boolean; message: string; heir_names: string[] }> {
+): Promise<{ success: boolean; message: string; heir_names: string[]; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
@@ -511,10 +533,14 @@ export async function updateAssetHeirs(
     // Backend needs current user ID as query parameter for authentication and ownership validation
     const data = await secureApi.put(`/api/crown-vault/assets/${assetId}/heirs?owner_id=${userId}`, heirIds);
     
+    // Get fresh data after successful asset heir update
+    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    
     return {
       success: data.success || true,
       message: data.message || 'Asset reassigned successfully',
-      heir_names: data.heir_names || []
+      heir_names: data.heir_names || [],
+      refreshedData
     };
   } catch (error) {
     throw error;

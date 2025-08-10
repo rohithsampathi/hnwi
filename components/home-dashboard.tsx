@@ -148,7 +148,7 @@ export function HomeDashboard({
         page_size: 10,
         sort_by: "date",
         sort_order: "desc"
-      });
+      }, true, { enableCache: true, cacheDuration: 300000 }); // 5 minutes cache for developments
       
       setDevelopments(data.developments || [])
     } catch (error: any) {

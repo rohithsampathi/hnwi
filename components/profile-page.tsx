@@ -134,7 +134,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       // Fetching user data
       setIsRefreshing(true)
       try {
-        const userData = await secureApi.get(`/api/users/${userId}`);
+        const userData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 300000 }); // 5 minutes for user data
         // User data fetched successfully
         
         // Enhance user data with company info handling

@@ -84,9 +84,9 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       headers: {
         'Content-Type': 'application/json',
         'X-User-ID': ownerId,
-        'Authorization': `Bearer ${authToken}`
-      },
-      cache: 'no-store'
+        'Authorization': `Bearer ${authToken}`,
+        'Cache-Control': 'max-age=30, stale-while-revalidate=60'
+      }
     });
 
     if (!backendResponse.ok) {

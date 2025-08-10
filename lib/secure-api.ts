@@ -3,10 +3,103 @@
 // Security wrapper for API calls to prevent URL exposure in console logs
 import { API_BASE_URL } from "@/config/api";
 import { getValidToken, clearInvalidToken } from "@/lib/auth-utils";
+import { cacheDebugger } from "@/lib/cache-debug";
 
 interface SecureFetchOptions extends RequestInit {
   timeout?: number;
+  enableCache?: boolean;
+  cacheKey?: string;
+  cacheDuration?: number;
 }
+
+// Ultra-fast cache with stale-while-revalidate and request deduplication
+class FastCache {
+  private cache = new Map<string, { data: any; timestamp: number; maxAge: number }>();
+  private inFlight = new Map<string, Promise<any>>();
+  
+  set(key: string, data: any, maxAge: number = 600000): void {
+    this.cache.set(key, { data, timestamp: Date.now(), maxAge });
+  }
+  
+  get(key: string): { data: any; isStale: boolean } | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    const age = Date.now() - entry.timestamp;
+    const isStale = age > entry.maxAge;
+    
+    // Return data even if stale - caller decides what to do
+    return { data: entry.data, isStale };
+  }
+  
+  // Get or create a pending request to prevent duplicate API calls
+  getOrSetPending(key: string, requestFn: () => Promise<any>): Promise<any> {
+    // If request is already in flight, return the existing promise
+    if (this.inFlight.has(key)) {
+      return this.inFlight.get(key)!;
+    }
+    
+    // Create new request and store the promise
+    const promise = requestFn()
+      .finally(() => {
+        // Remove from in-flight when done (success or error)
+        this.inFlight.delete(key);
+      });
+    
+    this.inFlight.set(key, promise);
+    return promise;
+  }
+  
+  clear(): void {
+    this.cache.clear();
+    this.inFlight.clear();
+  }
+  
+  delete(key: string): void {
+    this.cache.delete(key);
+    this.inFlight.delete(key);
+  }
+}
+
+const fastCache = new FastCache();
+
+// Export cache control functions
+export const CacheControl = {
+  clear: () => fastCache.clear(),
+  delete: (key: string) => fastCache.delete(key),
+  clearUserData: (userId: string) => {
+    // Clear all Crown Vault related cache entries for a user
+    const patterns = [
+      `/api/crown-vault/assets/detailed?owner_id=${userId}`,
+      `/api/crown-vault/heirs?owner_id=${userId}`,  
+      `/api/crown-vault/stats?owner_id=${userId}`
+    ];
+    patterns.forEach(pattern => fastCache.delete(pattern));
+  },
+  
+  // Force refresh data after mutations by clearing cache and fetching fresh data
+  async refreshUserData(userId: string, secureApi: any): Promise<{
+    assets: any[],
+    heirs: any[],
+    stats: any
+  }> {
+    // Clear existing cache
+    this.clearUserData(userId);
+    
+    // Fetch fresh data in parallel
+    const [freshAssets, freshHeirs, freshStats] = await Promise.all([
+      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null)
+    ]);
+    
+    return {
+      assets: Array.isArray(freshAssets) ? freshAssets : (freshAssets?.assets || []),
+      heirs: Array.isArray(freshHeirs) ? freshHeirs : (freshHeirs?.heirs || []),
+      stats: freshStats
+    };
+  }
+};
 
 class APIError extends Error {
   constructor(
@@ -79,12 +172,72 @@ export class SecureAPI {
     endpoint: string,
     options: SecureFetchOptions = {}
   ): Promise<T> {
+    const { enableCache = false, cacheKey, cacheDuration = 600000, ...fetchOptions } = options;
+    
+    // Only enable caching for GET requests
+    if (enableCache && (!fetchOptions.method || fetchOptions.method === 'GET')) {
+      const key = cacheKey || endpoint;
+      
+      // Check if we have cached data
+      const cached = fastCache.get(key);
+      
+      if (cached) {
+        // If data is fresh, return immediately
+        if (!cached.isStale) {
+          cacheDebugger.logCacheHit(key);
+          return cached.data as T;
+        }
+        
+        // Data is stale - start background refresh but return stale data immediately
+        fastCache.getOrSetPending(key, async () => {
+          try {
+            cacheDebugger.logCacheMiss(key + ' (stale refresh)');
+            const response = await this.secureFetch(endpoint, {
+              ...fetchOptions,
+              headers: {
+                'Content-Type': 'application/json',
+                ...fetchOptions.headers,
+              },
+            });
+            const freshData = await response.json();
+            fastCache.set(key, freshData, cacheDuration);
+            cacheDebugger.logRequestComplete(key + ' (stale refresh)');
+            return freshData;
+          } catch (error) {
+            // If background refresh fails, keep stale data
+            return cached.data;
+          }
+        });
+        
+        // Return stale data immediately for better perceived performance
+        cacheDebugger.logCacheHit(key + ' (stale)');
+        return cached.data as T;
+      }
+      
+      // No cached data - use request deduplication for first-time requests
+      cacheDebugger.logCacheMiss(key);
+      return await fastCache.getOrSetPending(key, async () => {
+        const response = await this.secureFetch(endpoint, {
+          ...fetchOptions,
+          headers: {
+            'Content-Type': 'application/json',
+            ...fetchOptions.headers,
+          },
+        });
+        const data = await response.json();
+        fastCache.set(key, data, cacheDuration);
+        cacheDebugger.logRequestComplete(key);
+        return data;
+      }) as T;
+    }
+    
+    // Non-cached request - standard flow
     try {
       const response = await this.secureFetch(endpoint, {
-        ...options,
+        ...fetchOptions,
         headers: {
           'Content-Type': 'application/json',
-          ...options.headers,
+          ...fetchOptions.headers,
         },
       });
 
@@ -132,9 +285,9 @@ export const secureApiCall = async (
     clearInvalidToken();
     
     const url = `${API_BASE_URL}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     // Check for valid token if auth is required
@@ -166,7 +319,58 @@ export const secureApiCall = async (
 
 // Secure API methods
 export const secureApi = {
-  async post(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
+  async post(endpoint: string, data: any, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
+    const { enableCache = false, cacheDuration = 300000 } = cacheOptions || {}; // 5 minutes default for POST
+    
+    // Create cache key based on endpoint + data for POST requests
+    const cacheKey = enableCache ? `${endpoint}:${JSON.stringify(data)}` : null;
+    
+    if (enableCache && cacheKey) {
+      const cached = fastCache.get(cacheKey);
+      
+      if (cached) {
+        // If data is fresh, return immediately
+        if (!cached.isStale) {
+          cacheDebugger.logCacheHit(cacheKey);
+          return cached.data;
+        }
+        
+        // Data is stale - start background refresh but return stale data immediately
+        fastCache.getOrSetPending(cacheKey, async () => {
+          try {
+            cacheDebugger.logCacheMiss(cacheKey + ' (stale refresh)');
+            const response = await secureApiCall(endpoint, { method: 'POST', body: JSON.stringify(data) }, requireAuth);
+            if (!response.ok) {
+              throw createSecureError('Request failed', response.status);
+            }
+            const freshData = await response.json();
+            fastCache.set(cacheKey, freshData, cacheDuration);
+            cacheDebugger.logRequestComplete(cacheKey + ' (stale refresh)');
+            return freshData;
+          } catch (error) {
+            return cached.data;
+          }
+        });
+        
+        cacheDebugger.logCacheHit(cacheKey + ' (stale)');
+        return cached.data;
+      }
+      
+      // No cached data - use request deduplication
+      cacheDebugger.logCacheMiss(cacheKey);
+      return await fastCache.getOrSetPending(cacheKey, async () => {
+        const response = await secureApiCall(endpoint, { method: 'POST', body: JSON.stringify(data) }, requireAuth);
+        if (!response.ok) {
+          throw createSecureError('Request failed', response.status);
+        }
+        const result = await response.json();
+        fastCache.set(cacheKey, result, cacheDuration);
+        cacheDebugger.logRequestComplete(cacheKey);
+        return result;
+      });
+    }
+    
+    // Non-cached request
     try {
       const response = await secureApiCall(endpoint, {
         method: 'POST',
@@ -186,7 +390,49 @@ export const secureApi = {
     }
   },
 
-  async get(endpoint: string, requireAuth: boolean = true): Promise<any> {
+  async get(endpoint: string, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
+    const { enableCache = false, cacheDuration = 600000 } = cacheOptions || {};
+    
+    if (enableCache) {
+      const cached = fastCache.get(endpoint);
+      
+      if (cached) {
+        // If data is fresh, return immediately
+        if (!cached.isStale) {
+          return cached.data;
+        }
+        
+        // Data is stale - start background refresh but return stale data immediately
+        fastCache.getOrSetPending(endpoint, async () => {
+          try {
+            const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
+            if (!response.ok) {
+              throw createSecureError('Request failed', response.status);
+            }
+            const freshData = await response.json();
+            fastCache.set(endpoint, freshData, cacheDuration);
+            return freshData;
+          } catch (error) {
+            return cached.data;
+          }
+        });
+        
+        return cached.data;
+      }
+      
+      // No cached data - use request deduplication
+      return await fastCache.getOrSetPending(endpoint, async () => {
+        const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
+        if (!response.ok) {
+          throw createSecureError('Request failed', response.status);
+        }
+        const data = await response.json();
+        fastCache.set(endpoint, data, cacheDuration);
+        return data;
+      });
+    }
+    
+    // Non-cached request
     try {
       const response = await secureApiCall(endpoint, {
         method: 'GET',
