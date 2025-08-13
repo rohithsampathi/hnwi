@@ -11,7 +11,6 @@ import { IndustryTrendsBubbles } from "@/components/industry-trends-bubbles"
 import { getIndustryColor } from "@/utils/color-utils"
 import { useSearchParams } from "next/navigation"
 import { Globe } from "lucide-react"
-import { LiveButton } from "@/components/live-button"
 
 export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) => void }) {
   const [selectedIndustry, setSelectedIndustry] = useState("All")
@@ -64,7 +63,6 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
       showBackButton
       onNavigate={onNavigate}
     >
-      <LiveButton />
       <p className="text-sm text-muted-foreground mt-2 leading-tight">
         Data Meets Strategy
         <br />

@@ -26,7 +26,6 @@ import MarketData from "./market-data"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { HNWIThinkingSection } from "./hnwi-thinking-section"
 import { CompetitiveIntelligence } from "./competitive-intelligence"
-import { LiveButton } from "@/components/live-button"
 
 interface PlaybookElement {
   type: string
@@ -194,7 +193,6 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
               that's working for them
             </Paragraph>
             <div className="mt-2">
-              <LiveButton />
             </div>
           </div>
           <ChannelPerformanceRating />
@@ -218,7 +216,6 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
               Real-Time Competitive Intelligence & Strategies of Companies working for HNWIs
             </Paragraph>
             <div className="mt-2">
-              <LiveButton />
             </div>
           </div>
           <CompetitiveIntelligence industry={industry || "Real Estate"} />
@@ -236,7 +233,6 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
               Real-Time Insights into HNWI Thoughts and Preferences
             </Paragraph>
             <div className="mt-2">
-              <LiveButton />
             </div>
           </div>
           <HNWIThinkingSection industry={industry || "Real Estate"} />

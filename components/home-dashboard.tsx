@@ -19,9 +19,9 @@ import {
   BookOpen,
   Crown,
   Users,
-  Store,
   Diamond,
-  Vault,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +29,6 @@ import { PremiumBadge } from "@/components/ui/premium-badge"
 import { getCardColors, getMetallicCardStyle } from "@/lib/colors"
 // import { OnboardingWizard } from "./onboarding-wizard"
 // import { useOnboarding } from "@/contexts/onboarding-context"
-import { LiveButton } from "@/components/live-button"
 import { Heading2, Heading3, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import { CrownLoader } from "@/components/ui/crown-loader"
@@ -37,6 +36,7 @@ import type React from "react"
 
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
+import { useAuthPopup } from "@/contexts/auth-popup-context"
 
 interface User {
   firstName: string
@@ -117,8 +117,13 @@ export function HomeDashboard({
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const { toast } = useToast()
+  const { showAuthPopup } = useAuthPopup()
   const [developments, setDevelopments] = useState<Development[]>([])
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+  const [availableWidth, setAvailableWidth] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
   // Commenting out onboarding popup code
   // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
   // const [showOnboardingWizard, setShowOnboardingWizard] = useState(isFromSignupFlow && !isWizardCompleted)
@@ -142,8 +147,15 @@ export function HomeDashboard({
     setDevelopmentsLoading(true)
     // Check authentication before making API call
     if (!isAuthenticated()) {
-      console.log('User not authenticated - skipping developments fetch');
-      setDevelopments([]);
+      console.log('User not authenticated - showing auth popup');
+      showAuthPopup({
+        title: "Sign In Required",
+        description: "Please sign in to access Elite Pulse developments",
+        onSuccess: () => {
+          // Retry fetching developments after successful login
+          fetchDevelopments();
+        }
+      });
       setDevelopmentsLoading(false)
       return;
     }
@@ -160,8 +172,15 @@ export function HomeDashboard({
     } catch (error: any) {
       // Check if it's an authentication error
       if (error.message?.includes('Authentication required') || error.status === 401) {
-        console.log('Authentication required for developments data');
-        setDevelopments([]);
+        console.log('Authentication required for developments data - showing auth popup');
+        showAuthPopup({
+          title: "Session Expired",
+          description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
+          onSuccess: () => {
+            // Retry fetching developments after successful login
+            fetchDevelopments();
+          }
+        });
         setDevelopmentsLoading(false)
         return;
       }
@@ -181,6 +200,130 @@ export function HomeDashboard({
     fetchDevelopments()
   }, [])
 
+  // Dynamic width detection based on container
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.getBoundingClientRect().width
+        setAvailableWidth(containerWidth)
+        
+        // Dynamic sizing based on available container width, not just window width
+        if (containerWidth < 600) {
+          setScreenSize('mobile')
+        } else if (containerWidth < 900) {
+          setScreenSize('tablet')  
+        } else {
+          setScreenSize('desktop')
+        }
+      }
+    }
+
+    // Use ResizeObserver for better container width detection
+    const resizeObserver = new ResizeObserver(handleResize)
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    // Fallback to window resize
+    window.addEventListener('resize', handleResize)
+    handleResize() // Initial call
+    
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  // Dynamic carousel configuration based on available width
+  const getCarouselConfig = () => {
+    // Only apply dynamic logic if we have measured width
+    if (availableWidth === 0) {
+      // Fallback to original logic while width is being measured
+      switch (screenSize) {
+        case 'mobile':
+          return { cardsToShow: 2, slideStep: 1, showPartialCard: true, isVertical: false }
+        case 'tablet':
+          return { cardsToShow: 3, slideStep: 1, showPartialCard: true, isVertical: false, fullCards: 2 }
+        case 'desktop':
+        default:
+          return { cardsToShow: 4, slideStep: 2, showPartialCard: true, isVertical: false }
+      }
+    }
+
+    // Calculate optimal cards based on available width
+    const cardMinWidth = 320 // Slightly larger minimum for better spacing
+    const maxFullCards = Math.floor(availableWidth / cardMinWidth)
+    
+    switch (screenSize) {
+      case 'mobile':
+        return {
+          cardsToShow: 2, // Always 2 on mobile
+          slideStep: 1,
+          showPartialCard: true,
+          isVertical: false
+        }
+      case 'tablet':
+        // More nuanced tablet logic
+        const tabletCards = maxFullCards >= 3 ? 3 : (maxFullCards >= 2 ? 2 : 2) // Min 2, max 3
+        return {
+          cardsToShow: tabletCards,
+          slideStep: 1,
+          showPartialCard: true,
+          isVertical: false,
+          fullCards: Math.max(1, tabletCards - 1)
+        }
+      case 'desktop':
+      default:
+        // Desktop: scale from 2 to 4 based on available width
+        let desktopCards
+        if (maxFullCards >= 4) {
+          desktopCards = 4 // Plenty of space: show 4 cards
+        } else if (maxFullCards >= 3) {
+          desktopCards = 3 // Good space: show 3 cards  
+        } else {
+          desktopCards = 2 // Limited space: show 2 cards
+        }
+        
+        return {
+          cardsToShow: desktopCards,
+          slideStep: desktopCards > 2 ? 2 : 1,
+          showPartialCard: true,
+          isVertical: false
+        }
+    }
+  }
+
+  const config = getCarouselConfig()
+  const totalSlides = config.isVertical 
+    ? developments.length 
+    : Math.max(0, developments.length - (config.cardsToShow - config.slideStep) + 1) // Allow final slide to show last cards + END OF STREAM
+  
+  const nextSlide = () => {
+    if (config.isVertical) {
+      setCurrentSlide((prev) => Math.min(prev + 1, developments.length - 1))
+    } else {
+      setCurrentSlide((prev) => Math.min(prev + config.slideStep, totalSlides - 1))
+    }
+  }
+  
+  const prevSlide = () => {
+    setCurrentSlide((prev) => Math.max(prev - config.slideStep, 0))
+  }
+  
+  // Get developments to show based on current slide and screen size
+  const getDisplayDevelopments = () => {
+    if (screenSize === 'mobile') {
+      // Mobile uses horizontal scroll, not carousel
+      return developments
+    }
+    
+    // Calculate the start index based on current slide
+    let startIndex = currentSlide
+    
+    // Always return the requested number of cards from the start index
+    return developments.slice(startIndex, startIndex + config.cardsToShow)
+  }
+
   // Commenting out onboarding cleanup effect
   // useEffect(() => {
   //   return () => {
@@ -191,15 +334,6 @@ export function HomeDashboard({
 
   // All available sections
   const experienceZone: ExperienceZoneItem[] = [
-    {
-      name: "HNWI World",
-      icon: Globe,
-      route: "strategy-vault",
-      color: getCardColors(theme), // Secondary colors - dark gray for dark mode, light gray for light mode
-      description: "Wealth Radar and Insider Brief - your daily 5-minute read to understand lifestyle and alternative wealth investment developments in the HNWI World.",
-      iconAnimation: pulseAnimation,
-      live: true,
-    },
     {
       name: "War Room",
       icon: Shield,
@@ -220,26 +354,18 @@ export function HomeDashboard({
     theme === "dark" ? "text-white" : "text-black"
   }`;
 
-  const crownZoneItems = [
-    {
-      name: "Privé Exchange",
-      icon: Store,
-      route: "prive-exchange",
-      color: getCardColors(theme),
-      description: "Exclusive marketplace for HNWI offering off-market investment opportunities and institutional alternatives.",
-      iconAnimation: pulseAnimation,
-      live: true,
-    },
-    {
-      name: "Crown Vault",
-      icon: Vault,
-      route: "crown-vault",
-      color: getCardColors(theme),
-      description: "High-secure legacy vault with discrete succession planning and encrypted asset custody for generational wealth preservation.",
-      iconAnimation: pulseAnimation,
-      live: true,
+  // Time-based greeting function
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 17) {
+      return "Good Afternoon";
+    } else {
+      return "Good Evening";
     }
-  ]
+  };
+
 
   const foundersDeskItems = [
     {
@@ -336,22 +462,19 @@ export function HomeDashboard({
       {/* Welcome Section */}
       <div className="mb-4">
         <h1 className={`text-2xl font-bold leading-tight ${theme === "dark" ? "text-white" : "text-black"}`}>
-          Welcome back, <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>{user.firstName}</span>
+          {getTimeBasedGreeting()}, <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>{user.firstName}</span>
         </h1>
         <p className="text-muted-foreground text-base leading-tight mt-1">Your wealth intelligence dashboard</p>
       </div>
 
-      <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
+      <div ref={containerRef} className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
         <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground">
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center space-x-2">
-                <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                <Heading2 className={sectionHeadingClass}>
-                  Elite Pulse
-                </Heading2>
-              </div>
-              <LiveButton />
+            <div className="flex items-center space-x-2">
+              <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+              <Heading2 className={sectionHeadingClass}>
+                Elite Pulse
+              </Heading2>
             </div>
             <Lead className="font-body font-regular tracking-wide text-base md:text-sm">What the world's top 1% realise before others know</Lead>
           </CardHeader>
@@ -363,75 +486,238 @@ export function HomeDashboard({
                 </div>
               </div>
             ) : developments.length > 0 && (
-              <div className="px-6">
-                {/* Elite Pulse - Horizontal Cards Layout */}
-                <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
-                  {developments.slice(0, 10).map((development, index) => (
-                    <motion.div
-                      key={`elite-pulse-${development.id}`}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.6, delay: index * 0.1 }}
-                      className="flex-shrink-0 w-80 h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2"
-                      style={{
-                        ...getMetallicCardStyle(theme).style,
-                        position: "relative",
-                        overflow: "hidden"
-                      }}
-                      onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
-                    >
-                      <div className="flex flex-col">
-                        {/* Top row with badge and date */}
-                        <div className="flex justify-between items-center mb-3">
-                          <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
-                            {development.industry}
-                          </PremiumBadge>
+              <div className={screenSize === 'mobile' ? 'relative' : 'px-6 relative'}>
+                {/* Elite Pulse - Responsive Layout */}
+                <div className={`relative ${screenSize !== 'mobile' ? 'px-5' : 'px-6'}`}>
+                  <div 
+                    className={screenSize === 'mobile' ? 'overflow-x-scroll overflow-y-hidden -mx-6 px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : 'overflow-visible'}
+                  >
+                    {screenSize === 'mobile' ? (
+                      // Mobile: Horizontal scroll layout (perfect as is)
+                      <div 
+                        className="flex gap-4 pb-4"
+                        style={{
+                          width: 'max-content'
+                        }}
+                      >
+                        {developments.map((development, index) => (
+                          <motion.div
+                            key={`elite-pulse-mobile-${development.id}`}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.6, delay: index * 0.1 }}
+                            className="flex-shrink-0 w-[75vw] h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
+                            style={{
+                              ...getMetallicCardStyle(theme).style,
+                              position: "relative",
+                              overflow: "hidden",
+                            }}
+                            onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
+                          >
+                            <div className="flex flex-col h-full">
+                              {/* Top row with badge and date */}
+                              <div className="flex justify-between items-center mb-3">
+                                <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                                  {development.industry}
+                                </PremiumBadge>
+                                
+                                <div className={`text-xs font-medium ${
+                                  theme === "dark" 
+                                    ? "text-gray-200" 
+                                    : "text-gray-700"
+                                }`}>
+                                  {new Date(development.date).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric"
+                                  })}
+                                </div>
+                              </div>
+                              
+                              {/* Heading */}
+                              <h3 className={`text-lg font-black mb-3 ${
+                                theme === "dark" ? "text-primary" : "text-black"
+                              }`}>
+                                {development.title}
+                              </h3>
+                              
+                              {/* Body */}
+                              <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
+                                theme === "dark" ? "text-gray-200" : "text-gray-700"
+                              }`}>
+                                {development.description}
+                              </p>
+                              
+                              {/* Bottom row with Read More and Source */}
+                              <div className="flex justify-between items-center">
+                                <div className={`text-sm font-bold hover:underline cursor-pointer ${
+                                  theme === "dark" ? "text-primary" : "text-black"
+                                }`}>
+                                  Read Full Brief
+                                </div>
+                                {development.source && (
+                                  <div className={`text-xs font-medium ${
+                                    theme === "dark" ? "text-gray-400" : "text-gray-600"
+                                  }`}>
+                                    Source: {development.source}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      // Tablet/Desktop: Carousel layout
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={currentSlide}
+                          initial={{ opacity: 0, x: 300 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -300 }}
+                          transition={{ duration: 0.5, ease: "easeInOut" }}
+                          className="flex space-x-4 relative"
+                          style={{
+                            width: screenSize === 'desktop' 
+                              ? '100%' 
+                              : '100%'
+                          }}
+                        >
+                          {/* Render available development cards */}
+                          {getDisplayDevelopments().map((development, index) => {
+                            // Render normal development card
+                            return (
+                              <motion.div
+                                key={`elite-pulse-${development.id}`}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.6, delay: index * 0.1 }}
+                                className={`${
+                                  screenSize === 'tablet' 
+                                    ? index < 2 
+                                      ? "flex-1 min-w-0" // First 2 cards: full width
+                                      : "w-16 flex-shrink-0" // 3rd card: very small peek
+                                    : "flex-1 min-w-0" // Desktop: all cards get full width, no partial card constraint
+                                } h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative`}
+                                style={{
+                                  ...getMetallicCardStyle(theme).style,
+                                  position: "relative",
+                                  overflow: "hidden"
+                                }}
+                                onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
+                              >
+                                <div className="flex flex-col h-full">
+                                  {/* Top row with badge and date */}
+                                  <div className="flex justify-between items-center mb-3">
+                                    <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                                      {development.industry}
+                                    </PremiumBadge>
+                                    
+                                    <div className={`text-xs font-medium ${
+                                      theme === "dark" 
+                                        ? "text-gray-200" 
+                                        : "text-gray-700"
+                                    }`}>
+                                      {new Date(development.date).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric"
+                                      })}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Heading */}
+                                  <h3 className={`text-lg font-black mb-3 ${
+                                    theme === "dark" ? "text-primary" : "text-black"
+                                  }`}>
+                                    {development.title}
+                                  </h3>
+                                  
+                                  {/* Body */}
+                                  <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
+                                    theme === "dark" ? "text-gray-200" : "text-gray-700"
+                                  }`}>
+                                    {development.description}
+                                  </p>
+                                  
+                                  {/* Bottom row with Read Full Brief and Source */}
+                                  <div className="flex justify-between items-center">
+                                    <div className={`text-sm font-bold hover:underline cursor-pointer ${
+                                      theme === "dark" ? "text-primary" : "text-black"
+                                    }`}>
+                                      Read Full Brief
+                                    </div>
+                                    {development.source && (
+                                      <div className={`text-xs font-medium ${
+                                        theme === "dark" ? "text-gray-400" : "text-gray-600"
+                                      }`}>
+                                        Source: {development.source}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Blur overlay for partial cards - doesn't affect content - but never on last slide */}
+                                {screenSize === 'desktop' && index === 3 && currentSlide < totalSlides - 1 && getDisplayDevelopments().length === config.cardsToShow && (
+                                  <div 
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                      maskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,1) 100%)",
+                                      WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,1) 100%)",
+                                      background: theme === 'dark' ? '#0a0a0a' : '#ffffff'
+                                    }}
+                                  />
+                                )}
+                              </motion.div>
+                            )
+                          })}
                           
-                          <div className={`text-xs font-medium ${
-                            theme === "dark" 
-                              ? "text-gray-200" 
-                              : "text-gray-700"
-                          }`}>
-                            {new Date(development.date).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric"
-                            })}
-                          </div>
-                        </div>
-                        
-                        {/* Heading */}
-                        <h3 className={`text-lg font-black mb-3 ${
-                          theme === "dark" ? "text-primary" : "text-black"
-                        }`}>
-                          {development.title}
-                        </h3>
-                        
-                        {/* Body */}
-                        <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
-                          theme === "dark" ? "text-gray-200" : "text-gray-700"
-                        }`}>
-                          {development.description}
-                        </p>
-                        
-                        {/* Bottom row with Read More and Source */}
-                        <div className="flex justify-between items-center">
-                          <div className={`text-sm font-bold hover:underline cursor-pointer ${
-                            theme === "dark" ? "text-primary" : "text-black"
-                          }`}>
-                            Read More
-                          </div>
-                          {development.source && (
-                            <div className={`text-xs font-medium ${
-                              theme === "dark" ? "text-gray-400" : "text-gray-600"
-                            }`}>
-                              Source: {development.source}
+                          {/* Lightweight MORE SOON text - only show if we're at the end and have fewer cards */}
+                          {getDisplayDevelopments().length < config.cardsToShow && (
+                            <div className="w-16 flex items-center justify-center">
+                              <div className={`text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} opacity-60`}>
+                                <div className="text-xs font-light flex flex-col items-center">
+                                  {"MORE SOON".split('').map((char, i) => 
+                                    char === ' ' ? (
+                                      <div key={i} className="h-1" />
+                                    ) : (
+                                      <div key={i} className="leading-none">{char}</div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                          
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+                  </div>
+                  
+                  {/* Navigation Arrows - hide on mobile */}
+                  {screenSize !== 'mobile' && (
+                    <>
+                      {/* Minimal Premium Arrow Navigation - show while we can navigate further */}
+                      {currentSlide < totalSlides - 1 && (
+                        <button 
+                          onClick={nextSlide}
+                          className="absolute -right-2 top-1/2 transform -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-200 hover:scale-105 bg-white/10 hover:bg-white/20 border border-white/20"
+                        >
+                          <ChevronRight className="w-4 h-4 text-primary" />
+                        </button>
+                      )}
+                      
+                      {/* Minimal Premium Left Arrow Navigation - show when we can go back */}
+                      {currentSlide > 0 && (
+                        <button 
+                          onClick={prevSlide}
+                          className="absolute -left-2 top-1/2 transform -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-200 hover:scale-105 bg-white/10 hover:bg-white/20 border border-white/20"
+                        >
+                          <ChevronLeft className="w-4 h-4 text-primary" />
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -481,12 +767,9 @@ export function HomeDashboard({
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
                       </div>
-                      <div className="flex justify-end items-center w-full mb-4 mt-2">
+                      <div className="flex justify-start items-center w-full mb-4 mt-2">
                         <div className="flex items-center">
                           <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
-                          <div className="clickable-arrow ml-1 flex-shrink-0">
-                            <ArrowRight className="w-4 h-4" />
-                          </div>
                         </div>
                       </div>
                     </Button>
@@ -497,67 +780,6 @@ export function HomeDashboard({
           </Card>
         )}
 
-        {/* Crown Zone Section */}
-        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Crown className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-              <Heading2 className={sectionHeadingClass}>
-                Crown Zone
-              </Heading2>
-            </div>
-            <CardDescription className="font-body tracking-wide text-base md:text-sm font-normal">Exclusive opportunities for the elite</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {crownZoneItems.map((item, index) => (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <Button
-                    onClick={(e) => handleNavigate(e, item.route)}
-                    className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
-                    style={{
-                      ...getMetallicCardStyle(theme).style,
-                      color: theme === "dark" ? "white" : "black",
-                    }}
-                  >
-                    <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
-                      <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
-                        {item.beta && (
-                          <Badge variant="secondary" className="ml-1 badge-primary">
-                            Beta
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm md:text-base max-w-full whitespace-normal break-words font-normal mb-4">
-                        {typeof item.description === "string" ? item.description : item.description}
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center w-full mb-4 mt-2">
-                      {item.live && (
-                        <div>
-                          <LiveButton />
-                        </div>
-                      )}
-                      <div className="flex items-center ml-auto">
-                        <span className="mr-1 md:mr-2 text-xs md:text-sm font-button font-semibold">Explore</span>
-                        <div className="clickable-arrow ml-1 flex-shrink-0">
-                          <ArrowRight className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </div>
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Founder's Desk Section */}
         {visibleFoundersDeskItems.length > 0 && (
@@ -602,12 +824,9 @@ export function HomeDashboard({
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex justify-end items-center w-full mb-4 mt-2">
+                      <div className="flex justify-start items-center w-full mb-4 mt-2">
                         <div className="flex items-center">
                           <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
-                          <div className="clickable-arrow ml-1 flex-shrink-0">
-                            <ArrowRight className="w-4 h-4" />
-                          </div>
                         </div>
                       </div>
                     </Button>

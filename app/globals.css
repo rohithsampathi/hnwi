@@ -13,6 +13,23 @@ body {
     text-wrap: balance;
   }
   
+  /* Line clamp utilities */
+  .line-clamp-4 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+
+  /* Safe area utilities for mobile devices */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+  
   /* Premium slower animations */
   .premium-pulse {
     animation: premium-pulse 3s ease-in-out infinite;
@@ -73,7 +90,7 @@ body {
     /* Text colors following hierarchy */
     --foreground: 0 0% 10%;                     /* Very dark text on light backgrounds */
     --card-foreground: 0 0% 10%;                /* Dark text on cards */
-    --primary-foreground: 0 0% 10%;             /* Dark text on platinum */
+    --primary-foreground: 0 0% 98%;             /* White text on primary buttons */
     --secondary-foreground: 0 0% 10%;           /* Dark text on light platinum */
     --accent-foreground: 0 0% 10%;              /* Dark text on platinum accents */
     --muted-foreground: 0 0% 40%;               /* Medium gray text */
@@ -262,6 +279,37 @@ body {
   }
   .news-block:last-child {
     margin-bottom: 0;
+  }
+  
+  /* Mobile dropdown fixes */
+  [data-radix-select-content] {
+    z-index: 9999 !important;
+    position: fixed !important;
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Ensure dropdown positioning on mobile */
+  [data-radix-select-trigger] {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Mobile-optimized dropdown widths */
+  [data-radix-select-content][data-side="bottom"] {
+    width: var(--radix-select-trigger-width) !important;
+    min-width: var(--radix-select-trigger-width) !important;
+  }
+  
+  /* Mobile spacing for dropdown containers */
+  .flex.flex-col.sm\\:flex-row.gap-2.sm\\:gap-3 {
+    gap: 1rem !important;
+  }
+  
+  /* Ensure proper stacking context for mobile toolbars */
+  .flex.justify-between.items-center {
+    position: relative;
+    z-index: 10;
   }
 }
 

@@ -14,6 +14,7 @@ import React from "react" // Import React to fix the undeclared JSX variable
 import { useTheme } from "@/contexts/theme-context"
 import { AuthCheck } from "@/components/auth-check"
 import { getCardColors, getMatteCardStyle } from "@/lib/colors"
+import { useAuthPopup } from "@/contexts/auth-popup-context"
 
 interface Development {
   id: string
@@ -204,14 +205,29 @@ export function DevelopmentStream({
   const [isLoading, setIsLoading] = useState(true)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
+  const [authPopupShown, setAuthPopupShown] = useState(false)
   const { toast } = useToast()
   const { theme } = useTheme()
+  const { showAuthPopup } = useAuthPopup()
 
   const fetchDevelopments = useCallback(async () => {
     // Check authentication before making API call
     if (!isAuthenticated()) {
-      console.log('User not authenticated - skipping developments fetch in development stream');
-      setDevelopments([]);
+      if (!authPopupShown) {
+        console.log('User not authenticated - showing auth popup in development stream');
+        setAuthPopupShown(true);
+        showAuthPopup({
+          title: "Sign In Required",
+          description: "Please sign in to access development insights",
+          onSuccess: () => {
+            setAuthPopupShown(false);
+            // Retry fetching developments after successful login
+            setTimeout(() => {
+              fetchDevelopments();
+            }, 100);
+          }
+        });
+      }
       setIsLoading(false);
       return [];
     }
@@ -252,7 +268,21 @@ export function DevelopmentStream({
     } catch (error: any) {
       // Check if it's an authentication error
       if (error.message?.includes('Authentication required') || error.status === 401) {
-        console.log('Authentication required for development stream data');
+        if (!authPopupShown) {
+          console.log('Authentication required for development stream data - showing auth popup');
+          setAuthPopupShown(true);
+          showAuthPopup({
+            title: "Session Expired",
+            description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
+            onSuccess: () => {
+              setAuthPopupShown(false);
+              // Retry fetching developments after successful login
+              setTimeout(() => {
+                fetchDevelopments();
+              }, 100);
+            }
+          });
+        }
         setDevelopments([]);
         setError(null); // Don't show error to user for auth issues
         return [];
@@ -273,7 +303,7 @@ export function DevelopmentStream({
     } finally {
       setIsLoading(false)
     }
-  }, [toast, duration, selectedIndustry]); // Added semicolon
+  }, [toast, duration, selectedIndustry, showAuthPopup, authPopupShown]); // Added semicolon
 
   const filterDevelopments = useCallback(
     (devs: Development[]) => {
@@ -326,20 +356,20 @@ export function DevelopmentStream({
     })
   }, [fetchDevelopments, filterDevelopments, selectedIndustry, duration, expandedDevelopmentId]);
 
+  // Reset auth popup state when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated()) {
+      setAuthPopupShown(false);
+    }
+  }, [selectedIndustry, duration]); // Reset when params change to allow fresh checks
+
   const toggleCardExpansion = (id: string) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString || dateString === "") return "Date not available"
-    const date = new Date(dateString)
-    return isNaN(date.getTime())
-      ? "Invalid date"
-      : date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
-  };
 
   return (
-    <AuthCheck>
+    <AuthCheck showLoginPrompt={false}>
       <div className="p-1 md:p-2">
         {isLoading ? (
         <div className="flex justify-center items-center h-64">

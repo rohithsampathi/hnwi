@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/contexts/theme-context";
+import { useAuthPopup } from "@/contexts/auth-popup-context";
 import { Heading2 } from "@/components/ui/typography";
 import { 
   Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText, 
@@ -70,6 +71,7 @@ const SkeletonCard = () => (
 
 export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const { theme } = useTheme();
+  const { showAuthPopup } = useAuthPopup();
   
   // Core state
   const [loading, setLoading] = useState(true);
@@ -107,6 +109,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
   const { toast } = useToast();
 
+  // Helper function to detect authentication errors
+  const isAuthenticationError = (error: any): boolean => {
+    const errorMessage = error?.message || error?.toString() || '';
+    return errorMessage.includes('Authentication required') || 
+           errorMessage.includes('please log in') || 
+           error?.status === 401;
+  };
+
   // Processing phases for asset upload
   const processingPhases = [
     { icon: Brain, text: "AI analyzing your asset description..." },
@@ -121,35 +131,74 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
     const loadInitialData = async () => {
       try {
-        
         const [assetsData, statsData, heirsData] = await Promise.allSettled([
           getCrownVaultAssets(),
           getCrownVaultStats(), 
           getCrownVaultHeirs()
         ]);
 
-        
         if (!isMounted) return;
         
+        // Check for authentication errors
+        const failedResults = [assetsData, statsData, heirsData].filter(result => result.status === 'rejected');
+        const hasAuthErrors = failedResults.some(result => isAuthenticationError(result.reason));
+        
+        if (hasAuthErrors && failedResults.length > 0) {
+          // Show auth popup instead of console errors
+          showAuthPopup({
+            title: "Authentication Required",
+            description: "Please sign in to access your Crown Vault data.",
+            onSuccess: () => {
+              // Retry loading data after successful login
+              setTimeout(() => {
+                loadInitialData();
+              }, 100);
+            }
+          });
+          return;
+        }
+        
+        // Handle successful data loading
         if (assetsData.status === 'fulfilled') {
           setAssets(assetsData.value);
-        } else {
         }
         if (statsData.status === 'fulfilled') {
           setStats(statsData.value);
-        } else {
         }
         if (heirsData.status === 'fulfilled') {
           setHeirs(heirsData.value);
-        } else {
+        }
+
+        // Handle non-auth errors (if any)
+        const nonAuthErrors = failedResults.filter(result => !isAuthenticationError(result.reason));
+        if (nonAuthErrors.length > 0) {
+          console.error('Crown Vault non-auth errors:', nonAuthErrors);
+          toast({
+            title: "Partial Loading Error",
+            description: "Some vault data could not be loaded. Please try refreshing.",
+            variant: "destructive"
+          });
         }
 
       } catch (error) {
-        toast({
-          title: "Error Loading Vault",
-          description: "Failed to load your Crown Vault data. Please try again.",
-          variant: "destructive"
-        });
+        if (isAuthenticationError(error)) {
+          showAuthPopup({
+            title: "Authentication Required",
+            description: "Please sign in to access your Crown Vault data.",
+            onSuccess: () => {
+              setTimeout(() => {
+                loadInitialData();
+              }, 100);
+            }
+          });
+        } else {
+          console.error('Crown Vault loading error:', error);
+          toast({
+            title: "Error Loading Vault",
+            description: "Failed to load your Crown Vault data. Please try again.",
+            variant: "destructive"
+          });
+        }
       } finally {
         if (isMounted) {
           setLoading(false);

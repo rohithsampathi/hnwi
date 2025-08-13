@@ -9,8 +9,7 @@ import { Heading2 } from "@/components/ui/typography"
 import { Users } from "lucide-react"
 import { SocialHub } from "@/components/social-hub"
 import { Paragraph } from "@/components/ui/paragraph"
-import { Badge } from "@/components/ui/badge"
-import { LiveButton } from "@/components/live-button"
+import { PremiumBadge } from "@/components/ui/premium-badge"
 
 export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => void }) {
   const { theme } = useTheme();
@@ -20,15 +19,14 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
           <div className="flex items-center space-x-2">
             <Users className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
             <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Social Hub</Heading2>
-            <Badge className="bg-primary">Beta</Badge>
-            <LiveButton />
+            <PremiumBadge>Beta</PremiumBadge>
           </div>
         }
         showBackButton
         onNavigate={onNavigate}
       >
         <div className="w-full">
-          <div className="mb-4 -mt-2">
+          <div className="mb-8 -mt-2">
             <p className="text-muted-foreground text-base leading-tight">
               Connect with the elite HNWI community and explore exclusive events
             </p>

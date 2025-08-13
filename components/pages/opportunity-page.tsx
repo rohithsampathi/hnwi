@@ -9,9 +9,12 @@ import { useRouter } from "next/navigation"
 import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PremiumBadge } from "@/components/ui/premium-badge"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
+import { useTheme } from "@/contexts/theme-context"
+import { getMetallicCardStyle } from "@/lib/colors"
 import {
   Check, X, Loader2, DollarSign, Building2,
   PiggyBank, ThumbsUp, Phone
@@ -55,6 +58,7 @@ export function OpportunityPage({
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [isProcessing, setIsProcessing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -249,7 +253,13 @@ export function OpportunityPage({
         showBackButton
         onNavigate={handleNavigation}
       >
-        <Card className="w-full bg-background text-foreground">
+        <Card 
+          className={`w-full border-none ${getMetallicCardStyle(theme).className}`}
+          style={{
+            ...getMetallicCardStyle(theme).style,
+            color: theme === "dark" ? "white" : "black",
+          }}
+        >
           <CardHeader>
             <div className="space-y-4">
               {/* 1. Hero Block - Title + Highlight Strip */}
@@ -259,14 +269,14 @@ export function OpportunityPage({
               
               {/* Highlight Strip - horizontal badges */}
               <div className="flex flex-wrap items-center gap-1.5 py-2" role="group" aria-label="Investment highlights">
-                {opportunity.type && <Badge variant="secondary">{opportunity.type}</Badge>}
+                {opportunity.type && <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">{opportunity.type}</PremiumBadge>}
                 {opportunity.value && <Badge variant="outline">{opportunity.value}</Badge>}
                 {opportunity.expectedReturn && <Badge variant="outline">{opportunity.expectedReturn}</Badge>}
                 {opportunity.investmentHorizon && <Badge variant="outline">{opportunity.investmentHorizon}</Badge>}
                 {opportunity.riskLevel && (
                   <Badge 
                     variant="outline" 
-                    className={opportunity.riskLevel.toLowerCase() === 'low' ? 'text-green-600' : ''}
+                    className={opportunity.riskLevel.toLowerCase() === 'low' ? 'text-primary' : ''}
                   >
                     {opportunity.riskLevel} Risk
                   </Badge>
@@ -287,7 +297,7 @@ export function OpportunityPage({
             {opportunity.riskLevel && (
               <div className="space-y-6 mt-16">
                 <div className="text-center space-y-3">
-                  <CardTitle className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                  <CardTitle className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
                     Internal Risk Assessment
                   </CardTitle>
                   <p className="text-muted-foreground">
@@ -295,16 +305,25 @@ export function OpportunityPage({
                   </p>
                 </div>
                 
-                <div className="bg-gradient-to-br from-amber-50/50 via-background to-orange-50/30 dark:from-amber-950/20 dark:via-background dark:to-orange-950/10 p-6 rounded-xl border border-amber-200/50 dark:border-amber-800/30">
+                <div 
+                  className="p-6 rounded-xl border-none"
+                  style={{
+                    background: theme === "dark" 
+                      ? "#2a2a2a" 
+                      : "#f0f0f0",
+                    border: theme === "dark" 
+                      ? "2px solid rgba(75, 85, 99, 0.5)" 
+                      : "2px solid rgba(148, 163, 184, 0.3)",
+                    boxShadow: theme === "dark"
+                      ? "0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                      : "0 10px 25px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)"
+                  }}
+                >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">Risk Level</span>
+                      <span className={`text-sm font-semibold ${theme === "dark" ? "text-primary" : "text-black"}`}>Risk Level</span>
                       <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold ${
-                          opportunity.riskLevel.toLowerCase() === 'low' ? 'text-green-600 dark:text-green-400' :
-                          opportunity.riskLevel.toLowerCase() === 'medium' ? 'text-amber-600 dark:text-amber-400' :
-                          'text-red-600 dark:text-red-400'
-                        }`}>
+                        <span className={`text-lg font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
                           {opportunity.riskLevel}
                         </span>
                         <span className="text-sm text-muted-foreground">Risk</span>
@@ -312,8 +331,14 @@ export function OpportunityPage({
                     </div>
                     
                     <div className="space-y-3">
-                      <div className="relative h-4 bg-gradient-to-r from-emerald-100 via-amber-100 to-red-100 dark:from-emerald-900/30 dark:via-amber-900/30 dark:to-red-900/30 rounded-full overflow-hidden border border-border/50">
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 via-amber-400 to-red-400 opacity-60 rounded-full" />
+                      <div className="relative h-4 bg-gradient-to-r from-emerald-200 via-amber-200 to-red-200 dark:from-emerald-900/40 dark:via-amber-900/40 dark:to-red-900/40 rounded-full overflow-hidden border border-border/50">
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 opacity-80 rounded-full shadow-inner" 
+                             style={{
+                               background: theme === "dark" 
+                                 ? "linear-gradient(90deg, #10b981 0%, #059669 20%, #f59e0b 50%, #d97706 80%, #dc2626 100%)"
+                                 : "linear-gradient(90deg, #10b981 0%, #34d399 20%, #f59e0b 50%, #fbbf24 80%, #ef4444 100%)",
+                               boxShadow: "inset 0 2px 4px rgba(0,0,0,0.3), 0 1px 2px rgba(255,255,255,0.3)"
+                             }} />
                         <div 
                           className="absolute top-1/2 w-4 h-4 bg-foreground rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg border-2 border-background"
                           style={{ left: `${getRiskPosition(opportunity.riskLevel)}%` }}
@@ -337,7 +362,7 @@ export function OpportunityPage({
               <div className="lg:col-span-2 space-y-4">
                 {opportunity.fullAnalysis && (
                   <div className="space-y-3">
-                    <CardTitle className="text-2xl font-bold text-green-700 dark:text-green-300">
+                    <CardTitle className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
                       Strategic Analysis
                     </CardTitle>
                     <Paragraph className="text-base leading-relaxed">
@@ -349,40 +374,99 @@ export function OpportunityPage({
               
               {/* Right 1/3 - Premium Key Numbers */}
               <div className="lg:col-span-1">
-                <div className="bg-gradient-to-br from-primary/5 via-background to-primary/10 p-6 rounded-xl border border-primary/20 shadow-xl backdrop-blur-sm">
+                <div 
+                  className="p-6 rounded-xl shadow-xl border-none"
+                  style={{
+                    background: theme === "dark" 
+                      ? "linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 25%, #2a2a2a 50%, #1f1f1f 75%, #2a2a2a 100%)"
+                      : "linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%, #f5f5f5 100%)",
+                    border: theme === "dark" 
+                      ? "2px solid rgba(75, 85, 99, 0.5)" 
+                      : "2px solid rgba(148, 163, 184, 0.3)",
+                    boxShadow: theme === "dark"
+                      ? "0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                      : "0 10px 25px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)"
+                  }}
+                >
                   <div className="text-center mb-6">
-                    <div className="w-12 h-1 bg-gradient-to-r from-primary/50 to-primary mx-auto mb-3"></div>
                     <h3 className="text-lg font-black text-primary uppercase tracking-widest">
                       INVESTMENT METRICS
                     </h3>
-                    <div className="w-12 h-1 bg-gradient-to-r from-primary to-primary/50 mx-auto mt-3"></div>
                   </div>
                   
                   <div className="space-y-5">
                     {opportunity.value && (
-                      <div className="text-center p-3 bg-background/80 rounded-lg border border-primary/10">
+                      <div 
+                        className="text-center p-3 rounded-lg border-none"
+                        style={{
+                          background: theme === "dark" 
+                            ? "#2a2a2a" 
+                            : "#f0f0f0",
+                          border: theme === "dark" 
+                            ? "1px solid rgba(148, 163, 184, 0.2)" 
+                            : "1px solid rgba(148, 163, 184, 0.3)",
+                          boxShadow: theme === "dark"
+                            ? "inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+                            : "inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+                        }}
+                      >
                         <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Investment Size</div>
                         <div className="text-xl font-black text-primary">{opportunity.value}</div>
                       </div>
                     )}
                     {opportunity.expectedReturn && (
-                      <div className="text-center p-3 bg-background/80 rounded-lg border border-primary/10">
+                      <div 
+                        className="text-center p-3 rounded-lg border-none"
+                        style={{
+                          background: theme === "dark" 
+                            ? "#2a2a2a" 
+                            : "#f0f0f0",
+                          border: theme === "dark" 
+                            ? "1px solid rgba(148, 163, 184, 0.2)" 
+                            : "1px solid rgba(148, 163, 184, 0.3)",
+                          boxShadow: theme === "dark"
+                            ? "inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+                            : "inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+                        }}
+                      >
                         <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Target Return</div>
-                        <div className="text-xl font-black text-emerald-600">{opportunity.expectedReturn}</div>
+                        <div className={`text-xl font-black ${theme === "dark" ? "text-primary" : "text-black"}`}>{opportunity.expectedReturn}</div>
                       </div>
                     )}
                     {opportunity.riskLevel && (
-                      <div className="text-center p-3 bg-background/80 rounded-lg border border-primary/10">
+                      <div 
+                        className="text-center p-3 rounded-lg border-none"
+                        style={{
+                          background: theme === "dark" 
+                            ? "#2a2a2a" 
+                            : "#f0f0f0",
+                          border: theme === "dark" 
+                            ? "1px solid rgba(148, 163, 184, 0.2)" 
+                            : "1px solid rgba(148, 163, 184, 0.3)",
+                          boxShadow: theme === "dark"
+                            ? "inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+                            : "inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+                        }}
+                      >
                         <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Risk Profile</div>
-                        <div className={`text-xl font-black ${
-                          opportunity.riskLevel.toLowerCase() === 'low' ? 'text-green-600' :
-                          opportunity.riskLevel.toLowerCase() === 'medium' ? 'text-amber-600' :
-                          'text-red-600'
-                        }`}>{opportunity.riskLevel}</div>
+                        <div className={`text-xl font-black ${theme === "dark" ? "text-primary" : "text-black"}`}>{opportunity.riskLevel}</div>
                       </div>
                     )}
                     {opportunity.investmentHorizon && (
-                      <div className="text-center p-3 bg-background/80 rounded-lg border border-primary/10">
+                      <div 
+                        className="text-center p-3 rounded-lg border-none"
+                        style={{
+                          background: theme === "dark" 
+                            ? "#2a2a2a" 
+                            : "#f0f0f0",
+                          border: theme === "dark" 
+                            ? "1px solid rgba(148, 163, 184, 0.2)" 
+                            : "1px solid rgba(148, 163, 184, 0.3)",
+                          boxShadow: theme === "dark"
+                            ? "inset 0 1px 0 rgba(255, 255, 255, 0.05)"
+                            : "inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+                        }}
+                      >
                         <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Time Horizon</div>
                         <div className="text-xl font-black text-primary">{opportunity.investmentHorizon}</div>
                       </div>
@@ -418,11 +502,9 @@ export function OpportunityPage({
                 {/* Section Header */}
                 <div className="text-center space-y-4">
                   <div className="inline-flex items-center gap-3">
-                    <div className="w-8 h-px bg-primary/30"></div>
                     <CardTitle className="text-3xl font-bold text-primary tracking-tight">
                       Investment Analysis
                     </CardTitle>
-                    <div className="w-8 h-px bg-primary/30"></div>
                   </div>
                   <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                     Comprehensive assessment of opportunities and considerations
@@ -434,14 +516,18 @@ export function OpportunityPage({
                   {opportunity.pros && opportunity.pros.length > 0 && (
                     <div className="space-y-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-green-500/10 dark:bg-green-400/10 rounded-2xl flex items-center justify-center border border-green-200/50 dark:border-green-700/50">
-                          <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                          theme === "dark" 
+                            ? "bg-gray-700/50 border-gray-600/50" 
+                            : "bg-gray-200/50 border-gray-400/30"
+                        }`}>
+                          <Check className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold text-green-700 dark:text-green-300">
+                          <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
                             Investment Merits
                           </h3>
-                          <p className="text-green-600/70 dark:text-green-400/70 text-sm font-medium">
+                          <p className={`text-sm font-medium ${theme === "dark" ? "text-primary/70" : "text-black/70"}`}>
                             Key advantages and opportunities
                           </p>
                         </div>
@@ -450,9 +536,17 @@ export function OpportunityPage({
                       <div className="space-y-2">
                         {opportunity.pros.slice(0, 4).map((pro, index) => (
                           <div key={index} className="group relative">
-                            <div className="flex items-start gap-4 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-xl border border-green-100/50 dark:border-green-800/30 hover:bg-green-50/80 dark:hover:bg-green-950/30 transition-colors duration-200">
-                              <div className="w-5 h-5 bg-green-500/20 dark:bg-green-400/20 rounded-full flex items-center justify-center mt-0.5 shrink-0">
-                                <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                            <div className={`flex items-start gap-4 p-4 rounded-xl border transition-colors duration-200 ${
+                              theme === "dark" 
+                                ? "bg-gray-800/30 border-gray-700/30 hover:bg-gray-800/50" 
+                                : "bg-gray-100/50 border-gray-300/40 hover:bg-gray-100/80"
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 shrink-0 ${
+                                theme === "dark" 
+                                  ? "bg-gray-700/50" 
+                                  : "bg-gray-300/50"
+                              }`}>
+                                <Check className={`w-3 h-3 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                               </div>
                               <div className="flex-1">
                                 <p className="text-lg font-semibold leading-normal text-foreground">{pro}</p>
@@ -468,14 +562,18 @@ export function OpportunityPage({
                   {opportunity.cons && opportunity.cons.length > 0 && (
                     <div className="space-y-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-amber-500/10 dark:bg-amber-400/10 rounded-2xl flex items-center justify-center border border-amber-200/50 dark:border-amber-700/50">
-                          <X className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${
+                          theme === "dark" 
+                            ? "bg-black/50 border-black/70" 
+                            : "bg-black/10 border-black/30"
+                        }`}>
+                          <X className={`w-6 h-6 ${theme === "dark" ? "text-white" : "text-black"}`} />
                         </div>
                         <div>
-                          <h3 className="text-2xl font-bold text-amber-700 dark:text-amber-300">
+                          <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
                             Risk Considerations
                           </h3>
-                          <p className="text-amber-600/70 dark:text-amber-400/70 text-sm font-medium">
+                          <p className={`text-sm font-medium ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}>
                             Important factors to evaluate
                           </p>
                         </div>
@@ -484,9 +582,17 @@ export function OpportunityPage({
                       <div className="space-y-2">
                         {opportunity.cons.slice(0, 4).map((con, index) => (
                           <div key={index} className="group relative">
-                            <div className="flex items-start gap-4 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-100/50 dark:border-amber-800/30 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 transition-colors duration-200">
-                              <div className="w-5 h-5 bg-amber-500/20 dark:bg-amber-400/20 rounded-full flex items-center justify-center mt-0.5 shrink-0">
-                                <X className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            <div className={`flex items-start gap-4 p-4 rounded-xl border transition-colors duration-200 ${
+                              theme === "dark" 
+                                ? "bg-black/30 border-black/50 hover:bg-black/50" 
+                                : "bg-black/5 border-black/20 hover:bg-black/10"
+                            }`}>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 shrink-0 ${
+                                theme === "dark" 
+                                  ? "bg-black/70" 
+                                  : "bg-black/20"
+                              }`}>
+                                <X className={`w-3 h-3 ${theme === "dark" ? "text-white" : "text-black"}`} />
                               </div>
                               <div className="flex-1">
                                 <p className="text-lg font-semibold leading-normal text-foreground">{con}</p>
@@ -536,7 +642,7 @@ export function OpportunityPage({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ThumbsUp className="h-5 w-5 text-green-500" />
+              <ThumbsUp className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
               Concierge Notified
             </DialogTitle>
             <DialogDescription>

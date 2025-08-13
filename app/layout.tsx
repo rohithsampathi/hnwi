@@ -5,6 +5,7 @@ import { headers } from "next/headers"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
+import { AuthPopupProvider } from "@/contexts/auth-popup-context"
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -92,10 +93,12 @@ export default function RootLayout({
         <AuthProvider>
           <OnboardingProvider>
             <ThemeProvider>
-              {children}
-              <div id="toast-container" className="fixed top-0 right-0 z-50">
-                {/* Toast container for notifications */}
-              </div>
+              <AuthPopupProvider>
+                {children}
+                <div id="toast-container" className="fixed top-0 right-0 z-50">
+                  {/* Toast container for notifications */}
+                </div>
+              </AuthPopupProvider>
             </ThemeProvider>
           </OnboardingProvider>
         </AuthProvider>

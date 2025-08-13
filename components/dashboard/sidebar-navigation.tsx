@@ -2,92 +2,276 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, Crown, UserCircle2, Globe, Store, Menu, X } from "lucide-react"
+import { Home, Crown, UserCircle2, Globe, Store, Menu, X, ChevronLeft, Info, MoreHorizontal } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
+import { motion } from "framer-motion"
 
 export function SidebarNavigation({
   onNavigate,
   headerHeight = 0,
+  onSidebarToggle,
+  showBackButton = false,
 }: {
   onNavigate: (route: string) => void
   headerHeight?: number
+  onSidebarToggle?: (collapsed: boolean) => void
+  showBackButton?: boolean
 }) {
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [showHeartbeat, setShowHeartbeat] = useState(false)
+
+  // Heartbeat animation for logo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowHeartbeat(true)
+      setTimeout(() => setShowHeartbeat(false), 1000)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   const navItems = [
     { name: "Home", icon: Home, route: "dashboard" },
-    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
-    { name: "Crown Vault", icon: Crown, route: "crown-vault" },
-    { name: "Privé Exchange", icon: Store, route: "prive-exchange" },
+    { 
+      name: "HNWI World", 
+      icon: Globe, 
+      route: "strategy-vault",
+      description: "Wealth Radar and Insider Brief - your daily 5-minute read to understand lifestyle and alternative wealth investment developments in the HNWI World."
+    },
+    { 
+      name: "Crown Vault", 
+      icon: Crown, 
+      route: "crown-vault",
+      description: "High-secure legacy vault with discrete succession planning and encrypted asset custody for generational wealth preservation."
+    },
+    { 
+      name: "Privé Exchange", 
+      icon: Store, 
+      route: "prive-exchange",
+      description: "Exclusive marketplace for HNWI offering off-market investment opportunities and institutional alternatives."
+    },
     { name: "Profile", icon: UserCircle2, route: "profile" },
+  ]
+
+  // Mobile bottom nav items - HNWI and Privé Exchange as primary
+  const mobileNavItems = [
+    { name: "Home", icon: Home, route: "dashboard" },
+    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
+    { name: "Privé Exchange", icon: Store, route: "prive-exchange" },
+  ]
+
+  // Additional menu items for three dots dropdown (mode-based)
+  const moreMenuItems = [
+    { name: "Crown Vault", icon: Crown, route: "crown-vault" },
+    { name: "Social Hub", icon: Store, route: "social-hub" },
+    ...(isBusinessMode ? [
+      { name: "War Room", icon: Crown, route: "war-room" },
+      { name: "Playbook Store", icon: Store, route: "play-books" },
+      { name: "Tactics Lab", icon: Crown, route: "strategy-engine" },
+    ] : []),
+    { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
   ]
 
   const handleNavigate = (route: string) => {
     onNavigate(route)
   }
 
+  const handleToggleSidebar = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    onSidebarToggle?.(newState)
+  }
+
   return (
     <>
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - Hidden on mobile */}
       <aside
         className={cn(
-          "hidden md:block fixed left-0 bg-background border-r border-border shadow-xl transition-all duration-300 z-40",
+          "hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 z-40 flex-col",
           isCollapsed ? "w-16" : "w-64"
         )}
         style={{
-          top: `${Math.max(headerHeight, 80)}px`,
-          height: `calc(100vh - ${Math.max(headerHeight, 80)}px)`
+          height: '100vh'
         }}
       >
-        <div className="flex flex-col h-full">
-          {/* Toggle button */}
-          <div className="p-4 border-b border-border bg-card">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="w-full h-12 flex items-center justify-center hover:bg-muted rounded-lg transition-all duration-200"
+        {/* Header level - Logo and back button aligned with main header */}
+        <div 
+          className="flex flex-col justify-center px-4 border-b border-border bg-background flex-shrink-0"
+          style={{ height: `${Math.max(headerHeight, 80)}px` }}
+        >
+          {/* Back button if needed (only when expanded) */}
+          {!isCollapsed && showBackButton && (
+            <div className="mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("back")}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                <span className="text-sm">Back</span>
+              </Button>
+            </div>
+          )}
+          
+          {/* Logo - always visible at header level */}
+          <div 
+            className={cn(
+              "flex items-center cursor-pointer",
+              isCollapsed ? "justify-center" : "justify-start"
+            )}
+            onClick={() => onNavigate("dashboard")}
+          >
+            <motion.div
+              className={cn(isCollapsed ? "mr-0" : "mr-3")}
+              animate={{ 
+                rotate: 360,
+                scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
+              }}
+              transition={{ 
+                rotate: { 
+                  duration: 10,
+                  repeat: Number.POSITIVE_INFINITY, 
+                  ease: "linear" 
+                },
+                scale: showHeartbeat ? {
+                  duration: 1,
+                  times: [0, 0.3, 0.5, 0.8, 1],
+                  ease: "easeInOut"
+                } : {
+                  duration: 0
+                }
+              }}
             >
-              <Menu className="h-5 w-5 text-foreground" />
-            </Button>
+              <Image 
+                src="/logo.png" 
+                alt="HNWI Chronicles Globe" 
+                width={32} 
+                height={32} 
+                className="w-8 h-8" 
+                priority 
+              />
+            </motion.div>
+            {!isCollapsed && (
+              <h1 className="text-sm font-bold font-heading leading-tight break-words max-w-full">
+                <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
+                <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
+              </h1>
+            )}
           </div>
+        </div>
 
+        {/* Toggle button */}
+        <div className="p-3 flex-shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleSidebar}
+            className={cn(
+              "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
+              isCollapsed && "justify-center px-0 gap-0"
+            )}
+          >
+            <Menu className="h-5 w-5 flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-sm font-semibold tracking-wide">Menu</span>
+            )}
+          </Button>
+        </div>
+
+        {/* Main content area - takes remaining space */}
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Navigation items */}
-          <nav className="flex-1 p-3">
+          <nav className="flex-1 p-3 pt-0 overflow-y-auto">
             <div className="space-y-2">
-              {navItems.map((item) => (
-                <Button
-                  key={item.route}
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
-                    isCollapsed && "justify-center px-0 gap-0"
-                  )}
-                  onClick={() => handleNavigate(item.route)}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!isCollapsed && (
-                    <span className="text-sm font-semibold tracking-wide">{item.name}</span>
-                  )}
-                </Button>
-              ))}
+              <TooltipProvider>
+                {navItems.map((item) => (
+                  <div key={item.route} className="relative">
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
+                        isCollapsed && "justify-center px-0 gap-0"
+                      )}
+                      onClick={() => handleNavigate(item.route)}
+                    >
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && (
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                          {item.description && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent 
+                                side="right" 
+                                className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
+                                style={{ 
+                                  zIndex: 999999,
+                                }}
+                                sideOffset={15}
+                                avoidCollisions={true}
+                              >
+                                <div className="max-w-[280px]">
+                                  <p className="line-clamp-4 break-words text-popover-foreground">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </TooltipProvider>
             </div>
           </nav>
 
-          {/* Bottom branding */}
+          {/* Bottom footer text - both Premium Edition and splash screen footer */}
           {!isCollapsed && (
-            <div className="p-4 border-t border-border bg-card">
-              <div className="text-xs text-muted-foreground font-medium tracking-wide text-center">
-                HNWI CHRONICLES
-              </div>
-              <div className="text-xs text-muted-foreground/70 text-center mt-1">
-                Premium Edition
+            <div className="p-4 border-t border-border/20 flex-shrink-0" style={{ marginTop: '300px' }}>
+              <div className="text-xs text-muted-foreground text-center space-y-3">
+                {/* Premium Edition with background */}
+                <div className="bg-card/50 rounded-lg p-2.5 border border-border/20">
+                  <div className="space-y-1">
+                    <div className="font-bold tracking-wide text-foreground text-[11px] leading-tight">
+                      HNWI CHRONICLES
+                    </div>
+                    <div className="text-primary font-medium text-[10px] leading-tight">
+                      Premium Edition
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Splash screen footer */}
+                <div className="space-y-2">
+                  <div className="leading-relaxed text-[9px] break-words">
+                    A product of <span className="font-semibold text-primary">Montaigne</span>
+                    <br />
+                    Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
+                  </div>
+                  <div className="text-muted-foreground/80 font-medium text-[8px] leading-tight break-words">
+                    © 2025 All Rights Reserved.
+                    <br />
+                    HNWI Chronicles.
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -101,6 +285,54 @@ export function SidebarNavigation({
           onClick={() => setIsCollapsed(true)}
         />
       )}
+
+      {/* Mobile Bottom Navigation - Only visible on mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-xl">
+        <div className="flex items-center justify-between px-4 py-3 safe-area-pb">
+          {mobileNavItems.map((item) => (
+            <Button
+              key={item.route}
+              variant="ghost"
+              size="sm"
+              className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
+              onClick={() => handleNavigate(item.route)}
+            >
+              <item.icon className="h-6 w-6 mb-1 flex-shrink-0" />
+              <span className="text-[10px] font-medium leading-tight text-center">
+                {item.name === "HNWI World" ? "HNWI" : item.name}
+              </span>
+            </Button>
+          ))}
+
+          {/* Three Dots More Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
+              >
+                <MoreHorizontal className="h-6 w-6 mb-1 flex-shrink-0" />
+                <span className="text-[10px] font-medium leading-tight text-center">
+                  More
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 mb-2">
+              {moreMenuItems.map((item) => (
+                <DropdownMenuItem
+                  key={item.route}
+                  onClick={() => handleNavigate(item.route)}
+                  className="flex items-center space-x-3 py-3"
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="font-medium">{item.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </>
   )
 }

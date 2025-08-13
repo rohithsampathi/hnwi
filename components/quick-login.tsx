@@ -36,7 +36,12 @@ export function QuickLogin() {
         setResult("❌ Login failed - no token returned")
       }
     } catch (error: any) {
-      setResult(`❌ Login failed: ${error.message}`)
+      // Handle 401 specifically for incorrect password
+      if (error.message?.includes('401') || error.status === 401) {
+        setResult("❌ Incorrect password. Please retry or click forgot password.")
+      } else {
+        setResult(`❌ Login failed: ${error.message}`)
+      }
     } finally {
       setIsLoading(false)
     }

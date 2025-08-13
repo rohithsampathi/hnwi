@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { PremiumBadge } from "@/components/ui/premium-badge"
 import { MapPin, Users, Tag, Clock, Building, Check, Loader2, ThumbsUp, Phone } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { motion, AnimatePresence } from "framer-motion"
@@ -17,6 +17,7 @@ import { colors } from "@/styles/colors"
 import { useToast } from "@/components/ui/use-toast"
 import { SocialEvent, getEvents } from "@/lib/api"
 import { getCategoryColorClass, getCategoryDarkColorClass } from "@/utils/color-utils"
+import { getMetallicCardStyle, getCardColors } from "@/lib/colors"
 import { useAuth } from "@/components/auth-provider"
 import {
   Dialog,
@@ -167,7 +168,7 @@ export function SocialHub() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
+      <div className="flex justify-center items-center min-h-[60vh]">
         <CrownLoader size="lg" text="Loading elite events..." />
       </div>
     )
@@ -199,12 +200,58 @@ export function SocialHub() {
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`mb-8 md:flex ${index % 2 === 0 ? "md:flex-row-reverse" : ""}`}
+                className={`mb-8 md:flex`}
               >
-                {/* Card Column */}
-                <div className="md:w-1/2 p-4">
-                  <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 min-h-[400px]">
-                    {/* Using same dark green as Elite Pulse cards in dark mode, white in light mode */}
+                {/* Date Bubble Column - always on left */}
+                <div className="hidden md:flex items-center justify-center w-1/4 p-2">
+                  <div
+                    className={`w-24 h-24 rounded-full flex items-center justify-center shadow-xl 
+                                backdrop-blur-sm border relative overflow-hidden
+                                ${theme === "dark" 
+                                  ? "border-primary/30" 
+                                  : "border-primary/20"
+                                }`}
+                    style={{
+                      background: theme === "dark" 
+                        ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
+                        : "linear-gradient(135deg, #f8f8f8 0%, #e0e0e0 25%, #ffffff 50%, #e0e0e0 75%, #f8f8f8 100%)",
+                      border: theme === "dark" 
+                        ? "2px solid rgba(255, 255, 255, 0.1)" 
+                        : "2px solid rgba(192, 192, 192, 0.4)",
+                      boxShadow: theme === "dark"
+                        ? "0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                        : "0 10px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+                      backdropFilter: "blur(8px)"
+                    }}
+                  >
+                    {/* Metallic shine effect */}
+                    <div 
+                      className="absolute inset-0 rounded-full opacity-40"
+                      style={{
+                        background: theme === "dark"
+                          ? "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)"
+                          : "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%)"
+                      }}
+                    />
+                    <div className={`text-center relative z-10 ${theme === "dark" ? "text-white" : "text-black"}`}>
+                      <div className={`text-lg ${fonts.heading} font-bold drop-shadow-sm`}>
+                        {new Date(event.start_date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <div className={`text-xs ${fonts.body} opacity-80`}>
+                        {new Date(event.start_date).getFullYear()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Card Column - expanded */}
+                <div className="md:w-3/4 p-4">
+                  <Card 
+                        className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 border-none bg-card"
+                  >
                     <div>
                       {/* Ensure text is readable in both themes */}
                       <CardContent className="p-6 relative">
@@ -213,44 +260,21 @@ export function SocialHub() {
                         <div className="relative">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <Heading3 className={`${fonts.heading} mb-1`}>
+                              <Heading3 className={`${fonts.heading} mb-4`}>
                                 {event.name}
                               </Heading3>
                               
                               {/* Tags displayed below the title */}
                               <div className="flex flex-wrap gap-1 md:gap-2 mb-3 max-w-full">
                                 {event.tags?.map((tag, tagIndex) => {
-                                  // Get a unique color for each tag based on the tag name
-                                  const colorClasses = [
-                                    "bg-amber-100 border-amber-200 text-amber-800",
-                                    "bg-teal-100 border-teal-200 text-teal-800",
-                                    "bg-purple-100 border-purple-200 text-purple-800",
-                                    "bg-green-100 border-green-200 text-green-800",
-                                    "bg-pink-100 border-pink-200 text-pink-800",
-                                    "bg-green-100 border-green-200 text-green-800",
-                                    "bg-rose-100 border-rose-200 text-rose-800",
-                                    "bg-emerald-100 border-emerald-200 text-emerald-800"
-                                  ];
-                                  const colorClass = colorClasses[tagIndex % colorClasses.length];
-                                  
-                                  // In dark mode, keep the same vibrant colors as light mode
-                                  // but with transparency for better contrast
-                                  const darkModeColorClass = colorClass.replace(
-                                    /bg-(\w+)-100 border-(\w+)-200 text-(\w+)-800/,
-                                    "bg-$1-100/20 border-$1-300/30 text-$1-300"
-                                  );
-                                  
                                   return (
-                                    <Badge
+                                    <PremiumBadge
                                       key={tag}
-                                      variant="outline"
-                                      className={`flex items-center gap-1 text-xs
-                                                ${theme === "dark" ? darkModeColorClass : colorClass} 
-                                                hover:opacity-80`}
+                                      className="flex items-center gap-1 text-xs"
                                     >
                                       <Tag className="w-2 h-2 md:w-3 md:h-3" />
                                       {tag}
-                                    </Badge>
+                                    </PremiumBadge>
                                   );
                                 })}
                               </div>
@@ -307,21 +331,25 @@ export function SocialHub() {
                             )}
                           </AnimatePresence>
 
-                          <div className="flex justify-between items-center mt-6">
-                            {/* Show More/Less button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
+                          <div className="flex justify-between items-center mt-6 mb-2">
+                            {/* Show More/Less as bold text */}
+                            <button
                               onClick={() => toggleEventExpansion(event.id)}
+                              className={`text-xs md:text-sm font-bold hover:underline cursor-pointer transition-all duration-200 ${
+                                theme === "dark" ? "text-white hover:text-primary" : "text-black hover:text-primary"
+                              }`}
                             >
                               {expandedEvent === event.id ? "Show Less" : "Show More"}
-                            </Button>
-                            {/* Talk to Concierge button */}
+                            </button>
+                            {/* Talk to Concierge button with primary colors */}
                             <Button
-                              variant="default"
                               size="sm"
                               onClick={() => handleTalkToConcierge(event)}
-                              className="text-xs md:text-sm whitespace-nowrap"
+                              className={`text-xs md:text-sm whitespace-nowrap ${
+                                theme === "dark" 
+                                  ? "bg-primary hover:bg-primary/90 text-black" 
+                                  : "bg-primary hover:bg-primary/90 text-white"
+                              }`}
                               disabled={isProcessing && selectedEvent?.id === event.id}
                             >
                               {isProcessing && selectedEvent?.id === event.id ? (
@@ -341,51 +369,6 @@ export function SocialHub() {
                       </CardContent>
                     </div>
                   </Card>
-                </div>
-
-                {/* Date Bubble Column (hidden on small) */}
-                <div className="hidden md:flex items-center justify-center w-1/2">
-                  <div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center shadow-xl 
-                                backdrop-blur-sm border relative overflow-hidden
-                                ${theme === "dark" 
-                                  ? "border-primary/30" 
-                                  : "border-primary/20"
-                                }`}
-                    style={{
-                      background: theme === "dark" 
-                        ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
-                        : "linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.7) 25%, hsl(var(--primary) / 0.5) 50%, hsl(var(--primary) / 0.3) 75%, hsl(var(--primary) / 0.1) 100%)",
-                      border: theme === "dark" 
-                        ? "2px solid rgba(255, 255, 255, 0.1)" 
-                        : "2px solid rgba(0, 0, 0, 0.1)",
-                      boxShadow: theme === "dark"
-                        ? "0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
-                        : "0 10px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 20px hsl(var(--primary) / 0.2)",
-                      backdropFilter: "blur(8px)"
-                    }}
-                  >
-                    {/* Metallic shine effect */}
-                    <div 
-                      className="absolute inset-0 rounded-full opacity-40"
-                      style={{
-                        background: theme === "dark"
-                          ? "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)"
-                          : "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%)"
-                      }}
-                    />
-                    <div className={`text-center relative z-10 ${theme === "dark" ? "text-white" : "text-primary-foreground"}`}>
-                      <div className={`text-2xl ${fonts.heading} font-bold drop-shadow-sm`}>
-                        {new Date(event.start_date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                      <div className={`text-sm ${fonts.body} opacity-80`}>
-                        {new Date(event.start_date).getFullYear()}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </motion.div>
             )
@@ -416,7 +399,14 @@ export function SocialHub() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={() => setShowSuccessDialog(false)}>
+              <Button 
+                onClick={() => setShowSuccessDialog(false)}
+                className={`${getMetallicCardStyle(theme).className}`}
+                style={{
+                  ...getMetallicCardStyle(theme).style,
+                  color: theme === "dark" ? "white" : "black"
+                }}
+              >
                 Continue Exploring
               </Button>
             </DialogFooter>

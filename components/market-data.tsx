@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BarChart2 } from "lucide-react"
 import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
-import { LiveButton } from "./live-button"
 import { CitySpecificData } from "./city-specific-data"
 import type React from "react" // Added import for React
 
@@ -748,7 +747,6 @@ const MarketData: React.FC = () => {
             <span className="mr-2">📊</span>
             <Heading2 className="text-2xl font-bold text-primary">Market Data</Heading2>
           </div>
-          <LiveButton />
         </div>
         <Paragraph className="text-sm text-muted-foreground mt-2">
           Real-time market insights and trends for High Net Worth Individuals

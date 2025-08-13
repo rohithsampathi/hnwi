@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react"
 import { isAuthenticated } from "@/lib/auth-utils"
 import { Button } from "@/components/ui/button"
+import { useAuthPopup } from "@/contexts/auth-popup-context"
 
 interface AuthCheckProps {
   children: React.ReactNode
   showLoginPrompt?: boolean
+  isInsiderBrief?: boolean
 }
 
-export function AuthCheck({ children, showLoginPrompt = true }: AuthCheckProps) {
+export function AuthCheck({ children, showLoginPrompt = true, isInsiderBrief = false }: AuthCheckProps) {
   const [isAuth, setIsAuth] = useState<boolean | null>(null)
   const [shouldRedirect, setShouldRedirect] = useState(false)
+  const { showAuthPopup } = useAuthPopup()
 
   useEffect(() => {
     const checkAuth = () => {
@@ -20,13 +23,27 @@ export function AuthCheck({ children, showLoginPrompt = true }: AuthCheckProps) 
       
       if (!authenticated) {
         console.log("🔐 User not authenticated - data won't load until login")
+        
+        // Show popup for all cases except insider brief
+        if (!isInsiderBrief && showLoginPrompt) {
+          showAuthPopup({
+            title: "Sign In Required",
+            description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
+            onSuccess: () => {
+              // Recheck authentication after successful login
+              setTimeout(() => {
+                checkAuth();
+              }, 100);
+            }
+          });
+        }
       } else {
         console.log("✅ User authenticated - data should load")
       }
     }
     
     checkAuth()
-  }, [])
+  }, [isInsiderBrief, showLoginPrompt, showAuthPopup])
 
   const handleLogin = () => {
     setShouldRedirect(true)
@@ -39,7 +56,8 @@ export function AuthCheck({ children, showLoginPrompt = true }: AuthCheckProps) 
     return <div className="p-4 text-center">🔍 Checking authentication...</div>
   }
 
-  if (!isAuth && showLoginPrompt) {
+  // Only show authentication block for insider brief
+  if (!isAuth && showLoginPrompt && isInsiderBrief) {
     return (
       <div className="p-6 text-center space-y-4 bg-slate-50 dark:bg-slate-900/20 rounded-lg border">
         <div className="text-lg font-semibold">🔐 Authentication Required</div>
@@ -51,13 +69,18 @@ export function AuthCheck({ children, showLoginPrompt = true }: AuthCheckProps) 
         </div>
         <Button 
           onClick={handleLogin}
-          className="bg-primary hover:bg-primary/90"
+          className="bg-black hover:bg-black/90 text-white"
           disabled={shouldRedirect}
         >
           {shouldRedirect ? "Redirecting..." : "Go to Login"}
         </Button>
       </div>
     )
+  }
+
+  // For non-insider-brief cases, don't render anything when not authenticated (popup handles it)
+  if (!isAuth && !isInsiderBrief) {
+    return null
   }
 
   return <>{children}</>

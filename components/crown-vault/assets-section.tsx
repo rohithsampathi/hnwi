@@ -179,9 +179,9 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
         </div>
         
         {/* Right side: Filter and Sort Controls */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:flex-shrink-0">
+        <div className="flex flex-col gap-3 lg:flex-row lg:gap-3 lg:flex-shrink-0">
           <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-full sm:w-36">
+            <SelectTrigger className="w-full lg:w-36">
               <SelectValue placeholder="Filter by" />
             </SelectTrigger>
             <SelectContent>
@@ -199,7 +199,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full sm:w-36">
+            <SelectTrigger className="w-full lg:w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -277,7 +277,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10" />
                     <div className="absolute top-4 right-4">
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${theme === 'dark' ? 'bg-black/40 text-white' : 'bg-white/40 text-black'} backdrop-blur-sm`}>
+                      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${theme === 'dark' ? 'bg-black/40 text-white' : 'bg-black/70 text-white'} backdrop-blur-sm`}>
                         {formatAssetType(asset.asset_data.asset_type || 'Asset')}
                       </div>
                     </div>
@@ -356,7 +356,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                         <SelectTrigger className="w-auto h-auto border-0 bg-transparent p-0">
                           <div>
                             {asset.heir_names && asset.heir_names.length > 0 ? (
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-white/20 text-white' : 'bg-black/20 text-black'}`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-white/20 text-white' : 'bg-black/80 text-white'}`}>
                                 {isUpdating ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (

@@ -219,19 +219,20 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       onNavigate("playbook");
     }
 
-    // Handle back navigation
+    // Handle back navigation - always stay within app
     else if (baseRoute === "back") {
-      // Use browser's native back functionality if available
-      if (typeof window !== 'undefined' && window.history.length > 1) {
-        window.history.back();
-      } else {
-        // Fallback to internal navigation history
-        const newHistory = [...navigationHistory];
-        newHistory.pop();
-        const previousPage = newHistory[newHistory.length - 1] || "dashboard";
-        setNavigationHistory(newHistory);
-        onNavigate(previousPage);
+      // Use internal navigation history instead of browser back
+      const newHistory = [...navigationHistory];
+      newHistory.pop(); // Remove current page
+      let previousPage = newHistory[newHistory.length - 1];
+      
+      // If no previous page in history or previous page is splash/login, go to dashboard
+      if (!previousPage || previousPage === "splash" || previousPage === "login" || previousPage === "onboarding") {
+        previousPage = "dashboard";
       }
+      
+      setNavigationHistory([...newHistory]);
+      onNavigate(previousPage);
     }
 
     // Handle regular navigation
@@ -682,10 +683,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           }
         }
         
-        // User is authenticated, show dashboard
+        // User is authenticated, show dashboard without back button
         return (
-          <Layout title="" onNavigate={handleNavigation}>
-            <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} userData={user} />
+          <Layout title="" onNavigate={handleNavigation} showBackButton={false}>
+            <HomeDashboard 
+              user={user} 
+              onNavigate={handleNavigation} 
+              isFromSignupFlow={isFromSignupFlow} 
+              userData={user}
+            />
           </Layout>
         )
 

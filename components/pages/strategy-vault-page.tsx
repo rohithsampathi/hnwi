@@ -13,7 +13,6 @@ import { getMatteCardStyle } from "@/lib/colors"
 import { useSearchParams } from "next/navigation"
 import { Globe, BookOpen, BarChart3 } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
-import { LiveButton } from "@/components/live-button"
 import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
 import { MetaTags } from "../meta-tags"
 
@@ -86,7 +85,6 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           <div className="flex items-center space-x-2">
             <Globe className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
             <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>HNWI World</Heading2>
-            <LiveButton />
           </div>
         }
         showBackButton
@@ -100,9 +98,9 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
               </p>
             </div>
             <div className="px-4 py-2">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
                 <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
-                  <SelectTrigger className="w-[200px] bg-secondary/50 hover:bg-secondary/70 border-border">
+                  <SelectTrigger className="w-full md:w-[200px] border-border">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -114,9 +112,9 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                   <Select onValueChange={handleTimeRangeChange} value={timeRange}>
-                    <SelectTrigger className="w-[180px] bg-secondary/50 hover:bg-secondary/70 border-border">
+                    <SelectTrigger className="w-full sm:w-[180px] border-border">
                       <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
                     <SelectContent>
@@ -158,10 +156,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                   </button>
                 </div>
               </div>
-              {/* Wealth Radar - matching Opportunity Atlas structure */}
-              <div className="relative bg-card rounded-lg border border-border">
-                {/* Header inside the box - left aligned like Opportunity Atlas */}
-                <div className="pt-6 pb-4 px-6">
+              {/* Wealth Radar - no background container */}
+              <div className="relative">
+                {/* Header - no background */}
+                <div className="pb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <BarChart3 className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                     <Heading3 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Wealth Radar</Heading3>
@@ -172,7 +170,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 </div>
                 
                 {/* Visualization area */}
-                <div className="px-6 pb-6">
+                <div>
                   <IndustryTrendsBubbles
                     duration={timeRange}
                     onIndustriesUpdate={handleIndustriesUpdate}

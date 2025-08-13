@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { PremiumBadge } from "@/components/ui/premium-badge";
 import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
-import { LiveButton } from "@/components/live-button";
 import { OpportunityAtlas } from "@/components/opportunity-atlas";
 import { RegionCards, RegionData } from "@/components/region-cards";
 import { OpportunityFilterDrawer, FilterSettings } from "@/components/opportunity-filter-drawer";
@@ -71,10 +70,47 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
 
     observer.observe(regionCardsRef.current);
 
+    // Add scroll listener to handle mobile edge cases
+    const handleScroll = () => {
+      if (!regionCardsRef.current) return;
+      
+      const rect = regionCardsRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      
+      // If we're on mobile and scrolled way past the opportunities section, hide sticky bar
+      if (isMobile && window.scrollY > 0) {
+        // Check if we're scrolled past the opportunities section
+        const opportunitiesSection = document.querySelector('[data-testid="opportunities-section"]');
+        if (opportunitiesSection) {
+          const opportunitiesRect = opportunitiesSection.getBoundingClientRect();
+          // If opportunities section is way above viewport, hide sticky regions
+          if (opportunitiesRect.bottom < -200) {
+            setShowStickyRegions(false);
+            return;
+          }
+        }
+        
+        // Also hide if original region cards are way below viewport
+        if (rect.top > windowHeight + 200) {
+          setShowStickyRegions(false);
+          return;
+        }
+      }
+      
+      // Hide sticky regions when scrolled back to top on mobile
+      if (isMobile && window.scrollY < 100) {
+        setShowStickyRegions(false);
+        return;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
       observer.disconnect();
+      window.removeEventListener('scroll', handleScroll);
     };
-  }, [selectedCategory]);
+  }, [selectedCategory, isMobile]);
 
   // Fetch all opportunities on mount
   useEffect(() => {
@@ -360,7 +396,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
           </div>
           <PremiumBadge>Beta</PremiumBadge>
-          <LiveButton />
         </div>
       } 
       showBackButton 
@@ -424,6 +459,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
                 className="space-y-4"
+                data-testid="opportunities-section"
               >
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -468,7 +504,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -50 }}
               transition={{ duration: 0.3 }}
-              className="fixed left-0 right-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border shadow-lg"
+              className="fixed left-0 right-0 z-20 bg-background border-b border-border shadow-lg"
               style={{ top: 'var(--header-height, 120px)' }}
             >
               <div className="max-w-7xl mx-auto px-4 py-2">

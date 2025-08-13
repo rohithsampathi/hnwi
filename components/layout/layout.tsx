@@ -6,7 +6,6 @@ import type { ReactNode } from "react"
 import { useEffect, useState, useRef } from "react"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { FooterNavigation } from "../dashboard/footer-navigation"
 import { SidebarNavigation } from "../dashboard/sidebar-navigation"
 import { ThemeToggle } from "../theme-toggle"
 import { BusinessModeToggle } from "../business-mode-toggle"
@@ -21,14 +20,25 @@ interface LayoutProps {
   title: string | ReactNode
   showBackButton?: boolean
   onNavigate: (route: string) => void
+  sidebarCollapsed?: boolean
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed = true }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
+  const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state
+  const [isDesktop, setIsDesktop] = useState(false) // Track if desktop
   const headerRef = useRef<HTMLElement>(null)
+
+  // Check if desktop
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768)
+    checkDesktop()
+    window.addEventListener('resize', checkDesktop)
+    return () => window.removeEventListener('resize', checkDesktop)
+  }, [])
 
   // Calculate header height dynamically
   useEffect(() => {
@@ -71,34 +81,30 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
       className="min-h-screen flex flex-col font-sans bg-background text-foreground"
     >
       {/* Sidebar for desktop */}
-      <SidebarNavigation onNavigate={onNavigate} headerHeight={headerHeight} />
+      <SidebarNavigation 
+        onNavigate={onNavigate} 
+        headerHeight={headerHeight} 
+        onSidebarToggle={setSidebarState}
+        showBackButton={showBackButton}
+      />
       
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-30 p-2 md:p-6 flex justify-between items-center bg-background border-b border-border"
+        className="fixed top-0 left-0 right-0 z-30 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border"
       >
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center px-4">
           <div className="flex items-center">
-            {showBackButton && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleBackClick}
-                className="mr-2 text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
-              </Button>
-            )}
-            <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
+            {/* Mobile Logo and Text - Only visible on mobile */}
+            <div className="md:hidden flex items-center cursor-pointer" onClick={handleLogoClick}>
               <motion.div
-                className="mr-1"
+                className="mr-3"
                 animate={{ 
                   rotate: 360,
                   scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
                 }}
                 transition={{ 
                   rotate: { 
-                    duration: 10, // 6 RPM = 1 rotation per 10 seconds
+                    duration: 10,
                     repeat: Number.POSITIVE_INFINITY, 
                     ease: "linear" 
                   },
@@ -114,15 +120,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
                 <Image 
                   src="/logo.png" 
                   alt="HNWI Chronicles Globe" 
-                  width={40} 
-                  height={40} 
-                  className="w-9 h-9 md:w-10 md:h-10" 
+                  width={32} 
+                  height={32} 
+                  className="w-8 h-8" 
                   priority 
                 />
               </motion.div>
-              <h1
-                className={`text-xl md:text-2xl font-bold font-heading`}
-              >
+              <h1 className="text-sm font-bold font-heading leading-tight">
                 <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
                 <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
               </h1>
@@ -139,10 +143,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
       <BusinessModeBanner />
       
       <main 
-        className="flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto md:ml-16 pb-20 md:pb-4"
-        style={{ paddingTop: `${Math.max(headerHeight + 16, 96)}px` }}
+        className={`flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-20 md:pb-4 transition-all duration-300`}
+        style={{ 
+          paddingTop: `${Math.max(headerHeight + 16, 96)}px`,
+          marginLeft: isDesktop ? (sidebarState ? '64px' : '256px') : '0' // Desktop only
+        }}
       >
-        <div className="max-w-7xl mx-auto w-full">
+        <div className="max-w-7xl mx-auto w-full pb-20 md:pb-0">
           {title && (
             <div className="mb-2 pb-0 border-b border-border">
               <div className="flex items-center gap-2">
@@ -154,8 +161,6 @@ export function Layout({ children, title, showBackButton = false, onNavigate }: 
         </div>
       </main>
 
-      {/* Footer navigation for mobile only */}
-      <FooterNavigation onNavigate={onNavigate} />
     </div>
   )
 }

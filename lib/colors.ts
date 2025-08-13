@@ -154,7 +154,7 @@ export const getCardColors = (theme: ColorTheme) => {
 // Centralized Card Styling System
 export const getMetallicCardStyle = (theme: ColorTheme) => {
   return {
-    className: "rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] relative overflow-hidden",
+    className: "rounded-3xl cursor-pointer transition-all duration-300 relative overflow-hidden",
     style: {
       background: theme === "dark" 
         ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"

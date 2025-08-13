@@ -2,6 +2,14 @@
 
 import { SecureAPI, secureApi, CacheControl } from "@/lib/secure-api"
 
+// Helper function to check if error is authentication-related
+const isAuthError = (error: any): boolean => {
+  const errorMessage = error?.message || error?.toString() || '';
+  return errorMessage.includes('Authentication required') || 
+         errorMessage.includes('please log in') || 
+         error?.status === 401;
+};
+
 export interface CryptoData {
   symbol: string
   timestamp: string
@@ -283,8 +291,11 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       created_at: asset.created_at || new Date().toISOString()
     }));
   } catch (error) {
-    console.error('Failed to fetch Crown Vault assets:', error);
-    throw new Error('Unable to load Crown Vault assets. Please try again later.');
+    // Only log non-authentication errors to avoid console spam
+    if (!isAuthError(error)) {
+      console.error('Failed to fetch Crown Vault assets:', error);
+    }
+    throw error; // Re-throw the original error for proper handling upstream
   }
 }
 
@@ -339,8 +350,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     
     return finalStats;
   } catch (error) {
-    console.error('Failed to fetch Crown Vault stats:', error);
-    throw new Error('Unable to load Crown Vault statistics. Please try again later.');
+    // Only log non-authentication errors to avoid console spam
+    if (!isAuthError(error)) {
+      console.error('Failed to fetch Crown Vault stats:', error);
+    }
+    throw error; // Re-throw the original error for proper handling upstream
   }
 }
 
@@ -375,8 +389,11 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
     
     return finalHeirs;
   } catch (error) {
-    console.error('Failed to fetch Crown Vault heirs:', error);
-    throw new Error('Unable to load Crown Vault heirs. Please try again later.');
+    // Only log non-authentication errors to avoid console spam
+    if (!isAuthError(error)) {
+      console.error('Failed to fetch Crown Vault heirs:', error);
+    }
+    throw error; // Re-throw the original error for proper handling upstream
   }
 }
 

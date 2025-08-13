@@ -183,7 +183,15 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
         profile: data.profile || {}
       }
     } catch (loginError) {
-      // Secure API wrapper provides safe error messages
+      // Handle specific 401 unauthorized error for incorrect credentials
+      if (loginError instanceof Error && 
+          (loginError.message?.includes('401') || 
+           loginError.message?.includes('Unauthorized') || 
+           loginError.message?.includes('Invalid credentials'))) {
+        return { success: false, error: "Incorrect password. Please retry or click forgot password." }
+      }
+      
+      // Secure API wrapper provides safe error messages for other errors
       const errorMessage = loginError instanceof Error ? loginError.message : "Authentication failed";
       return { success: false, error: errorMessage }
     }

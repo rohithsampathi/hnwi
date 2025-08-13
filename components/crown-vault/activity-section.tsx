@@ -6,7 +6,6 @@ import { Activity, Clock, TrendingUp, Shield, FileText, Users, DollarSign, Build
 import { motion } from "framer-motion";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle } from "@/lib/colors";
-import { LiveButton } from "@/components/live-button";
 import type { CrownVaultStats } from "@/lib/api";
 
 interface ActivitySectionProps {
@@ -75,7 +74,6 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <h2 className="text-2xl font-semibold text-foreground">Activity</h2>
-          <LiveButton />
         </div>
         <p className="text-sm text-muted-foreground">Track all changes and updates to your vault</p>
       </div>
