@@ -28,16 +28,30 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const { showBanner } = useBusinessMode()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
-  const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state
+  const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state (true = collapsed)
   const [isDesktop, setIsDesktop] = useState(false) // Track if desktop
+  const [isTablet, setIsTablet] = useState(false) // Track if tablet
   const headerRef = useRef<HTMLElement>(null)
 
-  // Check if desktop
+  // Check screen sizes - specific ranges for iPad devices  
   useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768)
-    checkDesktop()
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
+    const checkScreenSizes = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      
+      // Tablet: specific range 800x1150 to 1100x1400 (iPad Air and Pro)
+      const tabletCondition = width >= 800 && width <= 1100 && height >= 1150 && height <= 1400
+      setIsTablet(tabletCondition)
+      
+      // Desktop: anything larger than tablet range or different aspect ratio
+      setIsDesktop(width > 1100 || height > 1400 || width < 800)
+      
+      // Debug logging
+      console.log(`Screen: ${width}x${height}, isTablet: ${tabletCondition}, sidebarState: ${sidebarState}`)
+    }
+    checkScreenSizes()
+    window.addEventListener('resize', checkScreenSizes)
+    return () => window.removeEventListener('resize', checkScreenSizes)
   }, [])
 
   // Calculate header height dynamically
@@ -90,9 +104,16 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-30 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border"
+        className={`fixed top-0 left-0 right-0 z-30 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
+          isTablet && !sidebarState ? 'blur-lg' : ''
+        }`}
       >
-        <div className="max-w-7xl mx-auto w-full flex justify-between items-center px-4">
+        <div 
+          className="max-w-7xl mx-auto w-full flex justify-between items-center px-4"
+          style={{
+            marginLeft: isTablet && sidebarState ? '64px' : '0' // Shift header content on tablet when collapsed
+          }}
+        >
           <div className="flex items-center">
             {/* Mobile Logo and Text - Only visible on mobile */}
             <div className="md:hidden flex items-center cursor-pointer" onClick={handleLogoClick}>
@@ -140,13 +161,30 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         </div>
       </header>
 
-      <BusinessModeBanner />
+      <div 
+        className={`transition-all duration-300 ${isTablet && !sidebarState ? 'blur-lg' : ''}`}
+        style={{
+          marginLeft: isTablet && sidebarState ? '64px' : '0' // Shift banner on tablet when collapsed
+        }}
+      >
+        <BusinessModeBanner />
+      </div>
       
       <main 
-        className={`flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-20 md:pb-4 transition-all duration-300`}
+        className={`flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-20 md:pb-4 transition-all duration-300 ${
+          (() => {
+            const shouldBlur = isTablet && !sidebarState
+            console.log(`Blur condition: isTablet=${isTablet}, sidebarState=${sidebarState}, shouldBlur=${shouldBlur}`)
+            return shouldBlur ? 'blur-lg bg-red-100' : ''
+          })()
+        }`}
         style={{ 
           paddingTop: `${Math.max(headerHeight + 16, 96)}px`,
-          marginLeft: isDesktop ? (sidebarState ? '64px' : '256px') : '0' // Desktop only
+          marginLeft: isDesktop 
+            ? (sidebarState ? '64px' : '256px') // Desktop: collapsed = 64px, expanded = 256px
+            : isTablet 
+              ? (sidebarState ? '64px' : '0') // Tablet: collapsed = 64px, expanded = overlay (0px)
+              : '0' // Mobile: no margin
         }}
       >
         <div className="max-w-7xl mx-auto w-full pb-20 md:pb-0">

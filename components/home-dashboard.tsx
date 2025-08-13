@@ -9,27 +9,18 @@ import { useBusinessMode } from "@/contexts/business-mode-context"
 import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
-  Shield,
-  Globe,
-  Beaker,
-  Hammer,
-  ArrowRight,
-  Briefcase,
-  CalendarIcon,
-  BookOpen,
-  Crown,
-  Users,
   Diamond,
-  ChevronLeft,
-  ChevronRight,
+  BookOpen,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { Badge } from "@/components/ui/badge"
 import { PremiumBadge } from "@/components/ui/premium-badge"
-import { getCardColors, getMetallicCardStyle } from "@/lib/colors"
+import { getMetallicCardStyle } from "@/lib/colors"
+import { Badge } from "@/components/ui/badge"
+import { Brain, TrendingUp, Target, AlertCircle, BarChart3, PieChart, Lightbulb } from "lucide-react"
+import { getMatteCardStyle } from "@/lib/colors"
 // import { OnboardingWizard } from "./onboarding-wizard"
 // import { useOnboarding } from "@/contexts/onboarding-context"
-import { Heading2, Heading3, Lead } from "@/components/ui/typography"
+import { Heading2, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import type React from "react"
@@ -52,55 +43,140 @@ interface Development {
   date: string
   product: string
   source?: string
+  summary: string
+  numerical_data?: Array<{
+    number: string
+    context: string
+    unit: string
+    industry: string
+    product: string
+    source: string
+    article_date: string
+  }>
 }
 
-interface ExperienceZoneItem {
-  name: string
-  icon: React.ElementType
-  route: string
-  color: string
-  description: string | React.ReactNode
-  iconAnimation: any
-  beta?: boolean
-  businessOnly?: boolean
-  live?: boolean
+interface AnalysisSection {
+  title: string
+  content: Array<{
+    text: string
+    isBullet: boolean
+  }>
 }
 
-const AnimatedIcon = ({
-  icon: Icon,
-  animation,
-  className,
-}: {
-  icon: React.ElementType
-  animation: any
-  className?: string
-}) => {
-  return (
-    <motion.div
-      animate={animation.animate}
-      className={className}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        perspective: 1000,
-      }}
-    >
-      <Icon className="w-8 h-8 md:w-12 md:h-12" />
-    </motion.div>
-  )
+interface FormattedAnalysis {
+  summary: string
+  sections: AnalysisSection[]
+  winners?: AnalysisSection
+  losers?: AnalysisSection
+  potentialMoves?: AnalysisSection
 }
 
-const pulseAnimation = {
-  animate: {
-    opacity: [1, 0.4, 1],
-    scale: [1, 1.1, 1],
-    transition: {
-      duration: 2,
-      repeat: Number.POSITIVE_INFINITY,
-      ease: "easeInOut",
-    },
-  },
+const toTitleCase = (str: string) => {
+  const cleanStr = str.replace(/\*\*/g, '');
+  return cleanStr
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+const formatAnalysis = (summary: string): FormattedAnalysis => {
+  const lines = summary.split("\n")
+  let currentSection = { title: "", content: [] as Array<{text: string, isBullet: boolean}> }
+  const sections = [] as Array<{title: string, content: Array<{text: string, isBullet: boolean}>}>
+  const summaryContent = [] as string[]
+  let winners: AnalysisSection | undefined
+  let losers: AnalysisSection | undefined
+  let potentialMoves: AnalysisSection | undefined
+
+  lines.forEach((line) => {
+    const trimmedLine = line.trim()
+    if (trimmedLine === "") return
+
+    if ((trimmedLine.startsWith("##") || trimmedLine.toUpperCase() === trimmedLine) && trimmedLine !== "") {
+      if (currentSection.title) {
+        const lowerTitle = currentSection.title.toLowerCase()
+        
+        if (lowerTitle.includes("winner")) {
+          winners = { ...currentSection }
+        } else if (lowerTitle.includes("loser")) {
+          losers = { ...currentSection }
+        } else if (lowerTitle.includes("potential") && lowerTitle.includes("move")) {
+          potentialMoves = { ...currentSection }
+        } else {
+          sections.push(currentSection)
+        }
+        
+        currentSection = { title: "", content: [] }
+      }
+      const titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+      currentSection.title = toTitleCase(titleText)
+    } else if (currentSection.title) {
+      const explicitBulletPoint = trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || /^\d+\.\s/.test(trimmedLine)
+      
+      const bulletSections = [
+        "key moves", "long term", "long-term", "wealth impact", "sentiment tracker", 
+        "market impact", "investment implications", "impact", "implications", "tracker", "moves"
+      ]
+      const shouldTreatAsBullet = bulletSections.some(section => 
+        currentSection.title.toLowerCase().includes(section)
+      )
+      
+      let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
+      formattedText = formattedText.replace(
+        /(Opportunities:|Risks:|Recommendations & Future Paths:|Winners:|Losers:)/g,
+        "<strong>$1</strong>",
+      )
+
+      if (shouldTreatAsBullet && !explicitBulletPoint) {
+        const parts = formattedText.split(/\.\s+(?=[A-Z])/).filter(part => part.trim().length > 0)
+        
+        parts.forEach((part, index) => {
+          let cleanPart = part.trim()
+          if (index < parts.length - 1 && !cleanPart.endsWith('.')) {
+            cleanPart += '.'
+          }
+          
+          if (cleanPart.length > 0) {
+            currentSection.content.push({
+              text: cleanPart,
+              isBullet: true,
+            })
+          }
+        })
+      } else {
+        const isBulletPoint = explicitBulletPoint || shouldTreatAsBullet
+        currentSection.content.push({
+          text: formattedText,
+          isBullet: isBulletPoint,
+        })
+      }
+    } else {
+      const formattedLine = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+      summaryContent.push(formattedLine)
+    }
+  })
+
+  if (currentSection.title) {
+    const lowerTitle = currentSection.title.toLowerCase()
+    
+    if (lowerTitle.includes("winner")) {
+      winners = { ...currentSection }
+    } else if (lowerTitle.includes("loser")) {
+      losers = { ...currentSection }
+    } else if (lowerTitle.includes("potential") && lowerTitle.includes("move")) {
+      potentialMoves = { ...currentSection }
+    } else {
+      sections.push(currentSection)
+    }
+  }
+
+  return {
+    summary: summaryContent.join("\n"),
+    sections: sections,
+    winners,
+    losers,
+    potentialMoves,
+  }
 }
 
 export function HomeDashboard({
@@ -120,9 +196,8 @@ export function HomeDashboard({
   const { showAuthPopup } = useAuthPopup()
   const [developments, setDevelopments] = useState<Development[]>([])
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [selectedDevelopment, setSelectedDevelopment] = useState<Development | null>(null)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
-  const [availableWidth, setAvailableWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   // Commenting out onboarding popup code
   // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
@@ -200,128 +275,35 @@ export function HomeDashboard({
     fetchDevelopments()
   }, [])
 
-  // Dynamic width detection based on container
+  // Set first development as selected when developments load
+  useEffect(() => {
+    if (developments.length > 0 && !selectedDevelopment) {
+      setSelectedDevelopment(developments[0])
+    }
+  }, [developments, selectedDevelopment])
+
+  // Screen size detection
   useEffect(() => {
     const handleResize = () => {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.getBoundingClientRect().width
-        setAvailableWidth(containerWidth)
-        
-        // Dynamic sizing based on available container width, not just window width
-        if (containerWidth < 600) {
-          setScreenSize('mobile')
-        } else if (containerWidth < 900) {
-          setScreenSize('tablet')  
-        } else {
-          setScreenSize('desktop')
-        }
+      if (window.innerWidth < 768) {
+        setScreenSize('mobile')
+      } else if (window.innerWidth < 1024) {
+        setScreenSize('tablet')  
+      } else {
+        setScreenSize('desktop')
       }
     }
 
-    // Use ResizeObserver for better container width detection
-    const resizeObserver = new ResizeObserver(handleResize)
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-    }
-
-    // Fallback to window resize
     window.addEventListener('resize', handleResize)
     handleResize() // Initial call
     
     return () => {
-      resizeObserver.disconnect()
       window.removeEventListener('resize', handleResize)
     }
   }, [])
 
-  // Dynamic carousel configuration based on available width
-  const getCarouselConfig = () => {
-    // Only apply dynamic logic if we have measured width
-    if (availableWidth === 0) {
-      // Fallback to original logic while width is being measured
-      switch (screenSize) {
-        case 'mobile':
-          return { cardsToShow: 2, slideStep: 1, showPartialCard: true, isVertical: false }
-        case 'tablet':
-          return { cardsToShow: 3, slideStep: 1, showPartialCard: true, isVertical: false, fullCards: 2 }
-        case 'desktop':
-        default:
-          return { cardsToShow: 4, slideStep: 2, showPartialCard: true, isVertical: false }
-      }
-    }
-
-    // Calculate optimal cards based on available width
-    const cardMinWidth = 320 // Slightly larger minimum for better spacing
-    const maxFullCards = Math.floor(availableWidth / cardMinWidth)
-    
-    switch (screenSize) {
-      case 'mobile':
-        return {
-          cardsToShow: 2, // Always 2 on mobile
-          slideStep: 1,
-          showPartialCard: true,
-          isVertical: false
-        }
-      case 'tablet':
-        // More nuanced tablet logic
-        const tabletCards = maxFullCards >= 3 ? 3 : (maxFullCards >= 2 ? 2 : 2) // Min 2, max 3
-        return {
-          cardsToShow: tabletCards,
-          slideStep: 1,
-          showPartialCard: true,
-          isVertical: false,
-          fullCards: Math.max(1, tabletCards - 1)
-        }
-      case 'desktop':
-      default:
-        // Desktop: scale from 2 to 4 based on available width
-        let desktopCards
-        if (maxFullCards >= 4) {
-          desktopCards = 4 // Plenty of space: show 4 cards
-        } else if (maxFullCards >= 3) {
-          desktopCards = 3 // Good space: show 3 cards  
-        } else {
-          desktopCards = 2 // Limited space: show 2 cards
-        }
-        
-        return {
-          cardsToShow: desktopCards,
-          slideStep: desktopCards > 2 ? 2 : 1,
-          showPartialCard: true,
-          isVertical: false
-        }
-    }
-  }
-
-  const config = getCarouselConfig()
-  const totalSlides = config.isVertical 
-    ? developments.length 
-    : Math.max(0, developments.length - (config.cardsToShow - config.slideStep) + 1) // Allow final slide to show last cards + END OF STREAM
-  
-  const nextSlide = () => {
-    if (config.isVertical) {
-      setCurrentSlide((prev) => Math.min(prev + 1, developments.length - 1))
-    } else {
-      setCurrentSlide((prev) => Math.min(prev + config.slideStep, totalSlides - 1))
-    }
-  }
-  
-  const prevSlide = () => {
-    setCurrentSlide((prev) => Math.max(prev - config.slideStep, 0))
-  }
-  
-  // Get developments to show based on current slide and screen size
-  const getDisplayDevelopments = () => {
-    if (screenSize === 'mobile') {
-      // Mobile uses horizontal scroll, not carousel
-      return developments
-    }
-    
-    // Calculate the start index based on current slide
-    let startIndex = currentSlide
-    
-    // Always return the requested number of cards from the start index
-    return developments.slice(startIndex, startIndex + config.cardsToShow)
+  const handleDevelopmentSelect = (development: Development) => {
+    setSelectedDevelopment(development)
   }
 
   // Commenting out onboarding cleanup effect
@@ -331,28 +313,6 @@ export function HomeDashboard({
   //     setIsFromSignupFlow(false)
   //   }
   // }, [setIsFromSignupFlow])
-
-  // All available sections
-  const experienceZone: ExperienceZoneItem[] = [
-    {
-      name: "War Room",
-      icon: Shield,
-      route: "war-room",
-      color: getCardColors(theme),
-      description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
-      iconAnimation: pulseAnimation,
-      businessOnly: true,
-    },
-    // Tactics Lab moved to Founder's Desk
-  ]
-
-  // Filter items based on business mode only (War Room will be shown in business mode)
-  const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly);
-
-  // Centralized heading style for all section titles
-  const sectionHeadingClass = `text-2xl md:text-3xl font-heading font-bold tracking-wide ${
-    theme === "dark" ? "text-white" : "text-black"
-  }`;
 
   // Time-based greeting function
   const getTimeBasedGreeting = () => {
@@ -366,49 +326,10 @@ export function HomeDashboard({
     }
   };
 
-
-  const foundersDeskItems = [
-    {
-      name: "Social Hub",
-      icon: Users,
-      route: "social-hub",
-      color: getCardColors(theme),
-      description: "Hub of essential events that HNWIs should attend throughout the year ensuring you're at the right place and right time.",
-      iconAnimation: pulseAnimation,
-      live: true,
-    },
-    // Calendar card removed/commented out
-    /*{
-      name: "Calendar",
-      icon: CalendarIcon,
-      route: "calendar-page",
-      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "#f3eae0",
-      description: "Manage your elite events calendar, including private showcases, exclusive gatherings, and invitation-only investment summits tailored to your interests.",
-      iconAnimation: pulseAnimation,
-    },*/
-    {
-      name: "Playbook Store",
-      icon: BookOpen,
-      route: "play-books",
-      color: getCardColors(theme),
-      description: "Curated playbooks from global institutions and ultra-high-net-worth family office leaders.",
-      iconAnimation: pulseAnimation,
-      businessOnly: true,
-    },
-    {
-      name: "Tactics Lab",
-      icon: Beaker,
-      route: "strategy-engine",
-      color: getCardColors(theme), // Secondary colors - dark gray for dark mode, light gray for light mode
-      description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
-      iconAnimation: pulseAnimation,
-      beta: true,
-      businessOnly: true,
-    },
-  ]
-
-  // Filter founders desk items based on business mode only (Playbook Store will be shown in business mode)
-  const visibleFoundersDeskItems = foundersDeskItems.filter(item => isBusinessMode || !item.businessOnly);
+  // Centralized heading style for section titles
+  const sectionHeadingClass = `text-2xl md:text-3xl font-heading font-bold tracking-wide ${
+    theme === "dark" ? "text-white" : "text-black"
+  }`;
 
   const handleNavigate = (e: React.MouseEvent, route: string, developmentId?: string) => {
     e.preventDefault()
@@ -468,374 +389,498 @@ export function HomeDashboard({
       </div>
 
       <div ref={containerRef} className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
-        <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground">
-          <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-              <Heading2 className={sectionHeadingClass}>
-                Elite Pulse
-              </Heading2>
-            </div>
-            <Lead className="font-body font-regular tracking-wide text-base md:text-sm">What the world's top 1% realise before others know</Lead>
-          </CardHeader>
-          <CardContent className="px-0">
-            {developmentsLoading ? (
-              <div className="flex flex-col space-y-4 px-6">
-                <div className="flex flex-col items-center justify-center min-h-[400px]">
-                  <CrownLoader size="lg" text="Loading your strategic insights..." />
-                </div>
+        {/* Two Column Layout */}
+        {developmentsLoading ? (
+          <div className="flex flex-col items-center justify-center min-h-[500px]">
+            <CrownLoader size="lg" text="Loading strategic insights..." />
+          </div>
+        ) : screenSize === 'mobile' ? (
+          // Mobile: Single column with original scrolling cards
+          <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                <Heading2 className={sectionHeadingClass}>
+                  Elite Pulse
+                </Heading2>
               </div>
-            ) : developments.length > 0 && (
-              <div className={screenSize === 'mobile' ? 'relative' : 'px-6 relative'}>
-                {/* Elite Pulse - Responsive Layout */}
-                <div className={`relative ${screenSize !== 'mobile' ? 'px-5' : 'px-6'}`}>
-                  <div 
-                    className={screenSize === 'mobile' ? 'overflow-x-scroll overflow-y-hidden -mx-6 px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : 'overflow-visible'}
-                  >
-                    {screenSize === 'mobile' ? (
-                      // Mobile: Horizontal scroll layout (perfect as is)
-                      <div 
-                        className="flex gap-4 pb-4"
-                        style={{
-                          width: 'max-content'
-                        }}
-                      >
-                        {developments.map((development, index) => (
-                          <motion.div
-                            key={`elite-pulse-mobile-${development.id}`}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, delay: index * 0.1 }}
-                            className="flex-shrink-0 w-[75vw] h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
-                            style={{
-                              ...getMetallicCardStyle(theme).style,
-                              position: "relative",
-                              overflow: "hidden",
-                            }}
-                            onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
-                          >
-                            <div className="flex flex-col h-full">
-                              {/* Top row with badge and date */}
-                              <div className="flex justify-between items-center mb-3">
-                                <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
-                                  {development.industry}
-                                </PremiumBadge>
-                                
-                                <div className={`text-xs font-medium ${
-                                  theme === "dark" 
-                                    ? "text-gray-200" 
-                                    : "text-gray-700"
-                                }`}>
-                                  {new Date(development.date).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric"
-                                  })}
-                                </div>
-                              </div>
+              <Lead className="font-body font-regular tracking-wide text-base md:text-sm">What the world's top 1% realise before others know</Lead>
+            </CardHeader>
+            <CardContent className="px-0">
+              {developments.length > 0 && (
+                <div className="relative px-6">
+                  <div className="overflow-x-scroll overflow-y-hidden -mx-6 px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div 
+                      className="flex gap-4 pb-4"
+                      style={{
+                        width: 'max-content'
+                      }}
+                    >
+                      {developments.map((development, index) => (
+                        <motion.div
+                          key={`elite-pulse-mobile-${development.id}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: index * 0.1 }}
+                          className="flex-shrink-0 w-[75vw] h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
+                          style={{
+                            ...getMetallicCardStyle(theme).style,
+                            position: "relative",
+                            overflow: "hidden",
+                          }}
+                          onClick={() => handleDevelopmentSelect(development)}
+                        >
+                          <div className="flex flex-col h-full">
+                            {/* Top row with badge and date */}
+                            <div className="flex justify-between items-center mb-3">
+                              <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                                {development.industry}
+                              </PremiumBadge>
                               
-                              {/* Heading */}
-                              <h3 className={`text-lg font-black mb-3 ${
+                              <div className={`text-xs font-medium ${
+                                theme === "dark" 
+                                  ? "text-gray-200" 
+                                  : "text-gray-700"
+                              }`}>
+                                {new Date(development.date).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric"
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Heading */}
+                            <h3 className={`text-lg font-black mb-3 ${
+                              theme === "dark" ? "text-primary" : "text-black"
+                            }`}>
+                              {development.title}
+                            </h3>
+                            
+                            {/* Body */}
+                            <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
+                              theme === "dark" ? "text-gray-200" : "text-gray-700"
+                            }`}>
+                              {development.description}
+                            </p>
+                            
+                            {/* Bottom row with Read More and Source */}
+                            <div className="flex justify-between items-center">
+                              <div className={`text-sm font-bold hover:underline cursor-pointer ${
                                 theme === "dark" ? "text-primary" : "text-black"
                               }`}>
-                                {development.title}
-                              </h3>
-                              
-                              {/* Body */}
-                              <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
-                                theme === "dark" ? "text-gray-200" : "text-gray-700"
-                              }`}>
-                                {development.description}
-                              </p>
-                              
-                              {/* Bottom row with Read More and Source */}
-                              <div className="flex justify-between items-center">
-                                <div className={`text-sm font-bold hover:underline cursor-pointer ${
+                                Tap to Expand
+                              </div>
+                              {development.source && (
+                                <div className={`text-xs font-medium ${
+                                  theme === "dark" ? "text-gray-400" : "text-gray-600"
+                                }`}>
+                                  Source: {development.source}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          // Desktop/Tablet: Two column layout
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-180px)]">
+            {/* Left Column - Expanded Insider Brief */}
+            <div className="md:col-span-1 lg:col-span-3 h-full">
+              <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-full flex flex-col">
+                <CardHeader className="flex-shrink-0 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Diamond className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <Heading2 className={`text-xl font-bold ${sectionHeadingClass}`}>
+                      Elite Pulse
+                    </Heading2>
+                  </div>
+                  <Lead className="font-body font-regular tracking-wide text-sm">What the world's top 1% realise before others know</Lead>
+                </CardHeader>
+                <CardContent className="px-0 flex-1 overflow-hidden">
+                  {selectedDevelopment ? (
+                    <div className="px-6 h-full flex flex-col">
+                      {(() => {
+                        const analysis = formatAnalysis(selectedDevelopment.summary);
+                        return (
+                          <>
+                            {/* Header with title and metadata - Fixed height */}
+                            <div className="flex-shrink-0 mb-2">
+                              <div className="flex flex-col gap-2">
+                                {selectedDevelopment.product && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs font-normal px-2 py-1 rounded-md text-muted-foreground border-muted-foreground/30 whitespace-nowrap w-fit"
+                                  >
+                                    {selectedDevelopment.product}
+                                  </Badge>
+                                )}
+                                <h3 className={`text-lg font-black leading-tight ${
                                   theme === "dark" ? "text-primary" : "text-black"
                                 }`}>
-                                  Read Full Brief
-                                </div>
-                                {development.source && (
+                                  {selectedDevelopment.title}
+                                </h3>
+                                <p className={`text-sm font-medium leading-relaxed ${
+                                  theme === "dark" ? "text-gray-200" : "text-gray-700"
+                                }`}>
+                                  {selectedDevelopment.description}
+                                </p>
+                                
+                                <div className="flex justify-between items-center pt-1">
+                                  <PremiumBadge className="font-bold px-2 py-1 rounded-full text-xs">
+                                    {selectedDevelopment.industry}
+                                  </PremiumBadge>
+                                  
                                   <div className={`text-xs font-medium ${
                                     theme === "dark" ? "text-gray-400" : "text-gray-600"
                                   }`}>
-                                    Source: {development.source}
+                                    {new Date(selectedDevelopment.date).toLocaleDateString("en-US", {
+                                      year: "numeric",
+                                      month: "long", 
+                                      day: "numeric"
+                                    })}
                                   </div>
-                                )}
+                                </div>
                               </div>
                             </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      // Tablet/Desktop: Carousel layout
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={currentSlide}
-                          initial={{ opacity: 0, x: 300 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -300 }}
-                          transition={{ duration: 0.5, ease: "easeInOut" }}
-                          className="flex space-x-4 relative"
-                          style={{
-                            width: screenSize === 'desktop' 
-                              ? '100%' 
-                              : '100%'
-                          }}
-                        >
-                          {/* Render available development cards */}
-                          {getDisplayDevelopments().map((development, index) => {
-                            // Render normal development card
-                            return (
-                              <motion.div
-                                key={`elite-pulse-${development.id}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.6, delay: index * 0.1 }}
-                                className={`${
-                                  screenSize === 'tablet' 
-                                    ? index < 2 
-                                      ? "flex-1 min-w-0" // First 2 cards: full width
-                                      : "w-16 flex-shrink-0" // 3rd card: very small peek
-                                    : "flex-1 min-w-0" // Desktop: all cards get full width, no partial card constraint
-                                } h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative`}
-                                style={{
-                                  ...getMetallicCardStyle(theme).style,
-                                  position: "relative",
-                                  overflow: "hidden"
-                                }}
-                                onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
+
+                            {/* Content Area */}
+                            <div className="flex-1 space-y-2 overflow-y-auto">
+                              {/* HByte Summary */}
+                              <div 
+                                className={`p-6 border rounded-xl ${getMatteCardStyle(theme).className}`}
+                                style={getMatteCardStyle(theme).style}
                               >
-                                <div className="flex flex-col h-full">
-                                  {/* Top row with badge and date */}
-                                  <div className="flex justify-between items-center mb-3">
-                                    <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
-                                      {development.industry}
-                                    </PremiumBadge>
-                                    
-                                    <div className={`text-xs font-medium ${
-                                      theme === "dark" 
-                                        ? "text-gray-200" 
-                                        : "text-gray-700"
-                                    }`}>
-                                      {new Date(development.date).toLocaleDateString("en-US", {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric"
-                                      })}
-                                    </div>
+                                <div className="flex items-center mb-4">
+                                  <div className="p-2 rounded-lg bg-primary/20 mr-3">
+                                    <Brain className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                                   </div>
-                                  
-                                  {/* Heading */}
-                                  <h3 className={`text-lg font-black mb-3 ${
-                                    theme === "dark" ? "text-primary" : "text-black"
-                                  }`}>
-                                    {development.title}
-                                  </h3>
-                                  
-                                  {/* Body */}
-                                  <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
-                                    theme === "dark" ? "text-gray-200" : "text-gray-700"
-                                  }`}>
-                                    {development.description}
-                                  </p>
-                                  
-                                  {/* Bottom row with Read Full Brief and Source */}
-                                  <div className="flex justify-between items-center">
-                                    <div className={`text-sm font-bold hover:underline cursor-pointer ${
-                                      theme === "dark" ? "text-primary" : "text-black"
-                                    }`}>
-                                      Read Full Brief
-                                    </div>
-                                    {development.source && (
-                                      <div className={`text-xs font-medium ${
-                                        theme === "dark" ? "text-gray-400" : "text-gray-600"
-                                      }`}>
-                                        Source: {development.source}
-                                      </div>
-                                    )}
-                                  </div>
+                                  <h4 className="text-xl font-bold">HByte Summary</h4>
                                 </div>
-                                
-                                {/* Blur overlay for partial cards - doesn't affect content - but never on last slide */}
-                                {screenSize === 'desktop' && index === 3 && currentSlide < totalSlides - 1 && getDisplayDevelopments().length === config.cardsToShow && (
-                                  <div 
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{
-                                      maskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,1) 100%)",
-                                      WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.7) 75%, rgba(0,0,0,1) 100%)",
-                                      background: theme === 'dark' ? '#0a0a0a' : '#ffffff'
-                                    }}
-                                  />
-                                )}
-                              </motion.div>
-                            )
-                          })}
-                          
-                          {/* Lightweight MORE SOON text - only show if we're at the end and have fewer cards */}
-                          {getDisplayDevelopments().length < config.cardsToShow && (
-                            <div className="w-16 flex items-center justify-center">
-                              <div className={`text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'} opacity-60`}>
-                                <div className="text-xs font-light flex flex-col items-center">
-                                  {"MORE SOON".split('').map((char, i) => 
-                                    char === ' ' ? (
-                                      <div key={i} className="h-1" />
-                                    ) : (
-                                      <div key={i} className="leading-none">{char}</div>
-                                    )
-                                  )}
+                                <div className="text-sm leading-relaxed">
+                                  <p className="font-medium">{analysis.summary}</p>
                                 </div>
                               </div>
+
+                              {/* Winners */}
+                              {analysis.winners && (
+                                <div 
+                                  className="p-5 rounded-xl border"
+                                  style={{
+                                    background: theme === "dark" ? 
+                                      "linear-gradient(135deg, rgba(0,80,0,0.3) 0%, rgba(0,120,0,0.5) 100%)" : 
+                                      "linear-gradient(135deg, rgba(200,255,200,0.3) 0%, rgba(150,255,150,0.5) 100%)",
+                                    backdropFilter: "blur(8px)",
+                                    border: theme === "dark" ? "1px solid rgba(0,255,0,0.15)" : "1px solid rgba(0,180,0,0.15)"
+                                  }}
+                                >
+                                  <div className="flex items-center mb-3">
+                                    <div className="p-2 rounded-lg bg-green-500/20 mr-3">
+                                      <TrendingUp className="h-4 w-4 text-green-500" />
+                                    </div>
+                                    <h5 className="font-bold text-base text-green-600 dark:text-green-400">Winners</h5>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {analysis.winners.content.map((item, pIndex) => (
+                                      <div key={`winner-${pIndex}`} className="text-sm">
+                                        {item.isBullet ? (
+                                          <div className="flex items-start py-1">
+                                            <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-green-500/60"></div>
+                                            <span 
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <p 
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                            }}
+                                          />
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Losers */}
+                              {analysis.losers && (
+                                <div 
+                                  className="p-5 rounded-xl border"
+                                  style={{
+                                    background: theme === "dark" ? 
+                                      "linear-gradient(135deg, rgba(80,0,0,0.3) 0%, rgba(120,0,0,0.5) 100%)" : 
+                                      "linear-gradient(135deg, rgba(255,200,200,0.3) 0%, rgba(255,150,150,0.5) 100%)",
+                                    backdropFilter: "blur(8px)",
+                                    border: theme === "dark" ? "1px solid rgba(255,0,0,0.15)" : "1px solid rgba(180,0,0,0.15)"
+                                  }}
+                                >
+                                  <div className="flex items-center mb-3">
+                                    <div className="p-2 rounded-lg bg-red-500/20 mr-3">
+                                      <AlertCircle className="h-4 w-4 text-red-500" />
+                                    </div>
+                                    <h5 className="font-bold text-base text-red-600 dark:text-red-400">Losers</h5>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {analysis.losers.content.map((item, pIndex) => (
+                                      <div key={`loser-${pIndex}`} className="text-sm">
+                                        {item.isBullet ? (
+                                          <div className="flex items-start py-1">
+                                            <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-red-500/60"></div>
+                                            <span 
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <p 
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                            }}
+                                          />
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Potential Moves */}
+                              {analysis.potentialMoves && (
+                                <div 
+                                  className="p-5 rounded-xl border"
+                                  style={{
+                                    background: theme === "dark" ? 
+                                      "linear-gradient(135deg, rgba(60,60,0,0.3) 0%, rgba(100,100,0,0.5) 100%)" : 
+                                      "linear-gradient(135deg, rgba(255,255,200,0.3) 0%, rgba(255,255,150,0.5) 100%)",
+                                    backdropFilter: "blur(8px)",
+                                    border: theme === "dark" ? "1px solid rgba(255,255,0,0.15)" : "1px solid rgba(200,200,0,0.15)"
+                                  }}
+                                >
+                                  <div className="flex items-center mb-3">
+                                    <div className="p-2 rounded-lg bg-yellow-500/20 mr-3">
+                                      <TrendingUp className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                                    </div>
+                                    <h5 className="font-bold text-base text-yellow-700 dark:text-yellow-300">Potential Moves</h5>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    {analysis.potentialMoves.content.map((item, pIndex) => (
+                                      <div key={`move-${pIndex}`} className="text-sm">
+                                        {item.isBullet ? (
+                                          <div className="flex items-start py-1">
+                                            <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-yellow-500/60"></div>
+                                            <span 
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <p 
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                            }}
+                                          />
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Analysis Sections - All sections in full */}
+                              {analysis.sections.map((section, index) => {
+                                const getSectionIcon = (title: string) => {
+                                  const lowerTitle = title.toLowerCase()
+                                  if (lowerTitle.includes('impact') || lowerTitle.includes('matter')) return Target
+                                  if (lowerTitle.includes('move') || lowerTitle.includes('trend')) return TrendingUp
+                                  if (lowerTitle.includes('risk') || lowerTitle.includes('warning')) return AlertCircle
+                                  if (lowerTitle.includes('data') || lowerTitle.includes('number')) return BarChart3
+                                  return PieChart
+                                }
+                                
+                                const IconComponent = getSectionIcon(section.title)
+                                
+                                return (
+                                  <div 
+                                    key={`section-${index}`} 
+                                    className={`p-5 border rounded-xl ${getMatteCardStyle(theme).className}`}
+                                    style={getMatteCardStyle(theme).style}
+                                  >
+                                    <div className="flex items-center mb-3">
+                                      <div className="p-2 rounded-lg bg-primary/20 mr-3">
+                                        <IconComponent className={`h-4 w-4 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                      </div>
+                                      <h5 className="font-bold text-base">{section.title}</h5>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                      {section.content.map((item, pIndex) => (
+                                        <div key={`item-${pIndex}`} className="text-sm">
+                                          {item.isBullet ? (
+                                            <div className="flex items-start py-1">
+                                              <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
+                                              <span 
+                                                className="leading-relaxed font-medium"
+                                                dangerouslySetInnerHTML={{
+                                                  __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                }}
+                                              />
+                                            </div>
+                                          ) : (
+                                            <p 
+                                              className="leading-relaxed font-medium bg-primary/5 p-3 rounded-lg border-l-2 border-primary/30"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                              }}
+                                            />
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+
+                              {/* Numerical Data */}
+                              {selectedDevelopment.numerical_data && selectedDevelopment.numerical_data.length > 0 && (
+                                <div 
+                                  className={`p-5 rounded-xl border ${getMatteCardStyle(theme).className}`}
+                                  style={getMatteCardStyle(theme).style}
+                                >
+                                  <h4 className="text-lg font-semibold mb-4 flex items-center">
+                                    <BarChart3 className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                    Numerical Data
+                                  </h4>
+                                  <div className="space-y-3">
+                                    {selectedDevelopment.numerical_data.map((item, index) => (
+                                      <div key={`numerical-${index}`} className="flex items-start text-sm">
+                                        <Lightbulb className={`h-4 w-4 mr-3 flex-shrink-0 mt-1 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                        <span className="leading-relaxed font-medium">
+                                          <span className="font-bold">
+                                            {item.number} {item.unit}
+                                          </span>{" "}
+                                          - <span>{item.context.replace(/^[-\d]+\.\s*/, "")}</span>
+                                          {item.source && (
+                                            <span className="text-xs text-muted-foreground ml-2">(Source: {item.source})</span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          
-                        </motion.div>
-                      </AnimatePresence>
-                    )}
-                  </div>
-                  
-                  {/* Navigation Arrows - hide on mobile */}
-                  {screenSize !== 'mobile' && (
-                    <>
-                      {/* Minimal Premium Arrow Navigation - show while we can navigate further */}
-                      {currentSlide < totalSlides - 1 && (
-                        <button 
-                          onClick={nextSlide}
-                          className="absolute -right-2 top-1/2 transform -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-200 hover:scale-105 bg-white/10 hover:bg-white/20 border border-white/20"
-                        >
-                          <ChevronRight className="w-4 h-4 text-primary" />
-                        </button>
-                      )}
-                      
-                      {/* Minimal Premium Left Arrow Navigation - show when we can go back */}
-                      {currentSlide > 0 && (
-                        <button 
-                          onClick={prevSlide}
-                          className="absolute -left-2 top-1/2 transform -translate-y-1/2 z-30 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-200 hover:scale-105 bg-white/10 hover:bg-white/20 border border-white/20"
-                        >
-                          <ChevronLeft className="w-4 h-4 text-primary" />
-                        </button>
-                      )}
-                    </>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full px-6">
+                      <p className="text-muted-foreground text-center">Select a development from the right panel to view the full brief</p>
+                    </div>
                   )}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-        {/* The Foundry Section */}
-        {visibleExperienceZone.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Hammer className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                <Heading2 className={sectionHeadingClass}>
-                  The Foundry
-                </Heading2>
-              </div>
-              <CardDescription className="font-body tracking-wide text-base md:text-sm font-normal">Where Winning Strategies Are Forged</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                {visibleExperienceZone.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                  >
-                    <Button
-                      onClick={(e) => handleNavigate(e, item.route)}
-                      className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
-                      style={{
-                        ...getMetallicCardStyle(theme).style,
-                        color: theme === "dark" ? "white" : "black",
-                      }}
-                    >
-                      <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
-                          {item.beta && (
-                            <Badge variant="secondary" className="ml-1 badge-primary">
-                              Beta
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm md:text-base max-w-full whitespace-normal break-words font-normal mb-4">
-                          {typeof item.description === "string" ? item.description : item.description}
-                        </div>
-                      </div>
-                      <div className="flex justify-start items-center w-full mb-4 mt-2">
-                        <div className="flex items-center">
-                          <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
-                        </div>
-                      </div>
-                    </Button>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            {/* Right Column - Small Cards */}
+            <div className="md:col-span-1 lg:col-span-2 h-full">
+              <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-full flex flex-col">
+                <CardHeader className="flex-shrink-0 pb-2">
+                  <Lead className="font-body font-regular tracking-wide text-sm text-muted-foreground">Latest developments</Lead>
+                </CardHeader>
+                <CardContent className="px-0 flex-1 overflow-hidden">
+                  {developments.length > 0 ? (
+                    <div className="px-4 h-full overflow-y-auto space-y-4">
+                      {developments.map((development, index) => (
+                        <motion.div
+                          key={`pulse-card-${development.id}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: index * 0.05 }}
+                          className={`p-4 rounded-xl cursor-pointer transition-all duration-300 relative ${
+                            selectedDevelopment?.id === development.id
+                              ? `border-2 border-primary ${theme === "dark" ? "bg-primary/20 shadow-lg shadow-primary/25" : "bg-primary/10 shadow-lg shadow-primary/15"} before:absolute before:inset-0 before:rounded-xl before:border-2 before:border-primary/30 before:pointer-events-none`
+                              : "border-2 border-transparent hover:border-primary/30 hover:bg-primary/5"
+                          }`}
+                          style={{
+                            ...getMetallicCardStyle(theme).style,
+                          }}
+                          onClick={() => handleDevelopmentSelect(development)}
+                        >
+                          <div className="flex flex-col space-y-3">
+                            {/* Industry Badge and Date */}
+                            <div className="flex justify-between items-start mb-2">
+                              <PremiumBadge className="font-bold px-3 py-1.5 rounded-full text-sm">
+                                {development.industry}
+                              </PremiumBadge>
+                              <div className={`text-sm font-medium ${
+                                theme === "dark" ? "text-gray-400" : "text-gray-600"
+                              }`}>
+                                {new Date(development.date).toLocaleDateString("en-US", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric"
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Title */}
+                            <h4 className={`text-sm font-bold line-clamp-3 leading-tight ${
+                              theme === "dark" ? "text-primary" : "text-black"
+                            }`}>
+                              {development.title}
+                            </h4>
+                            
+                            {/* Description */}
+                            <p className={`text-sm line-clamp-4 leading-relaxed ${
+                              theme === "dark" ? "text-gray-300" : "text-gray-600"
+                            }`}>
+                              {development.description}
+                            </p>
+                            
+                            {/* Source */}
+                            {development.source && (
+                              <div className={`text-xs font-medium pt-2 border-t border-primary/20 ${
+                                theme === "dark" ? "text-gray-400" : "text-gray-600"
+                              }`}>
+                                Source: {development.source}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
+                      <p className="text-muted-foreground text-center text-sm">No developments available</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         )}
 
-
-        {/* Founder's Desk Section */}
-        {visibleFoundersDeskItems.length > 0 && (
-          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Briefcase className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                <Heading2 className={sectionHeadingClass}>
-                  Founder's Desk
-                </Heading2>
-              </div>
-              <CardDescription className="font-body tracking-wide text-base md:text-sm font-normal">Your personal command center</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                {visibleFoundersDeskItems.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                  >
-                    <Button
-                      onClick={(e) => handleNavigate(e, item.route)}
-                      className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
-                      style={{
-                        ...getMetallicCardStyle(theme).style,
-                        color: theme === "dark" ? "white" : "black",
-                      }}
-                    >
-                      <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
-                        <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
-                          {item.beta && (
-                            <Badge variant="secondary" className="ml-1 badge-primary">
-                              Beta
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm md:text-base max-w-full whitespace-normal break-words font-normal mb-4">
-                          {item.description}
-                        </div>
-                      </div>
-                      <div className="flex justify-start items-center w-full mb-4 mt-2">
-                        <div className="flex items-center">
-                          <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
-                        </div>
-                      </div>
-                    </Button>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Commenting out onboarding wizard */}
         {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, Crown, UserCircle2, Globe, Store, Menu, X, ChevronLeft, Info, MoreHorizontal } from "lucide-react"
+import { Home, Crown, UserCircle2, Globe, Store, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -28,6 +28,25 @@ export function SidebarNavigation({
   const { isBusinessMode } = useBusinessMode()
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [showHeartbeat, setShowHeartbeat] = useState(false)
+  const [isMoreExpanded, setIsMoreExpanded] = useState(false)
+  const [isTabletSize, setIsTabletSize] = useState(false)
+
+  // Detect tablet size - specific ranges for iPad devices
+  useEffect(() => {
+    const checkTabletSize = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      // Target range: 800x1150 to 1100x1400 (covers iPad Air and iPad Pro)
+      const tabletCondition = width >= 800 && width <= 1100 && height >= 1150 && height <= 1400
+      setIsTabletSize(tabletCondition)
+      
+      console.log(`Sidebar - Screen: ${width}x${height}, isTabletSize: ${tabletCondition}, isCollapsed: ${isCollapsed}`)
+    }
+    
+    checkTabletSize()
+    window.addEventListener('resize', checkTabletSize)
+    return () => window.removeEventListener('resize', checkTabletSize)
+  }, [])
 
   // Heartbeat animation for logo
   useEffect(() => {
@@ -38,7 +57,8 @@ export function SidebarNavigation({
     return () => clearInterval(interval)
   }, [])
 
-  const navItems = [
+  // All navigation items with business mode flags
+  const allNavItems = [
     { name: "Home", icon: Home, route: "dashboard" },
     { 
       name: "HNWI World", 
@@ -58,8 +78,44 @@ export function SidebarNavigation({
       route: "prive-exchange",
       description: "Exclusive marketplace for HNWI offering off-market investment opportunities and institutional alternatives."
     },
+    { 
+      name: "Social Hub", 
+      icon: Users, 
+      route: "social-hub",
+      description: "Hub of essential events that HNWIs should attend throughout the year ensuring you're at the right place and right time."
+    },
+    { 
+      name: "War Room", 
+      icon: Shield, 
+      route: "war-room",
+      description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
+      businessOnly: true
+    },
+    { 
+      name: "Playbook Store", 
+      icon: BookOpen, 
+      route: "play-books",
+      description: "Curated playbooks from global institutions and ultra-high-net-worth family office leaders.",
+      businessOnly: true
+    },
+    { 
+      name: "Tactics Lab", 
+      icon: Beaker, 
+      route: "strategy-engine",
+      description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
+      beta: true,
+      businessOnly: true
+    },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
+
+  // Filter nav items based on business mode
+  const filteredNavItems = allNavItems.filter(item => isBusinessMode || !item.businessOnly)
+
+
+  // Split filtered items into main (first 4) and additional items
+  const mainNavItems = filteredNavItems.slice(0, 4)
+  const additionalNavItems = filteredNavItems.slice(4)
 
   // Mobile bottom nav items - HNWI and Privé Exchange as primary
   const mobileNavItems = [
@@ -92,14 +148,26 @@ export function SidebarNavigation({
 
   return (
     <>
+      {/* iPad overlay when sidebar is expanded - only for tablet view */}
+      {!isCollapsed && isTabletSize && (
+        <div
+          className="fixed inset-0 z-30"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+
       {/* Desktop Sidebar - Hidden on mobile */}
       <aside
         className={cn(
-          "hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 z-40 flex-col",
-          isCollapsed ? "w-16" : "w-64"
+          "hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 flex-col",
+          isCollapsed ? "w-16 z-40" : "w-64",
+          // iPad-specific styling for overlay mode
+          !isCollapsed && isTabletSize ? "z-50" : "z-40"
         )}
         style={{
-          height: '100vh'
+          height: isCollapsed ? '100vh' : 'auto',
+          minHeight: '100vh',
+          overflow: 'visible'
         }}
       >
         {/* Header level - Logo and back button aligned with main header */}
@@ -169,31 +237,43 @@ export function SidebarNavigation({
           </div>
         </div>
 
-        {/* Toggle button */}
-        <div className="p-3 flex-shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggleSidebar}
-            className={cn(
-              "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
-              isCollapsed && "justify-center px-0 gap-0"
-            )}
-          >
-            <Menu className="h-5 w-5 flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="text-sm font-semibold tracking-wide">Menu</span>
-            )}
-          </Button>
-        </div>
 
-        {/* Main content area - takes remaining space */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main content area - fills remaining space */}
+        <div className="flex flex-col flex-1" style={{ overflow: 'visible' }}>
+          {/* Toggle button when collapsed */}
+          {isCollapsed && (
+            <div className="p-3 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleToggleSidebar}
+                className="w-full justify-center h-12 hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200"
+              >
+                <ChevronRight className="h-4 w-4 flex-shrink-0" />
+              </Button>
+            </div>
+          )}
+          
+          {/* Toggle button when expanded */}
+          {!isCollapsed && (
+            <div className="p-3 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleToggleSidebar}
+                className="w-full justify-center h-12 hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200"
+              >
+                <ChevronLeft className="h-4 w-4 flex-shrink-0" />
+              </Button>
+            </div>
+          )}
+          
           {/* Navigation items */}
-          <nav className="flex-1 p-3 pt-0 overflow-y-auto">
+          <nav className="p-3 pt-0 flex-1" style={{ overflow: 'visible' }}>
             <div className="space-y-2">
               <TooltipProvider>
-                {navItems.map((item) => (
+                {/* Main navigation items */}
+                {mainNavItems.map((item) => (
                   <div key={item.route} className="relative">
                     <Button
                       variant="ghost"
@@ -206,7 +286,14 @@ export function SidebarNavigation({
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {!isCollapsed && (
                         <div className="flex items-center justify-between w-full">
-                          <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                            {item.beta && (
+                              <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                Beta
+                              </span>
+                            )}
+                          </div>
                           {item.description && (
                             <Tooltip delayDuration={300}>
                               <TooltipTrigger asChild>
@@ -239,13 +326,108 @@ export function SidebarNavigation({
                     </Button>
                   </div>
                 ))}
+                
+                {/* Additional navigation items - inline accordion */}
+                {isMoreExpanded && additionalNavItems.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    {additionalNavItems.map((item) => (
+                      <div key={item.route} className="relative">
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
+                            isCollapsed && "justify-center px-0 gap-0"
+                          )}
+                          onClick={() => handleNavigate(item.route)}
+                        >
+                          <item.icon className="h-5 w-5 flex-shrink-0" />
+                          {!isCollapsed && (
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                                {item.beta && (
+                                  <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                    Beta
+                                  </span>
+                                )}
+                              </div>
+                              {item.description && (
+                                <Tooltip delayDuration={300}>
+                                  <TooltipTrigger asChild>
+                                    <div 
+                                      className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent 
+                                    side="right" 
+                                    className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
+                                    style={{ 
+                                      zIndex: 999999,
+                                    }}
+                                    sideOffset={15}
+                                    avoidCollisions={true}
+                                  >
+                                    <div className="max-w-[280px]">
+                                      <p className="line-clamp-4 break-words text-popover-foreground">
+                                        {item.description}
+                                      </p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    {/* Collapse arrow at bottom of expanded items */}
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
+                          isCollapsed && "justify-center px-0 gap-0"
+                        )}
+                        onClick={() => setIsMoreExpanded(false)}
+                      >
+                        <ChevronDown className="h-5 w-5 flex-shrink-0 rotate-180" />
+                        {!isCollapsed && (
+                          <span className="text-sm font-semibold tracking-wide">Less</span>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* More expand button - only show when not expanded and there are additional items */}
+                {!isMoreExpanded && additionalNavItems.length > 0 && (
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
+                        isCollapsed && "justify-center px-0 gap-0"
+                      )}
+                      onClick={() => setIsMoreExpanded(true)}
+                    >
+                      <ChevronDown className="h-5 w-5 flex-shrink-0" />
+                      {!isCollapsed && (
+                        <span className="text-sm font-semibold tracking-wide">More</span>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </TooltipProvider>
             </div>
           </nav>
 
-          {/* Bottom footer text - both Premium Edition and splash screen footer */}
+          {/* Bottom footer text - positioned at bottom edge */}
           {!isCollapsed && (
-            <div className="p-4 border-t border-border/20 flex-shrink-0" style={{ marginTop: '300px' }}>
+            <div className="mt-auto p-4 pb-16 border-t border-border/20 flex-shrink-0">
               <div className="text-xs text-muted-foreground text-center space-y-3">
                 {/* Premium Edition with background */}
                 <div className="bg-card/50 rounded-lg p-2.5 border border-border/20">
