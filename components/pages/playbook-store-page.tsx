@@ -385,9 +385,9 @@ export function PlaybookStorePage({
         onNavigate={onNavigate}
       >
         <div className="w-full">
-          <div className="space-y-2 px-4 py-6">
+          <div className="px-4 py-6">
             <Heading2 className="text-primary">Strategic Playbooks</Heading2>
-            <p className="font-body tracking-wide text-xl text-muted-foreground">
+            <p className="text-muted-foreground text-base leading-tight -mt-1">
               Exclusive strategies curated for elite investors
             </p>
           </div>

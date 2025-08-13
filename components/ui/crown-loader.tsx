@@ -10,59 +10,127 @@ export function CrownLoader({ size = "md", text = "Loading..." }: CrownLoaderPro
   const { theme } = useTheme()
   
   const sizeClasses = {
-    sm: { container: "w-16 h-16", icon: "w-8 h-8", text: "text-sm" },
-    md: { container: "w-20 h-20", icon: "w-12 h-12", text: "text-base" },
-    lg: { container: "w-24 h-24 md:w-28 md:h-28", icon: "w-12 h-12 md:w-14 md:h-14", text: "text-base md:text-lg" }
+    sm: { container: "w-20 h-20", icon: "w-8 h-8", text: "text-sm", orbit: "w-24 h-24" },
+    md: { container: "w-24 h-24", icon: "w-12 h-12", text: "text-base", orbit: "w-32 h-32" },
+    lg: { container: "w-32 h-32", icon: "w-16 h-16", text: "text-lg", orbit: "w-40 h-40" }
   }
 
   const currentSize = sizeClasses[size]
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="flex flex-col items-center justify-center space-y-3">
       <div className="relative">
-        {/* Clean Crown Icon with heartbeat animation */}
-        <div
-          className={`relative flex items-center justify-center ${currentSize.container}`}
+        <style>
+          {`
+            @keyframes luxuryPulse {
+              0%, 100% { 
+                transform: scale(1);
+                filter: brightness(1);
+              }
+              50% { 
+                transform: scale(1.05);
+                filter: brightness(1.2);
+              }
+            }
+            
+            
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+            
+            @keyframes fadeInOut {
+              0%, 100% { opacity: 0.3; }
+              50% { opacity: 1; }
+            }
+          `}
+        </style>
+        
+
+        {/* Premium glow rings */}
+        <div 
+          className={`absolute inset-0 ${currentSize.container} rounded-full`}
           style={{
-            animation: "heartbeat 2s ease-in-out infinite"
+            background: `radial-gradient(circle, transparent 60%, ${theme === "dark" ? "rgba(218, 165, 32, 0.1)" : "rgba(192, 192, 192, 0.1)"} 70%, transparent 100%)`,
+            animation: "fadeInOut 3s ease-in-out infinite"
+          }}
+        />
+        <div 
+          className={`absolute inset-2 rounded-full`}
+          style={{
+            background: `radial-gradient(circle, transparent 50%, ${theme === "dark" ? "rgba(218, 165, 32, 0.05)" : "rgba(192, 192, 192, 0.05)"} 60%, transparent 100%)`,
+            animation: "fadeInOut 3s ease-in-out infinite 1s"
+          }}
+        />
+
+        {/* Main crown container */}
+        <div
+          className={`relative flex items-center justify-center ${currentSize.container} rounded-full`}
+          style={{
+            background: theme === "dark" 
+              ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
+              : "linear-gradient(135deg, #f8f8f8 0%, #e0e0e0 25%, #ffffff 50%, #e0e0e0 75%, #f8f8f8 100%)",
+            border: theme === "dark" 
+              ? "2px solid rgba(218, 165, 32, 0.3)" 
+              : "2px solid rgba(192, 192, 192, 0.4)",
+            boxShadow: theme === "dark"
+              ? "0 0 30px rgba(218, 165, 32, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+              : "0 0 30px rgba(192, 192, 192, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            animation: "luxuryPulse 2.5s ease-in-out infinite",
+            backdropFilter: "blur(8px)"
           }}
         >
-          <style>
-            {`
-              @keyframes heartbeat {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.15); }
-              }
-            `}
-          </style>
-          
-          {/* Subtle glow background */}
+          {/* Shimmer effect overlay */}
           <div 
-            className="absolute inset-0 rounded-full premium-pulse"
+            className="absolute inset-0 rounded-full overflow-hidden"
             style={{
-              background: `radial-gradient(circle, ${theme === "dark" ? "rgba(34, 197, 94, 0.2)" : "rgba(4, 120, 87, 0.2)"} 0%, transparent 70%)`,
-              filter: "blur(8px)"
+              background: `linear-gradient(90deg, transparent, ${theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.6)"}, transparent)`,
+              animation: "shimmer 2s infinite"
             }}
           />
           
           {/* Crown Icon */}
           <Crown 
-            className={`${currentSize.icon} relative z-10 ${
-              theme === "dark" ? "text-primary" : "text-primary"
-            }`}
+            className={`${currentSize.icon} relative z-10`}
             style={{
-              filter: `drop-shadow(0 4px 8px ${theme === "dark" ? "rgba(34, 197, 94, 0.3)" : "rgba(4, 120, 87, 0.3)"})`
+              color: theme === "dark" ? "#DAA520" : "#000000",
+              filter: `drop-shadow(0 4px 12px ${theme === "dark" ? "rgba(218, 165, 32, 0.4)" : "rgba(0, 0, 0, 0.2)"})`
             }}
           />
         </div>
       </div>
       
       {text && (
-        <p className={`${currentSize.text} font-medium ${
-          theme === "dark" ? "text-gray-300" : "text-gray-600"
-        }`}>
-          {text}
-        </p>
+        <div className="text-center space-y-1">
+          <p className={`${currentSize.text} font-semibold ${
+            theme === "dark" ? "text-white" : "text-black"
+          }`}>
+            {text}
+          </p>
+          <div className="flex justify-center space-x-1">
+            <div 
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: theme === "dark" ? "#DAA520" : "#C0C0C0",
+                animation: "fadeInOut 1.5s ease-in-out infinite"
+              }}
+            />
+            <div 
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: theme === "dark" ? "#DAA520" : "#C0C0C0",
+                animation: "fadeInOut 1.5s ease-in-out infinite 0.5s"
+              }}
+            />
+            <div 
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: theme === "dark" ? "#DAA520" : "#C0C0C0",
+                animation: "fadeInOut 1.5s ease-in-out infinite 1s"
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

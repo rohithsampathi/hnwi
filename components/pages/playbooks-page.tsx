@@ -318,11 +318,11 @@ export function PlayBooksPage({
         onNavigate={onNavigate}
       >
         <div className="w-full">
-          <div className="space-y-2 px-4 py-6">
+          <div className="px-4 py-6">
             <Heading2 className="text-primary">Your Strategic Arsenal</Heading2>
-            <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
+            <p className="text-muted-foreground text-base leading-tight -mt-1">
               Access your purchased playbooks and strategic guides
-            </Paragraph>
+            </p>
           </div>
           <div className="px-4">
             {isLoading ? (

@@ -757,10 +757,10 @@ const MarketData: React.FC = () => {
       <CardContent className="space-y-6">
         <div className="w-full max-w-xs">
           <Select onValueChange={handleCityChange} value={selectedCity || undefined}>
-            <SelectTrigger className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
+            <SelectTrigger>
               <SelectValue placeholder="Select a city" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
+            <SelectContent>
               <SelectItem value="India">India</SelectItem>
               {Object.keys(cityData).map((city) => (
                 <SelectItem key={city} value={city}>

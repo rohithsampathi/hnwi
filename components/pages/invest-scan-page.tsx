@@ -7,6 +7,7 @@ import { RegionPanel } from "@/components/region-panel"
 import { OpportunityList } from "@/components/opportunity-list"
 import { Heading2 } from "@/components/ui/typography"
 import { DollarSign, Loader2 } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { getOpportunities, Opportunity } from "@/lib/api"
 
 // Dynamically import the Globe component with SSR disabled
@@ -109,7 +110,7 @@ export function InvestScanPage() {
         showBackButton
       >
         <div className="flex items-center justify-center h-[50vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <CrownLoader size="lg" text="Loading investment opportunities..." />
         </div>
       </Layout>
     )

@@ -400,7 +400,7 @@ export function IndustryTrendsBubbles({
       <div className="px-4">
         {/* Don't render stats text here if renderStatsOutside is true */}
         {!renderStatsOutside && (
-          <div className="text-xs text-gray-500 mb-1">
+          <div className="text-xs text-muted-foreground mb-1">
             {statsText}
           </div>
         )}

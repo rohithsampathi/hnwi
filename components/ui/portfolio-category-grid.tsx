@@ -2,6 +2,8 @@
 
 import React from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { useTheme } from "@/contexts/theme-context"
+import { getSubtleCardStyle } from "@/lib/colors"
 import { 
   Building2, 
   Car, 
@@ -64,21 +66,36 @@ const getCategoryIcon = (categoryName: string) => {
   return <Shield className="w-8 h-8" />
 }
 
-const getCategoryColor = (index: number) => {
-  const colors = [
-    'from-green-500/20 to-green-600/20 border-green-500/30 text-green-600',
-    'from-emerald-500/20 to-emerald-600/20 border-emerald-500/30 text-emerald-600',
-    'from-amber-500/20 to-amber-600/20 border-amber-500/30 text-amber-600',
-    'from-violet-500/20 to-violet-600/20 border-violet-500/30 text-violet-600',
-    'from-red-500/20 to-red-600/20 border-red-500/30 text-red-600',
-    'from-cyan-500/20 to-cyan-600/20 border-cyan-500/30 text-cyan-600',
-    'from-lime-500/20 to-lime-600/20 border-lime-500/30 text-lime-600',
-    'from-orange-500/20 to-orange-600/20 border-orange-500/30 text-orange-600'
+const getCategoryAccentColor = (index: number, theme: 'light' | 'dark') => {
+  // Using secondary black shades for dark mode, varied grays for light mode
+  const darkColors = [
+    'text-gray-300 border-gray-600/30',
+    'text-gray-400 border-gray-500/30', 
+    'text-gray-200 border-gray-700/30',
+    'text-gray-350 border-gray-550/30',
+    'text-gray-250 border-gray-650/30',
+    'text-gray-300 border-gray-600/25',
+    'text-gray-400 border-gray-500/25',
+    'text-gray-200 border-gray-700/25'
   ]
+  
+  const lightColors = [
+    'text-gray-700 border-gray-300/40',
+    'text-gray-800 border-gray-400/40',
+    'text-gray-600 border-gray-350/40',
+    'text-gray-750 border-gray-450/40',
+    'text-gray-650 border-gray-325/40',
+    'text-gray-700 border-gray-300/35',
+    'text-gray-800 border-gray-400/35',
+    'text-gray-600 border-gray-350/35'
+  ]
+  
+  const colors = theme === 'dark' ? darkColors : lightColors
   return colors[index % colors.length]
 }
 
 export function PortfolioCategoryGrid({ data, className = "" }: PortfolioCategoryGridProps) {
+  const { theme } = useTheme()
   const formatCurrency = (value: number) => {
     if (!value || value === 0) {
       return '$0'
@@ -115,34 +132,40 @@ export function PortfolioCategoryGrid({ data, className = "" }: PortfolioCategor
 
   return (
     <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 ${className}`}>
-      {data.map((category, index) => (
-        <Card 
-          key={category.name} 
-          className={`group relative overflow-hidden border bg-gradient-to-br ${getCategoryColor(index)} hover:scale-[1.02] transition-all duration-200 hover:shadow-lg cursor-pointer`}
-        >
-          <CardContent className="p-4">
-            <div className="flex flex-col items-center text-center space-y-3">
-              <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg group-hover:bg-white/20 transition-colors">
-                {React.cloneElement(getCategoryIcon(category.name), { 
-                  className: "w-5 h-5" 
-                })}
+      {data.map((category, index) => {
+        const subtleStyle = getSubtleCardStyle(theme);
+        const accentColors = getCategoryAccentColor(index, theme);
+        
+        return (
+          <Card 
+            key={category.name} 
+            className={`group relative overflow-hidden ${subtleStyle.className} ${accentColors} hover:scale-[1.02] transition-all duration-200 cursor-pointer`}
+            style={subtleStyle.style}
+          >
+            <CardContent className="p-4">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className={`p-2 ${theme === 'dark' ? 'bg-gray-700/20' : 'bg-gray-200/50'} backdrop-blur-sm rounded-lg group-hover:bg-opacity-30 transition-colors`}>
+                  {React.cloneElement(getCategoryIcon(category.name), { 
+                    className: `w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}` 
+                  })}
+                </div>
+                
+                <div className="space-y-1">
+                  <h3 className={`font-semibold text-sm leading-tight ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                    {formatCategoryName(category)}
+                  </h3>
+                  <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                    {formatCurrency(category.value)}
+                  </p>
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {category.count} {category.count === 1 ? 'asset' : 'assets'}
+                  </p>
+                </div>
               </div>
-              
-              <div className="space-y-1">
-                <h3 className="font-semibold text-sm text-foreground leading-tight">
-                  {formatCategoryName(category)}
-                </h3>
-                <p className="text-lg font-bold text-foreground">
-                  {formatCurrency(category.value)}
-                </p>
-                <p className="text-xs text-muted-foreground font-medium">
-                  {category.count} {category.count === 1 ? 'asset' : 'assets'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

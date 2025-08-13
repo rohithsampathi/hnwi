@@ -4,10 +4,12 @@
 import dynamic from "next/dynamic"
 import React, { useEffect, useState } from "react"
 import Image from "next/image"
+import { useTheme } from "@/contexts/theme-context"
+import { Shield } from "lucide-react"
 
 // Ultra-luxury checklist loading experience for UHNWIs
 const LoadingComponent = () => {
-  const [theme, setTheme] = React.useState("dark");
+  const { theme } = useTheme();
   const [completedSteps, setCompletedSteps] = React.useState<number[]>([]);
   const [time, setTime] = React.useState("");
   const [isComplete, setIsComplete] = React.useState(false);
@@ -48,63 +50,70 @@ const LoadingComponent = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Theme detection
+  // Create floating geometric elements on mount
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        setTheme(savedTheme);
-      } else {
-        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(isDarkMode ? "dark" : "light");
-      }
-    }
+    const elements = Array.from({ length: 8 }, (_, i) => ({
+      width: Math.random() * 120 + 40,
+      height: Math.random() * 120 + 40,
+      left: Math.random() * 80 + 10,
+      top: Math.random() * 80 + 10,
+      rotation: Math.random() * 360,
+      duration: Math.random() * 20 + 15,
+      delay: Math.random() * 5,
+    }));
+    setFloatingElements(elements);
   }, []);
 
-  // Generate floating elements only on client side to avoid hydration mismatch
+  // Enhanced step completion - 1 second with more precise timing
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const elements = Array.from({ length: 15 }, () => ({
-        width: Math.random() * 4 + 2,
-        height: Math.random() * 4 + 2,
-        left: Math.random() * 100,
-        top: Math.random() * 100,
-        rotation: Math.random() * 360,
-        duration: 8 + Math.random() * 6,
-        delay: Math.random() * 5
-      }));
-      setFloatingElements(elements);
-    }
-  }, []);
-
-  // Lightning-fast checklist completion - 1 second total, runs only once
-  React.useEffect(() => {
-    const intervals: NodeJS.Timeout[] = [];
+    // Use timeouts for precise control
+    const timeouts: NodeJS.Timeout[] = [];
     
-    checklistItems.forEach((_, index) => {
-      const timeout = setTimeout(() => {
-        setCompletedSteps(prev => {
-          const newSteps = [...prev, index];
-          return newSteps;
-        });
-        
-        // Don't mark as complete immediately - let the parent handle timing
-      }, (index + 1) * 250); // Each item completes every 0.25 seconds
-      
-      intervals.push(timeout);
-    });
+    // Step 0: Immediate
+    timeouts.push(setTimeout(() => {
+      setCompletedSteps([0]);
+    }, 0));
+    
+    // Step 1: 250ms
+    timeouts.push(setTimeout(() => {
+      setCompletedSteps([0, 1]);
+    }, 250));
+    
+    // Step 2: 500ms
+    timeouts.push(setTimeout(() => {
+      setCompletedSteps([0, 1, 2]);
+    }, 500));
+    
+    // Step 3: 750ms
+    timeouts.push(setTimeout(() => {
+      setCompletedSteps([0, 1, 2, 3]);
+      setIsComplete(true);
+    }, 750));
 
-    return () => intervals.forEach(clearTimeout);
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
   }, []); // Empty dependency array ensures this runs only once
   
   const isDark = theme === "dark";
   
   return (
-    <div className={`min-h-screen relative overflow-hidden ${
-      isDark 
-        ? "bg-gradient-to-br from-zinc-950 via-slate-900 to-zinc-950" 
-        : "bg-gradient-to-br from-zinc-50 via-slate-100 to-zinc-50"
-    }`}>
+    <div className={`min-h-screen relative overflow-hidden bg-background`}>
+      
+      {/* Emerald Shield Badge - Top Right */}
+      <div className="absolute top-8 right-8 z-20">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm"
+             style={{
+               background: "linear-gradient(135deg, #065f46 0%, #047857 25%, #059669 50%, #10b981 75%, #34d399 100%)",
+               border: "2px solid #047857",
+               boxShadow: "0 0 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+             }}>
+          <Shield className="w-5 h-5 text-white" fill="currentColor" />
+          <span className="text-sm font-medium text-white">
+            HNWI Member Route
+          </span>
+        </div>
+      </div>
       
       {/* Luxury background elements */}
       <div className="absolute inset-0">
@@ -120,7 +129,7 @@ const LoadingComponent = () => {
           <div
             key={i}
             className={`absolute opacity-20 animate-float ${
-              isDark ? "bg-gradient-to-br from-slate-400 to-slate-600" : "bg-gradient-to-br from-slate-300 to-slate-500"
+              isDark ? "bg-gradient-to-br from-secondary/40 to-secondary/60" : "bg-gradient-to-br from-secondary/40 to-secondary/60"
             }`}
             style={{
               '--element-width': `${element.width}px`,
@@ -129,43 +138,34 @@ const LoadingComponent = () => {
               '--element-top': `${element.top}%`,
               '--element-rotation': `${element.rotation}deg`,
               '--element-duration': `${element.duration}s`,
-              '--element-delay': `${element.delay}s`
-            } as React.CSSProperties}
+              '--element-delay': `${element.delay}s`,
+              width: 'var(--element-width)',
+              height: 'var(--element-height)',
+              left: 'var(--element-left)',
+              top: 'var(--element-top)',
+              transform: 'rotate(var(--element-rotation))',
+              animation: `float var(--element-duration) ease-in-out infinite var(--element-delay)`,
+              borderRadius: i % 2 === 0 ? '50%' : '4px',
+            }}
           />
         ))}
       </div>
 
-      {/* Top status bar */}
-      <div className={`absolute top-0 left-0 right-0 p-6 flex justify-between items-center text-xs font-mono ${
-        isDark ? "text-slate-400 border-slate-800" : "text-slate-600 border-slate-200"
-      } border-b backdrop-blur-sm z-20`}>
-        <div className="flex items-center space-x-4">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span>SECURE CONNECTION ACTIVE</span>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span>{time}</span>
-          <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded">
-            UHNW MEMBER
-          </span>
-        </div>
-      </div>
-
-      {/* Main content - perfectly centered */}
-      <div className="min-h-screen flex flex-col justify-center items-center relative z-10">
+      {/* Main content centered */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-8">
         
-        {/* Large centered rotating logo */}
-        <div className="mb-16 relative">
-          {/* Logo container with clockwise rotation */}
-          <div className="relative w-56 h-56 flex items-center justify-center">
+        {/* Logo */}
+        <div className="mb-12">
+          <div className="relative">
             <Image 
               src="/logo.png" 
-              alt="HNWI Chronicles" 
-              width={160}
-              height={160}
-              className="relative z-10 animate-spin w-auto h-auto"
+              alt="HNWI Chronicles Logo" 
+              width={180}
+              height={180}
+              className="w-auto h-auto object-contain filter drop-shadow-2xl"
               style={{ 
-                animation: "spin 8s linear infinite"
+                width: '180px',
+                height: '180px'
               }}
               priority
             />
@@ -177,7 +177,7 @@ const LoadingComponent = () => {
           
           {/* Subtitle only */}
           <div>
-            <p className={`text-xl font-body ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+            <p className="text-xl font-body text-foreground">
               Brewing Knowledge & Ensuring a Secure Route
             </p>
           </div>
@@ -188,31 +188,40 @@ const LoadingComponent = () => {
               {checklistItems.map((item, index) => (
                 <div key={index} className="flex items-center space-x-4">
                   {/* Animated checkmark */}
-                  <div className={`w-6 h-6 rounded-full border-2 transition-all duration-150 ${
+                  <div className={`w-6 h-6 rounded-full border-2 transition-all duration-150 relative ${
                     completedSteps.includes(index)
-                      ? "bg-emerald-500 border-emerald-500 scale-100"
-                      : isDark 
-                        ? "border-slate-600 scale-90" 
-                        : "border-slate-400 scale-90"
-                  }`}>
+                      ? "scale-100"
+                      : "border-muted-foreground scale-90"
+                  }`}
+                  style={{
+                    background: completedSteps.includes(index) 
+                      ? "linear-gradient(135deg, #065f46 0%, #047857 25%, #059669 50%, #10b981 75%, #34d399 100%)"
+                      : "transparent",
+                    border: completedSteps.includes(index)
+                      ? "2px solid #047857"
+                      : undefined,
+                    boxShadow: completedSteps.includes(index)
+                      ? "0 0 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+                      : undefined
+                  }}>
                     {completedSteps.includes(index) && (
-                      <svg 
-                        className="w-full h-full text-white p-1"
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor" 
-                        strokeWidth={3}
+                      <div 
+                        className="absolute inset-0 flex items-center justify-center font-bold"
+                        style={{ 
+                          fontSize: '12px',
+                          color: '#ffffff'
+                        }}
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                        ✓
+                      </div>
                     )}
                   </div>
                   
                   {/* Left-aligned text with app font */}
                   <span className={`text-lg font-body transition-all duration-150 ${
                     completedSteps.includes(index)
-                      ? isDark ? "text-slate-200" : "text-slate-800"
-                      : isDark ? "text-slate-500" : "text-slate-500"
+                      ? "text-foreground"
+                      : "text-muted-foreground"
                   }`}>
                     {item}
                   </span>
@@ -228,17 +237,15 @@ const LoadingComponent = () => {
         <div className="text-center">
           <div className={`inline-flex items-center space-x-4 px-6 py-3 rounded-full backdrop-blur-sm border ${
             isDark 
-              ? "bg-slate-900/30 border-slate-700/50 text-slate-400" 
-              : "bg-white/30 border-slate-300/50 text-slate-600"
+              ? "bg-secondary/30 border-secondary/50 text-muted-foreground" 
+              : "bg-secondary/30 border-secondary/50 text-muted-foreground"
           }`}>
-            <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
             <span className="text-sm font-light tracking-widest">
               HNWI CHRONICLES
             </span>
             <span className="text-xs opacity-60">•</span>
-            <span className="text-xs font-mono opacity-80">
-              INSTITUTIONAL INTELLIGENCE PLATFORM
-            </span>
+            <span className="text-xs font-mono">{time}</span>
           </div>
         </div>
       </div>
@@ -258,126 +265,69 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
   const [showLoading, setShowLoading] = useState<boolean>(true)
   const [fadeOut, setFadeOut] = useState<boolean>(false)
-  
+
   useEffect(() => {
-    // Start fade-out after 1.3 seconds, then hide completely after 1.8 seconds
-    const fadeTimer = setTimeout(() => {
-      setFadeOut(true);
-    }, 1300);
-    
-    const hideTimer = setTimeout(() => {
-      setShowLoading(false);
-    }, 1800);
-    
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(hideTimer);
-    };
-  }, []);
-  
-  useEffect(() => {
-    // Safety check for SSR
-    if (typeof window === 'undefined') return;
-    
-    // Function to get the current route from the URL
-    const getRouteFromPath = () => {
-      const path = window.location.pathname;
-      // Map URL paths to internal route names
-      if (path.includes('/invest-scan')) return "invest-scan";
-      if (path.includes('/prive-exchange')) return "prive-exchange";
-      if (path.includes('/opportunity')) {
-        // Save opportunity ID if present
-        const opportunityId = path.split('/').pop();
-        if (opportunityId) {
-          sessionStorage.setItem("currentOpportunityId", opportunityId);
-        }
-        return "opportunity";
-      }
-      if (path.includes('/calendar-page')) return "calendar-page";
-      if (path.includes('/profile')) return "profile";
-      return "dashboard"; // Default for root path when authenticated
-    };
-    
-    // Check authentication via server-side session with fallback to localStorage
-    const checkAuthStatus = async () => {
+    import("@/lib/auth-utils").then(({ isAuthenticated }) => {
+      // Enhanced session check using utility function
       try {
-        // First check server-side session
-        const response = await fetch('/api/auth/session', {
-          method: 'GET',
-          credentials: 'include',
-        });
+        const isAuthenticatedResult = isAuthenticated();
+        setIsLoggedIn(isAuthenticatedResult);
         
-        if (response.ok) {
-          const sessionData = await response.json();
-          const isAuthenticated = !!sessionData.user;
-          
-          if (isAuthenticated !== isLoggedIn) {
-            setIsLoggedIn(isAuthenticated);
+        if (isAuthenticatedResult) {
+          // Get user data from localStorage for display
+          const userEmail = localStorage.getItem("userEmail");
+          if (userEmail) {
+            console.log("User authenticated:", userEmail);
           }
-          
-          if (sessionData.user) {
-            sessionStorage.setItem("userDisplay", JSON.stringify({
-              firstName: sessionData.user.firstName,
-              lastName: sessionData.user.lastName,
-              email: sessionData.user.email,
-              role: sessionData.user.role
-            }));
-          }
-          return isAuthenticated;
         }
       } catch (error) {
         console.warn("Session check failed, falling back to localStorage:", error);
-      }
-      
-      // Fallback to localStorage check for backward compatibility
-      const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
-      const isAuthenticatedFallback = !!(token && userId);
-      
-      if (isAuthenticatedFallback !== isLoggedIn) {
-        setIsLoggedIn(isAuthenticatedFallback);
-      }
-      
-      if (!isAuthenticatedFallback) {
-        sessionStorage.removeItem("userDisplay");
-      }
-      
-      return isAuthenticatedFallback;
-    };
-
-    // Execute auth check and handle routing
-    checkAuthStatus().then(isAuthenticated => {
-      // Determine the target route based on auth status
-      if (isAuthenticated) {
-        // For authenticated users
         
-        // Priority 1: Check for explicit redirect request (secure fallback)
-        const redirectTo = sessionStorage.getItem("redirectTo");
-        if (redirectTo) {
-          setTargetRoute(redirectTo);
-          sessionStorage.removeItem("redirectTo");
-        } 
-        // Priority 2: Use persisted page from session storage (for refresh cases)
-        else {
-          const currentPage = sessionStorage.getItem("currentPage");
-          if (currentPage && currentPage !== "splash" && currentPage !== "login") {
-            setTargetRoute(currentPage);
-          } 
-          // Priority 3: Extract route from current URL path
-          else {
-            const routeFromPath = getRouteFromPath();
-            setTargetRoute(routeFromPath);
-            // Save this for future refreshes
-            sessionStorage.setItem("currentPage", routeFromPath);
-          }
+        // Fallback to localStorage check for backward compatibility
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId");
+        const isAuthenticatedFallback = !!(token && userId);
+        
+        if (isAuthenticatedFallback !== isLoggedIn) {
+          setIsLoggedIn(isAuthenticatedFallback);
         }
-        
-        // Always skip splash for authenticated users
+      }
+    });
+    
+    import("@/lib/auth-utils").then(() => {
+      // Function to get the current route from the URL
+      const getRouteFromPath = () => {
+        const path = window.location.pathname;
+        // Map URL paths to internal route names
+        if (path.includes('/invest-scan')) return "invest-scan";
+        if (path.includes('/prive-exchange')) return "prive-exchange";
+        if (path.includes('/opportunity')) {
+          // Save opportunity ID if present
+          const opportunityId = path.split('/').pop();
+          if (opportunityId) {
+            sessionStorage.setItem("currentOpportunityId", opportunityId);
+          }
+          return "opportunity";
+        }
+        if (path.includes('/calendar-page')) return "calendar-page";
+        if (path.includes('/profile')) return "profile";
+        return "dashboard"; // Default for root path when authenticated
+      };
+      
+      // Check if we should show splash screen or go directly to a specific route
+      const currentPath = window.location.pathname;
+      
+      // If not on root path, extract route and skip splash
+      if (currentPath !== '/') {
+        const extractedRoute = getRouteFromPath();
+        setTargetRoute(extractedRoute);
         setSkipSplash(true);
-      } else {
-        // For non-authenticated users, always show splash
-        setTargetRoute("splash");
-        setSkipSplash(false);
+      }
+      
+      // Handle cross-origin navigation from external sites
+      const referrer = document.referrer;
+      if (referrer && !referrer.includes(window.location.hostname)) {
+        // Clear any stale session data when coming from external site
         sessionStorage.removeItem("currentPage");
       }
       
@@ -389,6 +339,14 @@ export default function Home() {
         sessionStorage.removeItem("skipSplash");
       }
     });
+
+    // Show loading for 2 seconds then transition
+    setTimeout(() => {
+      setFadeOut(true);
+      setTimeout(() => {
+        setShowLoading(false);
+      }, 500); // Additional 500ms for fade out
+    }, 2000);
   }, [])
   
   // Show loading screen first, then smooth transition to app

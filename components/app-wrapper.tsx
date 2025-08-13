@@ -16,7 +16,7 @@ interface AppWrapperProps {
 
 export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrapperProps) {
   // If skipSplash is true, start on dashboard page, else splash
-  const [currentPage, setCurrentPage] = useState<string>("loading") // Start with loading state
+  const [currentPage, setCurrentPage] = useState<string>("") // Will be set by determineInitialPage
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
   const [userInteracted, setUserInteracted] = useState<boolean>(false)
   const [forcePage, setForcePage] = useState<string | null>(null)
@@ -118,7 +118,7 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
       }
     };
     
-    // Set the page once
+    // Set the page immediately since loading is handled by app/page.tsx
     const initialPage = determineInitialPage();
     setCurrentPage(initialPage);
     
@@ -150,8 +150,11 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     // Mark that user has interacted when they navigate
     setUserInteracted(true)
     
-    // Store the current page in sessionStorage to persist across refreshes
-    sessionStorage.setItem("currentPage", route);
+    // Don't store splash or login in sessionStorage to avoid redirect issues
+    if (route !== 'splash' && route !== 'login') {
+      // Store the current page in sessionStorage to persist across refreshes
+      sessionStorage.setItem("currentPage", route);
+    }
     
     // Explicitly set forcePage to prevent auto-redirects
     setForcePage(route)

@@ -347,9 +347,7 @@ export function TacticsLab() {
             />
             <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
               <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger
-                  className={`w-full md:w-[180px] ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold h-[40px]`}
-                >
+                <SelectTrigger className="w-full md:w-[180px] font-semibold h-[40px]">
                   <SelectValue placeholder="Select time period" />
                 </SelectTrigger>
                 <SelectContent>

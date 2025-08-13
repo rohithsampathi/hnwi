@@ -6,6 +6,9 @@ import { Crown, DollarSign, Vault, Users, Shield, Clock, Activity, Plus } from "
 import { SecurePieChart } from "@/components/ui/secure-pie-chart";
 import { CrownVaultStats, CrownVaultAsset } from "@/lib/api";
 import { processAssetCategories } from "@/lib/category-utils";
+import { useTheme } from "@/contexts/theme-context";
+import { getVisibleIconColor, getVisibleTextColor, getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
+import { LUXURY_COLOR_PALETTE } from "@/lib/chart-colors";
 
 interface SummarySectionProps {
   stats: CrownVaultStats | null;
@@ -14,30 +17,6 @@ interface SummarySectionProps {
   onNavigateToTab: (tab: string) => void;
 }
 
-const COLORS = [
-  'hsl(var(--primary))',     // Primary brand color
-  '#FF6B35',                 // Vibrant orange-red
-  '#4ECDC4',                 // Teal
-  '#F7DC6F',                 // Bright yellow
-  '#BB6BD9',                 // Purple
-  '#2ECC71',                 // Emerald green
-  '#E74C3C',                 // Red
-  '#F39C12',                 // Orange
-  '#9B59B6',                 // Violet
-  '#1ABC9C',                 // Turquoise
-  '#34495E',                 // Dark blue-gray
-  '#E67E22',                 // Carrot orange
-  '#E91E63',                 // Pink
-  '#8BC34A',                 // Light green
-  '#FF9800',                 // Amber
-  '#607D8B',                 // Blue grey
-  '#795548',                 // Brown
-  '#FF5722',                 // Deep orange
-  '#9C27B0',                 // Deep purple
-  '#009688',                 // Dark teal
-  '#FFC107',                 // Golden yellow
-  '#673AB7'                  // Indigo
-];
 
 const formatValue = (value: number, currency: string = "USD") => {
   if (value >= 1000000) {
@@ -48,6 +27,13 @@ const formatValue = (value: number, currency: string = "USD") => {
   return `${value.toLocaleString()}`;
 };
 
+const getDynamicTextSize = (text: string, baseSize: string = "text-3xl lg:text-4xl xl:text-5xl") => {
+  const length = text.length;
+  if (length > 12) return "text-2xl lg:text-3xl xl:text-4xl";
+  if (length > 8) return "text-2xl lg:text-4xl xl:text-5xl";
+  return baseSize;
+};
+
 const getTotalValue = (stats: CrownVaultStats | null, assets: CrownVaultAsset[]) => {
   return stats?.total_value || assets.reduce((total, asset) => {
     return total + (asset?.asset_data?.value || 0);
@@ -55,6 +41,7 @@ const getTotalValue = (stats: CrownVaultStats | null, assets: CrownVaultAsset[])
 };
 
 export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: SummarySectionProps) {
+  const { theme } = useTheme();
   const assetCategories = processAssetCategories(assets);
   const totalValue = getTotalValue(stats, assets);
 
@@ -63,8 +50,8 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
       {/* Premium Summary Overview */}
       <div className="relative overflow-hidden">
         {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-secondary/3 to-accent/5 rounded-3xl" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-primary/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 via-secondary/3 to-secondary/5 rounded-3xl" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-secondary/10 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-secondary/10 to-transparent rounded-full blur-2xl" />
         
         <Card className="relative border-0 bg-background/60 backdrop-blur-sm shadow-2xl">
@@ -72,201 +59,65 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
             {/* Header Section */}
             <div className="text-center mb-12">
               <div className="relative inline-block">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-full blur-lg opacity-30" />
-                <Crown className="relative h-16 w-16 text-primary mx-auto mb-4 drop-shadow-lg" />
+                <div className="absolute inset-0 bg-primary/30 rounded-full blur-lg opacity-30" />
+                <Crown className={`relative h-16 w-16 ${getVisibleIconColor(theme)} mx-auto mb-4 drop-shadow-lg`} />
               </div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent mb-2">
+              <h1 className={`text-4xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                 Legacy Summary
               </h1>
               <p className="text-xl text-muted-foreground font-medium">Your legacy secured with military-grade encryption</p>
             </div>
             
-            {/* Premium Stats Grid */}
+            {/* Flagship Legacy Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {/* Total Value Card - Ultra Premium */}
-              <div className="group relative overflow-hidden">
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-tl from-amber-500/20 via-transparent to-primary/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-                </div>
-                
-                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-primary/30 rounded-3xl p-8 hover:border-primary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-primary/20 hover:scale-105 transform-gpu">
-                  {/* Top section with icon and status */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-lg premium-pulse" />
-                      <div className="relative p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl border border-primary/30">
-                        <DollarSign className="h-10 w-10 text-primary drop-shadow-lg" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full premium-pulse shadow-lg shadow-primary/50" />
-                      <div className="w-1 h-1 bg-primary/70 rounded-full premium-ping" />
-                    </div>
+              {/* Total Portfolio Value - Primary Flagship Card */}
+              <div className={`${getMetallicCardStyle(theme).className} p-8 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                <div className="flex justify-center mb-6">
+                  <div className={`${getMetallicCardStyle(theme).className} p-4`} style={getMetallicCardStyle(theme).style}>
+                    <DollarSign className={`h-10 w-10 ${theme === 'dark' ? 'text-white' : 'text-black'}`} />
                   </div>
-                  
-                  {/* Content */}
-                  <div className="space-y-3">
-                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Total Portfolio Value</p>
-                    <div className="relative">
-                      <p className="text-4xl font-black bg-gradient-to-r from-primary to-amber-600 bg-clip-text text-transparent drop-shadow-sm">
-                        ${formatValue(totalValue)}
-                      </p>
-                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-primary/50 via-primary/20 to-transparent" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-px bg-primary/60" />
-                      <p className="text-xs text-primary font-bold tracking-widest uppercase">Secured in Vault</p>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-amber-500 to-primary rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
+                <p className={`text-sm font-medium mb-3 uppercase tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Total Portfolio Value</p>
+                <p className={`${getDynamicTextSize(`$${formatValue(totalValue)}`)} font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>${formatValue(totalValue)}</p>
+                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/60'}`}>Secured in Crown Vault</p>
               </div>
               
-              {/* Total Assets Card - Ultra Premium */}
-              <div className="group relative overflow-hidden">
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 via-secondary/20 to-secondary/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-tl from-orange-500/20 via-transparent to-secondary/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-100" />
-                </div>
-                
-                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-secondary/30 rounded-3xl p-8 hover:border-secondary/50 transition-all duration-500 hover:shadow-2xl hover:shadow-secondary/20 hover:scale-105 transform-gpu">
-                  {/* Top section */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-secondary/20 rounded-2xl blur-lg animate-pulse" />
-                      <div className="relative p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-2xl border border-secondary/30">
-                        <Vault className="h-10 w-10 text-secondary drop-shadow-lg" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-secondary rounded-full animate-pulse shadow-lg shadow-secondary/50" />
-                      <div className="w-1 h-1 bg-secondary/70 rounded-full animate-ping" />
-                    </div>
+              {/* Total Assets - Secondary Card */}
+              <div className={`${getMetallicCardStyle(theme).className} p-8 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                <div className="flex justify-center mb-6">
+                  <div className={`${getMetallicCardStyle(theme).className} p-4`} style={getMetallicCardStyle(theme).style}>
+                    <Vault className={`h-10 w-10 ${theme === 'dark' ? 'text-white' : 'text-black'}`} />
                   </div>
-                  
-                  {/* Content */}
-                  <div className="space-y-3">
-                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Total Assets</p>
-                    <div className="relative">
-                      <p className="text-4xl font-black bg-gradient-to-r from-secondary to-orange-600 bg-clip-text text-transparent drop-shadow-sm">
-                        {stats?.total_assets || assets.length}
-                      </p>
-                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-secondary/50 via-secondary/20 to-transparent" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-px bg-secondary/60" />
-                      <p className="text-xs text-secondary font-bold tracking-widest uppercase">
-                        Across {assetCategories.length} {assetCategories.length === 1 ? 'Category' : 'Categories'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-secondary via-orange-500 to-secondary rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
+                <p className={`text-sm font-medium mb-3 uppercase tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Total Assets</p>
+                <p className={`text-3xl lg:text-4xl xl:text-5xl font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>{stats?.total_assets || assets.length}</p>
+                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/60'}`}>
+                  {assetCategories.length} {assetCategories.length === 1 ? 'Category' : 'Categories'}
+                </p>
               </div>
               
-              {/* Heirs Card - Ultra Premium */}
-              <div className="group relative overflow-hidden">
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/30 via-purple-500/20 to-purple-500/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-tl from-pink-500/20 via-transparent to-purple-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-200" />
-                </div>
-                
-                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-purple-500/30 rounded-3xl p-8 hover:border-purple-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-purple-500/20 hover:scale-105 transform-gpu">
-                  {/* Top section */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-purple-500/20 rounded-2xl blur-lg animate-pulse" />
-                      <div className="relative p-4 bg-gradient-to-br from-purple-500/20 to-purple-500/10 rounded-2xl border border-purple-500/30">
-                        <Users className="h-10 w-10 text-purple-500 drop-shadow-lg" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse shadow-lg shadow-purple-500/50" />
-                      <div className="w-1 h-1 bg-purple-500/70 rounded-full animate-ping" />
-                    </div>
+              {/* Designated Heirs - Tertiary Card */}
+              <div className={`${getMetallicCardStyle(theme).className} p-8 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                <div className="flex justify-center mb-6">
+                  <div className={`${getMetallicCardStyle(theme).className} p-4`} style={getMetallicCardStyle(theme).style}>
+                    <Users className={`h-10 w-10 ${theme === 'dark' ? 'text-white' : 'text-black'}`} />
                   </div>
-                  
-                  {/* Content */}
-                  <div className="space-y-3">
-                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Designated Heirs</p>
-                    <div className="relative">
-                      <p className="text-4xl font-black bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent drop-shadow-sm">
-                        {stats?.total_heirs || 0}
-                      </p>
-                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-purple-500/50 via-purple-500/20 to-transparent" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-px bg-purple-500/60" />
-                      <p className="text-xs text-purple-500 font-bold tracking-widest uppercase">Legacy Planning Active</p>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
+                <p className={`text-sm font-medium mb-3 uppercase tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Designated Heirs</p>
+                <p className={`text-3xl lg:text-4xl xl:text-5xl font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>{stats?.total_heirs || 0}</p>
+                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/60'}`}>Legacy Planning Active</p>
               </div>
               
-              {/* Security Card - Ultra Premium */}
-              <div className="group relative overflow-hidden">
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/30 via-emerald-500/20 to-emerald-500/10 rounded-3xl opacity-60 group-hover:opacity-80 transition-all duration-500" />
-                <div className="absolute inset-0 bg-gradient-to-tl from-green-400/20 via-transparent to-emerald-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 -top-px overflow-hidden rounded-3xl">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out delay-300" />
-                </div>
-                
-                <div className="relative bg-gradient-to-br from-background via-background/95 to-background/90 backdrop-blur-xl border-2 border-emerald-500/30 rounded-3xl p-8 hover:border-emerald-500/50 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/20 hover:scale-105 transform-gpu">
-                  {/* Top section */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-emerald-500/20 rounded-2xl blur-lg animate-pulse" />
-                      <div className="relative p-4 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-2xl border border-emerald-500/30">
-                        <Shield className="h-10 w-10 text-emerald-500 drop-shadow-lg" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/50" />
-                      <div className="w-1 h-1 bg-emerald-500/70 rounded-full animate-ping" />
-                    </div>
+              {/* Security Level - Quaternary Card */}
+              <div className={`${getMetallicCardStyle(theme).className} p-8 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                <div className="flex justify-center mb-6">
+                  <div className={`${getMetallicCardStyle(theme).className} p-4`} style={getMetallicCardStyle(theme).style}>
+                    <Shield className={`h-10 w-10 ${theme === 'dark' ? 'text-white' : 'text-black'}`} />
                   </div>
-                  
-                  {/* Content */}
-                  <div className="space-y-3">
-                    <p className="text-sm text-foreground font-bold tracking-wide uppercase opacity-90">Security Level</p>
-                    <div className="relative">
-                      <p className="text-3xl font-black bg-gradient-to-r from-emerald-500 to-green-600 bg-clip-text text-transparent drop-shadow-sm">
-                        256-bit AES
-                      </p>
-                      <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-emerald-500/50 via-emerald-500/20 to-transparent" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-px bg-emerald-500/60" />
-                      <p className="text-xs text-emerald-500 font-bold tracking-widest uppercase">Military-Grade Encryption</p>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-b-3xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
+                <p className={`text-sm font-medium mb-3 uppercase tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Security Level</p>
+                <p className={`text-3xl font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>256-bit AES</p>
+                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/60'}`}>Military-Grade Encryption</p>
               </div>
             </div>
             
@@ -287,18 +138,18 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
         </Card>
       </div>
       
-      {/* Assets by Category - Premium Design */}
+      {/* Portfolio Allocation - No Container */}
       {assets.length > 0 && (
-        <Card className="p-8 bg-gradient-to-br from-background to-muted/20 border-2 border-primary/10">
-          <CardHeader className="pb-6 text-center">
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        <div className="space-y-6">
+          <div className="text-center pb-6">
+            <h2 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
               Portfolio Allocation
-            </CardTitle>
-            <CardDescription className="text-lg text-muted-foreground">
+            </h2>
+            <p className="text-lg text-muted-foreground">
               Strategic distribution of your wealth across asset categories
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+            </p>
+          </div>
+          <div className="px-2 sm:px-6">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 xl:gap-12 items-center">
               {/* AES-256 Secured Pie Chart */}
               <div className="relative">
@@ -306,13 +157,14 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                   data={assetCategories}
                   totalValue={totalValue}
                   centerLabel="Crown Vault"
+                  colors={LUXURY_COLOR_PALETTE}
                   height={500}
                   className="w-full"
                 />
               </div>
               {/* Premium Category List */}
               <div className="space-y-4">
-                <h3 className="text-xl font-bold mb-6 text-foreground">Asset Breakdown</h3>
+                <h3 className={`text-xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Asset Breakdown</h3>
                 {assetCategories.map((category, index) => (
                   <div key={category.name} className="group relative">
                     <div className="flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-primary/20">
@@ -320,7 +172,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                         <div className="relative">
                           <div 
                             className="w-6 h-6 rounded-full shadow-md border-2 border-white/20" 
-                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            style={{ backgroundColor: LUXURY_COLOR_PALETTE[index % LUXURY_COLOR_PALETTE.length] }}
                           />
                           <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent" />
                         </div>
@@ -332,18 +184,18 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xl font-bold text-foreground">{formatValue(category.value)}</p>
+                        <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{formatValue(category.value)}</p>
                         <div className="flex items-center gap-2">
                           <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
                             <div 
                               className="h-full rounded-full transition-all duration-500"
                               style={{ 
                                 width: `${category.percentage}%`,
-                                backgroundColor: COLORS[index % COLORS.length]
+                                backgroundColor: LUXURY_COLOR_PALETTE[index % LUXURY_COLOR_PALETTE.length]
                               }}
                             />
                           </div>
-                          <span className="text-sm font-bold text-foreground/70">{category.percentage}%</span>
+                          <span className={`text-sm font-bold ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>{category.percentage}%</span>
                         </div>
                       </div>
                     </div>
@@ -351,8 +203,8 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
       
       {/* Quick Actions */}
@@ -392,19 +244,26 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             {stats?.recent_activity && stats.recent_activity.length > 0 ? (
-              <div className="space-y-3">
+              <>
                 {stats.recent_activity.slice(0, 3).map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3 p-2 rounded-lg bg-muted/20">
-                    <Activity className="h-4 w-4 mt-1 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">{activity.details}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(activity.timestamp).toLocaleString()}
-                      </p>
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="w-full justify-start h-auto p-4 hover:bg-muted/50"
+                    onClick={() => onNavigateToTab("activity")}
+                  >
+                    <div className="flex items-start gap-3 w-full min-w-0">
+                      <Activity className={`h-4 w-4 mt-1 flex-shrink-0 ${getVisibleIconColor(theme)}`} />
+                      <div className="text-left flex-1 min-w-0 overflow-hidden">
+                        <p className="text-sm font-medium truncate">{activity.details}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {new Date(activity.timestamp).toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  </Button>
                 ))}
                 <Button 
                   variant="ghost" 
@@ -414,9 +273,18 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                 >
                   View All Activity
                 </Button>
-              </div>
+              </>
             ) : (
-              <p className="text-muted-foreground text-sm">No recent activity</p>
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto p-4"
+                disabled
+              >
+                <div className="flex items-center gap-3">
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">No recent activity</span>
+                </div>
+              </Button>
             )}
           </CardContent>
         </Card>

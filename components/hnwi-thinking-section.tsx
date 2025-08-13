@@ -62,10 +62,10 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
           {" "}
           {/* Added pt-6 for more top padding */}
           <Select onValueChange={setSelectedLocation} value={selectedLocation}>
-            <SelectTrigger className="w-full bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-gray-800 border dark:border-gray-700">
+            <SelectContent>
               <SelectItem value="Mumbai">Mumbai</SelectItem>
               <SelectItem value="Delhi">Delhi</SelectItem>
               <SelectItem value="Bangalore">Bangalore</SelectItem>

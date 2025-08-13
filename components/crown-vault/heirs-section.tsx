@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PremiumBadge } from "@/components/ui/premium-badge";
 import { Plus, Edit, Trash2, User, Mail, Phone, FileText, ChevronRight, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CrownVaultHeir, CrownVaultAsset } from "@/lib/api";
@@ -116,12 +117,9 @@ export function HeirsSection({
                           <CardTitle className="text-base font-semibold truncate">
                             {heir.name}
                           </CardTitle>
-                          <Badge 
-                            variant="secondary" 
-                            className="mt-1 text-xs font-normal"
-                          >
-                            {heir.relationship}
-                          </Badge>
+                          <PremiumBadge className="mt-1">
+                            {heir.relationship.charAt(0).toUpperCase() + heir.relationship.slice(1).toLowerCase()}
+                          </PremiumBadge>
                         </div>
                       </div>
                       
@@ -183,7 +181,7 @@ export function HeirsSection({
                       <div className="pt-2 border-t">
                         <div className="flex items-start gap-2">
                           <FileText className="h-3 w-3 text-muted-foreground mt-0.5" />
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground">
                             {heir.notes}
                           </p>
                         </div>
@@ -192,7 +190,7 @@ export function HeirsSection({
                     
                     {/* View Details Link */}
                     <div className="pt-3 flex items-center justify-end">
-                      <button className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 font-medium">
+                      <button className="text-xs link-primary flex items-center gap-1 font-medium">
                         View Details
                         <ChevronRight className="h-3 w-3" />
                       </button>

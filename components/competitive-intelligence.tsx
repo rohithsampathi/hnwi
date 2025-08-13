@@ -75,10 +75,10 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
       <CardHeader>
         <div className="flex justify-between items-center">
           <Select onValueChange={setTimeRange} value={timeRange}>
-            <SelectTrigger className="w-[180px] bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700 transition-all duration-300 shadow-sm dark:text-white">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
-            <SelectContent className="bg-background/80 shadow-[0_8px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_16px_rgba(255,255,255,0.1)]">
+            <SelectContent>
               <SelectItem value="1d">Last 24 hours</SelectItem>
               <SelectItem value="1w">Last week</SelectItem>
               <SelectItem value="1m">Last month</SelectItem>

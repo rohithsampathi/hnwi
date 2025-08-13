@@ -4,7 +4,7 @@
 
 import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ThemeProvider } from "@/contexts/theme-context"
+import { ThemeProvider, useTheme } from "@/contexts/theme-context"
 import { Heading2 } from "@/components/ui/typography"
 import { Users } from "lucide-react"
 import { SocialHub } from "@/components/social-hub"
@@ -13,12 +13,13 @@ import { Badge } from "@/components/ui/badge"
 import { LiveButton } from "@/components/live-button"
 
 export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => void }) {
+  const { theme } = useTheme();
   return (
     <Layout
         title={
           <div className="flex items-center space-x-2">
-            <Users className="w-6 h-6 text-primary" />
-            <Heading2>Social Hub</Heading2>
+            <Users className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Social Hub</Heading2>
             <Badge className="bg-primary">Beta</Badge>
             <LiveButton />
           </div>
@@ -27,15 +28,10 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
         onNavigate={onNavigate}
       >
         <div className="w-full">
-          <div className="mb-6">
-            <div className="flex items-center gap-2">
-              <Heading2 className="text-2xl font-bold text-primary">The Social Hub</Heading2>
-              <Badge className="bg-primary">Beta</Badge>
-              <LiveButton />
-            </div>
-            <Paragraph className="font-body tracking-wide text-xl text-muted-foreground mt-2">
+          <div className="mb-4 -mt-2">
+            <p className="text-muted-foreground text-base leading-tight">
               Connect with the elite HNWI community and explore exclusive events
-            </Paragraph>
+            </p>
           </div>
           <SocialHub />
         </div>

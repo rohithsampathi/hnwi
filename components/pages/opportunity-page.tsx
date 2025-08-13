@@ -16,6 +16,7 @@ import {
   Check, X, Loader2, DollarSign, Building2,
   PiggyBank, ThumbsUp, Phone
 } from "lucide-react"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { getOpportunities, Opportunity } from "@/lib/api"  // removed any placeholders
 import { useAuth } from "@/components/auth-provider"
 import {
@@ -204,7 +205,7 @@ export function OpportunityPage({
     return (
       <Layout title="Loading Opportunity" showBackButton onNavigate={handleNavigation}>
         <div className="flex items-center justify-center h-[50vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <CrownLoader size="lg" text="Loading opportunity details..." />
         </div>
       </Layout>
     )

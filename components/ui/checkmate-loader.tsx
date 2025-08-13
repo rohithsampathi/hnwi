@@ -36,10 +36,10 @@ export function CheckmateLoader({ size = "md", text = "Loading..." }: CheckmateL
               width="20"
               height="20"
             >
-              <rect width="10" height="10" fill={theme === "dark" ? "#374151" : "#f3f4f6"} />
-              <rect x="10" y="10" width="10" height="10" fill={theme === "dark" ? "#374151" : "#f3f4f6"} />
-              <rect x="10" y="0" width="10" height="10" fill={theme === "dark" ? "#1f2937" : "#e5e7eb"} />
-              <rect x="0" y="10" width="10" height="10" fill={theme === "dark" ? "#1f2937" : "#e5e7eb"} />
+              <rect width="10" height="10" fill={theme === "dark" ? "#374151" : "#4a4a4a"} />
+              <rect x="10" y="10" width="10" height="10" fill={theme === "dark" ? "#374151" : "#4a4a4a"} />
+              <rect x="10" y="0" width="10" height="10" fill={theme === "dark" ? "#1f2937" : "#2a2a2a"} />
+              <rect x="0" y="10" width="10" height="10" fill={theme === "dark" ? "#1f2937" : "#2a2a2a"} />
             </pattern>
           </defs>
           
@@ -62,7 +62,7 @@ export function CheckmateLoader({ size = "md", text = "Loading..." }: CheckmateL
                 y="10"
                 width="16"
                 height="8"
-                fill={theme === "dark" ? "#6b7280" : "#374151"}
+                fill={theme === "dark" ? "#6b7280" : "#1a1a1a"}
               />
               {/* King body */}
               <rect
@@ -70,16 +70,16 @@ export function CheckmateLoader({ size = "md", text = "Loading..." }: CheckmateL
                 y="0"
                 width="12"
                 height="15"
-                fill={theme === "dark" ? "#6b7280" : "#374151"}
+                fill={theme === "dark" ? "#6b7280" : "#1a1a1a"}
               />
               {/* Crown */}
               <path
                 d="M-6,-5 L-3,-10 L0,-7 L3,-10 L6,-5 L6,0 L-6,0 Z"
-                fill={theme === "dark" ? "#6b7280" : "#374151"}
+                fill={theme === "dark" ? "#6b7280" : "#1a1a1a"}
               />
               {/* Cross on crown */}
-              <rect x="-1" y="-12" width="2" height="8" fill={theme === "dark" ? "#9ca3af" : "#6b7280"} />
-              <rect x="-3" y="-10" width="6" height="2" fill={theme === "dark" ? "#9ca3af" : "#6b7280"} />
+              <rect x="-1" y="-12" width="2" height="8" fill={theme === "dark" ? "#9ca3af" : "#333333"} />
+              <rect x="-3" y="-10" width="6" height="2" fill={theme === "dark" ? "#9ca3af" : "#333333"} />
             </g>
           </g>
           
@@ -129,9 +129,7 @@ export function CheckmateLoader({ size = "md", text = "Loading..." }: CheckmateL
       </div>
       
       {text && (
-        <p className={`${textSizes[size]} font-medium ${
-          theme === "dark" ? "text-gray-300" : "text-gray-600"
-        } animate-pulse`}>
+        <p className={`${textSizes[size]} font-medium text-muted-foreground animate-pulse`}>
           {text}
         </p>
       )}

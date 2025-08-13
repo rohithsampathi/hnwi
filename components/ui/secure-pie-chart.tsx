@@ -2,6 +2,7 @@
 
 import React from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { useTheme } from "@/contexts/theme-context"
 
 interface AssetData {
   name: string
@@ -23,28 +24,28 @@ interface SecurePieChartProps {
 }
 
 const defaultColors = [
-  'hsl(var(--primary))',     // Primary brand color
-  '#FF6B35',                 // Vibrant orange-red
-  '#4ECDC4',                 // Teal
-  '#F7DC6F',                 // Bright yellow
-  '#BB6BD9',                 // Purple
-  '#2ECC71',                 // Emerald green
-  '#E74C3C',                 // Red
-  '#F39C12',                 // Orange
-  '#9B59B6',                 // Violet
-  '#1ABC9C',                 // Turquoise
-  '#34495E',                 // Dark blue-gray
-  '#E67E22',                 // Carrot orange
-  '#E91E63',                 // Pink
-  '#8BC34A',                 // Light green
-  '#FF9800',                 // Amber
-  '#607D8B',                 // Blue grey
-  '#795548',                 // Brown
-  '#FF5722',                 // Deep orange
-  '#9C27B0',                 // Deep purple
-  '#009688',                 // Dark teal
-  '#FFC107',                 // Golden yellow
-  '#673AB7'                  // Indigo
+  '#DAA520',                 // Rich Gold - primary luxury color
+  '#DC2626',                 // Deep Red - classic wealth color
+  '#059669',                 // Rich Emerald - premium green
+  '#7C3AED',                 // Royal Purple - luxury accent
+  '#EA580C',                 // Burnt Orange - sophisticated warmth
+  '#0284C7',                 // Deep Blue - trust and stability
+  '#BE185D',                 // Rich Magenta - premium accent
+  '#059669',                 // Forest Green - wealth/growth
+  '#B45309',                 // Rich Amber - luxury variant
+  '#4338CA',                 // Deep Indigo - premium blue
+  '#BE123C',                 // Crimson Red - luxury red
+  '#047857',                 // Deep Teal - sophisticated green
+  '#9333EA',                 // Rich Violet - premium purple
+  '#C2410C',                 // Terracotta - earthy luxury
+  '#1D4ED8',                 // Rich Blue - premium variant
+  '#BE185D',                 // Rose - elegant accent
+  '#065F46',                 // Dark Green - wealth tone
+  '#7C2D12',                 // Rich Brown - luxury earth
+  '#581C87',                 // Deep Purple - royal variant
+  '#92400E',                 // Golden Brown - premium earth
+  '#1E40AF',                 // Navy Blue - trust variant
+  '#991B1B'                  // Dark Red - luxury crimson
 ]
 
 export function SecurePieChart({
@@ -57,6 +58,7 @@ export function SecurePieChart({
   showTooltip = true,
   showCenter = true
 }: SecurePieChartProps) {
+  const { theme } = useTheme()
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) {
       return `$${(value / 1000000000).toFixed(1)}B`
@@ -137,7 +139,7 @@ export function SecurePieChart({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[1]">
           <div className="text-center">
             <p className="text-sm sm:text-base text-foreground/70 font-bold">{centerLabel}</p>
-            <p className="text-2xl sm:text-3xl font-bold text-primary mt-1 drop-shadow-lg">
+            <p className={`text-2xl sm:text-3xl font-bold mt-1 drop-shadow-lg ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
               {formatCurrency(totalValue)}
             </p>
             <p className="text-xs sm:text-sm text-foreground/60 font-semibold mt-1">

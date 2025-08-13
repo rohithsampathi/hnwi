@@ -1,8 +1,12 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PremiumBadge } from "@/components/ui/premium-badge";
 import { Activity, Clock, TrendingUp, Shield, FileText, Users, DollarSign, Building } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTheme } from "@/contexts/theme-context";
+import { getMetallicCardStyle } from "@/lib/colors";
+import { LiveButton } from "@/components/live-button";
 import type { CrownVaultStats } from "@/lib/api";
 
 interface ActivitySectionProps {
@@ -10,6 +14,7 @@ interface ActivitySectionProps {
 }
 
 export function ActivitySection({ stats }: ActivitySectionProps) {
+  const { theme } = useTheme();
   
   const getActivityIcon = (details: string) => {
     const lowerDetails = details.toLowerCase();
@@ -30,6 +35,16 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
     return 'default';
   };
   
+  const formatActionText = (action: string) => {
+    // Convert snake_case or camelCase to readable text
+    return action
+      .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space before capital letters
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -57,22 +72,12 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
     <div className="space-y-6">
       
       {/* Clean Header */}
-      <div className="flex justify-between items-center">
-        <div>
+      <div>
+        <div className="flex items-center gap-3 mb-2">
           <h2 className="text-2xl font-semibold text-foreground">Activity</h2>
-          <p className="text-sm text-muted-foreground mt-1">Track all changes and updates to your vault</p>
+          <LiveButton />
         </div>
-        
-        {/* Live Status Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full">
-          <div className="relative">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-            <div className="absolute inset-0 w-2 h-2 bg-emerald-500 rounded-full animate-ping opacity-75" />
-          </div>
-          <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            Live
-          </span>
-        </div>
+        <p className="text-sm text-muted-foreground">Track all changes and updates to your vault</p>
       </div>
 
       {/* Activity Timeline */}
@@ -129,15 +134,26 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
                                 </span>
                                 {activity.action && (
                                   <Badge 
-                                    variant={
-                                      activityType === 'success' ? 'default' :
-                                      activityType === 'warning' ? 'secondary' :
-                                      activityType === 'destructive' ? 'destructive' :
-                                      'outline'
-                                    }
-                                    className="text-xs font-normal"
+                                    variant="outline"
+                                    className={`text-xs font-normal border ${
+                                      activityType === 'success' 
+                                        ? theme === 'dark' 
+                                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                          : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                        : activityType === 'warning' 
+                                        ? theme === 'dark'
+                                          ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                                          : 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                        : activityType === 'destructive' 
+                                        ? theme === 'dark'
+                                          ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                                          : 'bg-red-50 border-red-200 text-red-700'
+                                        : theme === 'dark'
+                                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                                        : 'bg-blue-50 border-blue-200 text-blue-700'
+                                    }`}
                                   >
-                                    {activity.action}
+                                    {formatActionText(activity.action)}
                                   </Badge>
                                 )}
                               </div>
@@ -170,61 +186,93 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
       {/* Activity Summary Stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{stats.total_assets || 0}</p>
-                  <p className="text-xs text-muted-foreground">Total Assets</p>
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className={`${getMetallicCardStyle(theme).className} p-4 hover:shadow-xl transition-all duration-300`}
+            style={getMetallicCardStyle(theme).style}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-900 border border-white/10' 
+                  : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-black/5'
+              }`}>
+                <TrendingUp className={`h-4 w-4 ${theme === 'dark' ? 'text-primary' : 'text-black'}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{stats.total_assets || 0}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Total Assets</p>
+              </div>
+            </div>
+          </motion.div>
           
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{stats.total_heirs || 0}</p>
-                  <p className="text-xs text-muted-foreground">Total Heirs</p>
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className={`${getMetallicCardStyle(theme).className} p-4 hover:shadow-xl transition-all duration-300`}
+            style={getMetallicCardStyle(theme).style}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-900 border border-white/10' 
+                  : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-black/5'
+              }`}>
+                <Users className={`h-4 w-4 ${theme === 'dark' ? 'text-primary' : 'text-black'}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{stats.total_heirs || 0}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Total Heirs</p>
+              </div>
+            </div>
+          </motion.div>
           
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Secured</p>
-                  <p className="text-xs text-muted-foreground">Vault Status</p>
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className={`${getMetallicCardStyle(theme).className} p-4 hover:shadow-xl transition-all duration-300`}
+            style={getMetallicCardStyle(theme).style}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-900 border border-white/10' 
+                  : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-black/5'
+              }`}>
+                <Shield className={`h-4 w-4 ${theme === 'dark' ? 'text-primary' : 'text-black'}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Secured</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Vault Status</p>
+              </div>
+            </div>
+          </motion.div>
           
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                  <Activity className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{stats.recent_activity?.length || 0}</p>
-                  <p className="text-xs text-muted-foreground">Recent Actions</p>
-                </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            className={`${getMetallicCardStyle(theme).className} p-4 hover:shadow-xl transition-all duration-300`}
+            style={getMetallicCardStyle(theme).style}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-br from-zinc-800 via-zinc-700 to-zinc-900 border border-white/10' 
+                  : 'bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 border border-black/5'
+              }`}>
+                <Activity className={`h-4 w-4 ${theme === 'dark' ? 'text-primary' : 'text-black'}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>{stats.recent_activity?.length || 0}</p>
+                <p className={`text-xs ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Recent Actions</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

@@ -388,10 +388,10 @@ export function OpportunityAtlas({
             }
           }}
         >
-          <SelectTrigger className="w-[200px] bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 transition-all duration-300 shadow-sm dark:text-white">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
-          <SelectContent className="bg-white dark:bg-primary-800 border dark:border-primary-600">
+          <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>

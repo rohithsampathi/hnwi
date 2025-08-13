@@ -52,6 +52,7 @@ import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats, type Cro
 import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
 import { processAssetCategories } from "@/lib/category-utils"
 import { secureApi } from "@/lib/secure-api"
+import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor, getVisibleSubtextColor, getMatteCardStyle, getMetallicCardStyle, getSubtleCardStyle } from "@/lib/colors"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -372,8 +373,8 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       <div className="min-h-screen bg-background">
         {/* Modern Header Section */}
         <div className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-background" />
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 via-secondary/5 to-background" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-2xl" />
           
           <div className="relative container mx-auto px-4 py-12">
@@ -387,12 +388,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
                   <AvatarImage src="" />
-                  <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-primary to-secondary text-white">
+                  <AvatarFallback className="text-2xl font-bold bg-primary text-white">
                     {getInitials(editedUser.name || "User")}
                   </AvatarFallback>
                 </Avatar>
                 {getTotalValue() > 10000000 && (
-                  <Badge className="absolute -bottom-2 -right-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white border-0">
+                  <Badge className={`absolute -bottom-2 -right-2 text-white border-0 ${theme === 'dark' ? 'bg-gradient-to-r from-gray-600 to-gray-700' : 'bg-gradient-to-r from-gray-500 to-gray-600'}`}>
                     Ultra HNWI
                   </Badge>
                 )}
@@ -439,7 +440,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   <>
                     <Button
                       onClick={() => setIsEditing(true)}
-                      className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+                      className={`${theme === 'dark' ? 'bg-primary text-white' : 'bg-primary text-white'} hover:opacity-90`}
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
                       Edit Profile
@@ -456,7 +457,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   <>
                     <Button
                       onClick={handleSave}
-                      className="bg-gradient-to-r from-green-500 to-green-600 text-white hover:opacity-90"
+                      className={`${theme === 'dark' ? 'bg-primary text-white' : 'bg-primary text-white'} hover:opacity-90`}
                     >
                       <Save className="w-4 h-4 mr-2" />
                       Save Changes
@@ -645,7 +646,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       onClick={() => setActiveTab('crown-vault')}
                       className={`px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 ${
                         activeTab === 'crown-vault'
-                          ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
+                          ? 'bg-primary text-white shadow-lg'
                           : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
                       }`}
                     >
@@ -655,7 +656,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       onClick={() => setActiveTab('overview')}
                       className={`px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 ${
                         activeTab === 'overview'
-                          ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
+                          ? 'bg-primary text-white shadow-lg'
                           : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
                       }`}
                     >
@@ -665,7 +666,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       onClick={() => setActiveTab('professional')}
                       className={`px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 ${
                         activeTab === 'professional'
-                          ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
+                          ? 'bg-primary text-white shadow-lg'
                           : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
                       }`}
                     >
@@ -675,7 +676,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       onClick={() => setActiveTab('preferences')}
                       className={`px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 ${
                         activeTab === 'preferences'
-                          ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
+                          ? 'bg-primary text-white shadow-lg'
                           : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
                       }`}
                     >
@@ -694,13 +695,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   ) : vaultStats && vaultStats.total_assets > 0 ? (
                     <div className="space-y-8">
                       {/* Main Vault Overview */}
-                      <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/5 via-secondary/3 to-accent/5">
+                      <Card className={`${getMatteCardStyle(theme).className}`} style={getMatteCardStyle(theme).style}>
                         <CardHeader className="text-center pb-6">
                           <div className="relative inline-block mx-auto">
-                            <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-full blur-lg opacity-30" />
-                            <Crown className="relative h-16 w-16 text-primary mx-auto mb-4 drop-shadow-lg" />
+                            <Crown className={`relative h-16 w-16 ${getVisibleIconColor(theme)} mx-auto mb-4 drop-shadow-lg`} />
                           </div>
-                          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                          <h2 className={`text-3xl font-bold ${getVisibleHeadingColor(theme)}`}>
                             Crown Vault Overview
                           </h2>
                           <p className="text-muted-foreground">Your secured legacy with military-grade encryption</p>
@@ -713,61 +713,43 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           {/* Primary Stats */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             <div className="group relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                              <div className="relative bg-background/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-6 hover:border-primary/40 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10">
-                                <div className="flex items-center justify-between mb-4">
-                                  <div className="p-3 bg-primary/10 rounded-xl">
-                                    <Vault className="h-8 w-8 text-primary" />
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                                  </div>
+                              <div className={`${getMetallicCardStyle(theme).className} p-6 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                                <div className="flex justify-center mb-3">
+                                  <Vault className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
                                 </div>
-                                <p className="text-sm text-foreground/80 font-semibold mb-2">Total Assets</p>
-                                <p className="text-3xl font-bold text-primary mb-1">{vaultStats.total_assets}</p>
-                                <p className="text-xs text-foreground/60 font-semibold">Items secured</p>
+                                <p className="text-sm text-foreground/80 font-medium mb-2">Total Assets</p>
+                                <p className={`text-4xl font-bold ${getVisibleTextColor(theme, 'accent')} mb-2`}>{vaultStats.total_assets}</p>
+                                <p className={`text-xs ${getVisibleSubtextColor(theme)} font-medium`}>Items secured</p>
                               </div>
                             </div>
 
                             <div className="group relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-secondary/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                              <div className="relative bg-background/80 backdrop-blur-sm border border-secondary/20 rounded-2xl p-6 hover:border-secondary/40 transition-all duration-300 hover:shadow-xl hover:shadow-secondary/10">
-                                <div className="flex items-center justify-between mb-4">
-                                  <div className="p-3 bg-secondary/10 rounded-xl">
-                                    <DollarSign className="h-8 w-8 text-secondary" />
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="w-2 h-2 bg-secondary rounded-full animate-pulse" />
-                                  </div>
+                              <div className={`${getMetallicCardStyle(theme).className} p-6 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                                <div className="flex justify-center mb-3">
+                                  <DollarSign className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
                                 </div>
-                                <p className="text-sm text-foreground/80 font-semibold mb-2">Total Portfolio Value</p>
-                                <p className="text-3xl font-bold text-secondary mb-1">{formatCurrency(getTotalValue())}</p>
-                                <p className="text-xs text-foreground/60 font-semibold">Encrypted & secured</p>
+                                <p className="text-sm text-foreground/80 font-medium mb-2">Total Portfolio Value</p>
+                                <p className={`text-4xl font-bold ${getVisibleTextColor(theme, 'accent')} mb-2`}>{formatCurrency(getTotalValue())}</p>
+                                <p className={`text-xs ${getVisibleSubtextColor(theme)} font-medium`}>Encrypted & secured</p>
                               </div>
                             </div>
 
                             <div className="group relative">
-                              <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-accent/5 rounded-2xl blur-sm group-hover:blur-none transition-all duration-300" />
-                              <div className="relative bg-background/80 backdrop-blur-sm border border-accent/20 rounded-2xl p-6 hover:border-accent/40 transition-all duration-300 hover:shadow-xl hover:shadow-accent/10">
-                                <div className="flex items-center justify-between mb-4">
-                                  <div className="p-3 bg-accent/10 rounded-xl">
-                                    <Users className="h-8 w-8 text-accent" />
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                                  </div>
+                              <div className={`${getMetallicCardStyle(theme).className} p-6 hover:shadow-xl transition-all duration-300 text-center`} style={getMetallicCardStyle(theme).style}>
+                                <div className="flex justify-center mb-3">
+                                  <Users className={`h-5 w-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`} />
                                 </div>
-                                <p className="text-sm text-foreground/80 font-semibold mb-2">Designated Heirs</p>
-                                <p className="text-3xl font-bold text-accent mb-1">{vaultStats.total_heirs}</p>
-                                <p className="text-xs text-purple-600 font-semibold">Legacy recipients</p>
+                                <p className="text-sm text-foreground/80 font-medium mb-2">Designated Heirs</p>
+                                <p className={`text-4xl font-bold ${getVisibleTextColor(theme, 'accent')} mb-2`}>{vaultStats.total_heirs}</p>
+                                <p className={`text-xs ${getVisibleSubtextColor(theme)} font-medium`}>Legacy recipients</p>
                               </div>
                             </div>
                           </div>
 
                           {/* Portfolio Allocation Overview */}
-                          <Card className="bg-gradient-to-br from-background to-muted/10 border border-primary/20">
-                            <CardHeader className="text-center pb-2">
-                              <h3 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                          <Card className={getMatteCardStyle(theme).className} style={getMatteCardStyle(theme).style}>
+                            <CardHeader className="pb-2">
+                              <h3 className={`text-xl font-bold ${getVisibleHeadingColor(theme)}`}>
                                 Portfolio Allocation
                               </h3>
                               <p className="text-sm text-muted-foreground">
@@ -784,15 +766,19 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
 
                           {/* Recent Activity */}
                           {vaultStats.recent_activity && vaultStats.recent_activity.length > 0 && (
-                            <Card className="bg-gradient-to-br from-background to-muted/20 border-2 border-secondary/10">
+                            <Card className={getMatteCardStyle(theme).className} style={getMatteCardStyle(theme).style}>
                               <CardHeader>
-                                <h3 className="text-xl font-bold bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent">
+                                <h3 className={`text-xl font-bold ${getVisibleHeadingColor(theme)}`}>
                                   Recent Vault Activity
                                 </h3>
                               </CardHeader>
                               <CardContent className="space-y-3">
                                 {vaultStats.recent_activity.slice(0, 5).map((activity, index) => (
-                                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/20">
+                                  <div 
+                                    key={index} 
+                                    className={`flex items-start gap-3 p-3 ${getSubtleCardStyle(theme).className}`}
+                                    style={getSubtleCardStyle(theme).style}
+                                  >
                                     <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
                                     <div className="flex-1">
                                       <p className="text-sm font-medium">{activity.details}</p>
@@ -809,12 +795,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           {/* Action Buttons */}
                           <div className="flex gap-4 pt-6 border-t">
                             <Button 
-                              className="flex-1 bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+                              className={`flex-1 bg-primary text-white hover:opacity-90`}
                               onClick={() => window.location.href = '/crown-vault'}
                             >
-                              <Crown className="w-4 h-4 mr-2" />
+                              <Crown className="w-4 h-4 mr-2 text-white" />
                               Manage Full Vault
-                              <ArrowRight className="w-4 h-4 ml-2" />
+                              <ArrowRight className="w-4 h-4 ml-2 text-white" />
                             </Button>
                             <Button 
                               variant="outline"
@@ -828,11 +814,10 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       </Card>
                     </div>
                   ) : (
-                    <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/5 via-secondary/3 to-accent/5">
+                    <Card className={getMatteCardStyle(theme).className} style={getMatteCardStyle(theme).style}>
                       <CardContent className="text-center py-16">
                         <div className="relative inline-block mb-6">
-                          <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-full blur-lg opacity-20" />
-                          <Vault className="relative h-20 w-20 text-muted-foreground mx-auto" />
+                          <Vault className={`relative h-20 w-20 ${getVisibleIconColor(theme)} mx-auto`} />
                         </div>
                         <h3 className="text-2xl font-bold text-foreground mb-4">Your Crown Vault Awaits</h3>
                         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
@@ -840,7 +825,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                         </p>
                         <div className="flex gap-4 justify-center">
                           <Button 
-                            className="bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+                            className="bg-primary text-white hover:opacity-90"
                             onClick={() => window.location.href = '/crown-vault'}
                           >
                             <Crown className="w-4 h-4 mr-2" />
@@ -885,7 +870,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           <div>
                             <p className="text-sm text-muted-foreground mb-1">Secured Net Worth</p>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium text-xl text-primary">
+                              <p className={`font-medium text-xl ${getVisibleTextColor(theme, 'accent')}`}>
                                 {formatCurrency(getTotalValue())}
                               </p>
                               <Badge className="bg-green-500/10 text-green-600 text-xs">
@@ -937,7 +922,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           <div className="flex flex-wrap gap-2 mt-1">
                             {editedUser.industries && editedUser.industries.length > 0 ? (
                               editedUser.industries.map((industry, index) => (
-                                <Badge key={index} variant="secondary">
+                                <Badge key={index} variant="secondary" className="badge-primary">
                                   {industry}
                                 </Badge>
                               ))
@@ -964,7 +949,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                               href={formatLinkedInUrl(editedUser.linkedin)} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-primary hover:underline"
+                              className={`inline-flex items-center gap-1 ${getVisibleTextColor(theme, 'accent')} hover:underline`}
                             >
                               <Linkedin className="w-4 h-4" />
                               View Profile

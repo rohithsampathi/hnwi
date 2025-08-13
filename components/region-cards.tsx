@@ -48,19 +48,15 @@ export function RegionCards({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`space-y-4 ${className}`}
+      className={`space-y-2 ${className}`}
     >
-      <div className="text-center">
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          {selectedCategory.name} Opportunities by Region
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Select a region to view available investment opportunities
-        </p>
-      </div>
-      
-      {/* Desktop: Single row - center aligned */}
-      <div className="hidden md:flex gap-4 overflow-x-auto pb-2 justify-center">
+      {/* Horizontal scrollable region selectors */}
+      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <style jsx>{`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
         {regions.map((region) => {
           const { icon: Icon } = regionIconMap[region.name as keyof typeof regionIconMap] || 
             { icon: Globe2 };
@@ -75,7 +71,7 @@ export function RegionCards({
             >
               <Card
                 className={`
-                  w-32 h-32 transition-all duration-300 cursor-pointer
+                  h-10 min-w-max transition-all duration-300 cursor-pointer
                   ${hasOpportunities 
                     ? "bg-primary/5 hover:bg-primary/10 hover:shadow-md border-primary/20" 
                     : "bg-muted/30 border-muted cursor-not-allowed opacity-60"
@@ -93,84 +89,25 @@ export function RegionCards({
                   }
                 }}
               >
-                <CardContent className="p-3 flex flex-col items-center justify-center text-center h-full">
+                <CardContent className="px-3 py-2 flex items-center gap-2 h-full">
                   <Icon
-                    className={`w-8 h-8 mb-2 ${
+                    className={`w-4 h-4 ${
                       hasOpportunities ? "text-primary" : "text-muted-foreground"
                     }`}
                   />
-                  <h4
-                    className={`font-medium text-xs mb-2 ${
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${
                       hasOpportunities ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {region.name}
-                  </h4>
-                  <Badge
-                    variant={hasOpportunities ? "default" : "secondary"}
-                    className="text-xs px-2 py-0.5"
-                  >
-                    {region.opportunityCount}
-                  </Badge>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-      
-      {/* Mobile: Two rows - center aligned */}
-      <div className="md:hidden grid grid-cols-3 gap-3 justify-items-center">
-        {regions.map((region) => {
-          const { icon: Icon } = regionIconMap[region.name as keyof typeof regionIconMap] || 
-            { icon: Globe2 };
-          const hasOpportunities = region.opportunityCount > 0;
-          
-          return (
-            <motion.div
-              key={region.id}
-              whileHover={hasOpportunities ? { scale: 1.02 } : undefined}
-              whileTap={hasOpportunities ? { scale: 0.98 } : undefined}
-            >
-              <Card
-                className={`
-                  h-24 transition-all duration-300 cursor-pointer
-                  ${hasOpportunities 
-                    ? "bg-primary/5 hover:bg-primary/10 hover:shadow-md border-primary/20" 
-                    : "bg-muted/30 border-muted cursor-not-allowed opacity-60"
-                  }
-                `}
-                onClick={() => hasOpportunities && onRegionSelect(region.id)}
-                role="button"
-                tabIndex={hasOpportunities ? 0 : -1}
-                aria-label={`${region.name} region with ${region.opportunityCount} opportunities`}
-                aria-disabled={!hasOpportunities}
-                onKeyDown={(e) => {
-                  if (hasOpportunities && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    onRegionSelect(region.id);
-                  }
-                }}
-              >
-                <CardContent className="p-2 flex flex-col items-center justify-center text-center h-full">
-                  <Icon
-                    className={`w-6 h-6 mb-1 ${
-                      hasOpportunities ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  />
-                  <h4
-                    className={`font-medium text-xs mb-1 ${
-                      hasOpportunities ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {region.name.split(" ")[0]}
-                  </h4>
-                  <Badge
-                    variant={hasOpportunities ? "default" : "secondary"}
-                    className="text-xs px-1 py-0"
-                  >
-                    {region.opportunityCount}
-                  </Badge>
+                    }`}>
+                      {region.name}
+                    </span>
+                    <Badge
+                      variant={hasOpportunities ? "default" : "secondary"}
+                      className="text-xs px-1.5 py-0"
+                    >
+                      {region.opportunityCount}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

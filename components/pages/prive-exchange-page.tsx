@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
-import { Filter, Loader2 } from "lucide-react";
+import { Filter, Loader2, Store } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 import { CrownLoader } from "@/components/ui/crown-loader";
 import { Badge } from "@/components/ui/badge";
+import { PremiumBadge } from "@/components/ui/premium-badge";
 import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
 import { LiveButton } from "@/components/live-button";
@@ -23,6 +25,7 @@ interface PriveExchangePageProps {
 }
 
 export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
+  const { theme } = useTheme();
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<AssetCategoryData | null>(null);
   const [assetCategories, setAssetCategories] = useState<AssetCategoryData[]>([]);
@@ -38,6 +41,8 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     postingDate: []
   });
   const [isMobile, setIsMobile] = useState(false);
+  const [showStickyRegions, setShowStickyRegions] = useState(false);
+  const regionCardsRef = useRef<HTMLDivElement>(null);
 
   // Check if mobile
   useEffect(() => {
@@ -48,6 +53,28 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Intersection observer for sticky RegionCards
+  useEffect(() => {
+    if (!regionCardsRef.current || !selectedCategory) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show sticky version when original is not visible
+        setShowStickyRegions(!entry.isIntersecting);
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '-100px 0px 0px 0px' // Trigger when 100px above viewport
+      }
+    );
+
+    observer.observe(regionCardsRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [selectedCategory]);
 
   // Fetch all opportunities on mount
   useEffect(() => {
@@ -203,7 +230,39 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   // Handle category selection
   const handleCategorySelect = (category: AssetCategoryData | null) => {
     setSelectedCategory(category);
-    setSelectedRegion(null); // Reset region when category changes
+    
+    // If a category is selected, automatically select the region with the highest opportunity count
+    if (category) {
+      // Get opportunities for this category
+      const categoryOpportunities = category.opportunities;
+      
+      // Group by region to find which has the most opportunities
+      const regionCounts = categoryOpportunities.reduce((acc, opp) => {
+        const region = opp.region || "Unknown";
+        acc[region] = (acc[region] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      // Find the region with the highest count
+      let maxRegion = null;
+      let maxCount = 0;
+      Object.entries(regionCounts).forEach(([region, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          maxRegion = region;
+        }
+      });
+      
+      // Set the selected region to the one with highest count
+      if (maxRegion) {
+        const regionId = maxRegion.toLowerCase().replace(/\s+/g, '-');
+        setSelectedRegion(regionId);
+      } else {
+        setSelectedRegion(null);
+      }
+    } else {
+      setSelectedRegion(null); // Reset region when no category
+    }
   };
 
   // Handle region selection
@@ -253,8 +312,9 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
       <Layout 
         title={
           <div className="flex items-center gap-2">
-            <span>Privé Exchange</span>
-            <Badge className="bg-primary">Beta</Badge>
+            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
+            <PremiumBadge>Beta</PremiumBadge>
           </div>
         } 
         showBackButton 
@@ -272,8 +332,9 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
       <Layout 
         title={
           <div className="flex items-center gap-2">
-            <span>Privé Exchange</span>
-            <Badge className="bg-primary">Beta</Badge>
+            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
+            <PremiumBadge>Beta</PremiumBadge>
           </div>
         } 
         showBackButton 
@@ -293,9 +354,12 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   return (
     <Layout 
       title={
-        <div className="flex items-center gap-2">
-          <span>Privé Exchange</span>
-          <Badge className="bg-primary">Beta</Badge>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
+          </div>
+          <PremiumBadge>Beta</PremiumBadge>
           <LiveButton />
         </div>
       } 
@@ -303,14 +367,8 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
       onNavigate={handleNavigation}
     >
       <div className="flex flex-col h-full relative">
-        {/* Header */}
-        <div className="space-y-2 px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Heading2 className="text-primary">Privé Exchange</Heading2>
-              <Badge className="bg-primary">Beta</Badge>
-              <LiveButton />
-            </div>
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-end mb-0">
             {(selectedCategory || selectedRegion) && (
               <Button
                 variant="outline"
@@ -328,7 +386,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
               </Button>
             )}
           </div>
-          <p className="font-body tracking-wide text-xl text-muted-foreground">
+          <p className="text-muted-foreground text-base leading-tight -mt-3">
             Exclusive opportunities for elite investors
           </p>
         </div>
@@ -349,11 +407,13 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
           />
 
           {/* Region Cards - Show when category is selected */}
-          <RegionCards
-            selectedCategory={selectedCategory}
-            regions={regionData}
-            onRegionSelect={handleRegionSelect}
-          />
+          <div ref={regionCardsRef}>
+            <RegionCards
+              selectedCategory={selectedCategory}
+              regions={regionData}
+              onRegionSelect={handleRegionSelect}
+            />
+          </div>
 
           {/* Opportunity Grid - Show when region is selected */}
           <AnimatePresence>
@@ -399,6 +459,29 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Sticky RegionCards - Floating version when original is out of view */}
+        <AnimatePresence>
+          {showStickyRegions && selectedCategory && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ duration: 0.3 }}
+              className="fixed left-0 right-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border shadow-lg"
+              style={{ top: 'var(--header-height, 120px)' }}
+            >
+              <div className="max-w-7xl mx-auto px-4 py-2">
+                <RegionCards
+                  selectedCategory={selectedCategory}
+                  regions={regionData}
+                  onRegionSelect={handleRegionSelect}
+                  className="!space-y-2" // Reduced spacing for sticky version
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Filter Drawer */}
         <OpportunityFilterDrawer

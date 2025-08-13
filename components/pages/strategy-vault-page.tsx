@@ -9,13 +9,16 @@ import { Layout } from "@/components/layout/layout"
 import { DevelopmentStream } from "@/components/development-stream"
 import { IndustryTrendsBubbles } from "@/components/industry-trends-bubbles"
 import { getIndustryColor } from "@/utils/color-utils"
+import { getMatteCardStyle } from "@/lib/colors"
 import { useSearchParams } from "next/navigation"
-import { Globe } from "lucide-react"
+import { Globe, BookOpen, BarChart3 } from "lucide-react"
+import { useTheme } from "@/contexts/theme-context"
 import { LiveButton } from "@/components/live-button"
 import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
 import { MetaTags } from "../meta-tags"
 
 export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) => void }) {
+  const { theme } = useTheme()
   const [selectedIndustry, setSelectedIndustry] = useState("All")
   const [timeRange, setTimeRange] = useState("1w")
   const [availableIndustries, setAvailableIndustries] = useState<string[]>([])
@@ -23,6 +26,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Check URL searchParams first
     const industry = searchParams.get("industry")
     const timeRange = searchParams.get("timeRange")
     const developmentId = searchParams.get("developmentId")
@@ -30,12 +34,26 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
     if (industry) setSelectedIndustry(industry)
     if (timeRange) setTimeRange(timeRange)
     if (developmentId) setExpandedDevelopmentId(developmentId)
-  }, [searchParams])
-
-  useEffect(() => {
-    const developmentId = searchParams.get("developmentId")
-    if (developmentId) {
-      setExpandedDevelopmentId(developmentId)
+    
+    // Check sessionStorage for navigation from Elite Pulse cards
+    const sessionDevelopmentId = sessionStorage.getItem("currentDevelopmentId")
+    const sessionIndustry = sessionStorage.getItem("nav_param_industry")
+    const sessionTimeRange = sessionStorage.getItem("nav_param_timeRange")
+    
+    if (sessionDevelopmentId && !developmentId) {
+      setExpandedDevelopmentId(sessionDevelopmentId)
+      // Clear sessionStorage after using it
+      sessionStorage.removeItem("currentDevelopmentId")
+    }
+    
+    if (sessionIndustry && !industry) {
+      setSelectedIndustry(sessionIndustry)
+      sessionStorage.removeItem("nav_param_industry")
+    }
+    
+    if (sessionTimeRange && !timeRange) {
+      setTimeRange(sessionTimeRange)
+      sessionStorage.removeItem("nav_param_timeRange")
     }
   }, [searchParams])
 
@@ -66,8 +84,8 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
       <Layout
         title={
           <div className="flex items-center space-x-2">
-            <Globe className="w-6 h-6 text-primary" />
-            <Heading2>HNWI World</Heading2>
+            <Globe className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>HNWI World</Heading2>
             <LiveButton />
           </div>
         }
@@ -75,23 +93,19 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
         onNavigate={onNavigate}
       >
         <div className="font-body">
-          <div className="w-full mb-6 overflow-hidden">
-            <div className="space-y-2 px-4 py-6">
-              <div className="flex items-center gap-2">
-                <Heading2 className="text-primary">HNWI World</Heading2>
-                <LiveButton />
-              </div>
-              <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
+          <div className="w-full mb-4 overflow-hidden">
+            <div className="px-4 py-2 -mt-2">
+              <p className="text-muted-foreground text-base leading-tight">
                 Data Meets Strategy for the Wealthiest
-              </Paragraph>
+              </p>
             </div>
             <div className="px-4 py-2">
               <div className="flex justify-between items-center mb-6">
                 <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
-                  <SelectTrigger className="w-[200px] bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 transition-all duration-300 shadow-sm dark:text-white">
+                  <SelectTrigger className="w-[200px] bg-secondary/50 hover:bg-secondary/70 border-border">
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-primary-800 border dark:border-primary-600">
+                  <SelectContent>
                     <SelectItem value="All">All Industries</SelectItem>
                     {availableIndustries.sort().map((industry) => (
                       <SelectItem key={industry} value={industry}>
@@ -102,10 +116,10 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 </Select>
                 <div className="flex items-center space-x-4">
                   <Select onValueChange={handleTimeRangeChange} value={timeRange}>
-                    <SelectTrigger className="w-[180px] bg-white dark:bg-primary-800 hover:bg-primary/5 dark:hover:bg-primary-700 transition-all duration-300 shadow-sm dark:text-white">
+                    <SelectTrigger className="w-[180px] bg-secondary/50 hover:bg-secondary/70 border-border">
                       <SelectValue placeholder="Select time range" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-primary-800 border dark:border-primary-600">
+                    <SelectContent>
                       <SelectItem value="1d">Last 24 hours</SelectItem>
                       <SelectItem value="1w">Last week</SelectItem>
                       <SelectItem value="1m">Last month</SelectItem>
@@ -120,7 +134,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                       setTimeRange("temp")
                       setTimeout(() => setTimeRange(currentTimeRange), 10)
                     }}
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-primary-700 transition-colors"
+                    className="p-2 rounded-full hover:bg-muted transition-colors"
                     aria-label="Refresh data"
                     title="Force refresh of Wealth Radar data"
                   >
@@ -134,7 +148,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                       strokeWidth="2" 
                       strokeLinecap="round" 
                       strokeLinejoin="round"
-                      className="text-black dark:text-white"
+                      className="text-foreground"
                     >
                       <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
                       <path d="M3 3v5h5"></path>
@@ -149,8 +163,8 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 {/* Header inside the box - left aligned like Opportunity Atlas */}
                 <div className="pt-6 pb-4 px-6">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xl">📊</span>
-                    <Heading3 className="text-primary dark:text-white">Wealth Radar</Heading3>
+                    <BarChart3 className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <Heading3 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Wealth Radar</Heading3>
                   </div>
                   <p className="text-muted-foreground text-sm">
                     Industry wise HNWI Peer Movements and Market Actions • {availableIndustries.length} industries available
@@ -158,7 +172,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
                 </div>
                 
                 {/* Visualization area */}
-                <div className="px-6">
+                <div className="px-6 pb-6">
                   <IndustryTrendsBubbles
                     duration={timeRange}
                     onIndustriesUpdate={handleIndustriesUpdate}
@@ -185,9 +199,12 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           </div>
           <div className="w-full mt-8 overflow-hidden">
             <div className="py-4">
-              <Heading3 className="text-foreground mb-2">Insider Briefing 🔍</Heading3>
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                <Heading3 className="text-foreground">Insider Brief</Heading3>
+              </div>
               <p className="text-body-small text-foreground mb-4">
-                Your private intelligence ally delivering sophisticated insights for ultra-high-net-worth portfolios
+                Daily intelligence briefings tracking HNWI market movements, institutional strategies, and wealth preservation insights from global elite circles
               </p>
             </div>
             <div className="py-2">

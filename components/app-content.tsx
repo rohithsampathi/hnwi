@@ -7,6 +7,8 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { useTheme } from "@/contexts/theme-context"
+import { UserCircle2 } from "lucide-react"
+import { Heading2 } from "@/components/ui/typography"
 import { HomeDashboard } from "./home-dashboard"
 import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
@@ -219,11 +221,17 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
     // Handle back navigation
     else if (baseRoute === "back") {
-      const newHistory = [...navigationHistory];
-      newHistory.pop();
-      const previousPage = newHistory[newHistory.length - 1] || "splash";
-      setNavigationHistory(newHistory);
-      onNavigate(previousPage);
+      // Use browser's native back functionality if available
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        window.history.back();
+      } else {
+        // Fallback to internal navigation history
+        const newHistory = [...navigationHistory];
+        newHistory.pop();
+        const previousPage = newHistory[newHistory.length - 1] || "dashboard";
+        setNavigationHistory(newHistory);
+        onNavigate(previousPage);
+      }
     }
 
     // Handle regular navigation
@@ -633,47 +641,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   // Always render content, even if session check hasn't completed
   // This prevents blank screens
   const renderPage = () => {
-    // Handle loading state with consistent loading screen
-    if (currentPage === "loading") {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-background">
-          {/* Add particles background for consistent look with splash screen */}
-          <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/20 to-black/40 z-10"></div>
-            <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] z-0"></div>
-          </div>
-          
-          <div className="z-10 flex flex-col items-center justify-center">
-            {/* Rotating logo */}
-            <div className="relative w-32 h-32 mb-6">
-              <Image 
-                src="/logo.png" 
-                alt="HNWI Chronicles Logo" 
-                width={128}
-                height={128}
-                className="w-auto h-auto object-contain"
-                style={{ 
-                  animation: "spin 8s linear infinite",
-                  width: '128px',
-                  height: '128px'
-                }}
-                priority
-              />
-            </div>
-            
-            {/* Loading text */}
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2 text-foreground">
-                Brewing & Updating the Latest Juice
-              </h2>
-              <p className="text-primary">
-                Please wait while we prepare your experience...
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    // Loading state is now handled by app/page.tsx, so we skip to main app content
     
     switch (currentPage) {
       case "splash":
@@ -716,7 +684,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         
         // User is authenticated, show dashboard
         return (
-          <Layout title={`Welcome, ${user.firstName}`} onNavigate={handleNavigation}>
+          <Layout title="" onNavigate={handleNavigation}>
             <HomeDashboard user={user} onNavigate={handleNavigation} isFromSignupFlow={isFromSignupFlow} userData={user} />
           </Layout>
         )
@@ -724,7 +692,16 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       case "profile":
         return (
           user && (
-            <Layout title="Profile" showBackButton onNavigate={handleNavigation}>
+            <Layout 
+              title={
+                <div className="flex items-center space-x-2">
+                  <UserCircle2 className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                  <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Profile</Heading2>
+                </div>
+              }
+              showBackButton 
+              onNavigate={handleNavigation}
+            >
               <ProfilePage user={user} onUpdateUser={handleUpdateUserClick} onLogout={handleLogoutClick} />
             </Layout>
           )

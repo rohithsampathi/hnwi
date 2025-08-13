@@ -203,28 +203,17 @@ export function SocialHub() {
               >
                 {/* Card Column */}
                 <div className="md:w-1/2 p-4">
-                  <Card
-                    className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 min-h-[400px]"
-                    style={{
-                      backgroundColor: theme === "dark" ? "hsl(165, 46%, 8%)" : "white"
-                    }}
-                  >
+                  <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 min-h-[400px]">
                     {/* Using same dark green as Elite Pulse cards in dark mode, white in light mode */}
-                    <div
-                      style={{
-                        backgroundColor: theme === "dark" ? "hsl(165, 46%, 8%)" : "white"
-                      }}
-                    >
+                    <div>
                       {/* Ensure text is readable in both themes */}
-                      <CardContent className="p-6 relative dark:text-white text-black">
+                      <CardContent className="p-6 relative">
                         {/* Remove gradient overlay to match Wealth Radar style */}
 
                         <div className="relative">
                           <div className="flex justify-between items-start mb-4">
                             <div>
-                              <Heading3
-                                className={`${fonts.heading} mb-1 dark:text-white text-black`}
-                              >
+                              <Heading3 className={`${fonts.heading} mb-1`}>
                                 {event.name}
                               </Heading3>
                               
@@ -266,24 +255,24 @@ export function SocialHub() {
                                 })}
                               </div>
                               
-                              <div className="flex items-center gap-2 text-sm dark:text-white/70 text-black/70">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock className="w-4 h-4" />
                                 <span>{formatDateRange(event.start_date, event.end_date)}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="space-y-3 dark:text-white/90 text-black/90">
+                          <div className="space-y-3">
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
+                              <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               <span className="text-sm">{event.location}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Building className="w-4 h-4 dark:text-white/70 text-black/70 flex-shrink-0" />
+                              <Building className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               <span className="text-sm">{event.venue}</span>
                             </div>
                             <div className="flex items-start gap-2">
-                              <Users className="w-4 h-4 dark:text-white/70 text-black/70 mt-1 flex-shrink-0" />
+                              <Users className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
                               <span className="text-sm">
                                 {event.attendees && event.attendees.length > 0
                                   ? event.attendees.join(", ")
@@ -300,17 +289,17 @@ export function SocialHub() {
                                 exit={{ opacity: 0, height: 0 }}
                                 className="mt-4"
                               >
-                                <Paragraph className="text-sm mb-4 dark:text-white/80 text-black/80">
+                                <Paragraph className="text-sm mb-4 text-muted-foreground">
                                   {event.summary}
                                 </Paragraph>
 
                                 {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
                                 {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (
-                                  <div className="mt-2 text-sm dark:text-white/70 text-black/70">
+                                  <div className="mt-2 text-sm text-muted-foreground">
                                     Capacity: {event.metadata.capacity} attendees
                                   </div>
                                 ) : (
-                                  <div className="mt-2 text-sm dark:text-white/70 text-black/70">
+                                  <div className="mt-2 text-sm text-muted-foreground">
                                     Capacity: Talk to Concierge
                                   </div>
                                 )}
@@ -324,12 +313,6 @@ export function SocialHub() {
                               variant="outline"
                               size="sm"
                               onClick={() => toggleEventExpansion(event.id)}
-                              className={`
-                                ${theme === "dark"
-                                  ? 'bg-green-600/20 border-green-500/30 text-green-300 hover:bg-green-600/30'
-                                  : 'bg-green-100 border-green-300 text-green-700 hover:bg-green-200'
-                                }
-                              `}
                             >
                               {expandedEvent === event.id ? "Show Less" : "Show More"}
                             </Button>
@@ -338,13 +321,7 @@ export function SocialHub() {
                               variant="default"
                               size="sm"
                               onClick={() => handleTalkToConcierge(event)}
-                              className={`
-                                ${theme === "dark"
-                                  ? 'bg-green-600 hover:bg-green-700 text-white border border-green-500'
-                                  : 'bg-green-500 hover:bg-green-600 text-white border border-green-400'
-                                } 
-                                text-xs md:text-sm whitespace-nowrap
-                              `}
+                              className="text-xs md:text-sm whitespace-nowrap"
                               disabled={isProcessing && selectedEvent?.id === event.id}
                             >
                               {isProcessing && selectedEvent?.id === event.id ? (
@@ -369,21 +346,42 @@ export function SocialHub() {
                 {/* Date Bubble Column (hidden on small) */}
                 <div className="hidden md:flex items-center justify-center w-1/2">
                   <div
-                    className={`w-32 h-32 rounded-full flex items-center justify-center shadow-lg 
-                                backdrop-blur-sm border
+                    className={`w-32 h-32 rounded-full flex items-center justify-center shadow-xl 
+                                backdrop-blur-sm border relative overflow-hidden
                                 ${theme === "dark" 
-                                  ? "bg-gradient-to-br from-green-600/60 to-green-800/60 border-white/10" 
-                                  : "bg-gradient-to-br from-green-400/60 to-green-600/60 border-black/10"
+                                  ? "border-primary/30" 
+                                  : "border-primary/20"
                                 }`}
+                    style={{
+                      background: theme === "dark" 
+                        ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
+                        : "linear-gradient(135deg, hsl(var(--primary) / 0.9) 0%, hsl(var(--primary) / 0.7) 25%, hsl(var(--primary) / 0.5) 50%, hsl(var(--primary) / 0.3) 75%, hsl(var(--primary) / 0.1) 100%)",
+                      border: theme === "dark" 
+                        ? "2px solid rgba(255, 255, 255, 0.1)" 
+                        : "2px solid rgba(0, 0, 0, 0.1)",
+                      boxShadow: theme === "dark"
+                        ? "0 10px 25px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+                        : "0 10px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 20px hsl(var(--primary) / 0.2)",
+                      backdropFilter: "blur(8px)"
+                    }}
                   >
-                    <div className="text-center dark:text-white text-white">
-                      <div className={`text-2xl ${fonts.heading} font-bold`}>
+                    {/* Metallic shine effect */}
+                    <div 
+                      className="absolute inset-0 rounded-full opacity-40"
+                      style={{
+                        background: theme === "dark"
+                          ? "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)"
+                          : "linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%)"
+                      }}
+                    />
+                    <div className={`text-center relative z-10 ${theme === "dark" ? "text-white" : "text-primary-foreground"}`}>
+                      <div className={`text-2xl ${fonts.heading} font-bold drop-shadow-sm`}>
                         {new Date(event.start_date).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })}
                       </div>
-                      <div className={`text-sm ${fonts.body}`}>
+                      <div className={`text-sm ${fonts.body} opacity-80`}>
                         {new Date(event.start_date).getFullYear()}
                       </div>
                     </div>

@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
@@ -25,6 +25,8 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { PremiumBadge } from "@/components/ui/premium-badge"
+import { getCardColors, getMetallicCardStyle } from "@/lib/colors"
 // import { OnboardingWizard } from "./onboarding-wizard"
 // import { useOnboarding } from "@/contexts/onboarding-context"
 import { LiveButton } from "@/components/live-button"
@@ -49,6 +51,7 @@ interface Development {
   industry: string
   date: string
   product: string
+  source?: string
 }
 
 interface ExperienceZoneItem {
@@ -114,7 +117,6 @@ export function HomeDashboard({
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const { toast } = useToast()
-  const [spotlightIndex, setSpotlightIndex] = useState(0)
   const [developments, setDevelopments] = useState<Development[]>([])
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
   // Commenting out onboarding popup code
@@ -179,17 +181,6 @@ export function HomeDashboard({
     fetchDevelopments()
   }, [])
 
-  useEffect(() => {
-    if (developments.length === 0) return;
-    
-    // Only start the interval after developments are loaded
-    const interval = setInterval(() => {
-      setSpotlightIndex((prevIndex) => (prevIndex + 1) % developments.length)
-    }, 14000) // 14-second rotation interval
-    
-    return () => clearInterval(interval)
-  }, [developments.length])
-
   // Commenting out onboarding cleanup effect
   // useEffect(() => {
   //   return () => {
@@ -204,8 +195,8 @@ export function HomeDashboard({
       name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
-      color: theme === "dark" ? "hsl(43, 50%, 55%)" : "hsl(43, 50%, 75%)", // Golden yellow in both modes
-      description: "Wealth Radar and Insider Briefings - your daily 5-minute read to understand lifestyle and alternative wealth investment developments in the HNWI World.",
+      color: getCardColors(theme), // Secondary colors - dark gray for dark mode, light gray for light mode
+      description: "Wealth Radar and Insider Brief - your daily 5-minute read to understand lifestyle and alternative wealth investment developments in the HNWI World.",
       iconAnimation: pulseAnimation,
       live: true,
     },
@@ -213,7 +204,7 @@ export function HomeDashboard({
       name: "War Room",
       icon: Shield,
       route: "war-room",
-      color: theme === "dark" ? "hsl(43, 50%, 55%)" : "hsl(43, 50%, 75%)",
+      color: getCardColors(theme),
       description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -224,12 +215,17 @@ export function HomeDashboard({
   // Filter items based on business mode only (War Room will be shown in business mode)
   const visibleExperienceZone = experienceZone.filter(item => isBusinessMode || !item.businessOnly);
 
+  // Centralized heading style for all section titles
+  const sectionHeadingClass = `text-2xl md:text-3xl font-heading font-bold tracking-wide ${
+    theme === "dark" ? "text-white" : "text-black"
+  }`;
+
   const crownZoneItems = [
     {
       name: "Privé Exchange",
       icon: Store,
       route: "prive-exchange",
-      color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
+      color: getCardColors(theme),
       description: "Exclusive marketplace for HNWI offering off-market investment opportunities and institutional alternatives.",
       iconAnimation: pulseAnimation,
       live: true,
@@ -238,7 +234,7 @@ export function HomeDashboard({
       name: "Crown Vault",
       icon: Vault,
       route: "crown-vault",
-      color: theme === "dark" ? "hsl(165, 46%, 45%)" : "hsl(165, 46%, 75%)",
+      color: getCardColors(theme),
       description: "High-secure legacy vault with discrete succession planning and encrypted asset custody for generational wealth preservation.",
       iconAnimation: pulseAnimation,
       live: true,
@@ -250,7 +246,7 @@ export function HomeDashboard({
       name: "Social Hub",
       icon: Users,
       route: "social-hub",
-      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)",
+      color: getCardColors(theme),
       description: "Hub of essential events that HNWIs should attend throughout the year ensuring you're at the right place and right time.",
       iconAnimation: pulseAnimation,
       live: true,
@@ -268,7 +264,7 @@ export function HomeDashboard({
       name: "Playbook Store",
       icon: BookOpen,
       route: "play-books",
-      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)",
+      color: getCardColors(theme),
       description: "Curated playbooks from global institutions and ultra-high-net-worth family office leaders.",
       iconAnimation: pulseAnimation,
       businessOnly: true,
@@ -277,7 +273,7 @@ export function HomeDashboard({
       name: "Tactics Lab",
       icon: Beaker,
       route: "strategy-engine",
-      color: theme === "dark" ? "hsl(43, 50%, 52%)" : "hsl(43, 50%, 72%)", // Golden yellow in both modes
+      color: getCardColors(theme), // Secondary colors - dark gray for dark mode, light gray for light mode
       description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
       iconAnimation: pulseAnimation,
       beta: true,
@@ -337,112 +333,118 @@ export function HomeDashboard({
         twitterTitle="HNWI Chronicles - What the world's top 1% realise before markets know"
         twitterDescription="Institutional intelligence. Off-market access. Generational continuity."
       />
+      {/* Welcome Section */}
+      <div className="mb-4">
+        <h1 className={`text-2xl font-bold leading-tight ${theme === "dark" ? "text-white" : "text-black"}`}>
+          Welcome back, <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>{user.firstName}</span>
+        </h1>
+        <p className="text-muted-foreground text-base leading-tight mt-1">Your wealth intelligence dashboard</p>
+      </div>
+
       <div className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
-        <Card className="overflow-hidden bg-card text-card-foreground font-body">
+        <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground">
           <CardHeader>
-            <div className="flex items-center space-x-2">
-              <Diamond className="w-6 h-6 text-primary" />
-              <Heading2 className="text-2xl md:text-3xl font-heading font-bold tracking-wide text-card-foreground">
-                Elite Pulse
-              </Heading2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-2">
+                <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                <Heading2 className={sectionHeadingClass}>
+                  Elite Pulse
+                </Heading2>
+              </div>
+              <LiveButton />
             </div>
-            <Lead className="font-body font-regular tracking-wide text-base md:text-sm">Your Daily Dose of Wealth Insights</Lead>
+            <Lead className="font-body font-regular tracking-wide text-base md:text-sm">What the world's top 1% realise before others know</Lead>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {developmentsLoading ? (
-                <div className="flex flex-col space-y-4">
-                  <div className="flex flex-col items-center justify-center min-h-[400px]">
-                    <CrownLoader size="lg" text="Loading your strategic insights..." />
-                  </div>
+          <CardContent className="px-0">
+            {developmentsLoading ? (
+              <div className="flex flex-col space-y-4 px-6">
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                  <CrownLoader size="lg" text="Loading your strategic insights..." />
                 </div>
-              ) : developments.length > 0 && (
-                <div className="flex flex-col space-y-4">
-                  {[0, 1, 2].map((offset) => {
-                    const index = (spotlightIndex + offset) % developments.length;
-                    return (
-                      <div key={`news-block-${offset}`} className="min-h-[179px] relative news-block card-stack-item">
-                        <div 
-                          className="p-3 md:p-4 rounded-3xl cursor-pointer transition-all duration-300 min-h-full"
-                          style={{
-                            background: theme === "dark" ? 
-                              "hsl(165, 46%, 8%)" : 
-                              `linear-gradient(135deg, hsl(165, 46%, 85%) ${offset * 8}%, hsl(165, 46%, 75%))`,
-                            backdropFilter: "blur(12px)",
-                            color: theme === "dark" ? "white" : "#2c2144"
-                          }}
-                          onClick={(e) => handleNavigate(e, "strategy-vault", developments[index].id)}
-                        >
-                          <AnimatePresence mode="wait" initial={false}>
-                            <motion.div
-                              key={`card-content-${developments[index].id}-${spotlightIndex}`}
-                              initial={{ 
-                                rotateX: 90,
-                                opacity: 0
-                              }}
-                              animate={{ 
-                                rotateX: 0,
-                                opacity: 1
-                              }}
-                              exit={{ 
-                                rotateX: -90,
-                                opacity: 0
-                              }}
-                              transition={{ 
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 30,
-                                delay: offset * 0.1
-                              }}
-                              className="flex flex-col h-full"
-                              style={{
-                                transformOrigin: "center center"
-                              }}
-                            >
-                              <h3 className="text-base md:text-lg font-semibold">
-                                {developments[index].title}
-                              </h3>
-                              <p className="text-sm md:text-base mt-1 mb-2 flex-grow">
-                                {developments[index].description}
-                              </p>
-                              <div className="flex justify-between items-end mt-auto">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="bg-primary/80 text-white dark:text-white text-sm md:text-xs shadow-[0_8px_16px_rgba(0,0,0,0.3)] rounded-full transform hover:-translate-y-0.5 transition-all hover:shadow-[0_10px_20px_rgba(0,0,0,0.4)]">
-                                    {developments[index].industry}
-                                  </Badge>
-                                  <div className="text-sm md:text-base font-bold whitespace-nowrap bg-black/10 dark:bg-white/10 px-2 py-0.5 rounded-md inline-block">
-                                    {new Date(developments[index].date).toLocaleDateString("en-US", {
-                                      month: "long",
-                                      day: "numeric",
-                                      year: "numeric"
-                                    })}
-                                  </div>
-                                </div>
-                                <div className="cta-button">
-                                  <div className="clickable-arrow">
-                                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                                  </div>
-                                </div>
-                              </div>
-                            </motion.div>
-                          </AnimatePresence>
+              </div>
+            ) : developments.length > 0 && (
+              <div className="px-6">
+                {/* Elite Pulse - Horizontal Cards Layout */}
+                <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
+                  {developments.slice(0, 10).map((development, index) => (
+                    <motion.div
+                      key={`elite-pulse-${development.id}`}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.6, delay: index * 0.1 }}
+                      className="flex-shrink-0 w-80 h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2"
+                      style={{
+                        ...getMetallicCardStyle(theme).style,
+                        position: "relative",
+                        overflow: "hidden"
+                      }}
+                      onClick={(e) => handleNavigate(e, "strategy-vault", development.id)}
+                    >
+                      <div className="flex flex-col">
+                        {/* Top row with badge and date */}
+                        <div className="flex justify-between items-center mb-3">
+                          <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                            {development.industry}
+                          </PremiumBadge>
+                          
+                          <div className={`text-xs font-medium ${
+                            theme === "dark" 
+                              ? "text-gray-200" 
+                              : "text-gray-700"
+                          }`}>
+                            {new Date(development.date).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric"
+                            })}
+                          </div>
+                        </div>
+                        
+                        {/* Heading */}
+                        <h3 className={`text-lg font-black mb-3 ${
+                          theme === "dark" ? "text-primary" : "text-black"
+                        }`}>
+                          {development.title}
+                        </h3>
+                        
+                        {/* Body */}
+                        <p className={`text-sm mb-4 font-medium leading-relaxed flex-grow ${
+                          theme === "dark" ? "text-gray-200" : "text-gray-700"
+                        }`}>
+                          {development.description}
+                        </p>
+                        
+                        {/* Bottom row with Read More and Source */}
+                        <div className="flex justify-between items-center">
+                          <div className={`text-sm font-bold hover:underline cursor-pointer ${
+                            theme === "dark" ? "text-primary" : "text-black"
+                          }`}>
+                            Read More
+                          </div>
+                          {development.source && (
+                            <div className={`text-xs font-medium ${
+                              theme === "dark" ? "text-gray-400" : "text-gray-600"
+                            }`}>
+                              Source: {development.source}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
+                    </motion.div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* The Foundry Section */}
         {visibleExperienceZone.length > 0 && (
-          <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <Hammer className="w-6 h-6 text-primary" />
-                <Heading2 className="text-2xl md:text-3xl font-heading font-bold tracking-wide text-card-foreground">
+                <Hammer className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                <Heading2 className={sectionHeadingClass}>
                   The Foundry
                 </Heading2>
               </div>
@@ -459,18 +461,18 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                      className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
                       style={{
-                        background: item.color,
+                        ...getMetallicCardStyle(theme).style,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
                       <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
+                          <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
                           {item.beta && (
-                            <Badge variant="secondary" className="ml-1 badge-beta">
+                            <Badge variant="secondary" className="ml-1 badge-primary">
                               Beta
                             </Badge>
                           )}
@@ -479,13 +481,8 @@ export function HomeDashboard({
                           {typeof item.description === "string" ? item.description : item.description}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center w-full mb-4 mt-2">
-                        {item.live && (
-                          <div>
-                            <LiveButton />
-                          </div>
-                        )}
-                        <div className="flex items-center ml-auto">
+                      <div className="flex justify-end items-center w-full mb-4 mt-2">
+                        <div className="flex items-center">
                           <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
                           <div className="clickable-arrow ml-1 flex-shrink-0">
                             <ArrowRight className="w-4 h-4" />
@@ -501,11 +498,11 @@ export function HomeDashboard({
         )}
 
         {/* Crown Zone Section */}
-        <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
+        <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Crown className="w-6 h-6 text-primary" />
-              <Heading2 className="text-2xl md:text-3xl font-heading font-bold tracking-wide text-card-foreground">
+              <Crown className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+              <Heading2 className={sectionHeadingClass}>
                 Crown Zone
               </Heading2>
             </div>
@@ -522,18 +519,18 @@ export function HomeDashboard({
                 >
                   <Button
                     onClick={(e) => handleNavigate(e, item.route)}
-                    className="w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                    className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
                     style={{
-                      background: item.color,
+                      ...getMetallicCardStyle(theme).style,
                       color: theme === "dark" ? "white" : "black",
                     }}
                   >
                     <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
                       <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
+                        <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
                         {item.beta && (
-                          <Badge variant="secondary" className="ml-1 badge-beta">
+                          <Badge variant="secondary" className="ml-1 badge-primary">
                             Beta
                           </Badge>
                         )}
@@ -564,11 +561,11 @@ export function HomeDashboard({
 
         {/* Founder's Desk Section */}
         {visibleFoundersDeskItems.length > 0 && (
-          <Card className={`mt-4 md:mt-6 "bg-card text-card-foreground"`}>
+          <Card className={`mt-4 md:mt-6 ${theme === "dark" ? "bg-tertiary border-none" : "bg-tertiary border-none"} text-card-foreground`}>
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <Briefcase className="w-6 h-6 text-primary" />
-                <Heading2 className="text-2xl md:text-3xl font-heading font-bold tracking-wide text-card-foreground">
+                <Briefcase className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                <Heading2 className={sectionHeadingClass}>
                   Founder's Desk
                 </Heading2>
               </div>
@@ -585,18 +582,18 @@ export function HomeDashboard({
                   >
                     <Button
                       onClick={(e) => handleNavigate(e, item.route)}
-                      className="w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left rounded-3xl transition-all duration-300 hover:scale-105 font-button font-semibold overflow-hidden"
+                      className={`w-full min-h-[294px] md:min-h-[347px] p-3 md:pt-4 md:px-8 md:pb-8 flex flex-col items-start justify-between text-left font-button font-semibold ${getMetallicCardStyle(theme).className}`}
                       style={{
-                        background: item.color,
+                        ...getMetallicCardStyle(theme).style,
                         color: theme === "dark" ? "white" : "black",
                       }}
                     >
                       <div className="flex flex-col items-start w-full overflow-hidden flex-1 pt-4">
                         <AnimatedIcon icon={item.icon} animation={item.iconAnimation} className="mb-2 mt-2" />
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Heading3 className="mb-2 mt-1 text-shadow text-card-foreground">{item.name}</Heading3>
+                          <Heading3 className={`mb-2 mt-1 ${theme === "dark" ? "text-primary" : "text-black font-bold"}`}>{item.name}</Heading3>
                           {item.beta && (
-                            <Badge variant="secondary" className="ml-1 badge-beta">
+                            <Badge variant="secondary" className="ml-1 badge-primary">
                               Beta
                             </Badge>
                           )}
@@ -605,13 +602,8 @@ export function HomeDashboard({
                           {item.description}
                         </div>
                       </div>
-                      <div className="flex justify-between items-center w-full mb-4 mt-2">
-                        {item.live && (
-                          <div>
-                            <LiveButton />
-                          </div>
-                        )}
-                        <div className="flex items-center ml-auto">
+                      <div className="flex justify-end items-center w-full mb-4 mt-2">
+                        <div className="flex items-center">
                           <span className="mr-1 md:mr-2 text-sm md:text-base font-button font-semibold">Explore</span>
                           <div className="clickable-arrow ml-1 flex-shrink-0">
                             <ArrowRight className="w-4 h-4" />

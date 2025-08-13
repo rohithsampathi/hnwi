@@ -31,21 +31,21 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         
-        // Primary - Dark Forest Green (#1D4D42)
+        // Primary - Premium Platinum/Carbon Steel for Light Mode, Dark Graphite with Gold for Dark Mode
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          50: "hsl(165, 46%, 98%)",   /* Very light green */
-          100: "hsl(165, 46%, 95%)",  /* Light green */
-          200: "hsl(165, 46%, 88%)",  /* Lighter green */
-          300: "hsl(165, 46%, 75%)",  /* Light medium green */
-          400: "hsl(165, 46%, 55%)",  /* Medium green */
-          500: "hsl(165, 46%, 45%)",  /* Medium dark green */
-          600: "hsl(165, 46%, 35%)",  /* Dark green */
-          700: "hsl(165, 46%, 25%)",  /* Darker green */
-          800: "hsl(165, 46%, 21%)",  /* Brand primary */
-          900: "hsl(165, 46%, 15%)",  /* Very dark green */
-          950: "hsl(165, 46%, 8%)",   /* Nearly black green */
+          50: "hsl(210, 20%, 98%)",   /* Very light platinum */
+          100: "hsl(210, 20%, 95%)",  /* Light platinum */
+          200: "hsl(210, 20%, 88%)",  /* Lighter steel */
+          300: "hsl(210, 20%, 75%)",  /* Light medium steel */
+          400: "hsl(210, 20%, 55%)",  /* Medium steel */
+          500: "hsl(210, 20%, 45%)",  /* Medium dark steel */
+          600: "hsl(210, 20%, 35%)",  /* Dark steel */
+          700: "hsl(210, 20%, 25%)",  /* Darker steel */
+          800: "hsl(210, 20%, 21%)",  /* Brand primary - carbon steel */
+          900: "hsl(210, 20%, 15%)",  /* Very dark graphite */
+          950: "hsl(210, 20%, 8%)",   /* Nearly black graphite */
         },
         
         // Secondary - Warm Gold (#C39A4C)
@@ -111,6 +111,37 @@ module.exports = {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+        },
+        
+        // Premium colors for Elite Pulse and high-end components
+        premium: {
+          // Light mode: Platinum/Carbon Steel
+          light: {
+            50: "hsl(210, 20%, 98%)",   /* Platinum white */
+            100: "hsl(210, 20%, 95%)",  /* Light platinum */
+            200: "hsl(210, 20%, 88%)",  /* Platinum silver */
+            300: "hsl(210, 20%, 75%)",  /* Carbon steel light */
+            400: "hsl(210, 20%, 55%)",  /* Carbon steel medium */
+            500: "hsl(210, 20%, 45%)",  /* Carbon steel */
+            600: "hsl(210, 20%, 35%)",  /* Dark carbon */
+            700: "hsl(210, 20%, 25%)",  /* Charcoal */
+            800: "hsl(210, 20%, 21%)",  /* Deep carbon */
+            900: "hsl(210, 20%, 15%)",  /* Graphite */
+          },
+          // Dark mode: Dark Graphite with Gold accents
+          dark: {
+            50: "hsl(43, 50%, 98%)",    /* Light gold hint */
+            100: "hsl(43, 50%, 95%)",   /* Soft gold */
+            200: "hsl(210, 15%, 88%)",  /* Light graphite with gold hint */
+            300: "hsl(43, 30%, 75%)",   /* Muted gold */
+            400: "hsl(43, 40%, 55%)",   /* Medium gold */
+            500: "hsl(43, 50%, 52%)",   /* Rich gold */
+            600: "hsl(210, 15%, 35%)",  /* Dark graphite */
+            700: "hsl(210, 15%, 25%)",  /* Darker graphite */
+            800: "hsl(210, 15%, 18%)",  /* Deep graphite */
+            900: "hsl(210, 15%, 12%)",  /* Very dark graphite */
+            950: "hsl(210, 15%, 8%)",   /* Nearly black graphite */
+          }
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

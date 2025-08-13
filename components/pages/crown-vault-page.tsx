@@ -5,16 +5,20 @@ import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PremiumBadge } from "@/components/ui/premium-badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useTheme } from "@/contexts/theme-context";
+import { Heading2 } from "@/components/ui/typography";
 import { 
   Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText, 
   Edit, X, Save, Building, DollarSign
 } from "lucide-react";
+import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors";
 
 // Component imports
 import { SummarySection } from "@/components/crown-vault/summary-section";
@@ -22,6 +26,7 @@ import { AssetsSection } from "@/components/crown-vault/assets-section";
 import { HeirsSection } from "@/components/crown-vault/heirs-section";
 import { ActivitySection } from "@/components/crown-vault/activity-section";
 import { AddAssetsModal } from "@/components/crown-vault/add-assets-modal";
+import { CrownLoader } from "@/components/ui/crown-loader";
 
 // API imports
 import {
@@ -64,6 +69,8 @@ const SkeletonCard = () => (
 );
 
 export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
+  const { theme } = useTheme();
+  
   // Core state
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<CrownVaultAsset[]>([]);
@@ -413,59 +420,57 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   // Loading state
   if (loading) {
     return (
-      <Layout title="Crown Vault" onNavigate={onNavigate}>
-        <div className="space-y-6">
-          {/* Header Skeleton */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="space-y-2">
-              <div className="h-8 w-48 bg-muted rounded animate-pulse" />
-              <div className="h-4 w-64 bg-muted rounded animate-pulse" />
-            </div>
-            <div className="h-10 w-32 bg-muted rounded animate-pulse" />
+      <Layout 
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Crown className={`h-6 w-6 ${getVisibleIconColor(theme)}`} />
+            <Heading2 className={getVisibleHeadingColor(theme)}>Crown Vault</Heading2>
           </div>
-
-          {/* Tabs Skeleton */}
-          <div className="flex gap-2 p-1 bg-muted/30 rounded-full max-w-fit">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-8 w-20 bg-muted rounded-full animate-pulse" />
-            ))}
-          </div>
-
-          {/* Content Skeleton */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          </div>
+          <PremiumBadge className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
+            <Shield className="h-3 w-3 mr-1" />
+            SECURED
+          </PremiumBadge>
+        </div>
+      }
+      onNavigate={onNavigate}
+    >
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <CrownLoader size="lg" text="Securing your Crown Vault..." />
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout title="Crown Vault" onNavigate={onNavigate}>
+    <Layout 
+      title={
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Crown className={`h-6 w-6 ${getVisibleIconColor(theme)}`} />
+            <Heading2 className={getVisibleHeadingColor(theme)}>Crown Vault</Heading2>
+          </div>
+          <PremiumBadge className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
+            <Shield className="h-3 w-3 mr-1" />
+            SECURED
+          </PremiumBadge>
+        </div>
+      }
+      onNavigate={onNavigate}
+    >
       <div className="space-y-6">
-        {/* Header Section */}
+        {/* Action Section */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="h-8 w-8 text-primary" />
-              <h1 className="text-2xl sm:text-3xl font-bold">Crown Vault</h1>
-              <Badge className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
-                <Shield className="h-3 w-3 mr-1" />
-                SECURED
-              </Badge>
-            </div>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-base leading-tight -mt-2">
               Your premium asset vault with enterprise-grade security and AI-powered management
             </p>
           </div>
         </div>
 
         {/* Tabs Navigation */}
-        <div className="flex flex-wrap justify-center sm:justify-start gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto sm:mx-0">
+        <div className="py-8">
+          <div className="flex flex-wrap justify-center gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto">
           {[
             { id: 'summary' as const, label: 'Summary' },
             { id: 'assets' as const, label: 'Assets' },
@@ -479,13 +484,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
               }}
               className={`flex-1 sm:flex-initial px-2 sm:px-4 md:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg'
+                  ? 'bg-primary text-white shadow-lg'
                   : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
               }`}
             >
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -527,14 +533,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-2xl font-bold text-primary">
+                          <span className={`text-2xl font-bold ${getVisibleTextColor(theme, 'accent')}`}>
                             {selectedHeir.name.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div>
                           <h2 className="text-2xl font-bold text-foreground">{selectedHeir.name}</h2>
-                          <Badge variant="secondary" className="mt-1">
-                            {selectedHeir.relationship}
+                          <Badge variant="secondary" className="mt-1 badge-primary">
+                            {selectedHeir.relationship.charAt(0).toUpperCase() + selectedHeir.relationship.slice(1).toLowerCase()}
                           </Badge>
                         </div>
                       </div>
@@ -603,11 +609,11 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                         <>
                           <div className="grid grid-cols-2 gap-4 mb-4">
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-primary">{heirAssets.length}</p>
+                              <p className={`text-2xl font-bold ${getVisibleTextColor(theme, 'accent')}`}>{heirAssets.length}</p>
                               <p className="text-sm text-muted-foreground">Assets</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-primary">{formatValue(totalValue)}</p>
+                              <p className={`text-2xl font-bold ${getVisibleTextColor(theme, 'accent')}`}>{formatValue(totalValue)}</p>
                               <p className="text-sm text-muted-foreground">Total Value</p>
                             </div>
                           </div>

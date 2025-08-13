@@ -35,10 +35,10 @@ export function FooterNavigation({
 
   return (
     <footer
-      className="bg-background py-2 md:py-4 px-2 md:px-4 border-t border-border"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background py-2 md:hidden border-t border-border"
     >
       <div className="max-w-7xl mx-auto w-full">
-        <nav className="flex justify-around mt-1 md:mt-2">
+        <nav className="flex justify-around mt-1">
           {visibleNavItems.map((item, index) => (
             <div
               key={index}

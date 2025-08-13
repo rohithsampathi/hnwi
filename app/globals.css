@@ -47,113 +47,103 @@ body {
 
 @layer base {
   :root {
-    /* Light Mode - Professional & Accessible */
-    --background: 0 0% 100%;                    /* Pure white */
-    --foreground: 0 0% 8%;                      /* Near black - high contrast */
-    --muted: 165 15% 96%;                       /* Very light green-gray */
-    --muted-foreground: 165 15% 45%;            /* Medium green-gray */
+    /* LIGHT MODE - 60-30-10 Color System */
+    /* TERTIARY (60%) - White backgrounds - dominant empty spaces */
+    --background: 0 0% 100%;                    /* Pure white - main background */
+    --popover: 0 0% 100%;                       /* White - popovers */
+    --sidebar-background: 0 0% 99%;             /* Almost white - sidebar */
     
-    /* Cards - Golden warmth for luxury feel */
-    --card: 43 30% 97%;                         /* Warm off-white */
-    --card-foreground: 0 0% 8%;                 /* Near black */
+    /* SECONDARY (30%) - Light gray cards and content areas */
+    --card: 0 0% 94%;                           /* Light gray - card backgrounds */
+    --muted: 0 0% 92%;                          /* Light gray - muted areas */
+    --border: 0 0% 88%;                         /* Medium light gray - borders */
+    --input: 0 0% 93%;                          /* Light gray - inputs */
+    --secondary: 0 0% 90%;                      /* Light gray - secondary elements */
+    --sidebar-accent: 0 0% 90%;                 /* Light gray - sidebar accents */
+    --sidebar-border: 0 0% 88%;                 /* Light gray - sidebar borders */
+    --sidebar-muted: 0 0% 91%;                  /* Light gray - sidebar muted */
     
-    /* Primary - Dark forest green for trust/finance */
-    --primary: 165 46% 21%;                     /* #1D4D42 */
-    --primary-foreground: 0 0% 98%;             /* White text on green */
+    /* PRIMARY (10%) - Black text for maximum contrast */
+    --primary: 0 0% 0%;                         /* Black for primary text */
+    --accent: 0 0% 0%;                          /* Black accent */
+    --ring: 0 0% 75%;                           /* Keep platinum focus rings */
+    --sidebar-primary: 0 0% 0%;                 /* Black sidebar primary */
+    --sidebar-ring: 0 0% 75%;                   /* Keep platinum sidebar focus */
     
-    /* Secondary - Warm gold for luxury/wealth */
-    --secondary: 43 50% 52%;                    /* #C39A4C */
-    --secondary-foreground: 0 0% 8%;            /* Dark text on gold */
-    
-    /* Interactive elements */
-    --accent: 165 46% 21%;                      /* Same as primary */
-    --accent-foreground: 0 0% 98%;              /* White text */
+    /* Text colors following hierarchy */
+    --foreground: 0 0% 10%;                     /* Very dark text on light backgrounds */
+    --card-foreground: 0 0% 10%;                /* Dark text on cards */
+    --primary-foreground: 0 0% 10%;             /* Dark text on platinum */
+    --secondary-foreground: 0 0% 10%;           /* Dark text on light platinum */
+    --accent-foreground: 0 0% 10%;              /* Dark text on platinum accents */
+    --muted-foreground: 0 0% 40%;               /* Medium gray text */
+    --popover-foreground: 0 0% 10%;             /* Dark text in popovers */
+    --sidebar-foreground: 0 0% 10%;             /* Dark text in sidebar */
+    --sidebar-primary-foreground: 0 0% 10%;     /* Dark text on platinum */
+    --sidebar-accent-foreground: 0 0% 20%;      /* Slightly lighter text */
+    --sidebar-muted-foreground: 0 0% 35%;       /* Medium gray sidebar text */
     
     /* Functional colors */
-    --destructive: 0 72% 51%;                   /* Red for errors */
-    --destructive-foreground: 0 0% 98%;         /* White text */
+    --destructive: 0 70% 50%;                   /* Red for errors */
+    --destructive-foreground: 0 0% 98%;         /* White text on red */
     
-    /* UI elements */
-    --border: 165 15% 88%;                      /* Light green-gray border */
-    --input: 0 0% 100%;                         /* White input background */
-    --ring: 165 46% 21%;                        /* Primary for focus rings */
+    /* Chart colors - platinum variants */
+    --chart-1: 0 0% 70%;                        /* Platinum */
+    --chart-2: 0 0% 60%;                        /* Dark platinum */
+    --chart-3: 0 0% 80%;                        /* Light platinum */
+    --chart-4: 0 0% 65%;                        /* Medium platinum */
+    --chart-5: 0 0% 75%;                        /* Main platinum */
     
-    /* Popover/Dropdown */
-    --popover: 0 0% 100%;                       /* White */
-    --popover-foreground: 0 0% 8%;              /* Near black */
-    
-    /* Charts - Varied but harmonious */
-    --chart-1: 165 46% 35%;                     /* Medium green */
-    --chart-2: 43 50% 45%;                      /* Medium gold */
-    --chart-3: 165 46% 55%;                     /* Light green */
-    --chart-4: 43 50% 65%;                      /* Light gold */
-    --chart-5: 165 30% 25%;                     /* Dark green */
-    
-    /* Layout elements */
-    --sidebar-background: 43 30% 98%;           /* Very light golden */
-    --sidebar-foreground: 0 0% 8%;              /* Near black */
-    --sidebar-primary: 165 46% 21%;             /* Primary green */
-    --sidebar-primary-foreground: 0 0% 98%;     /* White */
-    --sidebar-accent: 43 30% 94%;               /* Light golden */
-    --sidebar-accent-foreground: 0 0% 8%;       /* Near black */
-    --sidebar-border: 165 15% 85%;              /* Light border */
-    --sidebar-ring: 165 46% 21%;                /* Primary for focus */
-    
-    --radius: 0.75rem;                          /* Slightly more rounded */
+    --radius: 0.75rem;
   }
   
   .dark {
-    /* Dark Mode - High contrast, professional */
-    --background: 165 30% 6%;                   /* Very dark green-black */
-    --foreground: 0 0% 98%;                     /* Pure white - maximum contrast */
-    --muted: 165 20% 12%;                       /* Dark green-gray */
-    --muted-foreground: 0 0% 75%;               /* Light gray - better contrast */
+    /* DARK MODE - 60-30-10 Color System */
+    /* TERTIARY (60%) - Black backgrounds - dominant empty spaces */
+    --background: 0 0% 0%;                      /* Pure black - main background */
+    --popover: 0 0% 3%;                         /* Nearly black - popovers */
+    --sidebar-background: 0 0% 2%;              /* Almost black - sidebar */
     
-    /* Cards - Dark green for consistency with HNWI World */
-    --card: 165 46% 15%;                        /* Rich dark green */
-    --card-foreground: 0 0% 98%;                /* Pure white */
+    /* SECONDARY (30%) - Dark gray cards and content areas */
+    --card: 0 0% 12%;                           /* Dark gray - card backgrounds */
+    --muted: 0 0% 15%;                          /* Medium dark gray - muted areas */
+    --border: 0 0% 20%;                         /* Medium dark gray - borders */
+    --input: 0 0% 10%;                          /* Dark gray - inputs */
+    --secondary: 43 20% 25%;                    /* Dark gold-gray - secondary elements */
+    --sidebar-accent: 0 0% 18%;                 /* Medium dark gray - sidebar accents */
+    --sidebar-border: 0 0% 15%;                 /* Dark gray - sidebar borders */
+    --sidebar-muted: 0 0% 12%;                  /* Dark gray - sidebar muted */
     
-    /* Primary - Bright green for dark mode visibility */
-    --primary: 165 60% 55%;                     /* Much brighter green */
-    --primary-foreground: 165 60% 8%;           /* Dark green text */
+    /* PRIMARY (10%) - Gold tags/CTAs - focal points */
+    --primary: 43 74% 49%;                      /* Main gold #DAA520 */
+    --accent: 43 74% 49%;                       /* Gold accent */
+    --ring: 43 74% 49%;                         /* Gold focus rings */
+    --sidebar-primary: 43 74% 49%;              /* Gold sidebar primary */
+    --sidebar-ring: 43 74% 49%;                 /* Gold sidebar focus */
     
-    /* Secondary - Bright gold for dark mode */
-    --secondary: 43 75% 70%;                    /* Bright gold */
-    --secondary-foreground: 43 75% 10%;         /* Very dark gold text */
-    
-    /* Interactive elements */
-    --accent: 165 60% 55%;                      /* Bright green for visibility */
-    --accent-foreground: 165 60% 8%;            /* Dark text */
+    /* Text colors following hierarchy */
+    --foreground: 0 0% 98%;                     /* Pure white text on dark backgrounds */
+    --card-foreground: 0 0% 98%;                /* White text on dark cards */
+    --primary-foreground: 0 0% 10%;             /* Dark text on gold (contrast) */
+    --secondary-foreground: 0 0% 10%;           /* Dark text on light gold */
+    --accent-foreground: 0 0% 10%;              /* Dark text on gold accents */
+    --muted-foreground: 0 0% 70%;               /* Light gray text */
+    --popover-foreground: 0 0% 98%;             /* White text in popovers */
+    --sidebar-foreground: 0 0% 98%;             /* White text in sidebar */
+    --sidebar-primary-foreground: 0 0% 10%;     /* Dark text on gold */
+    --sidebar-accent-foreground: 0 0% 90%;      /* Light text on dark accents */
+    --sidebar-muted-foreground: 0 0% 60%;       /* Medium gray sidebar text */
     
     /* Functional colors */
-    --destructive: 0 65% 55%;                   /* Lighter red for dark mode */
-    --destructive-foreground: 0 0% 98%;         /* White text */
+    --destructive: 0 70% 55%;                   /* Lighter red for dark mode */
+    --destructive-foreground: 0 0% 98%;         /* White text on red */
     
-    /* UI elements */
-    --border: 165 20% 25%;                      /* Medium green-gray border */
-    --input: 165 25% 12%;                       /* Slightly lighter dark input */
-    --ring: 165 60% 55%;                        /* Bright green for focus */
-    
-    /* Popover/Dropdown */
-    --popover: 165 30% 12%;                     /* Dark green */
-    --popover-foreground: 0 0% 98%;             /* Pure white */
-    
-    /* Charts - Bright variants for visibility */
-    --chart-1: 165 60% 60%;                     /* Bright green */
-    --chart-2: 43 75% 75%;                      /* Bright gold */
-    --chart-3: 165 60% 70%;                     /* Very bright green */
-    --chart-4: 43 75% 80%;                      /* Very bright gold */
-    --chart-5: 165 50% 50%;                     /* Medium bright green */
-    
-    /* Layout elements */
-    --sidebar-background: 43 40% 10%;           /* Rich dark golden */
-    --sidebar-foreground: 0 0% 98%;             /* Pure white */
-    --sidebar-primary: 165 60% 55%;             /* Bright green */
-    --sidebar-primary-foreground: 165 60% 8%;   /* Dark green */
-    --sidebar-accent: 43 40% 18%;               /* Medium golden accent */
-    --sidebar-accent-foreground: 0 0% 98%;      /* Pure white */
-    --sidebar-border: 165 20% 22%;              /* Medium border */
-    --sidebar-ring: 165 60% 55%;                /* Bright green focus */
+    /* Chart colors - gold variants */
+    --chart-1: 43 74% 49%;                      /* Main gold */
+    --chart-2: 43 80% 60%;                      /* Bright gold */
+    --chart-3: 43 70% 40%;                      /* Dark gold */
+    --chart-4: 43 75% 55%;                      /* Medium bright gold */
+    --chart-5: 43 65% 35%;                      /* Very dark gold */
   }
 }
 
@@ -165,9 +155,9 @@ body {
     @apply bg-background text-foreground;
   }
   
-  /* Standardize border radius & styles across the app - UPDATED TO BE MORE ROUNDED */
+  /* Standardize border radius & styles across the app - CLEAN BUSINESS STANDARD */
   .rounded-lg, .rounded-xl {
-    border-radius: 1.5rem !important;
+    border-radius: 0.5rem !important;
   }
   
   .rounded-full {
@@ -180,7 +170,7 @@ body {
   .card,
   [class*="rounded"],
   div[class*="bg-"] {
-    border-radius: 1.5rem !important;
+    border-radius: 0.5rem !important;
   }
   
   /* Calendar day cells should be rectangular */
@@ -308,7 +298,7 @@ body {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  box-shadow: none;
 }
 
 .clickable-arrow::after {
@@ -325,7 +315,7 @@ body {
 
 .clickable-arrow:hover {
   transform: scale(1.1) translateY(-3px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }
 
 .clickable-arrow:hover::after {
@@ -362,18 +352,18 @@ a:hover svg[stroke="currentColor"][height][width],
   transition: transform 0.2s ease;
 }
 
-/* Add 3D drop shadows to buttons and cards */
+/* Remove all shadows from buttons and cards */
 .card {
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: none !important;
 }
 
 .btn, button {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none !important;
   transition: all 0.3s ease;
 }
 
 .btn:hover, button:hover {
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: none !important;
   transform: translateY(-3px);
 }
 
@@ -393,13 +383,80 @@ footer nav button, footer nav div {
 
 /* Enhanced Beta badge styling */
 .badge-beta {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: none !important;
   transition: all 0.3s ease;
 }
 
 .badge-beta:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
   transform: translateY(-3px);
+}
+
+/* Theme-aware badge styling */
+:root .badge-primary {
+  background-color: hsl(0 0% 10% / 0.1) !important;
+  color: hsl(0 0% 20%) !important;
+  border: 1px solid hsl(0 0% 10% / 0.2) !important;
+}
+
+:root .badge-primary:hover {
+  background-color: hsl(0 0% 10% / 0.15) !important;
+  color: hsl(0 0% 10%) !important;
+  border: 1px solid hsl(0 0% 10% / 0.3) !important;
+}
+
+.dark .badge-primary {
+  background-color: hsl(43 74% 49% / 0.2) !important;
+  color: hsl(43 74% 49%) !important;
+  border: 1px solid hsl(43 74% 49% / 0.3) !important;
+}
+
+.dark .badge-primary:hover {
+  background-color: hsl(43 74% 49% / 0.3) !important;
+  color: hsl(43 74% 49%) !important;
+  border: 1px solid hsl(43 74% 49% / 0.5) !important;
+}
+
+/* Enhanced asset badge styling for light/dark themes */
+:root .badge-asset {
+  border: 2px solid hsl(0 0% 20% / 0.3) !important;
+  background: linear-gradient(to right, hsl(0 0% 20% / 0.1), hsl(0 0% 20% / 0.05)) !important;
+  color: hsl(0 0% 20%) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root .badge-asset:hover {
+  border: 2px solid hsl(0 0% 20% / 0.5) !important;
+  background: linear-gradient(to right, hsl(0 0% 20% / 0.15), hsl(0 0% 20% / 0.1)) !important;
+}
+
+.dark .badge-asset {
+  border: 2px solid hsl(43 74% 49% / 0.3) !important;
+  background: linear-gradient(to right, hsl(43 74% 49% / 0.1), hsl(43 74% 49% / 0.05)) !important;
+  color: hsl(43 74% 49%) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .badge-asset:hover {
+  border: 2px solid hsl(43 74% 49% / 0.5) !important;
+  background: linear-gradient(to right, hsl(43 74% 49% / 0.2), hsl(43 74% 49% / 0.1)) !important;
+}
+
+/* Theme-aware link styling */
+:root .link-primary {
+  color: hsl(0 0% 30%) !important;
+}
+
+:root .link-primary:hover {
+  color: hsl(0 0% 10%) !important;
+}
+
+.dark .link-primary {
+  color: hsl(43 74% 49%) !important;
+}
+
+.dark .link-primary:hover {
+  color: hsl(43 74% 60%) !important;
 }
 
 /* Add a style for gradient button used in login/splash screens */

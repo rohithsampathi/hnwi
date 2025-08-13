@@ -195,13 +195,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-md bg-card shadow-lg backdrop-blur-sm rounded-3xl p-6 md:p-8 mt-8"
-              style={{
-                boxShadow:
-                  theme === "dark"
-                    ? "0 15px 35px rgba(156,163,175,0.3), 0 8px 20px rgba(156,163,175,0.2), 0 4px 10px rgba(156,163,175,0.1)"
-                    : "0 15px 35px rgba(75,85,99,0.3), 0 8px 20px rgba(75,85,99,0.2), 0 4px 10px rgba(75,85,99,0.1)",
-              }}
+              className="w-full max-w-md bg-card backdrop-blur-sm rounded-3xl p-6 md:p-8 mt-8"
             >
               <div className="flex flex-col items-center mb-6">
                 <Image
@@ -213,8 +207,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                   style={{ width: '80px', height: '80px' }}
                   priority
                 />
-                <Heading2 className="text-3xl font-bold font-heading text-center text-card-foreground">
-                  Welcome Back
+                <Heading2 className="text-3xl font-bold font-heading text-center">
+                  <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Welcome Back</span>
                 </Heading2>
               </div>
 
@@ -244,16 +238,20 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400" />
+                      <EyeOff className="h-5 w-5 text-muted-foreground" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400" />
+                      <Eye className="h-5 w-5 text-muted-foreground" />
                     )}
                   </button>
                 </div>
 
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
-                <Button type="submit" className="w-full h-12 text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105" disabled={isLoading}>
+                <Button type="submit" className={`w-full h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  theme === "dark" 
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-black text-white hover:bg-black/90"
+                }`} disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-1 md:mr-2 h-4 w-4 animate-spin" />
@@ -282,147 +280,147 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               <div className="relative overflow-hidden w-full h-20">
                 <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
                   {/* Security badges with larger sizing for 55" display */}
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
                       alt="SOC 2"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
                       alt="ISO"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
                       alt="PCI DSS"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
                       alt="GDPR"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
                       alt="CCPA"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
                       alt="AES-256"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
                       alt="Zero-Trust"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                   
                   {/* Duplicate set for seamless loop */}
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
                       alt="SOC 2"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
                       alt="ISO"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
                       alt="PCI DSS"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
                       alt="GDPR"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
                       alt="CCPA"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
                       alt="AES-256"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
                       alt="Zero-Trust"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                 </div>
               </div>
@@ -432,7 +430,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
             <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
               <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-                A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className="font-semibold text-secondary">Market Unwinded AI</span>
+                A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
               </Paragraph>
               <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
                 © 2025 All Rights Reserved. HNWI Chronicles.
@@ -500,8 +498,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             </motion.div>
 
             <Heading1 className="text-3xl sm:text-5xl mb-4 text-foreground">
-              <span className="text-primary">HNWI</span>{" "}
-              <span className="text-secondary">CHRONICLES</span>
+              <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
+              <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
             </Heading1>
 
             <Lead className="mb-8 text-muted-foreground">Built for UHNWI and HNWI to build their legacy and chronicles</Lead>
@@ -510,7 +508,11 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               {/* Login button */}
               <Button
                 onClick={handleLoginClick}
-                className="w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                className={`w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  theme === "dark" 
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-black text-white hover:bg-black/90"
+                }`}
               >
                 Log In
               </Button>
@@ -518,7 +520,11 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               {/* Join HNWI button */}
               <Button
                 onClick={() => window.open('https://www.hnwichronicles.com/hnwi-world#pricing', '_blank')}
-                className="w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+                className={`w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  theme === "dark" 
+                    ? "bg-[hsl(43_74%_49%_/_0.2)] text-[hsl(43_74%_49%)] border border-[hsl(43_74%_49%_/_0.3)] hover:bg-[hsl(43_74%_49%_/_0.3)] hover:border-[hsl(43_74%_49%_/_0.5)]"
+                    : "bg-[hsl(0_0%_10%_/_0.1)] text-[hsl(0_0%_20%)] border border-[hsl(0_0%_10%_/_0.2)] hover:bg-[hsl(0_0%_10%_/_0.15)] hover:text-[hsl(0_0%_10%)] hover:border-[hsl(0_0%_10%_/_0.3)]"
+                }`}
               >
                 Join HNWI
               </Button>
@@ -537,147 +543,147 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               <div className="relative overflow-hidden w-full h-20">
                 <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
                   {/* Security badges with larger sizing for 55" display */}
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
                       alt="SOC 2"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
                       alt="ISO"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
                       alt="PCI DSS"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
                       alt="GDPR"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
                       alt="CCPA"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
                       alt="AES-256"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
                       alt="Zero-Trust"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                   
                   {/* Duplicate set for seamless loop */}
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
                       alt="SOC 2"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
                       alt="ISO"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ISO 27001</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
                       alt="PCI DSS"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">PCI DSS</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
                       alt="GDPR"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">GDPR</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
                       alt="CCPA"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">CCPA</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
                       alt="AES-256"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">AES-256</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
                   </div>
-                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-white/95 backdrop-blur-sm rounded-lg border border-white/30 shadow-md">
+                  <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
                     <Image
                       src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
                       alt="Zero-Trust"
                       width={24}
                       height={24}
-                      className="h-5 w-5 object-contain opacity-80 mr-2"
+                      className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
                     />
-                    <span className="text-slate-800 font-bold text-sm tracking-tight">ZERO-TRUST</span>
+                    <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
                   </div>
                 </div>
               </div>
@@ -688,7 +694,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
           <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className="font-semibold text-secondary">Market Unwinded AI</span>
+              A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
             </Paragraph>
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
               © 2025 All Rights Reserved. HNWI Chronicles.
