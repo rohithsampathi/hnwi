@@ -156,7 +156,7 @@ export function IndustryTrends() {
       const data: TimeSeriesResponse = await secureApi.post(`/api/industry-trends/time-series`, {
         time_range: timeRange,
         include_developments: true
-      }, true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes cache for industry trends
+      }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache for industry trends
 
       if (data.data.length === 0) {
         setError("No industry data available for the selected time range.")

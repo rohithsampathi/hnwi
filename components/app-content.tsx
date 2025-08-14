@@ -20,7 +20,6 @@ import { StrategyVaultPage } from "./pages/strategy-vault-page"
 import { PlaybookPage } from "./pages/playbook-page"
 import { PriveExchangePage } from "./pages/prive-exchange-page"
 import { CalendarPage } from "./pages/calendar-page"
-import { PlaybookStorePage } from "./pages/playbook-store-page"
 import { PlayBooksPage } from "./pages/playbooks-page"
 import { InvestScanPage } from "./pages/invest-scan-page"
 import { OpportunityPage } from "./pages/opportunity-page"
@@ -726,8 +725,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           />
         )
 
-      case "play-books":
-        return <PlaybookStorePage onNavigate={handleNavigation} userEmail={user?.email || ""} userData={user} />
 
       case "playbook":
         return currentPlaybookId ? (

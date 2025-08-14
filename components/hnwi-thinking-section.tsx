@@ -40,7 +40,7 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
       const data = await secureApi.post('/api/strategic-analysis', { 
         query, 
         time_range: duration 
-      })
+      }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache
       setAnalysisResult(data)
     } catch (error) {
       console.error("Error fetching analysis:", error)

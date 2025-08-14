@@ -22,8 +22,8 @@ export function AuthPopup({
   isOpen, 
   onClose, 
   onSuccess,
-  title = "Session Expired",
-  description = "Due to inactivity, your secure line has been logged out. Login again to restore secure access."
+  title = "Private Line Disconnected",
+  description = "Your encrypted connection has timed out. Restore access to continue monitoring intelligence."
 }: AuthPopupProps) {
   const { theme } = useTheme()
   const { toast } = useToast()
@@ -54,8 +54,8 @@ export function AuthPopup({
         }
         
         toast({
-          title: "Welcome back!",
-          description: "You have been successfully signed in.",
+          title: "Secure access restored",
+          description: "Intelligence feed reconnected. You haven't missed anything critical.",
         })
         
         // Reset form

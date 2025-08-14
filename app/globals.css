@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Golden Dollar Scroll Styling */
+@import url("../styles/golden-scroll.css");
+
 body {
   font-family: "Trojan Pro", Arial, Helvetica, sans-serif;
 }
@@ -279,6 +282,18 @@ body {
   }
   .news-block:last-child {
     margin-bottom: 0;
+  }
+  
+  /* Mobile header stickiness fix */
+  header[class*="fixed"] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 50 !important;
+    width: 100vw !important;
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
   }
   
   /* Mobile dropdown fixes */

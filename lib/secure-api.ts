@@ -78,7 +78,7 @@ export const CacheControl = {
   },
   
   // Force refresh data after mutations by clearing cache and fetching fresh data
-  async refreshUserData(userId: string, secureApi: any): Promise<{
+  async refreshUserData(userId: string, apiClient: any): Promise<{
     assets: any[],
     heirs: any[],
     stats: any
@@ -88,9 +88,9 @@ export const CacheControl = {
     
     // Fetch fresh data in parallel
     const [freshAssets, freshHeirs, freshStats] = await Promise.all([
-      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
-      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
-      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null)
+      apiClient.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      apiClient.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      apiClient.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null)
     ]);
     
     return {
@@ -319,11 +319,11 @@ export const secureApiCall = async (
 
 // Secure API methods
 export const secureApi = {
-  async post(endpoint: string, data: any, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
-    const { enableCache = false, cacheDuration = 300000 } = cacheOptions || {}; // 5 minutes default for POST
+  async post(endpoint: string, data: any, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number; cacheKey?: string }): Promise<any> {
+    const { enableCache = false, cacheDuration = 300000, cacheKey: customCacheKey } = cacheOptions || {}; // 5 minutes default for POST
     
-    // Create cache key based on endpoint + data for POST requests
-    const cacheKey = enableCache ? `${endpoint}:${JSON.stringify(data)}` : null;
+    // Create cache key based on custom key or endpoint + data for POST requests
+    const cacheKey = enableCache ? (customCacheKey || `${endpoint}:${JSON.stringify(data)}`) : null;
     
     if (enableCache && cacheKey) {
       const cached = fastCache.get(cacheKey);

@@ -42,7 +42,7 @@ export function WorldMapInvestScan() {
   const handleTalkToConcierge = (opportunity: (typeof regions)[0]["opportunities"][0]) => {
     toast({
       title: "Concierge Notified",
-      description: `Our concierge has been notified about your interest in ${opportunity.title}. They will contact you shortly.`,
+      description: `Private access request submitted for ${opportunity.title}. Expect contact within 4 hours.`,
       duration: 5000,
     })
   }

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react"
 
 type BusinessModeContextType = {
   isBusinessMode: boolean
@@ -39,7 +39,7 @@ export function BusinessModeProvider({ children }: { children: React.ReactNode }
     }
   }, [isBusinessMode, isInitialized]);
 
-  const toggleBusinessMode = () => {
+  const toggleBusinessMode = useCallback(() => {
     setIsBusinessMode((prev) => !prev)
     setShowBanner(true)
     
@@ -47,10 +47,17 @@ export function BusinessModeProvider({ children }: { children: React.ReactNode }
     setTimeout(() => {
       setShowBanner(false)
     }, 5000)
-  }
+  }, [])
+
+  // Memoize context value to prevent unnecessary rerenders
+  const contextValue = useMemo(() => ({
+    isBusinessMode,
+    toggleBusinessMode,
+    showBanner
+  }), [isBusinessMode, toggleBusinessMode, showBanner])
 
   return (
-    <BusinessModeContext.Provider value={{ isBusinessMode, toggleBusinessMode, showBanner }}>
+    <BusinessModeContext.Provider value={contextValue}>
       {children}
     </BusinessModeContext.Provider>
   )

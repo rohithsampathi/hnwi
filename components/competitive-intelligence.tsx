@@ -40,7 +40,7 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
         page_size: 100, // Set to maximum allowed page size
         sort_by: "date",
         sort_order: "desc",
-      }, true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes cache for developments
+      }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache for developments
       const allDevelopments = data.developments || []
       setDevelopments(allDevelopments)
     } catch (error: any) {

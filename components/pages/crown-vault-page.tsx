@@ -466,31 +466,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   };
 
 
-  // Loading state
-  if (loading) {
-    return (
-      <Layout 
-      title={
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <Crown className={`h-6 w-6 ${getVisibleIconColor(theme)}`} />
-            <Heading2 className={getVisibleHeadingColor(theme)}>Crown Vault</Heading2>
-          </div>
-          <PremiumBadge className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
-            <Shield className="h-3 w-3 mr-1" />
-            SECURED
-          </PremiumBadge>
-        </div>
-      }
-      onNavigate={onNavigate}
-    >
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <CrownLoader size="lg" text="Securing your Crown Vault..." />
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout 
       title={
@@ -512,42 +487,48 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-muted-foreground text-base leading-tight -mt-2">
-              Your premium asset vault with enterprise-grade security and AI-powered management
+              Where dynasties secure their legacy. Reserved for bloodlines that transcend market cycles.
             </p>
           </div>
         </div>
 
-        {/* Tabs Navigation */}
-        <div className="py-8">
-          <div className="flex flex-wrap justify-center gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto">
-          {[
-            { id: 'summary' as const, label: 'Summary' },
-            { id: 'assets' as const, label: 'Assets' },
-            { id: 'heirs' as const, label: 'Heirs' },
-            { id: 'activity' as const, label: 'Activity' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-              }}
-              className={`flex-1 sm:flex-initial px-2 sm:px-4 md:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
-                activeTab === tab.id
-                  ? 'bg-primary text-white shadow-lg'
-                  : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <CrownLoader size="lg" text="Encrypting generational assets..." />
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Tabs Navigation */}
+            <div className="py-8">
+              <div className="flex flex-wrap justify-center gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto">
+                {[
+                  { id: 'summary' as const, label: 'Summary' },
+                  { id: 'assets' as const, label: 'Assets' },
+                  { id: 'heirs' as const, label: 'Heirs' },
+                  { id: 'activity' as const, label: 'Activity' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                    }}
+                    className={`flex-1 sm:flex-initial px-2 sm:px-4 md:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Tab Content */}
-        {renderTabContent()}
+            {/* Tab Content */}
+            {renderTabContent()}
 
-        {/* Modals */}
-        <AddAssetsModal
+            {/* Modals */}
+            <AddAssetsModal
           isAddModalOpen={isAddModalOpen}
           setIsAddModalOpen={setIsAddModalOpen}
           rawText={rawText}
@@ -559,8 +540,8 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           processingPhase={processingPhase}
         />
 
-        {/* Heir Detail Modal */}
-        <Dialog open={isHeirDetailOpen} onOpenChange={setIsHeirDetailOpen}>
+            {/* Heir Detail Modal */}
+            <Dialog open={isHeirDetailOpen} onOpenChange={setIsHeirDetailOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader className="flex flex-row items-center justify-between">
               <DialogTitle className="text-xl font-semibold">Heir Details</DialogTitle>
@@ -714,11 +695,11 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           </DialogContent>
         </Dialog>
 
-        {/* Heir Edit Modal */}
-        <Dialog open={editingHeir !== null} onOpenChange={() => {
-          setEditingHeir(null);
-          setEditingHeirData(null);
-        }}>
+            {/* Heir Edit Modal */}
+            <Dialog open={editingHeir !== null} onOpenChange={() => {
+              setEditingHeir(null);
+              setEditingHeirData(null);
+            }}>
           <DialogContent className="max-w-lg">
             <DialogHeader className="flex flex-row items-center justify-between">
               <DialogTitle className="text-xl font-semibold flex items-center gap-2">
@@ -828,7 +809,9 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
               </form>
             )}
           </DialogContent>
-        </Dialog>
+            </Dialog>
+          </>
+        )}
       </div>
     </Layout>
   );

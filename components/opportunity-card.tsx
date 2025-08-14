@@ -4,6 +4,8 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Opportunity } from "@/lib/api";
+import { useTheme } from "@/contexts/theme-context";
+import { getMetallicCardStyle } from "@/lib/colors";
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -16,8 +18,14 @@ export function OpportunityCard({
   onReadMore, 
   showNewRibbon = false 
 }: OpportunityCardProps) {
+  const { theme } = useTheme();
+  const metallicStyle = getMetallicCardStyle(theme);
+  
   return (
-    <Card className="bg-card flex flex-col relative">
+    <Card 
+      className={`${metallicStyle.className} flex flex-col relative border-none`}
+      style={metallicStyle.style}
+    >
       {/* New Ribbon */}
       {showNewRibbon && (
         <div className="absolute top-2 right-2 z-10">

@@ -1,6 +1,6 @@
 // lib/api.ts
 
-import { SecureAPI, secureApi, CacheControl } from "@/lib/secure-api"
+import { secureApi } from "@/lib/secure-api"
 
 // Helper function to check if error is authentication-related
 const isAuthError = (error: any): boolean => {
@@ -39,10 +39,7 @@ export interface CryptoResponse {
 
 export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse> {
   try {
-    const data: CryptoResponse = await SecureAPI.secureJsonFetch(
-      SecureAPI.buildUrl(`/api/financial/crypto`, { time_range: timeRange }),
-      { enableCache: true, cacheDuration: 180000 } // 3 minutes for market data
-    )
+    const data: CryptoResponse = await secureApi.get(`/api/financial/crypto?time_range=${timeRange}`, true, { enableCache: true, cacheDuration: 180000 })
     return data
   } catch (error) {
     throw error
@@ -73,10 +70,7 @@ export interface SocialEvent {
 
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
-    const data = await SecureAPI.secureJsonFetch(
-      SecureAPI.buildUrl(`/api/events/`),
-      { enableCache: true, cacheDuration: 300000 } // 5 minutes for social events
-    )
+    const data = await secureApi.get('/api/events/', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for social events
     return data.events.map((event: any) => ({
       id: event.id,
       name: event.name,
@@ -130,10 +124,7 @@ export interface Opportunity {
 
 export async function getOpportunities(): Promise<Opportunity[]> {
   try {
-    const data = await SecureAPI.secureJsonFetch(
-      SecureAPI.buildUrl(`/api/opportunities`),
-      { enableCache: true, cacheDuration: 300000 } // 5 minutes for investment opportunities
-    );
+    const data = await secureApi.get('/api/opportunities', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for investment opportunities
     return data as Opportunity[];
   } catch (error) {
     console.error('Failed to fetch opportunities from backend:', error);
@@ -266,7 +257,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     // Call backend API directly for assets using authenticated client with 10-minute caching
-    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
+    // Backend gets user_id from authentication context
+    const data = await secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: true, cacheDuration: 600000 });
     const assets = data.assets || data || [];
     
     // Ensure each asset has proper structure
@@ -307,10 +299,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     }
     
     // Fetch stats, heirs, and assets in parallel with 10-minute caching for optimal UX
+    // Backend gets user_id from authentication context
     const [statsData, heirsData, assetsData] = await Promise.all([
-      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
-      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
-      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
+      secureApi.get('/api/crown-vault/stats', true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
+      secureApi.get('/api/crown-vault/heirs', true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
     ]);
 
     if (!statsData) {
@@ -365,8 +358,9 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Call backend API directly using authenticated client with 10-minute caching  
-    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
+    // Call backend API directly using authenticated client with 10-minute caching
+    // Backend gets user_id from authentication context  
+    const data = await secureApi.get('/api/crown-vault/heirs', true, { enableCache: true, cacheDuration: 600000 });
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);
@@ -400,23 +394,83 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
 export async function processCrownVaultAssetsBatch(
   rawText: string,
   context?: string,
-  ownerId?: string
+  ownerId?: string,
+  structuredData?: any
 ): Promise<BatchAssetResponse & { refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
-    // Call backend API directly for asset batch processing using authenticated client
-    const batchResult = await secureApi.post(`/api/crown-vault/assets/batch?owner_id=${userId}`, {
-      raw_text: rawText,
-      context: context || ''
-    });
     
-    // Get fresh data after successful batch processing
-    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    // Backend expects array format for batch processing
+    // Support both raw_text and structured_data in the same request
+    const assetData: any = {
+      raw_text: rawText
+    };
+    
+    if (context) {
+      assetData.context = context;
+    }
+    
+    if (structuredData) {
+      assetData.structured_data = structuredData;
+    }
+    
+    const batchData = [assetData];
+    
+    // Call backend API directly for asset batch processing using authenticated client
+    // Backend gets user_id from authentication context, not query param
+    const batchResult = await secureApi.post('/api/crown-vault/assets/batch', batchData);
+    
+    // Get fresh data after successful batch processing (cache-busting)
+    const refreshedData = await Promise.all([
+      secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: false }),
+      secureApi.get('/api/crown-vault/heirs', true, { enableCache: false }),
+      secureApi.get('/api/crown-vault/stats', true, { enableCache: false })
+    ]);
     
     return { ...batchResult, refreshedData };
+  } catch (error) {
+    throw error;
+  }
+}
+
+// New function for creating a single asset with full format support
+export async function createCrownVaultAsset(
+  assetData: {
+    raw_text?: string;
+    structured_data?: {
+      name: string;
+      asset_type: 'stocks' | 'bonds' | 'real_estate' | 'crypto' | 'other';
+      value: number;
+      currency?: string;
+      location?: string;
+      account_number?: string;
+      contact?: string;
+      growth_rate?: number;
+      maturity_date?: string;
+      notes?: string;
+      unit_count?: number;
+      unit_type?: string;
+      cost_per_unit?: number;
+    };
+    context?: string;
+    heir_ids?: string[];
+  },
+  ownerId?: string
+): Promise<string & { refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
+  try {
+    const userId = ownerId || getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated. Please log in to access Crown Vault.');
+    }
+    
+    // Call backend API directly for single asset creation
+    const assetId = await secureApi.post('/api/crown-vault/assets', assetData);
+    
+    // Return the created asset ID - cache will auto-refresh on next request
+    return assetId;
   } catch (error) {
     throw error;
   }
@@ -449,10 +503,8 @@ export async function createHeir(
     }, {} as any);
     
     // Use backend API directly for heir creation using authenticated client
-    const data = await secureApi.post(`/api/crown-vault/heirs?owner_id=${userId}`, filteredData);
-    
-    // Get fresh data after successful creation
-    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    // Backend gets user_id from authentication context
+    const data = await secureApi.post('/api/crown-vault/heirs', filteredData);
     
     // Transform backend response to match frontend interface
     const heir = {
@@ -465,7 +517,7 @@ export async function createHeir(
       created_at: data.created_at || new Date().toISOString()
     };
     
-    return { heir, refreshedData };
+    return heir;
   } catch (error) {
     throw error;
   }
@@ -498,10 +550,10 @@ export async function updateHeir(
       return acc;
     }, {} as any);
     
-    const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, filteredData);
+    const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}`, filteredData);
     
-    // Get fresh data after successful update
-    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    // Return updated heir data - cache will auto-refresh on next request
+    return data;
     
     const heir = {
       id: data.heir?.id || heirId,
@@ -525,10 +577,10 @@ export async function deleteHeir(heirId: string, ownerId?: string): Promise<{ re
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
-    await secureApi.delete(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`);
+    await secureApi.delete(`/api/crown-vault/heirs/${heirId}`);
     
-    // Get fresh data after successful deletion
-    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    // Deletion successful - cache will auto-refresh on next request
+    const refreshedData = { assets: [], heirs: [], stats: null };
     
     return { refreshedData };
   } catch (error) {
@@ -547,11 +599,11 @@ export async function updateAssetHeirs(
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Backend needs current user ID as query parameter for authentication and ownership validation
-    const data = await secureApi.put(`/api/crown-vault/assets/${assetId}/heirs?owner_id=${userId}`, heirIds);
+    // Backend gets user_id from authentication context for ownership validation
+    const data = await secureApi.put(`/api/crown-vault/assets/${assetId}/heirs`, heirIds);
     
-    // Get fresh data after successful asset heir update
-    const refreshedData = await CacheControl.refreshUserData(userId, secureApi);
+    // Return updated data - cache will auto-refresh on next request
+    return data;
     
     return {
       success: data.success || true,
@@ -561,5 +613,67 @@ export async function updateAssetHeirs(
     };
   } catch (error) {
     throw error;
+  }
+}
+
+// Analytics and Member Stats
+export interface MemberAnalytics {
+  total_members: number;
+  active_members_24h: number;
+  current_online: number;
+  regions: {
+    [key: string]: number;
+  };
+}
+
+export async function getMemberAnalytics(): Promise<MemberAnalytics> {
+  try {
+    const data = await secureApi.get('/api/analytics/members', true, { 
+      enableCache: true, 
+      cacheDuration: 60000 // 1-minute cache for real-time feel
+    });
+    
+    return {
+      total_members: data.total_members || 0,
+      active_members_24h: data.active_members_24h || 0,
+      current_online: data.current_online || 0,
+      regions: data.regions || {}
+    };
+  } catch (error) {
+    // Fallback to reasonable defaults if analytics unavailable
+    return {
+      total_members: 0,
+      active_members_24h: 0,
+      current_online: 0,
+      regions: {}
+    };
+  }
+}
+
+// Real-time activity tracking
+export interface ActivityStats {
+  page_viewers: number;
+  recent_actions: number;
+  trending_content: string[];
+}
+
+export async function getPageActivity(page: string): Promise<ActivityStats> {
+  try {
+    const data = await secureApi.get(`/api/analytics/activity/${page}`, true, { 
+      enableCache: true, 
+      cacheDuration: 30000 // 30-second cache for activity data
+    });
+    
+    return {
+      page_viewers: data.page_viewers || 0,
+      recent_actions: data.recent_actions || 0,
+      trending_content: data.trending_content || []
+    };
+  } catch (error) {
+    return {
+      page_viewers: 0,
+      recent_actions: 0,
+      trending_content: []
+    };
   }
 }

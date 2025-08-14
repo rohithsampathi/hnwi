@@ -158,10 +158,10 @@ export const getMetallicCardStyle = (theme: ColorTheme) => {
     style: {
       background: theme === "dark" 
         ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
-        : "linear-gradient(135deg, #f8f8f8 0%, #e0e0e0 25%, #ffffff 50%, #e0e0e0 75%, #f8f8f8 100%)",
+        : "linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 25%, #f0f0f0 50%, #d5d5d5 75%, #e8e8e8 100%)",
       border: theme === "dark" 
         ? "2px solid rgba(255, 255, 255, 0.1)" 
-        : "2px solid rgba(0, 0, 0, 0.1)",
+        : "2px solid rgba(0, 0, 0, 0.06)",
       boxShadow: "none",
       backdropFilter: "blur(8px)",
       color: theme === "dark" ? "white" : "#1a1a1a",
@@ -226,6 +226,26 @@ export const getSubtleCardStyle = (theme: ColorTheme) => {
         ? "2px solid rgba(255,255,255,0.1)"
         : "2px solid rgba(0,0,0,0.1)",
       boxShadow: "none"
+    }
+  };
+};
+
+// Selected card styles - Platinum for dark mode, Black metallic for light mode
+export const getSelectedCardStyle = (theme: ColorTheme) => {
+  return {
+    className: "rounded-xl cursor-pointer transition-all duration-300 relative overflow-hidden",
+    style: {
+      background: theme === "dark" 
+        ? "linear-gradient(135deg, #E5E5E5 0%, #C0C0C0 25%, #F8F8F8 50%, #C0C0C0 75%, #E5E5E5 100%)" // Platinum gradient
+        : "linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 25%, #0a0a0a 50%, #2a2a2a 75%, #1a1a1a 100%)", // Black metallic gradient
+      border: theme === "dark" 
+        ? "2px solid rgba(192, 192, 192, 0.3)" // Platinum border
+        : "2px solid rgba(255, 255, 255, 0.2)", // Light border for black
+      boxShadow: theme === "dark"
+        ? "0 8px 32px rgba(192, 192, 192, 0.15)" // Platinum shadow
+        : "0 8px 32px rgba(0, 0, 0, 0.25)", // Black shadow
+      backdropFilter: "blur(12px)",
+      color: theme === "dark" ? "#1a1a1a" : "white", // Text color adjustment
     }
   };
 };

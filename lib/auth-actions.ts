@@ -7,7 +7,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { redirect } from "next/navigation"
 import { logger } from "./secure-logger"
 import { SessionManager } from "./session-manager"
-import { secureApi } from "./secure-api"
+import { FastSecureAPI } from "@/lib/fast-secure-api"
 
 // User interface to match what LoginPage.tsx expects
 interface User {
@@ -132,10 +132,10 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
     }
     
     try {
-      // Use secure API wrapper to prevent URL exposure (login doesn't require auth)
-      const data = await secureApi.post('/api/auth/login', loginData, false);
+      // Use fast secure API wrapper (login doesn't require auth)
+      const data = await FastSecureAPI.post('/api/auth/login', loginData, false);
       
-      // If we get here, the request was successful (secureApi throws on failure)
+      // If we get here, the request was successful
       
       // Validate that we received a user_id from the backend
       if (!data.user_id) {
@@ -210,8 +210,8 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
       // Prepare data for FastAPI user creation
       const fullName = `${userData.firstName} ${userData.lastName || ''}`.trim();
       
-      // Use secure API for user creation
-      const data = await secureApi.post('/api/users/profile', {
+      // Use fast secure API for user creation
+      const data = await FastSecureAPI.post('/api/users/profile', {
         email: userData.email,
         name: fullName,
         password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
@@ -379,8 +379,8 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         updateData[key as keyof typeof updateData] === undefined && delete updateData[key as keyof typeof updateData]
       );
 
-      // Use secure API for user update
-      const data = await secureApi.put(`/api/users/${userId}`, updateData);
+      // Use fast secure API for user update
+      const data = await FastSecureAPI.put(`/api/users/${userId}`, updateData);
         
         // Create updated user object preserving the correct ID
         const updatedUser: User = {

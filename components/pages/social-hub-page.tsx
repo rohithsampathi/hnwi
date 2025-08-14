@@ -28,7 +28,7 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
         <div className="w-full">
           <div className="mb-8 -mt-2">
             <p className="text-muted-foreground text-base leading-tight">
-              Connect with the elite HNWI community and explore exclusive events
+              Where influence meets capital. Invitation verification required.
             </p>
           </div>
           <SocialHub />

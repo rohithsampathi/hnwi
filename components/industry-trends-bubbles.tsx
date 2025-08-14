@@ -4,16 +4,38 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import * as d3 from "d3"
+import { motion, AnimatePresence } from "framer-motion"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { AnimatePresence } from "framer-motion"
-import { IndustryBubbleTooltip } from "./industry-bubble-tooltip"
+import { useTheme } from "@/contexts/theme-context"
+import { getMetallicCardStyle } from "@/lib/colors"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown, Minus, Building2, Coins, Bitcoin, CreditCard, PiggyBank, Store } from "lucide-react"
 
 interface IndustryTrend {
   industry: string
   total_count: number
+  trend?: 'up' | 'down' | 'stable'
+  change_percentage?: number
+}
+
+// Icon mapping for industries
+const getIndustryIcon = (industry: string) => {
+  const industryLower = industry.toLowerCase()
+  if (industryLower.includes('real estate') || industryLower.includes('property')) return Building2
+  if (industryLower.includes('finance') || industryLower.includes('banking')) return CreditCard
+  if (industryLower.includes('crypto') || industryLower.includes('blockchain')) return Bitcoin
+  if (industryLower.includes('metal') || industryLower.includes('commodity')) return Coins
+  if (industryLower.includes('equity') || industryLower.includes('investment')) return PiggyBank
+  return Store
+}
+
+// Activity intensity levels
+const getActivityLevel = (count: number, maxCount: number): 'low' | 'medium' | 'high' => {
+  const ratio = count / maxCount
+  if (ratio >= 0.7) return 'high'
+  if (ratio >= 0.3) return 'medium'
+  return 'low'
 }
 
 interface IndustryTrendsBubblesProps {
@@ -52,6 +74,7 @@ export function IndustryTrendsBubbles({
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+  const { theme } = useTheme()
   
   // Keep track of raw data for debugging
   const rawApiData = useRef<any[]>([])
@@ -74,7 +97,7 @@ export function IndustryTrendsBubbles({
       const result = await secureApi.post(`/api/industry-trends/time-series`, {
         time_range: duration,
         include_developments: false
-      }, true, { enableCache: true, cacheDuration: 300000 }) // 5 minutes cache for industry trends
+      }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache for industry trends
       
       if (!result.data || !Array.isArray(result.data)) {
         throw new Error("Invalid API response format")
@@ -137,244 +160,49 @@ export function IndustryTrendsBubbles({
     fetchIndustryTrends()
   }, [fetchIndustryTrends])
 
-  // Visualization effect
-  useEffect(() => {
-    if (!containerRef.current || isLoading || industryTrends.length === 0) return
-    
-    const updateVisualization = () => {
-      // Clear previous visualization
-      d3.select(containerRef.current).selectAll("svg").remove()
-
-      const container = containerRef.current
-      const margin = { top: 20, right: 20, bottom: 20, left: 20 }
-      const width = container.clientWidth - margin.left - margin.right
-      const height = 400 - margin.top - margin.bottom
-
-      // Responsive bubble sizing
-      const minRadius = Math.min(36, width / 16.67)
-      const maxRadius = Math.min(96, width / 6.67)
-
-      // Create scale for bubble sizes
-      const radiusScale = d3
-        .scaleSqrt()
-        .domain([0, d3.max(industryTrends, (d) => d.total_count) || 0])
-        .range([minRadius, maxRadius])
-
-      const adjustedRadiusScale = (value: number) => Math.max(radiusScale(value) * 1.04, 24)
-
-      // Create SVG container
-      const svg = d3
-        .select(container)
-        .append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .style("pointer-events", "auto")
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`)
-
-      // Stats are now displayed directly in the HTML above the visualization
-      
-      // Set up force simulation
-      const simulation = d3
-        .forceSimulation(industryTrends)
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("charge", d3.forceManyBody().strength(-30))
-        .force(
-          "collide",
-          d3
-            .forceCollide()
-            .radius((d) => adjustedRadiusScale(d.total_count) + 10)
-            .strength(0.9)
-            .iterations(4)
-        )
-
-      // Show all trends initially, filtering will be handled by separate effect
-      const filteredTrends = industryTrends
-
-      // Create bubble groups
-      const bubbles = svg
-        .selectAll(".bubble")
-        .data(filteredTrends)
-        .enter()
-        .append("g")
-        .attr("class", "bubble")
-        .style("cursor", "pointer")
-
-      // Add circles to groups
-      const circles = bubbles
-        .append("circle")
-        .attr("r", (d) => adjustedRadiusScale(d.total_count))
-        .style("fill", (d) => getIndustryColor(d.industry))
-        .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))")
-        .style("cursor", "pointer")
-        .style("opacity", "0.95")
-
-      // Add event listeners to circles for center clicking
-      circles
-        .on("mouseover touchstart", (event, d) => {
-          event.preventDefault() // Prevent default touch behavior
-          const [x, y] = d3.pointer(event, container)
-          
-          // Apply hover effect
-          d3.select(event.currentTarget)
-            .transition()
-            .duration(200)
-            .style("filter", "drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35))")
-            .style("opacity", "1")
-            .attr("r", (d) => adjustedRadiusScale(d.total_count) * 1.05)
-            
-          setTooltipData({
-            industry: d.industry,
-            count: d.total_count,
-            x,
-            y,
-          })
-        })
-        .on("mouseout touchend", (event, d) => {
-          // Remove hover effect
-          d3.select(event.currentTarget)
-            .transition()
-            .duration(200)
-            .style("filter", "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))")
-            .style("opacity", "0.95")
-            .attr("r", (d) => adjustedRadiusScale(d.total_count))
-            
-          setTooltipData(null)
-        })
-        .on("click", (event, d) => {
-          event.stopPropagation()
-          const currentSelection = selectedIndustryRef.current
-          // Toggle selection like Opportunity Atlas does
-          if (currentSelection === d.industry) {
-            onBubbleClick("All") // Reset to show all industries
-          } else {
-            onBubbleClick(d.industry) // Select this industry
-          }
-        })
-
-      // Add text labels to bubbles
-      const textLabels = bubbles
-        .append("text")
-        .attr("dy", ".3em")
-        .style("text-anchor", "middle")
-        .style("fill", "white")
-        .style("font-weight", "bold")
-        .style("text-shadow", "0px 1px 3px rgba(0,0,0,0.7)")
-        .style("paint-order", "stroke")
-        .style("stroke", "rgba(0,0,0,0.3)")
-        .style("stroke-width", "1px")
-        .style("cursor", "pointer")
-        .each(function (d) {
-          const self = d3.select(this)
-          const words = d.industry.split(/\s+/)
-          const lines = []
-          let line = []
-          let lineNumber = 0
-          const lineHeight = 1.1
-          const fontSize = Math.min(adjustedRadiusScale(d.total_count) / 3, 24) // Increased max font size
-
-          self.style("font-size", `${fontSize}px`)
-
-          for (const word of words) {
-            const testLine = line.concat(word)
-            const testElem = self.append("tspan").text(testLine.join(" "))
-            const testWidth = testElem.node()?.getComputedTextLength() || 0
-
-            if (testWidth > adjustedRadiusScale(d.total_count) * 1.5 && line.length > 0) {
-              lines.push(line)
-              line = [word]
-              lineNumber++
-            } else {
-              line = testLine
-            }
-            testElem.remove()
-          }
-          if (line.length > 0) {
-            lines.push(line)
-            lineNumber++
-          }
-
-          const totalHeight = lineNumber * lineHeight * fontSize
-          const startY = -totalHeight / 2 + fontSize / 2
-
-          lines.forEach((lineWords, i) => {
-            self
-              .append("tspan")
-              .attr("x", 0)
-              .attr("y", startY + i * lineHeight * fontSize)
-              .text(lineWords.join(" "))
-          })
-        })
-        .on("click", (event, d) => {
-          event.stopPropagation()
-          const currentSelection = selectedIndustryRef.current
-          // Toggle selection like Opportunity Atlas does
-          if (currentSelection === d.industry) {
-            onBubbleClick("All") // Reset to show all industries
-          } else {
-            onBubbleClick(d.industry) // Select this industry
-          }
-        })
-
-      // Add pulsing animation
-      function pulse() {
-        circles
-          .transition()
-          .duration(1000)
-          .attr("r", (d) => adjustedRadiusScale(d.total_count) * 1.05)
-          .transition()
-          .duration(1000)
-          .attr("r", (d) => adjustedRadiusScale(d.total_count))
-          .on("end", pulse)
-      }
-
-      pulse()
-
-      // Update positions on simulation tick
-      simulation.nodes(industryTrends).on("tick", () => {
-        bubbles.attr("transform", (d) => {
-          const radius = adjustedRadiusScale(d.total_count)
-          d.x = Math.max(radius, Math.min(width - radius, d.x))
-          d.y = Math.max(radius, Math.min(height - radius, d.y))
-          return `translate(${d.x},${d.y})`
-        })
-      })
+  // Calculate max count for activity levels and sort for leaderboard
+  const maxCount = Math.max(...industryTrends.map(t => t.total_count), 1)
+  
+  // Sort industries by activity count (leaderboard order)
+  const sortedTrends = [...industryTrends].sort((a, b) => b.total_count - a.total_count)
+  
+  // Get leaderboard position styling
+  const getLeaderboardStyling = (position: number) => {
+    switch (position) {
+      case 1:
+        return {
+          badge: '🥇',
+          glow: theme === 'dark' ? 'shadow-lg shadow-yellow-500/30' : 'shadow-lg shadow-yellow-400/30',
+          borderColor: 'border-yellow-500/50',
+          iconBg: 'bg-yellow-500/20',
+          iconColor: 'text-yellow-500'
+        }
+      case 2:
+        return {
+          badge: '🥈',
+          glow: theme === 'dark' ? 'shadow-md shadow-gray-400/20' : 'shadow-md shadow-gray-300/20',
+          borderColor: 'border-gray-400/50',
+          iconBg: 'bg-gray-400/20',
+          iconColor: 'text-gray-400'
+        }
+      case 3:
+        return {
+          badge: '🥉',
+          glow: theme === 'dark' ? 'shadow-md shadow-orange-500/20' : 'shadow-md shadow-orange-400/20',
+          borderColor: 'border-orange-500/50',
+          iconBg: 'bg-orange-500/20',
+          iconColor: 'text-orange-500'
+        }
+      default:
+        return {
+          badge: `#${position}`,
+          glow: '',
+          borderColor: 'border-border',
+          iconBg: 'bg-gray-500/20',
+          iconColor: 'text-gray-500'
+        }
     }
-
-    updateVisualization()
-
-    const handleResize = () => {
-      updateVisualization()
-      setTooltipData(null) // Hide tooltip on resize
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [industryTrends, isLoading, onBubbleClick, getIndustryColor])
-
-  // Separate effect to handle selectedIndustry changes without full re-render
-  useEffect(() => {
-    if (!containerRef.current || isLoading || industryTrends.length === 0) return
-    
-    const container = containerRef.current
-    const svg = d3.select(container).select("svg")
-    
-    if (svg.empty()) return // Wait for initial render
-    
-    const currentSelection = selectedIndustryRef.current
-    
-    // Update bubble visibility efficiently
-    svg.selectAll(".bubble")
-      .style("opacity", (d: any) => {
-        const shouldShow = currentSelection === "All" || d.industry === currentSelection
-        return shouldShow ? "1" : "0.1"
-      })
-      .style("pointer-events", (d: any) => {
-        const shouldShow = currentSelection === "All" || d.industry === currentSelection
-        return shouldShow ? "auto" : "none"
-      })
-    
-  }, [selectedIndustry, industryTrends, isLoading])
+  }
 
   // Handle manual refresh
   const handleRefresh = () => {
@@ -395,31 +223,240 @@ export function IndustryTrendsBubbles({
   // Get stats text for display
   const statsText = `${industryTrends.length} industries${lastUpdated ? ` • Updated: ${lastUpdated.toLocaleTimeString()}` : ''}`;
 
+  // Get selected industry data for right panel
+  const selectedIndustryData = industryTrends.find(t => t.industry === selectedIndustry)
+
   return (
-    <div className="w-full">
-      <div className="px-4">
-        {/* Don't render stats text here if renderStatsOutside is true */}
-        {!renderStatsOutside && (
-          <div className="text-xs text-muted-foreground mb-1">
-            {statsText}
+    <div className="w-full h-[calc(100vh-180px)]">
+      {/* Export stats for parent component */}
+      <div className="hidden">
+        <span id="industry-stats-text" data-stats={statsText}></span>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
+        {/* Left Panel: Market Heat Map */}
+        <div className="lg:col-span-2 h-full">
+          <div className="h-full flex flex-col">
+            <div className="flex-shrink-0 mb-4">
+              <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                Activity Leaderboard
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {industryTrends.length} sectors • {duration} leaders • Live tracking
+              </p>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 gap-3">
+                {sortedTrends.map((trend, index) => {
+                  const position = index + 1
+                  const IconComponent = getIndustryIcon(trend.industry)
+                  const activityLevel = getActivityLevel(trend.total_count, maxCount)
+                  const isSelected = selectedIndustry === trend.industry
+                  const metallicStyle = getMetallicCardStyle(theme)
+                  const leaderboardStyle = getLeaderboardStyling(position)
+                  
+                  return (
+                    <motion.div
+                      key={trend.industry}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.02 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Card
+                        className={`cursor-pointer transition-all duration-200 border ${
+                          isSelected 
+                            ? `border-primary ${theme === 'dark' ? 'shadow-lg shadow-primary/20' : 'shadow-lg shadow-primary/10'}` 
+                            : `${leaderboardStyle.borderColor} hover:border-primary/50`
+                        } ${leaderboardStyle.glow}`}
+                        style={metallicStyle.style}
+                        onClick={() => {
+                          if (selectedIndustry === trend.industry) {
+                            onBubbleClick("All")
+                          } else {
+                            onBubbleClick(trend.industry)
+                          }
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`p-2 rounded-lg ${
+                                activityLevel === 'high' 
+                                  ? 'bg-yellow-500/20' 
+                                  : activityLevel === 'medium'
+                                  ? 'bg-blue-500/20'
+                                  : 'bg-gray-500/20'
+                              }`}>
+                                <IconComponent className={`h-5 w-5 ${
+                                  activityLevel === 'high'
+                                    ? 'text-yellow-500'
+                                    : activityLevel === 'medium'
+                                    ? 'text-blue-500'
+                                    : 'text-gray-500'
+                                }`} />
+                              </div>
+                              <div>
+                                <h4 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                  {trend.industry}
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                  {trend.total_count} developments
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  activityLevel === 'high'
+                                    ? 'text-yellow-600 border-yellow-600/30'
+                                    : activityLevel === 'medium'
+                                    ? 'text-blue-600 border-blue-600/30'
+                                    : 'text-gray-600 border-gray-600/30'
+                                }`}
+                              >
+                                {activityLevel.toUpperCase()}
+                              </Badge>
+                              
+                              {trend.trend && (
+                                <div className="flex items-center">
+                                  {trend.trend === 'up' && <TrendingUp className="h-4 w-4 text-green-500" />}
+                                  {trend.trend === 'down' && <TrendingDown className="h-4 w-4 text-red-500" />}
+                                  {trend.trend === 'stable' && <Minus className="h-4 w-4 text-gray-500" />}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
-        )}
-        <div ref={containerRef} className="h-[400px] w-full relative">
-          {/* Export stats for parent component to use */}
-          <div className="hidden">{/* Used to pass data to the parent */}
-            <span id="industry-stats-text" data-stats={statsText}></span>
-          </div>
-          
-          <AnimatePresence>
-            {tooltipData && (
-              <IndustryBubbleTooltip
-                industry={tooltipData.industry}
-                count={tooltipData.count}
-                x={tooltipData.x}
-                y={tooltipData.y}
-              />
+        </div>
+
+        {/* Right Panel: Intelligence Briefing */}
+        <div className="lg:col-span-3 h-full">
+          <div className="h-full flex flex-col">
+            {selectedIndustryData ? (
+              <>
+                <div className="flex-shrink-0 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                        {selectedIndustryData.industry} Intelligence
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedIndustryData.total_count} active developments • {getActivityLevel(selectedIndustryData.total_count, maxCount)} activity
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => onBubbleClick("All")}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto">
+                  <div className="space-y-6">
+                    {/* Activity Overview */}
+                    <Card className="border-border">
+                      <CardContent className="p-4">
+                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                          Activity Overview
+                        </h4>
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                              {selectedIndustryData.total_count}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Developments</div>
+                          </div>
+                          <div>
+                            <div className={`text-2xl font-bold ${
+                              getActivityLevel(selectedIndustryData.total_count, maxCount) === 'high'
+                                ? 'text-yellow-500'
+                                : getActivityLevel(selectedIndustryData.total_count, maxCount) === 'medium'
+                                ? 'text-blue-500'
+                                : 'text-gray-500'
+                            }`}>
+                              {getActivityLevel(selectedIndustryData.total_count, maxCount).toUpperCase()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Activity Level</div>
+                          </div>
+                          <div>
+                            <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                              {Math.round((selectedIndustryData.total_count / maxCount) * 100)}%
+                            </div>
+                            <div className="text-xs text-muted-foreground">Market Share</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Opportunity Pipeline */}
+                    <Card className="border-border">
+                      <CardContent className="p-4">
+                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                          Opportunity Pipeline
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <div>
+                              <p className="text-sm font-medium">Available Opportunities</p>
+                              <p className="text-xs text-muted-foreground">Check Privé Exchange for curated deals</p>
+                            </div>
+                            <button
+                              onClick={() => window.location.href = '/prive-exchange'}
+                              className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 transition-colors"
+                            >
+                              View Deals
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <div>
+                              <p className="text-sm font-medium">Custom Requirements</p>
+                              <p className="text-xs text-muted-foreground">Connect with our concierge team</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                // Integrate with concierge system
+                                console.log(`Concierge request for ${selectedIndustryData.industry}`)
+                              }}
+                              className="px-3 py-1 border border-border rounded text-xs hover:bg-muted transition-colors"
+                            >
+                              Contact
+                            </button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <Store className={`h-12 w-12 mx-auto mb-4 ${theme === 'dark' ? 'text-primary' : 'text-black'}`} />
+                  <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                    Market Intelligence
+                  </h3>
+                  <p className="text-muted-foreground text-sm">
+                    Select an industry from the heat map to view detailed activity analysis and available opportunities.
+                  </p>
+                </div>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>

@@ -83,6 +83,15 @@ export function getIndustryColor(industry: string): string {
   return baseIndustryColors[industry] || generateConsistentColor(industry)
 }
 
+// Function to get mono color for industries based on theme
+export function getIndustryMonoColor(industry: string, theme: 'light' | 'dark'): string {
+  if (theme === 'dark') {
+    return '#DAA520' // Gold for dark mode
+  } else {
+    return '#000000' // Black for light mode
+  }
+}
+
 // Map of categories to Tailwind classes
 export const categoryToTailwind: Record<string, string> = {
   Jewelry: "bg-purple-600",

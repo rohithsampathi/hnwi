@@ -25,9 +25,9 @@ const LoadingComponent = () => {
 
   // Compact checklist items - 1 second total experience
   const checklistItems = [
-    "Secure access",
-    "Load intelligence", 
-    "Prepare insights",
+    "Verify credentials",
+    "Decrypt intelligence", 
+    "Load briefings",
     "Ready"
   ];
 
@@ -178,7 +178,7 @@ const LoadingComponent = () => {
           {/* Subtitle only */}
           <div>
             <p className="text-xl font-body text-foreground">
-              Brewing Knowledge & Ensuring a Secure Route
+              Connecting to Private Intelligence Network
             </p>
           </div>
           
@@ -255,9 +255,17 @@ const LoadingComponent = () => {
 };
 
 // Dynamically load the AppWrapper with client-side rendering only
-const AppWrapper = dynamic(() => import("@/components/app-wrapper"), { 
-  ssr: false
-})
+const AppWrapper = dynamic(
+  () => import("@/components/app-wrapper"),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingComponent />
+      </div>
+    )
+  }
+)
 
 export default function Home() {
   const [targetRoute, setTargetRoute] = useState<string | null>(null)

@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { PremiumBadge } from "@/components/ui/premium-badge"
 import { getMetallicCardStyle } from "@/lib/colors"
+import { GoldenScroll } from "@/components/ui/golden-scroll"
 import { Badge } from "@/components/ui/badge"
 import { Brain, TrendingUp, Target, AlertCircle, BarChart3, PieChart, Lightbulb } from "lucide-react"
 import { getMatteCardStyle } from "@/lib/colors"
@@ -28,6 +29,7 @@ import type React from "react"
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
+import { getMemberAnalytics, getPageActivity, type MemberAnalytics, type ActivityStats } from "@/lib/api"
 
 interface User {
   firstName: string
@@ -198,6 +200,8 @@ export function HomeDashboard({
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
   const [selectedDevelopment, setSelectedDevelopment] = useState<Development | null>(null)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+  const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   // Commenting out onboarding popup code
   // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
@@ -271,8 +275,30 @@ export function HomeDashboard({
     }
   }
 
+  // Fetch member analytics and activity data
+  const fetchAnalytics = async () => {
+    try {
+      const [analytics, activity] = await Promise.all([
+        getMemberAnalytics(),
+        getPageActivity('dashboard')
+      ]);
+      setMemberAnalytics(analytics);
+      setActivityStats(activity);
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+    }
+  };
+
   useEffect(() => {
-    fetchDevelopments()
+    fetchDevelopments();
+    fetchAnalytics();
+    
+    // Refresh analytics every 2 minutes for real-time feel
+    const analyticsInterval = setInterval(fetchAnalytics, 120000);
+    
+    return () => {
+      clearInterval(analyticsInterval);
+    };
   }, [])
 
   // Set first development as selected when developments load
@@ -314,15 +340,19 @@ export function HomeDashboard({
   //   }
   // }, [setIsFromSignupFlow])
 
-  // Time-based greeting function
+  // Time-based intelligence greeting function
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) {
-      return "Good Morning";
+    if (hour < 6) {
+      return "Late Night Brief";
+    } else if (hour < 12) {
+      return "Morning Intelligence";
     } else if (hour < 17) {
-      return "Good Afternoon";
+      return "Midday Update";
+    } else if (hour < 22) {
+      return "Evening Brief";
     } else {
-      return "Good Evening";
+      return "Night Watch";
     }
   };
 
@@ -372,57 +402,52 @@ export function HomeDashboard({
     <>
       <MetaTags
         title="HNWI Chronicles | Inside the Mind of Smart Wealth"
-        description="Institutional intelligence. Off-market access. Generational continuity. Join remaining founding members at $1000/year lifetime rate."
+        description="What the top 1% know before others catch up. Private intelligence that keeps you relevant in circles that matter."
         image="https://app.hnwichronicles.com/images/logo.png"
         url="https://app.hnwichronicles.com"
         ogTitle="HNWI Chronicles - What the world's top 1% realise before others know"
-        ogDescription="Institutional intelligence. Off-market access. Generational continuity. Global wealth intelligence for the global top 1%."
+        ogDescription="Private intelligence whispers for those who can't afford to be behind the curve. What insiders are quietly monitoring."
         twitterTitle="HNWI Chronicles - What the world's top 1% realise before markets know"
-        twitterDescription="Institutional intelligence. Off-market access. Generational continuity."
+        twitterDescription="Intelligence whispers that keep you three moves ahead. What you need to stay relevant."
       />
       {/* Welcome Section */}
       <div className="mb-4">
         <h1 className={`text-2xl font-bold leading-tight ${theme === "dark" ? "text-white" : "text-black"}`}>
           {getTimeBasedGreeting()}, <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>{user.firstName}</span>
         </h1>
-        <p className="text-muted-foreground text-base leading-tight mt-1">Your wealth intelligence dashboard</p>
+        <p className="text-muted-foreground text-base leading-tight mt-1">What keeps you three moves ahead while others catch up</p>
       </div>
 
-      <div ref={containerRef} className="space-y-6 md:space-y-8 max-w-7xl mx-auto w-full">
+      <div className="max-w-7xl mx-auto w-full h-[calc(100vh-140px)] overflow-hidden">
         {/* Two Column Layout */}
         {developmentsLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[500px]">
-            <CrownLoader size="lg" text="Loading strategic insights..." />
+            <CrownLoader size="lg" text="Securing your intelligence briefing..." />
           </div>
         ) : screenSize === 'mobile' ? (
-          // Mobile: Single column with original scrolling cards
-          <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground">
-            <CardHeader>
+          // Mobile: Single column with scrolling cards - fixed height
+          <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-[calc(100vh-200px)] flex flex-col">
+            <CardHeader className="flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                 <Heading2 className={sectionHeadingClass}>
-                  Elite Pulse
+                  Private Brief
                 </Heading2>
               </div>
-              <Lead className="font-body font-regular tracking-wide text-base md:text-sm">What the world's top 1% realise before others know</Lead>
+              <Lead className="font-body font-regular tracking-wide text-base md:text-sm">The whispers that keep you relevant in circles that matter</Lead>
             </CardHeader>
-            <CardContent className="px-0">
+            <CardContent className="px-0 flex-1 overflow-hidden">
               {developments.length > 0 && (
-                <div className="relative px-6">
-                  <div className="overflow-x-scroll overflow-y-hidden -mx-6 px-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <div 
-                      className="flex gap-4 pb-4"
-                      style={{
-                        width: 'max-content'
-                      }}
-                    >
+                <GoldenScroll maxHeight="calc(100vh - 280px)" className="px-6">
+                  <div className="space-y-4 pb-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {developments.map((development, index) => (
                         <motion.div
                           key={`elite-pulse-mobile-${development.id}`}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.6, delay: index * 0.1 }}
-                          className="flex-shrink-0 w-[75vw] h-[28rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
+                          className="w-full h-auto min-h-[20rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
                           style={{
                             ...getMetallicCardStyle(theme).style,
                             position: "relative",
@@ -431,12 +456,8 @@ export function HomeDashboard({
                           onClick={() => handleDevelopmentSelect(development)}
                         >
                           <div className="flex flex-col h-full">
-                            {/* Top row with badge and date */}
-                            <div className="flex justify-between items-center mb-3">
-                              <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
-                                {development.industry}
-                              </PremiumBadge>
-                              
+                            {/* Top row with date and industry - right aligned */}
+                            <div className="flex items-center justify-end gap-3 mb-3">
                               <div className={`text-xs font-medium ${
                                 theme === "dark" 
                                   ? "text-gray-200" 
@@ -448,6 +469,9 @@ export function HomeDashboard({
                                   day: "numeric"
                                 })}
                               </div>
+                              <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                                {development.industry}
+                              </PremiumBadge>
                             </div>
                             
                             {/* Heading */}
@@ -464,54 +488,64 @@ export function HomeDashboard({
                               {development.description}
                             </p>
                             
-                            {/* Bottom row with Read More and Source */}
+                            {/* Bottom row with Read More and Social Proof */}
                             <div className="flex justify-between items-center">
                               <div className={`text-sm font-bold hover:underline cursor-pointer ${
                                 theme === "dark" ? "text-primary" : "text-black"
                               }`}>
                                 Tap to Expand
                               </div>
-                              {development.source && (
-                                <div className={`text-xs font-medium ${
-                                  theme === "dark" ? "text-gray-400" : "text-gray-600"
-                                }`}>
-                                  Source: {development.source}
-                                </div>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {activityStats && activityStats.page_viewers > 3 && (
+                                  <div className={`text-xs font-medium ${
+                                    theme === "dark" ? "text-primary/60" : "text-black/60"
+                                  }`}>
+                                    {Math.min(activityStats.page_viewers, 25)} staying informed
+                                  </div>
+                                )}
+                                {development.source && (
+                                  <div className={`text-xs font-medium ${
+                                    theme === "dark" ? "text-gray-400" : "text-gray-600"
+                                  }`}>
+                                    {development.source}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </motion.div>
                       ))}
                     </div>
                   </div>
-                </div>
+                </GoldenScroll>
               )}
             </CardContent>
           </Card>
         ) : (
-          // Desktop/Tablet: Two column layout
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-180px)]">
+          // Desktop/Tablet: Two column layout with fixed height
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 h-[calc(100vh-200px)]">
             {/* Left Column - Expanded Insider Brief */}
-            <div className="md:col-span-1 lg:col-span-3 h-full">
-              <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-full flex flex-col">
-                <CardHeader className="flex-shrink-0 pb-3">
-                  <div className="flex items-center space-x-2">
-                    <Diamond className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                    <Heading2 className={`text-xl font-bold ${sectionHeadingClass}`}>
-                      Elite Pulse
-                    </Heading2>
-                  </div>
-                  <Lead className="font-body font-regular tracking-wide text-sm">What the world's top 1% realise before others know</Lead>
-                </CardHeader>
-                <CardContent className="px-0 flex-1 overflow-hidden">
-                  {selectedDevelopment ? (
-                    <div className="px-6 h-full flex flex-col">
+            <div className="md:col-span-1 lg:col-span-3 h-full flex flex-col">
+              <GoldenScroll maxHeight="calc(100vh - 250px)" className="h-full">
+                <Card className="font-body bg-transparent border-none text-card-foreground flex flex-col">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center space-x-2">
+                      <Diamond className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                      <Heading2 className={`text-xl font-bold ${sectionHeadingClass}`}>
+                        Private Brief
+                      </Heading2>
+                    </div>
+                    <Lead className="font-body font-regular tracking-wide text-sm">The whispers that keep you relevant in circles that matter</Lead>
+                  </CardHeader>
+                  <CardContent className="px-0 flex-1">
+                    {selectedDevelopment ? (
+                      <div className="px-6">
                       {(() => {
                         const analysis = formatAnalysis(selectedDevelopment.summary);
                         return (
-                          <>
-                            {/* Header with title and metadata - Fixed height */}
-                            <div className="flex-shrink-0 mb-2">
+                          <div className="flex flex-col space-y-2">
+                            {/* Header with title and metadata */}
+                            <div className="mb-2">
                               <div className="flex flex-col gap-2">
                                 {selectedDevelopment.product && (
                                   <Badge 
@@ -532,11 +566,7 @@ export function HomeDashboard({
                                   {selectedDevelopment.description}
                                 </p>
                                 
-                                <div className="flex justify-between items-center pt-1">
-                                  <PremiumBadge className="font-bold px-2 py-1 rounded-full text-xs">
-                                    {selectedDevelopment.industry}
-                                  </PremiumBadge>
-                                  
+                                <div className="flex items-center justify-end gap-3 pt-1">
                                   <div className={`text-xs font-medium ${
                                     theme === "dark" ? "text-gray-400" : "text-gray-600"
                                   }`}>
@@ -546,24 +576,24 @@ export function HomeDashboard({
                                       day: "numeric"
                                     })}
                                   </div>
+                                  <PremiumBadge className="font-bold px-2 py-1 rounded-full text-xs">
+                                    {selectedDevelopment.industry}
+                                  </PremiumBadge>
                                 </div>
                               </div>
                             </div>
 
                             {/* Content Area */}
-                            <div className="flex-1 space-y-2 overflow-y-auto">
+                            <div className="space-y-2">
                               {/* HByte Summary */}
-                              <div 
-                                className={`p-6 border rounded-xl ${getMatteCardStyle(theme).className}`}
-                                style={getMatteCardStyle(theme).style}
-                              >
+                              <div className="pb-2">
                                 <div className="flex items-center mb-4">
-                                  <div className="p-2 rounded-lg bg-primary/20 mr-3">
+                                  <div className="p-2 mr-3">
                                     <Brain className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                                   </div>
                                   <h4 className="text-xl font-bold">HByte Summary</h4>
                                 </div>
-                                <div className="text-sm leading-relaxed">
+                                <div className="text-sm leading-relaxed pl-2">
                                   <p className="font-medium">{analysis.summary}</p>
                                 </div>
                               </div>
@@ -720,23 +750,19 @@ export function HomeDashboard({
                                 const IconComponent = getSectionIcon(section.title)
                                 
                                 return (
-                                  <div 
-                                    key={`section-${index}`} 
-                                    className={`p-5 border rounded-xl ${getMatteCardStyle(theme).className}`}
-                                    style={getMatteCardStyle(theme).style}
-                                  >
-                                    <div className="flex items-center mb-3">
-                                      <div className="p-2 rounded-lg bg-primary/20 mr-3">
+                                  <div key={`section-${index}`} className="pb-2">
+                                    <div className="flex items-center mb-4">
+                                      <div className="p-2 mr-3">
                                         <IconComponent className={`h-4 w-4 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                                       </div>
-                                      <h5 className="font-bold text-base">{section.title}</h5>
+                                      <h5 className="font-bold text-lg">{section.title}</h5>
                                     </div>
                                     
-                                    <div className="space-y-2">
+                                    <div className="space-y-0 pl-2">
                                       {section.content.map((item, pIndex) => (
                                         <div key={`item-${pIndex}`} className="text-sm">
                                           {item.isBullet ? (
-                                            <div className="flex items-start py-1">
+                                            <div className="flex items-start py-0.5">
                                               <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
                                               <span 
                                                 className="leading-relaxed font-medium"
@@ -747,7 +773,7 @@ export function HomeDashboard({
                                             </div>
                                           ) : (
                                             <p 
-                                              className="leading-relaxed font-medium bg-primary/5 p-3 rounded-lg border-l-2 border-primary/30"
+                                              className="leading-relaxed font-medium"
                                               dangerouslySetInnerHTML={{
                                                 __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                               }}
@@ -762,15 +788,14 @@ export function HomeDashboard({
 
                               {/* Numerical Data */}
                               {selectedDevelopment.numerical_data && selectedDevelopment.numerical_data.length > 0 && (
-                                <div 
-                                  className={`p-5 rounded-xl border ${getMatteCardStyle(theme).className}`}
-                                  style={getMatteCardStyle(theme).style}
-                                >
-                                  <h4 className="text-lg font-semibold mb-4 flex items-center">
-                                    <BarChart3 className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                                    Numerical Data
-                                  </h4>
-                                  <div className="space-y-3">
+                                <div className="pb-2">
+                                  <div className="flex items-center mb-4">
+                                    <div className="p-2 mr-3">
+                                      <BarChart3 className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                    </div>
+                                    <h4 className="text-lg font-bold">Numerical Data</h4>
+                                  </div>
+                                  <div className="space-y-0 pl-2">
                                     {selectedDevelopment.numerical_data.map((item, index) => (
                                       <div key={`numerical-${index}`} className="flex items-start text-sm">
                                         <Lightbulb className={`h-4 w-4 mr-3 flex-shrink-0 mt-1 ${theme === "dark" ? "text-primary" : "text-black"}`} />
@@ -789,28 +814,43 @@ export function HomeDashboard({
                                 </div>
                               )}
                             </div>
-                          </>
+                          </div>
                         );
                       })()}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full px-6">
-                      <p className="text-muted-foreground text-center">Select a development from the right panel to view the full brief</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full px-6">
+                        <p className="text-muted-foreground text-center">Select intelligence from the right panel to view your private briefing</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </GoldenScroll>
             </div>
 
             {/* Right Column - Small Cards */}
             <div className="md:col-span-1 lg:col-span-2 h-full">
               <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-full flex flex-col">
                 <CardHeader className="flex-shrink-0 pb-2">
-                  <Lead className="font-body font-regular tracking-wide text-sm text-muted-foreground">Latest developments</Lead>
+                  <Lead className="font-body font-regular tracking-wide text-sm text-muted-foreground">
+                    {memberAnalytics ? (
+                      <>
+                        What {memberAnalytics.active_members_24h > 0 ? memberAnalytics.active_members_24h : 'insiders'} are quietly monitoring
+                        {memberAnalytics.current_online > 0 && (
+                          <span className="ml-2 inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" title={`${memberAnalytics.current_online} listening now`} />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        What insiders are quietly monitoring
+                        <span className="ml-2 inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Private intelligence" />
+                      </>
+                    )}
+                  </Lead>
                 </CardHeader>
                 <CardContent className="px-0 flex-1 overflow-hidden">
                   {developments.length > 0 ? (
-                    <div className="px-4 h-full overflow-y-auto space-y-4">
+                    <GoldenScroll maxHeight="calc(100vh - 280px)" className="px-4 space-y-4">
                       {developments.map((development, index) => (
                         <motion.div
                           key={`pulse-card-${development.id}`}
@@ -828,8 +868,8 @@ export function HomeDashboard({
                           onClick={() => handleDevelopmentSelect(development)}
                         >
                           <div className="flex flex-col space-y-3">
-                            {/* Industry Badge and Date */}
-                            <div className="flex justify-between items-start mb-2">
+                            {/* Category at left top, Date at right */}
+                            <div className="flex items-center justify-between gap-3 mb-2">
                               <PremiumBadge className="font-bold px-3 py-1.5 rounded-full text-sm">
                                 {development.industry}
                               </PremiumBadge>
@@ -869,10 +909,10 @@ export function HomeDashboard({
                           </div>
                         </motion.div>
                       ))}
-                    </div>
+                    </GoldenScroll>
                   ) : (
                     <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
-                      <p className="text-muted-foreground text-center text-sm">No developments available</p>
+                      <p className="text-muted-foreground text-center text-sm">No intelligence available. Stand by.</p>
                     </div>
                   )}
                 </CardContent>
@@ -884,6 +924,15 @@ export function HomeDashboard({
 
         {/* Commenting out onboarding wizard */}
         {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}
+      </div>
+      
+      {/* Subtle relevance reminder - Fixed at bottom */}
+      <div className="fixed bottom-4 left-0 right-0 text-center pointer-events-none z-10">
+        <p className={`text-xs font-medium ${
+          theme === "dark" ? "text-gray-500" : "text-gray-400"
+        }`}>
+          Intelligence advantage expires at market open. Stay ahead.
+        </p>
       </div>
     </>
   )

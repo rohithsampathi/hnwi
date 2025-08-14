@@ -110,7 +110,7 @@ export function InvestScanPage() {
         showBackButton
       >
         <div className="flex items-center justify-center h-[50vh]">
-          <CrownLoader size="lg" text="Loading investment opportunities..." />
+          <CrownLoader size="lg" text="Accessing private deal flow..." />
         </div>
       </Layout>
     )
@@ -128,7 +128,7 @@ export function InvestScanPage() {
         showBackButton
       >
         <div className="text-center p-8">
-          <h3 className="text-xl font-medium text-red-500 mb-2">Error Loading Data</h3>
+          <h3 className="text-xl font-medium text-red-500 mb-2">Intelligence Access Unavailable</h3>
           <p className="text-muted-foreground">{error}</p>
         </div>
       </Layout>

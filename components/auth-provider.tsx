@@ -1,33 +1,55 @@
 // components/auth-provider.tsx
 "use client"
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'
+import { secureApi } from "@/lib/secure-api"
 
 interface AuthContextType {
   user: any | null
   loading: boolean
+  refreshSession: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true })
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  loading: true,
+  refreshSession: async () => {}
+})
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionChecked, setSessionChecked] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/auth/session')
-      .then(res => res.json())
-      .then(data => {
-        setUser(data.user)
-        setLoading(false)
-      })
-      .catch(() => {
-        setLoading(false)
-      })
+  const refreshSession = useCallback(async () => {
+    try {
+      setLoading(true)
+      const data = await secureApi.get('/api/auth/session', false) // Don't require auth for session check
+      setUser(data.user)
+    } catch (error) {
+      setUser(null)
+    } finally {
+      setLoading(false)
+      setSessionChecked(true)
+    }
   }, [])
 
+  useEffect(() => {
+    // Only check session once on mount
+    if (!sessionChecked) {
+      refreshSession()
+    }
+  }, [sessionChecked, refreshSession])
+
+  // Memoize context value to prevent unnecessary rerenders
+  const contextValue = useMemo(() => ({
+    user,
+    loading,
+    refreshSession
+  }), [user, loading, refreshSession])
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

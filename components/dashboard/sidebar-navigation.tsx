@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { motion } from "framer-motion"
+import { getMemberAnalytics, type MemberAnalytics } from "@/lib/api"
 
 export function SidebarNavigation({
   onNavigate,
@@ -30,6 +31,7 @@ export function SidebarNavigation({
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [isMoreExpanded, setIsMoreExpanded] = useState(false)
   const [isTabletSize, setIsTabletSize] = useState(false)
+  const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
 
   // Detect tablet size - specific ranges for iPad devices
   useEffect(() => {
@@ -48,6 +50,23 @@ export function SidebarNavigation({
     return () => window.removeEventListener('resize', checkTabletSize)
   }, [])
 
+  // Fetch member analytics
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const analytics = await getMemberAnalytics();
+        setMemberAnalytics(analytics);
+      } catch (error) {
+        console.error('Failed to fetch member analytics:', error);
+      }
+    };
+    
+    fetchAnalytics();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchAnalytics, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Heartbeat animation for logo
   useEffect(() => {
     const interval = setInterval(() => {
@@ -64,38 +83,33 @@ export function SidebarNavigation({
       name: "HNWI World", 
       icon: Globe, 
       route: "strategy-vault",
-      description: "Wealth Radar and Insider Brief - your daily 5-minute read to understand lifestyle and alternative wealth investment developments in the HNWI World."
+      description: memberAnalytics ? 
+        `What ${memberAnalytics.active_members_24h} members are discussing privately` : 
+        "Private intelligence network"
     },
     { 
       name: "Crown Vault", 
       icon: Crown, 
       route: "crown-vault",
-      description: "High-secure legacy vault with discrete succession planning and encrypted asset custody for generational wealth preservation."
+      description: "Generational wealth architecture. Built for families that think in decades."
     },
     { 
       name: "Privé Exchange", 
       icon: Store, 
       route: "prive-exchange",
-      description: "Exclusive marketplace for HNWI offering off-market investment opportunities and institutional alternatives."
+      description: "Off-market opportunities. Member referrals only."
     },
     { 
       name: "Social Hub", 
       icon: Users, 
       route: "social-hub",
-      description: "Hub of essential events that HNWIs should attend throughout the year ensuring you're at the right place and right time."
+      description: "Where the right people gather. Invitation verification required."
     },
     { 
       name: "War Room", 
       icon: Shield, 
       route: "war-room",
       description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
-      businessOnly: true
-    },
-    { 
-      name: "Playbook Store", 
-      icon: BookOpen, 
-      route: "play-books",
-      description: "Curated playbooks from global institutions and ultra-high-net-worth family office leaders.",
       businessOnly: true
     },
     { 
@@ -130,7 +144,6 @@ export function SidebarNavigation({
     { name: "Social Hub", icon: Store, route: "social-hub" },
     ...(isBusinessMode ? [
       { name: "War Room", icon: Crown, route: "war-room" },
-      { name: "Playbook Store", icon: Store, route: "play-books" },
       { name: "Tactics Lab", icon: Crown, route: "strategy-engine" },
     ] : []),
     { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
@@ -151,7 +164,7 @@ export function SidebarNavigation({
       {/* iPad overlay when sidebar is expanded - only for tablet view */}
       {!isCollapsed && isTabletSize && (
         <div
-          className="fixed inset-0 z-30"
+          className="fixed inset-0 z-55"
           onClick={() => setIsCollapsed(true)}
         />
       )}
@@ -160,81 +173,56 @@ export function SidebarNavigation({
       <aside
         className={cn(
           "hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 flex-col",
-          isCollapsed ? "w-16 z-40" : "w-64",
-          // iPad-specific styling for overlay mode
-          !isCollapsed && isTabletSize ? "z-50" : "z-40"
+          isCollapsed ? "w-16" : "w-64"
         )}
         style={{
           height: isCollapsed ? '100vh' : 'auto',
           minHeight: '100vh',
-          overflow: 'visible'
+          overflow: 'visible',
+          zIndex: 9999
         }}
       >
-        {/* Header level - Logo and back button aligned with main header */}
+        {/* Logo at top */}
         <div 
-          className="flex flex-col justify-center px-4 border-b border-border bg-background flex-shrink-0"
-          style={{ height: `${Math.max(headerHeight, 80)}px` }}
+          className="flex items-center justify-center px-4 py-4 border-b border-border bg-background flex-shrink-0 cursor-pointer"
+          onClick={() => onNavigate("dashboard")}
         >
-          {/* Back button if needed (only when expanded) */}
-          {!isCollapsed && showBackButton && (
-            <div className="mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("back")}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                <span className="text-sm">Back</span>
-              </Button>
-            </div>
-          )}
-          
-          {/* Logo - always visible at header level */}
-          <div 
-            className={cn(
-              "flex items-center cursor-pointer",
-              isCollapsed ? "justify-center" : "justify-start"
-            )}
-            onClick={() => onNavigate("dashboard")}
+          <motion.div
+            className={cn(isCollapsed ? "mr-0" : "mr-3")}
+            animate={{ 
+              rotate: 360,
+              scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
+            }}
+            transition={{ 
+              rotate: { 
+                duration: 10,
+                repeat: Number.POSITIVE_INFINITY, 
+                ease: "linear" 
+              },
+              scale: showHeartbeat ? {
+                duration: 1,
+                times: [0, 0.3, 0.5, 0.8, 1],
+                ease: "easeInOut"
+              } : {
+                duration: 0
+              }
+            }}
           >
-            <motion.div
-              className={cn(isCollapsed ? "mr-0" : "mr-3")}
-              animate={{ 
-                rotate: 360,
-                scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
-              }}
-              transition={{ 
-                rotate: { 
-                  duration: 10,
-                  repeat: Number.POSITIVE_INFINITY, 
-                  ease: "linear" 
-                },
-                scale: showHeartbeat ? {
-                  duration: 1,
-                  times: [0, 0.3, 0.5, 0.8, 1],
-                  ease: "easeInOut"
-                } : {
-                  duration: 0
-                }
-              }}
-            >
-              <Image 
-                src="/logo.png" 
-                alt="HNWI Chronicles Globe" 
-                width={32} 
-                height={32} 
-                className="w-8 h-8" 
-                priority 
-              />
-            </motion.div>
-            {!isCollapsed && (
-              <h1 className="text-sm font-bold font-heading leading-tight break-words max-w-full">
-                <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
-                <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
-              </h1>
-            )}
-          </div>
+            <Image 
+              src="/logo.png" 
+              alt="HNWI Chronicles Globe" 
+              width={32} 
+              height={32} 
+              className="w-8 h-8" 
+              priority 
+            />
+          </motion.div>
+          {!isCollapsed && (
+            <h1 className="text-sm font-bold font-heading leading-tight break-words max-w-full">
+              <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
+              <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
+            </h1>
+          )}
         </div>
 
 
@@ -259,11 +247,11 @@ export function SidebarNavigation({
             <div className="p-3 flex-shrink-0">
               <Button
                 variant="ghost"
-                size="icon"
                 onClick={handleToggleSidebar}
-                className="w-full justify-center h-12 hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200"
+                className="w-full justify-start gap-4 h-12 px-4 hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200"
               >
                 <ChevronLeft className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-semibold tracking-wide">Back</span>
               </Button>
             </div>
           )}
@@ -463,7 +451,7 @@ export function SidebarNavigation({
       {/* Mobile overlay when sidebar is open */}
       {!isCollapsed && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-30"
+          className="md:hidden fixed inset-0 bg-black/50 z-55"
           onClick={() => setIsCollapsed(true)}
         />
       )}

@@ -65,42 +65,42 @@ const categoryMappings: Record<string, string> = {
   "municipal": "fixed-income"
 };
 
-// Base asset categories with premium bright colors
+// Base asset categories with mono gold color system
 const baseCategories = [
   {
     id: "strategic-metals",
     name: "Strategic Metals",
-    color: "#FFD700", // Bright gold
+    color: "#DAA520", // Gold
     description: "Rare earth elements and precious metals with strategic value"
   },
   {
     id: "private-equity", 
     name: "Private Equity",
-    color: "#059669", // Bright green
+    color: "#DAA520", // Gold
     description: "Direct investment in private companies and buyout opportunities"
   },
   {
     id: "real-estate",
     name: "Real Estate", 
-    color: "#DC2626", // Bright red
+    color: "#DAA520", // Gold
     description: "Premium commercial and residential properties worldwide"
   },
   {
     id: "venture-capital",
     name: "Venture Capital",
-    color: "#7C3AED", // Bright purple
+    color: "#DAA520", // Gold
     description: "Early-stage technology and growth companies"
   },
   {
     id: "crypto-digital",
     name: "Crypto & Digital",
-    color: "#06B6D4", // Bright cyan
+    color: "#DAA520", // Gold
     description: "Digital assets, DeFi protocols, and blockchain infrastructure"
   },
   {
     id: "fixed-income",
     name: "Fixed Income",
-    color: "#10B981", // Bright emerald
+    color: "#DAA520", // Gold
     description: "Government bonds, corporate debt, and structured products"
   }
 ];

@@ -1,23 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/layout";
-import { Button } from "@/components/ui/button";
-import { Filter, Loader2, Store } from "lucide-react";
+import { Store } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { CrownLoader } from "@/components/ui/crown-loader";
-import { Badge } from "@/components/ui/badge";
-import { PremiumBadge } from "@/components/ui/premium-badge";
 import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
-import { OpportunityAtlas } from "@/components/opportunity-atlas";
-import { RegionCards, RegionData } from "@/components/region-cards";
-import { OpportunityFilterDrawer, FilterSettings } from "@/components/opportunity-filter-drawer";
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
-import { OpportunityCard, isOpportunityNew } from "@/components/opportunity-card";
+import { OpportunityAtlasNew as OpportunityAtlas } from "@/components/opportunity-atlas-new";
 import { AssetCategoryData, generateAssetCategoriesFromOpportunities } from "@/lib/opportunity-atlas-data";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface PriveExchangePageProps {
   onNavigate?: (route: string) => void;
@@ -25,94 +16,13 @@ interface PriveExchangePageProps {
 
 export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const { theme } = useTheme();
-  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<AssetCategoryData | null>(null);
   const [assetCategories, setAssetCategories] = useState<AssetCategoryData[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterSettings>({
-    ticketBand: [],
-    horizon: [],
-    risk: [],
-    postingDate: []
-  });
-  const [isMobile, setIsMobile] = useState(false);
-  const [showStickyRegions, setShowStickyRegions] = useState(false);
-  const regionCardsRef = useRef<HTMLDivElement>(null);
 
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Intersection observer for sticky RegionCards
-  useEffect(() => {
-    if (!regionCardsRef.current || !selectedCategory) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Show sticky version when original is not visible
-        setShowStickyRegions(!entry.isIntersecting);
-      },
-      {
-        threshold: 0.1,
-        rootMargin: '-100px 0px 0px 0px' // Trigger when 100px above viewport
-      }
-    );
-
-    observer.observe(regionCardsRef.current);
-
-    // Add scroll listener to handle mobile edge cases
-    const handleScroll = () => {
-      if (!regionCardsRef.current) return;
-      
-      const rect = regionCardsRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      
-      // If we're on mobile and scrolled way past the opportunities section, hide sticky bar
-      if (isMobile && window.scrollY > 0) {
-        // Check if we're scrolled past the opportunities section
-        const opportunitiesSection = document.querySelector('[data-testid="opportunities-section"]');
-        if (opportunitiesSection) {
-          const opportunitiesRect = opportunitiesSection.getBoundingClientRect();
-          // If opportunities section is way above viewport, hide sticky regions
-          if (opportunitiesRect.bottom < -200) {
-            setShowStickyRegions(false);
-            return;
-          }
-        }
-        
-        // Also hide if original region cards are way below viewport
-        if (rect.top > windowHeight + 200) {
-          setShowStickyRegions(false);
-          return;
-        }
-      }
-      
-      // Hide sticky regions when scrolled back to top on mobile
-      if (isMobile && window.scrollY < 100) {
-        setShowStickyRegions(false);
-        return;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [selectedCategory, isMobile]);
-
-  // Fetch all opportunities on mount
+  // Load opportunities data
   useEffect(() => {
     async function loadOpportunities() {
       try {
@@ -135,398 +45,60 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     loadOpportunities();
   }, []);
 
-  // Load filter settings from localStorage
-  useEffect(() => {
-    const savedFilters = localStorage.getItem('prive-exchange-filters');
-    if (savedFilters) {
-      try {
-        setFilters(JSON.parse(savedFilters));
-      } catch (e) {
-        console.error('Failed to parse saved filters:', e);
-      }
-    }
-  }, []);
-
-  // Save filter settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('prive-exchange-filters', JSON.stringify(filters));
-  }, [filters]);
-
-  // Get filtered opportunities based on selected category and filters
-  const getFilteredOpportunities = () => {
-    let filtered = selectedCategory ? selectedCategory.opportunities : opportunities;
-    
-    // Apply additional filters
-    if (filters.risk.length > 0) {
-      filtered = filtered.filter(opp => 
-        filters.risk.some(risk => 
-          opp.riskLevel?.toLowerCase().includes(risk.toLowerCase())
-        )
-      );
-    }
-    
-    // Filter by posting date
-    if (filters.postingDate.length > 0 && !filters.postingDate.includes('all')) {
-      const now = new Date();
-      filtered = filtered.filter(opp => {
-        const oppDate = new Date(opp.start_date);
-        return filters.postingDate.some(period => {
-          if (period === 'last-7') {
-            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            return oppDate >= sevenDaysAgo;
-          }
-          if (period === 'last-30') {
-            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            return oppDate >= thirtyDaysAgo;
-          }
-          if (period === 'last-90') {
-            const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-            return oppDate >= ninetyDaysAgo;
-          }
-          return true;
-        });
-      });
-    }
-    
-    return filtered;
-  };
-
-  const filteredOpportunities = getFilteredOpportunities();
-  
-  // Group opportunities by region
-  const regions = filteredOpportunities.reduce((acc, opp) => {
-    const region = opp.region || "Unknown";
-    if (!acc[region]) {
-      acc[region] = [];
-    }
-    acc[region].push(opp);
-    return acc;
-  }, {} as Record<string, Opportunity[]>);
-
-  // Create region data with counts
-  const regionData: RegionData[] = Object.keys(regions).map(regionName => ({
-    id: regionName.toLowerCase().replace(/\s+/g, '-'),
-    name: regionName,
-    opportunityCount: regions[regionName].length
-  }));
-
-  // Add regions with zero opportunities for completeness
-  const allRegions = ["North America", "Europe", "Asia Pacific", "South America", "Middle East & Africa", "Global"];
-  allRegions.forEach(regionName => {
-    if (!regionData.find(r => r.name === regionName)) {
-      regionData.push({
-        id: regionName.toLowerCase().replace(/\s+/g, '-'),
-        name: regionName,
-        opportunityCount: 0
-      });
-    }
-  });
-
-  // Get opportunities for selected region
-  const selectedRegionOpportunities = selectedRegion 
-    ? regions[regionData.find(r => r.id === selectedRegion)?.name || ''] || []
-    : [];
-
-  // Unified navigation handler for all routes
-  const handleNavigation = (path: string) => {
-    if (onNavigate) {
-      onNavigate(path);
-      return;
-    }
-    
-    if (path === "back") {
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem("skipSplash", "true");
-      }
-      router.push("/");
-    } else {
-      if (typeof window !== 'undefined' && window.handleGlobalNavigation) {
-        window.handleGlobalNavigation(path);
-      } else {
-        if (path === "dashboard") {
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem("skipSplash", "true");
-          }
-          router.push("/");
-        } else {
-          try {
-            router.push(`/${path.replace(/^\/+/, "")}`);
-          } catch (e) {
-            console.error("Navigation failed:", e);
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem("skipSplash", "true");
-            }
-            router.push("/");
-          }
-        }
-      }
-    }
-  };
-
-  // Handle category selection
   const handleCategorySelect = (category: AssetCategoryData | null) => {
     setSelectedCategory(category);
-    
-    // If a category is selected, automatically select the region with the highest opportunity count
-    if (category) {
-      // Get opportunities for this category
-      const categoryOpportunities = category.opportunities;
-      
-      // Group by region to find which has the most opportunities
-      const regionCounts = categoryOpportunities.reduce((acc, opp) => {
-        const region = opp.region || "Unknown";
-        acc[region] = (acc[region] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      // Find the region with the highest count
-      let maxRegion = null;
-      let maxCount = 0;
-      Object.entries(regionCounts).forEach(([region, count]) => {
-        if (count > maxCount) {
-          maxCount = count;
-          maxRegion = region;
-        }
-      });
-      
-      // Set the selected region to the one with highest count
-      if (maxRegion) {
-        const regionId = maxRegion.toLowerCase().replace(/\s+/g, '-');
-        setSelectedRegion(regionId);
-      } else {
-        setSelectedRegion(null);
-      }
-    } else {
-      setSelectedRegion(null); // Reset region when no category
+  };
+
+  const handleNavigation = (route: string) => {
+    if (onNavigate) {
+      onNavigate(route);
     }
   };
-
-  // Handle region selection
-  const handleRegionSelect = (regionId: string) => {
-    setSelectedRegion(regionId);
-  };
-
-  // Handle filter changes
-  const handleFiltersChange = (newFilters: FilterSettings) => {
-    setFilters(newFilters);
-  };
-
-  // Breadcrumb navigation
-  const getBreadcrumbItems = () => {
-    const items = [
-      {
-        label: "Privé Exchange",
-        onClick: () => {
-          setSelectedCategory(null);
-          setSelectedRegion(null);
-        },
-        isActive: !selectedCategory && !selectedRegion
-      }
-    ];
-
-    if (selectedCategory) {
-      items.push({
-        label: selectedCategory.name,
-        onClick: () => setSelectedRegion(null),
-        isActive: !selectedRegion
-      });
-    }
-
-    if (selectedRegion) {
-      const regionName = regionData.find(r => r.id === selectedRegion)?.name || selectedRegion;
-      items.push({
-        label: regionName,
-        isActive: true
-      });
-    }
-
-    return items;
-  };
-
-  if (loading) {
-    return (
-      <Layout 
-        title={
-          <div className="flex items-center gap-2">
-            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
-            <PremiumBadge>Beta</PremiumBadge>
-          </div>
-        } 
-        showBackButton 
-        onNavigate={handleNavigation}
-      >
-        <div className="flex items-center justify-center h-[50vh]">
-          <CrownLoader size="lg" text="Loading investment opportunities..." />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (error) {
-    return (
-      <Layout 
-        title={
-          <div className="flex items-center gap-2">
-            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
-            <PremiumBadge>Beta</PremiumBadge>
-          </div>
-        } 
-        showBackButton 
-        onNavigate={handleNavigation}
-      >
-        <div className="text-center p-8">
-          <h3 className="text-xl font-medium text-red-500 mb-2">Error Loading Data</h3>
-          <p className="text-muted-foreground">{error}</p>
-          <Button className="mt-4" onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout 
+      currentPage="prive-exchange"
       title={
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
-          </div>
-          <PremiumBadge>Beta</PremiumBadge>
+        <div className="flex items-center space-x-2">
+          <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+          <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
         </div>
-      } 
+      }
       showBackButton 
       onNavigate={handleNavigation}
     >
       <div className="flex flex-col h-full relative">
         <div className="px-4 py-2">
-          <div className="flex items-center justify-end mb-0">
-            {(selectedCategory || selectedRegion) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFilterDrawerOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-                {Object.values(filters).some(arr => arr.length > 0) && (
-                  <Badge variant="secondary" className="text-xs ml-1">
-                    {Object.values(filters).reduce((sum, arr) => sum + arr.length, 0)}
-                  </Badge>
-                )}
-              </Button>
-            )}
-          </div>
-          <p className="text-muted-foreground text-base leading-tight -mt-3">
-            Exclusive opportunities for elite investors
+          <p className="text-muted-foreground text-base leading-tight">
+            Off-market opportunities. Member referrals only.
           </p>
         </div>
 
-        {/* Breadcrumb Navigation */}
-        {(selectedCategory || selectedRegion) && (
-          <div className="px-4 pb-4">
-            <BreadcrumbNav items={getBreadcrumbItems()} />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center min-h-[500px]">
+            <CrownLoader size="lg" text="Verifying member access..." />
           </div>
-        )}
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center min-h-[500px]">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
 
-        <div className="flex-grow px-4 pb-4 space-y-6">
-          {/* Opportunity Atlas - Always visible at top */}
-          <OpportunityAtlas
-            categories={assetCategories}
-            selectedCategory={selectedCategory}
-            onCategorySelect={handleCategorySelect}
-          />
-
-          {/* Region Cards - Show when category is selected */}
-          <div ref={regionCardsRef}>
-            <RegionCards
+          <div className="flex-grow px-4 pb-4 space-y-6">
+            {/* Opportunity Atlas - Now shows opportunities in right panel */}
+            <OpportunityAtlas
+              categories={assetCategories}
               selectedCategory={selectedCategory}
-              regions={regionData}
-              onRegionSelect={handleRegionSelect}
+              onCategorySelect={handleCategorySelect}
             />
           </div>
-
-          {/* Opportunity Grid - Show when region is selected */}
-          <AnimatePresence>
-            {selectedRegion && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-4"
-                data-testid="opportunities-section"
-              >
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
-                    {regionData.find(r => r.id === selectedRegion)?.name} Opportunities
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedRegionOpportunities.length} investment{selectedRegionOpportunities.length !== 1 ? 's' : ''} available
-                  </p>
-                </div>
-                
-                {selectedRegionOpportunities.length === 0 ? (
-                  <div className="text-center p-8 bg-muted/20 rounded-lg">
-                    <p className="text-muted-foreground mb-2">
-                      No opportunities available in this region for {selectedCategory?.name}.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      New deals are added regularly. Check back soon.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {selectedRegionOpportunities.map((opportunity) => (
-                      <OpportunityCard
-                        key={opportunity.id}
-                        opportunity={opportunity}
-                        showNewRibbon={isOpportunityNew(opportunity)}
-                        onReadMore={() => router.push(`/opportunity/${opportunity.id}`)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Sticky RegionCards - Floating version when original is out of view */}
-        <AnimatePresence>
-          {showStickyRegions && selectedCategory && (
-            <motion.div
-              initial={{ opacity: 0, y: -50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ duration: 0.3 }}
-              className="fixed left-0 right-0 z-20 bg-background border-b border-border shadow-lg"
-              style={{ top: 'var(--header-height, 120px)' }}
-            >
-              <div className="max-w-7xl mx-auto px-4 py-2">
-                <RegionCards
-                  selectedCategory={selectedCategory}
-                  regions={regionData}
-                  onRegionSelect={handleRegionSelect}
-                  className="!space-y-2" // Reduced spacing for sticky version
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Filter Drawer */}
-        <OpportunityFilterDrawer
-          isOpen={isFilterDrawerOpen}
-          onClose={() => setIsFilterDrawerOpen(false)}
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          isMobile={isMobile}
-        />
+        )}
       </div>
     </Layout>
   );

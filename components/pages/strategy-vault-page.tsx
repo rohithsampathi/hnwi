@@ -2,81 +2,21 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Layout } from "@/components/layout/layout"
-import { DevelopmentStream } from "@/components/development-stream"
-import { IndustryTrendsBubbles } from "@/components/industry-trends-bubbles"
-import { getIndustryColor } from "@/utils/color-utils"
-import { getMatteCardStyle } from "@/lib/colors"
-import { useSearchParams } from "next/navigation"
-import { Globe, BookOpen, BarChart3 } from "lucide-react"
+import { MarketIntelligenceDashboard } from "@/components/market-intelligence-dashboard"
+import { Globe } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
-import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
+import { Heading2 } from "@/components/ui/typography"
 import { MetaTags } from "../meta-tags"
 
 export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) => void }) {
   const { theme } = useTheme()
-  const [selectedIndustry, setSelectedIndustry] = useState("All")
-  const [timeRange, setTimeRange] = useState("1w")
-  const [availableIndustries, setAvailableIndustries] = useState<string[]>([])
-  const [expandedDevelopmentId, setExpandedDevelopmentId] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    // Check URL searchParams first
-    const industry = searchParams.get("industry")
-    const timeRange = searchParams.get("timeRange")
-    const developmentId = searchParams.get("developmentId")
-
-    if (industry) setSelectedIndustry(industry)
-    if (timeRange) setTimeRange(timeRange)
-    if (developmentId) setExpandedDevelopmentId(developmentId)
-    
-    // Check sessionStorage for navigation from Elite Pulse cards
-    const sessionDevelopmentId = sessionStorage.getItem("currentDevelopmentId")
-    const sessionIndustry = sessionStorage.getItem("nav_param_industry")
-    const sessionTimeRange = sessionStorage.getItem("nav_param_timeRange")
-    
-    if (sessionDevelopmentId && !developmentId) {
-      setExpandedDevelopmentId(sessionDevelopmentId)
-      // Clear sessionStorage after using it
-      sessionStorage.removeItem("currentDevelopmentId")
-    }
-    
-    if (sessionIndustry && !industry) {
-      setSelectedIndustry(sessionIndustry)
-      sessionStorage.removeItem("nav_param_industry")
-    }
-    
-    if (sessionTimeRange && !timeRange) {
-      setTimeRange(sessionTimeRange)
-      sessionStorage.removeItem("nav_param_timeRange")
-    }
-  }, [searchParams])
-
-  const handleIndustryChange = useCallback((value: string) => {
-    setSelectedIndustry(value)
-  }, [])
-
-  const handleTimeRangeChange = useCallback((value: string) => {
-    setTimeRange(value)
-  }, [])
-
-  const handleBubbleClick = useCallback((industry: string) => {
-    setSelectedIndustry(industry)
-  }, [])
-
-  const handleIndustriesUpdate = useCallback((industries: string[]) => {
-    setAvailableIndustries(industries)
-  }, [])
 
   return (
     <>
       <MetaTags
         title="HNWI World: Private Wealth Intelligence, Every Day | HNWI Chronicles"
-        description="The briefing smart wealth reads first. What's moving, why it matters, and where the next opportunity is—before the rest catch up."
+        description="Morning intelligence for the top 1%. What 312 family offices are discussing privately."
         image="https://app.hnwichronicles.com/images/hnwi-world-og.png"
         url="https://app.hnwichronicles.com/hnwi-world"
       />
@@ -94,124 +34,13 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
           <div className="w-full mb-4 overflow-hidden">
             <div className="px-4 py-2 -mt-2">
               <p className="text-muted-foreground text-base leading-tight">
-                Data Meets Strategy for the Wealthiest
+                What you need to know before your wealth advisor calls
               </p>
             </div>
-            <div className="px-4 py-2">
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-                <Select onValueChange={handleIndustryChange} value={selectedIndustry}>
-                  <SelectTrigger className="w-full md:w-[200px] border-border">
-                    <SelectValue placeholder="Select industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All Industries</SelectItem>
-                    {availableIndustries.sort().map((industry) => (
-                      <SelectItem key={industry} value={industry}>
-                        {industry}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                  <Select onValueChange={handleTimeRangeChange} value={timeRange}>
-                    <SelectTrigger className="w-full sm:w-[180px] border-border">
-                      <SelectValue placeholder="Select time range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1d">Last 24 hours</SelectItem>
-                      <SelectItem value="1w">Last week</SelectItem>
-                      <SelectItem value="1m">Last month</SelectItem>
-                      <SelectItem value="1y">Last 365 days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {/* Force refresh button to clear cache and fetch fresh data */}
-                  <button 
-                    onClick={() => {
-                      // Force a new time range to trigger a refetch
-                      const currentTimeRange = timeRange
-                      setTimeRange("temp")
-                      setTimeout(() => setTimeRange(currentTimeRange), 10)
-                    }}
-                    className="p-2 rounded-full hover:bg-muted transition-colors"
-                    aria-label="Refresh data"
-                    title="Force refresh of Wealth Radar data"
-                  >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="20" 
-                      height="20" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                      className="text-foreground"
-                    >
-                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                      <path d="M3 3v5h5"></path>
-                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
-                      <path d="M16 16h5v5"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              {/* Wealth Radar - no background container */}
-              <div className="relative">
-                {/* Header - no background */}
-                <div className="pb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <BarChart3 className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                    <Heading3 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Wealth Radar</Heading3>
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    Industry wise HNWI Peer Movements and Market Actions • {availableIndustries.length} industries available
-                  </p>
-                </div>
-                
-                {/* Visualization area */}
-                <div>
-                  <IndustryTrendsBubbles
-                    duration={timeRange}
-                    onIndustriesUpdate={handleIndustriesUpdate}
-                    onBubbleClick={handleBubbleClick}
-                    getIndustryColor={getIndustryColor}
-                    selectedIndustry={selectedIndustry}
-                    renderStatsOutside={true}
-                  />
-                </div>
-                
-                {/* Footer with updated timestamp and disclaimer */}
-                <div className="px-6 pb-4">
-                  <div className="text-center border-t border-border pt-3">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Last updated: {new Date().toLocaleTimeString()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      For Information only. HNWI Chronicles is not a broker-dealer
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="w-full mt-8 overflow-hidden">
-            <div className="py-4">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                <Heading3 className="text-foreground">Insider Brief</Heading3>
-              </div>
-              <p className="text-body-small text-foreground mb-4">
-                Daily intelligence briefings tracking HNWI market movements, institutional strategies, and wealth preservation insights from global elite circles
-              </p>
-            </div>
-            <div className="py-2">
-              <DevelopmentStream
-                selectedIndustry={selectedIndustry}
-                duration={timeRange}
-                getIndustryColor={getIndustryColor}
-                expandedDevelopmentId={expandedDevelopmentId}
-              />
+            
+            {/* Unified Market Intelligence Dashboard */}
+            <div className="px-4">
+              <MarketIntelligenceDashboard onNavigate={onNavigate} />
             </div>
           </div>
         </div>
@@ -219,4 +48,3 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
     </>
   )
 }
-

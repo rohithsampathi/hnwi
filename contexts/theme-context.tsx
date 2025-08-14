@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react"
 import { BusinessModeProvider } from "./business-mode-context"
 
 type Theme = "light" | "dark"
@@ -55,12 +55,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, isInitialized])
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"))
-  }
+  }, [])
+
+  // Memoize context value to prevent unnecessary rerenders
+  const contextValue = useMemo(() => ({
+    theme,
+    toggleTheme
+  }), [theme, toggleTheme])
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       <BusinessModeProvider>
         {children}
       </BusinessModeProvider>

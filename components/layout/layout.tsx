@@ -47,7 +47,6 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       setIsDesktop(width > 1100 || height > 1400 || width < 800)
       
       // Debug logging
-      console.log(`Screen: ${width}x${height}, isTablet: ${tabletCondition}, sidebarState: ${sidebarState}`)
     }
     checkScreenSizes()
     window.addEventListener('resize', checkScreenSizes)
@@ -104,7 +103,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <header
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-30 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
           isTablet && !sidebarState ? 'blur-lg' : ''
         }`}
       >
@@ -172,11 +171,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <main 
         className={`flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-20 md:pb-4 transition-all duration-300 ${
-          (() => {
-            const shouldBlur = isTablet && !sidebarState
-            console.log(`Blur condition: isTablet=${isTablet}, sidebarState=${sidebarState}, shouldBlur=${shouldBlur}`)
-            return shouldBlur ? 'blur-lg bg-red-100' : ''
-          })()
+          isTablet && !sidebarState ? 'blur-lg' : ''
         }`}
         style={{ 
           paddingTop: `${Math.max(headerHeight + 16, 96)}px`,

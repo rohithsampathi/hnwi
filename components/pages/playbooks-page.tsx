@@ -55,7 +55,115 @@ interface Playbook {
   industry: string
   valid_until?: string
   purchased_at?: string
+  paymentButtonId?: string
 }
+
+// Store constants
+const DEFAULT_RAZORPAY_BUTTON_ID = "pl_Pn7fgca55mS4zy" // Default button
+const PREMIUM_RAZORPAY_BUTTON_ID = "pl_PpVywDxD3udMiw" // Premium button
+
+// Available playbooks for purchase
+const AVAILABLE_PLAYBOOKS: Playbook[] = [
+  {
+    id: "pb_001",
+    title: "How to Sell 2 Crore Apartments in India",
+    description: "Master the art of selling luxury apartments in India's competitive real estate market.",
+    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Real Estate",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_002",
+    title: "Selling a ₹10 Cr Villa Holiday Home to HNWIs & NRIs",
+    description: "Highlighting luxury, exclusivity, and investment potential to attract affluent buyers seeking a premium lifestyle getaway.",
+    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Real Estate",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_003",
+    title: "Selling a ₹35 Cr Ultra-Luxury Estate to Billionaire Buyers",
+    description: "Positioning high-end estates as legacy investments with unique value propositions tailored to ultra-wealthy clientele.",
+    image: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Real Estate",
+    paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_004",
+    title: "Positioning a ₹50 Cr Commercial Luxury Tower for Global Investors",
+    description: "Showcasing commercial luxury real estate as a high-yield investment with premium brand positioning.",
+    image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Real Estate",
+    paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_005",
+    title: "Selling a ₹90 Lakh Luxury Car in India to First-Time HNWI Buyers",
+    description: "Targeting aspirational buyers by emphasizing exclusivity, performance, and lifestyle benefits.",
+    image: "https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Automotive",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_006",
+    title: "Introducing a ₹5 Cr Hypercar to Collectors and Enthusiasts",
+    description: "Crafting elite experience-driven launches to attract high-net-worth auto enthusiasts and collectors.",
+    image: "https://images.unsplash.com/photo-1614200179396-2bdb77ebf81b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Automotive",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_007",
+    title: "Launching a ₹5 Million Watch in the Indian Market",
+    description: "Creating demand by leveraging brand heritage, storytelling, and influencer-driven exclusivity.",
+    image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Luxury Goods",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_008",
+    title: "Selling ₹10 Cr Private Memberships for Exclusive Global Retreats",
+    description: "Marketing private retreats as status symbols and must-have lifestyle investments for HNWIs.",
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Travel & Hospitality",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_009",
+    title: "Launching a ₹2 Cr Private Art Collection to Elite Collectors",
+    description: "Positioning art as an investment and passion purchase through storytelling and exclusivity.",
+    image: "https://images.unsplash.com/photo-1531913764164-f85c52e6e654?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Art & Collectibles",
+    paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_010",
+    title: "Selling a ₹100 Cr Bespoke Investment Fund to UHNWI Families",
+    description: "Positioning bespoke financial products as secure, high-growth opportunities for wealth preservation.",
+    image: "https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Finance",
+    paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
+  },
+  {
+    id: "pb_011",
+    title: "Introducing a ₹25 Cr Private Island Experience to HNWIs",
+    description: "Positioning private island experiences as the pinnacle of luxury and exclusivity.",
+    image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    isPurchased: false,
+    industry: "Travel & Hospitality",
+    paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
+  },
+]
 
 // Fallback playbook data for pb_001 which we know is purchased by users
 const FALLBACK_PLAYBOOK: Playbook = {
@@ -65,6 +173,7 @@ const FALLBACK_PLAYBOOK: Playbook = {
   image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
   isPurchased: true,
   industry: "Real Estate",
+  paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
 }
 
 
@@ -80,7 +189,9 @@ export function PlayBooksPage({
   const { theme } = useTheme()
   const { markStepAsCompleted } = useOnboarding()
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
+  const [availablePlaybooks, setAvailablePlaybooks] = useState<Playbook[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingStore, setIsLoadingStore] = useState(true)
   const { toast } = useToast()
   const hasCompletedStep = useRef(false)
   const fetchAttempted = useRef(false)
@@ -112,6 +223,20 @@ export function PlayBooksPage({
       userEmail === "info@ycombinator.com"
     );
   }, [userEmail, getPurchasedReports]);
+
+  // Load available playbooks for store section
+  const loadAvailablePlaybooks = useCallback(() => {
+    const purchasedReportIds = getPurchasedReports().map((report: any) => report.report_id);
+    
+    // Filter out already purchased playbooks
+    const filteredPlaybooks = AVAILABLE_PLAYBOOKS.map(playbook => ({
+      ...playbook,
+      isPurchased: purchasedReportIds.includes(playbook.id)
+    })).filter(playbook => !playbook.isPurchased);
+    
+    setAvailablePlaybooks(filteredPlaybooks);
+    setIsLoadingStore(false);
+  }, [getPurchasedReports]);
 
   const fetchPlaybooks = useCallback(async () => {
     if (fetchAttempted.current) return;
@@ -159,7 +284,7 @@ export function PlayBooksPage({
       if (userId && token) {
         try {
           // First fetch user data to get purchased reports
-          const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 300000 }); // 5 minutes for user data
+          const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for user data
             
           // Filter active purchased reports
           const activeReports = userDataResponse.purchased_reports.filter(report => report.is_active);
@@ -269,6 +394,8 @@ export function PlayBooksPage({
     
     // Fetch playbooks once
     fetchPlaybooks();
+    // Load available playbooks for store
+    loadAvailablePlaybooks();
     
     // Add timeout fallback to ensure UI doesn't get stuck
     const timeoutId = setTimeout(() => {
@@ -289,15 +416,24 @@ export function PlayBooksPage({
           ]);
         }
       }
+      if (isLoadingStore) {
+        setIsLoadingStore(false);
+      }
     }, 5000);
     
     return () => clearTimeout(timeoutId);
-  }, [fetchPlaybooks, hasDefaultPlaybook, isLoading, markStepAsCompleted]);
+  }, [fetchPlaybooks, loadAvailablePlaybooks, hasDefaultPlaybook, isLoading, isLoadingStore, markStepAsCompleted]);
 
-  // Handle navigation to browse playbooks
-  const handleBrowsePlaybooks = useCallback(() => {
-    onNavigate("playbook-store");
-  }, [onNavigate]);
+  // Handle playbook purchase
+  const handlePlaybookPurchase = useCallback((playbookId: string) => {
+    setAvailablePlaybooks((prevPlaybooks) => 
+      prevPlaybooks.filter((playbook) => playbook.id !== playbookId)
+    );
+    toast({
+      title: "Intelligence Acquired",
+      description: "Strategic playbook secured in your private vault.",
+    });
+  }, [toast]);
 
   return (
     <>
@@ -318,13 +454,12 @@ export function PlayBooksPage({
         onNavigate={onNavigate}
       >
         <div className="w-full">
-          <div className="px-4 py-6">
-            <Heading2 className="text-primary">Your Strategic Arsenal</Heading2>
-            <p className="text-muted-foreground text-base leading-tight -mt-1">
-              Access your purchased playbooks and strategic guides
+          <div className="px-4 py-2 -mt-2">
+            <p className="text-muted-foreground text-base leading-tight">
+              Intelligence whispered between family offices. Strategic briefings for generational decisions.
             </p>
           </div>
-          <div className="px-4">
+          <div className="px-4 mt-6">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -333,13 +468,8 @@ export function PlayBooksPage({
               <>
                 {playbooks.length === 0 ? (
                   <div className="text-center py-8">
-                    <Paragraph>You haven't purchased any playbooks yet.</Paragraph>
-                    <button
-                      onClick={handleBrowsePlaybooks}
-                      className="mt-4 text-primary hover:text-primary/80 underline"
-                    >
-                      Browse available playbooks
-                    </button>
+                    <Paragraph>Your vault awaits its first strategic intelligence.</Paragraph>
+                    <p className="text-muted-foreground text-sm mt-2">Curated insights below. Each playbook contains moves your competitors don't see.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -359,6 +489,44 @@ export function PlayBooksPage({
                 )}
               </>
             )}
+          </div>
+
+          {/* Store Section */}
+          <div className="px-4 mt-12">
+            <div className="border-t border-border pt-8">
+              <div className="mb-6">
+                <Heading2 className={`mb-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Explore the Store</Heading2>
+                <p className="text-muted-foreground text-base leading-tight">
+                  Private intelligence from the inner circle. Strategic playbooks that shaped billion-dollar moves.
+                </p>
+              </div>
+
+              {isLoadingStore ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <>
+                  {availablePlaybooks.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Paragraph>Your intelligence vault is complete.</Paragraph>
+                      <p className="text-muted-foreground text-sm mt-2">New whispered strategies arriving from the inner circle soon.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {availablePlaybooks.map((playbook) => (
+                        <PremiumPlaybookCard
+                          key={playbook.id}
+                          playbook={playbook}
+                          onClick={() => {}} // Not clickable since not purchased
+                          onPurchase={() => handlePlaybookPurchase(playbook.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </Layout>
