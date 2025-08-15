@@ -38,7 +38,6 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
         }))
         setEvents(parsedEvents)
       } catch (error) {
-        console.error("Error parsing stored events:", error)
         // Initialize with empty array on error
         setEvents([])
         localStorage.setItem("userEvents", JSON.stringify([]))

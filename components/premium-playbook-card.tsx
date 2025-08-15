@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
 import { PaymentPopupButton } from "./payment-popup-button"
+import { PremiumBadge } from "@/components/ui/premium-badge"
+import { getMetallicCardStyle } from "@/lib/colors"
 import Image from "next/image"
 import { BookOpen, TrendingUp, Star, Lock } from "lucide-react"
 
@@ -47,11 +49,12 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
   // Check if it's a premium playbook based on paymentButtonId
   const isPremium = playbook.paymentButtonId === "pl_PpVywDxD3udMiw";
   
+  const cardStyle = getMetallicCardStyle(theme);
+  
   return (
-    <Card
-      className={`group overflow-hidden transition-all duration-300 shadow-xl hover:shadow-2xl border border-gray-100 dark:border-gray-800 ${
-        theme === "dark" ? "bg-[#1E1E1E] text-white" : "bg-white text-[#121212]"
-      }`}
+    <div
+      className={`${cardStyle.className} group`}
+      style={cardStyle.style}
     >
       <div className="relative h-[240px] overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-transparent via-black/30 to-black/80 z-10"></div>
@@ -68,22 +71,22 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
         
         {isPremium && (
           <div className="absolute top-4 right-4 z-30">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-primary to-primary/80 ${theme === "dark" ? "text-black" : "text-white"}`}>
-              <Star className={`w-3 h-3 mr-1 ${theme === "dark" ? "fill-black stroke-primary" : "fill-white stroke-primary"}`} />
+            <PremiumBadge className="font-bold">
+              <Star className="w-3 h-3 mr-1" />
               PREMIUM
-            </span>
+            </PremiumBadge>
           </div>
         )}
         
         <div className="absolute top-4 left-4 z-30">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-white/90 text-black backdrop-blur-sm font-bold">
+          <PremiumBadge className="font-bold bg-white/90 text-black backdrop-blur-sm">
             {playbook.industry}
-          </span>
+          </PremiumBadge>
         </div>
         
         <div className="absolute bottom-0 left-0 w-full p-6 z-20">
           <h3 className="text-2xl font-bold font-heading text-white tracking-tight line-clamp-2 mb-2 drop-shadow-md">{playbook.title}</h3>
-          <p className="text-sm font-body text-gray-100 line-clamp-2 mb-4 drop-shadow-md">{playbook.description}</p>
+          <p className="text-sm font-body text-gray-100 dark:text-gray-200 line-clamp-2 mb-4 drop-shadow-md">{playbook.description}</p>
         </div>
       </div>
       
@@ -93,24 +96,20 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
             <TrendingUp className="w-4 h-4 mr-2 text-primary" />
             <span className="text-sm font-medium">High ROI Potential</span>
           </div>
-          <div className={`text-xs font-medium px-3 py-1 rounded-full ${
-            theme === "dark" 
-              ? "bg-primary/20 text-primary border border-primary/30" 
-              : "bg-secondary/20 text-secondary-foreground border border-secondary/30"
-          }`}>
+          <PremiumBadge className="font-medium">
             Exclusive Content
-          </div>
+          </PremiumBadge>
         </div>
         
         {playbook.isPurchased ? (
           <Button 
             onClick={onClick} 
             className={`w-full bg-primary hover:bg-primary/90 font-bold ${
-              theme === "dark" ? "text-black hover:text-black" : "text-white"
+              theme === "dark" ? "text-black hover:text-black" : "text-white hover:text-white"
             }`}
             variant="default"
           >
-            <BookOpen className={`w-4 h-4 mr-2 ${theme === "dark" ? "text-black" : ""}`} />
+            <BookOpen className={`w-4 h-4 mr-2 ${theme === "dark" ? "text-black" : "text-white"}`} />
             View Playbook
           </Button>
         ) : (
@@ -121,6 +120,6 @@ export function PremiumPlaybookCard({ playbook, onPurchase, onClick }: PremiumPl
           />
         )}
       </div>
-    </Card>
+    </div>
   )
 }

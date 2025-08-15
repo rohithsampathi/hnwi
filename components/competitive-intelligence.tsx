@@ -25,7 +25,6 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
   const fetchDevelopments = useCallback(async () => {
     // Check authentication before making API call
     if (!isAuthenticated()) {
-      console.log('User not authenticated - skipping developments fetch in competitive intelligence');
       setDevelopments([]);
       setIsLoading(false);
       return;
@@ -44,11 +43,9 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
       const allDevelopments = data.developments || []
       setDevelopments(allDevelopments)
     } catch (error: any) {
-      console.error("Error fetching developments:", error)
       
       // Check if it's an authentication error
       if (error.message?.includes('Authentication required') || error.status === 401) {
-        console.log('Authentication required for competitive intelligence data');
         setDevelopments([]);
         setError(null); // Don't show error to user for auth issues
         return;

@@ -103,7 +103,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       setVaultStats(stats)
       setVaultAssets(assets)
     } catch (error) {
-      console.error("Error fetching Crown Vault data:", error)
     } finally {
       setVaultLoading(false)
     }
@@ -123,13 +122,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   const fetchUserData = useCallback(
     async (userId: string) => {
       if (isRefreshing) {
-        console.log("Skipping fetchUserData - already refreshing");
         return;
       }
 
       const now = Date.now()
       if (now - lastFetchTime < 60000) {
-        console.log("Skipping fetchUserData - called within last minute");
         return; // Prevent fetching more than once per minute
       }
 
@@ -151,7 +148,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         setLastFetchTime(now);
         // User data fetch complete and state updated;
       } catch (error) {
-        console.error("Error fetching user data:", error)
         toast({
           title: "Error",
           description: "Failed to load user data. Please try again.",
@@ -182,7 +178,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         fetchUserData(storedUserId)
         fetchVaultStats() // Fetch Crown Vault stats
       } else {
-        console.error("User ID is not available in user data or localStorage")
         setIsLoading(false)
       }
     }
@@ -243,29 +238,20 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         }
       }
 
-      console.log("=== PROFILE UPDATE DEBUGGING ===");
-      console.log("User ID being used:", userId);
-      console.log("Full update payload:", JSON.stringify(updatedUserData));
-      console.log("API payload:", JSON.stringify(apiPayload));
 
       // First try to update via the default handler - if it fails, fall back to direct API
       // First update the UI with the local handler to give immediate feedback
-      console.log("Attempting to use onUpdateUser handler for local state...");
       try {
         await onUpdateUser({ ...user, ...updatedUserData });
-        console.log("onUpdateUser handler succeeded for local state!");
       } catch (handlerError) {
-        console.log("Local profile update handler failed:", handlerError);
       }
       
       // ALWAYS proceed with direct API call regardless of local update success
       // This ensures MongoDB is updated even if the local update succeeded
 
       // Direct API call as a fallback - using simplified payload like Postman
-      console.log("Making secure API PUT request to update user profile");
       
       const responseData = await secureApi.put(`/api/users/${userId}`, apiPayload);
-      console.log("API response data:", JSON.stringify(responseData));
       
       // Create merged user object
       const mergedUser = { 
@@ -295,14 +281,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         }
       };
       
-      console.log("Merged user object:", JSON.stringify(mergedUser));
       
       // Update local storage with the latest user object
       localStorage.setItem("userObject", JSON.stringify(mergedUser));
-      console.log("Updated localStorage userObject");
       
       // Call the update handler with updated user
-      console.log("Calling onUpdateUser with merged data");
       onUpdateUser(mergedUser);
       
       setIsEditing(false)
@@ -311,13 +294,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         description: "Your profile has been updated.",
       })
 
-      console.log("About to fetch latest user data");
       // Fetch the latest data after saving - adding delay to avoid race condition
       setTimeout(() => {
         fetchUserData(userId);
       }, 1000);
     } catch (error) {
-      console.error("Error updating user profile:", error)
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",

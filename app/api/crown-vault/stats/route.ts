@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { secureApi } from '@/lib/secure-api';
 
 interface VaultStats {
   total_assets: number;
@@ -36,26 +37,11 @@ export async function GET(request: NextRequest) {
     const sessionCookie = cookies().get('session');
     const authToken = sessionCookie?.value || '';
     
-    // Fetch assets from real backend to calculate stats
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
-    const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+    // Fetch assets from real backend using secure API to calculate stats
+    const endpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
     
     try {
-      const response = await fetch(assetsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': ownerId,
-          'Authorization': `Bearer ${authToken}`,
-          'Cache-Control': 'max-age=30, stale-while-revalidate=60'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Backend API error: ${response.status}`);
-      }
-
-      const assets = await response.json();
+      const assets = await secureApi.get(endpoint, true);
       
       if (!Array.isArray(assets)) {
         throw new Error('Invalid assets data format');
@@ -112,12 +98,6 @@ export async function GET(request: NextRequest) {
         recent_activity: recentActivity
       };
 
-      console.log('Crown Vault stats generated:', {
-        total_assets: totalAssets,
-        total_heirs: uniqueHeirIds.size,
-        recent_activity_count: recentActivity.length,
-        first_activity: recentActivity[0] || 'None'
-      });
 
       return NextResponse.json(stats, { status: 200 });
 

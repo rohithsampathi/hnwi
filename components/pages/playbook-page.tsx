@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Layout } from "@/components/layout/layout"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, BookOpen } from "lucide-react"
 import { PlaybookContent } from "@/components/playbook-content"
 import { PlaybookSidebar } from "@/components/playbook-sidebar"
 import { motion, AnimatePresence } from "framer-motion"
@@ -122,7 +122,6 @@ export function PlaybookPage({
         ],
       })
     } catch (error) {
-      console.error("Error fetching report:", error)
       toast({
         title: "Error",
         description: "Failed to fetch report. Please try again.",
@@ -152,11 +151,20 @@ export function PlaybookPage({
 
   if (!report && !isLoading) {
     return (
-      <Layout title="Report Not Found" showBackButton onNavigate={() => onNavigate("my-playbooks")}>
+      <Layout 
+        title={
+          <div className="flex items-center space-x-2">
+            <BookOpen className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Report Not Found</Heading2>
+          </div>
+        } 
+        showBackButton 
+        onNavigate={() => onNavigate("my-playbooks")}
+      >
         <div className={`w-full ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
           <div className="p-6">
             <div className="text-center py-8">
-              <Paragraph className="text-red-500">The requested report could not be found.</Paragraph>
+              <Paragraph className="text-destructive">The requested report could not be found.</Paragraph>
               <Button variant="outline" onClick={() => onNavigate("my-playbooks")} className="mt-4">
                 <ArrowLeft className="mr-2 w-4 h-4" />
                 Return to Reports
@@ -171,16 +179,21 @@ export function PlaybookPage({
   return (
     <Layout
       title={
-        <div>
-          <div className="flex items-center space-x-2">
-            <Heading2>{report?.metadata.title || "Loading Report..."}</Heading2>
+        report ? (
+          <div>
+            <div className="flex items-center space-x-2">
+              <BookOpen className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+              <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>
+                {report.metadata.title}
+              </Heading2>
+            </div>
+            {report.metadata.industry && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Industry: {report.metadata.industry}
+              </p>
+            )}
           </div>
-          {report?.metadata.industry && (
-            <Paragraph className="text-sm text-muted-foreground mt-1">
-              Industry: {report.metadata.industry}
-            </Paragraph>
-          )}
-        </div>
+        ) : undefined
       }
       showBackButton
       onNavigate={() => onNavigate("my-playbooks")}
@@ -204,19 +217,6 @@ export function PlaybookPage({
           transition={{ duration: 0.5 }}
           className="space-y-4"
         >
-          <div className="flex justify-between items-center mb-4">
-            <Heading2 className="text-2xl font-bold text-primary">
-              {report.metadata.title}
-            </Heading2>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => onNavigate("my-playbooks")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Reports
-            </Button>
-          </div>
 
           {isMobileView ? (
             <MobilePlaybookView 

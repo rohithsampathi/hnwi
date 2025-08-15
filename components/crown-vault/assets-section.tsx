@@ -103,7 +103,6 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
         variant: "default"
       });
     } catch (error) {
-      console.error('Heir reassignment error:', error);
       toast({
         title: "Reassignment Failed",
         description: "Failed to reassign asset. Please try again.",

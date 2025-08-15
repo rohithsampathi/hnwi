@@ -332,7 +332,7 @@ export function DebugAuth() {
       {!isAuthenticated() && <QuickLogin />}
       
       <div className="text-xs text-muted-foreground">
-        API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"}
+        API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || "[DEFAULT_API_URL]"}
       </div>
     </div>
   )

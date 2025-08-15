@@ -124,7 +124,24 @@ export class SessionManager {
       }
 
       const { payload } = await jwtVerify(sessionToken, getJWTSecret());
-      const sessionData = payload as unknown as SessionData;
+      
+      // Handle both custom SessionData format and standard JWT format
+      let sessionData: SessionData;
+      
+      if (payload.sub && !payload.userId) {
+        // Standard JWT format - convert to SessionData format
+        sessionData = {
+          userId: payload.sub as string,
+          email: payload.email as string || '',
+          role: payload.role as string || 'user',
+          iat: payload.iat as number || Math.floor(Date.now() / 1000),
+          exp: payload.exp as number,
+          sessionId: payload.sessionId as string || 'legacy'
+        };
+      } else {
+        // Custom SessionData format
+        sessionData = payload as unknown as SessionData;
+      }
 
       // Check if session is expired (additional check beyond JWT expiry)
       const now = Math.floor(Date.now() / 1000);
@@ -137,15 +154,17 @@ export class SessionManager {
         return null;
       }
 
-      // Check for session timeout (24 hours max)
-      const sessionAge = now - sessionData.iat;
-      if (sessionAge > SESSION_CONFIG.maxAge) {
-        logger.warn('Session timeout exceeded', { 
-          userId: sessionData.userId,
-          sessionAge: sessionAge
-        });
-        await this.destroySession();
-        return null;
+      // Check for session timeout (24 hours max) - only if iat is available
+      if (sessionData.iat) {
+        const sessionAge = now - sessionData.iat;
+        if (sessionAge > SESSION_CONFIG.maxAge) {
+          logger.warn('Session timeout exceeded', { 
+            userId: sessionData.userId,
+            sessionAge: sessionAge
+          });
+          await this.destroySession();
+          return null;
+        }
       }
 
       logger.debug('Session validated', { 

@@ -22,7 +22,6 @@ export function AuthCheck({ children, showLoginPrompt = true, isInsiderBrief = f
       setIsAuth(authenticated)
       
       if (!authenticated) {
-        console.log("🔐 User not authenticated - data won't load until login")
         
         // Show popup for all cases except insider brief
         if (!isInsiderBrief && showLoginPrompt) {
@@ -38,7 +37,6 @@ export function AuthCheck({ children, showLoginPrompt = true, isInsiderBrief = f
           });
         }
       } else {
-        console.log("✅ User authenticated - data should load")
       }
     }
     

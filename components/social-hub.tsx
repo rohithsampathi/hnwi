@@ -71,7 +71,6 @@ export function SocialHub() {
         setError(null)
       } catch (err) {
         setError("Failed to load events")
-        console.error(err)
       } finally {
         setLoading(false)
       }
@@ -87,20 +86,6 @@ export function SocialHub() {
     const userId = user?.id || localStorage.getItem("userId") || ""
     const userEmail = user?.email || localStorage.getItem("userEmail") || ""
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
-    
-    console.log("Submitting event form to Formspree with data:", {
-      eventName: event.name,
-      userName,
-      userId,
-      userEmail,
-      eventId: event.id,
-      eventCategory: event.category,
-      eventLocation: event.location,
-      eventVenue: event.venue,
-      eventDate: event.start_date,
-      eventEndDate: event.end_date,
-      timestamp: new Date().toISOString(),
-    })
     
     try {
       const response = await fetch("https://formspree.io/f/xwpvjjpz", {
@@ -126,11 +111,8 @@ export function SocialHub() {
         }),
       })
       
-      console.log("Formspree response status:", response.status)
-      console.log("Formspree response headers:", response.headers)
       
       const responseData = await response.text()
-      console.log("Formspree response data:", responseData)
       
       if (!response.ok) {
         throw new Error(`Failed to submit concierge request: ${response.status} ${responseData}`)
@@ -143,7 +125,6 @@ export function SocialHub() {
         duration: 5000,
       })
     } catch (error) {
-      console.error("Error submitting concierge request:", error)
       toast({
         title: "Request Failed",
         description: "We couldn't process your request. Please try again later.",

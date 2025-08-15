@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/layout";
-import { Store } from "lucide-react";
+import { Gem } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { CrownLoader } from "@/components/ui/crown-loader";
 import { getOpportunities, Opportunity } from "@/lib/api";
@@ -36,7 +36,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         
         setError(null);
       } catch (err) {
-        console.error("Failed to fetch opportunities:", err);
         setError("Failed to load investment opportunities");
       } finally {
         setLoading(false);
@@ -60,7 +59,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
       currentPage="prive-exchange"
       title={
         <div className="flex items-center space-x-2">
-          <Store className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+          <Gem className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
           <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Privé Exchange</Heading2>
         </div>
       }

@@ -46,7 +46,6 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         const parsed = JSON.parse(savedCompletedSteps)
         setCompletedSteps(new Set(parsed))
       } catch (e) {
-        console.error("Error parsing completed steps:", e)
       }
     }
 

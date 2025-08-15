@@ -33,20 +33,16 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const [isTablet, setIsTablet] = useState(false) // Track if tablet
   const headerRef = useRef<HTMLElement>(null)
 
-  // Check screen sizes - specific ranges for iPad devices  
+  // Check screen sizes - desktop/tablet logic
   useEffect(() => {
     const checkScreenSizes = () => {
       const width = window.innerWidth
-      const height = window.innerHeight
       
-      // Tablet: specific range 800x1150 to 1100x1400 (iPad Air and Pro)
-      const tabletCondition = width >= 800 && width <= 1100 && height >= 1150 && height <= 1400
-      setIsTablet(tabletCondition)
+      // Desktop: anything >= 768px (md breakpoint and above)
+      setIsDesktop(width >= 768)
       
-      // Desktop: anything larger than tablet range or different aspect ratio
-      setIsDesktop(width > 1100 || height > 1400 || width < 800)
-      
-      // Debug logging
+      // Tablet: md and up but below desktop large breakpoint (768px - 1280px)
+      setIsTablet(width >= 768 && width < 1280)
     }
     checkScreenSizes()
     window.addEventListener('resize', checkScreenSizes)
@@ -93,7 +89,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     <div
       className="min-h-screen flex flex-col font-sans bg-background text-foreground"
     >
-      {/* Sidebar for desktop */}
+      {/* Sidebar for all devices - mobile only shows bottom nav */}
       <SidebarNavigation 
         onNavigate={onNavigate} 
         headerHeight={headerHeight} 
@@ -103,15 +99,18 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <header
         ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-50 p-3 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
+        className={`fixed top-0 z-50 p-0 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
           isTablet && !sidebarState ? 'blur-lg' : ''
         }`}
+        style={{
+          left: isDesktop 
+            ? (sidebarState ? '64px' : '256px') // Desktop: always push header
+            : '0',
+          right: '0'
+        }}
       >
         <div 
-          className="max-w-7xl mx-auto w-full flex justify-between items-center px-4"
-          style={{
-            marginLeft: isTablet && sidebarState ? '64px' : '0' // Shift header content on tablet when collapsed
-          }}
+          className="max-w-7xl mx-auto w-full flex justify-between items-center px-3 py-3 md:px-4"
         >
           <div className="flex items-center">
             {/* Mobile Logo and Text - Only visible on mobile */}
@@ -163,34 +162,36 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       <div 
         className={`transition-all duration-300 ${isTablet && !sidebarState ? 'blur-lg' : ''}`}
         style={{
-          marginLeft: isTablet && sidebarState ? '64px' : '0' // Shift banner on tablet when collapsed
+          marginLeft: isDesktop 
+            ? (sidebarState ? '64px' : '256px') // Desktop: always push banner
+            : '0'
         }}
       >
         <BusinessModeBanner />
       </div>
       
       <main 
-        className={`flex-grow p-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-20 md:pb-4 transition-all duration-300 ${
+        className={`flex-grow px-0 py-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-12 md:pb-4 transition-all duration-300 ${
           isTablet && !sidebarState ? 'blur-lg' : ''
         }`}
         style={{ 
           paddingTop: `${Math.max(headerHeight + 16, 96)}px`,
           marginLeft: isDesktop 
-            ? (sidebarState ? '64px' : '256px') // Desktop: collapsed = 64px, expanded = 256px
-            : isTablet 
-              ? (sidebarState ? '64px' : '0') // Tablet: collapsed = 64px, expanded = overlay (0px)
-              : '0' // Mobile: no margin
+            ? (sidebarState ? '64px' : '256px') // Desktop: always push content next to sidebar
+            : '0' // Mobile/Tablet: no margin (sidebar overlays)
         }}
       >
-        <div className="max-w-7xl mx-auto w-full pb-20 md:pb-0">
+        <div className={`${title ? 'max-w-7xl md:mx-auto' : 'w-full'} pb-12 md:pb-0`}>
           {title && (
-            <div className="mb-2 pb-0 border-b border-border">
+            <div className="mb-2 pb-0 border-b border-border pl-5 pr-0 md:px-0">
               <div className="flex items-center gap-2">
                 {title}
               </div>
             </div>
           )}
-          {children}
+          <div className={title ? 'pl-5 pr-0 md:px-0' : 'pl-5'}>
+            {children}
+          </div>
         </div>
       </main>
 

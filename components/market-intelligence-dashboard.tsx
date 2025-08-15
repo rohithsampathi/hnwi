@@ -2,13 +2,14 @@
 
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { secureApi } from "@/lib/secure-api"
@@ -54,10 +55,11 @@ interface Development {
 // Time range options - matching the original format
 const timeRanges = [
   { value: '1d', label: '1D' },
-  { value: '1w', label: '1W' },
-  { value: '1m', label: '1M' },
-  { value: '6m', label: '6M' },
-  { value: '1y', label: '1Y' }
+  { value: '3d', label: '3D' },
+  { value: '7d', label: '7D' },
+  { value: '14d', label: '14D' },
+  { value: '21d', label: '21D' },
+  { value: '1m', label: '1M' }
 ]
 
 // Client-side date filtering helper (same as development-stream.tsx)
@@ -67,20 +69,22 @@ const applyClientSideDateFilter = (items: any[], timeRange: string): any[] => {
   
   switch (timeRange) {
     case '1d':
-      // For 1D, show items from last 48 hours (more lenient to catch recent data)
-      cutoffDate = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+      cutoffDate = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       break;
-    case '1w':
+    case '3d':
+      cutoffDate = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      break;
+    case '7d':
       cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '14d':
+      cutoffDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      break;
+    case '21d':
+      cutoffDate = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
       break;
     case '1m':
       cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '6m':
-      cutoffDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '1y':
-      cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       break;
     default:
       return items;
@@ -92,7 +96,6 @@ const applyClientSideDateFilter = (items: any[], timeRange: string): any[] => {
     return itemDate >= cutoffDate;
   });
   
-  console.log(`📅 [INDUSTRY TRENDS FILTER] ${timeRange}: From ${items.length} to ${filtered.length} items (cutoff: ${cutoffDate.toISOString()})`);
   return filtered;
 };
 
@@ -212,77 +215,143 @@ interface MarketIntelligenceDashboardProps {
 }
 
 export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDashboardProps) {
+  
   const { theme } = useTheme()
   const { toast } = useToast()
   
-  // State management - Simplified
-  const [selectedTimeRange, setSelectedTimeRange] = useState('1w') // Default to 1 week
+  // State management - Unified data approach
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
+  const [developments, setDevelopments] = useState<any[]>([]) // Raw developments data
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [totalDevelopments, setTotalDevelopments] = useState(0)
-  const [developmentStreamLoading, setDevelopmentStreamLoading] = useState(false)
   
-  // Fetch developments data and generate industry trends from it (unified data source)
-  const fetchIndustryTrends = useCallback(async (forceRefresh = false) => {
+  // Mobile improvements state
+  const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
+  const [showStickySectors, setShowStickySectors] = useState(false)
+  
+  const sectorsRef = useRef<HTMLDivElement>(null)
+  const insiderBriefsRef = useRef<HTMLDivElement>(null)
+  
+  // Screen size detection for mobile/desktop check
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setScreenSize(window.innerWidth < 768 ? 'mobile' : 'desktop')
+    }
+    
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize)
+    }
+  }, [])
+  
+  // Sticky sectors effect for mobile - show when scrolling past activity leaderboard section
+  useEffect(() => {
+    if (screenSize !== 'mobile') return;
+    
+    // Ensure DOM is fully rendered before setting up observer
+    const setupObserver = () => {
+      const sectorsElement = sectorsRef.current;
+      const rect = sectorsElement?.getBoundingClientRect();
+      
+      if (!sectorsElement || rect?.height === 0) {
+        setTimeout(setupObserver, 100);
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          // Show sticky when activity leaderboard section is NOT intersecting (user has scrolled past it)
+          setShowStickySectors(!entry.isIntersecting);
+        },
+        {
+          threshold: [0, 0.1, 1],
+          rootMargin: '0px'
+        }
+      );
+
+      observer.observe(sectorsElement);
+      
+      return observer;
+    };
+
+    const observer = setupObserver();
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [screenSize]);
+  
+  // Unified data fetching - single API call for both components
+  const fetchDevelopments = useCallback(async (forceRefresh = false) => {
+    
     try {
-      const cacheKey = `unified-industry-trends-${selectedTimeRange}`;
-      // Always show main loader when fetching data
       setIsLoading(true)
       setIsRefreshing(forceRefresh);
       
-      console.log('🔍 [UNIFIED] Fetching developments to generate industry trends for time_range:', selectedTimeRange);
-      
-      // Use same API as DevelopmentStream to ensure perfect synchronization
-      const requestBody = {
-        start_date: null,
-        end_date: null,
-        industry: undefined, // Always fetch all industries - filter locally
-        product: null,
+      const requestBody: any = {
         page: 1,
-        page_size: 100,
+        page_size: 100, // Backend maximum limit is 100
         sort_by: "date",
-        sort_order: "desc",
-        time_range: selectedTimeRange,
+        sort_order: "desc"
       }
       
-      const result = await secureApi.post('/api/developments', requestBody, true, { 
-        enableCache: !forceRefresh,
-        cacheDuration: 600000, // 10 minutes cache
-        cacheKey: cacheKey
-      });
+      // Convert time_range to start_date and end_date for backend compatibility
+      const now = new Date();
+      const endDate = now.toISOString();
+      let startDate: string;
       
-      console.log('🔍 [UNIFIED] Developments API response for industry trends:', {
-        hasData: !!result.developments,
-        count: result.developments?.length,
-        timeRange: result.time_range
-      });
-      
-      if (!result.developments || !Array.isArray(result.developments)) {
-        console.error('❌ [ERROR] Invalid developments response for industry trends:', result);
-        throw new Error("Invalid API response format")
+      switch (selectedTimeRange) {
+        case '1d':
+          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case '7d':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case '30d':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          break;
+        case '90d':
+          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+          break;
+        default:
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
       }
       
-      console.log('✅ [UNIFIED] Raw developments count:', result.developments.length);
+      requestBody.start_date = startDate;
+      requestBody.end_date = endDate;
       
-      // Apply client-side date filtering (same logic as DevelopmentStream)
-      let filteredDevelopments = result.developments;
-      if (selectedTimeRange !== result.time_range) {
-        console.log('⚠️ [API BUG] Developments API ignoring time_range! Applying client-side filtering...');
-        filteredDevelopments = applyClientSideDateFilter(result.developments, selectedTimeRange);
-      }
       
-      console.log('📊 [UNIFIED] After filtering:', filteredDevelopments.length, 'developments');
+      // Create stable cache key based on time range instead of exact timestamps
+      const cacheKey = `developments:${selectedTimeRange}:page-${requestBody.page}:size-${requestBody.page_size}`;
       
-      // Generate industry trends from developments data
-      const industriesMap = new Map<string, number>()
+      const data = await secureApi.post('/api/developments', requestBody, true, { 
+        enableCache: true, 
+        cacheDuration: 300000, 
+        cacheKey: cacheKey 
+      }); // 5 minutes cache for developments
       
-      filteredDevelopments.forEach((dev: any) => {
+      
+      if (data.developments && Array.isArray(data.developments)) {
+        // Store raw developments data for DevelopmentStream
+        setDevelopments(data.developments);
+        setTotalDevelopments(data.developments.length);
+        
+        // Process data for industry trends (Activity Leaderboard)
+        const industriesMap = new Map<string, number>()
+        
+        data.developments.forEach((dev: any) => {
         if (dev && dev.industry) {
-          const count = industriesMap.get(dev.industry) || 0
-          industriesMap.set(dev.industry, count + 1) // Each development counts as 1
+          const industry = dev.industry.trim()
+          const count = industriesMap.get(industry) || 0
+          industriesMap.set(industry, count + 1)
         }
       })
       
@@ -295,27 +364,25 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         .filter(item => item.total_count > 0)
         .sort((a, b) => b.total_count - a.total_count)
       
-      // Calculate total developments across all industries
-      const totalDevs = processedData.reduce((sum, item) => sum + item.total_count, 0)
       
-      console.log('📊 [UNIFIED] Generated industry trends from developments:', { 
-        industriesCount: processedData.length, 
-        totalDevs,
-        breakdown: processedData.map(i => `${i.industry}: ${i.total_count}`)
-      });
-      
-      // Update state
-      setIndustryTrends(processedData)
-      setTotalDevelopments(totalDevs)
-      setLastUpdated(new Date())
+        // Update state
+        setIndustryTrends(processedData)
+        setLastUpdated(new Date())
+      } else {
+        setDevelopments([])
+        setIndustryTrends([])
+        setTotalDevelopments(0)
+      }
       
     } catch (error) {
-      console.error('Failed to fetch developments for industry trends:', error)
       toast({
         title: "Error",
-        description: "Failed to fetch industry trends. Please try again.",
+        description: "Failed to fetch developments. Please try again.",
         variant: "destructive",
       })
+      setDevelopments([])
+      setIndustryTrends([])
+      setTotalDevelopments(0)
     } finally {
       setIsRefreshing(false)
       setIsLoading(false)
@@ -324,9 +391,26 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   
   // Initial load and when duration changes
   useEffect(() => {
-    // console.log(`🔄 [DEBUG] useEffect triggered for time range: ${selectedTimeRange}`);
-    fetchIndustryTrends()
-  }, [fetchIndustryTrends])
+    fetchDevelopments()
+  }, [fetchDevelopments])
+
+  // Handle scroll to Insider Brief section from home dashboard
+  useEffect(() => {
+    const shouldScrollToInsiderBrief = sessionStorage.getItem("scrollToInsiderBrief")
+    if (shouldScrollToInsiderBrief === "true" && insiderBriefsRef.current) {
+      // Clear the flag
+      sessionStorage.removeItem("scrollToInsiderBrief")
+      
+      // Scroll to the Insider Brief section with smooth behavior
+      setTimeout(() => {
+        insiderBriefsRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest' 
+        })
+      }, 500) // Wait for page to load before scrolling
+    }
+  }, [developments]) // Trigger after developments are loaded
   
   // Get industry color (simple implementation)
   const getIndustryColor = useCallback((industry: string) => {
@@ -354,7 +438,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       <div className="w-full">
         {/* Single Center Crown Loader */}
         <div className="flex flex-col items-center justify-center min-h-[500px]">
-          <CrownLoader size="lg" text="Loading market intelligence..." />
+          <CrownLoader size="lg" text="Loading HNWI World Intelligence..." />
         </div>
       </div>
     )
@@ -364,6 +448,281 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const maxCount = Math.max(...industryTrends.map(t => t.total_count), 1)
   const sortedTrends = [...industryTrends].sort((a, b) => b.total_count - a.total_count)
   
+  // Mobile layout logic
+  if (screenSize === 'mobile') {
+    return (
+      <div className="w-full">
+        {/* Mobile Sectors Section */}
+        <div ref={sectorsRef} className="mb-6 mt-4">
+          <div className="mb-2">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                Activity Leaderboard
+              </h3>
+              
+              {/* Embedded Time Range Filter */}
+              <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
+                <SelectTrigger className="w-[120px]">
+                  <Clock className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent className="z-50" side="bottom" align="end" sideOffset={4}>
+                  {timeRanges.map((range) => (
+                    <SelectItem key={range.value} value={range.value}>
+                      {range.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {industryTrends.length} sectors • {totalDevelopments} total developments
+            </p>
+          </div>
+          
+          {/* Mobile Sectors Grid - 3 blocks then scroll */}
+          <div className="h-[300px] overflow-y-auto">
+            <div className="space-y-3 px-1">
+              {sortedTrends.map((trend, index) => {
+                const position = index + 1
+                const IconComponent = getIndustryIcon(trend.industry)
+                const activityLevel = getActivityLevel(trend.total_count, totalDevelopments, trend.industry)
+                const isSelected = selectedIndustry === trend.industry
+                const leaderboardStyle = getLeaderboardStyling(position)
+                const progressPercentage = (trend.total_count / maxCount) * 100
+                
+                // Mono gold system - activity intensity only
+                const baseColor = theme === 'dark' ? '#FFD700' : '#DAA520' // Brighter Gold
+                const activityColor = activityLevel === 'high' 
+                  ? baseColor 
+                  : activityLevel === 'medium'
+                  ? baseColor + '80' // 50% opacity
+                  : baseColor + '40' // 25% opacity
+                
+                return (
+                  <div key={trend.industry}>
+                    {/* Mobile Sector Card */}
+                    {isSelected ? (
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="p-4 rounded-lg cursor-pointer transition-all duration-200 border-transparent hover:border-primary/30 hover:bg-primary/5 relative"
+                        style={{
+                          ...getMetallicCardStyle(theme).style,
+                          outline: `1px solid ${theme === "dark" ? "#FFD700" : "#DAA520"}`,
+                          outlineOffset: '2px'
+                        }}
+                        onClick={() => setSelectedIndustry("All")}
+                      >
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="flex items-center space-x-2">
+                              {leaderboardStyle.showBadge && (
+                                <span className="text-lg font-bold">
+                                  {leaderboardStyle.badge}
+                                </span>
+                              )}
+                              <div 
+                                className="p-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: `${activityColor}20`, color: activityColor }}
+                              >
+                                <IconComponent className="w-5 h-5" />
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <h4 className={`font-semibold text-sm ${
+                                theme === 'dark' ? 'text-white' : 'text-black'
+                              }`}>
+                                {trend.industry}
+                              </h4>
+                              <p className="text-xs text-muted-foreground">
+                                {trend.total_count} developments
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Progress Bar and Stats */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Activity Level</span>
+                              <span className="font-medium">{activityLevel.toUpperCase()}</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="h-2 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${progressPercentage}%`,
+                                  backgroundColor: activityColor
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </motion.div>
+                    ) : (
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="p-4 rounded-lg cursor-pointer transition-all duration-200 border-transparent hover:border-primary/30 hover:bg-primary/5"
+                        style={getMetallicCardStyle(theme).style}
+                        onClick={() => setSelectedIndustry(trend.industry)}
+                      >
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="flex items-center space-x-2">
+                            {leaderboardStyle.showBadge && (
+                              <span className="text-lg font-bold">
+                                {leaderboardStyle.badge}
+                              </span>
+                            )}
+                            <div 
+                              className="p-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: `${activityColor}20`, color: activityColor }}
+                            >
+                              <IconComponent className="w-5 h-5" />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className={`font-semibold text-sm ${
+                              theme === 'dark' ? 'text-white' : 'text-black'
+                            }`}>
+                              {trend.industry}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {trend.total_count} developments
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Progress Bar and Stats */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Activity Level</span>
+                            <span className="font-medium">{activityLevel.toUpperCase()}</span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
+                            <div 
+                              className="h-2 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${progressPercentage}%`,
+                                backgroundColor: activityColor
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+        
+        {/* Mobile Insider Briefs Section - Continuous Scroll */}
+        <div ref={insiderBriefsRef} className="mb-6">
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={`text-lg font-semibold ${
+                theme === 'dark' ? 'text-white' : 'text-black'
+              }`}>
+                {selectedIndustry === 'All' ? 'All Insider Briefs' : `${selectedIndustry} Insider Brief`}
+              </h3>
+              
+              {/* Embedded Industry Filter */}
+              <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+                <SelectTrigger className="w-[150px]">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Industry" />
+                </SelectTrigger>
+                <SelectContent className="z-50" side="bottom" align="end" sideOffset={4}>
+                  {industryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {selectedIndustry !== 'All' && (
+                <>
+                  <button
+                    onClick={() => setSelectedIndustry('All')}
+                    className="text-primary hover:underline mr-2"
+                  >
+                    Show All Industries
+                  </button>
+                  •{' '}
+                </>
+              )}
+              Development stream • {selectedTimeRange} timeframe
+            </p>
+          </div>
+          
+          {/* Insider briefs - no internal scroll on mobile */}
+          <div>
+            <DevelopmentStream 
+              selectedIndustry={selectedIndustry}
+              duration={selectedTimeRange}
+              getIndustryColor={getIndustryColor}
+              expandedDevelopmentId={null}
+              parentLoading={isLoading}
+              onLoadingChange={(loading) => {
+                // No longer needed since parent handles loading
+              }}
+              developments={developments}
+              isLoading={isLoading}
+            />
+          </div>
+        </div>
+        
+        {/* Sticky Sectors Header */}
+        <AnimatePresence>
+          {showStickySectors && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="fixed top-[56px] left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3"
+            >
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {/* All Sectors Sticky Button */}
+                <Button
+                  variant={selectedIndustry === 'All' ? "default" : "outline"}
+                  size="sm"
+                  className="flex-shrink-0 text-xs px-3 py-1.5 h-auto"
+                  onClick={() => setSelectedIndustry('All')}
+                >
+                  <Store className="w-3 h-3 mr-1" />
+                  All ({totalDevelopments})
+                </Button>
+
+                {/* Sector Sticky Buttons */}
+                {sortedTrends.slice(0, 8).map((trend) => {
+                  const IconComponent = getIndustryIcon(trend.industry)
+                  const isSelected = selectedIndustry === trend.industry
+                  
+                  return (
+                    <Button
+                      key={trend.industry}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      className="flex-shrink-0 text-xs px-3 py-1.5 h-auto"
+                      onClick={() => setSelectedIndustry(trend.industry)}
+                    >
+                      <IconComponent className="w-3 h-3 mr-1" style={{ color: isSelected ? 'inherit' : '#DAA520' }} />
+                      {trend.industry} ({trend.total_count})
+                    </Button>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
+  
+  // Desktop layout (existing)
   return (
     <div className="w-full">
       {/* Main Dashboard Content - No Background Style */}
@@ -580,7 +939,6 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
             </div>
             
             <div className="mt-8">
-              <GoldenScroll maxHeight="calc(100vh - 350px)">
               <DevelopmentStream 
                 selectedIndustry={selectedIndustry}
                 duration={selectedTimeRange}
@@ -588,10 +946,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 expandedDevelopmentId={null}
                 parentLoading={isLoading}
                 onLoadingChange={(loading) => {
-                  setDevelopmentStreamLoading(loading)
+                  // No longer needed since parent handles loading
                 }}
+                developments={developments}
+                isLoading={isLoading}
               />
-              </GoldenScroll>
             </div>
           </div>
         </div>

@@ -45,6 +45,10 @@ interface IndustryTrendsBubblesProps {
   getIndustryColor: (industry: string) => string
   selectedIndustry: string
   renderStatsOutside?: boolean
+  startDate?: string
+  endDate?: string
+  developments?: any[] // Accept developments as props
+  isLoading?: boolean
 }
 
 interface TooltipData {
@@ -54,9 +58,7 @@ interface TooltipData {
   y: number
 }
 
-// Import from config to ensure consistency
-import { API_BASE_URL } from "@/config/api"
-import { secureApi } from "@/lib/secure-api"
+// Component now receives data as props, no API calls needed
 
 export function IndustryTrendsBubbles({
   duration,
@@ -65,9 +67,14 @@ export function IndustryTrendsBubbles({
   getIndustryColor,
   selectedIndustry,
   renderStatsOutside = true,
+  startDate,
+  endDate,
+  developments = [],
+  isLoading = false,
 }: IndustryTrendsBubblesProps) {
+  
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isProcessing, setIsProcessing] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [tooltipData, setTooltipData] = useState<TooltipData | null>(null)
   
@@ -82,41 +89,24 @@ export function IndustryTrendsBubbles({
   // Ref to store current selectedIndustry for event handlers (avoids stale closure)
   const selectedIndustryRef = useRef(selectedIndustry)
 
-  // Fetch all data from the time series endpoint
-  const fetchIndustryTrends = useCallback(async (forceRefresh = false) => {
+  // Process developments data into industry trends
+  const processIndustryTrends = useCallback(() => {
+    
+    setIsProcessing(true)
+    
     try {
-      setIsLoading(prevState => !isRefreshing && prevState);
-      setIsRefreshing(forceRefresh);
-      
-      // Generate cache-busting parameters
-      const timestamp = new Date().getTime()
-      const random = Math.random().toString(36).substring(2, 15)
-      const cacheKey = `${timestamp}-${random}`
-      
-      // Use correct POST format as expected by backend with caching
-      const result = await secureApi.post(`/api/industry-trends/time-series`, {
-        time_range: duration,
-        include_developments: false
-      }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache for industry trends
-      
-      if (!result.data || !Array.isArray(result.data)) {
-        throw new Error("Invalid API response format")
-      }
-      
       // Store raw data for debugging
-      rawApiData.current = result.data
+      rawApiData.current = developments
 
-      // Process data - group by exact industry names from API
+      // Process data - group by industry from developments
       const industriesMap = new Map<string, number>()
       
-      // Log unique industries found in API response
-      const uniqueIndustries = new Set<string>()
       
-      result.data.forEach((item: any) => {
-        if (item && item.industry) {
-          uniqueIndustries.add(item.industry)
-          const count = industriesMap.get(item.industry) || 0
-          industriesMap.set(item.industry, count + (item.total_count || 1))
+      developments.forEach((development: any) => {
+        if (development && development.industry) {
+          const industry = development.industry.trim()
+          const count = industriesMap.get(industry) || 0
+          industriesMap.set(industry, count + 1)
         }
       })
       
@@ -124,7 +114,7 @@ export function IndustryTrendsBubbles({
       // Convert map to array for visualization
       const processedData = Array.from(industriesMap.entries())
         .map(([industry, total_count]) => ({
-          industry: industry.trim(), // Just trim whitespace, no other modifications
+          industry,
           total_count
         }))
         .filter(item => item.total_count > 0)
@@ -141,24 +131,23 @@ export function IndustryTrendsBubbles({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch industry trends. Please try again.",
+        description: "Failed to process industry trends.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
-      setIsRefreshing(false)
+      setIsProcessing(false)
     }
-  }, [duration, onIndustriesUpdate, toast])
+  }, [developments, onIndustriesUpdate, toast])
 
   // Keep ref in sync with selectedIndustry prop
   useEffect(() => {
     selectedIndustryRef.current = selectedIndustry
   }, [selectedIndustry])
 
-  // Initial load and when duration changes
+  // Process data when developments change
   useEffect(() => {
-    fetchIndustryTrends()
-  }, [fetchIndustryTrends])
+    processIndustryTrends()
+  }, [processIndustryTrends])
 
   // Calculate max count for activity levels and sort for leaderboard
   const maxCount = Math.max(...industryTrends.map(t => t.total_count), 1)
@@ -204,13 +193,8 @@ export function IndustryTrendsBubbles({
     }
   }
 
-  // Handle manual refresh
-  const handleRefresh = () => {
-    fetchIndustryTrends(true)
-  }
-
   // Loading state
-  if (isLoading) {
+  if (isLoading || isProcessing) {
     return (
       <div className="w-full">
         <div className="flex justify-center items-center h-[400px]">
@@ -430,7 +414,6 @@ export function IndustryTrendsBubbles({
                             <button
                               onClick={() => {
                                 // Integrate with concierge system
-                                console.log(`Concierge request for ${selectedIndustryData.industry}`)
                               }}
                               className="px-3 py-1 border border-border rounded text-xs hover:bg-muted transition-colors"
                             >

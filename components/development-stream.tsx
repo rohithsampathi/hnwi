@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import React from "react" // Import React to fix the undeclared JSX variable
 import { useTheme } from "@/contexts/theme-context"
-import { AuthCheck } from "@/components/auth-check"
 import { getCardColors, getMatteCardStyle, getMetallicCardStyle } from "@/lib/colors"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
 
@@ -60,59 +59,14 @@ interface DevelopmentStreamProps {
   expandedDevelopmentId: string | null
   parentLoading?: boolean
   onLoadingChange?: (loading: boolean) => void
+  startDate?: string
+  endDate?: string
+  developments?: any[] // Accept developments as props
+  isLoading?: boolean
 }
 
-import { secureApi } from "@/lib/secure-api"
-import { isAuthenticated } from "@/lib/auth-utils"
+// Component now receives data as props, no API calls needed
 
-// Client-side date filtering helper (workaround for API bug)
-const applyClientSideDateFilter = (developments: any[], timeRange: string): any[] => {
-  const now = new Date();
-  let cutoffDate: Date;
-  
-  switch (timeRange) {
-    case '1d':
-      // For 1D, show developments from last 48 hours (more lenient to catch recent data)
-      cutoffDate = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-      break;
-    case '1w':
-      cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case '1m':
-      cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '6m':
-      cutoffDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '1y':
-      cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      break;
-    default:
-      console.warn('Unknown time range:', timeRange);
-      return developments;
-  }
-  
-  const filtered = developments.filter((dev: any) => {
-    if (!dev.date) return false;
-    const devDate = new Date(dev.date);
-    return devDate >= cutoffDate;
-  });
-  
-  // Enhanced debugging for 1D filter
-  if (timeRange === '1d') {
-    console.log(`🔍 [1D DEBUG] Cutoff date: ${cutoffDate.toISOString()}`);
-    console.log(`🔍 [1D DEBUG] Sample development dates:`, 
-      developments.slice(0, 5).map(dev => ({ 
-        date: dev.date, 
-        parsed: new Date(dev.date).toISOString(),
-        passes: dev.date && new Date(dev.date) >= cutoffDate
-      }))
-    );
-  }
-  
-  console.log(`📅 [DATE FILTER] ${timeRange}: From ${developments.length} to ${filtered.length} developments (cutoff: ${cutoffDate.toISOString()})`);
-  return filtered;
-};
 
 
 const queenBullet = "list-none";
@@ -253,190 +207,39 @@ export function DevelopmentStream({
   expandedDevelopmentId,
   parentLoading = false,
   onLoadingChange,
+  startDate,
+  endDate,
+  developments = [],
+  isLoading = false,
 }: DevelopmentStreamProps) {
-  const [developments, setDevelopments] = useState<Development[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
-  const [authPopupShown, setAuthPopupShown] = useState(false)
   const { toast } = useToast()
   const { theme } = useTheme()
-  const { showAuthPopup } = useAuthPopup()
 
-  const fetchDevelopments = useCallback(async () => {
-    // Check authentication before making API call
-    if (!isAuthenticated()) {
-      if (!authPopupShown) {
-        console.log('User not authenticated - showing auth popup in development stream');
-        setAuthPopupShown(true);
-        showAuthPopup({
-          title: "Sign In Required",
-          description: "Please sign in to access development insights",
-          onSuccess: () => {
-            setAuthPopupShown(false);
-            // Retry fetching developments after successful login
-            setTimeout(() => {
-              fetchDevelopments();
-            }, 100);
-          }
-        });
-      }
-      setIsLoading(false);
-      return [];
-    }
-
-    // Notify parent about loading state instead of showing individual loader
-    if (onLoadingChange) {
-      onLoadingChange(true)
-    } else {
-      setIsLoading(true)
-    }
-    setError(null)
-    try {
-      const requestBody = {
-        start_date: null,
-        end_date: null,
-        industry: undefined, // Always fetch all industries - filter locally
-        product: null,
-        page: 1,
-        page_size: 100,
-        sort_by: "date",
-        sort_order: "desc",
-        time_range: duration,
-      }
-      
-      console.log('🔍 [DEVELOPMENT-STREAM] API request body:', requestBody);
-
-      const data = await secureApi.post('/api/developments', requestBody, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache
-      
-      console.log('🔍 [FULL API RESPONSE] Complete response object:');
-      console.log('  - Type:', typeof data);
-      console.log('  - Keys available:', Object.keys(data || {}));
-      console.log('  - Has developments field:', !!data.developments);
-      console.log('  - Has data field:', !!data.data);
-      console.log('  - Raw response:', JSON.stringify(data, null, 2));
-      
-      if (data.developments) {
-        console.log('✅ [DEVELOPMENTS] Found developments array with length:', data.developments.length);
-        if (data.developments[0]) {
-          console.log('✅ [SAMPLE] First development:', {
-            id: data.developments[0].id,
-            title: data.developments[0].title?.substring(0, 50) + '...',
-            industry: data.developments[0].industry,
-            date: data.developments[0].date,
-            allKeys: Object.keys(data.developments[0])
-          });
-        }
-      } else {
-        console.error('❌ [NO DEVELOPMENTS] developments field not found in response');
-      }
-      
-      // Check if API is respecting time_range parameter
-      console.log('🕐 [TIME FILTER CHECK]');
-      console.log('  - Requested time_range:', duration);
-      console.log('  - API returned time_range:', data.time_range);
-      console.log('  - Do they match?', duration === data.time_range);
-      
-      if (duration !== data.time_range) {
-        console.warn('⚠️ [API BUG] Backend is ignoring time_range parameter! Applying client-side filtering...');
-      }
-      if (data.developments && Array.isArray(data.developments)) {
-        const invalidDateEntries = data.developments.filter(
-          (dev: any) => !dev.date || dev.date === "" || isNaN(new Date(dev.date).getTime()),
-        ).length
-        if (invalidDateEntries > 0) {
-          toast({
-            title: "Warning",
-            description: `${invalidDateEntries} development(s) have invalid or missing dates. Some information may not be displayed correctly.`,
-            // If your toast type system doesn't include "warning", adjust in your theme or typing.
-            // @ts-ignore
-            variant: "warning",
-          })
-        }
-        // Apply client-side date filtering if API ignores time_range
-        let filteredDevelopments = data.developments;
-        
-        if (duration !== data.time_range) {
-          console.log('🔧 [CLIENT FILTER] Applying client-side date filtering for:', duration);
-          filteredDevelopments = applyClientSideDateFilter(data.developments, duration);
-          console.log('📊 [CLIENT FILTER] Filtered from', data.developments.length, 'to', filteredDevelopments.length, 'developments');
-        }
-        
-        return filteredDevelopments
-      } else {
-        throw new Error("Invalid response format: developments array not found")
-      }
-    } catch (error: any) {
-      // Check if it's an authentication error
-      if (error.message?.includes('Authentication required') || error.status === 401) {
-        if (!authPopupShown) {
-          console.log('Authentication required for development stream data - showing auth popup');
-          setAuthPopupShown(true);
-          showAuthPopup({
-            title: "Session Expired",
-            description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
-            onSuccess: () => {
-              setAuthPopupShown(false);
-              // Retry fetching developments after successful login
-              setTimeout(() => {
-                fetchDevelopments();
-              }, 100);
-            }
-          });
-        }
-        setDevelopments([]);
-        setError(null); // Don't show error to user for auth issues
-        return [];
-      }
-      
-      let errorMessage = error.message || "An unknown error occurred"
-      if (error.message.includes("datetime_from_date_parsing")) {
-        errorMessage =
-          "The server returned developments with invalid date formats. This is a server-side issue that needs to be addressed."
-      }
-      setError(errorMessage)
-      toast({
-        title: "Error",
-        description: `Failed to load developments: ${errorMessage}`,
-        variant: "destructive",
-      })
-      return []
-    } finally {
-      if (onLoadingChange) {
-        onLoadingChange(false)
-      } else {
-        setIsLoading(false)
-      }
-    }
-  }, [toast, duration, showAuthPopup, authPopupShown]); // duration is already here - this should work
-
-
-  useEffect(() => {
-    console.log('🔄 [DEVELOPMENT-STREAM] Duration changed to:', duration, '- Fetching new data');
-    fetchDevelopments().then((fetchedDevelopments) => {
-      if (fetchedDevelopments) {
-        console.log('✅ [DEVELOPMENT-STREAM] Setting developments:', fetchedDevelopments.length);
-        setDevelopments(fetchedDevelopments);
-      }
-    });
-  }, [duration, fetchDevelopments]);
-
-  // Reset auth popup state when user becomes authenticated
-  useEffect(() => {
-    if (isAuthenticated()) {
-      setAuthPopupShown(false);
-    }
-  }, [selectedIndustry, duration]); // Reset when params change to allow fresh checks
+  // Component now receives developments as props, no need to fetch
 
   const toggleCardExpansion = (id: string) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
+    
+    // Scroll to the beginning of the card after a short delay
+    setTimeout(() => {
+      const cardElement = document.getElementById(`development-card-${id}`);
+      if (cardElement) {
+        cardElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
 
   return (
-    <AuthCheck showLoginPrompt={false}>
-      <div className="p-1 md:p-2">
-        {(isLoading && !onLoadingChange) ? (
+    <div className="p-1 md:p-2">
+        {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <CrownLoader size="lg" text="Loading development updates..." />
           </div>
@@ -453,7 +256,7 @@ export function DevelopmentStream({
           {developments
             .filter(dev => selectedIndustry === 'All' || dev.industry === selectedIndustry)
             .map((dev) => (
-            <div key={dev.id} className="min-h-[179px] relative">
+            <div key={dev.id} id={`development-card-${dev.id}`} className="min-h-[179px] relative">
               {/* Unified frame wrapper for both main card and expanded content */}
               <div 
                 className={`transition-all duration-300 ${
@@ -774,6 +577,5 @@ export function DevelopmentStream({
         </div>
       )}
       </div>
-    </AuthCheck>
   )
 }

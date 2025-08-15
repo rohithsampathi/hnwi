@@ -202,6 +202,7 @@ export function HomeDashboard({
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
+  const [viewportHeight, setViewportHeight] = useState<number>(0)
   const containerRef = useRef<HTMLDivElement>(null)
   // Commenting out onboarding popup code
   // const { currentStep, setCurrentStep, isWizardCompleted, setIsFromSignupFlow } = useOnboarding()
@@ -226,7 +227,6 @@ export function HomeDashboard({
     setDevelopmentsLoading(true)
     // Check authentication before making API call
     if (!isAuthenticated()) {
-      console.log('User not authenticated - showing auth popup');
       showAuthPopup({
         title: "Sign In Required",
         description: "Please sign in to access Elite Pulse developments",
@@ -251,7 +251,6 @@ export function HomeDashboard({
     } catch (error: any) {
       // Check if it's an authentication error
       if (error.message?.includes('Authentication required') || error.status === 401) {
-        console.log('Authentication required for developments data - showing auth popup');
         showAuthPopup({
           title: "Session Expired",
           description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
@@ -285,7 +284,6 @@ export function HomeDashboard({
       setMemberAnalytics(analytics);
       setActivityStats(activity);
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
     }
   };
 
@@ -308,12 +306,17 @@ export function HomeDashboard({
     }
   }, [developments, selectedDevelopment])
 
-  // Screen size detection
+  // Screen size and viewport detection
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      
+      setViewportHeight(height)
+      
+      if (width < 768) {
         setScreenSize('mobile')
-      } else if (window.innerWidth < 1024) {
+      } else if (width < 1024) {
         setScreenSize('tablet')  
       } else {
         setScreenSize('desktop')
@@ -329,7 +332,17 @@ export function HomeDashboard({
   }, [])
 
   const handleDevelopmentSelect = (development: Development) => {
-    setSelectedDevelopment(development)
+    if (screenSize === 'mobile') {
+      // On mobile, navigate to Market Intelligence page (strategy-vault) with development context
+      sessionStorage.setItem("currentDevelopmentId", development.id);
+      sessionStorage.setItem("nav_param_industry", "All");
+      sessionStorage.setItem("nav_param_timeRange", "1w");
+      sessionStorage.setItem("scrollToInsiderBrief", "true"); // Flag to scroll to insider brief section
+      onNavigate("strategy-vault");
+    } else {
+      // On desktop/tablet, just select the development for the expanded view
+      setSelectedDevelopment(development)
+    }
   }
 
   // Commenting out onboarding cleanup effect
@@ -360,6 +373,7 @@ export function HomeDashboard({
   const sectionHeadingClass = `text-2xl md:text-3xl font-heading font-bold tracking-wide ${
     theme === "dark" ? "text-white" : "text-black"
   }`;
+
 
   const handleNavigate = (e: React.MouseEvent, route: string, developmentId?: string) => {
     e.preventDefault()
@@ -418,16 +432,16 @@ export function HomeDashboard({
         <p className="text-muted-foreground text-base leading-tight mt-1">What keeps you three moves ahead while others catch up</p>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full h-[calc(100vh-140px)] overflow-hidden">
+      <div className={`w-full overflow-visible`}>
         {/* Two Column Layout */}
         {developmentsLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[500px]">
             <CrownLoader size="lg" text="Securing your intelligence briefing..." />
           </div>
         ) : screenSize === 'mobile' ? (
-          // Mobile: Single column with scrolling cards - fixed height
-          <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-[calc(100vh-200px)] flex flex-col">
-            <CardHeader className="flex-shrink-0">
+          // Mobile: Single column with scrolling cards - dynamic spacing
+          <Card className="overflow-visible font-body bg-transparent border-none text-card-foreground flex flex-col">
+            <CardHeader className="flex-shrink-0 pt-4 pb-4 px-0">
               <div className="flex items-center space-x-2">
                 <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                 <Heading2 className={sectionHeadingClass}>
@@ -438,23 +452,26 @@ export function HomeDashboard({
             </CardHeader>
             <CardContent className="px-0 flex-1 overflow-hidden">
               {developments.length > 0 && (
-                <GoldenScroll maxHeight="calc(100vh - 280px)" className="px-6">
-                  <div className="space-y-4 pb-4">
-                    <div className="grid grid-cols-1 gap-4">
-                      {developments.map((development, index) => (
-                        <motion.div
-                          key={`elite-pulse-mobile-${development.id}`}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.6, delay: index * 0.1 }}
-                          className="w-full h-auto min-h-[20rem] p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
-                          style={{
-                            ...getMetallicCardStyle(theme).style,
-                            position: "relative",
-                            overflow: "hidden",
-                          }}
-                          onClick={() => handleDevelopmentSelect(development)}
-                        >
+                <div className="overflow-x-auto overflow-y-hidden pl-4" style={{ scrollSnapType: 'x mandatory' }}>
+                  <div className="flex gap-3 pb-4 pr-4">
+                    {developments.map((development, index) => (
+                      <motion.div
+                        key={`elite-pulse-mobile-${development.id}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: index * 0.1 }}
+                        className="flex-shrink-0 h-auto p-6 rounded-3xl cursor-pointer transition-all duration-300 relative"
+                        style={{
+                          ...getMetallicCardStyle(theme).style,
+                          position: "relative",
+                          overflow: "hidden",
+                          width: "calc(100vw - 5rem)", // Further reduced to show more of next card
+                          maxWidth: "78vw", // Reduced from 82vw to 78vw
+                          minHeight: viewportHeight < 700 ? '18rem' : '20rem', // Adjust for smaller screens
+                          scrollSnapAlign: 'start',
+                        }}
+                        onClick={() => handleDevelopmentSelect(development)}
+                      >
                           <div className="flex flex-col h-full">
                             {/* Top row with date and industry - right aligned */}
                             <div className="flex items-center justify-end gap-3 mb-3">
@@ -493,7 +510,7 @@ export function HomeDashboard({
                               <div className={`text-sm font-bold hover:underline cursor-pointer ${
                                 theme === "dark" ? "text-primary" : "text-black"
                               }`}>
-                                Tap to Expand
+                                Read Full Brief
                               </div>
                               <div className="flex items-center gap-2">
                                 {activityStats && activityStats.page_viewers > 3 && (
@@ -515,9 +532,8 @@ export function HomeDashboard({
                           </div>
                         </motion.div>
                       ))}
-                    </div>
                   </div>
-                </GoldenScroll>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -925,15 +941,25 @@ export function HomeDashboard({
         {/* Commenting out onboarding wizard */}
         {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}
       </div>
-      
-      {/* Subtle relevance reminder - Fixed at bottom */}
-      <div className="fixed bottom-4 left-0 right-0 text-center pointer-events-none z-10">
-        <p className={`text-xs font-medium ${
-          theme === "dark" ? "text-gray-500" : "text-gray-400"
-        }`}>
-          Intelligence advantage expires at market open. Stay ahead.
-        </p>
+
+      {/* Wealth Quote Section - OUTSIDE the padded container */}
+      <div className={`text-center px-6 ${screenSize === 'mobile' ? 'mt-0 mb-0' : 'mt-0 mb-0'}`} style={{
+        paddingBottom: screenSize === 'mobile' ? '4px' : '0px'
+      }}>
+        <div className={`${screenSize === 'mobile' ? 'py-0' : 'py-0'}`}>
+          <blockquote className={`${screenSize === 'mobile' ? 'text-base' : 'text-lg md:text-xl'} font-medium italic leading-relaxed max-w-2xl mx-auto ${
+            theme === "dark" ? "text-gray-300" : "text-gray-700"
+          }`}>
+            "Money makes money. And the money that money makes, makes money."
+          </blockquote>
+          <p className={`${screenSize === 'mobile' ? 'mt-0' : 'mt-0.5'} text-sm font-semibold tracking-wide ${
+            theme === "dark" ? "text-primary" : "text-black"
+          }`}>
+            — Benjamin Franklin
+          </p>
+        </div>
       </div>
+      
     </>
   )
 }

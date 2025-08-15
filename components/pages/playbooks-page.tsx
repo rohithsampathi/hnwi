@@ -324,7 +324,6 @@ export function PlayBooksPage({
               return;
             }
         } catch (apiError) {
-          console.error("API error:", apiError);
           // Continue to fallback handling
         }
       }
@@ -345,7 +344,6 @@ export function PlayBooksPage({
         setPlaybooks([]);
       }
     } catch (error) {
-      console.error('Error fetching playbooks:', error);
       
       // Fallback for known users even if everything else fails
       if (hasDefaultPlaybook()) {
@@ -446,8 +444,8 @@ export function PlayBooksPage({
       <Layout
         title={
           <div className="flex items-center space-x-2">
-            <Shield className="w-6 h-6 text-primary" />
-            <Heading2>War Room</Heading2>
+            <Shield className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>War Room</Heading2>
           </div>
         }
         showBackButton
@@ -468,7 +466,7 @@ export function PlayBooksPage({
               <>
                 {playbooks.length === 0 ? (
                   <div className="text-center py-8">
-                    <Paragraph>Your vault awaits its first strategic intelligence.</Paragraph>
+                    <p className={`text-base ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Your vault awaits its first strategic intelligence.</p>
                     <p className="text-muted-foreground text-sm mt-2">Curated insights below. Each playbook contains moves your competitors don't see.</p>
                   </div>
                 ) : (
@@ -480,9 +478,9 @@ export function PlayBooksPage({
                           onClick={() => handlePlaybookClick(playbook.id)}
                           onPurchase={() => {}}
                         />
-                        <Paragraph className="text-xs text-muted-foreground mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                           Valid until: {formatValidUntil(playbook.valid_until)}
-                        </Paragraph>
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -495,7 +493,7 @@ export function PlayBooksPage({
           <div className="px-4 mt-12">
             <div className="border-t border-border pt-8">
               <div className="mb-6">
-                <Heading2 className={`mb-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Explore the Store</Heading2>
+                <h3 className={`text-lg font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Explore the Store</h3>
                 <p className="text-muted-foreground text-base leading-tight">
                   Private intelligence from the inner circle. Strategic playbooks that shaped billion-dollar moves.
                 </p>
@@ -509,7 +507,7 @@ export function PlayBooksPage({
                 <>
                   {availablePlaybooks.length === 0 ? (
                     <div className="text-center py-8">
-                      <Paragraph>Your intelligence vault is complete.</Paragraph>
+                      <p className={`text-base ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Your intelligence vault is complete.</p>
                       <p className="text-muted-foreground text-sm mt-2">New whispered strategies arriving from the inner circle soon.</p>
                     </div>
                   ) : (

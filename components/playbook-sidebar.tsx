@@ -42,7 +42,7 @@ const SidebarItem: React.FC<{
   return (
     <Button
       variant={isActive ? "default" : "ghost"}
-      className={`w-full justify-start items-start text-left h-auto py-2 px-3 rounded-3xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.25)] transition-all transform hover:-translate-y-0.5 ${isActive ? "bg-gray-800" : "bg-transparent"} ${isActive && theme === "dark" ? "text-white" : ""}`}
+      className={`w-full justify-start items-start text-left h-auto py-2 px-3 rounded-3xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.25)] transition-all transform hover:-translate-y-0.5 ${isActive ? "bg-primary text-primary-foreground" : "bg-transparent"}`}
       onClick={onClick}
     >
       <div className="flex items-start">

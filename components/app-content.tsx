@@ -362,11 +362,9 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           variant: "default",
         });
       } catch (error) {
-        console.error("Direct API login failed:", error);
         throw error;
       }
     } catch (error) {
-      console.error("Login failed:", error);
       toast({
         title: "Login Failed",
         description: error instanceof Error
@@ -391,13 +389,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (result.token) {
           localStorage.setItem("token", result.token)
         }
-        console.log("Onboarding complete - User ID set:", userId)
         handleNavigation("dashboard")
       } else {
         throw new Error(result.error || "Onboarding failed")
       }
     } catch (error) {
-      console.error("Onboarding failed:", error)
       toast({
         title: "Onboarding Failed",
         description: error instanceof Error ? error.message : "Please try again",
@@ -419,7 +415,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           if (result.token) {
             localStorage.setItem("token", result.token)
           }
-          console.log("User update - User ID set:", userId)
           
           // Store the updated user object in localStorage
           localStorage.setItem("userObject", JSON.stringify(result.user));
@@ -431,7 +426,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           return // Success, so return early
         }
       } catch (serverUpdateError) {
-        console.log("Server-side update failed, using client-side update:", serverUpdateError)
       }
       
       // If we reach here, the server-side update failed or wasn't successful
@@ -478,9 +472,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       // Store updated user in localStorage
       localStorage.setItem("userObject", JSON.stringify(mergedUser))
       
-      console.log("Client-side user update complete")
     } catch (error) {
-      console.error("User update failed:", error)
       toast({
         title: "Update Failed",
         description: error instanceof Error ? error.message : "Please try again",
@@ -514,9 +506,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         variant: "default",
       });
       
-      console.log("Logout - User ID removed from localStorage");
     } catch (error) {
-      console.error("Logout failed:", error);
       toast({
         title: "Logout Failed",
         description: "Failed to log out. Please try again.",
@@ -629,7 +619,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         variant: "default",
       });
     } catch (error) {
-      console.error("Error processing login data:", error);
       toast({
         title: "Login Error",
         description: "Error processing login data. Please try again.",

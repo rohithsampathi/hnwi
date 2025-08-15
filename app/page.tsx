@@ -285,11 +285,9 @@ export default function Home() {
           // Get user data from localStorage for display
           const userEmail = localStorage.getItem("userEmail");
           if (userEmail) {
-            console.log("User authenticated:", userEmail);
           }
         }
       } catch (error) {
-        console.warn("Session check failed, falling back to localStorage:", error);
         
         // Fallback to localStorage check for backward compatibility
         const token = localStorage.getItem("token");

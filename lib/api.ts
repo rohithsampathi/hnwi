@@ -592,24 +592,31 @@ export async function updateAssetHeirs(
   assetId: string,
   heirIds: string[],
   ownerId?: string
-): Promise<{ success: boolean; message: string; heir_names: string[]; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
+): Promise<{ success: boolean; message: string; heir_names: string[]; refreshedData?: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Backend gets user_id from authentication context for ownership validation
-    const data = await secureApi.put(`/api/crown-vault/assets/${assetId}/heirs`, heirIds);
+    // Call the Next.js API route which will proxy to backend
+    const response = await fetch(`/api/crown-vault/assets/${assetId}/heirs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ heir_ids: heirIds })
+    });
     
-    // Return updated data - cache will auto-refresh on next request
-    return data;
+    if (!response.ok) {
+      throw new Error(`Failed to update asset heirs: ${response.status}`);
+    }
     
+    const data = await response.json();
+    
+    // Return updated data with proper structure
     return {
       success: data.success || true,
       message: data.message || 'Asset reassigned successfully',
-      heir_names: data.heir_names || [],
-      refreshedData
+      heir_names: data.heir_names || []
     };
   } catch (error) {
     throw error;

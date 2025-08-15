@@ -90,7 +90,6 @@ export async function generateMetadata({
       },
     }
   } catch (error) {
-    console.error("Error generating metadata:", error)
     return {
       title: "Investment Opportunity | HNWI Chronicles",
       description: "Explore exclusive investment opportunities for high-net-worth individuals.",

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, Crown, UserCircle2, Globe, Store, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
+import { Home, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -29,20 +29,21 @@ export function SidebarNavigation({
   const { isBusinessMode } = useBusinessMode()
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [showHeartbeat, setShowHeartbeat] = useState(false)
-  const [isMoreExpanded, setIsMoreExpanded] = useState(false)
+  const [isMoreExpanded, setIsMoreExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebar-more-expanded') === 'true'
+    }
+    return false
+  })
   const [isTabletSize, setIsTabletSize] = useState(false)
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
 
-  // Detect tablet size - specific ranges for iPad devices
+  // Detect tablet size - md and up but below large desktop
   useEffect(() => {
     const checkTabletSize = () => {
       const width = window.innerWidth
-      const height = window.innerHeight
-      // Target range: 800x1150 to 1100x1400 (covers iPad Air and iPad Pro)
-      const tabletCondition = width >= 800 && width <= 1100 && height >= 1150 && height <= 1400
-      setIsTabletSize(tabletCondition)
-      
-      console.log(`Sidebar - Screen: ${width}x${height}, isTabletSize: ${tabletCondition}, isCollapsed: ${isCollapsed}`)
+      // Tablet: md and up but below desktop large breakpoint (768px - 1280px)
+      setIsTabletSize(width >= 768 && width < 1280)
     }
     
     checkTabletSize()
@@ -57,7 +58,6 @@ export function SidebarNavigation({
         const analytics = await getMemberAnalytics();
         setMemberAnalytics(analytics);
       } catch (error) {
-        console.error('Failed to fetch member analytics:', error);
       }
     };
     
@@ -95,7 +95,7 @@ export function SidebarNavigation({
     },
     { 
       name: "Privé Exchange", 
-      icon: Store, 
+      icon: Gem, 
       route: "prive-exchange",
       description: "Off-market opportunities. Member referrals only."
     },
@@ -135,13 +135,13 @@ export function SidebarNavigation({
   const mobileNavItems = [
     { name: "Home", icon: Home, route: "dashboard" },
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
-    { name: "Privé Exchange", icon: Store, route: "prive-exchange" },
+    { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
   ]
 
   // Additional menu items for three dots dropdown (mode-based)
   const moreMenuItems = [
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
-    { name: "Social Hub", icon: Store, route: "social-hub" },
+    { name: "Social Hub", icon: Users, route: "social-hub" },
     ...(isBusinessMode ? [
       { name: "War Room", icon: Crown, route: "war-room" },
       { name: "Tactics Lab", icon: Crown, route: "strategy-engine" },
@@ -380,7 +380,12 @@ export function SidebarNavigation({
                           "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
                           isCollapsed && "justify-center px-0 gap-0"
                         )}
-                        onClick={() => setIsMoreExpanded(false)}
+                        onClick={() => {
+                          setIsMoreExpanded(false)
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('sidebar-more-expanded', 'false')
+                          }
+                        }}
                       >
                         <ChevronDown className="h-5 w-5 flex-shrink-0 rotate-180" />
                         {!isCollapsed && (
@@ -400,7 +405,12 @@ export function SidebarNavigation({
                         "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
                         isCollapsed && "justify-center px-0 gap-0"
                       )}
-                      onClick={() => setIsMoreExpanded(true)}
+                      onClick={() => {
+                        setIsMoreExpanded(true)
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('sidebar-more-expanded', 'true')
+                        }
+                      }}
                     >
                       <ChevronDown className="h-5 w-5 flex-shrink-0" />
                       {!isCollapsed && (

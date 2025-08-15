@@ -43,14 +43,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         message: input 
       })
       if (!data || !data.response) {
-        console.error("Invalid response format:", data)
         throw new Error("Invalid response format from server")
       }
 
       const assistantMessage: ChatMessage = { role: "assistant", content: data.response }
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
-      console.error("Error sending message:", error)
       toast({
         title: "Error",
         description: `Failed to send message: ${error instanceof Error ? error.message : "Unknown error"}`,

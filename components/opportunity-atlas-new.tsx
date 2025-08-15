@@ -24,12 +24,21 @@ import {
   Copy,
   Phone,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  ThumbsUp
 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle } from "@/lib/colors";
 import { GoldenScroll } from "@/components/ui/golden-scroll";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import type { Opportunity } from "@/lib/api";
 
 interface OpportunityAtlasProps {
@@ -91,13 +100,13 @@ function OpportunityCard({
   const { theme } = useTheme();
   const metallicStyle = getMetallicCardStyle(theme);
   
+  
   return (
     <motion.div
+      id={`opportunity-card-${opportunity.id}`}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
-      className={`rounded-lg transition-all duration-300 ${
-        isExpanded ? 'rounded-3xl' : 'rounded-lg'
-      }`}
+      className="transition-all duration-300"
       style={{
         outline: isExpanded 
           ? `0.2px solid ${theme === "dark" ? "#DAA520" : "#C0C0C0"}` 
@@ -105,7 +114,7 @@ function OpportunityCard({
       }}
     >
       <div
-        className="p-4 cursor-pointer transition-all duration-200"
+        className="p-6 cursor-pointer transition-all duration-200"
         style={metallicStyle.style}
         onClick={onClick}
       >
@@ -153,7 +162,16 @@ function OpportunityCard({
                 className="text-xs"
                 style={{ 
                   borderColor: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High"),
-                  color: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
+                  color: theme === "dark" 
+                    ? getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
+                    : (() => {
+                        switch (opportunity.riskLevel) {
+                          case "Low": return "#047857"; // darker green
+                          case "Medium": return "#D97706"; // darker amber  
+                          case "High": return "#DC2626"; // darker red
+                          default: return "#374151"; // darker gray
+                        }
+                      })()
                 }}
               >
                 {opportunity.riskLevel}
@@ -231,7 +249,16 @@ function OpportunityCard({
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium">Risk Level</span>
                       <span className="text-sm font-bold" style={{ 
-                        color: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High") 
+                        color: theme === "dark" 
+                          ? getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
+                          : (() => {
+                              switch (opportunity.riskLevel) {
+                                case "Low": return "#047857"; // darker green
+                                case "Medium": return "#D97706"; // darker amber  
+                                case "High": return "#DC2626"; // darker red
+                                default: return "#374151"; // darker gray
+                              }
+                            })()
                       }}>
                         {opportunity.riskLevel.toUpperCase()}
                       </span>
@@ -411,6 +438,8 @@ export function OpportunityAtlasNew({
   const [expandedOpportunityId, setExpandedOpportunityId] = useState<string | null>(null);
   const [shareState, setShareState] = useState<{ [key: string]: boolean }>({});
   const [conciergeState, setConciergeState] = useState<{ [key: string]: boolean }>({});
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const { toast } = useToast();
   const categoriesRef = useRef<HTMLDivElement>(null);
   const opportunitiesRef = useRef<HTMLDivElement>(null);
@@ -442,7 +471,7 @@ export function OpportunityAtlasNew({
       },
       {
         threshold: 0.1,
-        rootMargin: '-80px 0px 0px 0px' // Account for header height
+        rootMargin: '-56px 0px 0px 0px' // Account for header height
       }
     );
 
@@ -476,7 +505,6 @@ export function OpportunityAtlasNew({
   // Handle opportunity click (toggle expansion)
   const handleOpportunityClick = (opportunity: Opportunity) => {
     if (!opportunity?.id) {
-      console.warn('Invalid opportunity - missing ID:', opportunity);
       return;
     }
     
@@ -487,12 +515,23 @@ export function OpportunityAtlasNew({
       // Store opportunity info for reference
       sessionStorage.setItem('currentOpportunityId', opportunity.id);
     }
+    
+    // Scroll to the beginning of the card after a short delay
+    setTimeout(() => {
+      const cardElement = document.getElementById(`opportunity-card-${opportunity.id}`);
+      if (cardElement) {
+        cardElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   // Handle share functionality with clipboard
   const handleShare = async (opportunity: Opportunity) => {
     if (!opportunity?.id) {
-      console.warn('Cannot share opportunity - missing ID:', opportunity);
       toast({
         title: "Error",
         description: "Unable to share this opportunity. Please try again.",
@@ -570,7 +609,6 @@ export function OpportunityAtlasNew({
       }
       
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
       // Fallback: try to use the older method - reuse the same comprehensive text
       let shareText = `🏆 Investment Opportunity: ${opportunity.title}\n\n`;
       
@@ -640,7 +678,6 @@ export function OpportunityAtlasNew({
           }, 2000);
         }
       } catch (fallbackError) {
-        console.error('Fallback copy method also failed:', fallbackError);
       }
     }
   };
@@ -691,13 +728,14 @@ export function OpportunityAtlasNew({
         throw new Error(`Failed to submit request: ${response.status}`);
       }
       
+      setSelectedOpportunity(opportunity);
+      setShowSuccessDialog(true);
       toast({
         title: "Concierge Notified",
         description: `Our concierge will contact you about ${opportunity.title}.`,
         duration: 5000,
       });
     } catch (error) {
-      console.error("Error contacting concierge:", error);
       toast({
         title: "Request Failed",
         description: "Unable to reach concierge. Please try again.",
@@ -837,7 +875,7 @@ export function OpportunityAtlasNew({
         </div>
 
         {/* Opportunities List */}
-        <div className="space-y-3" ref={opportunitiesRef}>
+        <div className="space-y-6" ref={opportunitiesRef}>
           {selectedCategory ? (
             getFilteredOpportunities(selectedCategory).length > 0 ? (
               getFilteredOpportunities(selectedCategory).map((opportunity) => (
@@ -914,7 +952,7 @@ export function OpportunityAtlasNew({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="fixed top-[80px] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3"
+              className="fixed top-[56px] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3"
             >
               <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 {/* All Categories Sticky Button */}
@@ -1143,7 +1181,7 @@ export function OpportunityAtlasNew({
             
             <GoldenScroll maxHeight="calc(100vh - 300px)">
               {selectedCategory ? (
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {getFilteredOpportunities(selectedCategory).length > 0 ? (
                     getFilteredOpportunities(selectedCategory).map((opportunity) => (
                       <OpportunityCard
@@ -1174,7 +1212,7 @@ export function OpportunityAtlasNew({
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {getAllFilteredOpportunities().length > 0 ? (
                     getAllFilteredOpportunities().map((opportunity) => (
                       <OpportunityCard
@@ -1216,6 +1254,44 @@ export function OpportunityAtlasNew({
           For Information only. HNWI Chronicles is not a broker-dealer
         </p>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsUp className="h-5 w-5 text-green-500" />
+              Concierge Notified
+            </DialogTitle>
+            <DialogDescription>
+              Our concierge has been informed about your interest in{" "}
+              <span className="font-semibold">{selectedOpportunity?.title}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted/30 p-4 rounded-lg my-4">
+            <p className="text-sm">
+              Our wealth management specialist will contact you shortly to discuss this investment opportunity in detail
+              and answer any questions you may have.
+            </p>
+            <div className="flex items-center gap-2 mt-3 text-primary">
+              <Phone className="h-4 w-4" />
+              <p className="text-sm font-medium">Expect a call within 24 hours</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={() => setShowSuccessDialog(false)}
+              className={`${getMetallicCardStyle(theme).className}`}
+              style={{
+                ...getMetallicCardStyle(theme).style,
+                color: theme === "dark" ? "white" : "black"
+              }}
+            >
+              Continue Exploring
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3,13 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, CalendarIcon, Crown, UserCircle2, Globe, Store } from "lucide-react"
+import { Home, CalendarIcon, Crown, UserCircle2, Globe, Gem } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 export function FooterNavigation({
   onNavigate,
+  currentPage,
 }: {
   onNavigate: (route: string) => void
+  currentPage?: string
 }) {
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
@@ -19,7 +21,7 @@ export function FooterNavigation({
     // { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
     { name: "HNWI World", icon: Globe, route: "strategy-vault", alwaysShow: true },
     { name: "Crown Vault", icon: Crown, route: "crown-vault", alwaysShow: true },
-    { name: "Privé Exchange", icon: Store, route: "prive-exchange", alwaysShow: true },
+    { name: "Privé Exchange", icon: Gem, route: "prive-exchange", alwaysShow: true },
     { name: "Profile", icon: UserCircle2, route: "profile", alwaysShow: true },
   ]
 
@@ -29,7 +31,6 @@ export function FooterNavigation({
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
     // Always use the actual route name, don't convert to "/"
-    // console.log("Footer navigation: navigating to", route);
     onNavigate(route)
   }
 
@@ -42,7 +43,13 @@ export function FooterNavigation({
           {visibleNavItems.map((item, index) => (
             <div
               key={index}
-              className="flex flex-col items-center transition-all duration-300 p-1 md:p-2 cursor-pointer text-muted-foreground hover:text-primary"
+              className={`flex flex-col items-center transition-all duration-300 p-1 md:p-2 cursor-pointer ${
+                currentPage === item.route
+                  ? 'text-primary' // Active/selected state
+                  : theme === 'dark' 
+                    ? 'text-muted-foreground hover:text-primary' 
+                    : 'text-gray-600 hover:text-primary'
+              }`}
               onClick={(e) => handleNavigate(e, item.route)}
               style={{ boxShadow: "none !important" }}
             >
@@ -55,7 +62,11 @@ export function FooterNavigation({
                     </Badge>
                   )}
                 </div>
-                <span className="text-[8px] md:text-xs font-bold">{item.name}</span>
+                <span className={`text-[8px] md:text-xs font-bold ${
+                  currentPage === item.route
+                    ? 'text-primary' // Active/selected state
+                    : theme === 'dark' ? 'text-muted-foreground' : 'text-gray-700'
+                }`}>{item.name}</span>
               </>
             </div>
           ))}

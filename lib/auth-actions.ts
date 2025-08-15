@@ -473,3 +473,79 @@ export async function handleSessionRequest(): Promise<SessionResponse> {
     return { user: null, error: "Failed to get session" };
   }
 }
+
+export async function handleForgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!email) {
+      return { success: false, error: "Email is required" }
+    }
+
+    try {
+      // Call backend forgot password endpoint
+      await FastSecureAPI.post('/api/auth/forgot-password', { email }, false)
+      
+      logger.info("Password reset request sent to backend", { email })
+      return { success: true }
+
+    } catch (apiError) {
+      logger.error("Password reset API error", { 
+        error: apiError instanceof Error ? apiError.message : String(apiError),
+        email 
+      })
+      // Return success to avoid revealing if email exists (backend should handle this too)
+      return { success: true }
+    }
+
+  } catch (error) {
+    logger.error("Password reset error", { 
+      error: error instanceof Error ? error.message : String(error),
+      email 
+    })
+    return { success: false, error: "Failed to process password reset request" }
+  }
+}
+
+export async function handleResetPassword(token: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!token || !newPassword) {
+      return { success: false, error: "Token and new password are required" }
+    }
+
+    if (newPassword.length < 6) {
+      return { success: false, error: "Password must be at least 6 characters long" }
+    }
+
+    try {
+      // Call backend reset password endpoint
+      await FastSecureAPI.post('/api/auth/reset-password', { 
+        token, 
+        new_password: newPassword 
+      }, false)
+
+      logger.info("Password reset successful", { tokenPrefix: token.substring(0, 8) + "..." })
+      return { success: true }
+
+    } catch (apiError) {
+      logger.error("Password reset API error", { 
+        error: apiError instanceof Error ? apiError.message : String(apiError),
+        token: token.substring(0, 8) + "..." 
+      })
+      
+      // Handle specific error messages from backend
+      const errorMessage = apiError instanceof Error ? apiError.message : "Invalid or expired reset token"
+      if (errorMessage.includes('expired')) {
+        return { success: false, error: "Reset token has expired" }
+      } else if (errorMessage.includes('invalid')) {
+        return { success: false, error: "Invalid reset token" }
+      }
+      
+      return { success: false, error: "Invalid or expired reset token" }
+    }
+
+  } catch (error) {
+    logger.error("Password reset error", { 
+      error: error instanceof Error ? error.message : String(error)
+    })
+    return { success: false, error: "Failed to reset password" }
+  }
+}

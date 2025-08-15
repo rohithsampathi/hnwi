@@ -1,7 +1,7 @@
 // config/api.ts
 
 // Centralized API configuration with URL protection
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com"
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://backend"
 
 // Helper to create safe error messages without URL exposure
 export const createSafeApiError = (message: string, endpoint?: string): Error => {

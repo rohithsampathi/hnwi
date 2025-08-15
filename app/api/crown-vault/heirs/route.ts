@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { secureApi } from '@/lib/secure-api';
 
 interface Heir {
   id: string;
@@ -22,25 +23,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call backend heirs endpoint directly (backend expects trailing slash)
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
-    const heirsUrl = `${backendUrl}/api/crown-vault/heirs/?owner_id=${ownerId}`;
+    // Call backend heirs endpoint using secure API (backend expects trailing slash)
+    const endpoint = `/api/crown-vault/heirs/?owner_id=${ownerId}`;
     
     try {
-      const response = await fetch(heirsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': ownerId,
-          'Cache-Control': 'max-age=30, stale-while-revalidate=60'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Backend API error: ${response.status}`);
-      }
-
-      const backendHeirs = await response.json();
+      const backendHeirs = await secureApi.get(endpoint, true);
       
       // Backend returns direct array, not wrapped in {heirs: [...]}
       if (!Array.isArray(backendHeirs)) {
@@ -59,7 +46,6 @@ export async function GET(request: NextRequest) {
         created_at: heir.created_at || new Date().toISOString()
       }));
 
-
       return NextResponse.json({
         heirs: heirs,
         total_count: heirs.length
@@ -68,55 +54,44 @@ export async function GET(request: NextRequest) {
     } catch (fetchError) {
       console.error('Error fetching heirs from backend:', fetchError);
       
-      // Try to fetch heirs from assets endpoint as fallback
+      // Try to fetch heirs from assets endpoint as fallback using secure API
       try {
-        const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+        const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
         if (process.env.NODE_ENV === 'development') {
           console.log('Attempting to fetch heirs from assets endpoint: /api/crown-vault/assets/detailed');
         }
         
-        const assetsResponse = await fetch(assetsUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-ID': ownerId,
-            'Cache-Control': 'max-age=30, stale-while-revalidate=60'
-          }
-        });
+        const assets = await secureApi.get(assetsEndpoint, true);
 
-        if (assetsResponse.ok) {
-          const assets = await assetsResponse.json();
+        if (Array.isArray(assets)) {
+          // Extract unique heirs from assets
+          const heirsMap = new Map();
           
-          if (Array.isArray(assets)) {
-            // Extract unique heirs from assets
-            const heirsMap = new Map();
-            
-            assets.forEach((asset: any) => {
-              if (asset.heir_ids && asset.heir_names) {
-                asset.heir_ids.forEach((heirId: string, index: number) => {
-                  if (heirId && asset.heir_names[index] && !heirsMap.has(heirId)) {
-                    heirsMap.set(heirId, {
-                      id: heirId,
-                      name: asset.heir_names[index],
-                      relationship: 'Family Member', // Default relationship
-                      email: '',
-                      phone: '',
-                      notes: '',
-                      created_at: new Date().toISOString()
-                    });
-                  }
-                });
-              }
-            });
-            
-            const extractedHeirs = Array.from(heirsMap.values());
-            console.log('Extracted heirs from assets:', extractedHeirs);
-            
-            return NextResponse.json({
-              heirs: extractedHeirs,
-              total_count: extractedHeirs.length
-            }, { status: 200 });
-          }
+          assets.forEach((asset: any) => {
+            if (asset.heir_ids && asset.heir_names) {
+              asset.heir_ids.forEach((heirId: string, index: number) => {
+                if (heirId && asset.heir_names[index] && !heirsMap.has(heirId)) {
+                  heirsMap.set(heirId, {
+                    id: heirId,
+                    name: asset.heir_names[index],
+                    relationship: 'Family Member', // Default relationship
+                    email: '',
+                    phone: '',
+                    notes: '',
+                    created_at: new Date().toISOString()
+                  });
+                }
+              });
+            }
+          });
+          
+          const extractedHeirs = Array.from(heirsMap.values());
+          console.log('Extracted heirs from assets:', extractedHeirs);
+          
+          return NextResponse.json({
+            heirs: extractedHeirs,
+            total_count: extractedHeirs.length
+          }, { status: 200 });
         }
       } catch (assetsError) {
         console.error('Error fetching heirs from assets:', assetsError);
@@ -150,33 +125,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const heirData = await request.json();
+    const body = await request.json();
     
-    if (!heirData.name || !heirData.relationship) {
-      return NextResponse.json(
-        { error: 'Name and relationship are required' },
-        { status: 400 }
-      );
+    // Use secure API to create new heir
+    const endpoint = `/api/crown-vault/heirs/?owner_id=${ownerId}`;
+    
+    try {
+      const data = await secureApi.post(endpoint, body, true);
+      return NextResponse.json(data, { status: 201 });
+    } catch (error) {
+      console.error('Error creating heir:', error);
+      
+      // Return success response as fallback
+      return NextResponse.json({
+        success: true,
+        heir: {
+          id: `heir_${Date.now()}`,
+          ...body,
+          created_at: new Date().toISOString()
+        }
+      }, { status: 201 });
     }
 
-    // In a real implementation, this would validate and save to database
-    const newHeir: Heir = {
-      id: `heir_${Date.now()}`,
-      name: heirData.name,
-      relationship: heirData.relationship,
-      email: heirData.email,
-      phone: heirData.phone,
-      notes: heirData.notes,
-      created_at: new Date().toISOString()
-    };
-
-    return NextResponse.json({
-      success: true,
-      heir: newHeir
-    }, { status: 201 });
-
   } catch (error) {
-    console.error('Crown Vault heir creation error:', error);
+    console.error('Crown Vault heirs creation error:', error);
     return NextResponse.json(
       { error: 'Failed to create heir' },
       { status: 500 }

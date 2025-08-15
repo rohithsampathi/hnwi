@@ -35,7 +35,6 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
 
     // Add error handling for script loading
     script.onerror = () => {
-      console.error("Failed to load Razorpay script");
       
       // Create a fallback button in case script loading fails
       if (formRef.current) {

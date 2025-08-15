@@ -281,10 +281,15 @@ export const secureApiCall = async (
   requireAuth: boolean = true
 ): Promise<Response> => {
   try {
-    // Clear any invalid tokens first
-    clearInvalidToken();
+    // Clear any invalid tokens first (only on client side)
+    if (typeof window !== 'undefined') {
+      clearInvalidToken();
+    }
     
+    // Always use the backend URL, but mask it in logs and errors
+    const { API_BASE_URL } = await import("@/config/api");
     const url = `${API_BASE_URL}${endpoint}`;
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),

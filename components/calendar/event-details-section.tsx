@@ -87,7 +87,6 @@ export function EventDetailsSection({ event, hideHeading = false }: EventDetails
         duration: 5000,
       })
     } catch (error) {
-      console.error("Error submitting event reservation:", error)
       toast({
         title: "Reservation Failed",
         description: "We couldn't process your reservation. Please try again later.",

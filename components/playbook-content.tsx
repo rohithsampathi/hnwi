@@ -70,7 +70,7 @@ const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; lev
     <div className={`${paddingClass} ${marginClass}`}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between p-4 rounded-3xl ${theme === "dark" ? "bg-gray-800 hover:bg-gray-700" : "bg-white hover:bg-gray-100"} transition-colors border-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.3)]`}
+        className={`w-full flex items-center justify-between p-4 rounded-3xl ${theme === "dark" ? "bg-card hover:bg-muted" : "bg-white hover:bg-muted"} transition-colors border-0 shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.3)]`}
       >
         {level === 1 ? (
           <h2

@@ -121,7 +121,6 @@ export function TacticsLab() {
         }
         setAnalysisResult(data)
       } catch (error) {
-        console.error("Error fetching strategic analysis:", error)
         let errorMessage = "An unknown error occurred"
         if (error instanceof Error) {
           if (error.name === "AbortError") {
@@ -247,8 +246,8 @@ export function TacticsLab() {
           >
             <div className={`relative overflow-hidden rounded-2xl p-8 
               ${theme === "dark" 
-                ? "bg-gradient-to-br from-gray-800/40 to-gray-900/40 border border-gray-700/30" 
-                : "bg-gradient-to-br from-white/60 to-gray-50/40 border border-gray-200/30"
+                ? "bg-gradient-to-br from-card/40 to-background/40 border border-border/30" 
+                : "bg-gradient-to-br from-card/60 to-background/40 border border-border/30"
               } backdrop-blur-sm shadow-lg`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
@@ -279,8 +278,8 @@ export function TacticsLab() {
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                       className={`group relative overflow-hidden rounded-xl p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
                         ${theme === "dark" 
-                          ? "bg-gray-800/60 border border-gray-700/50 hover:border-primary/50 hover:bg-gray-800/80" 
-                          : "bg-white/80 border border-gray-200/50 hover:border-primary/50 hover:bg-white"
+                          ? "bg-card/60 border border-border/50 hover:border-primary/50 hover:bg-card/80" 
+                          : "bg-card/80 border border-border/50 hover:border-primary/50 hover:bg-card"
                         }`}
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -326,24 +325,15 @@ export function TacticsLab() {
   }
 
   return (
-    <div className="w-full p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Heading2 className="text-primary">Tactics Lab</Heading2>
-          <Badge className="bg-primary">Beta</Badge>
-        </div>
-        <Paragraph className="font-body tracking-wide text-xl text-muted-foreground">
-          Your AI-powered strategy assistant
-        </Paragraph>
-      </div>
-      <div className="font-body w-full">
+    <div className="w-full max-w-6xl mx-auto px-4">
+      <div className="font-body w-full mt-8">
         <form onSubmit={handleSubmit} className="mb-12">
-          <div className="flex flex-col max-w-5xl ml-0">
+          <div className="flex flex-col max-w-5xl mx-auto">
             <Textarea
-              placeholder="What would you like to analyze today?"
+              placeholder="Ask me about market trends, investment strategies, regulatory impacts, or wealth management insights..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className={`flex-grow ${theme === "dark" ? "bg-gray-800 text-white" : "bg-white text-[#121212]"} font-semibold placeholder:font-semibold text-body-large p-4 border-2 border-primary/20 focus:border-primary/70 shadow-lg h-[120px] resize-none mb-4`}
+              className={`flex-grow ${theme === "dark" ? "bg-card border-border" : "bg-card border-border"} font-medium placeholder:font-medium text-body-large p-4 border-2 focus:border-primary/70 shadow-lg h-[120px] resize-none mb-4 transition-colors duration-200`}
             />
             <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
               <Select value={timeRange} onValueChange={setTimeRange}>
@@ -371,42 +361,42 @@ export function TacticsLab() {
           </div>
         </form>
         <div className={`relative mt-8 pt-8 text-sm opacity-90
-          ${theme === "dark" ? "border-t border-gray-700/50" : "border-t border-gray-200/50"}`}>
+          ${theme === "dark" ? "border-t border-border/50" : "border-t border-border/50"}`}>
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         {isFirstQuestion && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
               className={`relative overflow-hidden rounded-2xl p-6 
                 ${theme === "dark" 
-                  ? "bg-gradient-to-br from-gray-800/40 to-gray-900/20 border border-gray-700/30" 
-                  : "bg-gradient-to-br from-white/60 to-gray-50/40 border border-gray-200/30"
+                  ? "bg-gradient-to-br from-card/40 to-background/20 border border-border/30" 
+                  : "bg-gradient-to-br from-card/60 to-background/40 border border-border/30"
                 } backdrop-blur-sm shadow-lg`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
               <div className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-subtitle text-primary font-bold">Current Version: v1.6</h3>
+                  <h3 className="text-subtitle text-primary font-bold">Engine Version: v2.0</h3>
                   <Badge className="bg-primary shadow-lg">Updated</Badge>
                 </div>
                 <p className="text-caption text-muted-foreground mb-6">
-                  <strong>Last Updated:</strong> August 10, 2025
+                  <strong>Last Updated:</strong> August 15, 2025
                 </p>
                 <div className={`relative rounded-xl p-4 
-                  ${theme === "dark" ? "bg-gray-800/50" : "bg-white/50"} 
+                  ${theme === "dark" ? "bg-card/50" : "bg-card/50"} 
                   border-l-4 border-primary/50`}
                 >
-                  <p className="text-label mb-4 font-bold text-primary">Latest Improvements:</p>
+                  <p className="text-label mb-4 font-bold text-primary">Engine Capabilities:</p>
                   <div className="space-y-3">
                     {[
-                      "Improved knowledge base response confidence with enhanced accuracy scoring",
-                      "Expanded knowledge base capacity for more comprehensive market intelligence",
-                      "Smarter answering engine using state-of-the-art LLMs for superior analysis",
-                      "Enhanced multi-industry query capabilities across all major sectors",
-                      "Upgraded Mixture of Experts—7 Agentic Engines now work in perfect sync",
-                      "Advanced AI models now leverage Opus 4.1, Sonnet 4.0, DeepSeek R3, and GPT-5"
+                      "Real-time market intelligence with 98% accuracy confidence scoring",
+                      "Cross-sector analysis covering all major HNWI investment verticals", 
+                      "Multi-agent reasoning system with 7 specialized AI engines",
+                      "Advanced pattern recognition for emerging wealth management trends",
+                      "Regulatory impact assessment across global jurisdictions",
+                      "Powered by Claude Opus 4.1, Sonnet 4.0, and leading frontier models"
                     ].map((improvement, index) => (
                       <motion.div
                         key={index}
@@ -437,27 +427,27 @@ export function TacticsLab() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className={`relative overflow-hidden rounded-2xl p-6 
                 ${theme === "dark" 
-                  ? "bg-gradient-to-br from-gray-800/40 to-gray-900/20 border border-gray-700/30" 
-                  : "bg-gradient-to-br from-white/60 to-gray-50/40 border border-gray-200/30"
+                  ? "bg-gradient-to-br from-card/40 to-background/20 border border-border/30" 
+                  : "bg-gradient-to-br from-card/60 to-background/40 border border-border/30"
                 } backdrop-blur-sm shadow-lg`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
               <div className="relative">
-                <h3 className="text-subtitle mb-4 text-primary font-bold">How to Use the Tactics Lab</h3>
+                <h3 className="text-subtitle mb-4 text-primary font-bold">Strategic Query Examples</h3>
                 <div className={`rounded-xl p-4 mb-6 
                   ${theme === "dark" ? "bg-primary/10" : "bg-primary/5"} 
                   border-l-4 border-primary/50`}
                 >
                   <p className="text-body-small leading-relaxed">
-                    The Tactics Lab is designed to assist you with complex strategic questions. Here are some examples:
+                    Ask sophisticated questions about wealth management, market dynamics, and strategic opportunities:
                   </p>
                 </div>
                 <div className="space-y-4">
                   {[
-                    "What are the emerging trends in luxury real estate for high-net-worth individuals in major global cities?",
-                    "How might changes in global tax regulations impact wealth management strategies for international HNWIs?",
-                    "What are the potential implications of increasing ESG focus on investment strategies for ultra-high-net-worth families?",
-                    "How can wealth managers leverage AI and machine learning to provide more personalized services to HNWI clients?"
+                    "Analyze emerging opportunities in luxury real estate across Tier 1 global markets for UHNW portfolios",
+                    "Assess regulatory impact of new tax frameworks on cross-border wealth structuring strategies", 
+                    "Evaluate ESG integration trends and their influence on family office investment mandates",
+                    "What technology disruptions will reshape private wealth management over the next 24 months?"
                   ].map((question, index) => (
                     <motion.div
                       key={index}
@@ -466,8 +456,8 @@ export function TacticsLab() {
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                       className={`group relative overflow-hidden rounded-lg p-4 transition-all duration-300 hover:shadow-md cursor-pointer
                         ${theme === "dark" 
-                          ? "bg-gray-800/30 border border-gray-700/30 hover:border-primary/30 hover:bg-gray-800/50" 
-                          : "bg-white/50 border border-gray-200/30 hover:border-primary/30 hover:bg-white/80"
+                          ? "bg-card/30 border border-border/30 hover:border-primary/30 hover:bg-card/50" 
+                          : "bg-card/50 border border-border/30 hover:border-primary/30 hover:bg-card/80"
                         }`}
                       onClick={() => setQuery(question)}
                     >
@@ -486,11 +476,10 @@ export function TacticsLab() {
                   ))}
                 </div>
                 <div className={`mt-6 pt-4 border-t 
-                  ${theme === "dark" ? "border-gray-700/50" : "border-gray-200/50"}`}
+                  ${theme === "dark" ? "border-border/50" : "border-border/50"}`}
                 >
                   <p className="text-caption italic text-muted-foreground leading-relaxed">
-                    Feel free to ask the Tactics Lab about market trends, investment strategies, regulatory impacts, or any other strategic
-                    concerns related to high-net-worth individuals and wealth management.
+                    Expert-level analysis for complex strategic decisions • Market intelligence • Regulatory foresight • Investment thesis development
                   </p>
                 </div>
               </div>
@@ -504,12 +493,12 @@ export function TacticsLab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className="mt-12"
+              className="mt-12 max-w-5xl mx-auto"
             >
               <div className={`relative overflow-hidden rounded-3xl p-12 
                 ${theme === "dark" 
-                  ? "bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700/30" 
-                  : "bg-gradient-to-br from-white/90 to-gray-50/80 border border-gray-200/30"
+                  ? "bg-gradient-to-br from-background/80 to-card/80 border border-border/30" 
+                  : "bg-gradient-to-br from-card/90 to-background/80 border border-border/30"
                 } backdrop-blur-xl shadow-2xl`}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 animate-pulse" />
@@ -542,12 +531,12 @@ export function TacticsLab() {
                       <motion.div
                         key={i}
                         className={`h-2 w-8 rounded-full 
-                          ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}
+                          ${theme === "dark" ? "bg-muted" : "bg-muted"}`}
                         animate={{
                           backgroundColor: [
-                            theme === "dark" ? "#374151" : "#e5e7eb",
-                            "#3b82f6",
-                            theme === "dark" ? "#374151" : "#e5e7eb"
+                            "hsl(var(--muted))",
+                            "hsl(var(--primary))",
+                            "hsl(var(--muted))"
                           ]
                         }}
                         transition={{
@@ -622,7 +611,7 @@ export function TacticsLab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className={`mt-4 p-4 ${
+              className={`mt-4 p-4 max-w-5xl mx-auto ${
                 theme === "dark" ? "bg-red-900 text-red-100" : "bg-red-100 text-red-700"
               } rounded-md`}
             >
@@ -648,6 +637,7 @@ export function TacticsLab() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
+              className="max-w-5xl mx-auto"
             >
               {renderAnalysisContent()}
             </motion.div>

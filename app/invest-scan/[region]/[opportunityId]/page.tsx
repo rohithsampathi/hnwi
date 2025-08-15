@@ -88,7 +88,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       },
     }
   } catch (error) {
-    console.error('Error generating metadata for opportunity:', error)
     
     return {
       title: "Investment Opportunity - Invest Scan | HNWI Chronicles",

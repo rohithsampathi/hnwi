@@ -48,7 +48,6 @@ export function OptimizedCrownVaultExample() {
         setHeirs(heirsData);
         setStats(statsData);
       } catch (error) {
-        console.error('Error loading Crown Vault data:', error);
       } finally {
         setLoading(false);
       }

@@ -141,7 +141,6 @@ export function OnboardingPage({
       }
       
       // Send data to the FastAPI backend using secure API
-      console.log("Creating user profile with secure API");
       
       const data = await secureApi.post('/api/users/profile', {
         email,
@@ -169,10 +168,8 @@ export function OnboardingPage({
         linkedin: "Edit This Data"
       });
       
-      console.log("API Response data:", data);
 
       if (data.status === "success" && data.user_id) {
-        console.log("User created successfully with ID:", data.user_id);
         onComplete({
           ...userData,
           user_id: data.user_id,
@@ -181,7 +178,6 @@ export function OnboardingPage({
         throw new Error("Unexpected response from server: " + JSON.stringify(data))
       }
     } catch (error) {
-      console.error("Error creating user profile:", error)
       setError(`Error creating user profile: ${error instanceof Error ? error.message : JSON.stringify(error)}`)
     }
   }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { secureApi } from '@/lib/secure-api';
 
 interface Heir {
   id: string;
@@ -65,25 +66,12 @@ export async function PUT(
     // 3. Update associated assets with the new heir name
     
     // For now, we'll simulate the update
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
     
-    // First, check if heir exists by fetching assets
+    // First, check if heir exists by fetching assets using secure API
     try {
-      const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
-      const assetsResponse = await fetch(assetsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': ownerId
-        },
-        cache: 'no-store'
-      });
-
-      if (!assetsResponse.ok) {
-        throw new Error('Failed to verify heir existence');
-      }
-
-      const assets = await assetsResponse.json();
+      const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+      const assets = await secureApi.get(assetsEndpoint, true);
+      
       const heirExists = assets.some((asset: any) => 
         asset.heir_ids && asset.heir_ids.includes(heirId)
       );
@@ -165,25 +153,10 @@ export async function DELETE(
     // 2. Remove heir assignments from all assets
     // 3. Delete the heir record from the database
     
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
-    
     try {
-      // First, check if heir exists and get associated assets
-      const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
-      const assetsResponse = await fetch(assetsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': ownerId
-        },
-        cache: 'no-store'
-      });
-
-      if (!assetsResponse.ok) {
-        throw new Error('Failed to verify heir existence');
-      }
-
-      const assets = await assetsResponse.json();
+      // First, check if heir exists and get associated assets using secure API
+      const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+      const assets = await secureApi.get(assetsEndpoint, true);
       const assetsWithHeir = assets.filter((asset: any) => 
         asset.heir_ids && asset.heir_ids.includes(heirId)
       );
@@ -247,24 +220,10 @@ export async function GET(
       );
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
-    const assetsUrl = `${backendUrl}/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
+    const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
     
     try {
-      const response = await fetch(assetsUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': ownerId
-        },
-        cache: 'no-store'
-      });
-
-      if (!response.ok) {
-        throw new Error(`Backend API error: ${response.status}`);
-      }
-
-      const assets = await response.json();
+      const assets = await secureApi.get(assetsEndpoint, true);
       
       // Find the heir in the assets data
       let foundHeir: Heir | null = null;

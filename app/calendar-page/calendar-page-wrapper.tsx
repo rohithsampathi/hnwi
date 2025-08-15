@@ -36,7 +36,6 @@ export function CalendarPageWrapper() {
           const normalizedPath = path.replace(/^\/+/, "")
           router.push(`/${normalizedPath}`)
         } catch (e) {
-          console.error("Navigation failed:", e)
           // Fallback to dashboard on error
           sessionStorage.setItem("skipSplash", "true")
           router.push("/")

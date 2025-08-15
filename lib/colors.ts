@@ -154,17 +154,20 @@ export const getCardColors = (theme: ColorTheme) => {
 // Centralized Card Styling System
 export const getMetallicCardStyle = (theme: ColorTheme) => {
   return {
-    className: "rounded-3xl cursor-pointer transition-all duration-300 relative overflow-hidden",
+    className: "cursor-pointer transition-all duration-300 relative overflow-hidden",
     style: {
       background: theme === "dark" 
         ? "linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 25%, #1a1a1a 50%, #2a2a2a 75%, #1f1f1f 100%)"
-        : "linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 25%, #f0f0f0 50%, #d5d5d5 75%, #e8e8e8 100%)",
+        : "linear-gradient(135deg, #C8C8C8 0%, #E8E8E8 25%, #D8D8D8 50%, #E0E0E0 75%, #C8C8C8 100%)",
       border: theme === "dark" 
         ? "2px solid rgba(255, 255, 255, 0.1)" 
-        : "2px solid rgba(0, 0, 0, 0.06)",
-      boxShadow: "none",
+        : "2px solid rgba(160, 160, 160, 0.4)",
+      boxShadow: theme === "dark"
+        ? "none"
+        : "0 6px 20px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.05), inset 0 2px 4px rgba(255, 255, 255, 0.6), 0 0 0 1px rgba(218, 165, 32, 0.08)",
       backdropFilter: "blur(8px)",
-      color: theme === "dark" ? "white" : "#1a1a1a",
+      color: theme === "dark" ? "white" : "#1A1A1A",
+      borderRadius: "10px",
     }
   };
 };

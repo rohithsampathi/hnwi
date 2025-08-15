@@ -31,7 +31,6 @@ export const clearInvalidToken = (): void => {
   const token = localStorage.getItem('token');
   if (token && !isTokenValid(token)) {
     localStorage.removeItem('token');
-    console.log('Cleared expired/invalid token');
   }
 };
 

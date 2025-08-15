@@ -72,7 +72,6 @@ export default function ClientPage({
       window.handleGlobalNavigation(path)
     } else {
       // Fallback to basic navigation if global handler not ready
-      console.warn("Global navigation handler not ready, using direct navigation");
       if (path === "back") {
         router.push("/prive-exchange");
       } else if (path === "dashboard") {

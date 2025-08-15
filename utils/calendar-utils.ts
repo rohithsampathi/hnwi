@@ -53,10 +53,8 @@ export function addEventToCalendar(event: CalendarEvent) {
     
     events.push(formattedEvent)
     localStorage.setItem("userEvents", JSON.stringify(events))
-    console.log("Event added to calendar:", formattedEvent)
     return true
   } else {
-    console.log("Event already exists in calendar:", event)
     return false
   }
 }
@@ -95,7 +93,6 @@ export async function reserveEvent(event: any, email: string, name: string): Pro
     
     return response.ok;
   } catch (error) {
-    console.error('Error reserving event:', error);
     return false;
   }
 }

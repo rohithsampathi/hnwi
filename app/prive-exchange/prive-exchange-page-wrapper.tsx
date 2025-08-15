@@ -53,7 +53,6 @@ export function PriveExchangePageWrapper() {
         try {
           router.push(`/${normalizedPath}`);
         } catch (e) {
-          console.error("Navigation failed:", e);
           // If navigation fails, it likely means the route doesn't exist
           // as a direct page - fall back to main page
           sessionStorage.setItem("skipSplash", "true");

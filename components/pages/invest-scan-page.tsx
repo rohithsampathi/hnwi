@@ -78,7 +78,6 @@ export function InvestScanPage() {
         setRegions(formattedRegions)
         setError(null)
       } catch (err) {
-        console.error("Failed to fetch opportunities:", err)
         setError("Failed to load investment opportunities")
       } finally {
         setLoading(false)

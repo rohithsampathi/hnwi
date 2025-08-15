@@ -52,7 +52,6 @@ export function ChangePasswordPopup({ isOpen, onClose, userId }: ChangePasswordP
       })
       onClose()
     } catch (error) {
-      console.error("Error changing password:", error)
       toast({
         title: "Error",
         description: "Failed to change password. Please try again.",

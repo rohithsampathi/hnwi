@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://uwind.onrender.com';
+import { secureApi } from '@/lib/secure-api';
 
 export async function GET(
   request: NextRequest,
@@ -11,50 +10,28 @@ export async function GET(
     
     // Forward the authorization header from the client
     const authHeader = request.headers.get('authorization');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-    
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-    }
+    const requireAuth = !!authHeader;
 
-    // Proxy the request to the real backend
-    const backendUrl = `${BACKEND_URL}/api/analytics/activity/${encodeURIComponent(page)}`;
+    // Use secure API to proxy the request to the backend
+    const endpoint = `/api/analytics/activity/${encodeURIComponent(page)}`;
     
     try {
-      const response = await fetch(backendUrl, {
-        method: 'GET',
-        headers,
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
-
-      if (!response.ok) {
-        // If backend doesn't have this endpoint yet, return reasonable defaults
-        if (response.status === 404) {
-          // Generate some realistic activity numbers based on page type
-          const baseActivity = getBaseActivityForPage(page);
-          
-          return NextResponse.json({
-            page_viewers: baseActivity.viewers,
-            recent_actions: baseActivity.actions,
-            trending_content: baseActivity.trending
-          }, { status: 200 });
-        }
-        
-        const errorText = await response.text();
-        return NextResponse.json(
-          { error: `Backend error: ${response.status}`, details: errorText },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
+      const data = await secureApi.get(endpoint, requireAuth);
       return NextResponse.json(data, { status: 200 });
       
-    } catch (fetchError) {
-      console.error('Backend request failed:', fetchError);
+    } catch (apiError) {
+      console.error('Backend request failed:', apiError);
+      
+      // Check if it's a 404 error and return reasonable defaults
+      if (apiError instanceof Error && apiError.message.includes('404')) {
+        const baseActivity = getBaseActivityForPage(page);
+        
+        return NextResponse.json({
+          page_viewers: baseActivity.viewers,
+          recent_actions: baseActivity.actions,
+          trending_content: baseActivity.trending
+        }, { status: 200 });
+      }
       
       // Return fallback data when backend is unavailable
       const baseActivity = getBaseActivityForPage(page);

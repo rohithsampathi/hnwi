@@ -79,7 +79,6 @@ export function OpportunityPage({
           setError("Opportunity not found")
         }
       } catch (err) {
-        console.error("Failed to fetch opportunity:", err)
         setError("Failed to load investment opportunity")
       } finally {
         setLoading(false)
@@ -136,23 +135,10 @@ export function OpportunityPage({
     const userEmail = user?.email || localStorage.getItem("userEmail") || ""
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
     
-    console.log("Submitting form to Formspree with data:", {
-      opportunityTitle: opportunity?.title,
-      userName,
-      userId,
-      userEmail,
-      opportunityId: opportunity?.id,
-      opportunityType: opportunity?.type,
-      opportunityValue: opportunity?.value,
-      region: opportunity?.region,
-      timestamp: new Date().toISOString(),
-    })
-    
     try {
       // Use Express Interest endpoint for all opportunities
       const formspreeEndpoint = "https://formspree.io/f/xldgwozd"  // Express Interest endpoint for all opportunities
         
-      console.log("Using Formspree endpoint:", formspreeEndpoint)
       
       const response = await fetch(formspreeEndpoint, {
         method: "POST",
@@ -176,11 +162,8 @@ export function OpportunityPage({
         }),
       })
       
-      console.log("Formspree response status:", response.status)
-      console.log("Formspree response headers:", response.headers)
       
       const responseData = await response.text()
-      console.log("Formspree response data:", responseData)
       
       if (!response.ok) {
         throw new Error(`Failed to submit concierge request: ${response.status} ${responseData}`)
@@ -193,7 +176,6 @@ export function OpportunityPage({
         duration: 5000,
       })
     } catch (error) {
-      console.error("Error submitting concierge request:", error)
       toast({
         title: "Request Failed",
         description: "We couldn't process your request. Please try again later.",

@@ -24,7 +24,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await secureApi.get('/api/auth/session', false) // Don't require auth for session check
+      const response = await fetch('/api/auth/session', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await response.json()
       setUser(data.user)
     } catch (error) {
       setUser(null)

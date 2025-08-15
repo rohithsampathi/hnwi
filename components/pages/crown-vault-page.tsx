@@ -172,7 +172,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         // Handle non-auth errors (if any)
         const nonAuthErrors = failedResults.filter(result => !isAuthenticationError(result.reason));
         if (nonAuthErrors.length > 0) {
-          console.error('Crown Vault non-auth errors:', nonAuthErrors);
           toast({
             title: "Partial Loading Error",
             description: "Some vault data could not be loaded. Please try refreshing.",
@@ -192,7 +191,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
             }
           });
         } else {
-          console.error('Crown Vault loading error:', error);
           toast({
             title: "Error Loading Vault",
             description: "Failed to load your Crown Vault data. Please try again.",
@@ -404,10 +402,8 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         const updatedHeirs = await getCrownVaultHeirs();
         setHeirs(updatedHeirs);
       } catch (error) {
-        console.error('Failed to refresh heirs data:', error);
       }
     } catch (error) {
-      console.error('Failed to update heir:', error);
       toast({
         title: "Error", 
         description: "Failed to update heir. Please try again.",

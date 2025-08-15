@@ -337,7 +337,6 @@ const ChannelPerformanceRating: React.FC = () => {
           description: `Rating for ${channel} updated successfully.`,
         })
       } catch (error) {
-        console.error("Error updating rating:", error)
         toast({
           title: "Error",
           description: error instanceof Error ? error.message : "Failed to update rating. Please try again.",
@@ -364,13 +363,11 @@ const ChannelPerformanceRating: React.FC = () => {
   )
 
   useEffect(() => {
-    console.log("Fetching aggregated ratings...")
     const fetchAggregatedRatings = async () => {
       setIsRefreshing(true)
       setIsLoading(true)
       try {
         const data = await secureApi.get('/api/ratings/aggregated', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for ratings
-        console.log("Fetched aggregated ratings:", data)
 
         if (data.status === "success" && Array.isArray(data.data)) {
           setLocalCategories((prevCategories) => {
@@ -381,7 +378,6 @@ const ChannelPerformanceRating: React.FC = () => {
                   (item) => item.channel.toLowerCase() === subChannel.name.toLowerCase(),
                 )
                 if (matchingData) {
-                  console.log(`Updating ${subChannel.name} with score ${matchingData.average_score}`)
                   return {
                     ...subChannel,
                     score: matchingData.average_score,
@@ -392,14 +388,12 @@ const ChannelPerformanceRating: React.FC = () => {
                 return subChannel
               }),
             }))
-            console.log("Updated categories:", updatedCategories)
             return updatedCategories
           })
         } else {
           throw new Error("Invalid data format received from API")
         }
       } catch (error) {
-        console.error("Error fetching aggregated ratings:", error)
         toast({
           title: "Error",
           description: "Failed to load ratings. Please try again.",
@@ -415,7 +409,6 @@ const ChannelPerformanceRating: React.FC = () => {
   }, [toast, refreshTrigger])
 
   useEffect(() => {
-    //Removed console.log statement here
   }, [localCategories])
 
   const toggleCategory = (categoryName: string) => {
@@ -443,7 +436,6 @@ const ChannelPerformanceRating: React.FC = () => {
     )
   }
 
-  console.log("Rendering with localCategories:", localCategories)
 
   return (
     <div className="space-y-3 p-3 bg-transparent">

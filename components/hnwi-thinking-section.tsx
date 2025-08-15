@@ -19,7 +19,7 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
   const [selectedLocation, setSelectedLocation] = useState<string>("")
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any | null>(null)
-  const [duration, setDuration] = useState<string>("1m") // Added duration state
+  const [duration, setDuration] = useState<string>("1d") // Added duration state
   const { toast } = useToast()
 
   const handleAnalyse = useCallback(async () => {
@@ -43,7 +43,6 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
       }, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes cache
       setAnalysisResult(data)
     } catch (error) {
-      console.error("Error fetching analysis:", error)
       toast({
         title: "Error",
         description: "Failed to fetch analysis. Please try again.",
@@ -73,6 +72,19 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
               <SelectItem value="Chennai">Chennai</SelectItem>
               <SelectItem value="Pune">Pune</SelectItem>
               <SelectItem value="Goa">Goa</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select onValueChange={setDuration} value={duration}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select duration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1d">1D</SelectItem>
+              <SelectItem value="3d">3D</SelectItem>
+              <SelectItem value="7d">7D</SelectItem>
+              <SelectItem value="14d">14D</SelectItem>
+              <SelectItem value="21d">21D</SelectItem>
+              <SelectItem value="1m">1M</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={handleAnalyse} disabled={isAnalyzing} className="w-full">
