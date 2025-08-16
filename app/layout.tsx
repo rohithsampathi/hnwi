@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/contexts/theme-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
@@ -75,6 +77,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#000000",
 }
 
 export default function RootLayout({
@@ -88,13 +91,27 @@ export default function RootLayout({
   
   return (
     <html lang="en">
-      <head />
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .catch(() => {});
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body>
         <AuthProvider>
           <OnboardingProvider>
             <ThemeProvider>
               <AuthPopupProvider>
                 {children}
+                <PWAInstallPrompt />
                 <div id="toast-container" className="fixed top-0 right-0 z-50">
                   {/* Toast container for notifications */}
                 </div>

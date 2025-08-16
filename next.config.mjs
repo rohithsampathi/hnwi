@@ -21,6 +21,18 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  pwa: {
+    dest: 'public',
+    disable: process.env.NODE_ENV === 'development',
+    register: false,
+    sw: '/sw.js',
+    publicExcludes: ['!**/*'],
+    buildExcludes: [/middleware-manifest\.json$/],
+    dynamicStartUrl: false,
+    fallbacks: {
+      document: '/offline',
+    },
+  },
 }
 
 mergeConfig(nextConfig, userConfig)
