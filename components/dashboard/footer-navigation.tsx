@@ -36,7 +36,7 @@ export function FooterNavigation({
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background py-2 md:hidden border-t border-border"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background py-2 md:hidden border-t border-border safe-area-pb"
     >
       <div className="max-w-7xl mx-auto w-full">
         <nav className="flex justify-around mt-1">
