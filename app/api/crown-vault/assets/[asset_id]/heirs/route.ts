@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { secureApi } from '@/lib/secure-api';
 import { ApiAuth } from '@/lib/api-auth';
 
@@ -33,13 +34,38 @@ export const PUT = ApiAuth.withAuth(async (
     // Backend expects direct array of heir IDs, not wrapped in object
     const backendRequestBody = body.heir_ids;
 
-    // Proxy to backend API using secure API - include owner_id as query parameter
-    const endpoint = `/api/crown-vault/assets/${assetId}/heirs?owner_id=${user.id}`;
+    // Get session token for authentication
+    const sessionCookie = cookies().get('session');
+    const authToken = sessionCookie?.value || '';
+
+    if (!authToken) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in again.' },
+        { status: 401 }
+      );
+    }
+
+    // Make direct fetch call with session token
+    const { API_BASE_URL } = await import("@/config/api");
+    const url = `${API_BASE_URL}/api/crown-vault/assets/${assetId}/heirs?owner_id=${user.id}`;
     
 
     try {
       
-      const data = await secureApi.put(endpoint, backendRequestBody);
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify(backendRequestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       return NextResponse.json(data, { status: 200 });
 
@@ -119,13 +145,37 @@ export const GET = ApiAuth.withAuth(async (
       );
     }
 
+    // Get session token for authentication
+    const sessionCookie = cookies().get('session');
+    const authToken = sessionCookie?.value || '';
+
+    if (!authToken) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in again.' },
+        { status: 401 }
+      );
+    }
+
     // Since backend doesn't support GET on heirs endpoint, 
     // fetch the asset details which includes heir information
-    const endpoint = `/api/crown-vault/assets/detailed?owner_id=${user.id}`;
+    const { API_BASE_URL } = await import("@/config/api");
+    const url = `${API_BASE_URL}/api/crown-vault/assets/detailed?owner_id=${user.id}`;
     
 
     try {
-      const assets = await secureApi.get(endpoint, true);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend request failed: ${response.status}`);
+      }
+
+      const assets = await response.json();
 
       // Find the specific asset and return its heir information
       if (Array.isArray(assets)) {

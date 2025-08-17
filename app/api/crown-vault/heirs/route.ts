@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { ApiAuth } from '@/lib/api-auth';
 import { secureApi } from '@/lib/secure-api';
 
 interface Heir {
@@ -11,20 +13,12 @@ interface Heir {
   created_at: string;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const ownerId = searchParams.get('owner_id');
-    
-    if (!ownerId) {
-      return NextResponse.json(
-        { error: 'Owner ID is required' },
-        { status: 400 }
-      );
-    }
+    const ownerId = user.id;
 
-    // Call backend heirs endpoint using secure API (backend expects trailing slash)
-    const endpoint = `/api/crown-vault/heirs/?owner_id=${ownerId}`;
+    // Call backend heirs endpoint using secureApi
+    const endpoint = `/api/crown-vault/heirs?owner_id=${ownerId}`;
     
     try {
       const backendHeirs = await secureApi.get(endpoint, true);
@@ -54,7 +48,7 @@ export async function GET(request: NextRequest) {
     } catch (fetchError) {
       console.error('Error fetching heirs from backend:', fetchError);
       
-      // Try to fetch heirs from assets endpoint as fallback using secure API
+      // Try to fetch heirs from assets endpoint as fallback using serverSecureApi
       try {
         const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
         if (process.env.NODE_ENV === 'development') {
@@ -111,19 +105,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = ApiAuth.withAuth(async (request: NextRequest, user) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const ownerId = searchParams.get('owner_id');
-    
-    if (!ownerId) {
-      return NextResponse.json(
-        { error: 'Owner ID is required' },
-        { status: 400 }
-      );
-    }
+    const ownerId = user.id;
 
     const body = await request.json();
     
@@ -154,4 +140,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

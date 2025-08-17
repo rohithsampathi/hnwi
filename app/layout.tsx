@@ -93,6 +93,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

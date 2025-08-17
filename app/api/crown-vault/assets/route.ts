@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { validateInput, assetSchema, queryParamSchema } from '@/lib/validation';
 import { logger } from '@/lib/secure-logger';
 import { ApiAuth } from '@/lib/api-auth';
-import { serverSecureApi } from '@/lib/secure-api';
+import { secureApi } from '@/lib/secure-api';
 
 interface Asset {
   asset_id: string;
@@ -33,9 +33,12 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
 
     const { searchParams } = new URL(request.url);
     
+    // Use authenticated user ID instead of requiring owner_id parameter
+    const authenticatedUserId = user.id;
+    
     // Validate query parameters with optional page/limit
     const queryValidation = validateInput(queryParamSchema, {
-      owner_id: searchParams.get('owner_id'),
+      owner_id: authenticatedUserId,
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '10'
     });
@@ -71,14 +74,10 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       // Allow for now - TODO: implement proper ownership validation
     }
 
-    // Get session token for authentication
-    const sessionCookie = cookies().get('session');
-    const authToken = sessionCookie?.value || '';
-    
-    // Use serverSecureApi to call external backend - no fallbacks
+    // Use secureApi to call external backend
     const endpoint = `/api/crown-vault/assets?owner_id=${ownerId}`;
     
-    const backendAssets = await serverSecureApi.get(endpoint, authToken);
+    const backendAssets = await secureApi.get(endpoint, true);
 
     // Map asset types to match frontend expectations
     const mapAssetType = (type: string) => {

@@ -1,6 +1,7 @@
 // lib/api.ts
 
 import { secureApi } from "@/lib/secure-api"
+import { getValidToken } from "@/lib/auth-utils"
 
 // Helper function to check if error is authentication-related
 const isAuthError = (error: any): boolean => {
@@ -299,11 +300,11 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     }
     
     // Fetch stats, heirs, and assets in parallel with 10-minute caching for optimal UX
-    // Backend gets user_id from authentication context
+    // Backend expects owner_id parameter
     const [statsData, heirsData, assetsData] = await Promise.all([
-      secureApi.get('/api/crown-vault/stats', true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
-      secureApi.get('/api/crown-vault/heirs', true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
-      secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
+      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
+      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
+      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
     ]);
 
     if (!statsData) {
@@ -359,8 +360,8 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
     }
     
     // Call backend API directly using authenticated client with 10-minute caching
-    // Backend gets user_id from authentication context  
-    const data = await secureApi.get('/api/crown-vault/heirs', true, { enableCache: true, cacheDuration: 600000 });
+    // Backend expects owner_id parameter
+    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);
@@ -425,9 +426,9 @@ export async function processCrownVaultAssetsBatch(
     
     // Get fresh data after successful batch processing (cache-busting)
     const refreshedData = await Promise.all([
-      secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: false }),
-      secureApi.get('/api/crown-vault/heirs', true, { enableCache: false }),
-      secureApi.get('/api/crown-vault/stats', true, { enableCache: false })
+      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: false }),
+      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: false }),
+      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: false })
     ]);
     
     return { ...batchResult, refreshedData };
@@ -503,8 +504,8 @@ export async function createHeir(
     }, {} as any);
     
     // Use backend API directly for heir creation using authenticated client
-    // Backend gets user_id from authentication context
-    const data = await secureApi.post('/api/crown-vault/heirs', filteredData);
+    // Backend expects owner_id parameter
+    const data = await secureApi.post(`/api/crown-vault/heirs?owner_id=${userId}`, filteredData);
     
     // Transform backend response to match frontend interface
     const heir = {
@@ -550,7 +551,7 @@ export async function updateHeir(
       return acc;
     }, {} as any);
     
-    const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}`, filteredData);
+    const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, filteredData);
     
     // Return updated heir data - cache will auto-refresh on next request
     return data;
@@ -577,7 +578,7 @@ export async function deleteHeir(heirId: string, ownerId?: string): Promise<{ re
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
-    await secureApi.delete(`/api/crown-vault/heirs/${heirId}`);
+    await secureApi.delete(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`);
     
     // Deletion successful - cache will auto-refresh on next request
     const refreshedData = { assets: [], heirs: [], stats: null };
@@ -599,10 +600,19 @@ export async function updateAssetHeirs(
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
+    // Get authentication token
+    const token = getValidToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in to access Crown Vault.');
+    }
+
     // Call the Next.js API route which will proxy to backend
     const response = await fetch(`/api/crown-vault/assets/${assetId}/heirs`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ heir_ids: heirIds })
     });
     

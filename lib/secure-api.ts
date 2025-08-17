@@ -278,7 +278,8 @@ const createSecureError = (message: string, statusCode?: number): Error => {
 export const secureApiCall = async (
   endpoint: string, 
   options: RequestInit = {},
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  serverToken?: string
 ): Promise<Response> => {
   try {
     // Clear any invalid tokens first (only on client side)
