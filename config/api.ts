@@ -1,10 +1,8 @@
 // config/api.ts
 
 // Centralized API configuration with URL protection
-// Use local Next.js API routes to avoid CORS issues with external backend
-export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? process.env.NEXT_PUBLIC_BASE_URL || "https://app.hnwichronicles.com"
-  : "http://localhost:3000"
+// Point to the actual backend API, not the frontend
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
 
 // Helper to create safe error messages without URL exposure
 export const createSafeApiError = (message: string, endpoint?: string): Error => {

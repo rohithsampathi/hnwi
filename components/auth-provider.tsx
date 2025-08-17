@@ -24,14 +24,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     try {
       setLoading(true)
+      // Check localStorage token first for faster auth check
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setUser(null)
+        return
+      }
+      
       const response = await fetch('/api/auth/session', {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       })
       const data = await response.json()
       setUser(data.user)
     } catch (error) {
       setUser(null)
+      // Clear invalid token
+      localStorage.removeItem('token')
     } finally {
       setLoading(false)
       setSessionChecked(true)

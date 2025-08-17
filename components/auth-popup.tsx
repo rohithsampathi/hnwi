@@ -41,6 +41,11 @@ export function AuthPopup({
       return
     }
 
+    // Prevent multiple submissions
+    if (isLoading) {
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 

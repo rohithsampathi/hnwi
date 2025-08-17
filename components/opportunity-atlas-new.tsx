@@ -384,7 +384,11 @@ function OpportunityCard({
                     onShare(opportunity);
                   }}
                   className={`flex items-center gap-1 transition-colors text-xs px-3 py-1.5 h-7 font-medium ${
-                    opportunity?.id && shareState?.[opportunity.id] ? 'bg-green-50 border-green-500 text-green-700' : ''
+                    opportunity?.id && shareState?.[opportunity.id] 
+                      ? 'bg-green-50 border-green-500 text-green-700' 
+                      : theme === 'dark' 
+                        ? 'text-white hover:text-gray-200' 
+                        : 'text-black hover:text-gray-700'
                   }`}
                 >
                   {opportunity?.id && shareState?.[opportunity.id] ? (

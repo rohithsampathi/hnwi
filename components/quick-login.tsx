@@ -17,6 +17,11 @@ export function QuickLogin() {
       return
     }
 
+    // Prevent multiple submissions
+    if (isLoading) {
+      return
+    }
+
     setIsLoading(true)
     setResult("Attempting login...")
 

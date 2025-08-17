@@ -29,10 +29,9 @@ export function AuthCheck({ children, showLoginPrompt = true, isInsiderBrief = f
             title: "Sign In Required",
             description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
             onSuccess: () => {
-              // Recheck authentication after successful login
-              setTimeout(() => {
-                checkAuth();
-              }, 100);
+              // Simply recheck auth state without recursive timeout
+              const authenticated = isAuthenticated();
+              setIsAuth(authenticated);
             }
           });
         }
