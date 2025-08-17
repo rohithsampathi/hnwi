@@ -1,5 +1,5 @@
 // Step-by-step API Testing with Real Endpoints
-const API_BASE_URL = "https://uwind.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 
 console.log("🔍 Step-by-Step API Testing with Real Data...\n");
 

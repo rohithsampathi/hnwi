@@ -1,5 +1,5 @@
 // Test script to directly call developments API and analyze response
-const API_BASE_URL = 'https://uwind.onrender.com'; // External API
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app'; // External API
 
 async function testDevelopmentsAPI() {
   console.log('🔍 Testing /api/developments endpoint...\n');

@@ -1,6 +1,6 @@
 // test-correct-format.js - Test the actual format the frontend expects
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 
 async function login() {
   try {

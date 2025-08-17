@@ -1,5 +1,5 @@
 // Authentication and API Testing Script
-const API_BASE_URL = "https://uwind.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 
 console.log("🔍 Starting Comprehensive Authentication & API Tests...\n");
 

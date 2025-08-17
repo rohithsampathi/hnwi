@@ -1,6 +1,6 @@
 // debug-crown-vault.js - Debug Crown Vault batch processing
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 
 // First, let's login to get a token
 async function login() {

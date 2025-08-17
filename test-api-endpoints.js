@@ -1,6 +1,6 @@
 // test-api-endpoints.js - Comprehensive API endpoint testing script
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uwind.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 
 // Performance monitoring
 const performanceLog = [];
