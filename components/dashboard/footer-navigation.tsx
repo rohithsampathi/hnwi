@@ -43,15 +43,20 @@ export function FooterNavigation({
           {visibleNavItems.map((item, index) => (
             <div
               key={index}
-              className={`flex flex-col items-center transition-all duration-300 p-1 md:p-2 cursor-pointer ${
+              className={`flex flex-col items-center p-1 md:p-2 cursor-pointer md:transition-all md:duration-300 ${
                 currentPage === item.route
                   ? 'text-primary' // Active/selected state
                   : theme === 'dark' 
-                    ? 'text-muted-foreground hover:text-primary' 
-                    : 'text-gray-600 hover:text-primary'
+                    ? 'text-muted-foreground md:hover:text-primary' 
+                    : 'text-gray-600 md:hover:text-primary'
               }`}
               onClick={(e) => handleNavigate(e, item.route)}
-              style={{ boxShadow: "none !important" }}
+              style={{
+                WebkitTapHighlightColor: 'transparent',
+                WebkitTouchCallout: 'none',
+                WebkitUserSelect: 'none',
+                userSelect: 'none'
+              }}
             >
               <>
                 <div className="flex items-center mb-1">

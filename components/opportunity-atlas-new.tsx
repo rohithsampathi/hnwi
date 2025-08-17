@@ -529,7 +529,7 @@ export function OpportunityAtlasNew({
     }, 100);
   };
 
-  // Handle share functionality with clipboard
+  // Handle share functionality with clipboard - copy URL
   const handleShare = async (opportunity: Opportunity) => {
     if (!opportunity?.id) {
       toast({
@@ -542,61 +542,18 @@ export function OpportunityAtlasNew({
     }
     
     try {
-      // Build comprehensive share text with all available fields
-      let shareText = `🏆 Investment Opportunity: ${opportunity.title}\n\n`;
+      // Build the opportunity URL
+      const baseUrl = window.location.origin;
+      const opportunityUrl = `${baseUrl}/prive-exchange/${opportunity.region}/${opportunity.id}`;
       
-      if (opportunity.description) {
-        shareText += `📋 Description: ${opportunity.description}\n\n`;
-      }
+      await navigator.clipboard.writeText(opportunityUrl);
       
-      shareText += `📊 Key Details:\n`;
-      if (opportunity.value) shareText += `💰 Investment Size: ${opportunity.value}\n`;
-      if (opportunity.expectedReturn) shareText += `📈 Expected Returns: ${opportunity.expectedReturn}\n`;
-      if (opportunity.riskLevel) shareText += `⚠️ Risk Level: ${opportunity.riskLevel}\n`;
-      if (opportunity.investmentHorizon) shareText += `⏱️ Investment Horizon: ${opportunity.investmentHorizon}\n`;
-      if (opportunity.type) shareText += `🏷️ Type: ${opportunity.type}\n`;
-      if (opportunity.industry) shareText += `🏭 Industry: ${opportunity.industry}\n`;
-      if (opportunity.product) shareText += `📦 Product: ${opportunity.product}\n`;
-      
-      shareText += `\n🌍 Location:\n`;
-      if (opportunity.region) shareText += `📍 Region: ${opportunity.region}\n`;
-      if (opportunity.country) shareText += `🌎 Country: ${opportunity.country}\n`;
-      
-      if (opportunity.start_date || opportunity.end_date) {
-        shareText += `\n📅 Investment Period:\n`;
-        if (opportunity.start_date) {
-          shareText += `▶️ Start: ${new Date(opportunity.start_date).toLocaleDateString('en-US', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-          })}\n`;
-        }
-        if (opportunity.end_date) {
-          shareText += `🏁 End: ${new Date(opportunity.end_date).toLocaleDateString('en-US', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-          })}\n`;
-        }
-      }
-      
-      if (opportunity.pros?.length) {
-        shareText += `\n✅ Key Advantages:\n`;
-        opportunity.pros.forEach(pro => {
-          shareText += `• ${pro}\n`;
-        });
-      }
-      
-      if (opportunity.cons?.length) {
-        shareText += `\n❌ Risk Considerations:\n`;
-        opportunity.cons.forEach(con => {
-          shareText += `• ${con}\n`;
-        });
-      }
-      
-      if (opportunity.fullAnalysis) {
-        shareText += `\n📝 Detailed Analysis:\n${opportunity.fullAnalysis}\n`;
-      }
-      
-      shareText += `\n🔗 Shared from HNWI Chronicles - Privé Exchange\n💼 Exclusive investment opportunities for qualified investors`;
-      
-      await navigator.clipboard.writeText(shareText);
+      // Show success toast
+      toast({
+        title: "URL Copied",
+        description: `Opportunity link copied to clipboard`,
+        duration: 2000,
+      });
       
       // Show success state
       if (opportunity?.id) {
@@ -609,67 +566,24 @@ export function OpportunityAtlasNew({
       }
       
     } catch (error) {
-      // Fallback: try to use the older method - reuse the same comprehensive text
-      let shareText = `🏆 Investment Opportunity: ${opportunity.title}\n\n`;
-      
-      if (opportunity.description) {
-        shareText += `📋 Description: ${opportunity.description}\n\n`;
-      }
-      
-      shareText += `📊 Key Details:\n`;
-      if (opportunity.value) shareText += `💰 Investment Size: ${opportunity.value}\n`;
-      if (opportunity.expectedReturn) shareText += `📈 Expected Returns: ${opportunity.expectedReturn}\n`;
-      if (opportunity.riskLevel) shareText += `⚠️ Risk Level: ${opportunity.riskLevel}\n`;
-      if (opportunity.investmentHorizon) shareText += `⏱️ Investment Horizon: ${opportunity.investmentHorizon}\n`;
-      if (opportunity.type) shareText += `🏷️ Type: ${opportunity.type}\n`;
-      if (opportunity.industry) shareText += `🏭 Industry: ${opportunity.industry}\n`;
-      if (opportunity.product) shareText += `📦 Product: ${opportunity.product}\n`;
-      
-      shareText += `\n🌍 Location:\n`;
-      if (opportunity.region) shareText += `📍 Region: ${opportunity.region}\n`;
-      if (opportunity.country) shareText += `🌎 Country: ${opportunity.country}\n`;
-      
-      if (opportunity.start_date || opportunity.end_date) {
-        shareText += `\n📅 Investment Period:\n`;
-        if (opportunity.start_date) {
-          shareText += `▶️ Start: ${new Date(opportunity.start_date).toLocaleDateString('en-US', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-          })}\n`;
-        }
-        if (opportunity.end_date) {
-          shareText += `🏁 End: ${new Date(opportunity.end_date).toLocaleDateString('en-US', { 
-            year: 'numeric', month: 'long', day: 'numeric' 
-          })}\n`;
-        }
-      }
-      
-      if (opportunity.pros?.length) {
-        shareText += `\n✅ Key Advantages:\n`;
-        opportunity.pros.forEach(pro => {
-          shareText += `• ${pro}\n`;
-        });
-      }
-      
-      if (opportunity.cons?.length) {
-        shareText += `\n❌ Risk Considerations:\n`;
-        opportunity.cons.forEach(con => {
-          shareText += `• ${con}\n`;
-        });
-      }
-      
-      if (opportunity.fullAnalysis) {
-        shareText += `\n📝 Detailed Analysis:\n${opportunity.fullAnalysis}\n`;
-      }
-      
-      shareText += `\n🔗 Shared from HNWI Chronicles - Privé Exchange\n💼 Exclusive investment opportunities for qualified investors`;
+      // Fallback: try to use the older method with URL
+      const baseUrl = window.location.origin;
+      const opportunityUrl = `${baseUrl}/prive-exchange/${opportunity.region}/${opportunity.id}`;
       
       try {
         const textArea = document.createElement('textarea');
-        textArea.value = shareText;
+        textArea.value = opportunityUrl;
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
+        
+        // Show success toast
+        toast({
+          title: "URL Copied",
+          description: `Opportunity link copied to clipboard`,
+          duration: 2000,
+        });
         
         if (opportunity?.id) {
           setShareState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
@@ -678,6 +592,12 @@ export function OpportunityAtlasNew({
           }, 2000);
         }
       } catch (fallbackError) {
+        toast({
+          title: "Copy Failed",
+          description: "Unable to copy opportunity URL. Please try again.",
+          variant: "destructive",
+          duration: 3000,
+        });
       }
     }
   };

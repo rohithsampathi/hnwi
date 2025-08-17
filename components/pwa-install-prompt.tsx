@@ -49,21 +49,21 @@ export default function PWAInstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50">
-      <div className="bg-black border border-white/20 rounded-lg p-4 shadow-2xl">
+      <div className="bg-background border border-border rounded-lg p-4 shadow-2xl">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <h3 className="text-white font-medium text-sm">
-              Install Intelligence
+            <h3 className="text-foreground font-medium text-sm">
+              Add to Home Screen
             </h3>
-            <p className="text-gray-400 text-xs mt-1">
-              Access HNWI Chronicles directly from your device
+            <p className="text-muted-foreground text-xs mt-1">
+              Experience premium wealth intelligence at your fingertips
             </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDismiss}
-            className="text-gray-400 hover:text-white p-1 h-auto"
+            className="text-muted-foreground hover:text-foreground p-1 h-auto"
           >
             <X size={16} />
           </Button>
@@ -72,14 +72,14 @@ export default function PWAInstallPrompt() {
         <div className="flex gap-2">
           <Button
             onClick={handleInstall}
-            className="flex-1 bg-white text-black hover:bg-gray-100 text-xs"
+            className="flex-1 bg-yellow-500 text-black hover:bg-yellow-600 text-xs font-bold"
           >
             Install
           </Button>
           <Button
             variant="outline"
             onClick={handleDismiss}
-            className="flex-1 border-white/20 text-white hover:bg-white hover:text-black text-xs"
+            className="flex-1 text-xs"
           >
             Later
           </Button>

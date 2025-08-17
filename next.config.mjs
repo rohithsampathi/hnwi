@@ -1,3 +1,5 @@
+import withPWA from 'next-pwa'
+
 let userConfig = undefined
 try {
   userConfig = await import('./v0-user-next.config')
@@ -21,19 +23,20 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  pwa: {
-    dest: 'public',
-    disable: process.env.NODE_ENV === 'development',
-    register: false,
-    sw: '/sw.js',
-    publicExcludes: ['!**/*'],
-    buildExcludes: [/middleware-manifest\.json$/],
-    dynamicStartUrl: false,
-    fallbacks: {
-      document: '/offline',
-    },
-  },
 }
+
+const pwaConfig = withPWA({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: false,
+  sw: '/sw.js',
+  publicExcludes: ['!**/*'],
+  buildExcludes: [/middleware-manifest\.json$/],
+  dynamicStartUrl: false,
+  fallbacks: {
+    document: '/offline',
+  },
+})
 
 mergeConfig(nextConfig, userConfig)
 
@@ -57,4 +60,4 @@ function mergeConfig(nextConfig, userConfig) {
   }
 }
 
-export default nextConfig
+export default pwaConfig(nextConfig)

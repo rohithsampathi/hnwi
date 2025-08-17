@@ -430,9 +430,78 @@ a:hover svg[stroke="currentColor"][height][width],
   transform: translateY(-3px);
 }
 
-/* Footer navigation - remove shadows */
+/* Footer navigation - remove shadows and mobile touch feedback */
 footer nav button, footer nav div {
   box-shadow: none !important;
+}
+
+/* Completely disable touch feedback on mobile for footer navigation */
+@media (max-width: 767px) {
+  footer nav div,
+  footer nav div[class*="flex"],
+  footer nav div[class*="items-center"] {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    background-color: transparent !important;
+    background: transparent !important;
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  footer nav div:hover,
+  footer nav div:active,
+  footer nav div:focus,
+  footer nav div:active:focus,
+  footer nav div[class*="flex"]:hover,
+  footer nav div[class*="flex"]:active,
+  footer nav div[class*="flex"]:focus {
+    background-color: transparent !important;
+    background: transparent !important;
+    color: inherit !important;
+    transform: none !important;
+    opacity: 1 !important;
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+  
+  /* Force override any inherited styles */
+  footer nav div::before,
+  footer nav div::after {
+    display: none !important;
+  }
+  
+  /* Disable all animations and color changes on mobile */
+  footer nav div *,
+  footer nav div *::before,
+  footer nav div *::after {
+    transition: none !important;
+    animation: none !important;
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+  
+  footer nav div:hover *,
+  footer nav div:active *,
+  footer nav div:focus *,
+  footer nav div:hover *::before,
+  footer nav div:active *::before,
+  footer nav div:focus *::before,
+  footer nav div:hover *::after,
+  footer nav div:active *::after,
+  footer nav div:focus *::after {
+    color: inherit !important;
+    background-color: transparent !important;
+    background: transparent !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
 }
 
 /* Set consistent content width and padding container */
