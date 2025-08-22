@@ -24,6 +24,7 @@ import { getMatteCardStyle } from "@/lib/colors"
 import { Heading2, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import { CrownLoader } from "@/components/ui/crown-loader"
+import { ElitePulseDashboard } from "./elite-pulse-dashboard"
 import type React from "react"
 
 import { secureApi } from "@/lib/secure-api"
@@ -431,6 +432,9 @@ export function HomeDashboard({
         </h1>
         <p className="text-muted-foreground text-base leading-tight mt-1">What keeps you three moves ahead while others catch up</p>
       </div>
+
+      {/* Elite Pulse Section */}
+      <ElitePulseDashboard />
 
       <div className={`w-full overflow-visible`}>
         {/* Two Column Layout */}
