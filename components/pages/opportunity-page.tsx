@@ -189,7 +189,7 @@ export function OpportunityPage({
 
   if (loading) {
     return (
-      <Layout title="Loading Opportunity" showBackButton onNavigate={handleNavigation}>
+      <Layout currentPage="prive-exchange" title="Loading Opportunity" showBackButton onNavigate={handleNavigation}>
         <div className="flex items-center justify-center h-[50vh]">
           <CrownLoader size="lg" text="Loading opportunity details..." />
         </div>
@@ -199,7 +199,7 @@ export function OpportunityPage({
 
   if (error || !opportunity) {
     return (
-      <Layout title="Opportunity Not Found" showBackButton onNavigate={handleNavigation}>
+      <Layout currentPage="prive-exchange" title="Opportunity Not Found" showBackButton onNavigate={handleNavigation}>
         <Card className="w-full bg-background text-foreground">
           <CardContent>
             <Heading2 className="text-2xl font-bold mb-4">Opportunity Not Found</Heading2>
@@ -226,6 +226,7 @@ export function OpportunityPage({
   return (
     <>
       <Layout
+        currentPage="prive-exchange"
         title={
           <div className="flex items-center space-x-2">
             {React.createElement(getOpportunityIcon(opportunity.type), { className: "w-6 h-6 text-primary" })}

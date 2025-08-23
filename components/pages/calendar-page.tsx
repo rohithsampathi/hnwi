@@ -183,6 +183,7 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
 
   return (
     <Layout
+      currentPage="calendar"
       title={
         <div className="flex items-center space-x-2">
           <CalendarIcon className="w-6 h-6 text-primary" />

@@ -122,6 +122,9 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     const initialPage = determineInitialPage();
     setCurrentPage(initialPage);
     
+    // Clear loading flag now that app is fully loaded
+    sessionStorage.removeItem('mainLoadingComplete');
+    
     // Track initial page view
     MixpanelTracker.pageView(initialPage);
     

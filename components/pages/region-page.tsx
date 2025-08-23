@@ -38,6 +38,7 @@ export function RegionPage({ region }: RegionPageProps) {
 
   return (
     <Layout
+      currentPage="invest-scan"
       title={
         <div className="flex items-center space-x-2">
           <DollarSign className="w-6 h-6 text-primary" />

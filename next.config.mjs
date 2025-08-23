@@ -23,6 +23,27 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  
+  // Suppress development warnings
+  onDemandEntries: {
+    // Period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // Number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
+  
+  // Reduce webpack warnings in development
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.devtool = 'eval-source-map'
+      // Suppress specific warnings
+      config.ignoreWarnings = [
+        /Critical dependency: the request of a dependency is an expression/,
+        /webpack\/lib\/cache\/PackFileCacheStrategy/,
+      ]
+    }
+    return config
+  },
 }
 
 const pwaConfig = withPWA({
@@ -31,11 +52,21 @@ const pwaConfig = withPWA({
   register: false,
   sw: '/sw.js',
   publicExcludes: ['!**/*'],
-  buildExcludes: [/middleware-manifest\.json$/],
+  buildExcludes: [/middleware-manifest\.json$/, /app-build-manifest\.json$/],
   dynamicStartUrl: false,
   fallbacks: {
     document: '/offline',
   },
+  runtimeCaching: [
+    {
+      urlPattern: /\/_next\/app-build-manifest\.json$/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'next-build-manifest',
+        networkTimeoutSeconds: 3,
+      },
+    },
+  ],
 })
 
 mergeConfig(nextConfig, userConfig)

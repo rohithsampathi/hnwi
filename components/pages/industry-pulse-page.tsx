@@ -169,6 +169,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
 
   return (
     <Layout
+      currentPage="strategy-vault"
       title={
         <div className="flex items-center space-x-2">
           <Globe className="w-6 h-6" />

@@ -662,18 +662,14 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               </div>
             );
           } else {
-            // Still checking auth, show loading
-            return (
-              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-emerald-900 to-black">
-                <div className="text-emerald-400 text-xl">Loading...</div>
-              </div>
-            );
+            // Still checking auth, return null to let parent handle loading
+            return null;
           }
         }
         
         // User is authenticated, show dashboard without back button
         return (
-          <Layout title="" onNavigate={handleNavigation} showBackButton={false}>
+          <Layout title="" onNavigate={handleNavigation} showBackButton={false} currentPage={currentPage}>
             <HomeDashboard 
               user={user} 
               onNavigate={handleNavigation} 
@@ -728,8 +724,9 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       case "calendar-page":
         return <CalendarPage onNavigate={handleNavigation} />
 
-      case "war-room":
-        return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} userData={user} />
+      // War Room - Hidden for now
+      // case "war-room":
+      //   return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} userData={user} />
 
       case "my-playbooks":
         return user && <PlayBooksPage onNavigate={handleNavigation} userEmail={user.email} userData={user} showOnlyPurchased={true} />

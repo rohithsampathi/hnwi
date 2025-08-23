@@ -464,6 +464,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
   return (
     <Layout 
+      currentPage="crown-vault"
       title={
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">

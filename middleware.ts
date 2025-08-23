@@ -89,6 +89,11 @@ export function middleware(request: NextRequest) {
 
 // Generate cryptographically secure CSP nonce
 function generateNonce(): string {
+  // In development, use a more stable nonce to prevent hydration mismatches
+  if (process.env.NODE_ENV === 'development') {
+    return 'eRFNoVpkmmUxkC9U6H2IOg=='; // Fixed nonce for development
+  }
+  
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return btoa(String.fromCharCode(...array));

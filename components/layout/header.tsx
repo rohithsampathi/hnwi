@@ -10,7 +10,6 @@ import Image from "next/image"
 import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
-import { Heading1 } from "@/components/ui/typography"
 
 interface HeaderProps {
   showBackButton?: boolean
@@ -38,13 +37,13 @@ export function Header({ showBackButton = false, onNavigate, children }: HeaderP
 
   return (
     <header
-      className={`p-2 md:p-6 flex justify-between items-center relative z-20 ${
+      className={`py-1 px-2 md:py-2 md:px-3 flex justify-between items-center relative z-20 h-12 ${
         theme === "dark"
           ? "bg-[#121212] shadow-[0_4px_6px_-1px_rgba(255,255,255,0.1),_0_2px_4px_-1px_rgba(255,255,255,0.06)]"
           : "bg-[#F5F5F5] shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),_0_2px_4px_-1px_rgba(0,0,0,0.06)]"
       }`}
     >
-      <div className="max-w-7xl mx-auto w-full flex justify-between items-center px-4">
+      <div className="max-w-7xl mx-auto w-full flex justify-between items-center px-2">
         <div className="flex items-center">
           {showBackButton && (
             <Button
@@ -85,17 +84,17 @@ export function Header({ showBackButton = false, onNavigate, children }: HeaderP
               <Image
                 src="/logo.png"
                 alt="HNWI Chronicles Globe"
-                width={32}
-                height={32}
+                width={24}
+                height={24}
                 className="w-auto h-auto"
-                style={{ width: '32px', height: '32px' }}
+                style={{ width: '24px', height: '24px' }}
                 priority
               />
             </motion.div>
-            <Heading1 className={`text-xl md:text-2xl font-bold`}>
+            <div className={`text-lg md:text-xl font-bold font-heading tracking-tight`}>
               <span style={{ color: theme === "dark" ? "#e6d5c1" : "#5b4d4a" }}>HNWI</span>{" "}
               <span style={{ color: theme === "dark" ? "#ffffff" : "#121212" }}>CHRONICLES</span>
-            </Heading1>
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-2 md:space-x-4">{children}</div>

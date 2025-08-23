@@ -25,12 +25,13 @@ const slides = [
     title: "Be one with the HNWI Ecosystem",
     description: "Your gateway to an exclusive world of private intelligence, global networks, and strategic resources.",
     sections: [
-      {
-        title: "War Room",
-        icon: "Shield",
-        description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
-        color: "#7f6e6b",
-      },
+      // War Room - Hidden for now
+      // {
+      //   title: "War Room",
+      //   icon: "Shield",
+      //   description: "Access your private strategic playbooks and tactical resources designed exclusively for wealth strategists and financial leaders.",
+      //   color: "#7f6e6b",
+      // },
       {
         title: "HNWI World",
         icon: "Globe",

@@ -21,6 +21,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
         url="https://app.hnwichronicles.com/hnwi-world"
       />
       <Layout
+        currentPage="strategy-vault"
         title={
           <div className="flex items-center space-x-2">
             <Globe className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />

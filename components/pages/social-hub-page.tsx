@@ -15,6 +15,7 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
   const { theme } = useTheme();
   return (
     <Layout
+        currentPage="social-hub"
         title={
           <div className="flex items-center space-x-2">
             <Users className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />

@@ -19,11 +19,13 @@ export function SidebarNavigation({
   headerHeight = 0,
   onSidebarToggle,
   showBackButton = false,
+  currentPage = "",
 }: {
   onNavigate: (route: string) => void
   headerHeight?: number
   onSidebarToggle?: (collapsed: boolean) => void
   showBackButton?: boolean
+  currentPage?: string
 }) {
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
@@ -76,9 +78,15 @@ export function SidebarNavigation({
     return () => clearInterval(interval)
   }, [])
 
-  // All navigation items with business mode flags
+  // All navigation items with business mode flags - Reordered as requested
   const allNavItems = [
     { name: "Home", icon: Home, route: "dashboard" },
+    { 
+      name: "Privé Exchange", 
+      icon: Gem, 
+      route: "prive-exchange",
+      description: "Off-market opportunities. Member referrals only."
+    },
     { 
       name: "HNWI World", 
       icon: Globe, 
@@ -94,32 +102,26 @@ export function SidebarNavigation({
       description: "Generational wealth architecture. Built for families that think in decades."
     },
     { 
-      name: "Privé Exchange", 
-      icon: Gem, 
-      route: "prive-exchange",
-      description: "Off-market opportunities. Member referrals only."
-    },
-    { 
       name: "Social Hub", 
       icon: Users, 
       route: "social-hub",
       description: "Where the right people gather. Invitation verification required."
     },
     { 
-      name: "War Room", 
-      icon: Shield, 
-      route: "war-room",
-      description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
-      businessOnly: true
-    },
-    { 
       name: "Tactics Lab", 
       icon: Beaker, 
       route: "strategy-engine",
       description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
-      beta: true,
-      businessOnly: true
+      beta: true
     },
+    // War Room - Hidden for now
+    // { 
+    //   name: "War Room", 
+    //   icon: Shield, 
+    //   route: "war-room",
+    //   description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
+    //   businessOnly: true
+    // },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
@@ -131,21 +133,18 @@ export function SidebarNavigation({
   const mainNavItems = filteredNavItems.slice(0, 4)
   const additionalNavItems = filteredNavItems.slice(4)
 
-  // Mobile bottom nav items - HNWI and Privé Exchange as primary
+  // Mobile bottom nav items - Updated order: Home, Privé, HNWI World  
   const mobileNavItems = [
     { name: "Home", icon: Home, route: "dashboard" },
-    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
+    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
   ]
 
-  // Additional menu items for three dots dropdown (mode-based)
+  // Additional menu items for three dots dropdown - Updated order: Crown Vault, Tactics Lab, Social Hub, Profile
   const moreMenuItems = [
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
+    { name: "Tactics Lab", icon: Beaker, route: "strategy-engine" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
-    ...(isBusinessMode ? [
-      { name: "War Room", icon: Crown, route: "war-room" },
-      { name: "Tactics Lab", icon: Crown, route: "strategy-engine" },
-    ] : []),
     { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
   ]
 
@@ -261,21 +260,32 @@ export function SidebarNavigation({
             <div className="space-y-2">
               <TooltipProvider>
                 {/* Main navigation items */}
-                {mainNavItems.map((item) => (
+                {mainNavItems.map((item) => {
+                  const isActive = currentPage === item.route;
+                  return (
                   <div key={item.route} className="relative">
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
-                        isCollapsed && "justify-center px-0 gap-0"
+                        "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
+                        isCollapsed && "justify-center px-0 gap-0",
+                        isActive 
+                          ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                       onClick={() => handleNavigate(item.route)}
                     >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      <item.icon className={cn(
+                        "h-5 w-5 flex-shrink-0",
+                        isActive ? "text-primary" : ""
+                      )} />
                       {!isCollapsed && (
                         <div className="flex items-center justify-between w-full">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                            <span className={cn(
+                              "text-sm font-semibold tracking-wide",
+                              isActive ? "text-primary" : ""
+                            )}>{item.name}</span>
                             {item.beta && (
                               <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
                                 Beta
@@ -313,26 +323,38 @@ export function SidebarNavigation({
                       )}
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
                 
                 {/* Additional navigation items - inline accordion */}
                 {isMoreExpanded && additionalNavItems.length > 0 && (
                   <div className="space-y-2 mt-2">
-                    {additionalNavItems.map((item) => (
+                    {additionalNavItems.map((item) => {
+                      const isActive = currentPage === item.route;
+                      return (
                       <div key={item.route} className="relative">
                         <Button
                           variant="ghost"
                           className={cn(
-                            "w-full justify-start gap-4 h-12 px-4 font-medium text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-all duration-200",
-                            isCollapsed && "justify-center px-0 gap-0"
+                            "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
+                            isCollapsed && "justify-center px-0 gap-0",
+                            isActive 
+                              ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" 
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                           onClick={() => handleNavigate(item.route)}
                         >
-                          <item.icon className="h-5 w-5 flex-shrink-0" />
+                          <item.icon className={cn(
+                            "h-5 w-5 flex-shrink-0",
+                            isActive ? "text-primary" : ""
+                          )} />
                           {!isCollapsed && (
                             <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold tracking-wide">{item.name}</span>
+                                <span className={cn(
+                                  "text-sm font-semibold tracking-wide",
+                                  isActive ? "text-primary" : ""
+                                )}>{item.name}</span>
                                 {item.beta && (
                                   <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
                                     Beta
@@ -370,7 +392,8 @@ export function SidebarNavigation({
                           )}
                         </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                     
                     {/* Collapse arrow at bottom of expanded items */}
                     <div className="relative">
@@ -469,20 +492,23 @@ export function SidebarNavigation({
       {/* Mobile Bottom Navigation - Only visible on mobile */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-xl">
         <div className="flex items-center justify-between px-4 py-3 safe-area-pb">
-          {mobileNavItems.map((item) => (
-            <Button
-              key={item.route}
-              variant="ghost"
-              size="sm"
-              className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
-              onClick={() => handleNavigate(item.route)}
-            >
-              <item.icon className="h-6 w-6 mb-1 flex-shrink-0" />
-              <span className="text-[10px] font-medium leading-tight text-center">
-                {item.name === "HNWI World" ? "HNWI" : item.name}
-              </span>
-            </Button>
-          ))}
+          {mobileNavItems.map((item) => {
+            const isActive = currentPage === item.route;
+            return (
+              <Button
+                key={item.route}
+                variant="ghost"
+                size="sm"
+                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
+                onClick={() => handleNavigate(item.route)}
+              >
+                <item.icon className={`h-6 w-6 mb-1 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                <span className={`text-[10px] font-medium leading-tight text-center ${isActive ? 'text-primary' : ''}`}>
+                  {item.name === "HNWI World" ? "HNWI" : item.name}
+                </span>
+              </Button>
+            )
+          })}
 
           {/* Three Dots More Menu */}
           <DropdownMenu>
@@ -499,16 +525,19 @@ export function SidebarNavigation({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 mb-2">
-              {moreMenuItems.map((item) => (
-                <DropdownMenuItem
-                  key={item.route}
-                  onClick={() => handleNavigate(item.route)}
-                  className="flex items-center space-x-3 py-3"
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.name}</span>
-                </DropdownMenuItem>
-              ))}
+              {moreMenuItems.map((item) => {
+                const isActive = currentPage === item.route;
+                return (
+                  <DropdownMenuItem
+                    key={item.route}
+                    onClick={() => handleNavigate(item.route)}
+                    className="flex items-center space-x-3 py-3"
+                  >
+                    <item.icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
+                    <span className={`font-medium ${isActive ? 'text-primary' : ''}`}>{item.name}</span>
+                  </DropdownMenuItem>
+                )
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

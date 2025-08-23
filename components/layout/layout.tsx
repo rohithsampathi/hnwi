@@ -21,9 +21,10 @@ interface LayoutProps {
   showBackButton?: boolean
   onNavigate: (route: string) => void
   sidebarCollapsed?: boolean
+  currentPage?: string
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed = true }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed = true, currentPage = "" }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
@@ -95,11 +96,12 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         headerHeight={headerHeight} 
         onSidebarToggle={setSidebarState}
         showBackButton={showBackButton}
+        currentPage={currentPage}
       />
       
       <header
         ref={headerRef}
-        className={`fixed top-0 z-50 p-0 md:p-6 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
+        className={`fixed top-0 z-50 p-0 md:p-2 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
           isTablet && !sidebarState ? 'blur-lg' : ''
         }`}
         style={{
@@ -110,7 +112,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         }}
       >
         <div 
-          className="max-w-7xl mx-auto w-full flex justify-between items-center px-3 py-3 md:px-4"
+          className="max-w-7xl mx-auto w-full flex justify-between items-center px-3 py-1 md:px-4"
         >
           <div className="flex items-center">
             {/* Mobile Logo and Text - Only visible on mobile */}

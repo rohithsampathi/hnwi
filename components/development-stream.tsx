@@ -238,7 +238,7 @@ export function DevelopmentStream({
 
 
   return (
-    <div className="p-1 md:p-2">
+    <div>
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <CrownLoader size="lg" text="Loading development updates..." />
@@ -252,11 +252,11 @@ export function DevelopmentStream({
           </p>
         </div>
       ) : (
-        <div className="w-full space-y-6">
+        <div className="w-full space-y-4">
           {developments
             .filter(dev => selectedIndustry === 'All' || dev.industry === selectedIndustry)
             .map((dev) => (
-            <div key={dev.id} id={`development-card-${dev.id}`} className="min-h-[179px] relative">
+            <div key={dev.id} id={`development-card-${dev.id}`} className={`relative ${expandedCards[dev.id] ? '' : 'min-h-[179px]'}`}>
               {/* Unified frame wrapper for both main card and expanded content */}
               <div 
                 className={`transition-all duration-300 ${
@@ -271,11 +271,11 @@ export function DevelopmentStream({
                 }}
               >
                 <div 
-                  className="p-3 md:p-4 cursor-pointer transition-all duration-300 min-h-full relative overflow-hidden rounded-lg border border-border"
+                  className="px-3 md:px-4 py-2 md:py-3 cursor-pointer transition-all duration-300 min-h-full relative overflow-hidden rounded-lg border border-border"
                   style={getMetallicCardStyle(theme).style}
                   onClick={() => toggleCardExpansion(dev.id)}
                 >
-                <div className="h-full flex flex-col justify-between py-2">
+                <div className="h-full flex flex-col justify-between py-1">
                   {/* Header with Product badge, title and toggle */}
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col flex-1 mr-3">
@@ -334,19 +334,16 @@ export function DevelopmentStream({
                     </div>
                   </div>
                 </div>
-                </div>
-                
-                <AnimatePresence>
-                  {expandedCards[dev.id] && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-4"
-                    >
-                      {/* Expanded content without separate frame */}
-                      <div className="p-4 max-h-[600px] overflow-y-auto">
+              </div>
+              
+              {/* Expanded content completely outside the unified frame wrapper */}
+              <div 
+                className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                  expandedCards[dev.id] ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <div>
+                  <div className="border border-border rounded-lg p-4 max-h-[500px] overflow-y-auto bg-transparent">
                       <div className="space-y-6 px-2">
                       {(() => {
                         const analysis = formatAnalysis(dev.summary);
@@ -568,10 +565,9 @@ export function DevelopmentStream({
                         </div>
                         </div>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    </div>
+                  </div>
+                </div>
             </div>
           ))}
         </div>

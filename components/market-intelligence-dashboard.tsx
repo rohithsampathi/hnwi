@@ -26,7 +26,21 @@ import {
   PiggyBank, 
   Store,
   Filter,
-  Clock
+  Clock,
+  Palette,
+  Smartphone,
+  Plane,
+  Gem,
+  ShoppingBag,
+  MapPin,
+  Banknote,
+  Stethoscope,
+  Factory,
+  Cpu,
+  Car,
+  Zap,
+  Truck,
+  ShieldCheck
 } from "lucide-react"
 
 interface IndustryTrend {
@@ -59,7 +73,8 @@ const timeRanges = [
   { value: '7d', label: '7D' },
   { value: '14d', label: '14D' },
   { value: '21d', label: '21D' },
-  { value: '1m', label: '1M' }
+  { value: '1m', label: '1M' },
+  { value: '3m', label: '3M' }
 ]
 
 // Client-side date filtering helper (same as development-stream.tsx)
@@ -103,6 +118,20 @@ const applyClientSideDateFilter = (items: any[], timeRange: string): any[] => {
 const getIndustryIcon = (industry: string) => {
   const industryLower = industry.toLowerCase()
   if (industryLower.includes('real estate') || industryLower.includes('property')) return Building2
+  if (industryLower.includes('collectibles') || industryLower.includes('collectible')) return Gem
+  if (industryLower.includes('lifestyle') || industryLower.includes('luxury goods')) return ShoppingBag
+  if (industryLower.includes('tourism') || industryLower.includes('travel') || industryLower.includes('hospitality')) return MapPin
+  if (industryLower.includes('financial services') || industryLower.includes('wealth management')) return Banknote
+  if (industryLower.includes('healthcare') || industryLower.includes('medical') || industryLower.includes('pharma')) return Stethoscope
+  if (industryLower.includes('manufacturing') || industryLower.includes('industrial')) return Factory
+  if (industryLower.includes('fintech') || industryLower.includes('financial technology')) return Smartphone
+  if (industryLower.includes('art') || industryLower.includes('auction') || industryLower.includes('fine art')) return Palette
+  if (industryLower.includes('aviation') || industryLower.includes('aerospace') || industryLower.includes('airline')) return Plane
+  if (industryLower.includes('technology') || industryLower.includes('tech') || industryLower.includes('software')) return Cpu
+  if (industryLower.includes('automotive') || industryLower.includes('vehicle')) return Car
+  if (industryLower.includes('energy') || industryLower.includes('renewable') || industryLower.includes('power')) return Zap
+  if (industryLower.includes('logistics') || industryLower.includes('shipping') || industryLower.includes('transport')) return Truck
+  if (industryLower.includes('insurance') || industryLower.includes('risk management')) return ShieldCheck
   if (industryLower.includes('finance') || industryLower.includes('banking')) return CreditCard
   if (industryLower.includes('crypto') || industryLower.includes('blockchain')) return Bitcoin
   if (industryLower.includes('metal') || industryLower.includes('commodity')) return Coins
@@ -296,77 +325,74 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setIsLoading(true)
       setIsRefreshing(forceRefresh);
       
-      const requestBody: any = {
-        page: 1,
-        page_size: 100, // Backend maximum limit is 100
-        sort_by: "date",
-        sort_order: "desc"
+      // Convert timeframe for the new endpoint
+      let timeframe = selectedTimeRange;
+      if (selectedTimeRange === '30d') timeframe = '1m';
+      if (selectedTimeRange === '90d') timeframe = '3m';
+      // Support direct 3m input as well
+      if (selectedTimeRange === '3m') timeframe = '3m';
+      
+      // Create query parameters for GET request
+      const params = new URLSearchParams({
+        timeframe: timeframe.toUpperCase()
+      });
+      
+      // Add industry filter if not 'All'
+      if (selectedIndustry !== 'All') {
+        params.append('industry', selectedIndustry);
       }
       
-      // Convert time_range to start_date and end_date for backend compatibility
-      const now = new Date();
-      const endDate = now.toISOString();
-      let startDate: string;
+      // Create stable cache key
+      const cacheKey = `developments:${selectedTimeRange}:${selectedIndustry}:page-1:size-100`;
       
-      switch (selectedTimeRange) {
-        case '1d':
-          startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-          break;
-        case '7d':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-          break;
-        case '30d':
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-          break;
-        case '90d':
-          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
-          break;
-        default:
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      }
+      // Use direct backend API call like Crown Vault and Home Dashboard
+      const endpoint = `/api/developments?${params.toString()}`;
       
-      requestBody.start_date = startDate;
-      requestBody.end_date = endDate;
-      
-      
-      // Create stable cache key based on time range instead of exact timestamps
-      const cacheKey = `developments:${selectedTimeRange}:page-${requestBody.page}:size-${requestBody.page_size}`;
-      
-      const data = await secureApi.post('/api/developments', requestBody, true, { 
+      // Use secureApi.get with authentication - direct backend call
+      const data = await secureApi.get(endpoint, true, { 
         enableCache: true, 
-        cacheDuration: 300000, 
-        cacheKey: cacheKey 
-      }); // 5 minutes cache for developments
+        cacheDuration: 300000 // 5 minutes cache
+      });
       
       
       if (data.developments && Array.isArray(data.developments)) {
+        
         // Store raw developments data for DevelopmentStream
         setDevelopments(data.developments);
-        setTotalDevelopments(data.developments.length);
+        setTotalDevelopments(data.total_count || data.developments.length);
         
-        // Process data for industry trends (Activity Leaderboard)
-        const industriesMap = new Map<string, number>()
-        
-        data.developments.forEach((dev: any) => {
-        if (dev && dev.industry) {
-          const industry = dev.industry.trim()
-          const count = industriesMap.get(industry) || 0
-          industriesMap.set(industry, count + 1)
+        // Use the rich category data from the new endpoint
+        if (data.categories && data.categories.industries_with_counts) {
+          // Convert to the format expected by the UI
+          const processedData = data.categories.industries_with_counts.map((item: any) => ({
+            industry: item.name,
+            total_count: item.count
+          }));
+          
+          setIndustryTrends(processedData);
+        } else {
+          // Fallback to manual processing if categories not available
+          const industriesMap = new Map<string, number>()
+          
+          data.developments.forEach((dev: any) => {
+            if (dev && dev.industry) {
+              const industry = dev.industry.trim()
+              const count = industriesMap.get(industry) || 0
+              industriesMap.set(industry, count + 1)
+            }
+          })
+          
+          const processedData = Array.from(industriesMap.entries())
+            .map(([industry, total_count]) => ({
+              industry: industry.trim(),
+              total_count
+            }))
+            .filter(item => item.total_count > 0)
+            .sort((a, b) => b.total_count - a.total_count)
+          
+          setIndustryTrends(processedData);
         }
-      })
-      
-      // Convert map to array for visualization
-      const processedData = Array.from(industriesMap.entries())
-        .map(([industry, total_count]) => ({
-          industry: industry.trim(),
-          total_count
-        }))
-        .filter(item => item.total_count > 0)
-        .sort((a, b) => b.total_count - a.total_count)
-      
-      
-        // Update state
-        setIndustryTrends(processedData)
+        
         setLastUpdated(new Date())
       } else {
         setDevelopments([])
@@ -726,9 +752,9 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   return (
     <div className="w-full">
       {/* Main Dashboard Content - No Background Style */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 min-h-[500px] mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 h-[calc(100vh-200px)] mt-8">
         {/* Left Column - Activity Leaderboard (2 parts) */}
-        <div className="md:col-span-1 lg:col-span-2">
+        <div className="md:col-span-1 lg:col-span-2 h-full">
           <div className="h-full">
             {/* Header Section */}
             <div className="mb-2">
@@ -758,7 +784,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
             </div>
             
             <div className="mt-4">
-              <GoldenScroll maxHeight="calc(100vh - 350px)" className="pt-2 px-3">
+              <GoldenScroll maxHeight="calc(100vh - 365px)" className="pt-2 px-3">
               {sortedTrends.map((trend, index) => {
                 const position = index + 1
                 const IconComponent = getIndustryIcon(trend.industry)
@@ -938,7 +964,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               </p>
             </div>
             
-            <div className="mt-8">
+            <div className="mt-4 px-3" style={{maxHeight: 'calc(100vh - 365px)', overflowY: 'auto'}}>
               <DevelopmentStream 
                 selectedIndustry={selectedIndustry}
                 duration={selectedTimeRange}

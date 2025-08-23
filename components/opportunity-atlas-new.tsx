@@ -799,7 +799,7 @@ export function OpportunityAtlasNew({
         </div>
 
         {/* Opportunities List */}
-        <div className="space-y-6" ref={opportunitiesRef}>
+        <div className="space-y-3" ref={opportunitiesRef}>
           {selectedCategory ? (
             getFilteredOpportunities(selectedCategory).length > 0 ? (
               getFilteredOpportunities(selectedCategory).map((opportunity) => (
@@ -1105,7 +1105,7 @@ export function OpportunityAtlasNew({
             
             <GoldenScroll maxHeight="calc(100vh - 300px)">
               {selectedCategory ? (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {getFilteredOpportunities(selectedCategory).length > 0 ? (
                     getFilteredOpportunities(selectedCategory).map((opportunity) => (
                       <OpportunityCard
@@ -1136,7 +1136,7 @@ export function OpportunityAtlasNew({
                   )}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {getAllFilteredOpportunities().length > 0 ? (
                     getAllFilteredOpportunities().map((opportunity) => (
                       <OpportunityCard

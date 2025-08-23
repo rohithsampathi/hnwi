@@ -38,6 +38,7 @@ export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string)
         url="https://app.hnwichronicles.com/tactics-lab"
       />
       <Layout
+        currentPage="strategy-engine"
         title={
           <div className="flex flex-col space-y-2">
             <div className="flex items-center space-x-2">

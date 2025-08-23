@@ -199,7 +199,9 @@ export function HomeDashboard({
   const { showAuthPopup } = useAuthPopup()
   const [developments, setDevelopments] = useState<Development[]>([])
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedDevelopment, setSelectedDevelopment] = useState<Development | null>(null)
+  const [elitePulseLoading, setElitePulseLoading] = useState(true)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null)
@@ -241,12 +243,10 @@ export function HomeDashboard({
     }
 
     try {
-      const data = await secureApi.post('/api/developments', {
-        page: 1,
-        page_size: 10,
-        sort_by: "date",
-        sort_order: "desc"
-      }, true, { enableCache: true, cacheDuration: 300000 }); // 5 minutes cache for developments
+      const data = await secureApi.get('/api/developments/latest-brief?limit=10', true, { 
+        enableCache: true, 
+        cacheDuration: 300000 
+      }); // 5 minutes cache for developments - direct backend call
       
       setDevelopments(data.developments || [])
     } catch (error: any) {
@@ -264,12 +264,9 @@ export function HomeDashboard({
         return;
       }
       
-      // For other errors, show toast
-      toast({
-        title: "Error",
-        description: "Failed to fetch latest developments. Please try again later.",
-        variant: "destructive",
-      })
+      // For other errors, silently set empty state
+      setDevelopments([])
+      setError(null) // Don't show error to user
     } finally {
       setDevelopmentsLoading(false)
     }
@@ -354,6 +351,12 @@ export function HomeDashboard({
   //   }
   // }, [setIsFromSignupFlow])
 
+  // Handle Elite Pulse loading completion
+  const handleElitePulseLoaded = () => {
+    setElitePulseLoading(false);
+  };
+
+
   // Time-based intelligence greeting function
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -406,12 +409,7 @@ export function HomeDashboard({
     else {
       onNavigate(route);
     }
-  }
-
-  // Commenting out onboarding wizard close handler
-  // const handleCloseOnboardingWizard = () => {
-  //   setShowOnboardingWizard(false)
-  // }
+  };
 
   return (
     <>
@@ -433,19 +431,19 @@ export function HomeDashboard({
         <p className="text-muted-foreground text-base leading-tight mt-1">What keeps you three moves ahead while others catch up</p>
       </div>
 
-      {/* Elite Pulse Section */}
-      <ElitePulseDashboard />
+      {/* Elite Pulse Section - always render to ensure callback works */}
+      <ElitePulseDashboard onLoadingComplete={handleElitePulseLoaded} />
 
       <div className={`w-full overflow-visible`}>
         {/* Two Column Layout */}
-        {developmentsLoading ? (
+        {(developmentsLoading || elitePulseLoading) ? (
           <div className="flex flex-col items-center justify-center min-h-[500px]">
-            <CrownLoader size="lg" text="Securing your intelligence briefing..." />
+            <CrownLoader size="lg" text="Loading your Personal Home Experience" />
           </div>
         ) : screenSize === 'mobile' ? (
           // Mobile: Single column with scrolling cards - dynamic spacing
           <Card className="overflow-visible font-body bg-transparent border-none text-card-foreground flex flex-col">
-            <CardHeader className="flex-shrink-0 pt-4 pb-4 px-0">
+            <CardHeader className="flex-shrink-0 pt-4 pb-6 px-0">
               <div className="flex items-center space-x-2">
                 <Diamond className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                 <Heading2 className={sectionHeadingClass}>
@@ -454,7 +452,7 @@ export function HomeDashboard({
               </div>
               <Lead className="font-body font-regular tracking-wide text-base md:text-sm">The whispers that keep you relevant in circles that matter</Lead>
             </CardHeader>
-            <CardContent className="px-0 flex-1 overflow-hidden">
+            <CardContent className="px-0 flex-1 overflow-hidden pt-2">
               {developments.length > 0 && (
                 <div className="overflow-x-auto overflow-y-hidden pl-4" style={{ scrollSnapType: 'x mandatory' }}>
                   <div className="flex gap-3 pb-4 pr-4">
@@ -548,7 +546,7 @@ export function HomeDashboard({
             <div className="md:col-span-1 lg:col-span-3 h-full flex flex-col">
               <GoldenScroll maxHeight="calc(100vh - 250px)" className="h-full">
                 <Card className="font-body bg-transparent border-none text-card-foreground flex flex-col">
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-6">
                     <div className="flex items-center space-x-2">
                       <Diamond className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                       <Heading2 className={`text-xl font-bold ${sectionHeadingClass}`}>
@@ -557,7 +555,7 @@ export function HomeDashboard({
                     </div>
                     <Lead className="font-body font-regular tracking-wide text-sm">The whispers that keep you relevant in circles that matter</Lead>
                   </CardHeader>
-                  <CardContent className="px-0 flex-1">
+                  <CardContent className="px-0 flex-1 pt-2">
                     {selectedDevelopment ? (
                       <div className="px-6">
                       {(() => {
@@ -849,7 +847,7 @@ export function HomeDashboard({
             </div>
 
             {/* Right Column - Small Cards */}
-            <div className="md:col-span-1 lg:col-span-2 h-full">
+            <div className="md:col-span-1 lg:col-span-2 h-full flex flex-col">
               <Card className="overflow-hidden font-body bg-transparent border-none text-card-foreground h-full flex flex-col">
                 <CardHeader className="flex-shrink-0 pb-2">
                   <Lead className="font-body font-regular tracking-wide text-sm text-muted-foreground">
@@ -870,7 +868,7 @@ export function HomeDashboard({
                 </CardHeader>
                 <CardContent className="px-0 flex-1 overflow-hidden">
                   {developments.length > 0 ? (
-                    <GoldenScroll maxHeight="calc(100vh - 280px)" className="px-4 space-y-4">
+                    <GoldenScroll maxHeight="calc(100vh - 250px)" className="px-4 space-y-4 h-full">
                       {developments.map((development, index) => (
                         <motion.div
                           key={`pulse-card-${development.id}`}
@@ -941,13 +939,12 @@ export function HomeDashboard({
           </div>
         )}
 
-
-        {/* Commenting out onboarding wizard */}
-        {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}
+      {/* Commenting out onboarding wizard */}
+      {/* {showOnboardingWizard && <OnboardingWizard onClose={handleCloseOnboardingWizard} />} */}
       </div>
 
       {/* Wealth Quote Section - OUTSIDE the padded container */}
-      <div className={`text-center px-6 ${screenSize === 'mobile' ? 'mt-0 mb-0' : 'mt-0 mb-0'}`} style={{
+      <div className={`text-center px-6 ${screenSize === 'mobile' ? 'mt-8 mb-0' : 'mt-12 mb-0'}`} style={{
         paddingBottom: screenSize === 'mobile' ? '4px' : '0px'
       }}>
         <div className={`${screenSize === 'mobile' ? 'py-0' : 'py-0'}`}>

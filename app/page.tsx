@@ -8,7 +8,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { Shield } from "lucide-react"
 
 // Ultra-luxury checklist loading experience for UHNWIs
-const LoadingComponent = () => {
+const LoadingComponent = ({ onComplete }: { onComplete?: () => void }) => {
   const { theme } = useTheme();
   const [completedSteps, setCompletedSteps] = React.useState<number[]>([]);
   const [time, setTime] = React.useState("");
@@ -84,16 +84,23 @@ const LoadingComponent = () => {
       setCompletedSteps([0, 1, 2]);
     }, 500));
     
-    // Step 3: 750ms
+    // Step 3: 750ms - completion triggers fade out
     timeouts.push(setTimeout(() => {
       setCompletedSteps([0, 1, 2, 3]);
       setIsComplete(true);
+      
+      // Brief pause then trigger completion callback if provided
+      setTimeout(() => {
+        if (onComplete) {
+          onComplete();
+        }
+      }, 100); // Small delay to show completed state
     }, 750));
 
     return () => {
       timeouts.forEach(timeout => clearTimeout(timeout));
     };
-  }, []); // Empty dependency array ensures this runs only once
+  }, [onComplete]); // Include onComplete in dependency array
   
   const isDark = theme === "dark";
   
@@ -175,10 +182,12 @@ const LoadingComponent = () => {
         {/* Content below logo */}
         <div className="text-center space-y-10">
           
-          {/* Subtitle only */}
+          {/* Subtitle with completion state */}
           <div>
-            <p className="text-xl font-body text-foreground">
-              Connecting to Private Intelligence Network
+            <p className={`text-xl font-body transition-all duration-300 ${
+              isComplete ? "text-primary" : "text-foreground"
+            }`}>
+              {isComplete ? "Connected - Access Granted" : "Connecting to Private Intelligence Network"}
             </p>
           </div>
           
@@ -228,6 +237,25 @@ const LoadingComponent = () => {
                 </div>
               ))}
             </div>
+            
+            {/* Secure Connected Badge - appears after completion */}
+            {isComplete && (
+              <div className="mt-8 flex justify-center">
+                <div className="flex items-center gap-3 px-6 py-3 rounded-full backdrop-blur-sm transition-all duration-500"
+                     style={{
+                       background: "linear-gradient(135deg, #065f46 0%, #047857 25%, #059669 50%, #10b981 75%, #34d399 100%)",
+                       border: "2px solid #047857",
+                       boxShadow: "0 0 20px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                       animation: "fadeInScale 0.6s ease-out forwards"
+                     }}>
+                  <Shield className="w-5 h-5 text-white" fill="currentColor" />
+                  <span className="text-sm font-bold text-white tracking-wide">
+                    SECURE CONNECTION ESTABLISHED
+                  </span>
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -254,16 +282,131 @@ const LoadingComponent = () => {
   );
 };
 
-// Dynamically load the AppWrapper with client-side rendering only
+// Create secure reconnection loading component
+const SecureReconnectionLoader = () => {
+  const { theme } = useTheme();
+  const [time, setTime] = React.useState("");
+
+
+  // Real-time clock
+  React.useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      });
+      setTime(timeStr);
+    };
+    
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isDark = theme === "dark";
+  
+  return (
+    <div className={`min-h-screen relative overflow-hidden bg-background`}>
+      
+      {/* Same luxury background as main loading */}
+      <div className="absolute inset-0">
+        <div className={`absolute inset-0 opacity-30 ${
+          isDark 
+            ? "bg-[radial-gradient(circle_at_1px_1px,_#374151_1px,_transparent_0)] bg-[length:24px_24px]"
+            : "bg-[radial-gradient(circle_at_1px_1px,_#d1d5db_1px,_transparent_0)] bg-[length:24px_24px]"
+        }`}></div>
+      </div>
+
+      {/* Main content centered */}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-8">
+        
+        {/* Logo */}
+        <div className="mb-12">
+          <div className="relative">
+            <Image 
+              src="/logo.png" 
+              alt="HNWI Chronicles Logo" 
+              width={180}
+              height={180}
+              className="w-auto h-auto object-contain filter drop-shadow-2xl"
+              style={{ 
+                width: '180px',
+                height: '180px'
+              }}
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Content below logo */}
+        <div className="text-center space-y-8">
+          
+          {/* Status text */}
+          <div>
+            <p className="text-xl font-body text-foreground">
+              Secure Connection Established
+            </p>
+          </div>
+          
+          {/* Green lock animation */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="animate-bounce" style={{animationDuration: '2s'}}>
+                {/* Lock body - green */}
+                <div className="w-16 h-16 border-4 border-green-500 bg-green-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-green-500 bg-green-500/30 rounded-full"></div>
+                </div>
+                {/* Lock base - green */}
+                <div className="w-20 h-8 bg-green-500/30 border-2 border-green-500 rounded-b-lg mt-0 -mx-2"></div>
+              </div>
+              
+              {/* Success checkmark */}
+              <div className="absolute -top-1 -right-1 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
+                <div className="w-4 h-2 border-l-2 border-b-2 border-white transform rotate-45 -translate-y-0.5"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom branding - same as luxury loader */}
+      <div className="absolute bottom-0 left-0 right-0 p-8">
+        <div className="text-center">
+          <div className={`inline-flex items-center space-x-4 px-6 py-3 rounded-full backdrop-blur-sm border ${
+            isDark 
+              ? "bg-secondary/30 border-secondary/50 text-muted-foreground" 
+              : "bg-secondary/30 border-secondary/50 text-muted-foreground"
+          }`}>
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <span className="text-sm font-light tracking-widest">
+              HNWI CHRONICLES
+            </span>
+            <span className="text-xs opacity-60">•</span>
+            <span className="text-xs font-mono">{time}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Dynamically load the AppWrapper with client-side rendering only  
 const AppWrapper = dynamic(
   () => import("@/components/app-wrapper"),
   { 
     ssr: false,
-    loading: () => (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingComponent />
-      </div>
-    )
+    loading: () => {
+      // Only show fallback if main loading didn't complete properly
+      const mainLoadingComplete = typeof window !== 'undefined' && sessionStorage.getItem('mainLoadingComplete');
+      if (mainLoadingComplete === 'true') {
+        return <div className="min-h-screen bg-background"></div>; // Minimal fallback
+      }
+      return <SecureReconnectionLoader />;
+    }
   }
 )
 
@@ -346,20 +489,24 @@ export default function Home() {
       }
     });
 
-    // Show loading for 2 seconds then transition
-    setTimeout(() => {
-      setFadeOut(true);
-      setTimeout(() => {
-        setShowLoading(false);
-      }, 500); // Additional 500ms for fade out
-    }, 2000);
+    // Removed fixed timeout - now controlled by checklist completion callback
   }, [])
   
+  // Handle checklist completion
+  const handleLoadingComplete = () => {
+    setFadeOut(true);
+    // Set a flag to prevent showing fallback loaders
+    sessionStorage.setItem('mainLoadingComplete', 'true');
+    setTimeout(() => {
+      setShowLoading(false);
+    }, 500); // 500ms for fade out transition
+  };
+
   // Show loading screen first, then smooth transition to app
   if (showLoading) {
     return (
       <div className={`transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
-        <LoadingComponent />
+        <LoadingComponent onComplete={handleLoadingComplete} />
       </div>
     );
   }

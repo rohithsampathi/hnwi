@@ -442,6 +442,7 @@ export function PlayBooksPage({
         url="https://app.hnwichronicles.com/war-room"
       />
       <Layout
+        currentPage="strategy-engine"
         title={
           <div className="flex items-center space-x-2">
             <Shield className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />

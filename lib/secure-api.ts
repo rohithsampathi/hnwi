@@ -109,6 +109,10 @@ class APIError extends Error {
   ) {
     super(message);
     this.name = 'APIError';
+    // Sanitize endpoint to hide backend URL
+    if (this.endpoint) {
+      this.endpoint = this.endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/]+/, '/api');
+    }
   }
 }
 
@@ -287,7 +291,7 @@ export const secureApiCall = async (
       clearInvalidToken();
     }
     
-    // Always use the backend URL, but mask it in logs and errors
+    // Always use the backend URL directly
     const { API_BASE_URL } = await import("@/config/api");
     const url = `${API_BASE_URL}${endpoint}`;
     

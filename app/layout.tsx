@@ -85,9 +85,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Get nonce from middleware for CSP
+  // Get nonce from middleware for CSP - use fixed nonce in development
   const headersList = headers()
-  const nonce = headersList.get('X-CSP-Nonce') || undefined
+  const nonce = process.env.NODE_ENV === 'development' 
+    ? 'eRFNoVpkmmUxkC9U6H2IOg==' 
+    : headersList.get('X-CSP-Nonce') || undefined
   
   return (
     <html lang="en">

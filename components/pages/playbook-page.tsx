@@ -152,6 +152,7 @@ export function PlaybookPage({
   if (!report && !isLoading) {
     return (
       <Layout 
+        currentPage="strategy-engine"
         title={
           <div className="flex items-center space-x-2">
             <BookOpen className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
@@ -178,6 +179,7 @@ export function PlaybookPage({
 
   return (
     <Layout
+      currentPage="strategy-engine"
       title={
         report ? (
           <div>

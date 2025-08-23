@@ -34,7 +34,7 @@ const regionMap: Record<string, { id: string; position: [number, number] }> = {
   "Global": { id: "global", position: [0, 0] }
 };
 
-export function InvestScanPage() {
+export function InvestScanPage({ onNavigate }: { onNavigate?: (route: string) => void } = {}) {
   const router = useRouter()
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
@@ -100,6 +100,7 @@ export function InvestScanPage() {
   if (loading) {
     return (
       <Layout
+        currentPage="invest-scan"
         title={
           <div className="flex items-center space-x-2">
             <DollarSign className="w-6 h-6 text-primary" />
@@ -107,6 +108,7 @@ export function InvestScanPage() {
           </div>
         }
         showBackButton
+        onNavigate={onNavigate || (() => router.back())}
       >
         <div className="flex items-center justify-center h-[50vh]">
           <CrownLoader size="lg" text="Accessing private deal flow..." />
@@ -118,6 +120,7 @@ export function InvestScanPage() {
   if (error) {
     return (
       <Layout
+        currentPage="invest-scan"
         title={
           <div className="flex items-center space-x-2">
             <DollarSign className="w-6 h-6 text-primary" />
@@ -125,6 +128,7 @@ export function InvestScanPage() {
           </div>
         }
         showBackButton
+        onNavigate={onNavigate || (() => router.back())}
       >
         <div className="text-center p-8">
           <h3 className="text-xl font-medium text-red-500 mb-2">Intelligence Access Unavailable</h3>
@@ -136,6 +140,7 @@ export function InvestScanPage() {
 
   return (
     <Layout
+      currentPage="invest-scan"
       title={
         <div className="flex items-center space-x-2">
           <DollarSign className="w-6 h-6 text-primary" />
@@ -143,6 +148,7 @@ export function InvestScanPage() {
         </div>
       }
       showBackButton
+      onNavigate={onNavigate || (() => router.back())}
     >
       <div className="space-y-8">
         <InvestmentGlobe regions={regions} onRegionSelect={handleRegionSelect} />
