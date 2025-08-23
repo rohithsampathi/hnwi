@@ -486,13 +486,32 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 Activity Leaderboard
               </h3>
               
-              {/* Embedded Time Range Filter */}
-              <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
+              {/* Embedded Time Range Filter - Mobile Safe */}
+              <Select value={selectedTimeRange} onValueChange={(value) => {
+                try {
+                  setSelectedTimeRange(value);
+                } catch (error) {
+                  console.error('Date filter error:', error);
+                  toast({
+                    title: "Filter Error",
+                    description: "Please try again",
+                    variant: "destructive",
+                    duration: 2000,
+                  });
+                }
+              }}>
                 <SelectTrigger className="w-[120px]">
                   <Clock className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Period" />
                 </SelectTrigger>
-                <SelectContent className="z-50" side="bottom" align="end" sideOffset={4}>
+                <SelectContent 
+                  className="z-[60]" 
+                  side="bottom" 
+                  align="end" 
+                  sideOffset={4}
+                  avoidCollisions={true}
+                  position="popper"
+                >
                   {timeRanges.map((range) => (
                     <SelectItem key={range.value} value={range.value}>
                       {range.label}
@@ -763,13 +782,32 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   Activity Leaderboard
                 </h3>
                 
-                {/* Embedded Time Range Filter */}
-                <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
+                {/* Embedded Time Range Filter - Desktop Safe */}
+                <Select value={selectedTimeRange} onValueChange={(value) => {
+                  try {
+                    setSelectedTimeRange(value);
+                  } catch (error) {
+                    console.error('Date filter error:', error);
+                    toast({
+                      title: "Filter Error",
+                      description: "Please try again",
+                      variant: "destructive",
+                      duration: 2000,
+                    });
+                  }
+                }}>
                   <SelectTrigger className="w-[120px]">
                     <Clock className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Period" />
                   </SelectTrigger>
-                  <SelectContent className="z-50" side="bottom" align="end" sideOffset={4}>
+                  <SelectContent 
+                    className="z-[60]" 
+                    side="bottom" 
+                    align="end" 
+                    sideOffset={4}
+                    avoidCollisions={true}
+                    position="popper"
+                  >
                     {timeRanges.map((range) => (
                       <SelectItem key={range.value} value={range.value}>
                         {range.label}

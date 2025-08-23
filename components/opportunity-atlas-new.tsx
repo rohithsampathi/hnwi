@@ -606,7 +606,7 @@ export function OpportunityAtlasNew({
     }
   };
 
-  // Handle talk to concierge functionality with Formspree
+  // Handle talk to concierge functionality with Formspree - Mobile/PWA Safe
   const handleTalkToConcierge = async (opportunity: Opportunity) => {
     if (!opportunity?.id) {
       toast({
@@ -618,6 +618,11 @@ export function OpportunityAtlasNew({
       return;
     }
     
+    // Prevent double submissions
+    if (conciergeState?.[opportunity.id]) {
+      return;
+    }
+    
     setConciergeState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
     
     try {
@@ -626,12 +631,17 @@ export function OpportunityAtlasNew({
       const userEmail = user?.email || localStorage.getItem("userEmail") || "";
       const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User";
       
+      // Create AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch("https://formspree.io/f/xldgwozd", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
+        signal: controller.signal,
         body: JSON.stringify({
           opportunityTitle: opportunity.title,
           userName,
@@ -648,27 +658,40 @@ export function OpportunityAtlasNew({
         }),
       });
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         throw new Error(`Failed to submit request: ${response.status}`);
       }
       
-      setSelectedOpportunity(opportunity);
-      setShowSuccessDialog(true);
+      // Small delay to ensure state is stable before showing dialog
+      setTimeout(() => {
+        setSelectedOpportunity(opportunity);
+        setShowSuccessDialog(true);
+      }, 100);
+      
       toast({
         title: "Concierge Notified",
         description: `Our concierge will contact you about ${opportunity.title}.`,
         duration: 5000,
       });
     } catch (error) {
+      const errorMessage = error.name === 'AbortError' 
+        ? 'Request timed out. Please try again.'
+        : 'Unable to reach concierge. Please try again.';
+        
       toast({
         title: "Request Failed",
-        description: "Unable to reach concierge. Please try again.",
+        description: errorMessage,
         variant: "destructive",
         duration: 5000,
       });
     } finally {
       if (opportunity?.id) {
-        setConciergeState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
+        // Small delay to prevent race conditions
+        setTimeout(() => {
+          setConciergeState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
+        }, 500);
       }
     }
   };
@@ -788,7 +811,15 @@ export function OpportunityAtlasNew({
               <Filter className="w-3 h-3 mr-1" />
               <SelectValue placeholder="Region" />
             </SelectTrigger>
-            <SelectContent className="z-[100]" side="bottom" align="end" sideOffset={4} avoidCollisions={true} position="popper">
+            <SelectContent 
+              className="z-[60]" 
+              side="bottom" 
+              align="end" 
+              sideOffset={4} 
+              avoidCollisions={true} 
+              position="popper"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
               {regions.map((region) => (
                 <SelectItem key={region.id} value={region.id}>
                   {region.name}
@@ -1092,7 +1123,15 @@ export function OpportunityAtlasNew({
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Region" />
                   </SelectTrigger>
-                  <SelectContent className="z-50" side="bottom" align="end" sideOffset={4}>
+                  <SelectContent 
+                    className="z-[60]" 
+                    side="bottom" 
+                    align="end" 
+                    sideOffset={4}
+                    avoidCollisions={true}
+                    position="popper"
+                    onCloseAutoFocus={(e) => e.preventDefault()}
+                  >
                     {regions.map((region) => (
                       <SelectItem key={region.id} value={region.id}>
                         {region.name}

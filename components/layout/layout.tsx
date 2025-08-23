@@ -101,9 +101,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <header
         ref={headerRef}
-        className={`fixed top-0 z-50 p-0 md:p-2 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${
-          isTablet && !sidebarState ? 'blur-lg' : ''
-        }`}
+        className={`fixed top-0 z-50 p-0 md:p-2 flex justify-between items-center bg-background border-b border-border transition-all duration-300`}
         style={{
           left: isDesktop 
             ? (sidebarState ? '64px' : '256px') // Desktop: always push header
@@ -162,7 +160,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       </header>
 
       <div 
-        className={`transition-all duration-300 ${isTablet && !sidebarState ? 'blur-lg' : ''}`}
+        className="transition-all duration-300"
         style={{
           marginLeft: isDesktop 
             ? (sidebarState ? '64px' : '256px') // Desktop: always push banner
@@ -173,9 +171,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       </div>
       
       <main 
-        className={`flex-grow px-0 py-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-12 md:pb-4 transition-all duration-300 ${
-          isTablet && !sidebarState ? 'blur-lg' : ''
-        }`}
+        className="flex-grow px-0 py-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-12 md:pb-4 transition-all duration-300"
         style={{ 
           paddingTop: `${Math.max(headerHeight + 16, 96)}px`,
           marginLeft: isDesktop 
