@@ -6,7 +6,8 @@ import { logger } from './secure-logger';
 interface RateLimitConfig {
   windowMs: number;
   maxRequests: number;
-  keyGenerator: (request: NextRequest) => string;
+  keyGenerator: (request: NextRequest, userId?: string) => string;
+  message?: string;
 }
 
 interface RateLimitEntry {
@@ -17,27 +18,45 @@ interface RateLimitEntry {
 // In-memory store for rate limiting (in production, use Redis)
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Rate limit configurations
+// Rate limit configurations - Production-grade security for HNWI platform
 const RATE_LIMITS = {
   LOGIN: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 100, // Temporarily increased for testing
-    keyGenerator: (req) => `login:${getClientIP(req)}`
+    maxRequests: process.env.NODE_ENV === 'production' ? 5 : 10, // Banking-standard security
+    keyGenerator: (req) => `login:${getClientIP(req)}`,
+    message: 'Too many login attempts. Please try again in 15 minutes for security.'
   },
   API: {
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 100, // 100 requests per minute
-    keyGenerator: (req) => `api:${getClientIP(req)}`
+    maxRequests: process.env.NODE_ENV === 'production' ? 30 : 50, // Balanced security/UX
+    keyGenerator: (req) => `api:${getClientIP(req)}`,
+    message: 'API rate limit exceeded. Please slow down your requests.'
   },
   SENSITIVE: {
     windowMs: 60 * 1000, // 1 minute  
-    maxRequests: 10, // 10 requests per minute for sensitive operations
-    keyGenerator: (req) => `sensitive:${getClientIP(req)}`
+    maxRequests: process.env.NODE_ENV === 'production' ? 3 : 5, // Enhanced security for critical ops
+    keyGenerator: (req) => `sensitive:${getClientIP(req)}`,
+    message: 'Sensitive operation limit reached. Please wait before trying again.'
   },
   CROWN_VAULT: {
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 50, // 50 requests per minute for Crown Vault operations
-    keyGenerator: (req) => `crown:${getClientIP(req)}`
+    maxRequests: process.env.NODE_ENV === 'production' ? 15 : 20, // Financial data protection
+    keyGenerator: (req) => `crown:${getClientIP(req)}`,
+    message: 'Crown Vault access limit reached. Please wait a moment before continuing.'
+  },
+  // New: User-based rate limiting (more restrictive)
+  USER_LOGIN: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 3, // Even more restrictive per user account
+    keyGenerator: (req, userId) => `user_login:${userId}`,
+    message: 'Account temporarily locked due to multiple failed attempts. Contact support if needed.'
+  },
+  // New: Progressive penalties for repeated violations
+  PROGRESSIVE: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 1, // One strike per hour for progressive penalties
+    keyGenerator: (req) => `progressive:${getClientIP(req)}`,
+    message: 'IP temporarily blocked due to repeated violations. Access will be restored automatically.'
   }
 };
 
@@ -61,11 +80,11 @@ function getClientIP(request: NextRequest): string {
 function cleanupExpired() {
   const now = Date.now();
   
-  for (const [key, entry] of rateLimitStore.entries()) {
+  rateLimitStore.forEach((entry, key) => {
     if (now > entry.resetTime) {
       rateLimitStore.delete(key);
     }
-  }
+  });
 }
 
 // Run cleanup every 5 minutes
@@ -90,7 +109,7 @@ export class RateLimiter {
       return { allowed: true, remainingRequests: 0, resetTime: 0, totalHits: 0 };
     }
 
-    const key = config.keyGenerator(request);
+    const key = config.keyGenerator(request, undefined);
     const now = Date.now();
     const resetTime = now + config.windowMs;
 
@@ -119,7 +138,7 @@ export class RateLimiter {
     const allowed = entry.count <= config.maxRequests;
     const remainingRequests = Math.max(0, config.maxRequests - entry.count);
 
-    // Log rate limit violations
+    // Log rate limit violations and implement progressive penalties
     if (!allowed) {
       logger.warn('Rate limit exceeded', {
         limitType,
@@ -130,6 +149,9 @@ export class RateLimiter {
         userAgent: request.headers.get('user-agent'),
         endpoint: new URL(request.url).pathname
       });
+
+      // Implement progressive penalties for repeated violations
+      await RateLimiter.recordViolation(request, limitType);
     }
 
     return {
@@ -216,7 +238,7 @@ export class RateLimiter {
     retryAfter?: number;
   } {
     const config = RATE_LIMITS[limitType];
-    const key = config.keyGenerator(request);
+    const key = config.keyGenerator(request, undefined);
     const entry = rateLimitStore.get(key);
     
     if (!entry) {
@@ -276,5 +298,163 @@ export class RateLimiter {
    */
   static getStoreSize(): number {
     return rateLimitStore.size;
+  }
+
+  /**
+   * User-based rate limiting (more restrictive than IP-based)
+   */
+  static async checkUserLimit(
+    request: NextRequest,
+    userId: string,
+    limitType: 'USER_LOGIN'
+  ): Promise<{
+    allowed: boolean;
+    remainingRequests: number;
+    resetTime: number;
+    totalHits: number;
+    message?: string;
+  }> {
+    const config = RATE_LIMITS[limitType];
+    if (!config) {
+      return { allowed: true, remainingRequests: 0, resetTime: 0, totalHits: 0 };
+    }
+
+    const key = config.keyGenerator(request, userId);
+    const now = Date.now();
+    const resetTime = now + config.windowMs;
+
+    let entry = rateLimitStore.get(key);
+
+    if (!entry || now > entry.resetTime) {
+      entry = { count: 1, resetTime };
+      rateLimitStore.set(key, entry);
+      return {
+        allowed: true,
+        remainingRequests: config.maxRequests - 1,
+        resetTime: entry.resetTime,
+        totalHits: 1
+      };
+    }
+
+    entry.count++;
+    rateLimitStore.set(key, entry);
+
+    const allowed = entry.count <= config.maxRequests;
+    const remainingRequests = Math.max(0, config.maxRequests - entry.count);
+
+    if (!allowed) {
+      logger.warn('User rate limit exceeded', {
+        limitType,
+        userId: userId.substring(0, 8) + '***', // Partial masking for privacy
+        count: entry.count,
+        maxRequests: config.maxRequests,
+        resetTime: new Date(entry.resetTime).toISOString()
+      });
+    }
+
+    return {
+      allowed,
+      remainingRequests,
+      resetTime: entry.resetTime,
+      totalHits: entry.count,
+      message: !allowed ? config.message : undefined
+    };
+  }
+
+  /**
+   * Record rate limit violation for progressive penalties
+   */
+  static async recordViolation(
+    request: NextRequest,
+    limitType: keyof typeof RATE_LIMITS
+  ): Promise<void> {
+    const ip = getClientIP(request);
+    const violationKey = `violations:${ip}`;
+    const now = Date.now();
+    const resetTime = now + (24 * 60 * 60 * 1000); // 24 hours
+
+    let violationEntry = rateLimitStore.get(violationKey);
+
+    if (!violationEntry || now > violationEntry.resetTime) {
+      violationEntry = { count: 1, resetTime };
+    } else {
+      violationEntry.count++;
+    }
+
+    rateLimitStore.set(violationKey, violationEntry);
+
+    // Progressive penalties based on violation count
+    if (violationEntry.count >= 5) {
+      // Block IP for 1 hour after 5 violations in 24 hours
+      this.blockIP(ip, 60 * 60 * 1000); // 1 hour
+      
+      logger.error('IP blocked due to repeated violations', {
+        ip: ip.replace(/\d+\.\d+\.\d+\.\d+/, '***'),
+        violationCount: violationEntry.count,
+        limitType,
+        blockDuration: '1 hour'
+      });
+    } else if (violationEntry.count >= 3) {
+      // Temporary penalty after 3 violations
+      const penaltyKey = `penalty:${ip}`;
+      rateLimitStore.set(penaltyKey, {
+        count: 1,
+        resetTime: now + (15 * 60 * 1000) // 15 minutes penalty
+      });
+      
+      logger.warn('IP penalty applied', {
+        ip: ip.replace(/\d+\.\d+\.\d+\.\d+/, '***'),
+        violationCount: violationEntry.count,
+        penaltyDuration: '15 minutes'
+      });
+    }
+  }
+
+  /**
+   * Check if IP has active penalty
+   */
+  static hasPenalty(request: NextRequest): boolean {
+    const ip = getClientIP(request);
+    const penaltyKey = `penalty:${ip}`;
+    const entry = rateLimitStore.get(penaltyKey);
+    
+    if (!entry) return false;
+    
+    const now = Date.now();
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(penaltyKey);
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Get user-friendly error response
+   */
+  static getRateLimitError(
+    limitType: keyof typeof RATE_LIMITS,
+    retryAfter?: number
+  ): {
+    error: string;
+    message: string;
+    retryAfter?: number;
+    code: string;
+  } {
+    const config = RATE_LIMITS[limitType];
+    
+    return {
+      error: 'Rate limit exceeded',
+      message: config?.message || 'Too many requests. Please try again later.',
+      retryAfter,
+      code: `RATE_LIMIT_${limitType}`
+    };
+  }
+
+  /**
+   * Get client IP address (expose getClientIP as static method)
+   */
+  static getClientIP(request: NextRequest): string {
+    return getClientIP(request);
   }
 }

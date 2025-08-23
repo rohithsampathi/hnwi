@@ -8,6 +8,8 @@ import { redirect } from "next/navigation"
 import { logger } from "./secure-logger"
 import { SessionManager } from "./session-manager"
 import { FastSecureAPI } from "@/lib/fast-secure-api"
+import { RateLimiter } from "./rate-limiter"
+import { headers } from "next/headers"
 
 // User interface to match what LoginPage.tsx expects
 interface User {
@@ -82,6 +84,17 @@ const COOKIE_OPTIONS = {
   maxAge: 60 * 60 * 24, // 24 hours
 }
 
+// Cookie name helper with security prefixes
+function getSecureCookieName(baseName: string): string {
+  if (process.env.NODE_ENV === 'production') {
+    // Use __Host- prefix for maximum security in production
+    return `__Host-${baseName}`;
+  } else {
+    // Use __Secure- prefix for development
+    return `__Secure-${baseName}`;
+  }
+}
+
 async function createToken(user: Partial<User>): Promise<string> {
   return await new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
@@ -130,6 +143,53 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
     if (!loginData.email || !loginData.password) {
       return { success: false, error: "Email and password are required" }
     }
+
+    // Create a mock request object for rate limiting
+    const headersList = headers();
+    const mockRequest = {
+      headers: {
+        get: (name: string) => headersList.get(name)
+      },
+      ip: headersList.get('x-forwarded-for') || 'unknown'
+    } as any;
+
+    // Check for active penalties first
+    if (RateLimiter.hasPenalty(mockRequest)) {
+      logger.warn('Login attempt blocked due to penalty', { 
+        email: loginData.email,
+        ip: RateLimiter.getClientIP(mockRequest).replace(/\d+\.\d+\.\d+\.\d+/, '***')
+      });
+      return { 
+        success: false, 
+        error: "Account temporarily restricted due to multiple failed attempts. Please try again in 15 minutes." 
+      };
+    }
+
+    // Rate limit login attempts (IP-based)
+    const loginRateLimit = await RateLimiter.checkLimit(mockRequest, 'LOGIN');
+    if (!loginRateLimit.allowed) {
+      const rateLimitError = RateLimiter.getRateLimitError('LOGIN', 
+        Math.ceil((loginRateLimit.resetTime - Date.now()) / 1000));
+      
+      logger.warn('Login rate limit exceeded', {
+        email: loginData.email,
+        ip: RateLimiter.getClientIP(mockRequest).replace(/\d+\.\d+\.\d+\.\d+/, '***'),
+        retryAfter: rateLimitError.retryAfter
+      });
+      
+      return { success: false, error: rateLimitError.message };
+    }
+
+    // User-specific rate limiting for additional security
+    const userRateLimit = await RateLimiter.checkUserLimit(mockRequest, loginData.email, 'USER_LOGIN');
+    if (!userRateLimit.allowed) {
+      logger.warn('User login rate limit exceeded', {
+        email: loginData.email,
+        attempts: userRateLimit.totalHits
+      });
+      
+      return { success: false, error: userRateLimit.message || "Too many login attempts for this account." };
+    }
     
     try {
       // Use fast secure API wrapper (login doesn't require auth)
@@ -169,7 +229,8 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
       }
       
       const token = data.access_token || data.token || await createToken(user)
-      cookies().set("session", token, COOKIE_OPTIONS)
+      const sessionCookieName = getSecureCookieName("session");
+      cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
       
       return { 
         success: true, 
@@ -188,7 +249,19 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
           (loginError.message?.includes('401') || 
            loginError.message?.includes('Unauthorized') || 
            loginError.message?.includes('Invalid credentials'))) {
+        
+        // Record login failure for progressive penalties
+        await RateLimiter.recordViolation(mockRequest, 'LOGIN');
+        
         return { success: false, error: "Incorrect password. Please retry or click forgot password." }
+      }
+      
+      // For other authentication errors, also record as violation
+      if (loginError instanceof Error && (
+        loginError.message?.includes('Authentication') ||
+        loginError.message?.includes('Invalid')
+      )) {
+        await RateLimiter.recordViolation(mockRequest, 'LOGIN');
       }
       
       // Secure API wrapper provides safe error messages for other errors
@@ -264,7 +337,8 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
         }
 
         const token = data.token || await createToken(user)
-        cookies().set("session", token, COOKIE_OPTIONS)
+        const sessionCookieName = getSecureCookieName("session");
+        cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
 
         return { success: true, user, token }
     } catch (backendError) {
@@ -300,7 +374,8 @@ export async function handleOnboardingComplete(newUser: any): Promise<AuthRespon
     }
 
     const token = await createToken(user)
-    cookies().set("session", token, COOKIE_OPTIONS)
+    const sessionCookieName = getSecureCookieName("session");
+    cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
     
     logger.info("Onboarding completed successfully", { 
       userId: user.id, 
@@ -409,7 +484,8 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         }
 
         const token = await createToken(updatedUser)
-        cookies().set("session", token, COOKIE_OPTIONS)
+        const sessionCookieName = getSecureCookieName("session");
+        cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
 
         return { success: true, user: updatedUser, token }
     } catch (backendError) {
@@ -456,7 +532,9 @@ export async function handleSessionRequest(): Promise<SessionResponse> {
     
     // If no session in cookies, check if we have a token in cookies from the session/route.ts
     const cookieStore = cookies();
-    const sessionToken = cookieStore.get('session_token')?.value;
+    const legacySessionToken = cookieStore.get('session_token')?.value;
+    const secureSessionToken = cookieStore.get(getSecureCookieName('session_token'))?.value;
+    const sessionToken = secureSessionToken || legacySessionToken;
     
     if (sessionToken) {
       // Try to verify the token

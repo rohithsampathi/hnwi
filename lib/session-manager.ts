@@ -29,6 +29,19 @@ const SESSION_CONFIG: SessionConfig = {
   path: '/'
 };
 
+// Cookie name helper with security prefixes
+function getSecureCookieName(baseName: string): string {
+  if (process.env.NODE_ENV === 'production') {
+    // Use __Host- prefix for maximum security in production
+    // Requires secure, path=/, no domain, httpOnly
+    return `__Host-${baseName}`;
+  } else {
+    // Use __Secure- prefix for development (allows localhost)
+    // Requires secure flag (even though it's false in dev, the name provides intent)
+    return `__Secure-${baseName}`;
+  }
+}
+
 // Get JWT secret with validation
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -79,9 +92,10 @@ export class SessionManager {
         .setExpirationTime(`${SESSION_CONFIG.maxAge}s`)
         .sign(getJWTSecret());
 
-      // Set secure session cookie
+      // Set secure session cookie with security prefix
       const cookieStore = cookies();
-      cookieStore.set('session', token, SESSION_CONFIG);
+      const sessionCookieName = getSecureCookieName('session');
+      cookieStore.set(sessionCookieName, token, SESSION_CONFIG);
 
       // Store user display data in separate cookie (non-sensitive)
       const userDisplay = {
@@ -91,7 +105,8 @@ export class SessionManager {
         role: user.role
       };
 
-      cookieStore.set('session_user', JSON.stringify(userDisplay), {
+      const userCookieName = getSecureCookieName('session_user');
+      cookieStore.set(userCookieName, JSON.stringify(userDisplay), {
         ...SESSION_CONFIG,
         httpOnly: false // Allow client-side access for display data
       });
@@ -116,7 +131,8 @@ export class SessionManager {
   static async validateSession(): Promise<SessionData | null> {
     try {
       const cookieStore = cookies();
-      const sessionToken = cookieStore.get('session')?.value;
+      const sessionCookieName = getSecureCookieName('session');
+      const sessionToken = cookieStore.get(sessionCookieName)?.value;
 
       if (!sessionToken) {
         logger.debug('No session token found');
@@ -208,7 +224,8 @@ export class SessionManager {
 
       // Update session cookie
       const cookieStore = cookies();
-      cookieStore.set('session', newToken, SESSION_CONFIG);
+      const sessionCookieName = getSecureCookieName('session');
+      cookieStore.set(sessionCookieName, newToken, SESSION_CONFIG);
 
       logger.info('Session refreshed', { 
         userId: sessionData.userId,
@@ -232,7 +249,14 @@ export class SessionManager {
     try {
       const cookieStore = cookies();
       
-      // Clear all session-related cookies
+      // Clear all session-related cookies with secure prefixes
+      const sessionCookieName = getSecureCookieName('session');
+      const userCookieName = getSecureCookieName('session_user');
+      
+      cookieStore.delete(sessionCookieName);
+      cookieStore.delete(userCookieName);
+      
+      // Also clear legacy cookies without prefixes for backward compatibility
       cookieStore.delete('session');
       cookieStore.delete('session_user');
       cookieStore.delete('session_token'); // Legacy cookie

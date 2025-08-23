@@ -36,6 +36,9 @@ export function middleware(request: NextRequest) {
     "'sha256-IYQwQlCS7tlDdfed8qCp+uGm3rBPumW7jftgB2PJ+k0='"
   ];
   
+  // Get backend URL from environment variable for secure configuration
+  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';
+  
   const cspDirectives = [
     "default-src 'self'",
     // Include both nonce and specific hashes for Next.js inline scripts
@@ -44,7 +47,7 @@ export function middleware(request: NextRequest) {
     `style-src 'self' ${isDev ? `'unsafe-inline'` : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app https://hnwi-uwind-p8oqb.ondigitalocean.app https://api-js.mixpanel.com https://formspree.io`,
+    `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app ${backendUrl} https://api-js.mixpanel.com https://formspree.io`,
     "frame-src 'self' https://api.razorpay.com",
     "object-src 'none'",
     "base-uri 'self'",

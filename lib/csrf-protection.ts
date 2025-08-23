@@ -14,6 +14,17 @@ const CSRF_TOKEN_LIFETIME = 60 * 60 * 1000; // 1 hour
 const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
+// Cookie name helper with security prefixes
+function getSecureCSRFCookieName(): string {
+  if (process.env.NODE_ENV === 'production') {
+    // Use __Host- prefix for maximum security in production
+    return `__Host-${CSRF_COOKIE_NAME}`;
+  } else {
+    // Use __Secure- prefix for development
+    return `__Secure-${CSRF_COOKIE_NAME}`;
+  }
+}
+
 export class CSRFProtection {
   /**
    * Generate a cryptographically secure CSRF token
@@ -43,9 +54,10 @@ export class CSRFProtection {
     
     const cookieValue = btoa(JSON.stringify(tokenData));
     
-    // Set the cookie
+    // Set the cookie with secure prefix
     const cookieStore = cookies();
-    cookieStore.set(CSRF_COOKIE_NAME, cookieValue, {
+    const secureCookieName = getSecureCSRFCookieName();
+    cookieStore.set(secureCookieName, cookieValue, {
       httpOnly: false, // Must be readable by client-side JavaScript
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -69,7 +81,9 @@ export class CSRFProtection {
       }
 
       const cookieStore = cookies();
-      const csrfCookie = cookieStore.get(CSRF_COOKIE_NAME)?.value;
+      const secureCookieName = getSecureCSRFCookieName();
+      // Try secure cookie first, fallback to legacy for compatibility
+      const csrfCookie = cookieStore.get(secureCookieName)?.value || cookieStore.get(CSRF_COOKIE_NAME)?.value;
       const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
       
       if (!csrfCookie) {
@@ -174,7 +188,9 @@ export class CSRFProtection {
   static getCSRFTokenForClient(request: NextRequest): string | null {
     try {
       const cookieStore = cookies();
-      const csrfCookie = cookieStore.get(CSRF_COOKIE_NAME)?.value;
+      const secureCookieName = getSecureCSRFCookieName();
+      // Try secure cookie first, fallback to legacy for compatibility
+      const csrfCookie = cookieStore.get(secureCookieName)?.value || cookieStore.get(CSRF_COOKIE_NAME)?.value;
       
       if (!csrfCookie) {
         return null;
@@ -213,6 +229,9 @@ export class CSRFProtection {
   static clearCSRFToken(): void {
     try {
       const cookieStore = cookies();
+      const secureCookieName = getSecureCSRFCookieName();
+      // Clear both secure and legacy cookies
+      cookieStore.delete(secureCookieName);
       cookieStore.delete(CSRF_COOKIE_NAME);
       logger.debug('CSRF token cleared');
     } catch (error) {

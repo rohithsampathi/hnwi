@@ -16,15 +16,17 @@ interface AuthenticatedRequest extends NextRequest {
 interface ApiAuthOptions {
   requireAuth?: boolean;
   requiredRole?: string;
-  rateLimit?: 'standard' | 'strict' | 'none';
+  rateLimit?: 'standard' | 'strict' | 'crown' | 'none';
   auditLog?: boolean;
+  userRateLimit?: boolean; // Enable user-based rate limiting
 }
 
 // Default authentication options
 const DEFAULT_OPTIONS: ApiAuthOptions = {
   requireAuth: true,
   rateLimit: 'standard',
-  auditLog: true
+  auditLog: true,
+  userRateLimit: false
 };
 
 export class ApiAuth {
@@ -45,24 +47,42 @@ export class ApiAuth {
     const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
     
     try {
-      // Rate limiting check
+      // Enhanced rate limiting check with penalties
       if (opts.rateLimit !== 'none') {
-        const rateLimitResult = await RateLimiter.checkLimit(
-          request,
-          opts.rateLimit === 'strict' ? 'SENSITIVE' : 'API'
-        );
+        // Check for active penalties first
+        if (RateLimiter.hasPenalty(request)) {
+          const penaltyError = RateLimiter.getRateLimitError('API', 900); // 15 min retry
+          
+          return {
+            success: false,
+            error: penaltyError.message,
+            status: 429
+          };
+        }
+
+        const rateLimitType = opts.rateLimit === 'strict' ? 'SENSITIVE' : 
+                              opts.rateLimit === 'crown' ? 'CROWN_VAULT' : 'API';
+        
+        const rateLimitResult = await RateLimiter.checkLimit(request, rateLimitType);
         
         if (!rateLimitResult.allowed) {
+          const rateLimitError = RateLimiter.getRateLimitError(
+            rateLimitType,
+            Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+          );
+          
           logger.warn('API rate limit exceeded', {
             requestId,
-            ip: request.ip,
+            ip: RateLimiter.getClientIP(request).replace(/\d+\.\d+\.\d+\.\d+/, '***'),
             userAgent: request.headers.get('user-agent'),
-            endpoint: new URL(request.url).pathname
+            endpoint: new URL(request.url).pathname,
+            limitType: rateLimitType,
+            retryAfter: rateLimitError.retryAfter
           });
           
           return {
             success: false,
-            error: 'Rate limit exceeded',
+            error: rateLimitError.message,
             status: 429
           };
         }
@@ -159,14 +179,24 @@ export class ApiAuth {
       const authResult = await this.validateRequest(request, options);
       
       if (!authResult.success) {
-        return NextResponse.json(
+        const response = NextResponse.json(
           { 
             error: authResult.error,
+            message: authResult.error, // User-friendly message
             timestamp: new Date().toISOString(),
-            requestId: request.headers.get('x-request-id') || crypto.randomUUID()
+            requestId: request.headers.get('x-request-id') || crypto.randomUUID(),
+            success: false
           },
           { status: authResult.status || 500 }
         );
+
+        // Add rate limit headers if it's a rate limit error
+        if (authResult.status === 429) {
+          response.headers.set('Retry-After', '60'); // Default retry after
+          response.headers.set('X-RateLimit-Message', authResult.error);
+        }
+
+        return response;
       }
       
       return handler(request, authResult.user!, ...args);
