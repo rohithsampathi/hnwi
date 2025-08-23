@@ -318,19 +318,38 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
     };
   }, [screenSize]);
   
-  // Unified data fetching - single API call for both components
+  // Unified data fetching - single API call for both components - Mobile Safe
   const fetchDevelopments = useCallback(async (forceRefresh = false) => {
     
     try {
-      setIsLoading(true)
+      // Prevent multiple simultaneous requests
+      if (isLoading && !forceRefresh) {
+        return;
+      }
+      
+      setIsLoading(true);
       setIsRefreshing(forceRefresh);
       
-      // Convert timeframe for the new endpoint
+      // Convert timeframe for the new endpoint - Fixed 1m/3m handling
       let timeframe = selectedTimeRange;
-      if (selectedTimeRange === '30d') timeframe = '1m';
-      if (selectedTimeRange === '90d') timeframe = '3m';
-      // Support direct 3m input as well
-      if (selectedTimeRange === '3m') timeframe = '3m';
+      
+      // Map UI values to API values
+      switch (selectedTimeRange) {
+        case '1m':
+          timeframe = '1m';
+          break;
+        case '3m': 
+          timeframe = '3m';
+          break;
+        case '30d':
+          timeframe = '1m';
+          break;
+        case '90d':
+          timeframe = '3m';
+          break;
+        default:
+          timeframe = selectedTimeRange;
+      }
       
       // Create query parameters for GET request
       const params = new URLSearchParams({
@@ -348,12 +367,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       // Use direct backend API call like Crown Vault and Home Dashboard
       const endpoint = `/api/developments?${params.toString()}`;
       
-      // Use secureApi.get with authentication - direct backend call
+      // Use secureApi.get with authentication - direct backend call (mobile optimized)
       const data = await secureApi.get(endpoint, true, { 
         enableCache: true, 
         cacheDuration: 300000 // 5 minutes cache
       });
-      
       
       if (data.developments && Array.isArray(data.developments)) {
         
@@ -372,15 +390,15 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           setIndustryTrends(processedData);
         } else {
           // Fallback to manual processing if categories not available
-          const industriesMap = new Map<string, number>()
+          const industriesMap = new Map<string, number>();
           
           data.developments.forEach((dev: any) => {
             if (dev && dev.industry) {
-              const industry = dev.industry.trim()
-              const count = industriesMap.get(industry) || 0
-              industriesMap.set(industry, count + 1)
+              const industry = dev.industry.trim();
+              const count = industriesMap.get(industry) || 0;
+              industriesMap.set(industry, count + 1);
             }
-          })
+          });
           
           const processedData = Array.from(industriesMap.entries())
             .map(([industry, total_count]) => ({
@@ -388,37 +406,50 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               total_count
             }))
             .filter(item => item.total_count > 0)
-            .sort((a, b) => b.total_count - a.total_count)
+            .sort((a, b) => b.total_count - a.total_count);
           
           setIndustryTrends(processedData);
         }
         
-        setLastUpdated(new Date())
+        setLastUpdated(new Date());
       } else {
-        setDevelopments([])
-        setIndustryTrends([])
-        setTotalDevelopments(0)
+        // No data found - don't show error, just empty state
+        setDevelopments([]);
+        setIndustryTrends([]);
+        setTotalDevelopments(0);
       }
       
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch developments. Please try again.",
-        variant: "destructive",
-      })
-      setDevelopments([])
-      setIndustryTrends([])
-      setTotalDevelopments(0)
+      console.error('Fetch developments error:', error);
+      
+      // Only show toast error if it's not a timeout/abort
+      if (error.name !== 'AbortError' && error.name !== 'TimeoutError') {
+        toast({
+          title: "Loading Error",
+          description: "Unable to load data. Using cached version.",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+      
+      // Don't reset data on error - keep previous state for better UX
+      // setDevelopments([])
+      // setIndustryTrends([])
+      // setTotalDevelopments(0)
     } finally {
-      setIsRefreshing(false)
-      setIsLoading(false)
+      setIsRefreshing(false);
+      setIsLoading(false);
     }
-  }, [selectedTimeRange, toast])
+  }, [selectedTimeRange, selectedIndustry, isLoading])
   
-  // Initial load and when duration changes
+  // Initial load and when duration changes - Debounced to prevent loops
   useEffect(() => {
-    fetchDevelopments()
-  }, [fetchDevelopments])
+    const timeoutId = setTimeout(() => {
+      fetchDevelopments();
+    }, 100); // Small debounce to prevent rapid firing
+    
+    return () => clearTimeout(timeoutId);
+  }, [selectedTimeRange, selectedIndustry])
 
   // Handle scroll to Insider Brief section from home dashboard
   useEffect(() => {
@@ -487,21 +518,33 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               </h3>
               
               {/* Embedded Time Range Filter - Mobile Safe */}
-              <Select value={selectedTimeRange} onValueChange={(value) => {
-                try {
-                  setSelectedTimeRange(value);
-                } catch (error) {
-                  console.error('Date filter error:', error);
-                  toast({
-                    title: "Filter Error",
-                    description: "Please try again",
-                    variant: "destructive",
-                    duration: 2000,
-                  });
-                }
-              }}>
-                <SelectTrigger className="w-[120px]">
-                  <Clock className="w-4 h-4 mr-2" />
+              <Select 
+                value={selectedTimeRange} 
+                onValueChange={(value) => {
+                  try {
+                    // Prevent rapid changes during loading
+                    if (isLoading) {
+                      return;
+                    }
+                    setSelectedTimeRange(value);
+                  } catch (error) {
+                    console.error('Date filter error:', error);
+                    toast({
+                      title: "Filter Error",
+                      description: "Please try again",
+                      variant: "destructive",
+                      duration: 2000,
+                    });
+                  }
+                }}
+                disabled={isLoading}
+              >
+                <SelectTrigger className={`w-[120px] ${isLoading ? 'opacity-50' : ''}`}>
+                  {isLoading ? (
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
+                  ) : (
+                    <Clock className="w-4 h-4 mr-2" />
+                  )}
                   <SelectValue placeholder="Period" />
                 </SelectTrigger>
                 <SelectContent 
@@ -783,21 +826,33 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 </h3>
                 
                 {/* Embedded Time Range Filter - Desktop Safe */}
-                <Select value={selectedTimeRange} onValueChange={(value) => {
-                  try {
-                    setSelectedTimeRange(value);
-                  } catch (error) {
-                    console.error('Date filter error:', error);
-                    toast({
-                      title: "Filter Error",
-                      description: "Please try again",
-                      variant: "destructive",
-                      duration: 2000,
-                    });
-                  }
-                }}>
-                  <SelectTrigger className="w-[120px]">
-                    <Clock className="w-4 h-4 mr-2" />
+                <Select 
+                  value={selectedTimeRange} 
+                  onValueChange={(value) => {
+                    try {
+                      // Prevent rapid changes during loading
+                      if (isLoading) {
+                        return;
+                      }
+                      setSelectedTimeRange(value);
+                    } catch (error) {
+                      console.error('Date filter error:', error);
+                      toast({
+                        title: "Filter Error",
+                        description: "Please try again",
+                        variant: "destructive",
+                        duration: 2000,
+                      });
+                    }
+                  }}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className={`w-[120px] ${isLoading ? 'opacity-50' : ''}`}>
+                    {isLoading ? (
+                      <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"></div>
+                    ) : (
+                      <Clock className="w-4 h-4 mr-2" />
+                    )}
                     <SelectValue placeholder="Period" />
                   </SelectTrigger>
                   <SelectContent 
