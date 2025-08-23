@@ -100,9 +100,29 @@ export const logout = () => {
   // Clear display data from sessionStorage (tokens handled server-side)
   sessionStorage.removeItem("userDisplay");
   
-  // Clear any remaining localStorage items for security
-  const keysToRemove = ["userId", "token", "userObject"];
-  keysToRemove.forEach(key => localStorage.removeItem(key));
+  // Clear all user-specific localStorage items
+  const userSpecificKeys = [
+    // Authentication data
+    "userId", "token", "userObject", "userEmail",
+    // Calendar data  
+    "userEvents",
+    // Onboarding state
+    "onboardingStep", "wizardCompleted", "completedSteps", "isFromSignupFlow",
+    // Security and audit logs (clear all user-specific entries)
+    "hnwi_audit_logs"
+  ];
+  
+  userSpecificKeys.forEach(key => localStorage.removeItem(key));
+  
+  // Clear any user-specific GDPR consent and restricted data
+  // These have dynamic keys with userId, so we need to find and remove them
+  const allKeys = Object.keys(localStorage);
+  const userDataKeys = allKeys.filter(key => 
+    key.startsWith('hnwi_restricted_') || 
+    key.startsWith('hnwi_consent_') ||
+    key.startsWith('hnwi_sec_')  // Secure storage items
+  );
+  userDataKeys.forEach(key => localStorage.removeItem(key));
 };
 
 // Secure profile update helper
