@@ -226,7 +226,7 @@ export class AuditLogger {
   private static async sendToServer(logs: AuditLog[]): Promise<void> {
     // Implementation would send encrypted logs to backend
     // This is a placeholder for the actual implementation
-    console.log("Would send critical logs to server:", logs.length);
+    // Would send ${logs.length} critical logs to server
   }
 
   private static alertSecurityTeam(log: AuditLog): void {

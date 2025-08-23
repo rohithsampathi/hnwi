@@ -88,7 +88,7 @@ export async function PUT(
       if (heirData.name) {
         // In a real implementation, we would call a backend API to update
         // all asset records that reference this heir with the new name
-        console.log(`Would update heir ${heirId} name to ${heirData.name} for owner ${ownerId}`);
+        // Update logged via secure logger only
       }
 
       const updatedHeir: Heir = {
@@ -171,7 +171,7 @@ export async function DELETE(
       // In a real implementation, we would:
       // 1. Remove this heir from all assets that reference it
       // 2. Delete the heir record
-      console.log(`Would delete heir ${heirId} and remove from ${assetsWithHeir.length} assets for owner ${ownerId}`);
+      // Deletion logged via secure logger only
 
       return NextResponse.json({
         success: true,

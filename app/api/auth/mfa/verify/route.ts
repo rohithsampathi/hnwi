@@ -3,6 +3,7 @@ import { RateLimiter } from "@/lib/rate-limiter"
 import { logger } from "@/lib/secure-logger"
 import { cookies } from "next/headers"
 import { SignJWT } from "jose"
+import { secureApi } from "@/lib/secure-api"
 
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET
@@ -37,11 +38,11 @@ async function createToken(user: any): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const { sessionToken, code } = await request.json()
+    const { email, mfa_code, mfa_token } = await request.json()
 
-    if (!sessionToken || !code) {
+    if (!email || !mfa_code || !mfa_token) {
       return NextResponse.json(
-        { success: false, error: "Session token and code are required" },
+        { success: false, error: "Email, MFA code, and MFA token are required" },
         { status: 400 }
       )
     }
@@ -64,67 +65,154 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Call the backend MFA verify endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/mfa/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ session_token: sessionToken, code }),
+      // Retrieve the proxy MFA session using frontend token
+      if (!global.mfaSessions) {
+        global.mfaSessions = new Map()
+      }
+
+      const proxySession = global.mfaSessions.get(mfa_token)
+      
+      logger.info('MFA verification debug', {
+        providedFrontendToken: mfa_token.substring(0, 8) + "...",
+        email,
+        totalSessions: global.mfaSessions.size,
+        sessionExists: !!proxySession,
       })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        // Create user object for frontend compatibility
-        const user = {
-          id: data.user_id || data.id,
-          email: data.email,
-          firstName: data.first_name || "User",
-          lastName: data.last_name || "",
-          role: "user",
-          user_id: data.user_id,
-          profile: data.profile || {}
-        }
-
-        // Create JWT token and set secure cookie
-        const token = data.access_token || await createToken(user)
-        const sessionCookieName = getSecureCookieName("session")
-        cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
-
-        logger.info('MFA verification successful', { 
-          userId: user.id,
-          email: user.email 
-        })
-
-        return NextResponse.json({
-          success: true,
-          token,
-          user,
-          message: "Elite authentication successful"
-        })
-      } else {
-        // Record failed verification attempt
-        await RateLimiter.recordViolation(request, 'MFA_VERIFY')
-        
-        logger.warn('MFA verification failed', { 
-          error: data.error,
-          sessionToken: sessionToken.substring(0, 8) + "..."
+      
+      if (!proxySession) {
+        logger.warn('MFA verification failed - invalid frontend token', {
+          frontendToken: mfa_token.substring(0, 8) + "...",
+          email,
         })
         
         return NextResponse.json(
-          { success: false, error: data.error || "Invalid verification code" },
-          { status: response.status }
+          { success: false, error: "Invalid or expired session. Please try logging in again." },
+          { status: 401 }
         )
       }
-    } catch (apiError) {
-      logger.error('MFA verify API error', {
-        error: apiError instanceof Error ? apiError.message : String(apiError)
+
+      // Verify email matches
+      if (proxySession.email !== email) {
+        logger.warn('MFA verification failed - email mismatch', {
+          providedEmail: email,
+          sessionEmail: proxySession.email
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Invalid session. Please try logging in again." },
+          { status: 401 }
+        )
+      }
+
+      // Check if session is expired
+      if (proxySession.expiresAt < Date.now()) {
+        global.mfaSessions.delete(mfa_token)
+        
+        logger.warn('MFA verification failed - session expired', {
+          email: proxySession.email
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Session expired. Please try logging in again." },
+          { status: 401 }
+        )
+      }
+
+      // Check attempt limit
+      if (proxySession.attempts >= 5) {
+        global.mfaSessions.delete(mfa_token)
+        await RateLimiter.recordViolation(request, 'MFA_VERIFY')
+        
+        logger.warn('MFA verification failed - too many attempts', {
+          email: proxySession.email
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Too many failed attempts. Please try logging in again." },
+          { status: 429 }
+        )
+      }
+
+      // Use secureApi to verify with backend - backend validates via email + MFA code
+      try {
+        const backendVerifyRequest = {
+          email: email,
+          mfa_code: mfa_code,
+          mfa_token: proxySession.backendMfaToken // Include for backend compatibility but validation is via email + code
+        }
+
+        logger.info('Calling backend MFA verification', {
+          email,
+          backendToken: proxySession.backendMfaToken.substring(0, 8) + "...",
+          frontendToken: mfa_token.substring(0, 8) + "...",
+          requestPayload: JSON.stringify(backendVerifyRequest, null, 2)
+        })
+
+        logger.info('About to call secureApi.post with endpoint /api/auth/mfa/verify')
+        
+        const backendResponse = await secureApi.post('/api/auth/mfa/verify', backendVerifyRequest, false)
+        logger.info('Backend response received', { response: backendResponse })
+
+        // Backend verification successful
+        if (backendResponse.success) {
+          // Create JWT token and set secure cookie  
+          const token = backendResponse.access_token || await createToken(backendResponse.user)
+          const sessionCookieName = getSecureCookieName("session")
+          cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
+
+          // Clean up the proxy session
+          global.mfaSessions.delete(mfa_token)
+
+          logger.info('MFA verification successful via backend', { 
+            email,
+            userId: backendResponse.user?.id
+          })
+
+          return NextResponse.json({
+            success: true,
+            access_token: token,
+            user: backendResponse.user,
+            message: backendResponse.message || "Login successful"
+          })
+        } else {
+          // Backend verification failed - increment attempts
+          proxySession.attempts++
+          
+          logger.warn('Backend MFA verification failed', {
+            email,
+            attempts: proxySession.attempts,
+            backendError: backendResponse.error
+          })
+          
+          return NextResponse.json(
+            { success: false, error: backendResponse.error || "Invalid verification code" },
+            { status: 401 }
+          )
+        }
+
+      } catch (backendError) {
+        proxySession.attempts++
+        
+        logger.error('Backend MFA verification error', {
+          email,
+          attempts: proxySession.attempts,
+          error: backendError instanceof Error ? backendError.message : String(backendError),
+          backendErrorDetails: backendError
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Verification failed. Please try again." },
+          { status: 500 }
+        )
+      }
+    } catch (processingError) {
+      logger.error('MFA verify processing error', {
+        error: processingError instanceof Error ? processingError.message : String(processingError)
       })
       
       return NextResponse.json(
-        { success: false, error: "Verification service temporarily unavailable" },
-        { status: 503 }
+        { success: false, error: "Verification processing failed" },
+        { status: 500 }
       )
     }
   } catch (error) {

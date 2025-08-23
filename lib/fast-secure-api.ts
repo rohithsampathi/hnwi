@@ -1,6 +1,6 @@
 // lib/fast-secure-api.ts
 
-import { API_BASE_URL } from "@/config/api";
+import { API_BASE_URL, createSafeApiError } from "@/config/api";
 import { getValidToken, clearInvalidToken } from "@/lib/auth-utils";
 
 interface FastAPIOptions extends RequestInit {
@@ -12,9 +12,11 @@ class APIError extends Error {
   constructor(
     message: string,
     public status?: number,
-    public endpoint?: string
+    endpoint?: string
   ) {
-    super(message);
+    // Use safe error creation to mask the backend URL
+    const safeError = createSafeApiError(message, endpoint);
+    super(safeError.message);
     this.name = 'APIError';
   }
 }
@@ -104,7 +106,7 @@ class FastSecureAPI {
         throw new APIError(
           `Request failed: ${response.status}`,
           response.status,
-          endpoint
+          `${API_BASE_URL}${endpoint}`
         );
       }
 
@@ -118,10 +120,10 @@ class FastSecureAPI {
       }
 
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new APIError('Request timeout', 408, endpoint);
+        throw new APIError('Request timeout', 408, `${API_BASE_URL}${endpoint}`);
       }
 
-      throw new APIError('Network error', 0, endpoint);
+      throw new APIError('Network error', 0, `${API_BASE_URL}${endpoint}`);
     }
   }
 

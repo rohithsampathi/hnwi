@@ -15,6 +15,7 @@ import { ForgotPasswordForm } from "./forgot-password-form"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
 import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock } from "lucide-react"
+import { MfaCodeInput } from "./mfa-code-input"
 
 interface SplashScreenProps {
   onLogin?: () => void;
@@ -34,6 +35,9 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showMfa, setShowMfa] = useState(false)
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
+  const [isResending, setIsResending] = useState(false)
 
   const handleCreateAccount = () => {
     setShowOnboarding(true)
@@ -52,6 +56,9 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     setShowLoginForm(false)
     setShowForgotPassword(false)
     setError("")
+    setShowMfa(false)
+    setMfaToken(null)
+    setIsResending(false)
   }
 
   const handleForgotPasswordClick = () => {
@@ -100,75 +107,184 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   const handleLogin = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
+      
+      if (!email || !password) {
+        setError("Please enter both email and password")
+        return
+      }
+
+      if (isLoading) {
+        return
+      }
+
       setIsLoading(true)
       setError("")
 
       try {
-        const response = await fetch('/api/auth/session', {
+        // Step 1: Call standard login endpoint
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include',
           body: JSON.stringify({ email, password }),
         })
-        
-        let data
-        try {
-          data = await response.json()
-        } catch (jsonError) {
-          throw new Error("Invalid response from server. Please try again.")
+
+        const result = await response.json()
+
+        if (result.requires_mfa) {
+          // MFA is required - show MFA input
+          setMfaToken(result.mfa_token)
+          setShowMfa(true)
+          toast({
+            title: "Security code sent",
+            description: result.message || "Check your email for the 6-digit authentication code.",
+          })
+        } else if (result.access_token) {
+          // Direct login success (shouldn't happen with MFA enabled)
+          if (result.access_token) {
+            localStorage.setItem('token', result.access_token)
+          }
+          
+          const userData = {
+            userId: result.user?.id,
+            email: result.user?.email,
+            firstName: result.user?.firstName || result.user?.name?.split(' ')[0] || "User",
+            lastName: result.user?.lastName || (result.user?.name?.split(' ').slice(1).join(' ') || ""),
+            profile: result.user?.profile || {},
+            token: result.access_token || ""
+          }
+          
+          toast({
+            title: "Login Successful",
+            description: `Welcome back, ${userData.firstName}!`,
+          })
+          
+          handleClose()
+          
+          if (onLoginSuccess) {
+            onLoginSuccess(userData)
+          }
+          
+          resetOnboarding()
+          setIsFromSignupFlow(false)
+        } else {
+          setError(result.error || "Login failed")
         }
-        
-        if (!response.ok) {
-          throw new Error(data.detail || data.error || "Login failed. Please check your credentials.")
+      } catch (error) {
+        setError("An unexpected error occurred. Please try again.")
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [email, password, isLoading, toast]
+  )
+
+  const handleMfaSubmit = async (code: string) => {
+    if (!mfaToken) {
+      setError("Invalid session. Please try logging in again.")
+      return
+    }
+
+    try {
+      const response = await fetch('/api/auth/mfa/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email,
+          mfa_code: code,
+          mfa_token: mfaToken
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Store token in localStorage for frontend auth checks
+        if (result.access_token) {
+          localStorage.setItem('token', result.access_token)
         }
         
         const userData = {
-          userId: data.user_id || data.user?.id,
-          email: data.email || data.user?.email,
-          firstName: data.first_name || data.user?.firstName || "User",
-          lastName: data.last_name || data.user?.lastName || "",
-          profile: data.profile || data.user?.profile || {},
-          token: data.token || data.access_token || ""
+          userId: result.user?.id,
+          email: result.user?.email,
+          firstName: result.user?.firstName || result.user?.name?.split(' ')[0] || "User",
+          lastName: result.user?.lastName || (result.user?.name?.split(' ').slice(1).join(' ') || ""),
+          profile: result.user?.profile || {},
+          token: result.access_token || ""
         }
         
-        // Store token in localStorage for API calls
-        if (userData.token) {
-          localStorage.setItem("token", userData.token);
-          localStorage.setItem("userId", userData.userId);
-        }
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${userData.firstName}!`,
+        })
         
+        // Reset form
+        handleClose()
+        
+        // Call success callback
         if (onLoginSuccess) {
           onLoginSuccess(userData)
         }
         
         resetOnboarding()
         setIsFromSignupFlow(false)
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${userData.firstName}!`,
-          variant: "default",
-        })
-      } catch (error) {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : "Login failed. Please check your credentials and try again."
-        
-        setError(errorMessage)
-        
-        toast({
-          title: "Login Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
+      } else {
+        setError(result.error || "Invalid verification code")
       }
-    },
-    [email, password, onLoginSuccess, resetOnboarding, setIsFromSignupFlow, toast]
-  )
+    } catch (error) {
+      setError("Verification failed. Please try again.")
+    }
+  }
+
+  const handleMfaResend = async () => {
+    if (!mfaToken || isResending) {
+      return
+    }
+
+    setIsResending(true)
+    setError("")
+
+    try {
+      // For now, we'll re-initiate the login process to get a new code
+      // In a full implementation, you'd have a dedicated resend endpoint
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const result = await response.json()
+
+      if (result.requires_mfa) {
+        setMfaToken(result.mfa_token)
+        toast({
+          title: "Code resent",
+          description: result.message || "A new security code has been sent to your email.",
+        })
+      } else {
+        setError("Failed to resend code")
+      }
+    } catch (error) {
+      setError("Failed to resend code. Please try again.")
+    } finally {
+      setIsResending(false)
+    }
+  }
+
+  const handleClose = () => {
+    setEmail("")
+    setPassword("")
+    setError("")
+    setShowPassword(false)
+    setShowMfa(false)
+    setMfaToken(null)
+    setIsResending(false)
+  }
 
   if (showOnboarding) {
     return <OnboardingPage onComplete={handleOnboardingComplete} onLogin={handleLoginClick} onBack={handleBack} />
@@ -386,80 +502,135 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-md bg-card backdrop-blur-sm rounded-3xl p-6 md:p-8 mt-8"
+              className={`w-full ${showMfa ? 'max-w-lg' : 'max-w-md'} bg-card backdrop-blur-sm rounded-3xl p-6 md:p-8 mt-8`}
             >
-              <div className="flex flex-col items-center mb-6">
-                <Image
-                  src="/logo.png"
-                  alt="HNWI Chronicles"
-                  width={80}
-                  height={80}
-                  className="mb-4 w-auto h-auto"
-                  style={{ width: '80px', height: '80px' }}
-                  priority
-                />
-                <Heading2 className="text-3xl font-bold font-heading text-center">
-                  <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Welcome Back</span>
-                </Heading2>
-              </div>
+              {!showMfa ? (
+                // Login Form
+                <>
+                  <div className="flex flex-col items-center mb-6">
+                    <Image
+                      src="/logo.png"
+                      alt="HNWI Chronicles"
+                      width={80}
+                      height={80}
+                      className="mb-4 w-auto h-auto"
+                      style={{ width: '80px', height: '80px' }}
+                      priority
+                    />
+                    <Heading2 className="text-3xl font-bold font-heading text-center">
+                      <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Welcome Back</span>
+                    </Heading2>
+                  </div>
 
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                    required
-                  />
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    <div>
+                      <Input
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full p-3 rounded-3xl font-body bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring transition-all pr-10"
+                        required
+                        disabled={isLoading}
+                      />
+                      <button
+                        type="button"
+                        onClick={togglePasswordVisibility}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+                    <Button type="submit" className={`w-full h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                      theme === "dark" 
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                        : "bg-black text-white hover:bg-black/90"
+                    }`} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-1 md:mr-2 h-4 w-4 animate-spin" />
+                          Sending code...
+                        </>
+                      ) : (
+                        "Log In"
+                      )}
+                    </Button>
+                  </form>
+
+                  <Paragraph 
+                    onClick={handleForgotPasswordClick}
+                    className="text-sm mt-4 block mx-auto font-body text-center text-muted-foreground hover:text-primary cursor-pointer"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </button>
-                </div>
+                    Forgot Password?
+                  </Paragraph>
+                </>
+              ) : (
+                // MFA Code Input
+                <>
+                  <div className="flex flex-col items-center mb-6">
+                    <Image
+                      src="/logo.png"
+                      alt="HNWI Chronicles"
+                      width={80}
+                      height={80}
+                      className="mb-4 w-auto h-auto"
+                      style={{ width: '80px', height: '80px' }}
+                      priority
+                    />
+                    <Heading2 className="text-3xl font-bold font-heading text-center">
+                      <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Security Verification</span>
+                    </Heading2>
+                    <Paragraph className="text-sm text-muted-foreground text-center mt-2">
+                      Complete elite authentication to restore secure access.
+                    </Paragraph>
+                  </div>
 
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
-                <Button type="submit" className={`w-full h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  theme === "dark" 
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "bg-black text-white hover:bg-black/90"
-                }`} disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-1 md:mr-2 h-4 w-4 animate-spin" />
-                      Logging in...
-                    </>
-                  ) : (
-                    "Log In"
-                  )}
-                </Button>
-              </form>
-
-              <Paragraph 
-                onClick={handleForgotPasswordClick}
-                className="text-sm mt-4 block mx-auto font-body text-center text-muted-foreground hover:text-primary cursor-pointer"
-              >
-                Forgot Password?
-              </Paragraph>
+                  <div className="mt-4">
+                    <MfaCodeInput
+                      onSubmit={handleMfaSubmit}
+                      onResend={handleMfaResend}
+                      isLoading={isLoading}
+                      isResending={isResending}
+                      error={error}
+                    />
+                    
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowMfa(false)
+                          setMfaToken(null)
+                          setError("")
+                        }}
+                        className="text-sm"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Back to login
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </motion.div>
           </div>
         

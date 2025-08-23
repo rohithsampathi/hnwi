@@ -59,8 +59,8 @@ export function MfaCodeInput({
   }
 
   const handleCodeChange = (value: string, index: number) => {
-    // Only allow alphanumeric characters (excluding confusing ones)
-    const cleanValue = value.replace(/[^A-HJ-NP-UW-Z2-9]/gi, '').toUpperCase()
+    // Only allow alphanumeric characters (excluding confusing ones: I, O, 0, 1)
+    const cleanValue = value.replace(/[^A-HJ-NP-UVW-Z2-9]/gi, '').toUpperCase()
     
     if (cleanValue.length <= 1) {
       const newCode = code.split('')
@@ -75,7 +75,7 @@ export function MfaCodeInput({
 
       // Auto-submit when all 6 digits are entered
       if (updatedCode.length === 6 && updatedCode.replace(/\s/g, '').length === 6) {
-        handleSubmit(updatedCode)
+        setTimeout(() => handleSubmit(updatedCode), 50)
       }
     }
   }
@@ -102,7 +102,7 @@ export function MfaCodeInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const pastedText = e.clipboardData.getData('text').replace(/[^A-HJ-NP-UW-Z2-9]/gi, '').toUpperCase()
+    const pastedText = e.clipboardData.getData('text').replace(/[^A-HJ-NP-UVW-Z2-9]/gi, '').toUpperCase()
     if (pastedText.length === 6) {
       setCode(pastedText)
       inputRefs.current[5]?.focus()

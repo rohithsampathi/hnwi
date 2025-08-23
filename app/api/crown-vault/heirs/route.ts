@@ -51,9 +51,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       // Try to fetch heirs from assets endpoint as fallback using serverSecureApi
       try {
         const assetsEndpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Attempting to fetch heirs from assets endpoint: /api/crown-vault/assets/detailed');
-        }
+        // Fetching heirs from assets endpoint
         
         const assets = await secureApi.get(assetsEndpoint, true);
 
@@ -80,7 +78,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
           });
           
           const extractedHeirs = Array.from(heirsMap.values());
-          console.log('Extracted heirs from assets:', extractedHeirs);
+          // Heirs extracted from assets successfully
           
           return NextResponse.json({
             heirs: extractedHeirs,

@@ -6,9 +6,18 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnw
 
 // Helper to create safe error messages without URL exposure
 export const createSafeApiError = (message: string, endpoint?: string): Error => {
-  const safeEndpoint = endpoint 
-    ? endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/\s]+/g, '/api')
-    : '/api';
+  if (!endpoint) {
+    return new Error(`API Error [/api]: ${message}`);
+  }
+  
+  // Extract just the path part after the base URL
+  let safeEndpoint = endpoint.replace(API_BASE_URL, '').replace(/https?:\/\/[^\/\s]+/g, '');
+  
+  // Ensure it starts with /api if it doesn't already
+  if (!safeEndpoint.startsWith('/api')) {
+    safeEndpoint = '/api' + (safeEndpoint.startsWith('/') ? safeEndpoint : '/' + safeEndpoint);
+  }
+  
   return new Error(`API Error [${safeEndpoint}]: ${message}`);
 }
 

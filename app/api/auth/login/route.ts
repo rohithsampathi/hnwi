@@ -2,11 +2,11 @@
 // Updated for login fix
 
 import { NextRequest, NextResponse } from 'next/server'
-import { handleLogin } from '@/lib/auth-actions'
 import { logger } from '@/lib/secure-logger'
 import { validateInput, loginSchema } from '@/lib/validation'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
+import { secureApi } from '@/lib/secure-api'
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,46 +75,92 @@ export async function POST(request: NextRequest) {
       hasPassword: !!validation.data!.password
     });
 
-    // Call the updated handleLogin function with validated data
-    const result = await handleLogin(validation.data!);
+    // Use secureApi to call backend - never expose backend URL
+    try {
+      const backendResponse = await secureApi.post('/api/auth/login', validation.data!, false);
 
-    // Log the result (without sensitive data)
-    logger.info("Login attempt completed", {
-      success: result.success,
-      hasUser: !!result.user,
-      error: result.error,
-      hasToken: !!result.token
-    });
+      logger.info("Backend login response received", {
+        requiresMfa: !!backendResponse.requires_mfa,
+        hasBackendToken: !!backendResponse.mfa_token,
+        email: validation.data!.email
+      });
 
-    // Return appropriate response based on result
-    if (!result.success) {
-      logger.warn("Login failed", { 
-        error: result.error,
-        ip: ApiAuth.getClientIP(request),
+      // If MFA required, create local proxy session for backend data
+      if (backendResponse.requires_mfa && backendResponse.mfa_token) {
+        // Generate frontend session token
+        const frontendToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // Create proxy session storing backend data
+        if (!global.mfaSessions) {
+          global.mfaSessions = new Map();
+        }
+
+        const proxySession = {
+          email: validation.data!.email,
+          frontendToken,
+          backendMfaToken: backendResponse.mfa_token, // Store backend's MFA token
+          backendSessionData: backendResponse, // Store full backend response
+          expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+          attempts: 0
+        };
+
+        global.mfaSessions.set(frontendToken, proxySession);
+
+        // Clean up expired sessions
+        for (const [key, session] of global.mfaSessions.entries()) {
+          if (session.expiresAt < Date.now()) {
+            global.mfaSessions.delete(key);
+          }
+        }
+
+        logger.info("Created proxy MFA session", {
+          email: validation.data!.email,
+          frontendToken: frontendToken.substring(0, 8) + "...",
+          backendToken: backendResponse.mfa_token.substring(0, 8) + "..."
+        });
+
+        // Return frontend-friendly response with frontend token
+        const response = NextResponse.json({
+          requires_mfa: true,
+          mfa_token: frontendToken, // Frontend gets local token
+          message: backendResponse.message || "MFA code sent"
+        });
+
+        response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
+        return ApiAuth.addSecurityHeaders(response);
+      }
+
+      // Direct login success (no MFA) - pass through backend response
+      const response = NextResponse.json(backendResponse);
+      response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
+      return ApiAuth.addSecurityHeaders(response);
+      
+    } catch (apiError) {
+      logger.warn("Backend login request failed", { 
+        error: apiError instanceof Error ? apiError.message : String(apiError),
         email: validation.data!.email
       });
       
+      // Check if this is a rate limit error (429)
+      const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.toLowerCase().includes('too many')) {
+        const response = NextResponse.json(
+          { success: false, error: 'Too many login attempts. Please wait before trying again.' },
+          { status: 429 }
+        );
+        // Add retry-after header for rate limit
+        response.headers.set('Retry-After', '60');
+        return ApiAuth.addSecurityHeaders(response);
+      }
+      
       const response = NextResponse.json(
-        { success: false, error: result.error || 'Login failed' },
+        { success: false, error: 'Authentication failed. Please try again.' },
         { status: 401 }
       );
       
       return ApiAuth.addSecurityHeaders(response);
     }
-
-    // Successful login
-    logger.info("Login successful", {
-      email: validation.data!.email,
-      ip: ApiAuth.getClientIP(request),
-      userAgent: request.headers.get('user-agent')
-    });
-
-    // Set the session cookie on the response
-    const response = NextResponse.json(result);
-    
-    // Add security headers and rate limit info
-    response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
-    return ApiAuth.addSecurityHeaders(response);
     
   } catch (error) {
     logger.error("Login API error", { 

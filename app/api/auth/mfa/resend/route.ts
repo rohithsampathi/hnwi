@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { RateLimiter } from "@/lib/rate-limiter"
 import { logger } from "@/lib/secure-logger"
+import { secureApi } from "@/lib/secure-api"
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,45 +32,96 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Call the backend MFA resend endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/mfa/resend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ session_token: sessionToken }),
-      })
+      // Retrieve the proxy MFA session using frontend token
+      if (!global.mfaSessions) {
+        global.mfaSessions = new Map()
+      }
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        logger.info('MFA code resent successfully', {
-          sessionToken: sessionToken.substring(0, 8) + "..."
-        })
-        
-        return NextResponse.json({
-          success: true,
-          message: "New security code sent to your email"
-        })
-      } else {
-        logger.warn('MFA resend failed', { 
-          error: data.error,
-          sessionToken: sessionToken.substring(0, 8) + "..."
+      const proxySession = global.mfaSessions.get(sessionToken)
+      
+      if (!proxySession) {
+        logger.warn('MFA resend failed - invalid frontend session token', {
+          frontendToken: sessionToken.substring(0, 8) + "..."
         })
         
         return NextResponse.json(
-          { success: false, error: data.error || "Failed to resend code" },
-          { status: response.status }
+          { success: false, error: "Invalid or expired session. Please try logging in again." },
+          { status: 401 }
         )
       }
-    } catch (apiError) {
-      logger.error('MFA resend API error', {
-        error: apiError instanceof Error ? apiError.message : String(apiError)
+
+      // Check if session is expired
+      if (proxySession.expiresAt < Date.now()) {
+        global.mfaSessions.delete(sessionToken)
+        
+        logger.warn('MFA resend failed - proxy session expired', {
+          email: proxySession.email
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Session expired. Please try logging in again." },
+          { status: 401 }
+        )
+      }
+
+      // Use secureApi to call backend resend - backend accepts email + optional mfa_token
+      try {
+        const backendResendRequest = {
+          email: proxySession.email,
+          mfa_token: proxySession.backendMfaToken // Optional for backend compatibility
+        }
+
+        logger.info('Calling backend MFA resend', {
+          email: proxySession.email,
+          frontendToken: sessionToken.substring(0, 8) + "..."
+        })
+
+        const backendResponse = await secureApi.post('/api/auth/mfa/resend', backendResendRequest, false)
+
+        if (backendResponse.success) {
+          // Reset attempts and extend expiry on successful backend resend
+          proxySession.attempts = 0
+          proxySession.expiresAt = Date.now() + 5 * 60 * 1000 // Extend expiry by 5 minutes
+
+          logger.info('MFA resend successful via backend', {
+            email: proxySession.email
+          })
+
+          return NextResponse.json({
+            success: true,
+            message: backendResponse.message || "New security code sent to your email"
+          })
+        } else {
+          logger.warn('Backend MFA resend failed', {
+            email: proxySession.email,
+            backendError: backendResponse.error
+          })
+
+          return NextResponse.json(
+            { success: false, error: backendResponse.error || "Resend failed. Please try again." },
+            { status: 400 }
+          )
+        }
+
+      } catch (backendError) {
+        logger.error('Backend MFA resend error', {
+          email: proxySession.email,
+          error: backendError instanceof Error ? backendError.message : String(backendError)
+        })
+        
+        return NextResponse.json(
+          { success: false, error: "Resend failed. Please try again." },
+          { status: 500 }
+        )
+      }
+    } catch (processingError) {
+      logger.error('MFA resend processing error', {
+        error: processingError instanceof Error ? processingError.message : String(processingError)
       })
       
       return NextResponse.json(
-        { success: false, error: "Resend service temporarily unavailable" },
-        { status: 503 }
+        { success: false, error: "Resend processing failed" },
+        { status: 500 }
       )
     }
   } catch (error) {

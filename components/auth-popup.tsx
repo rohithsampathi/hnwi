@@ -1,12 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Loader2, Crown, Eye, EyeOff } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
-import { handleLogin } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
@@ -34,8 +33,43 @@ export function AuthPopup({
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showMfa, setShowMfa] = useState(false)
-  const [mfaSessionToken, setMfaSessionToken] = useState<string | null>(null)
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
   const [isResending, setIsResending] = useState(false)
+  const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null)
+  const countdownInterval = useRef<NodeJS.Timeout | null>(null)
+
+  // Start countdown timer for rate limit
+  const startCountdown = (seconds: number) => {
+    setRateLimitSeconds(seconds)
+    
+    // Clear any existing interval
+    if (countdownInterval.current) {
+      clearInterval(countdownInterval.current)
+    }
+    
+    countdownInterval.current = setInterval(() => {
+      setRateLimitSeconds(prev => {
+        if (prev === null || prev <= 1) {
+          if (countdownInterval.current) {
+            clearInterval(countdownInterval.current)
+            countdownInterval.current = null
+          }
+          setError(null) // Clear rate limit error when countdown ends
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  // Cleanup countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownInterval.current) {
+        clearInterval(countdownInterval.current)
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,8 +88,8 @@ export function AuthPopup({
     setError(null)
 
     try {
-      // Step 1: Initiate 2FA login
-      const response = await fetch('/api/auth/mfa/login', {
+      // Step 1: Call standard login endpoint
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,13 +99,47 @@ export function AuthPopup({
 
       const result = await response.json()
 
-      if (result.success) {
-        setMfaSessionToken(result.sessionToken)
+      // Debug: Log response status and headers
+      console.log('Login response:', {
+        status: response.status,
+        retryAfter: response.headers.get('Retry-After'),
+        result: result
+      })
+
+      if (response.status === 429) {
+        // Rate limited - show clear security message with countdown
+        const retryAfter = response.headers.get('Retry-After') || '60'
+        const waitTime = parseInt(retryAfter)
+        
+        // Use the server error message or fallback to custom message
+        const errorMessage = result.error || 'Security Vault Activated. Too many login attempts detected.'
+        setError(errorMessage)
+        startCountdown(waitTime)
+        return
+      }
+
+      if (result.requires_mfa) {
+        // MFA is required - show MFA input
+        setMfaToken(result.mfa_token)
         setShowMfa(true)
         toast({
           title: "Security code sent",
-          description: "Check your email for the 6-digit authentication code.",
+          description: result.message || "Check your email for the 6-digit authentication code.",
         })
+      } else if (result.access_token) {
+        // Direct login success (shouldn't happen with MFA enabled)
+        if (result.access_token) {
+          localStorage.setItem('token', result.access_token)
+        }
+        
+        toast({
+          title: "Secure access restored",
+          description: "Elite authentication successful. Intelligence feed reconnected.",
+        })
+        
+        handleClose()
+        onSuccess?.()
+        onClose()
       } else {
         setError(result.error || "Login failed")
       }
@@ -83,7 +151,7 @@ export function AuthPopup({
   }
 
   const handleMfaSubmit = async (code: string) => {
-    if (!mfaSessionToken) {
+    if (!mfaToken) {
       setError("Invalid session. Please try logging in again.")
       return
     }
@@ -95,17 +163,28 @@ export function AuthPopup({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          sessionToken: mfaSessionToken, 
-          code 
+          email,
+          mfa_code: code,
+          mfa_token: mfaToken
         }),
       })
 
       const result = await response.json()
 
+      if (response.status === 429) {
+        // Rate limited during MFA verification - show clear security message with countdown
+        const retryAfter = response.headers.get('Retry-After') || '60'
+        const waitTime = parseInt(retryAfter)
+        
+        setError(`Security Vault Activated. Too many verification attempts detected.`)
+        startCountdown(waitTime)
+        return
+      }
+
       if (result.success) {
         // Store token in localStorage for frontend auth checks
-        if (result.token) {
-          localStorage.setItem('token', result.token)
+        if (result.access_token) {
+          localStorage.setItem('token', result.access_token)
         }
         
         toast({
@@ -128,7 +207,7 @@ export function AuthPopup({
   }
 
   const handleMfaResend = async () => {
-    if (!mfaSessionToken || isResending) {
+    if (!mfaToken || isResending) {
       return
     }
 
@@ -136,20 +215,31 @@ export function AuthPopup({
     setError(null)
 
     try {
+      // Use the proper MFA resend endpoint
       const response = await fetch('/api/auth/mfa/resend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionToken: mfaSessionToken }),
+        body: JSON.stringify({ sessionToken: mfaToken }),
       })
 
       const result = await response.json()
 
+      if (response.status === 429) {
+        // Rate limited during MFA resend - show clear security message with countdown
+        const retryAfter = response.headers.get('Retry-After') || '60'
+        const waitTime = parseInt(retryAfter)
+        
+        setError(`Security Vault Activated. Too many resend attempts detected.`)
+        startCountdown(waitTime)
+        return
+      }
+
       if (result.success) {
         toast({
           title: "Code resent",
-          description: "A new security code has been sent to your email.",
+          description: result.message || "A new security code has been sent to your email.",
         })
       } else {
         setError(result.error || "Failed to resend code")
@@ -167,8 +257,13 @@ export function AuthPopup({
     setError(null)
     setShowPassword(false)
     setShowMfa(false)
-    setMfaSessionToken(null)
+    setMfaToken(null)
     setIsResending(false)
+    setRateLimitSeconds(null)
+    if (countdownInterval.current) {
+      clearInterval(countdownInterval.current)
+      countdownInterval.current = null
+    }
     onClose()
   }
 
@@ -228,6 +323,11 @@ export function AuthPopup({
               {error && (
                 <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
                   {error}
+                  {rateLimitSeconds !== null && (
+                    <div className="mt-2 text-xs text-red-400">
+                      Please try again in {rateLimitSeconds} second{rateLimitSeconds !== 1 ? 's' : ''}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -290,7 +390,7 @@ export function AuthPopup({
                   variant="ghost"
                   onClick={() => {
                     setShowMfa(false)
-                    setMfaSessionToken(null)
+                    setMfaToken(null)
                     setError(null)
                   }}
                   className="text-sm"
