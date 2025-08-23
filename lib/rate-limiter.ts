@@ -48,8 +48,21 @@ const RATE_LIMITS = {
   USER_LOGIN: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 3, // Even more restrictive per user account
-    keyGenerator: (req, userId) => `user_login:${userId}`,
-    message: 'Account temporarily locked due to multiple failed attempts. Contact support if needed.'
+    keyGenerator: (req, userId) => `user_login:${userId || getClientIP(req)}`,
+    message: 'Too many login attempts for this account. Please wait 15 minutes.'
+  },
+  // MFA-specific rate limits
+  MFA_VERIFY: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 10, // Allow multiple verification attempts
+    keyGenerator: (req) => `mfa_verify:${getClientIP(req)}`,
+    message: 'Too many verification attempts. Please wait before trying again.'
+  },
+  MFA_RESEND: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 3, // Strict limit on resend requests
+    keyGenerator: (req) => `mfa_resend:${getClientIP(req)}`,
+    message: 'Too many resend requests. Please wait an hour before requesting another code.'
   },
   // New: Progressive penalties for repeated violations
   PROGRESSIVE: {
