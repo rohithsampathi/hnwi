@@ -26,25 +26,17 @@ export function middleware(request: NextRequest) {
   // Enhanced Content Security Policy with nonce and hash support
   const isDev = process.env.NODE_ENV !== "production";
   
-  // Specific hashes for Next.js inline scripts (from the error messages)
-  const nextJsHashes = [
-    "'sha256-Q+8tPsjVtiDsjF/Cv8FMOpg2Yg91oKFKDAJat1PPb2g='",
-    "'sha256-KVGCjOWd6A4YXQjBVaM9km5TM69ci9SPmTA9fM0c+TI='", 
-    "'sha256-hDLTg33Ow2YmZMgUT11FSMjnOrvW8RFwQIxTAyUO4TE='",
-    "'sha256-gKmPYQ60ilP/jPs99aSTUzZHdLDWMaHvFHi8vtyqnUY='",
-    "'sha256-dWyLesJo+5wsXLVIIo8A+eHgP5Ekxez/vXrqYE4wlK8='",
-    "'sha256-IYQwQlCS7tlDdfed8qCp+uGm3rBPumW7jftgB2PJ+k0='"
-  ];
+  // Dynamic script handling - no hardcoded hashes needed
   
   // Get backend URL from environment variable for secure configuration
   const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';
   
   const cspDirectives = [
     "default-src 'self'",
-    // Include both nonce and specific hashes for Next.js inline scripts
-    `script-src 'self' ${isDev ? `'nonce-${nonce}' 'unsafe-inline' 'unsafe-eval'` : `'nonce-${nonce}' ${nextJsHashes.join(' ')}`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
-    // Style sources with nonce support - allow unsafe-inline for development
-    `style-src 'self' ${isDev ? `'unsafe-inline'` : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
+    // Dynamic script sources - allow inline scripts with nonce for all environments
+    `script-src 'self' 'nonce-${nonce}' ${isDev ? `'unsafe-inline' 'unsafe-eval'` : `'unsafe-inline'`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
+    // Style sources with nonce support - allow unsafe-inline for all environments to support dynamic styles
+    `style-src 'self' 'unsafe-inline' 'nonce-${nonce}' https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
     `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app ${backendUrl} https://api-js.mixpanel.com https://formspree.io`,
@@ -92,11 +84,7 @@ export function middleware(request: NextRequest) {
 
 // Generate cryptographically secure CSP nonce
 function generateNonce(): string {
-  // In development, use a more stable nonce to prevent hydration mismatches
-  if (process.env.NODE_ENV === 'development') {
-    return 'eRFNoVpkmmUxkC9U6H2IOg=='; // Fixed nonce for development
-  }
-  
+  // Always generate dynamic nonce - no fixed values
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
   return btoa(String.fromCharCode(...array));
