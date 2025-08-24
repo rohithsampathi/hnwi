@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { AuthPopup } from "@/components/auth-popup"
 
 interface AuthPopupContextType {
@@ -44,6 +44,37 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
     popupOptions.onSuccess?.()
     hideAuthPopup()
   }, [popupOptions, hideAuthPopup])
+
+  // Listen for session-locked events from ClientSecurityManager
+  useEffect(() => {
+    const handleSessionLocked = (event: CustomEvent) => {
+      const { userId, reason } = event.detail;
+      
+      // Prevent multiple popups if one is already open
+      if (isOpen) {
+        return;
+      }
+      
+      // Only show popup for inactivity locks, not other reasons
+      if (reason === 'inactivity') {
+        showAuthPopup({
+          title: "Session Locked",
+          description: "Due to inactivity, your secure line has been locked. Login to continue.",
+          onSuccess: () => {
+            // Session will be unlocked by auth popup success handler
+          }
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('session-locked', handleSessionLocked as EventListener);
+      
+      return () => {
+        window.removeEventListener('session-locked', handleSessionLocked as EventListener);
+      };
+    }
+  }, [showAuthPopup, isOpen]);
 
   return (
     <AuthPopupContext.Provider value={{ showAuthPopup, hideAuthPopup }}>

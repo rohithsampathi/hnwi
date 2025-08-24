@@ -101,6 +101,9 @@ const applyClientSideDateFilter = (items: any[], timeRange: string): any[] => {
     case '1m':
       cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
+    case '3m':
+      cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
     default:
       return items;
   }
@@ -322,8 +325,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const fetchDevelopments = useCallback(async (forceRefresh = false) => {
     
     try {
-      // Prevent multiple simultaneous requests
-      if (isLoading && !forceRefresh) {
+      // Prevent multiple simultaneous requests - but allow initial load
+      if (isLoading && !forceRefresh && developments.length > 0) {
         return;
       }
       
@@ -440,7 +443,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [selectedTimeRange, selectedIndustry, isLoading])
+  }, [selectedTimeRange, selectedIndustry])
   
   // Initial load and when duration changes - Debounced to prevent loops
   useEffect(() => {
@@ -449,7 +452,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
     }, 100); // Small debounce to prevent rapid firing
     
     return () => clearTimeout(timeoutId);
-  }, [selectedTimeRange, selectedIndustry])
+  }, [selectedTimeRange, selectedIndustry, fetchDevelopments])
 
   // Handle scroll to Insider Brief section from home dashboard
   useEffect(() => {
@@ -522,8 +525,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 value={selectedTimeRange} 
                 onValueChange={(value) => {
                   try {
-                    // Prevent rapid changes during loading
-                    if (isLoading) {
+                    // Prevent rapid changes during loading or if same value
+                    if (isLoading || value === selectedTimeRange) {
                       return;
                     }
                     setSelectedTimeRange(value);
@@ -830,8 +833,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   value={selectedTimeRange} 
                   onValueChange={(value) => {
                     try {
-                      // Prevent rapid changes during loading
-                      if (isLoading) {
+                      // Prevent rapid changes during loading or if same value
+                      if (isLoading || value === selectedTimeRange) {
                         return;
                       }
                       setSelectedTimeRange(value);

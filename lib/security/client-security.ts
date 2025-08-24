@@ -1,4 +1,5 @@
 import { AES256Encryption, SecureStorage } from "./encryption";
+import { SessionState, setSessionState, updateLastActivity, getSessionState } from "../auth-utils";
 
 interface SecurityConfig {
   sessionTimeout: number;
@@ -24,6 +25,8 @@ export class ClientSecurityManager {
 
   static initializeSession(userId: string): void {
     ClientSecurityManager.sessionActivity.set(userId, Date.now());
+    setSessionState(SessionState.AUTHENTICATED);
+    updateLastActivity();
     ClientSecurityManager.startSessionMonitor(userId);
   }
 
@@ -32,12 +35,20 @@ export class ClientSecurityManager {
 
     const checkSession = () => {
       const lastActivity = ClientSecurityManager.sessionActivity.get(userId);
+      const currentSessionState = getSessionState();
+      
       if (!lastActivity) return;
 
       const inactiveTime = Date.now() - lastActivity;
+      
+      // If session is already locked, don't check again
+      if (currentSessionState === SessionState.LOCKED_INACTIVE) {
+        return;
+      }
+      
+      // If user has been inactive for the timeout period, lock the session
       if (inactiveTime > ClientSecurityManager.config.sessionTimeout) {
-        ClientSecurityManager.terminateSession(userId);
-        window.location.href = "/login?reason=session_timeout";
+        ClientSecurityManager.lockSession(userId);
       }
     };
 
@@ -51,11 +62,47 @@ export class ClientSecurityManager {
 
   static updateActivity(userId: string): void {
     ClientSecurityManager.sessionActivity.set(userId, Date.now());
+    
+    // If session was locked, unlock it on activity
+    const currentState = getSessionState();
+    if (currentState === SessionState.LOCKED_INACTIVE) {
+      setSessionState(SessionState.AUTHENTICATED);
+    }
+    
+    updateLastActivity();
+  }
+
+  // New method to lock session without clearing data
+  static lockSession(userId: string): void {
+    try {
+      // Double-check we're not already locked to prevent duplicate events
+      const currentState = getSessionState();
+      if (currentState === SessionState.LOCKED_INACTIVE) {
+        return; // Already locked
+      }
+      
+      setSessionState(SessionState.LOCKED_INACTIVE);
+      
+      // Dispatch custom event to trigger auth popup (only once per lock)
+      if (typeof window !== "undefined") {
+        // Use setTimeout to avoid blocking the session check
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('session-locked', { 
+            detail: { userId, reason: 'inactivity' }
+          }));
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error locking session:', error);
+      // Fallback to old behavior if there's an error
+      ClientSecurityManager.terminateSession(userId);
+    }
   }
 
   static terminateSession(userId: string): void {
     ClientSecurityManager.sessionActivity.delete(userId);
     SecureStorage.clear();
+    setSessionState(SessionState.UNAUTHENTICATED);
     
     if (typeof window !== "undefined" && (window as any).__sessionMonitor) {
       clearInterval((window as any).__sessionMonitor);

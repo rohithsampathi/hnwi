@@ -2,7 +2,7 @@
 
 // Security wrapper for API calls to prevent URL exposure in console logs
 import { API_BASE_URL } from "@/config/api";
-import { getValidToken, clearInvalidToken } from "@/lib/auth-utils";
+import { getValidToken, clearInvalidToken, canAccessFeatures, isSessionLocked, SessionState, canAccessFeaturesWithFallback, isLegacySessionMode } from "@/lib/auth-utils";
 import { cacheDebugger } from "@/lib/cache-debug";
 
 interface SecureFetchOptions extends RequestInit {
@@ -278,6 +278,62 @@ const createSecureError = (message: string, statusCode?: number): Error => {
   return error;
 };
 
+// Check if session allows API calls
+const checkSessionAccess = (endpoint: string): void => {
+  // Skip check for public endpoints (like auth endpoints)
+  const publicEndpoints = ['/api/auth/', '/api/csrf-token', '/api/og'];
+  
+  if (publicEndpoints.some(pub => endpoint.includes(pub))) {
+    return; // Allow public endpoints
+  }
+  
+  // In legacy mode, skip smart session checks
+  if (isLegacySessionMode()) {
+    // Just check if we have a valid token (old behavior)
+    const token = getValidToken();
+    if (!token) {
+      throw new APIError(
+        'Authentication required to access this resource.',
+        401,
+        endpoint
+      );
+    }
+    return;
+  }
+  
+  // Smart session checking (new behavior)
+  try {
+    // Check if session is locked
+    if (isSessionLocked()) {
+      throw new APIError(
+        'Session locked due to inactivity. Please reauthenticate to continue.',
+        423, // 423 Locked status code
+        endpoint
+      );
+    }
+    
+    // Check if user can access features (not just authenticated)
+    if (!canAccessFeaturesWithFallback()) {
+      throw new APIError(
+        'Authentication required to access this resource.',
+        401,
+        endpoint
+      );
+    }
+  } catch (error) {
+    // If there's an error with smart session checking, fallback to simple token check
+    console.warn('Smart session check failed, falling back to token check:', error);
+    const token = getValidToken();
+    if (!token) {
+      throw new APIError(
+        'Authentication required to access this resource.',
+        401,
+        endpoint
+      );
+    }
+  }
+};
+
 // Secure fetch wrapper that matches backend expectations
 export const secureApiCall = async (
   endpoint: string, 
@@ -330,6 +386,11 @@ export const secureApiCall = async (
 // Secure API methods
 export const secureApi = {
   async post(endpoint: string, data: any, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number; cacheKey?: string }): Promise<any> {
+    // Check session access if auth is required
+    if (requireAuth) {
+      checkSessionAccess(endpoint);
+    }
+    
     const { enableCache = false, cacheDuration = 300000, cacheKey: customCacheKey } = cacheOptions || {}; // 5 minutes default for POST
     
     // Create cache key based on custom key or endpoint + data for POST requests
@@ -401,6 +462,11 @@ export const secureApi = {
   },
 
   async get(endpoint: string, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
+    // Check session access if auth is required
+    if (requireAuth) {
+      checkSessionAccess(endpoint);
+    }
+    
     const { enableCache = false, cacheDuration = 600000 } = cacheOptions || {};
     
     if (enableCache) {
@@ -462,6 +528,11 @@ export const secureApi = {
   },
 
   async put(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
+    // Check session access if auth is required
+    if (requireAuth) {
+      checkSessionAccess(endpoint);
+    }
+    
     try {
       const response = await secureApiCall(endpoint, {
         method: 'PUT',
@@ -482,6 +553,11 @@ export const secureApi = {
   },
 
   async delete(endpoint: string, requireAuth: boolean = true): Promise<any> {
+    // Check session access if auth is required
+    if (requireAuth) {
+      checkSessionAccess(endpoint);
+    }
+    
     try {
       const response = await secureApiCall(endpoint, {
         method: 'DELETE',

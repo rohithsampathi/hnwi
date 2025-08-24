@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { Loader2, Crown, Eye, EyeOff } from "lucide-react"
+import { Loader2, Crown, Eye, EyeOff, Shield } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
 import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
+import { SessionState, setSessionState, isSessionLocked, getSessionInfo } from "@/lib/auth-utils"
 
 interface AuthPopupProps {
   isOpen: boolean
@@ -36,6 +37,8 @@ export function AuthPopup({
   const [mfaToken, setMfaToken] = useState<string | null>(null)
   const [isResending, setIsResending] = useState(false)
   const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null)
+  const [isReauthMode, setIsReauthMode] = useState(false)
+  const [storedEmail, setStoredEmail] = useState("")
   const countdownInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Start countdown timer for rate limit
@@ -71,10 +74,43 @@ export function AuthPopup({
     }
   }, [])
 
+  // Detect reauth mode when popup opens
+  useEffect(() => {
+    if (isOpen) {
+      const sessionInfo = getSessionInfo();
+      const isLocked = isSessionLocked();
+      
+      if (isLocked && sessionInfo.token) {
+        // This is a reauth scenario - user was locked due to inactivity but token is still valid
+        setIsReauthMode(true);
+        
+        // Try to get stored email from previous session data
+        try {
+          const userDisplay = sessionStorage.getItem("userDisplay");
+          if (userDisplay) {
+            const userData = JSON.parse(userDisplay);
+            setStoredEmail(userData.email || "");
+            setEmail(userData.email || "");
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      } else {
+        // This is a full login scenario
+        setIsReauthMode(false);
+        setStoredEmail("");
+      }
+    }
+  }, [isOpen])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!email || !password) {
+    // In reauth mode, we might only need password if email is pre-filled
+    if (isReauthMode && storedEmail && !password) {
+      setError("Please enter your password to continue")
+      return
+    } else if (!isReauthMode && (!email || !password)) {
       setError("Please enter both email and password")
       return
     }
@@ -132,9 +168,14 @@ export function AuthPopup({
           localStorage.setItem('token', result.access_token)
         }
         
+        // Update session state to authenticated (unlocked)
+        setSessionState(SessionState.AUTHENTICATED)
+        
         toast({
           title: "Secure access restored",
-          description: "Elite authentication successful. Intelligence feed reconnected.",
+          description: isReauthMode 
+            ? "Session unlocked. Your work has been preserved." 
+            : "Elite authentication successful. Intelligence feed reconnected.",
         })
         
         handleClose()
@@ -187,9 +228,14 @@ export function AuthPopup({
           localStorage.setItem('token', result.access_token)
         }
         
+        // Update session state to authenticated (unlocked)
+        setSessionState(SessionState.AUTHENTICATED)
+        
         toast({
           title: "Secure access restored",
-          description: "Elite authentication successful. Intelligence feed reconnected.",
+          description: isReauthMode 
+            ? "Session unlocked. Your work has been preserved." 
+            : "Elite authentication successful. Intelligence feed reconnected.",
         })
         
         // Reset form
@@ -260,6 +306,8 @@ export function AuthPopup({
     setMfaToken(null)
     setIsResending(false)
     setRateLimitSeconds(null)
+    setIsReauthMode(false)
+    setStoredEmail("")
     if (countdownInterval.current) {
       clearInterval(countdownInterval.current)
       countdownInterval.current = null
@@ -275,25 +323,43 @@ export function AuthPopup({
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Crown className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                {title}
+                {isReauthMode ? (
+                  <Shield className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                ) : (
+                  <Crown className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                )}
+                {isReauthMode ? "Session Locked" : title}
               </DialogTitle>
               <DialogDescription>
-                {description}
+                {isReauthMode 
+                  ? "Your session was locked due to inactivity. Enter your password to continue where you left off." 
+                  : description
+                }
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full"
-                />
-              </div>
+              {!isReauthMode && (
+                <div className="space-y-2">
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full"
+                  />
+                </div>
+              )}
+              
+              {isReauthMode && storedEmail && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Continuing as:</div>
+                  <div className="p-3 bg-muted rounded-md text-sm font-medium">
+                    {storedEmail}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 relative">
                 <div className="relative">
@@ -353,10 +419,10 @@ export function AuthPopup({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Signing in...
+                      {isReauthMode ? "Unlocking..." : "Signing in..."}
                     </>
                   ) : (
-                    "Sign In"
+                    isReauthMode ? "Unlock Session" : "Sign In"
                   )}
                 </Button>
               </div>

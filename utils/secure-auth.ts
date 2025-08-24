@@ -338,11 +338,17 @@ class SecureAuthManager {
     return SecureStorage.getItem<string>("token");
   }
 
-  // Check if user is authenticated
+  // Check if user is authenticated (legacy compatibility)
   isAuthenticated(): boolean {
     const token = this.getAuthToken();
     const user = this.getCurrentUser();
     return !!(token && user);
+  }
+  
+  // Check if user can access features (not locked)
+  canAccessFeatures(): boolean {
+    const authUtils = require('@/lib/auth-utils');
+    return authUtils.canAccessFeatures();
   }
 }
 
