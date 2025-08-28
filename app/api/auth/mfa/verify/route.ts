@@ -155,8 +155,17 @@ export async function POST(request: NextRequest) {
 
         // Backend verification successful
         if (backendResponse.success) {
+          // Normalize user object to ensure consistent id presence
+          const backendUser = backendResponse.user || {}
+          const normalizedUserId = backendUser.user_id || backendUser.id || backendUser._id
+          const normalizedUser = {
+            ...backendUser,
+            id: normalizedUserId || backendUser.id,
+            user_id: normalizedUserId || backendUser.user_id
+          }
+
           // Create JWT token and set secure cookie  
-          const token = backendResponse.access_token || await createToken(backendResponse.user)
+          const token = backendResponse.access_token || await createToken(normalizedUser)
           const sessionCookieName = getSecureCookieName("session")
           cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
 
@@ -165,13 +174,13 @@ export async function POST(request: NextRequest) {
 
           logger.info('MFA verification successful via backend', { 
             email,
-            userId: backendResponse.user?.id
+            userId: normalizedUser.id
           })
 
           return NextResponse.json({
             success: true,
             access_token: token,
-            user: backendResponse.user,
+            user: normalizedUser,
             message: backendResponse.message || "Login successful"
           })
         } else {

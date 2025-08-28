@@ -709,12 +709,37 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Converging Factors</h4>
                       <div className="space-y-3">
-                        {elitePulseData.pattern_recognition.convergence_analysis.converging_factors.map((factor, index) => (
-                          <div key={index} className="flex items-start space-x-3 pl-1">
-                            <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                            <p className="text-sm leading-relaxed">{factor}</p>
-                          </div>
-                        ))}
+                        {elitePulseData.pattern_recognition.convergence_analysis.converging_factors.map((factor, index) => {
+                          // Replace underscores with spaces and capitalize first letter
+                          let formattedFactor = factor.replace(/_/g, ' ');
+                          formattedFactor = formattedFactor.charAt(0).toUpperCase() + formattedFactor.slice(1);
+                          
+                          // Make all numeric values bold percentages
+                          formattedFactor = formattedFactor.replace(/(\d+(?:\.\d+)?%?)/g, (match) => {
+                            if (match.includes('%')) {
+                              return `**${match}**`;
+                            } else if (parseFloat(match) < 1) {
+                              const percentage = (parseFloat(match) * 100).toFixed(1);
+                              return `**${percentage}%**`;
+                            }
+                            return match;
+                          });
+                          
+                          return (
+                            <div key={index} className="flex items-start space-x-3 pl-1">
+                              <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                              <div className="text-sm leading-relaxed">
+                                {formattedFactor.split('**').map((part, i) => {
+                                  if (i % 2 === 1) {
+                                    // Bold percentage parts with primary color
+                                    return <span key={i} className="font-bold text-primary">{part}</span>;
+                                  }
+                                  return <span key={i}>{part}</span>;
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
