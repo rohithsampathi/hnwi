@@ -20,7 +20,54 @@ import {
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
 
-interface ElitePulseAnalysis {
+interface RegulatoryCompliance {
+  us_compliance?: {
+    requirements?: string[]
+    costs_usd?: string
+    timeline?: string
+    service_providers?: string[]
+    recent_changes?: string
+    arbitrage_opportunities?: string
+  }
+  uk_compliance?: {
+    requirements?: string[]
+    costs_usd?: string
+    timeline?: string
+    service_providers?: string[]
+    recent_changes?: string
+    arbitrage_opportunities?: string
+  }
+  india_compliance?: {
+    requirements?: string[]
+    costs_usd?: string
+    timeline?: string
+    service_providers?: string[]
+    recent_changes?: string
+    arbitrage_opportunities?: string
+  }
+  australia_compliance?: {
+    requirements?: string[]
+    costs_usd?: string
+    timeline?: string
+    service_providers?: string[]
+    recent_changes?: string
+    arbitrage_opportunities?: string
+  }
+  cross_border_considerations?: {
+    tax_treaties?: string
+    crs_reporting?: string
+    beneficial_ownership?: string
+    regulatory_coordination?: string
+  }
+  optimal_structure?: {
+    recommended_jurisdiction?: string
+    backup_strategies?: string
+    cost_benefit_analysis?: string
+    risk_mitigation?: string
+  }
+}
+
+interface ElitePulseData {
   wealth_migration: {
     from?: string
     from_?: string  // Backend uses from_ instead of from
@@ -62,15 +109,12 @@ interface ElitePulseAnalysis {
     service_providers?: string
     exit_strategy?: string
   }
+  regulatory_compliance?: RegulatoryCompliance
   expensive_problem: string
   whisper_intelligence: string
-}
-
-interface ElitePulseData {
-  analysis: ElitePulseAnalysis
-  generated_at: string
+  generated_at?: string
   developments_count?: number
-  record_id: string
+  record_id?: string
 }
 
 interface BriefCounts {
@@ -104,6 +148,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
   const riskRef = useRef<HTMLDivElement>(null)
   const institutionalRef = useRef<HTMLDivElement>(null)
   const convergenceRef = useRef<HTMLDivElement>(null)
+  const regulatoryRef = useRef<HTMLDivElement>(null)
   const problemRef = useRef<HTMLDivElement>(null)
 
   const fetchElitePulse = async () => {
@@ -147,8 +192,10 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       } catch (countsError) {
       }
       
-      if (data && data.success && data.analysis) {
-        setElitePulseData(data)
+      if (data && data.success && (data.analysis || data.wealth_migration)) {
+        // Handle both old format (with analysis wrapper) and new format (direct data)
+        const pulseData = data.analysis || data
+        setElitePulseData(pulseData)
         setError(null)
       } else {
         throw new Error('No Elite Pulse data available')
@@ -180,7 +227,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
 
   // Intersection Observer for active section tracking
   useEffect(() => {
-    if (!elitePulseData?.analysis) return
+    if (!elitePulseData) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -205,9 +252,10 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       { id: 'migration', ref: migrationRef },
       { id: 'action', ref: actionRef },
       { id: 'whisper', ref: whisperRef },
-      ...(elitePulseData.analysis.arbitrage_gap?.risk_factors || elitePulseData.analysis.arbitrage_gap?.regulatory_considerations ? [{ id: 'risk', ref: riskRef }] : []),
-      ...(elitePulseData.analysis.pattern_recognition?.institutional_positioning ? [{ id: 'institutional', ref: institutionalRef }] : []),
-      ...(elitePulseData.analysis.pattern_recognition?.convergence_analysis ? [{ id: 'convergence', ref: convergenceRef }] : []),
+      ...(elitePulseData.arbitrage_gap?.risk_factors || elitePulseData.arbitrage_gap?.regulatory_considerations ? [{ id: 'risk', ref: riskRef }] : []),
+      ...(elitePulseData.pattern_recognition?.institutional_positioning ? [{ id: 'institutional', ref: institutionalRef }] : []),
+      ...(elitePulseData.pattern_recognition?.convergence_analysis ? [{ id: 'convergence', ref: convergenceRef }] : []),
+      ...(elitePulseData.regulatory_compliance ? [{ id: 'regulatory', ref: regulatoryRef }] : []),
       { id: 'problem', ref: problemRef }
     ]
 
@@ -242,17 +290,16 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
 
   if (!elitePulseData) return null
 
-  const { analysis } = elitePulseData
-
   // Navigation sections with premium icons
   const navigationSections = [
     { id: 'overview', label: 'HNWI Insider Action', ref: overviewRef, icon: BarChart3 },
     { id: 'migration', label: 'Migration Flow', ref: migrationRef, icon: RefreshCw },
     { id: 'action', label: 'Executive Action', ref: actionRef, icon: Crown },
     { id: 'whisper', label: 'Whisper Intel', ref: whisperRef, icon: MessageCircle },
-    ...(analysis?.arbitrage_gap?.risk_factors || analysis?.arbitrage_gap?.regulatory_considerations ? [{ id: 'risk', label: 'Risk Factors', ref: riskRef, icon: Shield }] : []),
-    ...(analysis?.pattern_recognition?.institutional_positioning ? [{ id: 'institutional', label: 'Institutional Moves', ref: institutionalRef, icon: TrendingUp }] : []),
-    ...(analysis?.pattern_recognition?.convergence_analysis ? [{ id: 'convergence', label: 'Convergence', ref: convergenceRef, icon: Sparkles }] : []),
+    ...(elitePulseData?.arbitrage_gap?.risk_factors || elitePulseData?.arbitrage_gap?.regulatory_considerations ? [{ id: 'risk', label: 'Risk Factors', ref: riskRef, icon: Shield }] : []),
+    ...(elitePulseData?.pattern_recognition?.institutional_positioning ? [{ id: 'institutional', label: 'Institutional Moves', ref: institutionalRef, icon: TrendingUp }] : []),
+    ...(elitePulseData?.pattern_recognition?.convergence_analysis ? [{ id: 'convergence', label: 'Convergence', ref: convergenceRef, icon: Sparkles }] : []),
+    ...(elitePulseData?.regulatory_compliance ? [{ id: 'regulatory', label: 'Regulatory Compliance', ref: regulatoryRef, icon: AlertTriangle }] : []),
     { id: 'problem', label: 'Market Problem', ref: problemRef, icon: Target }
   ]
 
@@ -283,8 +330,9 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
 
 
 
-  // Use backend timestamp with date
-  const backendDateTime = new Date(elitePulseData.generated_at).toLocaleString('en-US', { 
+  // Use backend timestamp with date - handle both old and new format
+  const generatedAt = elitePulseData.generated_at || new Date().toISOString()
+  const backendDateTime = new Date(generatedAt).toLocaleString('en-US', { 
     month: 'short',
     day: 'numeric',
     hour12: false, 
@@ -296,9 +344,9 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
 
   // Extract key intelligence for headline  
   const getHeadline = () => {
-    const volume = analysis.wealth_migration.volume;
-    const discount = analysis.arbitrage_gap.current_discount;
-    const trend = analysis.pattern_recognition.mega_trend;
+    const volume = elitePulseData.wealth_migration.volume;
+    const discount = elitePulseData.arbitrage_gap.current_discount;
+    const trend = elitePulseData.pattern_recognition.mega_trend;
     
     // Extract meaningful amounts from volume text
     const billionMatch = volume?.match(/\$?(\d+(?:-\d+)?)\s*billion/i);
@@ -349,7 +397,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                   </div>
                   <div className="flex items-center space-x-2">
                     <TrendingUp className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">Confidence Score {analysis.pattern_recognition.conviction}/10</span>
+                    <span className="text-sm font-medium text-primary">Confidence Score {elitePulseData.pattern_recognition.conviction}/10</span>
                   </div>
                 </div>
 
@@ -388,12 +436,15 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
             
             {/* HNWI Insider Action Section */}
             <section ref={overviewRef} className="space-y-4">
-              <div className="lg:hidden mb-4">
-                <div className="flex items-center space-x-2 mb-2">
+              <div className="lg:hidden mb-6 mt-8">
+                {/* Add breathing room with subtle separator */}
+                <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mb-6"></div>
+                
+                <div className="flex items-center space-x-2 mb-3">
                   <BarChart3 className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-bold text-primary">HNWI INSIDER ACTION</h3>
+                  <h3 className="text-lg font-bold text-primary tracking-wide">HNWI INSIDER ACTION</h3>
                 </div>
-                <div className="h-px bg-gradient-to-r from-primary/50 to-transparent"></div>
+                <div className="h-px bg-gradient-to-r from-primary/60 via-primary/30 to-transparent"></div>
               </div>
               
               {/* Main Intelligence Display */}
@@ -402,7 +453,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                   {getHeadline()}
                 </h1>
                 <p className="text-base text-muted-foreground leading-relaxed">
-                  {analysis.pattern_recognition.mega_trend}
+                  {elitePulseData.pattern_recognition.mega_trend}
                 </p>
               </div>
             </section>
@@ -424,7 +475,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                     <div className="space-y-3">
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">FROM</div>
                       <div className="text-sm font-normal text-foreground pl-2 border-l-2 border-muted-foreground/30">
-                        {analysis.wealth_migration.from_ || analysis.wealth_migration.from || "Traditional markets"}
+                        {elitePulseData.wealth_migration.from_ || elitePulseData.wealth_migration.from || "Traditional markets"}
                       </div>
                     </div>
                     
@@ -432,7 +483,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                       <div className="flex flex-col items-center space-y-2">
                         <RefreshCw className="h-6 w-6 text-primary animate-spin" style={{animationDuration: '3s'}} />
                         <div className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                          {analysis.wealth_migration.volume?.match(/\$?(\d+(?:-\d+)?)\s*billion/i)?.[0] || "Flow"}
+                          {elitePulseData.wealth_migration.volume?.match(/\$?(\d+(?:-\d+)?)\s*billion/i)?.[0] || "Flow"}
                         </div>
                       </div>
                     </div>
@@ -440,7 +491,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                     <div className="space-y-3">
                       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">TO</div>
                       <div className="text-sm font-normal text-primary pl-2 border-l-2 border-primary">
-                        {analysis.wealth_migration.to}
+                        {elitePulseData.wealth_migration.to}
                       </div>
                     </div>
                   </div>
@@ -450,16 +501,16 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                   <div className="space-y-3">
                     <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Volume & Timeline</div>
                     <div className="space-y-2">
-                      <p className="text-sm font-semibold text-foreground">{analysis.wealth_migration.volume}</p>
-                      <p className="text-sm text-muted-foreground italic">{analysis.wealth_migration.timeline}</p>
+                      <p className="text-sm font-semibold text-foreground">{elitePulseData.wealth_migration.volume}</p>
+                      <p className="text-sm text-muted-foreground italic">{elitePulseData.wealth_migration.timeline}</p>
                     </div>
                   </div>
                   
-                  {analysis.wealth_migration.historical_analog && (
+                  {elitePulseData.wealth_migration.historical_analog && (
                     <div className="space-y-3">
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Historical Precedent</div>
                       <div className="pl-3 border-l border-primary/40">
-                        <p className="text-sm text-muted-foreground italic leading-relaxed">{analysis.wealth_migration.historical_analog}</p>
+                        <p className="text-sm text-muted-foreground italic leading-relaxed">{elitePulseData.wealth_migration.historical_analog}</p>
                       </div>
                     </div>
                   )}
@@ -483,7 +534,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-primary">The Move</h4>
                   <p className="text-sm leading-relaxed font-medium text-foreground">
-                    {analysis.the_100k_move.action}
+                    {elitePulseData.the_100k_move.action}
                   </p>
                 </div>
                 
@@ -492,38 +543,38 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                   <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg p-3 border border-primary/20">
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">ENTRY CAPITAL</div>
                     <div className="text-lg font-bold text-primary">
-                      {analysis.the_100k_move.entry_capital?.replace('100000 USD', '$100K')}
+                      {elitePulseData.the_100k_move.entry_capital?.replace('100000 USD', '$100K')}
                     </div>
                   </div>
                   <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-lg p-3 border border-green-500/20">
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">PROJECTED RETURN</div>
                     <div className="text-lg font-bold text-green-600">
-                      {analysis.the_100k_move.projected_return?.match(/(\d+(?:-\d+)?)%/)?.[0] || "28-35% IRR"}
+                      {elitePulseData.the_100k_move.projected_return?.match(/(\d+(?:-\d+)?)%/)?.[0] || "28-35% IRR"}
                     </div>
                   </div>
                 </div>
 
                 {/* Execution Details */}
-                {(analysis.the_100k_move.execution_timeline || analysis.the_100k_move.service_providers || analysis.the_100k_move.exit_strategy) && (
+                {(elitePulseData.the_100k_move.execution_timeline || elitePulseData.the_100k_move.service_providers || elitePulseData.the_100k_move.exit_strategy) && (
                   <div className="space-y-4">
                     <h4 className="text-sm font-bold text-primary">Execution Plan</h4>
                     <div className="space-y-4">
-                      {analysis.the_100k_move.execution_timeline && (
+                      {elitePulseData.the_100k_move.execution_timeline && (
                         <div className="space-y-2">
                           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">TIMELINE</div>
-                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{analysis.the_100k_move.execution_timeline}</p>
+                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{elitePulseData.the_100k_move.execution_timeline}</p>
                         </div>
                       )}
-                      {analysis.the_100k_move.service_providers && (
+                      {elitePulseData.the_100k_move.service_providers && (
                         <div className="space-y-2">
                           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">SERVICE PROVIDERS</div>
-                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{analysis.the_100k_move.service_providers}</p>
+                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{elitePulseData.the_100k_move.service_providers}</p>
                         </div>
                       )}
-                      {analysis.the_100k_move.exit_strategy && (
+                      {elitePulseData.the_100k_move.exit_strategy && (
                         <div className="space-y-2">
                           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">EXIT STRATEGY</div>
-                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{analysis.the_100k_move.exit_strategy}</p>
+                          <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{elitePulseData.the_100k_move.exit_strategy}</p>
                         </div>
                       )}
                     </div>
@@ -547,7 +598,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                 <div className="relative">
                   <div className="absolute -left-1 top-0 w-0.5 h-full bg-gradient-to-b from-primary to-primary/50 rounded-full"></div>
                   <blockquote className="text-base leading-relaxed italic font-medium text-foreground pl-4">
-                    "{analysis.whisper_intelligence}"
+                    "{elitePulseData.whisper_intelligence}"
                   </blockquote>
                 </div>
                 
@@ -561,7 +612,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
             </section>
 
             {/* Risk Assessment Section */}
-            {(analysis.arbitrage_gap.risk_factors || analysis.arbitrage_gap.regulatory_considerations) && (
+            {(elitePulseData.arbitrage_gap.risk_factors || elitePulseData.arbitrage_gap.regulatory_considerations) && (
               <section ref={riskRef} className="space-y-4">
                 <div className="lg:hidden mb-4">
                   <div className="flex items-center space-x-2 mb-2">
@@ -572,11 +623,11 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                 </div>
                 
                 <div className="space-y-6">
-                  {analysis.arbitrage_gap.risk_factors && (
+                  {elitePulseData.arbitrage_gap.risk_factors && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Key Risk Factors</h4>
                       <div className="space-y-3">
-                        {analysis.arbitrage_gap.risk_factors.map((risk, index) => (
+                        {elitePulseData.arbitrage_gap.risk_factors.map((risk, index) => (
                           <div key={index} className="flex items-start space-x-3 pl-1">
                             <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <p className="text-sm leading-relaxed">{risk}</p>
@@ -585,11 +636,11 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                       </div>
                     </div>
                   )}
-                  {analysis.arbitrage_gap.regulatory_considerations && (
+                  {elitePulseData.arbitrage_gap.regulatory_considerations && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Regulatory Requirements</h4>
                       <div className="space-y-3">
-                        {analysis.arbitrage_gap.regulatory_considerations.map((reg, index) => (
+                        {elitePulseData.arbitrage_gap.regulatory_considerations.map((reg, index) => (
                           <div key={index} className="flex items-start space-x-3 pl-1">
                             <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <p className="text-sm leading-relaxed">{reg}</p>
@@ -603,7 +654,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
             )}
 
             {/* Institutional Intelligence Section */}
-            {analysis.pattern_recognition.institutional_positioning && (
+            {elitePulseData.pattern_recognition.institutional_positioning && (
               <section ref={institutionalRef} className="space-y-4">
                 <div className="lg:hidden mb-4">
                   <div className="flex items-center space-x-2 mb-2">
@@ -614,27 +665,27 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                 </div>
                 
                 <div className="space-y-6">
-                  {analysis.pattern_recognition.institutional_positioning.sovereign_funds && (
+                  {elitePulseData.pattern_recognition.institutional_positioning.sovereign_funds && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Sovereign Wealth Funds</h4>
                       <div className="pl-3 border-l-2 border-primary/30">
-                        <p className="text-sm leading-relaxed">{analysis.pattern_recognition.institutional_positioning.sovereign_funds}</p>
+                        <p className="text-sm leading-relaxed">{elitePulseData.pattern_recognition.institutional_positioning.sovereign_funds}</p>
                       </div>
                     </div>
                   )}
-                  {analysis.pattern_recognition.institutional_positioning.family_offices && (
+                  {elitePulseData.pattern_recognition.institutional_positioning.family_offices && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Family Offices</h4>
                       <div className="pl-3 border-l-2 border-primary/30">
-                        <p className="text-sm leading-relaxed">{analysis.pattern_recognition.institutional_positioning.family_offices}</p>
+                        <p className="text-sm leading-relaxed">{elitePulseData.pattern_recognition.institutional_positioning.family_offices}</p>
                       </div>
                     </div>
                   )}
-                  {analysis.pattern_recognition.institutional_positioning.hedge_funds && (
+                  {elitePulseData.pattern_recognition.institutional_positioning.hedge_funds && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Hedge Funds</h4>
                       <div className="pl-3 border-l-2 border-primary/30">
-                        <p className="text-sm leading-relaxed">{analysis.pattern_recognition.institutional_positioning.hedge_funds}</p>
+                        <p className="text-sm leading-relaxed">{elitePulseData.pattern_recognition.institutional_positioning.hedge_funds}</p>
                       </div>
                     </div>
                   )}
@@ -643,7 +694,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
             )}
 
             {/* Convergence Analysis Section */}
-            {analysis.pattern_recognition.convergence_analysis && (
+            {elitePulseData.pattern_recognition.convergence_analysis && (
               <section ref={convergenceRef} className="space-y-4">
                 <div className="lg:hidden mb-4">
                   <div className="flex items-center space-x-2 mb-2">
@@ -654,11 +705,11 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                 </div>
                 
                 <div className="space-y-6">
-                  {analysis.pattern_recognition.convergence_analysis.converging_factors && (
+                  {elitePulseData.pattern_recognition.convergence_analysis.converging_factors && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Converging Factors</h4>
                       <div className="space-y-3">
-                        {analysis.pattern_recognition.convergence_analysis.converging_factors.map((factor, index) => (
+                        {elitePulseData.pattern_recognition.convergence_analysis.converging_factors.map((factor, index) => (
                           <div key={index} className="flex items-start space-x-3 pl-1">
                             <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <p className="text-sm leading-relaxed">{factor}</p>
@@ -667,19 +718,137 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
                       </div>
                     </div>
                   )}
-                  {analysis.pattern_recognition.convergence_analysis.convergence_timeline && (
+                  {elitePulseData.pattern_recognition.convergence_analysis.convergence_timeline && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Timeline</h4>
                       <div className="pl-3 border-l-2 border-primary/30">
-                        <p className="text-sm leading-relaxed">{analysis.pattern_recognition.convergence_analysis.convergence_timeline}</p>
+                        <p className="text-sm leading-relaxed">{elitePulseData.pattern_recognition.convergence_analysis.convergence_timeline}</p>
                       </div>
                     </div>
                   )}
-                  {analysis.pattern_recognition.convergence_analysis.post_convergence_scenario && (
+                  {elitePulseData.pattern_recognition.convergence_analysis.post_convergence_scenario && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-bold text-primary">Post-Convergence Scenario</h4>
                       <div className="pl-3 border-l-2 border-primary/30">
-                        <p className="text-sm leading-relaxed">{analysis.pattern_recognition.convergence_analysis.post_convergence_scenario}</p>
+                        <p className="text-sm leading-relaxed">{elitePulseData.pattern_recognition.convergence_analysis.post_convergence_scenario}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Regulatory Compliance Section */}
+            {elitePulseData.regulatory_compliance && (
+              <section ref={regulatoryRef} className="space-y-4">
+                <div className="lg:hidden mb-4">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertTriangle className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-bold text-primary">REGULATORY COMPLIANCE</h3>
+                    <span className="text-xs text-muted-foreground bg-muted/20 px-2 py-0.5 rounded-full">Multi-jurisdiction</span>
+                  </div>
+                  <div className="h-px bg-gradient-to-r from-primary/50 to-transparent"></div>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Optimal Structure */}
+                  {elitePulseData.regulatory_compliance.optimal_structure && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-primary">Recommended Structure</h4>
+                      <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-4 border border-primary/20">
+                        <p className="text-sm leading-relaxed font-medium mb-2">{elitePulseData.regulatory_compliance.optimal_structure.recommended_jurisdiction}</p>
+                        {elitePulseData.regulatory_compliance.optimal_structure.cost_benefit_analysis && (
+                          <p className="text-xs text-muted-foreground">{elitePulseData.regulatory_compliance.optimal_structure.cost_benefit_analysis}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* US Compliance */}
+                  {elitePulseData.regulatory_compliance.us_compliance && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-primary flex items-center space-x-2">
+                        <span>US Compliance</span>
+                        {elitePulseData.regulatory_compliance.us_compliance.costs_usd && (
+                          <span className="text-xs font-normal text-muted-foreground bg-muted/20 px-2 py-0.5 rounded-full">
+                            {elitePulseData.regulatory_compliance.us_compliance.costs_usd}
+                          </span>
+                        )}
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {elitePulseData.regulatory_compliance.us_compliance.requirements && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Requirements</div>
+                            <div className="space-y-1">
+                              {elitePulseData.regulatory_compliance.us_compliance.requirements.slice(0, 3).map((req, index) => (
+                                <div key={index} className="text-xs text-muted-foreground leading-relaxed pl-2 border-l-2 border-primary/20">
+                                  {req}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {elitePulseData.regulatory_compliance.us_compliance.timeline && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Timeline</div>
+                            <p className="text-xs text-muted-foreground pl-2 border-l-2 border-primary/20">{elitePulseData.regulatory_compliance.us_compliance.timeline}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* UK Compliance */}
+                  {elitePulseData.regulatory_compliance.uk_compliance && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-primary flex items-center space-x-2">
+                        <span>UK Compliance</span>
+                        {elitePulseData.regulatory_compliance.uk_compliance.costs_usd && (
+                          <span className="text-xs font-normal text-muted-foreground bg-muted/20 px-2 py-0.5 rounded-full">
+                            {elitePulseData.regulatory_compliance.uk_compliance.costs_usd}
+                          </span>
+                        )}
+                      </h4>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {elitePulseData.regulatory_compliance.uk_compliance.requirements && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Requirements</div>
+                            <div className="space-y-1">
+                              {elitePulseData.regulatory_compliance.uk_compliance.requirements.slice(0, 3).map((req, index) => (
+                                <div key={index} className="text-xs text-muted-foreground leading-relaxed pl-2 border-l-2 border-primary/20">
+                                  {req}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {elitePulseData.regulatory_compliance.uk_compliance.recent_changes && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recent Changes</div>
+                            <p className="text-xs text-muted-foreground pl-2 border-l-2 border-primary/20">{elitePulseData.regulatory_compliance.uk_compliance.recent_changes}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cross-Border Considerations */}
+                  {elitePulseData.regulatory_compliance.cross_border_considerations && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-primary">Cross-Border Considerations</h4>
+                      <div className="space-y-4">
+                        {elitePulseData.regulatory_compliance.cross_border_considerations.tax_treaties && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tax Treaties</div>
+                            <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{elitePulseData.regulatory_compliance.cross_border_considerations.tax_treaties}</p>
+                          </div>
+                        )}
+                        {elitePulseData.regulatory_compliance.cross_border_considerations.beneficial_ownership && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Beneficial Ownership</div>
+                            <p className="text-sm pl-3 border-l-2 border-primary/30 leading-relaxed">{elitePulseData.regulatory_compliance.cross_border_considerations.beneficial_ownership}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -701,7 +870,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
               <div className="space-y-2">
                 <h4 className="text-sm font-bold text-primary">The Expensive Problem</h4>
                 <p className="text-sm leading-relaxed font-medium">
-                  {analysis.expensive_problem}
+                  {elitePulseData.expensive_problem}
                 </p>
               </div>
             </section>
