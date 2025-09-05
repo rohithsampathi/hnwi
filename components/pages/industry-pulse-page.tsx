@@ -11,6 +11,7 @@ import { secureApi } from "@/lib/secure-api"
 import { useToast } from "@/components/ui/use-toast"
 import { Layout } from "@/components/layout/layout"
 import { DevelopmentStream } from "@/components/development-stream"
+import { useHNWIWorldTags } from "@/contexts/elite-pulse-context"
 import { IndustryTrendsBubbles } from "@/components/industry-trends-bubbles"
 import { getIndustryColor } from "@/utils/color-utils"
 import { useSearchParams } from "next/navigation"
@@ -32,6 +33,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
   const [isLoadingDevelopments, setIsLoadingDevelopments] = useState(false)
   
   const { toast } = useToast()
+  const hnwiWorldTags = useHNWIWorldTags()
   
   
   const searchParams = useSearchParams()
@@ -288,6 +290,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
             endDate={endDate ? endDate : undefined}
             developments={developments}
             isLoading={isLoadingDevelopments}
+            elitePulseBriefIds={hnwiWorldTags?.source_brief_ids || []}
           />
         </CardContent>
       </Card>

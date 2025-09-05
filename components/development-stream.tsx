@@ -63,6 +63,9 @@ interface DevelopmentStreamProps {
   endDate?: string
   developments?: any[] // Accept developments as props
   isLoading?: boolean
+  elitePulseBriefIds?: string[] // Elite Pulse source brief IDs for tagging
+  showElitePulseOnly?: boolean // Filter to show only Elite Pulse developments
+  elitePulseImpactFilter?: 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW' // Impact level filter
 }
 
 // Component now receives data as props, no API calls needed
@@ -211,6 +214,9 @@ export function DevelopmentStream({
   endDate,
   developments = [],
   isLoading = false,
+  elitePulseBriefIds = [],
+  showElitePulseOnly = false,
+  elitePulseImpactFilter = 'ALL',
 }: DevelopmentStreamProps) {
   
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
@@ -219,6 +225,44 @@ export function DevelopmentStream({
   const { theme } = useTheme()
 
   // Component now receives developments as props, no need to fetch
+
+  // Helper function to get Elite Pulse impact level from development
+  const getElitePulseImpact = (dev: any): 'HIGH' | 'MEDIUM' | 'LOW' | null => {
+    // Check if development has Elite Pulse impact data
+    if (dev.elite_pulse_impact && dev.elite_pulse_impact.impact_level) {
+      return dev.elite_pulse_impact.impact_level;
+    }
+    
+    // Fallback: if it's tagged as Elite Pulse brief but no impact level, assume MEDIUM
+    if (elitePulseBriefIds.includes(dev.id)) {
+      return 'MEDIUM';
+    }
+    
+    return null;
+  };
+
+  // Filter developments based on Elite Pulse criteria
+  const getFilteredDevelopments = () => {
+    let filteredDevs = developments
+      .filter(dev => selectedIndustry === 'All' || dev.industry === selectedIndustry);
+    
+    // Apply Elite Pulse only filter
+    if (showElitePulseOnly) {
+      filteredDevs = filteredDevs.filter(dev => 
+        elitePulseBriefIds.includes(dev.id) || getElitePulseImpact(dev)
+      );
+    }
+    
+    // Apply impact level filter
+    if (elitePulseImpactFilter !== 'ALL') {
+      filteredDevs = filteredDevs.filter(dev => {
+        const impactLevel = getElitePulseImpact(dev);
+        return impactLevel === elitePulseImpactFilter;
+      });
+    }
+    
+    return filteredDevs;
+  };
 
   const toggleCardExpansion = (id: string) => {
     setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -253,9 +297,9 @@ export function DevelopmentStream({
         </div>
       ) : (
         <div className="w-full space-y-4">
-          {developments
-            .filter(dev => selectedIndustry === 'All' || dev.industry === selectedIndustry)
-            .map((dev) => (
+          {getFilteredDevelopments().map((dev) => {
+            const elitePulseImpact = getElitePulseImpact(dev);
+            return (
             <div key={dev.id} id={`development-card-${dev.id}`} className={`relative ${expandedCards[dev.id] ? '' : 'min-h-[179px]'}`}>
               {/* Unified frame wrapper for both main card and expanded content */}
               <div 
@@ -279,14 +323,37 @@ export function DevelopmentStream({
                   {/* Header with Product badge, title and toggle */}
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col flex-1 mr-3">
-                      {dev.product && (
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs font-normal px-2 py-1 rounded-md text-muted-foreground border-muted-foreground/30 whitespace-nowrap w-fit mb-1"
-                        >
-                          {dev.product}
-                        </Badge>
-                      )}
+                      <div className="flex items-center space-x-2 mb-1">
+                        {dev.product && (
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs font-normal px-2 py-1 rounded-md text-muted-foreground border-muted-foreground/30 whitespace-nowrap w-fit"
+                          >
+                            {dev.product}
+                          </Badge>
+                        )}
+                        {(elitePulseBriefIds.includes(dev.id) || elitePulseImpact) && (
+                          <div className="flex items-center gap-2">
+                            <Badge className="text-xs font-semibold px-2 py-1 rounded-md bg-gradient-to-r from-primary to-primary/80 text-white whitespace-nowrap w-fit">
+                              Elite Pulse
+                            </Badge>
+                            {elitePulseImpact && (
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs font-medium px-2 py-1 rounded-md whitespace-nowrap w-fit ${
+                                  elitePulseImpact === 'HIGH' 
+                                    ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950 dark:text-red-400' 
+                                    : elitePulseImpact === 'MEDIUM'
+                                    ? 'border-yellow-500 text-yellow-600 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-400'
+                                    : 'border-green-500 text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400'
+                                }`}
+                              >
+                                {elitePulseImpact} Impact
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <h3 className={`text-lg font-black mb-3 line-clamp-2 ${
                         theme === "dark" ? "text-primary" : "text-black"
                       }`}>
@@ -569,9 +636,10 @@ export function DevelopmentStream({
                   </div>
                 </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      </div>
+    </div>
   )
 }

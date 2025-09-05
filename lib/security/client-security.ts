@@ -12,7 +12,7 @@ interface SecurityConfig {
 
 export class ClientSecurityManager {
   private static config: SecurityConfig = {
-    sessionTimeout: 15 * 60 * 1000, // 15 minutes
+    sessionTimeout: 30 * 60 * 1000, // 30 minutes
     maxLoginAttempts: 3,
     lockoutDuration: 30 * 60 * 1000, // 30 minutes
     requireMFA: true,

@@ -9,7 +9,7 @@ import Image from "next/image"
 import { useTheme } from "@/contexts/theme-context"
 import { UserCircle2 } from "lucide-react"
 import { Heading2 } from "@/components/ui/typography"
-import { HomeDashboard } from "./home-dashboard"
+import { HomeDashboardElite } from "./home-dashboard-elite"
 import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
 import { ProfilePage } from "./profile-page"
@@ -27,6 +27,7 @@ import { SocialHubPage } from "./pages/social-hub-page"
 import CrownVaultPage from "./pages/crown-vault-page"
 import { handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
+import { setupLegacyNavigation, useNewNavigation } from "@/lib/unified-navigation"
 
 // LoginPage is now consolidated into SplashScreen
 
@@ -77,6 +78,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   const { toast } = useToast()
   const { theme } = useTheme()
 
+  // Setup unified navigation system for legacy compatibility
+  useEffect(() => {
+    setupLegacyNavigation(handleNavigation)
+  }, [])
+
   useEffect(() => {
     let isMounted = true
 
@@ -87,21 +93,34 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           return;
         }
         
-        // SECURITY: Check for display data in sessionStorage (non-sensitive only)
-        const storedUserDisplay = sessionStorage.getItem("userDisplay");
-        if (storedUserDisplay && !user) {
-          try {
-            const userDisplay = JSON.parse(storedUserDisplay);
-            // This is just display data - still need to verify with server
-            // Continue with API validation below
-          } catch (e) {
-            // Clear invalid display data
-            sessionStorage.removeItem("userDisplay");
+        // PRIORITY 1: Check localStorage for immediate session restoration (prevents race conditions)
+        if (!user) {
+          const storedUserId = localStorage.getItem("userId");
+          const storedToken = localStorage.getItem("token");
+          const storedUserObject = localStorage.getItem("userObject");
+          
+          if (storedUserId && storedToken && storedUserObject) {
+            try {
+              const userObj = JSON.parse(storedUserObject);
+              // Immediately restore user state to prevent navigation issues
+              if (isMounted && userObj.id) {
+                setUser(userObj);
+                setHasCheckedSession(true);
+                setIsSessionCheckComplete(true);
+                
+                // Continue with background validation but don't block navigation
+                setTimeout(() => validateSessionInBackground(userObj), 100);
+                return;
+              }
+            } catch (e) {
+              // Invalid stored user object, continue to server validation
+              localStorage.removeItem("userObject");
+            }
           }
         }
         
-        // Always validate session with server (secure approach)
-        if (!hasCheckedSession) {
+        // PRIORITY 2: Server validation only if no valid local session
+        if (!hasCheckedSession && !user) {
           setIsLoading(true);
           const response = await fetch("/api/auth/session", {
             credentials: 'include' // Include httpOnly cookies
@@ -128,9 +147,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               // Store the token for API calls if provided
               if (data.token) {
                 localStorage.setItem("token", data.token);
-                // Store user ID for API calls
                 localStorage.setItem("userId", userObj.user_id || userObj.id);
               }
+              
+              // Store complete user object for immediate restoration
+              localStorage.setItem("userObject", JSON.stringify(userObj));
   
               // SECURITY: Store only non-sensitive display data in sessionStorage
               sessionStorage.setItem("userDisplay", JSON.stringify({
@@ -144,6 +165,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               sessionStorage.removeItem("userDisplay");
               localStorage.removeItem("token");
               localStorage.removeItem("userId");
+              localStorage.removeItem("userObject");
             }
             
             setHasCheckedSession(true);
@@ -163,6 +185,29 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         }
       }
     }
+    
+    // Background session validation (doesn't affect navigation)
+    const validateSessionInBackground = async (currentUser: User) => {
+      try {
+        const response = await fetch("/api/auth/session", {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (!data.user && isMounted) {
+          // Session expired, need to logout
+          setUser(null);
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          localStorage.removeItem("userObject");
+          sessionStorage.removeItem("userDisplay");
+        }
+      } catch (error) {
+        // Background validation failed, but don't disrupt current session
+        // Only log for debugging
+        console.warn("Background session validation failed:", error);
+      }
+    };
 
     checkUserSession();
 
@@ -181,7 +226,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     return () => {
       isMounted = false
     }
-  }, [currentPage, hasCheckedSession])
+  }, [hasCheckedSession]) // Removed currentPage to prevent re-running on navigation
 
   // Remove immediate redirect from splash screen to allow it to display
   // The redirect will now be handled by app-wrapper.tsx with a 3-second delay
@@ -650,9 +695,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         return <SplashScreen onLogin={() => {}} onLoginSuccess={handleLoginSuccess} showLogin={true} />
 
       case "dashboard":
-        // If not authenticated but trying to view dashboard, redirect to splash
-        if (!user) {
-          // Only redirect if we've finished checking the session
+        // Enhanced authentication check with localStorage fallback
+        const hasValidSession = user || (
+          localStorage.getItem("userId") && 
+          localStorage.getItem("token") && 
+          localStorage.getItem("userObject")
+        );
+        
+        if (!hasValidSession) {
+          // Only redirect if we've finished checking the session AND no valid localStorage data
           if (isSessionCheckComplete) {
             // Redirect to splash
             setTimeout(() => handleNavigation("splash"), 0);
@@ -670,7 +721,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         // User is authenticated, show dashboard without back button
         return (
           <Layout title="" onNavigate={handleNavigation} showBackButton={false} currentPage={currentPage}>
-            <HomeDashboard 
+            <HomeDashboardElite 
               user={user} 
               onNavigate={handleNavigation} 
               isFromSignupFlow={isFromSignupFlow} 

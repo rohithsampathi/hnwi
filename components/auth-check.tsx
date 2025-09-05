@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { isAuthenticated } from "@/lib/auth-utils"
+import { isAuthenticated, shouldSkip2FA, getDeviceTrustInfo, isAuthenticatedWithDeviceTrust } from "@/lib/auth-utils"
 import { Button } from "@/components/ui/button"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
 
@@ -18,24 +18,48 @@ export function AuthCheck({ children, showLoginPrompt = true, isInsiderBrief = f
 
   useEffect(() => {
     const checkAuth = () => {
-      const authenticated = isAuthenticated()
-      setIsAuth(authenticated)
+      const authInfo = isAuthenticatedWithDeviceTrust()
+      setIsAuth(authInfo.isAuthenticated)
       
-      if (!authenticated) {
-        
-        // Show popup for all cases except insider brief
-        if (!isInsiderBrief && showLoginPrompt) {
-          showAuthPopup({
-            title: "Sign In Required",
-            description: "Due to inactivity, your secure line has been logged out. Login again to restore secure access.",
-            onSuccess: () => {
-              // Simply recheck auth state without recursive timeout
-              const authenticated = isAuthenticated();
-              setIsAuth(authenticated);
+      if (!authInfo.isAuthenticated) {
+        // Add a small delay to allow for session restoration on page load
+        // This prevents showing auth popup immediately on refresh
+        const timeoutId = setTimeout(() => {
+          // Recheck authentication after delay to handle page refresh case
+          const recheckInfo = isAuthenticatedWithDeviceTrust()
+          if (!recheckInfo.isAuthenticated) {
+            // Check if device is trusted and should skip 2FA popup
+            if (authInfo.isDeviceTrusted && shouldSkip2FA()) {
+              // Device is trusted, skip auth popup
+              setIsAuth(true);
+              return;
             }
-          });
-        }
-      } else {
+            
+            // Show popup for all cases except insider brief
+            if (!isInsiderBrief && showLoginPrompt) {
+              const trustInfo = getDeviceTrustInfo();
+              const description = trustInfo.isTrusted 
+                ? `Your secure session expired. Device trust: ${trustInfo.timeRemaining}. Login to restore access.`
+                : "Due to inactivity, your secure line has been logged out. Login again to restore secure access.";
+                
+              showAuthPopup({
+                title: "Sign In Required",
+                description,
+                onSuccess: () => {
+                  // Simply recheck auth state without recursive timeout
+                  const authenticated = isAuthenticated();
+                  setIsAuth(authenticated);
+                }
+              });
+            }
+          } else {
+            // Authentication was restored, update state
+            setIsAuth(true)
+          }
+        }, 1000) // 1 second delay to allow session restoration
+        
+        // Cleanup timeout on unmount
+        return () => clearTimeout(timeoutId)
       }
     }
     

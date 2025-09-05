@@ -6,13 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Plus, Shield, Users, Building, Car, Gem, Palette, DollarSign, 
-  Search, Loader2, Vault, MapPin, FileText
+  Search, Loader2, Vault, MapPin, FileText, AlertTriangle, Zap, Clock,
+  Info, MoreVertical, Edit, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs } from "@/lib/api";
+import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsset, deleteCrownVaultAsset } from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
@@ -24,6 +27,94 @@ interface AssetsSectionProps {
   onAssetClick: (asset: CrownVaultAsset) => void;
   setAssets: React.Dispatch<React.SetStateAction<CrownVaultAsset[]>>;
 }
+
+// Impact Analysis Component
+const ImpactAnalysisTag = ({ asset }: { asset: CrownVaultAsset }) => {
+  const impact = asset.elite_pulse_impact;
+  
+  // Return null if no impact data available
+  if (!impact) {
+    return (
+      <TooltipProvider>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-semibold text-primary border-primary/30 bg-primary/10 hover:bg-primary/20">
+            IMPACT: ANALYZING
+          </Badge>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-auto w-auto p-1 hover:bg-transparent">
+                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-xs p-4 space-y-2">
+              <div className="font-semibold">Impact Analysis</div>
+              <div className="text-sm space-y-2">
+                <div>
+                  <div className="font-medium">Status:</div>
+                  <div className="text-muted-foreground">Elite Pulse analysis in progress for this asset.</div>
+                </div>
+                <div className="text-xs text-muted-foreground border-t pt-2">
+                  Analysis will be available within 24 hours
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    );
+  }
+
+  const riskLevel = impact.risk_level || 'UNKNOWN';
+  const impactSummary = impact.ui_display?.concern_summary || 'Elite Pulse impact analysis available';
+  const recommendations = impact.ui_display?.recommendation || 'Monitor market conditions';
+  const analysisDate = impact.timestamp || new Date().toISOString();
+  
+  // Get impact tag styling
+  const getTagStyle = () => {
+    switch (riskLevel) {
+      case 'HIGH': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+      case 'MEDIUM': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300';
+      case 'LOW': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <div className="flex items-center gap-2">
+        <Badge 
+          variant="outline" 
+          className="text-xs font-semibold text-primary border-primary/30 bg-primary/10 hover:bg-primary/20"
+        >
+          IMPACT: {riskLevel}
+        </Badge>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-auto w-auto p-1 hover:bg-transparent">
+              <Info className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-xs p-4 space-y-2">
+            <div className="font-semibold">Impact Analysis</div>
+            <div className="text-sm space-y-2">
+              <div>
+                <div className="font-medium">Assessment:</div>
+                <div className="text-muted-foreground">{impactSummary}</div>
+              </div>
+              <div>
+                <div className="font-medium">Recommendations:</div>
+                <div className="text-muted-foreground">{recommendations}</div>
+              </div>
+              <div className="text-xs text-muted-foreground border-t pt-2">
+                Analysis: {new Date(analysisDate).toLocaleDateString()}
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
+};
 
 const getAssetIcon = (assetType: string) => {
   switch (assetType.toLowerCase()) {
@@ -63,6 +154,72 @@ const formatAssetType = (type: string) => {
     .join(' ');
 };
 
+// Elite Pulse Impact Badge Utilities
+const getElitePulseImpactBadge = (asset: CrownVaultAsset) => {
+  const impact = asset.elite_pulse_impact;
+  if (!impact) return null;
+  
+  const riskLevel = impact.risk_level || 'UNKNOWN';
+  const badgeText = impact.ui_display?.badge_text || `${riskLevel} RISK`;
+  const riskColor = impact.ui_display?.risk_badge_color || 'gray';
+  
+  // Get appropriate icon based on risk level
+  const getImpactIcon = () => {
+    switch (riskLevel) {
+      case 'HIGH': return AlertTriangle;
+      case 'MEDIUM': return Clock;
+      case 'LOW': return Shield;
+      default: return Zap;
+    }
+  };
+
+  // Get badge styling based on risk level
+  const getBadgeStyle = () => {
+    switch (riskLevel) {
+      case 'HIGH':
+        return {
+          bg: 'bg-red-500/90 hover:bg-red-600/90',
+          text: 'text-white',
+          border: 'border-red-600',
+          pulse: 'animate-pulse'
+        };
+      case 'MEDIUM':
+        return {
+          bg: 'bg-orange-500/90 hover:bg-orange-600/90',
+          text: 'text-white',
+          border: 'border-orange-600',
+          pulse: ''
+        };
+      case 'LOW':
+        return {
+          bg: 'bg-green-500/90 hover:bg-green-600/90',
+          text: 'text-white',
+          border: 'border-green-600',
+          pulse: ''
+        };
+      default:
+        return {
+          bg: 'bg-gray-500/90 hover:bg-gray-600/90',
+          text: 'text-white',
+          border: 'border-gray-600',
+          pulse: ''
+        };
+    }
+  };
+
+  const IconComponent = getImpactIcon();
+  const style = getBadgeStyle();
+  
+  return {
+    badgeText,
+    riskLevel,
+    icon: IconComponent,
+    style,
+    tooltip: impact.ui_display?.tooltip_title || `Elite Pulse Impact: ${riskLevel}`,
+    concern: impact.ui_display?.concern_summary || 'Katherine Sterling-Chen risk assessment'
+  };
+};
+
 const getUniqueAssetTypes = (assets: CrownVaultAsset[]) => {
   const types = new Set<string>();
   assets.forEach(asset => {
@@ -80,6 +237,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   const [sortBy, setSortBy] = useState("value-desc");
   const [heirUpdateLoading, setHeirUpdateLoading] = useState<Set<string>>(new Set());
   const [newlyAddedAssets, setNewlyAddedAssets] = useState<Set<string>>(new Set());
+  const [deletingAssets, setDeletingAssets] = useState<Set<string>>(new Set());
   
   const { toast } = useToast();
 
@@ -115,6 +273,60 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
         return newSet;
       });
     }
+  };
+
+  // Handle asset deletion
+  const handleDeleteAsset = async (asset: CrownVaultAsset) => {
+    console.log('Delete asset called for:', asset.asset_id, asset.asset_data.name);
+    
+    if (!confirm(`Are you sure you want to delete "${asset.asset_data.name}"? This action cannot be undone.`)) {
+      console.log('Delete cancelled by user');
+      return;
+    }
+
+    try {
+      console.log('Starting delete process...');
+      setDeletingAssets(prev => new Set([...prev, asset.asset_id]));
+      
+      console.log('Calling deleteCrownVaultAsset API...');
+      const result = await deleteCrownVaultAsset(asset.asset_id);
+      console.log('Delete API result:', result);
+      
+      // Remove asset from state
+      setAssets(prevAssets => prevAssets.filter(a => a.asset_id !== asset.asset_id));
+      console.log('Asset removed from state');
+      
+      toast({
+        title: "Asset Deleted",
+        description: `${asset.asset_data.name} has been permanently removed from your vault.`,
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.error('Delete asset error:', error);
+      toast({
+        title: "Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete asset. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeletingAssets(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(asset.asset_id);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle asset editing (placeholder - could open a modal)
+  const handleEditAsset = (asset: CrownVaultAsset) => {
+    console.log('Edit asset called for:', asset.asset_id, asset.asset_data.name);
+    toast({
+      title: "Edit Asset",
+      description: "Asset editing functionality will be available soon. You can click the card to view details.",
+      variant: "default"
+    });
+    // TODO: Implement edit modal or redirect to edit page
   };
 
   const filteredAssets = assets.filter(asset => {
@@ -250,6 +462,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
             const IconComponent = getAssetIcon(asset.asset_data.asset_type || '');
             const isNewlyAdded = newlyAddedAssets.has(asset.asset_id);
             const isUpdating = heirUpdateLoading.has(asset.asset_id);
+            const isDeleting = deletingAssets.has(asset.asset_id);
             
             return (
               <motion.div
@@ -263,7 +476,12 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                 <div 
                   className={`${getMetallicCardStyle(theme).className} hover:shadow-xl transition-all duration-300 cursor-pointer h-full overflow-hidden`} 
                   style={getMetallicCardStyle(theme).style}
-                  onClick={() => onAssetClick(asset)}
+                  onClick={(e) => {
+                    // Only trigger asset click if not clicking on dropdown or its children
+                    if (!e.target || !(e.target as Element).closest('[data-dropdown-container]')) {
+                      onAssetClick(asset);
+                    }
+                  }}
                 >
                   {/* Premium Asset Image - Full Width Top Banner */}
                   <div className="relative w-full h-48 mb-6">
@@ -275,34 +493,100 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10" />
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 flex flex-col gap-2">
                       <div className={`px-3 py-1 rounded-full text-xs font-semibold ${theme === 'dark' ? 'bg-black/40 text-white' : 'bg-black/70 text-white'} backdrop-blur-sm`}>
                         {formatAssetType(asset.asset_data.asset_type || 'Asset')}
                       </div>
+                      {/* Elite Pulse Impact Badge */}
+                      {(() => {
+                        const impactBadge = getElitePulseImpactBadge(asset);
+                        if (!impactBadge) return null;
+                        
+                        const { icon: ImpactIcon, style, badgeText, tooltip, concern } = impactBadge;
+                        
+                        return (
+                          <div 
+                            className={`group px-2 py-1 rounded-full text-xs font-bold border-2 backdrop-blur-sm cursor-help transition-all duration-200 ${style.bg} ${style.text} ${style.border} ${style.pulse}`}
+                            title={`${tooltip}\n\n${concern}`}
+                          >
+                            <div className="flex items-center gap-1">
+                              <ImpactIcon className="h-3 w-3" />
+                              <span className="text-[10px] font-extrabold tracking-wide">
+                                {badgeText}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
                   {/* Card Content - Redesigned Layout */}
                   <div className="p-6 pt-0">
 
-                    {/* Header Row: Title Left, Value Right */}
+                    {/* Header Row: Title Left, Actions Right */}
                     <div className="flex items-start justify-between mb-4">
                       {/* Left: Asset Title */}
                       <div className="flex-1 pr-4">
                         <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white/80' : 'text-black/80'}`}>
                           {asset.asset_data.name || 'Unnamed Asset'}
                         </h3>
+                        {/* Value moved below title */}
+                        <div className="mt-2">
+                          <p className={`text-2xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                            ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
+                          </p>
+                          <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
+                            {asset.asset_data.currency || 'USD'} Secured
+                          </p>
+                        </div>
                       </div>
                       
-                      {/* Right: Big Value with Subtext */}
-                      <div className="text-right">
-                        <p className={`text-3xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
-                          ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
-                        </p>
-                        <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
-                          {asset.asset_data.currency || 'USD'} Secured
-                        </p>
+                      {/* Right: Asset Actions Dropdown */}
+                      <div onClick={(e) => e.stopPropagation()} data-dropdown-container>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleEditAsset(asset);
+                              }}
+                              disabled={isDeleting || isUpdating}
+                              className="hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white focus:bg-primary focus:text-white"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Asset
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteAsset(asset);
+                              }}
+                              className="text-red-600 dark:text-red-400 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950 dark:focus:text-red-300"
+                              disabled={isDeleting || isUpdating}
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 mr-2" />
+                              )}
+                              {isDeleting ? "Deleting..." : "Delete Asset"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
+                    </div>
+
+                    {/* Impact Analysis Tag */}
+                    <div className="mb-4">
+                      <ImpactAnalysisTag asset={asset} />
                     </div>
 
                     {/* Location */}

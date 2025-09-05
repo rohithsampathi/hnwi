@@ -8,12 +8,16 @@ import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
 import { SidebarNavigation } from "../dashboard/sidebar-navigation"
 import { ThemeToggle } from "../theme-toggle"
-import { BusinessModeToggle } from "../business-mode-toggle"
+// import { BusinessModeToggle } from "../business-mode-toggle"
 import { BusinessModeBanner } from "../business-mode-banner"
+import { NotificationBell } from "@/components/notifications/notification-bell"
+import { NotificationCenter } from "@/components/notifications/notification-center"
+import { useNotificationContext } from "@/contexts/notification-context"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
+import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
 
 interface LayoutProps {
   children: ReactNode
@@ -27,6 +31,7 @@ interface LayoutProps {
 export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed = true, currentPage = "" }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
+  const { isCenterOpen, setCenterOpen } = useNotificationContext()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
   const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state (true = collapsed)
@@ -78,12 +83,26 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    onNavigate("dashboard")
+    // Use unified navigation system - automatically routes to active system
+    if (useNewNavigation()) {
+      // New system: use unified navigation
+      unifiedNavigate("dashboard")
+    } else {
+      // Legacy system: use onNavigate prop
+      onNavigate("dashboard")
+    }
   }
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    onNavigate("back")
+    // Use unified navigation system - automatically routes to active system
+    if (useNewNavigation()) {
+      // New system: use unified navigation
+      unifiedNavigate("back")
+    } else {
+      // Legacy system: use onNavigate prop
+      onNavigate("back")
+    }
   }
 
   return (
@@ -153,7 +172,8 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-4">
-            <BusinessModeToggle />
+            {/* <BusinessModeToggle /> */}
+            <NotificationBell />
             <ThemeToggle />
           </div>
         </div>
@@ -192,6 +212,11 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
           </div>
         </div>
       </main>
+
+      {/* Notification Center Modal */}
+      {isCenterOpen && (
+        <NotificationCenter onClose={() => setCenterOpen(false)} />
+      )}
 
     </div>
   )

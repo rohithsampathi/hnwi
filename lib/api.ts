@@ -160,10 +160,27 @@ export interface CrownVaultAsset {
     currency: string;
     location?: string;
     notes?: string;
+    decryption_error?: boolean;
   };
   heir_ids: string[];
   heir_names: string[];
   created_at: string;
+  error?: string;
+  // Elite Pulse Intelligence Enhancement from Backend
+  elite_pulse_impact?: {
+    risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+    ui_display: {
+      badge_text: string;
+      tooltip_title: string;
+      risk_indicator: string;
+      risk_badge_color: string;
+      concern_summary: string;
+    };
+    asset_specific_threat?: string;
+    recommended_action?: string;
+    timeline?: string;
+    katherine_analysis?: string;
+  };
 }
 
 export interface CrownVaultHeir {
@@ -600,27 +617,9 @@ export async function updateAssetHeirs(
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Get authentication token
-    const token = getValidToken();
-    if (!token) {
-      throw new Error('Authentication required. Please log in to access Crown Vault.');
-    }
-
-    // Call the Next.js API route which will proxy to backend
-    const response = await fetch(`/api/crown-vault/assets/${assetId}/heirs`, {
-      method: 'PUT',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ heir_ids: heirIds })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to update asset heirs: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    // Call Next.js API route (URL masked) - same pattern as other Crown Vault endpoints
+    const endpoint = `/api/crown-vault/assets/${assetId}/heirs`;
+    const data = await secureApi.put(endpoint, { heir_ids: heirIds }, true);
     
     // Return updated data with proper structure
     return {
@@ -629,6 +628,64 @@ export async function updateAssetHeirs(
       heir_names: data.heir_names || []
     };
   } catch (error) {
+    throw error;
+  }
+}
+
+// Update Crown Vault Asset
+export async function updateCrownVaultAsset(
+  assetId: string,
+  updateData: Partial<{
+    name: string;
+    asset_type: string;
+    value: number;
+    currency: string;
+    location: string;
+    notes: string;
+  }>
+): Promise<CrownVaultAsset> {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated. Please log in to access Crown Vault.');
+    }
+
+    const result = await secureApi.put(
+      `/api/crown-vault/assets/${assetId}`,
+      { asset_data: updateData },
+      true
+    );
+
+    return result.asset;
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Delete Crown Vault Asset
+export async function deleteCrownVaultAsset(assetId: string): Promise<{ message: string }> {
+  try {
+    console.log('deleteCrownVaultAsset called with assetId:', assetId);
+    
+    const userId = getCurrentUserId();
+    console.log('Current user ID:', userId);
+    
+    if (!userId) {
+      throw new Error('User not authenticated. Please log in to access Crown Vault.');
+    }
+
+    const deleteUrl = `/api/crown-vault/assets/${assetId}`;
+    console.log('DELETE URL:', deleteUrl);
+    console.log('Making secureApi.delete call...');
+    
+    const result = await secureApi.delete(deleteUrl, true);
+    console.log('Delete API result:', result);
+    
+    return {
+      message: result.message || 'Asset deleted successfully'
+    };
+  } catch (error) {
+    console.error('Error in deleteCrownVaultAsset:', error);
     throw error;
   }
 }

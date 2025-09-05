@@ -126,13 +126,10 @@ export function MfaCodeInput({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex justify-center">
-          <Shield className={`h-8 w-8 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-        </div>
-        <h2 className="text-xl font-semibold">Elite Authentication</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+      {/* Code Input Label */}
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 mb-4">
+          <Shield className="h-4 w-4 text-primary" />
           Enter the 6-digit security code sent to your email
         </p>
       </div>

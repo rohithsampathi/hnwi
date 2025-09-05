@@ -476,6 +476,78 @@ export const ASSET_IMAGE_MAP: Record<string, AssetImageConfig> = {
     keywords: ["energy", "power", "resources", "investment"]
   },
 
+  // === ADDITIONAL CATEGORIES ===
+  "cash": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Cash/money
+    alt: "Cash holdings",
+    keywords: ["cash", "money", "liquid", "currency"]
+  },
+  "bank account": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Banking
+    alt: "Bank account holdings",
+    keywords: ["bank", "account", "savings", "financial"]
+  },
+  "savings": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Savings
+    alt: "Savings account",
+    keywords: ["savings", "bank", "deposit", "money"]
+  },
+  "mutual funds": {
+    unsplashId: "photo-1611974789855-9c2a0a7236a3", // Mutual funds
+    alt: "Mutual fund investments",
+    keywords: ["mutual", "funds", "portfolio", "investment"]
+  },
+  "etf": {
+    unsplashId: "photo-1611974789855-9c2a0a7236a3", // ETF
+    alt: "ETF investments",
+    keywords: ["etf", "exchange", "traded", "fund"]
+  },
+  "pension": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Pension
+    alt: "Pension fund",
+    keywords: ["pension", "retirement", "fund", "savings"]
+  },
+  "retirement": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Retirement
+    alt: "Retirement savings",
+    keywords: ["retirement", "401k", "ira", "pension"]
+  },
+  "401k": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // 401k
+    alt: "401k retirement account",
+    keywords: ["401k", "retirement", "savings", "account"]
+  },
+  "ira": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // IRA
+    alt: "IRA retirement account", 
+    keywords: ["ira", "retirement", "individual", "account"]
+  },
+  "trust": {
+    unsplashId: "photo-1559526324-4b87b5e36e44", // Trust/legal
+    alt: "Trust fund",
+    keywords: ["trust", "fund", "legal", "estate"]
+  },
+  "trust fund": {
+    unsplashId: "photo-1559526324-4b87b5e36e44", // Trust fund
+    alt: "Trust fund holdings",
+    keywords: ["trust", "fund", "inheritance", "estate"]
+  },
+  "insurance": {
+    unsplashId: "photo-1559526324-4b87b5e36e44", // Insurance
+    alt: "Insurance policy",
+    keywords: ["insurance", "policy", "protection", "coverage"]
+  },
+  "life insurance": {
+    unsplashId: "photo-1559526324-4b87b5e36e44", // Life insurance
+    alt: "Life insurance policy",
+    keywords: ["life", "insurance", "policy", "protection"]
+  },
+  "annuity": {
+    unsplashId: "photo-1560520653-9e0e4c89eb11", // Annuity
+    alt: "Annuity investment",
+    keywords: ["annuity", "income", "retirement", "financial"]
+  },
+
   // === DEFAULT FALLBACK ===
   "default": {
     unsplashId: "photo-1559526324-4b87b5e36e44", // Premium abstract
@@ -533,6 +605,18 @@ export const getAssetImageByTitle = (assetTitle: string, assetType: string): Ass
     { keywords: ["bond", "treasury", "securities"], type: "bonds" },
     { keywords: ["bitcoin", "crypto", "cryptocurrency"], type: "crypto" },
     { keywords: ["business", "company", "enterprise"], type: "business" },
+    { keywords: ["mutual fund", "index fund"], type: "mutual funds" },
+    { keywords: ["etf", "exchange traded"], type: "etf" },
+    
+    // Financial Accounts
+    { keywords: ["cash", "money", "liquid"], type: "cash" },
+    { keywords: ["bank account", "savings account"], type: "bank account" },
+    { keywords: ["pension", "retirement fund"], type: "pension" },
+    { keywords: ["401k", "401(k)"], type: "401k" },
+    { keywords: ["ira", "roth ira"], type: "ira" },
+    { keywords: ["trust fund", "family trust"], type: "trust fund" },
+    { keywords: ["life insurance", "insurance policy"], type: "life insurance" },
+    { keywords: ["annuity", "fixed annuity"], type: "annuity" },
   ];
   
   // Check title for specific keywords first

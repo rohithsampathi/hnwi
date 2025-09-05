@@ -29,122 +29,141 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     // Ensures we're mounted and hydrated before showing content
     setIsInitialized(true)
     
-    // Get auth status once on mount
-    const getAuthStatus = () => {
+    // Get auth status once on mount with enhanced session state support
+    const getAuthStatus = async () => {
       const token = localStorage.getItem("token");
       const userId = localStorage.getItem("userId");
       const userObject = localStorage.getItem("userObject");
-      return {
-        token,
-        userId,
-        userObject,
-        isAuthenticated: !!(token && userId)
-      };
+      
+      // Import auth utils for enhanced session checking
+      try {
+        const { isAuthenticated: checkAuth, getSessionState, SessionState } = await import("@/lib/auth-utils");
+        const authResult = checkAuth();
+        const sessionState = getSessionState();
+        
+        // Consider both authenticated and locked sessions as "logged in" for routing
+        const isLoggedIn = authResult || sessionState === SessionState.LOCKED_INACTIVE;
+        
+        return {
+          token,
+          userId,
+          userObject,
+          isAuthenticated: isLoggedIn
+        };
+      } catch (error) {
+        // Fallback to simple token check
+        return {
+          token,
+          userId,
+          userObject,
+          isAuthenticated: !!(token && userId)
+        };
+      }
     };
     
-    const { token, userId, userObject, isAuthenticated } = getAuthStatus();
-    
-    
-    // Session recovery - do this only once on mount
-    if (!token && userObject) {
-      try {
-        const parsedUser = JSON.parse(userObject);
-        if (parsedUser && parsedUser.id) {
-          localStorage.setItem("userId", parsedUser.id);
-          localStorage.setItem("token", "recovered-session-token");
-          // We won't re-render since this effect only runs once on mount
+    // Make the auth status check async
+    getAuthStatus().then(({ token, userId, userObject, isAuthenticated }) => {
+      // Session recovery - do this only once on mount
+      if (!token && userObject) {
+        try {
+          const parsedUser = JSON.parse(userObject);
+          if (parsedUser && parsedUser.id) {
+            localStorage.setItem("userId", parsedUser.id);
+            localStorage.setItem("token", "recovered-session-token");
+            // We won't re-render since this effect only runs once on mount
+          }
+        } catch (e) {
+          // Error parsing userObject
         }
-      } catch (e) {
-        // Error parsing userObject
       }
-    }
-    
-    // Page determination logic - only run once on component mount
-    const determineInitialPage = () => {
-      try {
-        // Always use initialRoute if explicitly provided (from parent)
-        if (initialRoute) {
-          // Store for future refreshes unless it's splash/login
-          if (initialRoute !== "splash" && initialRoute !== "login") {
-            sessionStorage.setItem("currentPage", initialRoute);
-          }
-          return initialRoute;
-        }
-        
-        // Check for a previously persisted page (from navigation or refresh)
-        const persistedPage = sessionStorage.getItem("currentPage");
-        
-        // For authenticated users
-        if (isAuthenticated) {
-          if (persistedPage && persistedPage !== "splash" && persistedPage !== "login") {
-            return persistedPage;
-          } else {
-            // No persisted page, use the URL to determine the page
-            const currentPath = window.location.pathname;
-            let derivedPage = "dashboard"; // Default for authenticated users
-            
-            // Map URL paths to corresponding pages
-            if (currentPath.includes('/invest-scan')) {
-              derivedPage = "invest-scan";
-            } else if (currentPath.includes('/prive-exchange')) {
-              derivedPage = "prive-exchange";
-            } else if (currentPath.includes('/opportunity')) {
-              derivedPage = "opportunity";
-              // Extract and store opportunity ID if present
-              const opportunityId = currentPath.split('/').pop();
-              if (opportunityId) {
-                sessionStorage.setItem("currentOpportunityId", opportunityId);
-              }
-            } else if (currentPath.includes('/calendar-page')) {
-              derivedPage = "calendar-page";
-            } else if (currentPath.includes('/crown-vault')) {
-              derivedPage = "crown-vault";
-            } else if (currentPath.includes('/profile')) {
-              derivedPage = "profile";
+      
+      // Page determination logic - only run once on component mount
+      const determineInitialPage = () => {
+        try {
+          // Always use initialRoute if explicitly provided (from parent)
+          if (initialRoute) {
+            // Store for future refreshes unless it's splash/login
+            if (initialRoute !== "splash" && initialRoute !== "login") {
+              sessionStorage.setItem("currentPage", initialRoute);
             }
-            
-            sessionStorage.setItem("currentPage", derivedPage);
-            return derivedPage;
+            return initialRoute;
           }
-        } else {
-          // User is not authenticated - show splash
-          sessionStorage.removeItem("currentPage");
+          
+          // Check for a previously persisted page (from navigation or refresh)
+          const persistedPage = sessionStorage.getItem("currentPage");
+          
+          // For authenticated users
+          if (isAuthenticated) {
+            if (persistedPage && persistedPage !== "splash" && persistedPage !== "login") {
+              return persistedPage;
+            } else {
+              // No persisted page, use the URL to determine the page
+              const currentPath = window.location.pathname;
+              let derivedPage = "dashboard"; // Default for authenticated users
+              
+              // Map URL paths to corresponding pages
+              if (currentPath.includes('/invest-scan')) {
+                derivedPage = "invest-scan";
+              } else if (currentPath.includes('/prive-exchange')) {
+                derivedPage = "prive-exchange";
+              } else if (currentPath.includes('/opportunity')) {
+                derivedPage = "opportunity";
+                // Extract and store opportunity ID if present
+                const opportunityId = currentPath.split('/').pop();
+                if (opportunityId) {
+                  sessionStorage.setItem("currentOpportunityId", opportunityId);
+                }
+              } else if (currentPath.includes('/calendar-page')) {
+                derivedPage = "calendar-page";
+              } else if (currentPath.includes('/crown-vault')) {
+                derivedPage = "crown-vault";
+              } else if (currentPath.includes('/profile')) {
+                derivedPage = "profile";
+              }
+              
+              sessionStorage.setItem("currentPage", derivedPage);
+              return derivedPage;
+            }
+          } else {
+            // User is not authenticated - show splash
+            sessionStorage.removeItem("currentPage");
+            return "splash";
+          }
+        } catch (error) {
+          // Fallback to splash screen if there's any error (e.g. localStorage blocked)
+          // Error in initialization
           return "splash";
         }
-      } catch (error) {
-        // Fallback to splash screen if there's any error (e.g. localStorage blocked)
-        // Error in initialization
-        return "splash";
-      }
-    };
-    
-    // Set the page immediately since loading is handled by app/page.tsx
-    const initialPage = determineInitialPage();
-    setCurrentPage(initialPage);
-    
-    // Clear loading flag now that app is fully loaded
-    sessionStorage.removeItem('mainLoadingComplete');
-    
-    // Track initial page view
-    MixpanelTracker.pageView(initialPage);
-    
-    // If user is logged in, identify them in Mixpanel
-    if (userId) {
-      MixpanelTracker.identify(userId);
+      };
       
-      if (userObject) {
-        try {
-          const user = JSON.parse(userObject);
-          MixpanelTracker.setProfile({
-            $name: user.name || 'Unknown User',
-            $email: user.email || '',
-            userId: user.id
-          });
-        } catch (e) {
-          // Error parsing user object
+      // Set the page immediately since loading is handled by app/page.tsx
+      const initialPage = determineInitialPage();
+      setCurrentPage(initialPage);
+      
+      // Clear loading flag now that app is fully loaded
+      sessionStorage.removeItem('mainLoadingComplete');
+      
+      // Track initial page view
+      MixpanelTracker.pageView(initialPage);
+      
+      // If user is logged in, identify them in Mixpanel
+      if (userId) {
+        MixpanelTracker.identify(userId);
+        
+        if (userObject) {
+          try {
+            const user = JSON.parse(userObject);
+            MixpanelTracker.setProfile({
+              $name: user.name || 'Unknown User',
+              $email: user.email || '',
+              userId: user.id
+            });
+          } catch (e) {
+            // Error parsing user object
+          }
         }
       }
-    }
+    });
     
   // No dependencies - we only want this to run once on mount
   }, [])

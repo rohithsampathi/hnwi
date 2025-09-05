@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
+import { useElitePulseData, useElitePulse, useIntelligenceLoading } from "@/contexts/elite-pulse-context"
 
 interface RegulatoryCompliance {
   us_compliance?: {
@@ -134,6 +135,12 @@ interface ElitePulseDashboardProps {
 }
 
 export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardProps = {}) {
+  // Use new Elite Pulse context hooks
+  const elitePulseDataFromContext = useElitePulseData()
+  const { hasIntelligence, trackIntelligenceView } = useElitePulse()
+  const intelligenceLoading = useIntelligenceLoading()
+  
+  // Legacy state for backward compatibility
   const [elitePulseData, setElitePulseData] = useState<ElitePulseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -214,9 +221,21 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
   }
 
 
+  // Use context data when available, fallback to legacy fetch
   useEffect(() => {
-    fetchElitePulse()
-  }, [])
+    if (elitePulseDataFromContext) {
+      // Use context data
+      setElitePulseData(elitePulseDataFromContext)
+      setLoading(false)
+      setError(null)
+      
+      // Track view in intelligence system
+      trackIntelligenceView('elite_pulse', elitePulseDataFromContext.record_id || 'current')
+    } else if (!intelligenceLoading && !hasIntelligence) {
+      // Fallback to legacy fetch if context data not available
+      fetchElitePulse()
+    }
+  }, [elitePulseDataFromContext, hasIntelligence, intelligenceLoading, trackIntelligenceView])
 
   // Ensure callback is called when component unmounts or loading state changes
   useEffect(() => {
@@ -270,8 +289,11 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
     return () => observer.disconnect()
   }, [elitePulseData])
 
+  // Show intelligence loading state when context is loading
+  const isLoading = loading || intelligenceLoading
+  
   // Loading is now handled by parent component - return empty space during loading
-  if (loading) {
+  if (isLoading && !elitePulseData) {
     return <div className="h-0 overflow-hidden"></div>
   }
 

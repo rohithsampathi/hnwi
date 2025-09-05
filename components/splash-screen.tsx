@@ -14,7 +14,7 @@ import { OnboardingPage } from "./onboarding-page"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
-import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock } from "lucide-react"
+import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock, Shield } from "lucide-react"
 import { MfaCodeInput } from "./mfa-code-input"
 
 interface SplashScreenProps {
@@ -600,7 +600,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                       <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Security Verification</span>
                     </Heading2>
                     <Paragraph className="text-sm text-muted-foreground text-center mt-2">
-                      Complete elite authentication to restore secure access.
+                      Your security is our highest priority
                     </Paragraph>
                   </div>
 

@@ -36,7 +36,8 @@ export function middleware(request: NextRequest) {
     // Dynamic script sources - allow inline scripts with nonce for all environments
     `script-src 'self' 'nonce-${nonce}' ${isDev ? `'unsafe-inline' 'unsafe-eval'` : `'unsafe-inline'`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
     // Style sources with nonce support - allow unsafe-inline for all environments to support dynamic styles
-    `style-src 'self' 'unsafe-inline' 'nonce-${nonce}' https://fonts.googleapis.com`,
+    // In development, skip nonce for styles to avoid hydration mismatches
+    `style-src 'self' 'unsafe-inline' ${isDev ? '' : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
     `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app ${backendUrl} https://api-js.mixpanel.com https://formspree.io`,
@@ -86,7 +87,17 @@ export function middleware(request: NextRequest) {
 function generateNonce(): string {
   // Always generate dynamic nonce - no fixed values
   const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
+  
+  // Use crypto.getRandomValues if available (browser/edge runtime)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    // Fallback for server-side where crypto.getRandomValues might not be available
+    for (let i = 0; i < array.length; i++) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  
   return btoa(String.fromCharCode(...array));
 }
 

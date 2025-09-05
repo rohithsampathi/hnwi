@@ -19,18 +19,21 @@ import { GoldenScroll } from "@/components/ui/golden-scroll"
 import { Badge } from "@/components/ui/badge"
 import { Brain, TrendingUp, Target, AlertCircle, BarChart3, PieChart, Lightbulb } from "lucide-react"
 import { getMatteCardStyle } from "@/lib/colors"
+import { useElitePulse } from "@/contexts/elite-pulse-context"
 // import { OnboardingWizard } from "./onboarding-wizard"
 // import { useOnboarding } from "@/contexts/onboarding-context"
 import { Heading2, Lead } from "@/components/ui/typography"
 import { MetaTags } from "./meta-tags"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { ElitePulseDashboard } from "./elite-pulse-dashboard"
+import { IntelligenceDashboard } from "./intelligence-dashboard"
+import { ElitePulseDashboardNew } from "./elite-pulse-dashboard-new"
 import type React from "react"
 
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
 import { getMemberAnalytics, getPageActivity, type MemberAnalytics, type ActivityStats } from "@/lib/api"
+import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
 
 interface User {
   firstName: string
@@ -197,9 +200,12 @@ export function HomeDashboard({
   const { isBusinessMode } = useBusinessMode()
   const { toast } = useToast()
   const { showAuthPopup } = useAuthPopup()
+  const { refreshIntelligence } = useElitePulse()
   const [developments, setDevelopments] = useState<Development[]>([])
   const [developmentsLoading, setDevelopmentsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [intelligenceData, setIntelligenceData] = useState<any>(null)
+  const [intelligenceLoading, setIntelligenceLoading] = useState(true)
   const [selectedDevelopment, setSelectedDevelopment] = useState<Development | null>(null)
   const [elitePulseLoading, setElitePulseLoading] = useState(true)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
@@ -226,7 +232,54 @@ export function HomeDashboard({
     return false;
   }, [userData]);
 
-  const fetchDevelopments = async () => {
+  const fetchIntelligence = async (forceRefresh = false) => {
+    setIntelligenceLoading(true)
+    
+    // Check if user data is available
+    if (!userData?.id && !userData?.user_id) {
+      console.log('🏠 Home Dashboard: No user ID available for intelligence fetch');
+      setIntelligenceLoading(false)
+      return;
+    }
+
+    try {
+      const userId = userData?.id || userData?.user_id;
+      console.log('🏠 Home Dashboard: Fetching intelligence for user:', userId);
+      
+      const response = await fetch(`/api/intelligence/dashboard/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Intelligence API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      console.log('🏠 Home Dashboard: Intelligence Status:', {
+        hasElitePulseData: !!data.intelligence?.elite_pulse?.data,
+        hasCrownVaultData: !!data.intelligence?.crown_vault_impact?.data,
+        hasOpportunityData: !!data.intelligence?.opportunity_alignment?.data,
+        overallConfidence: data.summary?.overall_confidence || 'N/A'
+      });
+      
+      setIntelligenceData(data)
+      setError(null)
+      
+    } catch (error: any) {
+      console.error('🏠 Home Dashboard: Intelligence fetch failed:', error);
+      setError(error.message)
+      setIntelligenceData(null)
+    } finally {
+      setIntelligenceLoading(false)
+    }
+  }
+
+  const fetchDevelopments = async (forceRefresh = false) => {
     setDevelopmentsLoading(true)
     // Check authentication before making API call
     if (!isAuthenticated()) {
@@ -243,10 +296,18 @@ export function HomeDashboard({
     }
 
     try {
+      console.log('🏠 Home Dashboard: Fetching developments from original endpoint');
       const data = await secureApi.get('/api/developments/latest-brief?limit=10', true, { 
-        enableCache: true, 
-        cacheDuration: 300000 
-      }); // 5 minutes cache for developments - direct backend call
+        enableCache: !forceRefresh, 
+        cacheDuration: 300000,
+        cacheKey: forceRefresh ? `developments-${Date.now()}` : 'developments-home'
+      }); // 5 minutes cache for developments - original backend call
+      
+      console.log('🏠 Home Dashboard: Received developments data:', {
+        developmentsCount: data.developments?.length || 0,
+        sampleDevelopment: data.developments?.[0] || null,
+        hasElitePulseData: data.developments?.some((d: any) => d.elite_pulse_impact) || false
+      });
       
       setDevelopments(data.developments || [])
     } catch (error: any) {
@@ -265,6 +326,7 @@ export function HomeDashboard({
       }
       
       // For other errors, silently set empty state
+      console.error('🏠 Home Dashboard: API error:', error);
       setDevelopments([])
       setError(null) // Don't show error to user
     } finally {
@@ -286,8 +348,13 @@ export function HomeDashboard({
   };
 
   useEffect(() => {
-    fetchDevelopments();
+    fetchDevelopments(true); // Force refresh on first load to get latest data
     fetchAnalytics();
+    fetchIntelligence(true); // Force refresh intelligence data
+    
+    // Force refresh Elite Pulse intelligence data via context as well
+    console.log('🏠 Home Dashboard: Force refreshing Elite Pulse intelligence');
+    refreshIntelligence();
     
     // Refresh analytics every 2 minutes for real-time feel
     const analyticsInterval = setInterval(fetchAnalytics, 120000);
@@ -295,7 +362,7 @@ export function HomeDashboard({
     return () => {
       clearInterval(analyticsInterval);
     };
-  }, [])
+  }, [refreshIntelligence])
 
   // Set first development as selected when developments load
   useEffect(() => {
@@ -389,25 +456,40 @@ export function HomeDashboard({
     //   setCurrentStep("orangeStrategy")
     // }
 
-    // Handle development ID if provided (for strategy vault navigation with context)
-    if (developmentId) {
-      // Store the development ID in sessionStorage for the target page to access
-      sessionStorage.setItem("currentDevelopmentId", developmentId);
-      sessionStorage.setItem("nav_param_industry", "All");
-      sessionStorage.setItem("nav_param_timeRange", "1w");
-      
-      // Navigate directly to strategy vault
-      onNavigate("strategy-vault");
-    } 
-    // Handle opportunity navigation directly
-    else if (route.startsWith("opportunity/")) {
-      const opportunityId = route.split("/")[1];
-      sessionStorage.setItem("currentOpportunityId", opportunityId);
-      onNavigate("opportunity");
-    }
-    // All other regular navigation
-    else {
-      onNavigate(route);
+    // Use unified navigation system - automatically routes to active system
+    if (useNewNavigation()) {
+      // New system: use unified navigation
+      if (developmentId) {
+        // Handle development ID if provided (for strategy vault navigation with context)
+        sessionStorage.setItem("currentDevelopmentId", developmentId);
+        unifiedNavigate("strategy-vault", { industry: "All", timeRange: "1w" });
+      } else if (route.startsWith("opportunity/")) {
+        // Handle opportunity navigation directly
+        const opportunityId = route.split("/")[1];
+        unifiedNavigate("opportunity", { opportunityId });
+      } else {
+        // All other regular navigation
+        unifiedNavigate(route);
+      }
+    } else {
+      // Legacy system: use onNavigate prop
+      if (developmentId) {
+        // Store the development ID in sessionStorage for the target page to access
+        sessionStorage.setItem("currentDevelopmentId", developmentId);
+        sessionStorage.setItem("nav_param_industry", "All");
+        sessionStorage.setItem("nav_param_timeRange", "1w");
+        
+        // Navigate directly to strategy vault
+        onNavigate("strategy-vault");
+      } else if (route.startsWith("opportunity/")) {
+        // Handle opportunity navigation directly
+        const opportunityId = route.split("/")[1];
+        sessionStorage.setItem("currentOpportunityId", opportunityId);
+        onNavigate("opportunity");
+      } else {
+        // All other regular navigation
+        onNavigate(route);
+      }
     }
   };
 
@@ -431,8 +513,21 @@ export function HomeDashboard({
         <p className="text-muted-foreground text-base leading-tight mt-1">What keeps you three moves ahead while others catch up</p>
       </div>
 
-      {/* Elite Pulse Section - always render to ensure callback works */}
-      <ElitePulseDashboard onLoadingComplete={handleElitePulseLoaded} />
+      {/* Elite Pulse Intelligence - New Dashboard */}
+      <ElitePulseDashboardNew 
+        onLoadingComplete={handleElitePulseLoaded}
+        userData={userData}
+      />
+      
+      {/* Full Intelligence Dashboard - Hidden for now */}
+      <div className="hidden">
+        <IntelligenceDashboard 
+          defaultTab="overview"
+          onIntelligenceAction={(type, action, data) => {
+            console.log('Intelligence action:', { type, action, data });
+          }}
+        />
+      </div>
 
       <div className={`w-full overflow-visible`}>
         {/* Two Column Layout */}

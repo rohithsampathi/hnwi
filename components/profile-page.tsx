@@ -4,7 +4,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useTheme } from "@/contexts/theme-context"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -53,6 +53,7 @@ import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
 import { processAssetCategories } from "@/lib/category-utils"
 import { secureApi } from "@/lib/secure-api"
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor, getVisibleSubtextColor, getMatteCardStyle, getMetallicCardStyle, getSubtleCardStyle } from "@/lib/colors"
+import { NotificationPreferences } from "@/components/notifications/notification-preferences"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -85,8 +86,8 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastFetchTime, setLastFetchTime] = useState(0)
+  const isRefreshingRef = useRef(false)
+  const lastFetchTimeRef = useRef(0)
   const [activeTab, setActiveTab] = useState("crown-vault")
   const [vaultStats, setVaultStats] = useState<CrownVaultStats | null>(null)
   const [vaultAssets, setVaultAssets] = useState<CrownVaultAsset[]>([])
@@ -103,6 +104,8 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       setVaultStats(stats)
       setVaultAssets(assets)
     } catch (error) {
+      console.error('Error fetching vault stats:', error);
+      // Don't set fallback data - leave states as null/empty to indicate failure
     } finally {
       setVaultLoading(false)
     }
@@ -121,17 +124,17 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
 
   const fetchUserData = useCallback(
     async (userId: string) => {
-      if (isRefreshing) {
+      if (isRefreshingRef.current) {
         return;
       }
 
       const now = Date.now()
-      if (now - lastFetchTime < 60000) {
+      if (now - lastFetchTimeRef.current < 60000) {
         return; // Prevent fetching more than once per minute
       }
 
       // Fetching user data
-      setIsRefreshing(true)
+      isRefreshingRef.current = true
       try {
         const userData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for user data
         // User data fetched successfully
@@ -145,7 +148,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         
         setEditedUser(enhancedUserData);
         onUpdateUser(enhancedUserData);
-        setLastFetchTime(now);
+        lastFetchTimeRef.current = now;
         // User data fetch complete and state updated;
       } catch (error) {
         toast({
@@ -154,11 +157,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
           variant: "destructive",
         })
       } finally {
-        setIsRefreshing(false)
+        isRefreshingRef.current = false
         setIsLoading(false)
       }
     },
-    [onUpdateUser, toast, isRefreshing, lastFetchTime],
+    [onUpdateUser, toast],
   )
 
   useEffect(() => {
@@ -947,6 +950,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
 
                   {activeTab === 'preferences' && (
                     <div className="space-y-6">
+                  {/* Investment Preferences */}
                   <Card className="border-0 shadow-lg bg-card/50 backdrop-blur">
                     <CardHeader>
                       <h3 className="text-xl font-semibold">Investment Preferences</h3>
@@ -970,6 +974,19 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                           {editedUser.land_investor ? "Active" : "Inactive"}
                         </Badge>
                       </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Notification Preferences */}
+                  <Card className="border-0 shadow-lg bg-card/50 backdrop-blur">
+                    <CardHeader>
+                      <h3 className="text-xl font-semibold">Notification Preferences</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Configure how and when you receive notifications from HNWI Chronicles
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <NotificationPreferences />
                     </CardContent>
                   </Card>
                     </div>

@@ -46,6 +46,17 @@ interface OpportunityAtlasProps {
   selectedCategory: AssetCategoryData | null;
   onCategorySelect: (category: AssetCategoryData | null) => void;
   className?: string;
+  opportunityScoring?: {
+    getScore: (opportunityName: string) => {
+      score: number;
+      conviction: 'high' | 'medium' | 'watch' | 'avoid';
+      thesis: string;
+      reasoning?: string;
+    } | undefined;
+    marketInsight?: string;
+    timingEdge?: string;
+  } | null;
+  onOpportunityView?: (opportunityId: string) => void;
 }
 
 // Icon mapping for categories
@@ -87,7 +98,9 @@ function OpportunityCard({
   onShare,
   shareState,
   onTalkToConcierge,
-  conciergeState
+  conciergeState,
+  scoring,
+  onOpportunityView
 }: { 
   opportunity: Opportunity; 
   onClick: () => void;
@@ -96,10 +109,60 @@ function OpportunityCard({
   shareState: { [key: string]: boolean };
   onTalkToConcierge: (opportunity: Opportunity) => void;
   conciergeState: { [key: string]: boolean };
+  scoring?: {
+    score: number;
+    conviction: 'high' | 'medium' | 'watch' | 'avoid';
+    thesis: string;
+    reasoning?: string;
+  } | null;
+  onOpportunityView?: (opportunityId: string) => void;
 }) {
   const { theme } = useTheme();
   const metallicStyle = getMetallicCardStyle(theme);
   
+  // Get conviction styling
+  const getConvictionStyle = (conviction: string) => {
+    switch (conviction) {
+      case 'high':
+        return {
+          color: '#22c55e', // green-500
+          backgroundColor: '#22c55e20',
+          borderColor: '#22c55e'
+        };
+      case 'medium':
+        return {
+          color: '#f59e0b', // amber-500
+          backgroundColor: '#f59e0b20',
+          borderColor: '#f59e0b'
+        };
+      case 'watch':
+        return {
+          color: '#3b82f6', // blue-500
+          backgroundColor: '#3b82f620',
+          borderColor: '#3b82f6'
+        };
+      case 'avoid':
+        return {
+          color: '#ef4444', // red-500
+          backgroundColor: '#ef444420',
+          borderColor: '#ef4444'
+        };
+      default:
+        return {
+          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
+          backgroundColor: theme === 'dark' ? '#374151' : '#f3f4f6',
+          borderColor: theme === 'dark' ? '#4b5563' : '#d1d5db'
+        };
+    }
+  };
+  
+  const handleCardClick = () => {
+    // Track opportunity view if scoring is available
+    if (scoring && onOpportunityView && opportunity.id) {
+      onOpportunityView(opportunity.id);
+    }
+    onClick();
+  };
   
   return (
     <motion.div
@@ -116,13 +179,33 @@ function OpportunityCard({
       <div
         className="p-6 cursor-pointer transition-all duration-200"
         style={metallicStyle.style}
-        onClick={onClick}
+        onClick={handleCardClick}
       >
         <div className="space-y-2">
           <div className="flex justify-between items-start">
-            <h4 className={`font-semibold text-sm line-clamp-2 ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
-              {opportunity.title}
-            </h4>
+            <div className="flex-1 pr-2">
+              <h4 className={`font-semibold text-sm line-clamp-2 ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                {opportunity.title}
+              </h4>
+              {/* Elite Pulse Scoring Badge */}
+              {scoring && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs px-2 py-0.5 font-medium"
+                    style={{
+                      ...getConvictionStyle(scoring.conviction),
+                      borderWidth: '1px'
+                    }}
+                  >
+                    Elite Pulse: {scoring.conviction.toUpperCase()}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Score: {Math.round(scoring.score)}/100
+                  </span>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2 ml-2 flex-shrink-0">
               {opportunity.region && (
                 <Badge variant="outline" className="text-xs">
@@ -324,6 +407,99 @@ function OpportunityCard({
                   )}
                 </div>
 
+                {/* Viktor Rajesh-Volkov Intelligence Analysis */}
+                {scoring && (
+                  <div className="p-4 rounded-lg" style={{
+                    backgroundColor: getConvictionStyle(scoring.conviction).backgroundColor,
+                    border: `1px solid ${getConvictionStyle(scoring.conviction).borderColor}30`
+                  }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div 
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: getConvictionStyle(scoring.conviction).color }}
+                      />
+                      <h6 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                        VIKTOR RAJESH-VOLKOV ANALYSIS
+                      </h6>
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs"
+                        style={{
+                          ...getConvictionStyle(scoring.conviction),
+                          borderWidth: '1px'
+                        }}
+                      >
+                        {scoring.conviction.toUpperCase()} CONVICTION
+                      </Badge>
+                    </div>
+                    <div className="space-y-3">
+                      {/* Alignment Score Progress */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-medium text-muted-foreground">Portfolio Alignment Score</span>
+                          <span className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                            {Math.round(scoring.score)}/100
+                          </span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="h-2 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${scoring.score}%`,
+                              backgroundColor: getConvictionStyle(scoring.conviction).color
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Investment Thesis */}
+                      <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/20' : 'bg-white/50'}`}>
+                        <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <span className="font-semibold text-primary">Viktor's Thesis:</span><br />
+                          {scoring.thesis}
+                        </p>
+                      </div>
+                      
+                      {/* Detailed Analysis */}
+                      {scoring.reasoning && (
+                        <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/10' : 'bg-gray-50/80'}`}>
+                          <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <span className="font-semibold">Strategic Analysis:</span><br />
+                            {scoring.reasoning}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Entry Window Timing */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
+                          <p className="text-xs text-muted-foreground mb-1">Entry Window</p>
+                          <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                            {scoring.conviction === 'high' ? 'Immediate' : 
+                             scoring.conviction === 'medium' ? 'Q1-Q2 2024' :
+                             scoring.conviction === 'watch' ? 'Monitor' : 'Avoid'}
+                          </p>
+                        </div>
+                        <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
+                          <p className="text-xs text-muted-foreground mb-1">Peer Signals</p>
+                          <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                            {scoring.conviction === 'high' ? 'Strong Buy' :
+                             scoring.conviction === 'medium' ? 'Accumulate' : 
+                             scoring.conviction === 'watch' ? 'Hold' : 'Sell'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Elite Pulse Intelligence Attribution */}
+                      <div className="border-t border-muted-foreground/20 pt-2">
+                        <p className="text-xs text-muted-foreground italic">
+                          Analysis powered by Elite Pulse Intelligence System
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Investment Thesis */}
                 {opportunity.description && (
                   <div>
@@ -433,7 +609,9 @@ export function OpportunityAtlasNew({
   categories,
   selectedCategory, 
   onCategorySelect, 
-  className = "" 
+  className = "",
+  opportunityScoring,
+  onOpportunityView
 }: OpportunityAtlasProps) {
   const { theme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -833,18 +1011,23 @@ export function OpportunityAtlasNew({
         <div className="space-y-3" ref={opportunitiesRef}>
           {selectedCategory ? (
             getFilteredOpportunities(selectedCategory).length > 0 ? (
-              getFilteredOpportunities(selectedCategory).map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  onClick={() => handleOpportunityClick(opportunity)}
-                  isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
-                  onShare={handleShare}
-                  shareState={shareState}
-                  onTalkToConcierge={handleTalkToConcierge}
-                  conciergeState={conciergeState}
-                />
-              ))
+              getFilteredOpportunities(selectedCategory).map((opportunity) => {
+                const scoring = opportunityScoring?.getScore ? opportunityScoring.getScore(opportunity.title) : null;
+                return (
+                  <OpportunityCard
+                    key={opportunity.id}
+                    opportunity={opportunity}
+                    onClick={() => handleOpportunityClick(opportunity)}
+                    isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
+                    onShare={handleShare}
+                    shareState={shareState}
+                    onTalkToConcierge={handleTalkToConcierge}
+                    conciergeState={conciergeState}
+                    scoring={scoring}
+                    onOpportunityView={onOpportunityView}
+                  />
+                );
+              })
             ) : (
               <div className="text-center py-8 bg-muted/20 rounded-lg">
                 <p className="text-muted-foreground mb-2">
@@ -862,18 +1045,23 @@ export function OpportunityAtlasNew({
             )
           ) : (
             getAllFilteredOpportunities().length > 0 ? (
-              getAllFilteredOpportunities().map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  onClick={() => handleOpportunityClick(opportunity)}
-                  isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
-                  onShare={handleShare}
-                  shareState={shareState}
-                  onTalkToConcierge={handleTalkToConcierge}
-                  conciergeState={conciergeState}
-                />
-              ))
+              getAllFilteredOpportunities().map((opportunity) => {
+                const scoring = opportunityScoring?.getScore ? opportunityScoring.getScore(opportunity.title) : null;
+                return (
+                  <OpportunityCard
+                    key={opportunity.id}
+                    opportunity={opportunity}
+                    onClick={() => handleOpportunityClick(opportunity)}
+                    isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
+                    onShare={handleShare}
+                    shareState={shareState}
+                    onTalkToConcierge={handleTalkToConcierge}
+                    conciergeState={conciergeState}
+                    scoring={scoring}
+                    onOpportunityView={onOpportunityView}
+                  />
+                );
+              })
             ) : (
               <div className="text-center py-8 bg-muted/20 rounded-lg">
                 <p className="text-muted-foreground mb-2">
@@ -1146,18 +1334,23 @@ export function OpportunityAtlasNew({
               {selectedCategory ? (
                 <div className="space-y-3">
                   {getFilteredOpportunities(selectedCategory).length > 0 ? (
-                    getFilteredOpportunities(selectedCategory).map((opportunity) => (
-                      <OpportunityCard
-                        key={opportunity.id}
-                        opportunity={opportunity}
-                        onClick={() => handleOpportunityClick(opportunity)}
-                        isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
-                        onShare={handleShare}
-                        shareState={shareState}
-                        onTalkToConcierge={handleTalkToConcierge}
-                        conciergeState={conciergeState}
-                      />
-                    ))
+                    getFilteredOpportunities(selectedCategory).map((opportunity) => {
+                      const scoring = opportunityScoring?.getScore ? opportunityScoring.getScore(opportunity.title) : null;
+                      return (
+                        <OpportunityCard
+                          key={opportunity.id}
+                          opportunity={opportunity}
+                          onClick={() => handleOpportunityClick(opportunity)}
+                          isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
+                          onShare={handleShare}
+                          shareState={shareState}
+                          onTalkToConcierge={handleTalkToConcierge}
+                          conciergeState={conciergeState}
+                          scoring={scoring}
+                          onOpportunityView={onOpportunityView}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-muted-foreground">
@@ -1177,18 +1370,23 @@ export function OpportunityAtlasNew({
               ) : (
                 <div className="space-y-3">
                   {getAllFilteredOpportunities().length > 0 ? (
-                    getAllFilteredOpportunities().map((opportunity) => (
-                      <OpportunityCard
-                        key={opportunity.id}
-                        opportunity={opportunity}
-                        onClick={() => handleOpportunityClick(opportunity)}
-                        isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
-                        onShare={handleShare}
-                        shareState={shareState}
-                        onTalkToConcierge={handleTalkToConcierge}
-                        conciergeState={conciergeState}
-                      />
-                    ))
+                    getAllFilteredOpportunities().map((opportunity) => {
+                      const scoring = opportunityScoring?.getScore ? opportunityScoring.getScore(opportunity.title) : null;
+                      return (
+                        <OpportunityCard
+                          key={opportunity.id}
+                          opportunity={opportunity}
+                          onClick={() => handleOpportunityClick(opportunity)}
+                          isExpanded={opportunity?.id ? expandedOpportunityId === opportunity.id : false}
+                          onShare={handleShare}
+                          shareState={shareState}
+                          onTalkToConcierge={handleTalkToConcierge}
+                          conciergeState={conciergeState}
+                          scoring={scoring}
+                          onOpportunityView={onOpportunityView}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-muted-foreground">

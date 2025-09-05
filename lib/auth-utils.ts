@@ -1,5 +1,7 @@
 // lib/auth-utils.ts - Enhanced authentication utility functions with session state management
 
+import DeviceTrustManager from './device-trust';
+
 // Session states for smart inactivity management
 export enum SessionState {
   AUTHENTICATED = 'authenticated',           // User is active and authenticated
@@ -213,4 +215,63 @@ export const canAccessFeaturesWithFallback = (): boolean => {
   }
   
   return canAccessFeatures();
+};
+
+// Device Trust Integration
+export const isDeviceTrusted = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const userId = localStorage.getItem('userId');
+  if (!userId) return false;
+  
+  return DeviceTrustManager.isDeviceTrusted(userId);
+};
+
+export const trustCurrentDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const userId = localStorage.getItem('userId');
+  if (!userId) return false;
+  
+  try {
+    DeviceTrustManager.trustDevice(userId);
+    return true;
+  } catch (error) {
+    console.error('Failed to trust device:', error);
+    return false;
+  }
+};
+
+export const shouldSkip2FA = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const userId = localStorage.getItem('userId');
+  if (!userId) return false;
+  
+  return DeviceTrustManager.shouldSkip2FA(userId);
+};
+
+export const getDeviceTrustInfo = (): { isTrusted: boolean; timeRemaining: string } => {
+  if (typeof window === 'undefined') return { isTrusted: false, timeRemaining: '' };
+  const userId = localStorage.getItem('userId');
+  if (!userId) return { isTrusted: false, timeRemaining: '' };
+  
+  return {
+    isTrusted: DeviceTrustManager.isDeviceTrusted(userId),
+    timeRemaining: DeviceTrustManager.getTrustTimeRemainingText(userId)
+  };
+};
+
+// Enhanced authentication with device trust
+export const isAuthenticatedWithDeviceTrust = (): {
+  isAuthenticated: boolean;
+  isDeviceTrusted: boolean;
+  needsReauth: boolean;
+} => {
+  const authenticated = isAuthenticated();
+  const deviceTrusted = isDeviceTrusted();
+  const sessionState = getSessionState();
+  
+  return {
+    isAuthenticated: authenticated,
+    isDeviceTrusted: deviceTrusted,
+    needsReauth: sessionState === SessionState.LOCKED_INACTIVE && !deviceTrusted
+  };
 };

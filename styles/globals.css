@@ -745,3 +745,328 @@
     #D8D8D8 100%  
   );
 }
+
+/* ============================================= */
+/* ELITE PULSE INTELLIGENCE SYSTEM ANIMATIONS */
+/* ============================================= */
+
+/* Intelligence Loading Animation */
+@keyframes intelligencePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 215, 0, 0);
+    transform: scale(1.05);
+  }
+}
+
+.intelligence-pulse {
+  animation: intelligencePulse 2s ease-in-out infinite;
+}
+
+/* Neural Network Animation */
+@keyframes neuralFlow {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.neural-flow {
+  position: relative;
+  overflow: hidden;
+}
+
+.neural-flow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 215, 0, 0.8) 50%, 
+    transparent 100%
+  );
+  animation: neuralFlow 3s ease-in-out infinite;
+}
+
+/* Intelligence Badge Glow */
+@keyframes intelligenceGlow {
+  0%, 100% {
+    background-color: rgba(255, 215, 0, 0.1);
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    background-color: rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+  }
+}
+
+.intelligence-glow {
+  animation: intelligenceGlow 3s ease-in-out infinite;
+}
+
+/* Data Flow Animation */
+@keyframes dataFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.data-flow {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.1) 25%,
+    rgba(255, 215, 0, 0.2) 50%,
+    rgba(255, 215, 0, 0.1) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: dataFlow 2s linear infinite;
+}
+
+/* Intelligence Score Animation */
+@keyframes scoreCount {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.score-animation {
+  animation: scoreCount 0.8s ease-out;
+}
+
+/* Alert Notification Animation */
+@keyframes alertSlide {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  10% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  90% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+.alert-slide {
+  animation: alertSlide 5s ease-in-out;
+}
+
+/* Intelligence Card Hover Effects */
+.intelligence-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.intelligence-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 215, 0, 0.1);
+}
+
+.intelligence-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.1) 50%,
+    transparent 100%
+  );
+  transition: left 0.5s ease;
+}
+
+.intelligence-card:hover::after {
+  left: 100%;
+}
+
+/* Katherine Sterling-Chen Persona Colors */
+.persona-katherine {
+  --persona-primary: #8B4513;     /* Saddle Brown */
+  --persona-secondary: #A0522D;   /* Sienna */
+  --persona-accent: #DEB887;      /* Burlywood */
+}
+
+.persona-katherine .intelligence-badge {
+  background: linear-gradient(135deg, var(--persona-primary), var(--persona-secondary));
+  border-color: var(--persona-accent);
+}
+
+/* Viktor Rajesh-Volkov Persona Colors */
+.persona-viktor {
+  --persona-primary: #2F4F4F;     /* Dark Slate Gray */
+  --persona-secondary: #708090;   /* Slate Gray */
+  --persona-accent: #B0C4DE;      /* Light Steel Blue */
+}
+
+.persona-viktor .intelligence-badge {
+  background: linear-gradient(135deg, var(--persona-primary), var(--persona-secondary));
+  border-color: var(--persona-accent);
+}
+
+/* Conviction Level Styling */
+.conviction-high {
+  background: linear-gradient(135deg, #228B22, #32CD32);
+  color: white;
+  animation: intelligenceGlow 2s ease-in-out infinite;
+}
+
+.conviction-medium {
+  background: linear-gradient(135deg, #DAA520, #FFD700);
+  color: #1a1a1a;
+  animation: intelligenceGlow 3s ease-in-out infinite;
+}
+
+.conviction-low {
+  background: linear-gradient(135deg, #8B4513, #A0522D);
+  color: white;
+  animation: intelligenceGlow 4s ease-in-out infinite;
+}
+
+/* Intelligence Dashboard Tab Animation */
+.intelligence-tab {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.intelligence-tab::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #FFD700, transparent);
+  transition: left 0.3s ease;
+}
+
+.intelligence-tab.active::before,
+.intelligence-tab:hover::before {
+  left: 0;
+}
+
+/* Notification Toast Animation */
+@keyframes toastEntry {
+  0% {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toastExit {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
+  }
+}
+
+.toast-enter {
+  animation: toastEntry 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast-exit {
+  animation: toastExit 0.3s ease-in;
+}
+
+/* Intelligence Loading Skeleton */
+@keyframes skeletonLoading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton-loading {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  background-size: 200px 100%;
+  animation: skeletonLoading 1.2s ease-in-out infinite;
+}
+
+/* Elite Pulse Intelligence Accent Colors */
+.intelligence-accent-gold {
+  background: linear-gradient(135deg, #DAA520, #FFD700);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+.intelligence-border-gold {
+  border-image: linear-gradient(135deg, #DAA520, #FFD700, #DAA520) 1;
+}
+
+/* Real-time Update Animation */
+@keyframes realTimeUpdate {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.real-time-update {
+  animation: realTimeUpdate 0.6s ease-out;
+}

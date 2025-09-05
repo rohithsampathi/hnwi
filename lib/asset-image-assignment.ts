@@ -1,7 +1,7 @@
 // lib/asset-image-assignment.ts
 // LLM-powered intelligent image assignment during asset creation
 
-import { ASSET_IMAGE_MAP } from './asset-images';
+import { ASSET_IMAGE_MAP, getAssetImageUrl } from './asset-images';
 
 export interface AssetImageAssignment {
   imageId: string;
@@ -191,11 +191,11 @@ export const getAssetImageForDisplay = (asset: any): string => {
     return asset.asset_data.assigned_image.imageUrl;
   }
   
-  // Fallback to quick assignment
+  // Use the comprehensive image mapping system
   const assetName = asset?.asset_data?.name || '';
   const assetType = asset?.asset_data?.asset_type || '';
   
-  return getSmartImageUrl(assetName, assetType);
+  return getAssetImageUrl(assetName, assetType, 'md');
 };
 
 // Lightweight image URL generation for immediate display

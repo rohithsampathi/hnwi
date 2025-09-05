@@ -3,9 +3,14 @@ import type { Metadata, Viewport } from "next"
 import type React from "react"
 import { headers } from "next/headers"
 import { ThemeProvider } from "@/contexts/theme-context"
+import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
+import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
+import { NotificationProvider } from "@/contexts/notification-context"
+import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import './globals.css'
 
@@ -85,17 +90,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Get nonce from middleware for CSP - use fixed nonce in development
+  // Get nonce from middleware for CSP
   const headersList = headers()
-  const nonce = process.env.NODE_ENV === 'development' 
-    ? 'eRFNoVpkmmUxkC9U6H2IOg==' 
-    : headersList.get('X-CSP-Nonce') || undefined
+  const nonce = headersList.get('X-CSP-Nonce') || undefined
   
   return (
     <html lang="en">
       <head>
         <script
-          nonce={nonce}
+          nonce={nonce || undefined}
+          suppressHydrationWarning={true}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
@@ -112,13 +116,32 @@ export default function RootLayout({
         <AuthProvider>
           <OnboardingProvider>
             <ThemeProvider>
-              <AuthPopupProvider>
-                {children}
-                <PWAInstallPrompt />
-                <div id="toast-container" className="fixed top-0 right-0 z-50">
-                  {/* Toast container for notifications */}
-                </div>
-              </AuthPopupProvider>
+              <BusinessModeProvider>
+                <AuthPopupProvider>
+                  <ElitePulseErrorBoundary>
+                    <ElitePulseProvider>
+                      <NotificationProvider
+                        enablePolling={true}
+                        pollInterval={30000}
+                        enableSounds={true}
+                        enableBrowserNotifications={true}
+                      >
+                        <IntelligenceNotificationProvider 
+                          position="top-right"
+                          maxNotifications={5}
+                          enableAutoNotifications={true}
+                        >
+                          {children}
+                          <PWAInstallPrompt />
+                          <div id="toast-container" className="fixed top-0 right-0 z-50">
+                            {/* Toast container for notifications */}
+                          </div>
+                        </IntelligenceNotificationProvider>
+                      </NotificationProvider>
+                    </ElitePulseProvider>
+                  </ElitePulseErrorBoundary>
+                </AuthPopupProvider>
+              </BusinessModeProvider>
             </ThemeProvider>
           </OnboardingProvider>
         </AuthProvider>

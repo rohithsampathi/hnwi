@@ -9,6 +9,7 @@ import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
 import { OpportunityAtlasNew as OpportunityAtlas } from "@/components/opportunity-atlas-new";
 import { AssetCategoryData, generateAssetCategoriesFromOpportunities } from "@/lib/opportunity-atlas-data";
+import { useOpportunityScoring, useIntelligenceActions } from "@/lib/hooks/use-intelligence";
 
 interface PriveExchangePageProps {
   onNavigate?: (route: string) => void;
@@ -21,6 +22,10 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Intelligence integration
+  const opportunityScoring = useOpportunityScoring();
+  const { trackOpportunityView } = useIntelligenceActions();
 
   // Load opportunities data
   useEffect(() => {
@@ -95,6 +100,8 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
               categories={assetCategories}
               selectedCategory={selectedCategory}
               onCategorySelect={handleCategorySelect}
+              opportunityScoring={opportunityScoring}
+              onOpportunityView={trackOpportunityView}
             />
           </div>
         )}

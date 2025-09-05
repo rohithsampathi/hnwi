@@ -131,11 +131,53 @@ export class SessionManager {
   static async validateSession(): Promise<SessionData | null> {
     try {
       const cookieStore = cookies();
-      const sessionCookieName = getSecureCookieName('session');
-      const sessionToken = cookieStore.get(sessionCookieName)?.value;
+      
+      // Debug: Log all available cookies
+      const allCookies = Array.from(cookieStore.getAll().map(cookie => cookie.name)).join(', ');
+      logger.debug('Available cookies:', { cookies: allCookies });
+      
+      // Check for session_token cookie (used by current auth system)
+      let sessionToken = cookieStore.get('session_token')?.value;
+      logger.debug('session_token cookie:', { found: !!sessionToken });
+      
+      // Fallback to traditional session cookie
+      if (!sessionToken) {
+        sessionToken = cookieStore.get('session')?.value;
+        logger.debug('session cookie:', { found: !!sessionToken });
+      }
+      
+      // Fallback to secure cookie name (for compatibility)
+      if (!sessionToken) {
+        const sessionCookieName = getSecureCookieName('session');
+        sessionToken = cookieStore.get(sessionCookieName)?.value;
+        logger.debug('secure session cookie:', { found: !!sessionToken, cookieName: sessionCookieName });
+      }
 
       if (!sessionToken) {
-        logger.debug('No session token found');
+        // Try to get session data from session_user cookie (JSON format)
+        const sessionUserCookie = cookieStore.get('session_user')?.value;
+        logger.debug('session_user cookie:', { found: !!sessionUserCookie });
+        
+        if (sessionUserCookie) {
+          try {
+            const userData = JSON.parse(sessionUserCookie);
+            logger.debug('Successfully parsed session_user data:', { userId: userData.id, email: userData.email });
+            
+            // Convert to SessionData format
+            return {
+              userId: userData.id,
+              email: userData.email,
+              role: userData.role || 'user',
+              iat: Math.floor((userData.timestamp || Date.now()) / 1000),
+              exp: Math.floor((userData.timestamp || Date.now()) / 1000) + SESSION_CONFIG.maxAge,
+              sessionId: `user-${userData.id}`
+            };
+          } catch (error) {
+            logger.debug('Failed to parse session_user cookie', { error });
+          }
+        }
+        
+        logger.debug('No valid session found - all methods exhausted');
         return null;
       }
 

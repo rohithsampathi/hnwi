@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { getMemberAnalytics, type MemberAnalytics } from "@/lib/api"
+import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
 
 export function SidebarNavigation({
   onNavigate,
@@ -149,7 +150,14 @@ export function SidebarNavigation({
   ]
 
   const handleNavigate = (route: string) => {
-    onNavigate(route)
+    // Use unified navigation system - automatically routes to active system
+    if (useNewNavigation()) {
+      // New system: use unified navigation
+      unifiedNavigate(route)
+    } else {
+      // Legacy system: use onNavigate prop
+      onNavigate(route)
+    }
   }
 
   const handleToggleSidebar = () => {
@@ -184,7 +192,7 @@ export function SidebarNavigation({
         {/* Logo at top */}
         <div 
           className="flex items-center justify-center px-4 py-4 border-b border-border bg-background flex-shrink-0 cursor-pointer"
-          onClick={() => onNavigate("dashboard")}
+          onClick={() => handleNavigate("dashboard")}
         >
           <motion.div
             className={cn(isCollapsed ? "mr-0" : "mr-3")}

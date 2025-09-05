@@ -5,6 +5,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
 import { Home, CalendarIcon, Crown, UserCircle2, Globe, Gem } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
 
 export function FooterNavigation({
   onNavigate,
@@ -30,8 +31,14 @@ export function FooterNavigation({
 
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
-    // Always use the actual route name, don't convert to "/"
-    onNavigate(route)
+    // Use unified navigation system - automatically routes to active system
+    if (useNewNavigation()) {
+      // New system: use unified navigation
+      unifiedNavigate(route)
+    } else {
+      // Legacy system: use onNavigate prop
+      onNavigate(route)
+    }
   }
 
   return (

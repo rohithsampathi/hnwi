@@ -7,12 +7,14 @@ import { secureApi } from "@/lib/secure-api"
 interface AuthContextType {
   user: any | null
   loading: boolean
+  isAuthenticated: boolean
   refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
+  isAuthenticated: false,
   refreshSession: async () => {}
 })
 
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const contextValue = useMemo(() => ({
     user,
     loading,
+    isAuthenticated: !!user && !loading,
     refreshSession
   }), [user, loading, refreshSession])
 

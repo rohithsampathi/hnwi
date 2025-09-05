@@ -9,7 +9,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
-import { SessionState, setSessionState, isSessionLocked, getSessionInfo } from "@/lib/auth-utils"
+import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCurrentDevice, shouldSkip2FA } from "@/lib/auth-utils"
 
 interface AuthPopupProps {
   isOpen: boolean
@@ -39,6 +39,7 @@ export function AuthPopup({
   const [rateLimitSeconds, setRateLimitSeconds] = useState<number | null>(null)
   const [isReauthMode, setIsReauthMode] = useState(false)
   const [storedEmail, setStoredEmail] = useState("")
+  const [rememberDevice, setRememberDevice] = useState(false)
   const countdownInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Start countdown timer for rate limit
@@ -95,10 +96,14 @@ export function AuthPopup({
         } catch (e) {
           // Ignore parsing errors
         }
+        
+        // For reauth, default to remembering device if they haven't opted out before
+        setRememberDevice(true);
       } else {
         // This is a full login scenario
         setIsReauthMode(false);
         setStoredEmail("");
+        setRememberDevice(false);
       }
     }
   }, [isOpen])
@@ -171,12 +176,25 @@ export function AuthPopup({
         // Update session state to authenticated (unlocked)
         setSessionState(SessionState.AUTHENTICATED)
         
-        toast({
-          title: "Secure access restored",
-          description: isReauthMode 
-            ? "Session unlocked. Your work has been preserved." 
-            : "Elite authentication successful. Intelligence feed reconnected.",
-        })
+        // Trust device if checkbox was checked
+        if (rememberDevice) {
+          const trustSuccess = trustCurrentDevice();
+          if (trustSuccess) {
+            toast({
+              title: "Secure access restored",
+              description: isReauthMode 
+                ? "Session unlocked and device trusted for 7 days. Your work has been preserved." 
+                : "Elite authentication successful. Device trusted for 7 days.",
+            })
+          }
+        } else {
+          toast({
+            title: "Secure access restored",
+            description: isReauthMode 
+              ? "Session unlocked. Your work has been preserved." 
+              : "Elite authentication successful. Intelligence feed reconnected.",
+          })
+        }
         
         handleClose()
         onSuccess?.()
@@ -231,12 +249,25 @@ export function AuthPopup({
         // Update session state to authenticated (unlocked)
         setSessionState(SessionState.AUTHENTICATED)
         
-        toast({
-          title: "Secure access restored",
-          description: isReauthMode 
-            ? "Session unlocked. Your work has been preserved." 
-            : "Elite authentication successful. Intelligence feed reconnected.",
-        })
+        // Trust device if checkbox was checked
+        if (rememberDevice) {
+          const trustSuccess = trustCurrentDevice();
+          if (trustSuccess) {
+            toast({
+              title: "Secure access restored",
+              description: isReauthMode 
+                ? "Session unlocked and device trusted for 7 days. Your work has been preserved." 
+                : "Elite authentication successful. Device trusted for 7 days.",
+            })
+          }
+        } else {
+          toast({
+            title: "Secure access restored",
+            description: isReauthMode 
+              ? "Session unlocked. Your work has been preserved." 
+              : "Elite authentication successful. Intelligence feed reconnected.",
+          })
+        }
         
         // Reset form
         handleClose()
@@ -308,6 +339,7 @@ export function AuthPopup({
     setRateLimitSeconds(null)
     setIsReauthMode(false)
     setStoredEmail("")
+    setRememberDevice(false)
     if (countdownInterval.current) {
       clearInterval(countdownInterval.current)
       countdownInterval.current = null
@@ -384,6 +416,24 @@ export function AuthPopup({
                     )}
                   </button>
                 </div>
+              </div>
+
+              {/* Remember Device Checkbox */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="rememberDevice"
+                  checked={rememberDevice}
+                  onChange={(e) => setRememberDevice(e.target.checked)}
+                  disabled={isLoading}
+                  className="h-4 w-4 rounded border-muted-foreground/30 text-primary focus:ring-primary focus:ring-2 focus:ring-offset-2"
+                />
+                <label 
+                  htmlFor="rememberDevice" 
+                  className="text-sm text-muted-foreground cursor-pointer select-none"
+                >
+                  Remember this device for 7 days
+                </label>
               </div>
 
               {error && (
