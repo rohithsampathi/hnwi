@@ -85,6 +85,7 @@ const getSmartImageCategory = (assetName: string, assetType: string, assetDescri
     { keywords: ['precious metal'], category: 'precious metals' },
     
     // Real Estate
+    { keywords: ['plot', 'land plot', 'fenced plot'], category: 'plot' },
     { keywords: ['villa', 'luxury villa'], category: 'villa' },
     { keywords: ['mansion', 'luxury mansion'], category: 'mansion' },
     { keywords: ['complex', 'commercial complex'], category: 'commercial complex' },
@@ -203,6 +204,9 @@ const getSmartImageUrl = (assetName: string, assetType: string): string => {
   const fullText = `${assetName} ${assetType}`.toLowerCase();
   
   // Quick rules for common cases
+  if (fullText.includes('plot') || fullText.includes('land plot')) {
+    return generateImageUrl('photo-1576013551627-0cc20b96c2a7');
+  }
   if (fullText.includes('gold bar') || fullText.includes('gold bars')) {
     return generateImageUrl('photo-1610375461246-83df859d849d');
   }

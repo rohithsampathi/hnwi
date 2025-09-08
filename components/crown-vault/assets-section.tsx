@@ -20,6 +20,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
 import { EditAssetModal } from "./edit-asset-modal";
+import { getCategoryGroup, getCategoryDisplayName } from "@/lib/category-utils";
 
 interface AssetsSectionProps {
   assets: CrownVaultAsset[];
@@ -148,6 +149,16 @@ const formatValue = (value: number, currency: string = "USD") => {
 };
 
 const formatAssetType = (type: string) => {
+  // Use category grouping logic to get the proper display name
+  const categoryGroup = getCategoryGroup(type);
+  const displayName = getCategoryDisplayName(categoryGroup);
+  
+  // If it returns a grouped category name, use it; otherwise use the original formatting
+  if (displayName !== categoryGroup) {
+    return displayName;
+  }
+  
+  // Fallback to original formatting if no category grouping matched
   return type
     .replace(/_/g, ' ')
     .split(' ')

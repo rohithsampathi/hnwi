@@ -152,6 +152,16 @@ export const ASSET_IMAGE_MAP: Record<string, AssetImageConfig> = {
     alt: "Premium estate land",
     keywords: ["estate", "land", "property", "investment"]
   },
+  "plot": {
+    unsplashId: "photo-1576013551627-0cc20b96c2a7", // Open land plot with fencing
+    alt: "Premium fenced land plot",
+    keywords: ["plot", "fenced", "land", "property", "development"]
+  },
+  "plots": {
+    unsplashId: "photo-1576013551627-0cc20b96c2a7", // Open land plots with fencing
+    alt: "Premium fenced land plots",
+    keywords: ["plots", "fenced", "land", "property", "development"]
+  },
   "lands": {
     unsplashId: "photo-1500382017468-9049fed747ef", // Vast estate land
     alt: "Premium estate lands",
@@ -564,6 +574,7 @@ export const getAssetImageByTitle = (assetTitle: string, assetType: string): Ass
   // Title-based keyword matching (more specific)
   const titleKeywords = [
     // Land & Agriculture
+    { keywords: ["plot", "land plot", "fenced plot", "development plot"], type: "plot" },
     { keywords: ["aquaculture", "fish farm", "fishery"], type: "land" },
     { keywords: ["mango orchard", "orchard", "fruit farm", "plantation"], type: "orchard" },
     { keywords: ["vineyard", "wine estate", "grape farm"], type: "vineyard" },

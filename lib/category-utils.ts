@@ -11,9 +11,9 @@ export interface CategoryConfig {
 // Dynamic category configuration - easily extensible
 export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   'real_estate': {
-    displayName: 'Real Estate & Property',
-    keywords: ['real', 'estate', 'property', 'land', 'residential', 'commercial', 'plot', 'building'],
-    groupWith: ['land', 'property', 'residential', 'commercial'],
+    displayName: 'Real Estate',
+    keywords: ['real', 'estate', 'property', 'land', 'residential', 'commercial', 'plot', 'building', 'apartment', 'villa'],
+    groupWith: ['land', 'property', 'residential', 'commercial', 'plot', 'plots', 'apartment', 'apartments', 'villa', 'villas'],
   },
   'jewelry_precious_metals': {
     displayName: 'Jewelry & Precious Metals',
