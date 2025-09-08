@@ -68,7 +68,7 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mt-10 space-y-6">
       
       {/* Clean Header */}
       <div>

@@ -3,7 +3,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +13,7 @@ import { MonthView } from "@/components/calendar/month-view"
 import { YearView } from "@/components/calendar/year-view"
 import { EventDetailsSection } from "@/components/calendar/event-details-section"
 import { Heading2, Heading3 } from "@/components/ui/typography"
+import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { getMonthYearString, isSameDay } from "@/utils/calendar"
 import { format } from 'date-fns'
 
@@ -154,7 +154,7 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
     if (view !== "month" || selectedDateEvents.length === 0) return null;
     
     return (
-      <div className="mt-6">
+      <div className="w-full">
         {/* Top heading for date with event count */}
         <h2 className="text-2xl font-bold mb-4">
           Events for {format(currentDate, 'EEEE, MMMM do, yyyy')} 
@@ -182,24 +182,8 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
   };
 
   return (
-    <Layout
-      currentPage="calendar"
-      title={
-        <div className="flex items-center space-x-2">
-          <CalendarIcon className="w-6 h-6 text-primary" />
-          <Heading2>My Calendar</Heading2>
-        </div>
-      }
-      showBackButton
-      onNavigate={onNavigate}
-    >
-      <div className="px-4 py-6">
-        <Heading2 className="text-primary">My Calendar</Heading2>
-        <p className="text-muted-foreground text-base leading-tight -mt-1">
-          Manage your premium events and appointments
-        </p>
-      </div>
-      <div className="px-4">
+    <>
+      <div className="w-full">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="text-2xl font-bold">
@@ -228,7 +212,7 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
               </TabsList>
             </Tabs>
           </div>
-          <div className="mt-4">
+          <div className="w-full">
             {renderCalendarView()}
             {/* Display events for selected date in Month view */}
             {renderSelectedDateEvents()}
@@ -236,6 +220,6 @@ export function CalendarPage({ onNavigate }: { onNavigate: (route: string) => vo
             {selectedEvent && !selectedDateEvents.length && <EventDetailsSection event={selectedEvent} />}
           </div>
       </div>
-    </Layout>
+    </>
   )
 }

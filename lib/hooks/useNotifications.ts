@@ -20,6 +20,7 @@ export interface UseNotificationsReturn {
   stats: NotificationStats | null;
   preferences: UserNotificationPreferences | null;
   loading: boolean;
+  preferencesLoading: boolean;
   error: string | null;
   hasMore: boolean;
   
@@ -28,7 +29,7 @@ export interface UseNotificationsReturn {
   urgentCount: number;
   
   // Actions
-  fetchNotifications: (page?: number, filter?: 'unread' | 'read' | 'all') => Promise<void>;
+  fetchNotifications: (limit?: number, offset?: number, unreadOnly?: boolean) => Promise<void>;
   fetchStats: () => Promise<void>;
   fetchPreferences: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
@@ -56,61 +57,79 @@ export function useNotifications(
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [stats, setStats] = useState<NotificationStats | null>(null);
   const [preferences, setPreferences] = useState<UserNotificationPreferences | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Start with loading false
+  const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Refs for cleanup
   const pollIntervalRef = useRef<NodeJS.Timeout>();
   const mountedRef = useRef(true);
 
   // Computed values
-  const unreadCount = stats?.unread_count || 0;
-  const urgentCount = stats?.urgent_count || 0;
+  const unreadCount = stats?.unread_notifications || 0;
+  const urgentCount = notifications.filter(n => n.priority === 'urgent' && n.status !== 'read').length;
 
   // Fetch notifications with error handling
   const fetchNotifications = useCallback(async (
-    page = 1, 
-    filter?: 'unread' | 'read' | 'all'
+    limit = 20, 
+    offset = 0, 
+    unreadOnly = false
   ) => {
     if (!mountedRef.current) return;
     
-    // Check if user is authenticated before making API call
-    if (!canAccessFeaturesWithFallback()) {
-      console.log('Skipping notification fetch - user not authenticated');
-      return;
-    }
-    
-    try {
+    // For first fetch, always set loading and clear error
+    if (offset === 0) {
       setLoading(true);
       setError(null);
-      
+    }
+    
+    
+    try {
       const response: NotificationInboxResponse = await notificationService.getInbox(
-        page, 
-        20, 
-        filter
+        limit, 
+        offset, 
+        unreadOnly
       );
       
-      if (!mountedRef.current) return;
-      
-      if (page === 1) {
-        setNotifications(response.notifications);
-      } else {
-        setNotifications(prev => [...prev, ...response.notifications]);
+      if (!mountedRef.current) {
+        // Still set loading to false even if unmounted (React strict mode issue)
+        if (offset === 0) {
+          setLoading(false);
+        }
+        return;
       }
       
-      setHasMore(response.has_more);
-      setCurrentPage(page);
+      if (offset === 0) {
+        setNotifications(response.notifications || []);
+      } else {
+        setNotifications(prev => [...prev, ...(response.notifications || [])]);
+      }
+      
+      setHasMore(response.has_more || false);
+      setCurrentPage(Math.floor(offset / limit) + 1);
       
     } catch (err) {
-      if (!mountedRef.current) return;
-      setError(err instanceof Error ? err.message : 'Failed to fetch notifications');
-      console.error('Failed to fetch notifications:', err);
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
+      if (!mountedRef.current) {
+        if (offset === 0) {
+          setLoading(false);
+        }
+        return;
       }
+      
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch notifications';
+      setError(errorMessage);
+      
+      if (offset === 0) {
+        setNotifications([]);
+      }
+    }
+    
+    // ALWAYS set loading to false after first fetch
+    if (mountedRef.current && offset === 0) {
+      setLoading(false);
     }
   }, []);
 
@@ -118,10 +137,6 @@ export function useNotifications(
   const fetchStats = useCallback(async () => {
     if (!mountedRef.current) return;
     
-    // Check if user is authenticated before making API call
-    if (!canAccessFeaturesWithFallback()) {
-      return;
-    }
     
     try {
       const statsData = await notificationService.getStats();
@@ -129,47 +144,42 @@ export function useNotifications(
         setStats(statsData);
       }
     } catch (err) {
-      console.error('Failed to fetch notification stats:', err);
+      // Silently fail stats fetch
     }
   }, []);
 
   // Fetch preferences
   const fetchPreferences = useCallback(async () => {
-    if (!mountedRef.current) return;
     
     try {
+      setPreferencesLoading(true);
       const prefs = await notificationService.getPreferences();
-      if (mountedRef.current) {
-        setPreferences(prefs);
-      }
+      setPreferences(prefs);
     } catch (err) {
-      console.error('Failed to fetch notification preferences:', err);
       // Set default preferences on error
-      if (mountedRef.current) {
-        const defaultPrefs = {
-          email_enabled: true,
-          push_enabled: false,
-          in_app_enabled: true,
-          sms_enabled: false,
-          quiet_hours_enabled: false,
-          quiet_hours_start: "22:00",
-          quiet_hours_end: "08:00",
-          event_types: {
-            elite_pulse_generated: true,
-            opportunity_added: true,
-            crown_vault_update: true,
-            social_event_added: true,
-            market_alert: true,
-            regulatory_update: true,
-            system_notification: true
-          },
-          frequency_limits: {
-            max_per_hour: 10,
-            max_per_day: 50
-          }
-        };
-        setPreferences(defaultPrefs);
-      }
+      const defaultPrefs = {
+        email_enabled: true,
+        push_enabled: false,
+        in_app_enabled: true,
+        sms_enabled: false,
+        quiet_hours_enabled: false,
+        quiet_hours_start: "22:00",
+        quiet_hours_end: "08:00",
+        event_types: {
+          elite_pulse: true,
+          hnwi_world: true,
+          crown_vault: true,
+          social_hub: true,
+          system_notification: true
+        },
+        frequency_limits: {
+          max_per_hour: 10,
+          max_per_day: 50
+        }
+      };
+      setPreferences(defaultPrefs);
+    } finally {
+      setPreferencesLoading(false);
     }
   }, []);
 
@@ -180,14 +190,13 @@ export function useNotifications(
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, status: 'read' as const, read_at: new Date().toISOString() } : n)
       );
-      setStats(prev => prev ? { ...prev, unread_count: Math.max(0, prev.unread_count - 1) } : null);
+      setStats(prev => prev ? { ...prev, unread_notifications: Math.max(0, prev.unread_notifications - 1) } : null);
       
       await notificationService.markAsRead(id);
       
       // Refresh stats to get accurate count
       await fetchStats();
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
       // Revert optimistic update
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, status: 'delivered' as const, read_at: undefined } : n)
@@ -203,14 +212,13 @@ export function useNotifications(
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, status: 'delivered' as const, read_at: undefined } : n)
       );
-      setStats(prev => prev ? { ...prev, unread_count: prev.unread_count + 1 } : null);
+      setStats(prev => prev ? { ...prev, unread_notifications: prev.unread_notifications + 1 } : null);
       
       await notificationService.markAsUnread(id);
       
       // Refresh stats to get accurate count
       await fetchStats();
     } catch (err) {
-      console.error('Failed to mark notification as unread:', err);
       // Revert optimistic update
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, status: 'read' as const, read_at: new Date().toISOString() } : n)
@@ -228,7 +236,7 @@ export function useNotifications(
       setNotifications(prev => prev.filter(n => n.id !== id));
       
       if (notification?.status !== 'read') {
-        setStats(prev => prev ? { ...prev, unread_count: Math.max(0, prev.unread_count - 1) } : null);
+        setStats(prev => prev ? { ...prev, unread_notifications: Math.max(0, prev.unread_notifications - 1) } : null);
       }
       
       await notificationService.deleteNotification(id);
@@ -236,7 +244,6 @@ export function useNotifications(
       // Refresh stats to get accurate count
       await fetchStats();
     } catch (err) {
-      console.error('Failed to delete notification:', err);
       // Revert would require re-fetching, so just refresh
       await fetchNotifications(1);
       throw err;
@@ -250,14 +257,13 @@ export function useNotifications(
       setNotifications(prev => 
         prev.map(n => ({ ...n, status: 'read' as const, read_at: new Date().toISOString() }))
       );
-      setStats(prev => prev ? { ...prev, unread_count: 0 } : null);
+      setStats(prev => prev ? { ...prev, unread_notifications: 0 } : null);
       
       await notificationService.markAllAsRead();
       
       // Refresh to ensure consistency
       await Promise.all([fetchNotifications(1), fetchStats()]);
     } catch (err) {
-      console.error('Failed to mark all notifications as read:', err);
       // Refresh on error
       await fetchNotifications(1);
       throw err;
@@ -270,7 +276,6 @@ export function useNotifications(
       const updatedPrefs = await notificationService.updatePreferences(prefs);
       setPreferences(updatedPrefs);
     } catch (err) {
-      console.error('Failed to update notification preferences:', err);
       throw err;
     }
   }, []);
@@ -284,12 +289,11 @@ export function useNotifications(
       );
       
       const unreadIds = notifications.filter(n => ids.includes(n.id) && n.status !== 'read');
-      setStats(prev => prev ? { ...prev, unread_count: Math.max(0, prev.unread_count - unreadIds.length) } : null);
+      setStats(prev => prev ? { ...prev, unread_notifications: Math.max(0, prev.unread_notifications - unreadIds.length) } : null);
       
       await notificationService.batchMarkAsRead(ids);
       await fetchStats();
     } catch (err) {
-      console.error('Failed to batch mark notifications as read:', err);
       await fetchNotifications(1);
       throw err;
     }
@@ -302,12 +306,11 @@ export function useNotifications(
       
       // Optimistic update
       setNotifications(prev => prev.filter(n => !ids.includes(n.id)));
-      setStats(prev => prev ? { ...prev, unread_count: Math.max(0, prev.unread_count - unreadDeletedCount) } : null);
+      setStats(prev => prev ? { ...prev, unread_notifications: Math.max(0, prev.unread_notifications - unreadDeletedCount) } : null);
       
       await notificationService.batchDelete(ids);
       await fetchStats();
     } catch (err) {
-      console.error('Failed to batch delete notifications:', err);
       await fetchNotifications(1);
       throw err;
     }
@@ -315,11 +318,15 @@ export function useNotifications(
 
   // Refresh all data
   const refresh = useCallback(async () => {
-    await Promise.all([
-      fetchNotifications(1),
-      fetchStats(),
-      fetchPreferences()
-    ]);
+    
+    // Don't set loading here - let fetchNotifications handle it
+    try {
+      await fetchNotifications(20, 0);
+      await fetchStats();
+      await fetchPreferences();
+    } catch (error) {
+      // Error handling is done in individual functions
+    }
   }, [fetchNotifications, fetchStats, fetchPreferences]);
 
   // Setup polling
@@ -346,10 +353,25 @@ export function useNotifications(
 
   // Initial fetch
   useEffect(() => {
-    if (autoFetch) {
-      refresh();
-    }
-  }, [autoFetch, refresh]);
+    // Skip if already initialized
+    if (hasInitialized) return;
+    
+    setHasInitialized(true);
+    
+    const initializeData = async () => {
+      if (autoFetch && canAccessFeaturesWithFallback()) {
+        // Only fetch if auto-fetch is enabled and user is authenticated
+        await fetchNotifications(20, 0);
+        fetchStats(); // Don't await this as it doesn't affect loading state
+        fetchPreferences(); // Don't await this as it doesn't affect loading state
+      } else {
+        // Ensure loading is false if we're not fetching
+        setLoading(false);
+      }
+    };
+    
+    initializeData();
+  }, [hasInitialized, autoFetch, fetchNotifications, fetchStats, fetchPreferences]); // Add deps to ensure it runs
 
   // Cleanup on unmount
   useEffect(() => {
@@ -367,6 +389,7 @@ export function useNotifications(
     stats,
     preferences,
     loading,
+    preferencesLoading,
     error,
     hasMore,
     

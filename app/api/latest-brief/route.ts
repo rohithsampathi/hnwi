@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             date: new Date(Date.now() - 345600000).toISOString(),
             product: "Proprietary Intelligence",
             source: "Real Estate Tech Intelligence",
-            summary: "## Innovation Details\n- Machine learning models predicting luxury market movements\n- Automated bidding systems for trophy assets\n- Cross-border arbitrage opportunities being systematically exploited\n\n## Market Implications\n- Traditional real estate brokers losing high-end market share\n- Price discovery becoming more efficient in luxury segment\n- Liquidity improving for ultra-high-end properties\n\n## Investment Thesis\nReal estate technology firms enabling algorithmic trading represent next frontier. Early stage valuations attractive before mainstream adoption.",
+            summary: "## Innovation Details\n- Machine learning models predicting luxury market movements\n- Automated bidding systems for trophy assets\n- Cross-border arbitrage opportunities being systematically exploited\n\n## Market Implications\n- Traditional real estate brokers losing high-end market share\n- Price discovery becoming more efficient in luxury segment\n- Liquidity improving for high-end properties\n\n## Investment Thesis\nReal estate technology firms enabling algorithmic trading represent next frontier. Early stage valuations attractive before mainstream adoption.",
           }
         ],
         total_count: 5,

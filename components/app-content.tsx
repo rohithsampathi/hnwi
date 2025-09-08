@@ -9,12 +9,14 @@ import Image from "next/image"
 import { useTheme } from "@/contexts/theme-context"
 import { UserCircle2 } from "lucide-react"
 import { Heading2 } from "@/components/ui/typography"
+import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { HomeDashboardElite } from "./home-dashboard-elite"
 import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
 import { ProfilePage } from "./profile-page"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { Layout } from "./layout/layout"
+import { ShieldLoader } from "./ui/shield-loader"
 import { StrategyEnginePage } from "./pages/strategy-engine-page"
 import { StrategyVaultPage } from "./pages/strategy-vault-page"
 import { PlaybookPage } from "./pages/playbook-page"
@@ -720,45 +722,40 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         
         // User is authenticated, show dashboard without back button
         return (
-          <Layout title="" onNavigate={handleNavigation} showBackButton={false} currentPage={currentPage}>
             <HomeDashboardElite 
               user={user} 
               onNavigate={handleNavigation} 
               isFromSignupFlow={isFromSignupFlow} 
               userData={user}
             />
-          </Layout>
         )
 
       case "profile":
         return (
           user && (
-            <Layout 
-              title={
-                <div className="flex items-center space-x-2">
-                  <UserCircle2 className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                  <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Profile</Heading2>
-                </div>
-              }
-              showBackButton 
-              onNavigate={handleNavigation}
-            >
+            <Layout title="" onNavigate={handleNavigation} currentPage="profile">
               <ProfilePage user={user} onUpdateUser={handleUpdateUserClick} onLogout={handleLogoutClick} />
             </Layout>
           )
         )
 
       case "strategy-engine":
-        return <StrategyEnginePage onNavigate={handleNavigation} />
+        return (
+          <Layout title="" onNavigate={handleNavigation} currentPage="strategy-engine">
+            <StrategyEnginePage onNavigate={handleNavigation} />
+          </Layout>
+        )
 
       case "strategy-vault":
         return (
-          <StrategyVaultPage 
-            onNavigate={handleNavigation}
-            selectedIndustry={selectedIndustry}
-            timeRange={timeRange}
-            expandedDevelopmentId={expandedDevelopmentId}
-          />
+          <Layout title="" onNavigate={handleNavigation} currentPage="strategy-vault">
+            <StrategyVaultPage 
+              onNavigate={handleNavigation}
+              selectedIndustry={selectedIndustry}
+              timeRange={timeRange}
+              expandedDevelopmentId={expandedDevelopmentId}
+            />
+          </Layout>
         )
 
 
@@ -770,7 +767,11 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         )
 
       case "prive-exchange":
-        return <PriveExchangePage onNavigate={handleNavigation} />
+        return (
+          <Layout title="" onNavigate={handleNavigation} currentPage="prive-exchange">
+            <PriveExchangePage onNavigate={handleNavigation} />
+          </Layout>
+        )
 
       case "calendar-page":
         return <CalendarPage onNavigate={handleNavigation} />
@@ -797,10 +798,18 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         />
 
       case "social-hub":
-        return <SocialHubPage onNavigate={handleNavigation} />
+        return (
+          <Layout title="" onNavigate={handleNavigation} currentPage="social-hub">
+            <SocialHubPage onNavigate={handleNavigation} />
+          </Layout>
+        )
 
       case "crown-vault":
-        return <CrownVaultPage onNavigate={handleNavigation} />
+        return (
+          <Layout title="" onNavigate={handleNavigation} currentPage="crown-vault">
+            <CrownVaultPage onNavigate={handleNavigation} />
+          </Layout>
+        )
 
       default:
         return <div>Page not found</div>

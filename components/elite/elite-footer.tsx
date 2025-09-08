@@ -8,7 +8,7 @@ import { Users, Activity, DollarSign, TrendingUp } from "lucide-react"
 import type { User } from "@/types/dashboard"
 
 interface EliteFooterProps {
-  user: User
+  user?: User
 }
 
 export function EliteFooter({ user }: EliteFooterProps) {
@@ -24,18 +24,19 @@ export function EliteFooter({ user }: EliteFooterProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: 1 }}
-      className="text-center space-y-3 py-6"
+      className="text-center space-y-3 py-6 pb-20 md:pb-6"
     >
-      <div className="flex items-center justify-center space-x-6 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 text-xs text-muted-foreground">
         {stats.map((stat, index) => (
           <div key={index} className="flex items-center space-x-1">
             <stat.icon className="h-3 w-3" />
-            <span>{stat.label}</span>
+            <span className="hidden sm:inline">{stat.label}</span>
+            <span className="sm:hidden">{stat.label.split(' ')[0]}</span>
           </div>
         ))}
       </div>
       <div className="text-xs text-muted-foreground">
-        Generated for: <span className="font-medium">{user.firstName} {user.lastName}</span>
+        Generated for: <span className="font-medium">{user?.firstName || 'User'} {user?.lastName || ''}</span>
       </div>
     </motion.div>
   )

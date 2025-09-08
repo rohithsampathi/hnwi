@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Shield, Crown, Target, Globe, RefreshCw } from "lucide-react"
+import { secureApi } from "@/lib/secure-api"
 
 export function SimpleIntelligenceTest() {
   const [data, setData] = useState<any>(null)
@@ -13,14 +14,23 @@ export function SimpleIntelligenceTest() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      console.log('🔍 Fetching intelligence data...')
       
-      const response = await fetch('http://localhost:8000/api/intelligence/dashboard/59363d04-eb97-4224-94cf-16ca0d4f746e', {
-        headers: {
-          'Authorization': 'Bearer test-token',
-          'Content-Type': 'application/json'
-        }
-      })
+      // Use secure API - NO direct backend URL exposure
+      const data = await secureApi.get('/api/hnwi/intelligence/dashboard/59363d04-eb97-4224-94cf-16ca0d4f746e', false)
+      setData(data)
+      setLoading(false)
+    } catch (error: any) {
+      setError(error.message || 'Failed to fetch data')
+      setLoading(false)
+    }
+  }
+
+  // Old fetch code removed - keeping this comment for reference
+  const fetchDataOldWay = async () => {
+    try {
+      setLoading(true)
+      
+      const response = await fetch('/api/debug/ruscha-raw')
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`)

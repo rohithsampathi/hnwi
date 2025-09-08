@@ -3,8 +3,7 @@ import { secureApi } from "@/lib/secure-api";
 export interface NotificationRecord {
   id: string;
   user_id: string;
-  event_type: 'elite_pulse_generated' | 'opportunity_added' | 'crown_vault_update' | 
-    'social_event_added' | 'market_alert' | 'regulatory_update' | 'system_notification';
+  event_type: 'elite_pulse' | 'hnwi_world' | 'crown_vault' | 'social_hub' | 'system_notification';
   channel: 'email' | 'push' | 'in_app' | 'sms';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   title: string;
@@ -21,19 +20,17 @@ export interface NotificationInboxResponse {
   total_count: number;
   unread_count: number;
   has_more: boolean;
-  page: number;
-  limit: number;
 }
 
 export interface NotificationStats {
-  total_count: number;
-  unread_count: number;
-  urgent_count: number;
-  counts_by_type: Record<string, number>;
-  counts_by_priority: Record<string, number>;
+  user_id: string;
+  unread_notifications: number;
+  total_notifications: number;
+  notifications_by_type: Record<string, number>;
 }
 
 export interface UserNotificationPreferences {
+  user_id?: string;
   email_enabled: boolean;
   push_enabled: boolean;
   in_app_enabled: boolean;
@@ -42,12 +39,10 @@ export interface UserNotificationPreferences {
   quiet_hours_start: string;
   quiet_hours_end: string;
   event_types: {
-    elite_pulse_generated: boolean;
-    opportunity_added: boolean;
-    crown_vault_update: boolean;
-    social_event_added: boolean;
-    market_alert: boolean;
-    regulatory_update: boolean;
+    elite_pulse: boolean;
+    hnwi_world: boolean;
+    crown_vault: boolean;
+    social_hub: boolean;
     system_notification: boolean;
   };
   frequency_limits: {
@@ -56,15 +51,12 @@ export interface UserNotificationPreferences {
   };
 }
 
-export interface PushSubscription {
-  subscription: {
-    endpoint: string;
-    keys: {
-      p256dh: string;
-      auth: string;
-    };
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
   };
-  user_agent: string;
 }
 
 class NotificationService {
@@ -72,15 +64,15 @@ class NotificationService {
 
   // Core notification management
   async getInbox(
-    page = 1, 
     limit = 20, 
-    filter?: 'unread' | 'read' | 'all',
+    offset = 0, 
+    unreadOnly = false,
     eventType?: string
   ): Promise<NotificationInboxResponse> {
     const params = new URLSearchParams({
-      page: page.toString(),
       limit: limit.toString(),
-      ...(filter && { filter }),
+      offset: offset.toString(),
+      unread_only: unreadOnly.toString(),
       ...(eventType && { event_type: eventType })
     });
 
@@ -92,7 +84,7 @@ class NotificationService {
       );
       return response;
     } catch (error) {
-      console.error('Failed to fetch notification inbox:', error);
+      // Error:('Failed to fetch notification inbox:', error);
       throw error;
     }
   }
@@ -101,7 +93,7 @@ class NotificationService {
     try {
       await secureApi.post(`${this.baseUrl}/${notificationId}/read`);
     } catch (error) {
-      console.error(`Failed to mark notification ${notificationId} as read:`, error);
+      // Error:(`Failed to mark notification ${notificationId} as read:`, error);
       throw error;
     }
   }
@@ -110,7 +102,7 @@ class NotificationService {
     try {
       await secureApi.post(`${this.baseUrl}/${notificationId}/unread`);
     } catch (error) {
-      console.error(`Failed to mark notification ${notificationId} as unread:`, error);
+      // Error:(`Failed to mark notification ${notificationId} as unread:`, error);
       throw error;
     }
   }
@@ -119,7 +111,7 @@ class NotificationService {
     try {
       await secureApi.delete(`${this.baseUrl}/${notificationId}`);
     } catch (error) {
-      console.error(`Failed to delete notification ${notificationId}:`, error);
+      // Error:(`Failed to delete notification ${notificationId}:`, error);
       throw error;
     }
   }
@@ -128,7 +120,7 @@ class NotificationService {
     try {
       await secureApi.post(`${this.baseUrl}/mark-all-read`);
     } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
+      // Error:('Failed to mark all notifications as read:', error);
       throw error;
     }
   }
@@ -142,14 +134,13 @@ class NotificationService {
       );
       return response;
     } catch (error) {
-      console.error('Failed to fetch notification stats:', error);
+      // Error:('Failed to fetch notification stats:', error);
       // Return fallback stats
       return {
-        total_count: 0,
-        unread_count: 0,
-        urgent_count: 0,
-        counts_by_type: {},
-        counts_by_priority: {}
+        user_id: '',
+        unread_notifications: 0,
+        total_notifications: 0,
+        notifications_by_type: {}
       };
     }
   }
@@ -164,7 +155,7 @@ class NotificationService {
       );
       return response;
     } catch (error) {
-      console.error('Failed to fetch notification preferences:', error);
+      // Error:('Failed to fetch notification preferences:', error);
       throw error;
     }
   }
@@ -180,17 +171,17 @@ class NotificationService {
       );
       return response;
     } catch (error) {
-      console.error('Failed to update notification preferences:', error);
+      // Error:('Failed to update notification preferences:', error);
       throw error;
     }
   }
 
   // Push notifications
-  async subscribeToPush(subscription: PushSubscription): Promise<void> {
+  async subscribeToPush(subscription: PushSubscriptionPayload): Promise<void> {
     try {
       await secureApi.post(`${this.baseUrl}/push/subscribe`, subscription);
     } catch (error) {
-      console.error('Failed to subscribe to push notifications:', error);
+      // Error:('Failed to subscribe to push notifications:', error);
       throw error;
     }
   }
@@ -199,12 +190,12 @@ class NotificationService {
     try {
       await secureApi.delete(`${this.baseUrl}/push/unsubscribe`);
     } catch (error) {
-      console.error('Failed to unsubscribe from push notifications:', error);
+      // Error:('Failed to unsubscribe from push notifications:', error);
       throw error;
     }
   }
 
-  async getVAPIDKey(): Promise<{ public_key: string }> {
+  async getVAPIDKey(): Promise<{ vapid_public_key: string }> {
     try {
       const response = await secureApi.get(
         `${this.baseUrl}/push/vapid-key`,
@@ -213,30 +204,30 @@ class NotificationService {
       );
       return response;
     } catch (error) {
-      console.error('Failed to fetch VAPID key:', error);
+      // Error:('Failed to fetch VAPID key:', error);
       throw error;
     }
   }
 
-  // Batch operations
+  // Batch operations (fallback to individual operations since backend doesn't support batch)
   async batchMarkAsRead(notificationIds: string[]): Promise<void> {
     try {
-      await secureApi.post(`${this.baseUrl}/batch/mark-read`, {
-        notification_ids: notificationIds
-      });
+      // Since backend doesn't support batch operations, do them individually
+      const promises = notificationIds.map(id => this.markAsRead(id));
+      await Promise.all(promises);
     } catch (error) {
-      console.error('Failed to batch mark notifications as read:', error);
+      // Error:('Failed to batch mark notifications as read:', error);
       throw error;
     }
   }
 
   async batchDelete(notificationIds: string[]): Promise<void> {
     try {
-      await secureApi.post(`${this.baseUrl}/batch/delete`, {
-        notification_ids: notificationIds
-      });
+      // Since backend doesn't support batch operations, do them individually
+      const promises = notificationIds.map(id => this.deleteNotification(id));
+      await Promise.all(promises);
     } catch (error) {
-      console.error('Failed to batch delete notifications:', error);
+      // Error:('Failed to batch delete notifications:', error);
       throw error;
     }
   }

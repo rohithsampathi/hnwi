@@ -5,7 +5,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
 import { Home, CalendarIcon, Crown, UserCircle2, Globe, Gem } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
+import { useRouter } from "next/navigation"
 
 export function FooterNavigation({
   onNavigate,
@@ -16,14 +16,14 @@ export function FooterNavigation({
 }) {
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
+  const router = useRouter()
 
   const navItems = [
-    { name: "Home", icon: Home, route: "dashboard", alwaysShow: true },
-    // { name: "Calendar", icon: CalendarIcon, route: "calendar-page", alwaysShow: true },
-    { name: "HNWI World", icon: Globe, route: "strategy-vault", alwaysShow: true },
-    { name: "Crown Vault", icon: Crown, route: "crown-vault", alwaysShow: true },
-    { name: "Privé Exchange", icon: Gem, route: "prive-exchange", alwaysShow: true },
-    { name: "Profile", icon: UserCircle2, route: "profile", alwaysShow: true },
+    { name: "Home", icon: Home, route: "/dashboard", alwaysShow: true },
+    { name: "HNWI World", icon: Globe, route: "/hnwi-world", alwaysShow: true },
+    { name: "Crown Vault", icon: Crown, route: "/crown-vault", alwaysShow: true },
+    { name: "Privé Exchange", icon: Gem, route: "/prive-exchange", alwaysShow: true },
+    { name: "Profile", icon: UserCircle2, route: "/profile", alwaysShow: true },
   ]
 
   // Filter items based on business mode
@@ -31,14 +31,7 @@ export function FooterNavigation({
 
   const handleNavigate = (e: React.MouseEvent, route: string) => {
     e.preventDefault()
-    // Use unified navigation system - automatically routes to active system
-    if (useNewNavigation()) {
-      // New system: use unified navigation
-      unifiedNavigate(route)
-    } else {
-      // Legacy system: use onNavigate prop
-      onNavigate(route)
-    }
+    router.push(route)
   }
 
   return (

@@ -817,13 +817,13 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   return (
     <div className="w-full">
       {/* Main Dashboard Content - No Background Style */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 h-[calc(100vh-200px)] mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mt-4">
         {/* Left Column - Activity Leaderboard (2 parts) */}
         <div className="md:col-span-1 lg:col-span-2 h-full">
-          <div className="h-full">
+          <div className="h-full flex flex-col">
             {/* Header Section */}
-            <div className="mb-2">
-              <div className="flex items-center justify-between mb-1">
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                   Activity Leaderboard
                 </h3>
@@ -880,7 +880,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
             </div>
             
             <div className="mt-4">
-              <GoldenScroll maxHeight="calc(100vh - 365px)" className="pt-2 px-3">
+              <GoldenScroll maxHeight="485px" className="pt-2 px-3">
               {sortedTrends.map((trend, index) => {
                 const position = index + 1
                 const IconComponent = getIndustryIcon(trend.industry)
@@ -1019,7 +1019,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         
         {/* Right Column - Insider Brief Stream (3 parts) */}
         <div className="md:col-span-1 lg:col-span-3">
-          <div className="h-full">
+          <div className="h-full flex flex-col">
             {/* Header Section */}
             <div className="mb-3">
               <div className="flex items-center justify-between mb-2">
@@ -1060,22 +1060,31 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               </p>
             </div>
             
-            <div className="mt-4 px-3" style={{maxHeight: 'calc(100vh - 365px)', overflowY: 'auto'}}>
-              <DevelopmentStream 
-                selectedIndustry={selectedIndustry}
-                duration={selectedTimeRange}
-                getIndustryColor={getIndustryColor}
-                expandedDevelopmentId={null}
-                parentLoading={isLoading}
-                onLoadingChange={(loading) => {
-                  // No longer needed since parent handles loading
-                }}
-                developments={developments}
-                isLoading={isLoading}
-              />
+            <div className="mt-4 px-3">
+              <GoldenScroll maxHeight="485px" className="pt-2">
+                <DevelopmentStream 
+                  selectedIndustry={selectedIndustry}
+                  duration={selectedTimeRange}
+                  getIndustryColor={getIndustryColor}
+                  expandedDevelopmentId={null}
+                  parentLoading={isLoading}
+                  onLoadingChange={(loading) => {
+                    // No longer needed since parent handles loading
+                  }}
+                  developments={developments}
+                  isLoading={isLoading}
+                />
+              </GoldenScroll>
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Footer disclaimer */}
+      <div className="pt-8 border-t border-border text-center">
+        <p className="text-xs text-muted-foreground">
+          Intelligence Research Platform • HNWI Chronicles builds comprehensive market intelligence for informed decision-making
+        </p>
       </div>
     </div>
   )

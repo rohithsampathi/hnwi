@@ -80,13 +80,99 @@ export async function POST(request: NextRequest) {
       const backendResponse = await secureApi.post('/api/auth/login', validation.data!, false);
 
       logger.info("Backend login response received", {
+        success: !!backendResponse.success,
         requiresMfa: !!backendResponse.requires_mfa,
         hasBackendToken: !!backendResponse.mfa_token,
         email: validation.data!.email
       });
 
-      // If MFA required, create local proxy session for backend data
+      // SECURITY FIX: Check if backend explicitly indicates authentication failure
+      // If there's an explicit error, reject the login attempt
+      if (backendResponse.error) {
+        logger.warn("Backend login failed with error", {
+          email: validation.data!.email,
+          error: backendResponse.error
+        });
+        
+        const response = NextResponse.json(
+          { success: false, error: backendResponse.error },
+          { status: 401 }
+        );
+        
+        return ApiAuth.addSecurityHeaders(response);
+      }
+
+      // SECURITY FIX: For MFA flow, validate the backend response more thoroughly
+      // The backend should only send MFA tokens for valid credentials
       if (backendResponse.requires_mfa && backendResponse.mfa_token) {
+        // Additional security checks:
+        // 1. Verify the MFA token is properly formatted JWT
+        // 2. Check that the token contains expected fields (sub, mfa_code, exp, type)
+        // 3. Ensure the message indicates email was sent (not a generic error)
+        try {
+          const tokenParts = backendResponse.mfa_token.split('.');
+          if (tokenParts.length !== 3) {
+            logger.warn("Invalid MFA token format from backend", {
+              email: validation.data!.email
+            });
+            
+            const response = NextResponse.json(
+              { success: false, error: 'Authentication failed. Please try again.' },
+              { status: 401 }
+            );
+            
+            return ApiAuth.addSecurityHeaders(response);
+          }
+          
+          // Decode the JWT payload to validate it contains expected MFA fields
+          const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
+          
+          // Validate required MFA token fields
+          if (!payload.sub || !payload.mfa_code || !payload.exp || payload.type !== 'mfa') {
+            logger.warn("MFA token missing required fields", {
+              email: validation.data!.email,
+              hasSubject: !!payload.sub,
+              hasMfaCode: !!payload.mfa_code,
+              hasExpiry: !!payload.exp,
+              tokenType: payload.type
+            });
+            
+            const response = NextResponse.json(
+              { success: false, error: 'Authentication failed. Please try again.' },
+              { status: 401 }
+            );
+            
+            return ApiAuth.addSecurityHeaders(response);
+          }
+          
+          // Validate that the message indicates successful email sending (not an error)
+          if (!backendResponse.message || !backendResponse.message.toLowerCase().includes('sent')) {
+            logger.warn("MFA response message doesn't indicate email sent", {
+              email: validation.data!.email,
+              message: backendResponse.message
+            });
+            
+            const response = NextResponse.json(
+              { success: false, error: 'Authentication failed. Please try again.' },
+              { status: 401 }
+            );
+            
+            return ApiAuth.addSecurityHeaders(response);
+          }
+          
+        } catch (tokenError) {
+          logger.warn("MFA token validation failed", {
+            email: validation.data!.email,
+            error: tokenError instanceof Error ? tokenError.message : String(tokenError)
+          });
+          
+          const response = NextResponse.json(
+            { success: false, error: 'Authentication failed. Please try again.' },
+            { status: 401 }
+          );
+          
+          return ApiAuth.addSecurityHeaders(response);
+        }
         // Generate frontend session token
         const frontendToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
           .map(b => b.toString(16).padStart(2, '0')).join('');
@@ -131,10 +217,29 @@ export async function POST(request: NextRequest) {
         return ApiAuth.addSecurityHeaders(response);
       }
 
-      // Direct login success (no MFA) - pass through backend response
-      const response = NextResponse.json(backendResponse);
-      response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
-      return ApiAuth.addSecurityHeaders(response);
+      // Direct login success (no MFA) - check for access token or success indicator
+      if (backendResponse.access_token || (backendResponse.success && !backendResponse.requires_mfa)) {
+        const response = NextResponse.json(backendResponse);
+        response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
+        return ApiAuth.addSecurityHeaders(response);
+      } else {
+        // This should not happen if backend is working correctly
+        // Backend provided neither MFA flow nor direct login success
+        logger.warn("Backend response missing both MFA and direct login indicators", {
+          email: validation.data!.email,
+          hasAccessToken: !!backendResponse.access_token,
+          requiresMfa: !!backendResponse.requires_mfa,
+          hasMfaToken: !!backendResponse.mfa_token,
+          hasError: !!backendResponse.error
+        });
+        
+        const response = NextResponse.json(
+          { success: false, error: 'Authentication service error. Please try again.' },
+          { status: 500 }
+        );
+        
+        return ApiAuth.addSecurityHeaders(response);
+      }
       
     } catch (apiError) {
       logger.warn("Backend login request failed", { 

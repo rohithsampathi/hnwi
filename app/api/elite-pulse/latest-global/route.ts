@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { secureApi } from '@/lib/secure-api';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    // First try to fetch from the real backend
-    try {
-      const response = await fetch('https://hnwi-uwind-p8oqb.ondigitalocean.app/api/elite-pulse/latest-global', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (backendError) {
-      console.error('Direct backend request failed:', backendError);
-    }
-    
-    // Fallback to secureApi if direct fetch fails
+    // Use secure API - NO direct backend URL exposure
     try {
       const data = await secureApi.get('/api/elite-pulse/latest-global', false);
       return NextResponse.json(data, { status: 200 });

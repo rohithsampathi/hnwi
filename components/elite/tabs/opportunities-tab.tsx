@@ -99,13 +99,6 @@ export function OpportunitiesTab({ data, onNavigate }: OpportunitiesTabProps) {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
-                      theme === 'dark' 
-                        ? 'bg-primary text-black'
-                        : 'bg-primary text-white'
-                    }`}>
-                      #{idx + 1}
-                    </div>
                     <div>
                       <h4 className="font-semibold text-foreground text-sm">
                         {opp.title}
@@ -116,7 +109,11 @@ export function OpportunitiesTab({ data, onNavigate }: OpportunitiesTabProps) {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className={`text-xs ${
+                    opp.victor_rating === 'juicy' ? 'border-primary bg-primary text-primary-foreground' :
+                    opp.victor_rating === 'moderate' ? 'border-primary/60 bg-primary/10 text-primary' :
+                    'border-primary/30 text-primary/70'
+                  }`}>
                     {opp.victor_rating === 'juicy' ? 'HIGH PRIORITY' : 
                      opp.victor_rating === 'moderate' ? 'MODERATE' : 'WATCHLIST'}
                   </Badge>
@@ -133,12 +130,13 @@ export function OpportunitiesTab({ data, onNavigate }: OpportunitiesTabProps) {
                   </div>
                   <div>
                     <span className="font-medium text-foreground">Risk: </span>
-                    <span className={`${
-                      opp.riskLevel === 'Low' ? 'text-green-600 dark:text-green-400' :
-                      opp.riskLevel === 'Medium' ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'
+                    <Badge variant="outline" className={`text-xs ml-1 ${
+                      opp.riskLevel === 'Low' ? 'border-primary/30 text-primary' :
+                      opp.riskLevel === 'Medium' ? 'border-primary/50 text-primary' : 
+                      'border-primary/70 text-primary'
                     }`}>
                       {opp.riskLevel}
-                    </span>
+                    </Badge>
                   </div>
                   <div>
                     <span className="font-medium text-foreground">Return: </span>
@@ -169,13 +167,6 @@ export function OpportunitiesTab({ data, onNavigate }: OpportunitiesTabProps) {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
-                      theme === 'dark' 
-                        ? 'bg-primary text-black'
-                        : 'bg-primary text-white'
-                    }`}>
-                      #1
-                    </div>
                     <div>
                       <h4 className="font-semibold text-foreground text-sm">
                         {data.farFetchedOpportunities[0].title}
@@ -183,7 +174,7 @@ export function OpportunitiesTab({ data, onNavigate }: OpportunitiesTabProps) {
                       <p className="text-xs text-muted-foreground">Watchlist</p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary/70">
                     WATCHLIST
                   </Badge>
                 </div>

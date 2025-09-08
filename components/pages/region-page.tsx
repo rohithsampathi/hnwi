@@ -3,7 +3,6 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,17 +36,7 @@ export function RegionPage({ region }: RegionPageProps) {
   }
 
   return (
-    <Layout
-      currentPage="invest-scan"
-      title={
-        <div className="flex items-center space-x-2">
-          <DollarSign className="w-6 h-6 text-primary" />
-          <Heading2>Invest Scan: {regionData.name}</Heading2>
-        </div>
-      }
-      showBackButton
-      onNavigate={() => router.push("/invest-scan")}
-    >
+    <>
       <Card className="w-full bg-background text-foreground">
         <CardHeader>
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
@@ -97,7 +86,7 @@ export function RegionPage({ region }: RegionPageProps) {
           </div>
         </CardContent>
       </Card>
-    </Layout>
+    </>
   )
 }
 

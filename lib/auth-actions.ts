@@ -7,7 +7,7 @@ import { SignJWT, jwtVerify } from "jose"
 import { redirect } from "next/navigation"
 import { logger } from "./secure-logger"
 import { SessionManager } from "./session-manager"
-import { FastSecureAPI } from "@/lib/fast-secure-api"
+import { secureApi } from "@/lib/secure-api"
 import { RateLimiter } from "./rate-limiter"
 import { headers } from "next/headers"
 
@@ -156,7 +156,7 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
       const fullName = `${userData.firstName} ${userData.lastName || ''}`.trim();
       
       // Use fast secure API for user creation
-      const data = await FastSecureAPI.post('/api/users/profile', {
+      const data = await secureApi.post('/api/users/profile', {
         email: userData.email,
         name: fullName,
         password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
@@ -327,7 +327,7 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
       );
 
       // Use fast secure API for user update
-      const data = await FastSecureAPI.put(`/api/users/${userId}`, updateData);
+      const data = await secureApi.put(`/api/users/${userId}`, updateData);
         
         // Create updated user object preserving the correct ID
         const updatedUser: User = {
@@ -432,7 +432,7 @@ export async function handleForgotPassword(email: string): Promise<{ success: bo
 
     try {
       // Call backend forgot password endpoint
-      await FastSecureAPI.post('/api/auth/forgot-password', { email }, false)
+      await secureApi.post('/api/auth/forgot-password', { email }, false)
       
       logger.info("Password reset request sent to backend", { email })
       return { success: true }
@@ -467,7 +467,7 @@ export async function handleResetPassword(token: string, newPassword: string): P
 
     try {
       // Call backend reset password endpoint
-      await FastSecureAPI.post('/api/auth/reset-password', { 
+      await secureApi.post('/api/auth/reset-password', { 
         token, 
         new_password: newPassword 
       }, false)

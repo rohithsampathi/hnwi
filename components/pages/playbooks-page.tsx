@@ -3,12 +3,12 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { PremiumPlaybookCard } from "@/components/premium-playbook-card"
 import { useTheme } from "@/contexts/theme-context"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { Loader2, Shield } from "lucide-react"
+import { CheckmateLoader } from "@/components/ui/checkmate-loader"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { useToast } from "@/components/ui/use-toast"
 import { MetaTags } from "../meta-tags"
@@ -147,7 +147,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
   },
   {
     id: "pb_010",
-    title: "Selling a ₹100 Cr Bespoke Investment Fund to UHNWI Families",
+    title: "Selling a ₹100 Cr Bespoke Investment Fund to HNWI Families",
     description: "Positioning bespoke financial products as secure, high-growth opportunities for wealth preservation.",
     image: "https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
     isPurchased: false,
@@ -441,27 +441,17 @@ export function PlayBooksPage({
         image="https://app.hnwichronicles.com/images/war-room-og.png"
         url="https://app.hnwichronicles.com/war-room"
       />
-      <Layout
-        currentPage="strategy-engine"
-        title={
-          <div className="flex items-center space-x-2">
-            <Shield className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>War Room</Heading2>
-          </div>
-        }
-        showBackButton
-        onNavigate={onNavigate}
-      >
+      <>
         <div className="w-full">
-          <div className="px-4 py-2 -mt-2">
+          <div className="w-full">
             <p className="text-muted-foreground text-base leading-tight">
               Intelligence whispered between family offices. Strategic briefings for generational decisions.
             </p>
           </div>
-          <div className="px-4 mt-6">
+          <div className="w-full">
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <CheckmateLoader size="lg" text="Loading your strategic playbooks..." />
               </div>
             ) : (
               <>
@@ -491,8 +481,8 @@ export function PlayBooksPage({
           </div>
 
           {/* Store Section */}
-          <div className="px-4 mt-12">
-            <div className="border-t border-border pt-8">
+          <div className="w-full">
+            <div className="border-t border-border">
               <div className="mb-6">
                 <h3 className={`text-lg font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Explore the Store</h3>
                 <p className="text-muted-foreground text-base leading-tight">
@@ -502,7 +492,7 @@ export function PlayBooksPage({
 
               {isLoadingStore ? (
                 <div className="flex justify-center items-center h-64">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <CheckmateLoader size="lg" text="Loading strategic intelligence..." />
                 </div>
               ) : (
                 <>
@@ -528,7 +518,7 @@ export function PlayBooksPage({
             </div>
           </div>
         </div>
-      </Layout>
+      </>
     </>
   )
 }

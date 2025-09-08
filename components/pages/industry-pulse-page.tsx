@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { secureApi } from "@/lib/secure-api"
 import { useToast } from "@/components/ui/use-toast"
-import { Layout } from "@/components/layout/layout"
 import { DevelopmentStream } from "@/components/development-stream"
 import { useHNWIWorldTags } from "@/contexts/elite-pulse-context"
 import { IndustryTrendsBubbles } from "@/components/industry-trends-bubbles"
@@ -170,24 +169,13 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
   }, [screenSize])
 
   return (
-    <Layout
-      currentPage="strategy-vault"
-      title={
-        <div className="flex items-center space-x-2">
-          <Globe className="w-6 h-6" />
-          <span>HNWI World</span>
-        </div>
-      }
-      showBackButton
-      onNavigate={onNavigate}
-    >
-      <p className="text-sm text-muted-foreground mt-2 leading-tight">
+    <>
+      <p className="text-sm text-muted-foreground leading-tight">
         Data Meets Strategy
         <br />
         for the Wealthiest
       </p>
-      <div className="mt-8"></div>
-      <Card className="w-full mb-6">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary dark:text-primary-foreground">HNWI World</CardTitle>
         </CardHeader>
@@ -303,7 +291,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-[56px] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3"
+            className="fixed top-[56px] left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border"
           >
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {/* Industry Selector Sticky Button */}
@@ -366,7 +354,7 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
           </motion.div>
         )}
       </AnimatePresence>
-    </Layout>
+    </>
   )
 }
 

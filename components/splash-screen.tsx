@@ -154,6 +154,14 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             profile: result.user?.profile || {},
             token: result.access_token || ""
           }
+
+          // CRITICAL: Store userId and userObject for authenticated layout checks
+          if (result.user?.id) {
+            localStorage.setItem('userId', result.user.id)
+          }
+          if (userData) {
+            localStorage.setItem('userObject', JSON.stringify(userData))
+          }
           
           toast({
             title: "Login Successful",
@@ -214,6 +222,14 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           lastName: result.user?.lastName || (result.user?.name?.split(' ').slice(1).join(' ') || ""),
           profile: result.user?.profile || {},
           token: result.access_token || ""
+        }
+
+        // CRITICAL: Store userId and userObject for authenticated layout checks
+        if (result.user?.id) {
+          localStorage.setItem('userId', result.user.id)
+        }
+        if (userData) {
+          localStorage.setItem('userObject', JSON.stringify(userData))
         }
         
         toast({
@@ -811,7 +827,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     <>
       <MetaTags
         title="HNWI Chronicles – Your Gateway to Global Wealth Intelligence"
-        description="Unlock exclusive insights, playbooks, and strategic intelligence tailored for High-Net-Worth and Ultra-High-Net-Worth Individuals. HNWI Chronicles empowers you with data-driven strategies, industry trends, and actionable frameworks to navigate the world of wealth and influence."
+        description="Unlock exclusive insights, playbooks, and strategic intelligence tailored for High-Net-Worth Individuals. HNWI Chronicles empowers you with data-driven strategies, industry trends, and actionable frameworks to navigate the world of wealth and influence."
         image="https://hnwichronicles.com/og-image.jpg"
         url="https://montaigne.co/hnwichronicles"
       />
@@ -867,7 +883,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
             </Heading1>
 
-            <Lead className="mb-8 text-muted-foreground">Built for UHNWI and HNWI to build their legacy and chronicles</Lead>
+            <Lead className="mb-8 text-muted-foreground">Built for HNWI to build their legacy and chronicles</Lead>
 
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center items-center px-4">
               {/* Login button */}

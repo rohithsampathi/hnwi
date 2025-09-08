@@ -10,7 +10,7 @@ import { Heading2 } from "@/components/ui/typography"
 import type { User, ProcessedIntelligenceData } from "@/types/dashboard"
 
 interface EliteHeaderProps {
-  user: User
+  user: User | null
   intelligenceData: ProcessedIntelligenceData
   refreshing: boolean
   onRefresh: () => void
@@ -31,11 +31,11 @@ export function EliteHeader({
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 6) return "Late Night Intelligence Brief"
+    if (hour < 6) return "Midnight Wealth Watchlist"
     if (hour < 12) return "Morning Intelligence Brief"  
-    if (hour < 17) return "Midday Intelligence Update"
-    if (hour < 22) return "Evening Intelligence Brief"
-    return "Night Watch Intelligence"
+    if (hour < 17) return "Midday Market Synthesis"
+    if (hour < 22) return "Evening Capital Insights"
+    return "Night Watch: Global Capital Flow"
   }
 
   const formatTime = (date: Date) => {
@@ -54,14 +54,11 @@ export function EliteHeader({
         <div className="space-y-2">
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <div className="p-2 rounded-xl bg-primary/10 backdrop-blur-sm">
-                <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+              <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <Heading2 className="bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">
-                {getTimeBasedGreeting()}, {user.firstName} {user.lastName}
+                {getTimeBasedGreeting()}, {user?.firstName || user?.first_name || 'Principal'} {user?.lastName || user?.last_name || 'Strategist'}
               </Heading2>
             </div>
           </div>

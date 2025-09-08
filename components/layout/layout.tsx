@@ -17,7 +17,9 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
-import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
+import { useRouter, usePathname } from "next/navigation"
+import { PageHeader } from "@/components/ui/page-header"
+import { getPageHeader } from "@/lib/page-headers"
 
 interface LayoutProps {
   children: ReactNode
@@ -28,11 +30,14 @@ interface LayoutProps {
   currentPage?: string
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed = true, currentPage = "" }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "" }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
+  const router = useRouter()
+  const pathname = usePathname()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const [headerHeight, setHeaderHeight] = useState(0)
   const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state (true = collapsed)
   const [isDesktop, setIsDesktop] = useState(false) // Track if desktop
@@ -55,20 +60,33 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     return () => window.removeEventListener('resize', checkScreenSizes)
   }, [])
 
-  // Calculate header height dynamically
+  // Calculate header height dynamically with fallback
   useEffect(() => {
     const updateHeaderHeight = () => {
       if (headerRef.current) {
         const rect = headerRef.current.getBoundingClientRect()
-        const bannerHeight = showBanner ? 52 : 0 // Business banner height when visible
-        setHeaderHeight(rect.height + bannerHeight)
+        const bannerHeight = showBanner ? 52 : 0
+        const calculatedHeight = rect.height + bannerHeight
+        // Ensure minimum height and add safety buffer
+        setHeaderHeight(Math.max(calculatedHeight + 20, 80))
+      } else {
+        // Fallback if header ref is not available
+        setHeaderHeight(80)
       }
     }
 
+    // Initial calculation
     updateHeaderHeight()
+    
+    // Delay calculation to ensure DOM is ready
+    const timeoutId = setTimeout(updateHeaderHeight, 100)
+    
     window.addEventListener('resize', updateHeaderHeight)
     
-    return () => window.removeEventListener('resize', updateHeaderHeight)
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', updateHeaderHeight)
+    }
   }, [showBanner])
 
   // Trigger heartbeat animation every 10 seconds (after each rotation at 6 RPM)
@@ -81,33 +99,32 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     return () => clearInterval(interval)
   }, [])
 
+  // Load user data from localStorage
+  useEffect(() => {
+    const userObject = localStorage.getItem("userObject")
+    if (userObject) {
+      try {
+        const parsedUser = JSON.parse(userObject)
+        setUser(parsedUser)
+      } catch (e) {
+        console.error("Error parsing user data:", e)
+      }
+    }
+  }, [])
+
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Use unified navigation system - automatically routes to active system
-    if (useNewNavigation()) {
-      // New system: use unified navigation
-      unifiedNavigate("dashboard")
-    } else {
-      // Legacy system: use onNavigate prop
-      onNavigate("dashboard")
-    }
+    router.push("/dashboard")
   }
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Use unified navigation system - automatically routes to active system
-    if (useNewNavigation()) {
-      // New system: use unified navigation
-      unifiedNavigate("back")
-    } else {
-      // Legacy system: use onNavigate prop
-      onNavigate("back")
-    }
+    router.back()
   }
 
   return (
     <div
-      className="min-h-screen flex flex-col font-sans bg-background text-foreground"
+      className="min-h-screen flex flex-col font-sans bg-background text-foreground p-0 m-0"
     >
       {/* Sidebar for all devices - mobile only shows bottom nav */}
       <SidebarNavigation 
@@ -120,58 +137,20 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       <header
         ref={headerRef}
-        className={`fixed top-0 z-50 p-0 md:p-2 flex justify-between items-center bg-background border-b border-border transition-all duration-300`}
+        className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300`}
         style={{
           left: isDesktop 
-            ? (sidebarState ? '64px' : '256px') // Desktop: always push header
-            : '0',
+            ? (sidebarState ? '64px' : '256px') : '0',
           right: '0'
         }}
       >
         <div 
-          className="max-w-7xl mx-auto w-full flex justify-between items-center px-3 py-1 md:px-4"
+          className="w-full flex justify-between items-center pl-0 pr-2 py-1"
         >
           <div className="flex items-center">
-            {/* Mobile Logo and Text - Only visible on mobile */}
-            <div className="md:hidden flex items-center cursor-pointer" onClick={handleLogoClick}>
-              <motion.div
-                className="mr-3"
-                animate={{ 
-                  rotate: 360,
-                  scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
-                }}
-                transition={{ 
-                  rotate: { 
-                    duration: 10,
-                    repeat: Number.POSITIVE_INFINITY, 
-                    ease: "linear" 
-                  },
-                  scale: showHeartbeat ? {
-                    duration: 1,
-                    times: [0, 0.3, 0.5, 0.8, 1],
-                    ease: "easeInOut"
-                  } : {
-                    duration: 0
-                  }
-                }}
-              >
-                <Image 
-                  src="/logo.png" 
-                  alt="HNWI Chronicles Globe" 
-                  width={32} 
-                  height={32} 
-                  className="w-8 h-8" 
-                  priority 
-                />
-              </motion.div>
-              <h1 className="text-sm font-bold font-heading leading-tight">
-                <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
-                <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
-              </h1>
-            </div>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">
+          <div className="flex items-center space-x-1 md:space-x-2">
             {/* <BusinessModeToggle /> */}
             <NotificationBell />
             <ThemeToggle />
@@ -180,34 +159,64 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       </header>
 
       <div 
-        className="transition-all duration-300"
+        className="transition-all duration-300 absolute w-full"
         style={{
-          marginLeft: isDesktop 
-            ? (sidebarState ? '64px' : '256px') // Desktop: always push banner
-            : '0'
+          left: isDesktop 
+            ? (sidebarState ? '64px' : '256px') : '0',
+          right: '0'
         }}
       >
         <BusinessModeBanner />
       </div>
       
+      {/* Sticky Page Header */}
+      {(() => {
+        const pageHeaderConfig = getPageHeader(pathname, user)
+        if (pageHeaderConfig) {
+          return (
+            <div 
+              className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border"
+              style={{ 
+                marginLeft: isDesktop 
+                  ? (sidebarState ? '64px' : '256px') : '0'
+              }}
+            >
+              <PageHeader 
+                config={pageHeaderConfig}
+                onNavigate={onNavigate}
+              />
+            </div>
+          )
+        }
+        return null
+      })()}
+
       <main 
-        className="flex-grow px-0 py-4 md:p-6 lg:p-8 space-y-2 md:space-y-4 overflow-y-auto pb-12 md:pb-4 transition-all duration-300"
+        className={`flex-grow overflow-y-auto scrollbar-hide pb-12 md:pb-1 transition-all duration-300`}
         style={{ 
-          paddingTop: `${Math.max(headerHeight + 16, 96)}px`,
           marginLeft: isDesktop 
-            ? (sidebarState ? '64px' : '256px') // Desktop: always push content next to sidebar
-            : '0' // Mobile/Tablet: no margin (sidebar overlays)
+            ? (sidebarState ? '64px' : '256px') : '0',
+          filter: isDesktop && !sidebarState ? 'blur(2px)' : 'none',
+          opacity: isDesktop && !sidebarState ? 0.6 : 1,
+          transition: 'all 0.3s ease'
         }}
       >
-        <div className={`${title ? 'max-w-7xl md:mx-auto' : 'w-full'} pb-12 md:pb-0`}>
-          {title && (
-            <div className="mb-2 pb-0 border-b border-border pl-5 pr-0 md:px-0">
+        <div className="w-full pb-12 md:pb-0">
+          {/* Legacy title support for existing pages */}
+          {title && !getPageHeader(pathname, user) && (
+            <div className="mb-4 pb-4 border-b border-border" style={{paddingLeft: '0px', paddingRight: '4px'}}>
               <div className="flex items-center gap-2">
                 {title}
               </div>
             </div>
           )}
-          <div className={title ? 'pl-5 pr-0 md:px-0' : 'pl-5'}>
+          
+          <div className={getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8'} style={{
+            paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
+            paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
+            paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
+            marginTop: getPageHeader(pathname, user) ? '' : '0px'
+          }}>
             {children}
           </div>
         </div>

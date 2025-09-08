@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { secureApi } from '@/lib/secure-api';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Forward the authorization header from the client

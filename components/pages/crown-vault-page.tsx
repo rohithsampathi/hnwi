@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Layout } from "@/components/layout/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +14,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuthPopup } from "@/contexts/auth-popup-context";
 import { Heading2 } from "@/components/ui/typography";
+import { PageHeaderWithBack } from "@/components/ui/back-button";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { 
   Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText, 
   Edit, X, Save, Building, DollarSign
@@ -463,40 +464,15 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
 
   return (
-    <Layout 
-      currentPage="crown-vault"
-      title={
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <Crown className={`h-6 w-6 ${getVisibleIconColor(theme)}`} />
-            <Heading2 className={getVisibleHeadingColor(theme)}>Crown Vault</Heading2>
-          </div>
-          <PremiumBadge className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-950 dark:to-green-950 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
-            <Shield className="h-3 w-3 mr-1" />
-            SECURED
-          </PremiumBadge>
-        </div>
-      }
-      onNavigate={onNavigate}
-    >
-      <div className="space-y-6">
-        {/* Action Section */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p className="text-muted-foreground text-base leading-tight -mt-2">
-              Where dynasties secure their legacy. Reserved for bloodlines that transcend market cycles.
-            </p>
-          </div>
-        </div>
-
+      <div className="w-full h-screen flex flex-col overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center min-h-[60vh]">
             <CrownLoader size="lg" text="Encrypting generational assets..." />
           </div>
         ) : (
           <>
-            {/* Tabs Navigation */}
-            <div className="py-8">
+            {/* Tabs Navigation - Fixed */}
+            <div className="flex-shrink-0 w-full mb-3 md:mb-6 bg-background py-1 md:py-2">
               <div className="flex flex-wrap justify-center gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto">
                 {[
                   { id: 'summary' as const, label: 'Summary' },
@@ -521,8 +497,10 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
               </div>
             </div>
 
-            {/* Tab Content */}
-            {renderTabContent()}
+            {/* Tab Content - Scrolling Container */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-16">
+              {renderTabContent()}
+            </div>
 
             {/* Modals */}
             <AddAssetsModal
@@ -810,7 +788,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           </>
         )}
       </div>
-    </Layout>
   );
 }
 

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { getMemberAnalytics, type MemberAnalytics } from "@/lib/api"
-import { navigate as unifiedNavigate, useNewNavigation } from "@/lib/unified-navigation"
+import { useRouter } from "next/navigation"
 
 export function SidebarNavigation({
   onNavigate,
@@ -28,6 +28,7 @@ export function SidebarNavigation({
   showBackButton?: boolean
   currentPage?: string
 }) {
+  const router = useRouter()
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const [isCollapsed, setIsCollapsed] = useState(true)
@@ -81,12 +82,13 @@ export function SidebarNavigation({
 
   // All navigation items with business mode flags - Reordered as requested
   const allNavItems = [
-    { name: "Home", icon: Home, route: "dashboard" },
+    { name: "Home", icon: Home, route: "dashboard", businessOnly: false },
     { 
       name: "Privé Exchange", 
       icon: Gem, 
       route: "prive-exchange",
-      description: "Off-market opportunities. Member referrals only."
+      description: "Off-market opportunities. Member referrals only.",
+      businessOnly: false
     },
     { 
       name: "HNWI World", 
@@ -94,26 +96,30 @@ export function SidebarNavigation({
       route: "strategy-vault",
       description: memberAnalytics ? 
         `What ${memberAnalytics.active_members_24h} members are discussing privately` : 
-        "Private intelligence network"
+        "Private intelligence network",
+      businessOnly: false
     },
     { 
       name: "Crown Vault", 
       icon: Crown, 
       route: "crown-vault",
-      description: "Generational wealth architecture. Built for families that think in decades."
+      description: "Generational wealth architecture. Built for families that think in decades.",
+      businessOnly: false
     },
     { 
       name: "Social Hub", 
       icon: Users, 
       route: "social-hub",
-      description: "Where the right people gather. Invitation verification required."
+      description: "Where the right people gather. Invitation verification required.",
+      businessOnly: false
     },
     { 
       name: "Tactics Lab", 
       icon: Beaker, 
       route: "strategy-engine",
       description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
-      beta: true
+      beta: true,
+      businessOnly: false
     },
     // War Room - Hidden for now
     // { 
@@ -123,7 +129,7 @@ export function SidebarNavigation({
     //   description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
     //   businessOnly: true
     // },
-    { name: "Profile", icon: UserCircle2, route: "profile" },
+    { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
   ]
 
   // Filter nav items based on business mode
@@ -150,13 +156,28 @@ export function SidebarNavigation({
   ]
 
   const handleNavigate = (route: string) => {
-    // Use unified navigation system - automatically routes to active system
-    if (useNewNavigation()) {
-      // New system: use unified navigation
-      unifiedNavigate(route)
+    // Direct Next.js navigation for new route structure
+    if (route === "dashboard") {
+      router.push("/dashboard")
+    } else if (route === "strategy-vault") {
+      router.push("/hnwi-world") // HNWI World maps to hnwi-world
+    } else if (route === "strategy-engine") {
+      router.push("/tactics-lab")
+    } else if (route === "social-hub") {
+      router.push("/social-hub")
+    } else if (route === "prive-exchange") {
+      router.push("/prive-exchange")
+    } else if (route === "crown-vault") {
+      router.push("/crown-vault")
+    } else if (route === "calendar-page") {
+      router.push("/calendar")
+    } else if (route === "profile") {
+      router.push("/profile")
+    } else if (route === "playbooks") {
+      router.push("/playbooks")
     } else {
-      // Legacy system: use onNavigate prop
-      onNavigate(route)
+      // For other routes, try direct navigation
+      router.push(`/${route}`)
     }
   }
 

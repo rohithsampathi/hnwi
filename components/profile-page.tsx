@@ -66,7 +66,7 @@ const formatLinkedInUrl = (url: string): string => {
 
 
 interface ProfilePageProps {
-  user: User
+  user: User | null | undefined
   onUpdateUser: (updatedUser: User) => void
   onLogout?: () => void
 }
@@ -75,6 +75,16 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   const { theme } = useTheme()
   const [isEditing, setIsEditing] = useState(false)
   const { showOnboardingWizard, setShowOnboardingWizard } = useOnboarding()
+  
+  // Guard clause: Return loading state if user is not defined
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <CrownLoader size="lg" text="Loading profile..." />
+      </div>
+    )
+  }
+  
   // Ensure user data includes necessary properties, especially company info
   const enhancedUser = {
     ...user,
@@ -329,13 +339,13 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000000) {
-      return `$${(value / 1000000000).toFixed(1)}B`
+      return `${(value / 1000000000).toFixed(1)}B`
     } else if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`
+      return `${(value / 1000000).toFixed(1)}M`
     } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`
+      return `${(value / 1000).toFixed(0)}K`
     }
-    return `$${value.toLocaleString()}`
+    return `${value.toLocaleString()}`
   }
 
   if (isLoading) {
@@ -354,14 +364,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         image="https://hnwichronicles.com/profile-og-image.jpg"
         url="https://hnwichronicles.com/profile"
       />
-      <div className="min-h-screen bg-background">
-        {/* Modern Header Section */}
+      <div className="bg-background">
+        {/* User Profile Header - Now main content */}
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-secondary/10 via-secondary/5 to-background" />
           <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-2xl" />
           
-          <div className="relative container mx-auto px-4 py-12">
+          <div className="relative container mx-auto px-4 py-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -432,9 +442,10 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     <Button
                       onClick={onLogout}
                       variant="outline"
-                      className="border-border"
+                      className="border-border hover:bg-destructive hover:text-white hover:border-destructive"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
                     </Button>
                   </>
                 ) : (
@@ -461,7 +472,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         </div>
 
         {/* Content Section */}
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-4">
           {isEditing ? (
             <motion.div
               initial={{ opacity: 0 }}

@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Layout } from "@/components/layout/layout"
 import { RegionPanel } from "@/components/region-panel"
 import { OpportunityList } from "@/components/opportunity-list"
 import { Heading2 } from "@/components/ui/typography"
+import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { DollarSign, Loader2 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { getOpportunities, Opportunity } from "@/lib/api"
@@ -99,58 +99,28 @@ export function InvestScanPage({ onNavigate }: { onNavigate?: (route: string) =>
 
   if (loading) {
     return (
-      <Layout
-        currentPage="invest-scan"
-        title={
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-6 h-6 text-primary" />
-            <Heading2>Invest Scan</Heading2>
-          </div>
-        }
-        showBackButton
-        onNavigate={onNavigate || (() => router.back())}
-      >
+      <>
         <div className="flex items-center justify-center h-[50vh]">
           <CrownLoader size="lg" text="Accessing private deal flow..." />
         </div>
-      </Layout>
+      </>
     )
   }
 
   if (error) {
     return (
-      <Layout
-        currentPage="invest-scan"
-        title={
-          <div className="flex items-center space-x-2">
-            <DollarSign className="w-6 h-6 text-primary" />
-            <Heading2>Invest Scan</Heading2>
-          </div>
-        }
-        showBackButton
-        onNavigate={onNavigate || (() => router.back())}
-      >
-        <div className="text-center p-8">
+      <>
+        <div className="text-center">
           <h3 className="text-xl font-medium text-red-500 mb-2">Intelligence Access Unavailable</h3>
           <p className="text-muted-foreground">{error}</p>
         </div>
-      </Layout>
+      </>
     )
   }
 
   return (
-    <Layout
-      currentPage="invest-scan"
-      title={
-        <div className="flex items-center space-x-2">
-          <DollarSign className="w-6 h-6 text-primary" />
-          <Heading2>Invest Scan</Heading2>
-        </div>
-      }
-      showBackButton
-      onNavigate={onNavigate || (() => router.back())}
-    >
-      <div className="space-y-8">
+    <>
+      <div className="w-full">
         <InvestmentGlobe regions={regions} onRegionSelect={handleRegionSelect} />
         <RegionPanel 
           regions={regions} 
@@ -164,6 +134,6 @@ export function InvestScanPage({ onNavigate }: { onNavigate?: (route: string) =>
           />
         )}
       </div>
-    </Layout>
+    </>
   )
 }

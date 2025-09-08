@@ -1,15 +1,14 @@
 // components/home-dashboard-elite.tsx
-// Elite HNWI Intelligence Dashboard - World Class Architecture
-// Modular, efficient, and maintainable implementation
+// Elite HNWI Intelligence Dashboard - Clean Implementation
 
 "use client"
 
-import React, { Suspense, useState } from "react"
+import React, { Suspense, useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useIntelligenceData } from "@/hooks/use-intelligence-data"
-import { EliteHeader } from "./elite/elite-header"
 import { EliteTabs } from "./elite/elite-tabs"
 import { EliteFooter } from "./elite/elite-footer"
-import { EliteLoadingState } from "./elite/elite-loading-state"
+import { CrownLoader } from "./ui/crown-loader"
 import { EliteErrorState } from "./elite/elite-error-state"
 import type { HomeDashboardEliteProps } from "@/types/dashboard"
 
@@ -19,7 +18,10 @@ export function HomeDashboardElite({
   userData 
 }: HomeDashboardEliteProps) {
   const [activeTab, setActiveTab] = useState('overview')
-  
+  const [showStickyTabs, setShowStickyTabs] = useState(false)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
+  const tabsRef = useRef<HTMLDivElement>(null)
+
   const { 
     data: intelligenceData, 
     loading, 
@@ -28,10 +30,57 @@ export function HomeDashboardElite({
     refresh 
   } = useIntelligenceData(userData)
 
-  
+  // Screen size detection
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth
+      if (width < 768) {
+        setScreenSize('mobile')
+      } else {
+        setScreenSize('desktop')
+      }
+    }
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    return () => window.removeEventListener('resize', checkScreenSize)
+  }, [])
+
+  // IntersectionObserver for sticky tabs
+  useEffect(() => {
+    // Run on all screen sizes for lg:hidden (mobile and tablet)
+    if (window.innerWidth >= 1024) return
+    
+    const tabsElement = tabsRef.current
+    if (!tabsElement) return
+    
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show sticky when tabs section is not visible
+        setShowStickyTabs(!entry.isIntersecting)
+      },
+      {
+        threshold: 0,
+        rootMargin: '-65px 0px 0px 0px' // Account for header height
+      }
+    )
+    
+    observer.observe(tabsElement)
+    
+    return () => {
+      observer.unobserve(tabsElement)
+    }
+  }, [screenSize, intelligenceData])
 
   if (loading && !intelligenceData) {
-    return <EliteLoadingState />
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CrownLoader 
+          size="lg" 
+          text="Loading Dashboard" 
+          subtext="Preparing your personalized intelligence brief" 
+        />
+      </div>
+    )
   }
 
   if (error && !intelligenceData) {
@@ -39,20 +88,20 @@ export function HomeDashboardElite({
   }
 
   if (!intelligenceData) {
-    return <EliteLoadingState message="Preparing your personalized intelligence brief" />
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CrownLoader 
+          size="lg" 
+          text="Loading Dashboard" 
+          subtext="Preparing your personalized intelligence brief" 
+        />
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <EliteHeader 
-        user={user}
-        intelligenceData={intelligenceData}
-        refreshing={refreshing}
-        onRefresh={refresh}
-      />
-      
-      {/* Main Content Layout - Column Layout */}
-      <div className="max-w-7xl mx-auto px-6 mt-8">
+    <>
+      <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex gap-6">
           {/* Left Column - Tabs (Desktop) */}
           <div className="hidden lg:block w-64 flex-shrink-0">
@@ -73,8 +122,8 @@ export function HomeDashboardElite({
           {/* Right Column - Content */}
           <div className="flex-1 min-w-0">
             {/* Mobile Tabs - Static */}
-            <div className="lg:hidden -mx-6 px-4 py-3 mb-6">
-              <Suspense fallback={<div className="h-12 animate-pulse bg-muted rounded-lg" />}>
+            <div className="lg:hidden py-2 mb-4" ref={tabsRef}>
+              <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-lg" />}>
                 <EliteTabs 
                   data={intelligenceData}
                   onNavigate={onNavigate}
@@ -88,7 +137,7 @@ export function HomeDashboardElite({
 
             {/* Desktop Content */}
             <div className="hidden lg:block">
-              <div className="h-[calc(100vh-280px)] overflow-y-auto pr-2">
+              <div className="h-[calc(100vh-280px)] overflow-y-auto scrollbar-hide pr-2">
                 <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
                   <EliteTabs 
                     data={intelligenceData}
@@ -117,8 +166,37 @@ export function HomeDashboardElite({
             </div>
           </div>
         </div>
+
+        <EliteFooter user={user} />
       </div>
 
-    </div>
+      {/* Sticky Mobile Tabs - Only show when scrolled - Outside main content flow */}
+      <AnimatePresence>
+        {showStickyTabs && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="lg:hidden fixed top-[39px] z-50 bg-background border-b border-border px-8 py-1 border-t-0"
+            style={{
+              left: screenSize === 'mobile' ? '0' : '80px', // Position after collapsed sidebar on tablet
+              right: '0'
+            }}
+          >
+            <Suspense fallback={<div className="h-8 animate-pulse bg-muted rounded-lg" />}>
+              <EliteTabs 
+                data={intelligenceData}
+                onNavigate={onNavigate}
+                user={user}
+                variant="mobile-sticky"
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+              />
+            </Suspense>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

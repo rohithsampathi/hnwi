@@ -467,10 +467,10 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     }
 
     dispatch({ type: 'SET_LOADING', payload: true })
-    console.log('🧠 Elite Pulse Context: Starting intelligence fetch for userId:', userId);
+    
 
     try {
-      console.log('🧠 Elite Pulse Context: Calling /api/hnwi/intelligence/dashboard/', userId);
+      
       
       // Use secureApi to properly route to backend and handle authentication
       const dashboard: IntelligenceDashboard = await secureApi.get(`/api/hnwi/intelligence/dashboard/${userId}`, true, { 
@@ -480,7 +480,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
 
       // Log Crown Vault data specifically
       if (dashboard.intelligence?.crown_vault_impact) {
-        console.log('👑 Crown Vault Impact Available:', dashboard.intelligence.crown_vault_impact);
+        
       }
 
       // Cache the result
@@ -525,7 +525,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     });
     
     if (user?.user_id || user?.id) {
-      console.log('🧠 Elite Pulse Context: User found, fetching intelligence');
+      
       await fetchIntelligenceDashboard(user.user_id || user.id, { force: true })
     } else {
       console.warn('🧠 Elite Pulse Context: No user ID found, skipping intelligence fetch');
@@ -547,7 +547,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
         if (possibleIds.length > 0) {
           const firstId = (user as any)[possibleIds[0]];
           if (firstId) {
-            console.log('🧠 Elite Pulse Context: Attempting fetch with alternative ID:', firstId);
+            
             await fetchIntelligenceDashboard(firstId, { force: true });
             return;
           }
@@ -683,56 +683,50 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     // Use the same getCurrentUserId logic as Crown Vault
     const getCurrentUserId = (): string | null => {
       if (typeof window !== 'undefined') {
-        console.log('🔍 getCurrentUserId: Starting user ID detection...');
         
         // First try SecureStorage (new auth system)
         try {
           const { SecureStorage } = require('@/lib/security/encryption');
           const userId = SecureStorage.getItem('userId');
-          console.log('🔍 SecureStorage userId:', userId);
           if (userId) return userId;
         } catch (error) {
-          console.log('🔍 SecureStorage not available:', error.message);
           // SecureStorage not available, continue with localStorage
         }
         
         // Then try localStorage (old auth system)
         let userId = localStorage.getItem('userId');
-        console.log('🔍 localStorage userId:', userId);
         if (userId) return userId;
 
         // Try to get from mixpanel cookie which contains the user_id
         try {
-          console.log('🔍 Checking mixpanel cookies...');
-          console.log('🔍 All cookies:', document.cookie);
           
           const mixpanelCookie = document.cookie
             .split('; ')
             .find(row => row.startsWith('mp_e6df9ca97b553d8a7954cda47f2f6516_mixpanel='));
           
-          console.log('🔍 Found mixpanel cookie:', !!mixpanelCookie);
+          
           
           if (mixpanelCookie) {
             const mixpanelData = JSON.parse(decodeURIComponent(mixpanelCookie.split('=')[1]));
-            console.log('🔍 Mixpanel data:', mixpanelData);
+            
             
             if (mixpanelData.$user_id || mixpanelData.distinct_id) {
               const userId = mixpanelData.$user_id || mixpanelData.distinct_id;
-              console.log('🔍 Found user ID in mixpanel:', userId);
+              
               // Store it in localStorage for future use
               localStorage.setItem('userId', userId);
               return userId;
             }
           } else {
-            console.log('🔍 No mixpanel cookie found');
+            
           }
         } catch (error) {
-          console.log('🔍 Cookie parsing error:', error.message);
+          
           // Ignore cookie parsing errors
         }
         
         // If we still don't have a user ID, let's try the hardcoded test user that was working
-        console.log('🔍 No user ID found, using test user ID');
+        
         const testUserId = '59363d04-eb97-4224-94cf-16ca0d4f746e';
         localStorage.setItem('userId', testUserId);
         return testUserId;
@@ -744,20 +738,10 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     const storageUserId = getCurrentUserId();
     const effectiveUserId = authUserId || storageUserId;
     
-    console.log('🧠 Elite Pulse Context: Auth state change:', {
-      isAuthenticated,
-      hasUser: !!user,
-      authUserId: authUserId || 'NO_AUTH_USER',
-      storageUserId: storageUserId || 'NO_STORAGE_USER',
-      effectiveUserId: effectiveUserId || 'NO_USER',
-      userKeys: user ? Object.keys(user) : []
-    });
 
-    if (effectiveUserId) {
-      console.log('🧠 Elite Pulse Context: User ID available, fetching intelligence for:', effectiveUserId);
+    // Only fetch if user is authenticated AND we have a user ID
+    if (isAuthenticated && effectiveUserId) {
       fetchIntelligenceDashboard(effectiveUserId)
-    } else {
-      console.log('🧠 Elite Pulse Context: No user ID available, skipping fetch');
     }
   }, [isAuthenticated, user, fetchIntelligenceDashboard])
 

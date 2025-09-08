@@ -3,14 +3,15 @@
 "use client"
 
 import { TacticsLab } from "@/components/tactics-lab"
-import { Layout } from "@/components/layout/layout"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useEffect } from "react"
 import { PremiumBadge } from "@/components/ui/premium-badge"
 import { Beaker } from "lucide-react"
 import { motion } from "framer-motion"
 import { Heading2, Paragraph } from "@/components/ui/typography"
+import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { MetaTags } from "../meta-tags"
+import { PageWrapper } from "@/components/ui/page-wrapper"
 
 export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string) => void }) {
   const { markStepAsCompleted } = useOnboarding()
@@ -37,27 +38,7 @@ export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string)
         image="https://app.hnwichronicles.com/images/tactics-lab-og.png"
         url="https://app.hnwichronicles.com/tactics-lab"
       />
-      <Layout
-        currentPage="strategy-engine"
-        title={
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center space-x-2">
-              <motion.div animate={pulseAnimation}>
-                <Beaker className="w-6 h-6 text-primary" />
-              </motion.div>
-              <Heading2 className="font-heading text-2xl">Tactics Lab</Heading2>
-              <PremiumBadge>Beta</PremiumBadge>
-            </div>
-            <p className="text-muted-foreground text-base leading-tight">
-              Experiment. Master. Dominate.
-            </p>
-          </div>
-        }
-        showBackButton
-        onNavigate={onNavigate}
-      >
         <TacticsLab />
-      </Layout>
     </>
   )
 }

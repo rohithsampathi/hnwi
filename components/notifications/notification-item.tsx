@@ -23,6 +23,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { NotificationRecord } from "@/lib/services/notification-service";
 import { useNotificationContext } from "@/contexts/notification-context";
 import { formatDistanceToNow } from "date-fns";
+import { getNotificationContent, handleCrownVaultNotification, NotificationTypeConfigs } from "@/lib/notification-config";
+import { useRouter } from "next/navigation";
 
 interface NotificationItemProps {
   notification: NotificationRecord;
@@ -47,69 +49,77 @@ export function NotificationItem({
     deleteNotification,
     loading
   } = useNotificationContext();
+  const router = useRouter();
 
   const [isActionsVisible, setIsActionsVisible] = useState(false);
 
-  // Get icon and styling based on event type
+  // Get notification content from config
+  const content = getNotificationContent(notification);
+  const config = NotificationTypeConfigs[notification.event_type];
+
+  // Get icon and styling based on event type (enhanced with new config)
   const getNotificationDetails = () => {
     const baseClasses = "border transition-all duration-300";
+    
+    // Use config colors if available
+    const color = config?.color || '#64748b';
     
     switch (notification.event_type) {
       case 'elite_pulse_generated':
         return {
           icon: Zap,
-          className: `${baseClasses} bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/30`,
-          iconColor: 'text-blue-600 dark:text-blue-400',
-          typeLabel: 'Elite Pulse'
+          className: `${baseClasses} bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/20 dark:to-amber-950/20 border-yellow-300 dark:border-yellow-800/30`,
+          iconColor: 'text-yellow-600 dark:text-yellow-400',
+          typeLabel: config?.title || 'Elite Pulse'
         };
       case 'opportunity_added':
         return {
           icon: TrendingUp,
-          className: `${baseClasses} bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/30`,
-          iconColor: 'text-emerald-600 dark:text-emerald-400',
-          typeLabel: 'Opportunity'
+          className: `${baseClasses} bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-950/20 dark:to-sky-950/20 border-blue-300 dark:border-blue-800/30`,
+          iconColor: 'text-blue-600 dark:text-blue-400',
+          typeLabel: config?.title || 'Opportunity'
         };
       case 'crown_vault_update':
         return {
           icon: Shield,
-          className: `${baseClasses} bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/30`,
+          className: `${baseClasses} bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/20 dark:to-violet-950/20 border-purple-300 dark:border-purple-800/30`,
           iconColor: 'text-purple-600 dark:text-purple-400',
-          typeLabel: 'Crown Vault'
+          typeLabel: config?.title || 'Crown Vault'
         };
       case 'social_event_added':
         return {
           icon: Calendar,
-          className: `${baseClasses} bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/30`,
-          iconColor: 'text-indigo-600 dark:text-indigo-400',
-          typeLabel: 'Social Event'
+          className: `${baseClasses} bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20 border-pink-300 dark:border-pink-800/30`,
+          iconColor: 'text-pink-600 dark:text-pink-400',
+          typeLabel: config?.title || 'Social Event'
         };
       case 'market_alert':
         return {
           icon: AlertTriangle,
-          className: `${baseClasses} bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/30`,
-          iconColor: 'text-amber-600 dark:text-amber-400',
-          typeLabel: 'Market Alert'
+          className: `${baseClasses} bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-300 dark:border-red-800/30`,
+          iconColor: 'text-red-600 dark:text-red-400',
+          typeLabel: config?.title || 'Market Alert'
         };
       case 'regulatory_update':
         return {
           icon: FileText,
-          className: `${baseClasses} bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/30`,
-          iconColor: 'text-orange-600 dark:text-orange-400',
-          typeLabel: 'Regulatory'
+          className: `${baseClasses} bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950/20 dark:to-slate-950/20 border-gray-300 dark:border-gray-800/30`,
+          iconColor: 'text-gray-600 dark:text-gray-400',
+          typeLabel: config?.title || 'Regulatory'
         };
       case 'system_notification':
         return {
           icon: Settings,
           className: `${baseClasses} bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800/30`,
           iconColor: 'text-gray-600 dark:text-gray-400',
-          typeLabel: 'System'
+          typeLabel: config?.title || 'System'
         };
       default:
         return {
           icon: Bell,
           className: `${baseClasses} bg-gray-50 dark:bg-gray-950/20 border-gray-200 dark:border-gray-800/30`,
           iconColor: 'text-gray-600 dark:text-gray-400',
-          typeLabel: 'Notification'
+          typeLabel: config?.title || 'Notification'
         };
     }
   };
@@ -159,7 +169,7 @@ export function NotificationItem({
         await markAsUnread(notification.id);
       }
     } catch (error) {
-      console.error('Failed to toggle read status:', error);
+      // Failed to toggle read status
     }
   };
 
@@ -167,7 +177,7 @@ export function NotificationItem({
     try {
       await deleteNotification(notification.id);
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      // Failed to delete notification
     }
   };
 
@@ -181,9 +191,9 @@ export function NotificationItem({
       markAsRead(notification.id);
     }
 
-    // Handle notification data actions
-    if (notification.data?.actionUrl) {
-      window.location.href = notification.data.actionUrl;
+    // Handle notification navigation using the config-based actionUrl
+    if (content.actionUrl && content.actionUrl !== '/') {
+      router.push(content.actionUrl);
     }
   };
 
@@ -229,7 +239,7 @@ export function NotificationItem({
                     ${compact ? 'text-sm' : 'text-sm'}
                     ${isUnread ? 'text-gray-900 dark:text-gray-100' : 'text-gray-700 dark:text-gray-300'}
                   `}>
-                    {notification.title}
+                    {content.primaryText || notification.title}
                   </h4>
                   {getPriorityBadge()}
                 </div>
@@ -277,7 +287,9 @@ export function NotificationItem({
                 ${compact ? 'text-xs' : 'text-sm'}
                 ${compact ? 'line-clamp-2' : 'line-clamp-3'}
               `}>
-                {notification.content}
+                {notification.event_type === 'crown_vault_update' 
+                  ? handleCrownVaultNotification(notification)
+                  : content.secondaryText || notification.content}
               </p>
               
               {/* Metadata */}
@@ -323,7 +335,7 @@ export function NotificationItem({
                   </span>
                 </div>
                 
-                {notification.data?.actionLabel && (
+                {config?.actionText && content.actionUrl && content.actionUrl !== '/' && (
                   <Button 
                     size="sm" 
                     variant="outline"
@@ -333,7 +345,7 @@ export function NotificationItem({
                     }}
                     className={`text-xs h-6 px-2 ${compact ? 'hidden' : ''}`}
                   >
-                    {notification.data.actionLabel}
+                    {config.actionText}
                   </Button>
                 )}
               </div>

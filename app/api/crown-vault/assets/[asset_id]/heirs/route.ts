@@ -3,10 +3,6 @@ import { cookies } from 'next/headers';
 import { secureApi } from '@/lib/secure-api';
 import { ApiAuth } from '@/lib/api-auth';
 
-interface HeirAssignmentRequest {
-  heir_ids: string[];
-}
-
 export const PUT = ApiAuth.withAuth(async (
   request: NextRequest,
   user,
@@ -22,11 +18,11 @@ export const PUT = ApiAuth.withAuth(async (
       );
     }
 
-    const body: HeirAssignmentRequest = await request.json();
+    const heirIds = await request.json();
     
-    if (!body.heir_ids || !Array.isArray(body.heir_ids)) {
+    if (!Array.isArray(heirIds)) {
       return NextResponse.json(
-        { error: 'heir_ids must be an array' },
+        { error: 'Request body must be an array of heir IDs' },
         { status: 400 }
       );
     }
@@ -37,12 +33,12 @@ export const PUT = ApiAuth.withAuth(async (
     // Debug: Log the exact data being sent to backend
     console.log('Heir assignment - sending to backend:', {
       endpoint,
-      heirIds: body.heir_ids,
-      heirIdsType: typeof body.heir_ids,
-      isArray: Array.isArray(body.heir_ids)
+      heirIds,
+      heirIdsType: typeof heirIds,
+      isArray: Array.isArray(heirIds)
     });
     
-    const response = await secureApi.put(endpoint, body.heir_ids, true);
+    const response = await secureApi.put(endpoint, heirIds, true);
 
     return ApiAuth.addSecurityHeaders(NextResponse.json(response, { status: 200 }));
 

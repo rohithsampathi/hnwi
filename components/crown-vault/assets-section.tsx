@@ -19,6 +19,7 @@ import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsse
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
+import { EditAssetModal } from "./edit-asset-modal";
 
 interface AssetsSectionProps {
   assets: CrownVaultAsset[];
@@ -238,6 +239,8 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   const [heirUpdateLoading, setHeirUpdateLoading] = useState<Set<string>>(new Set());
   const [newlyAddedAssets, setNewlyAddedAssets] = useState<Set<string>>(new Set());
   const [deletingAssets, setDeletingAssets] = useState<Set<string>>(new Set());
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<CrownVaultAsset | null>(null);
   
   const { toast } = useToast();
 
@@ -277,24 +280,24 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
 
   // Handle asset deletion
   const handleDeleteAsset = async (asset: CrownVaultAsset) => {
-    console.log('Delete asset called for:', asset.asset_id, asset.asset_data.name);
+    
     
     if (!confirm(`Are you sure you want to delete "${asset.asset_data.name}"? This action cannot be undone.`)) {
-      console.log('Delete cancelled by user');
+      
       return;
     }
 
     try {
-      console.log('Starting delete process...');
+      
       setDeletingAssets(prev => new Set([...prev, asset.asset_id]));
       
-      console.log('Calling deleteCrownVaultAsset API...');
+      
       const result = await deleteCrownVaultAsset(asset.asset_id);
-      console.log('Delete API result:', result);
+      
       
       // Remove asset from state
       setAssets(prevAssets => prevAssets.filter(a => a.asset_id !== asset.asset_id));
-      console.log('Asset removed from state');
+      
       
       toast({
         title: "Asset Deleted",
@@ -318,15 +321,26 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
     }
   };
 
-  // Handle asset editing (placeholder - could open a modal)
+  // Handle asset editing - open edit modal
   const handleEditAsset = (asset: CrownVaultAsset) => {
-    console.log('Edit asset called for:', asset.asset_id, asset.asset_data.name);
-    toast({
-      title: "Edit Asset",
-      description: "Asset editing functionality will be available soon. You can click the card to view details.",
-      variant: "default"
-    });
-    // TODO: Implement edit modal or redirect to edit page
+    
+    setEditingAsset(asset);
+    setEditModalOpen(true);
+  };
+
+  // Handle asset update from modal
+  const handleAssetUpdated = (updatedAsset: CrownVaultAsset) => {
+    setAssets(prevAssets => 
+      prevAssets.map(asset => 
+        asset.asset_id === updatedAsset.asset_id ? updatedAsset : asset
+      )
+    );
+  };
+
+  // Handle edit modal close
+  const handleEditModalClose = () => {
+    setEditModalOpen(false);
+    setEditingAsset(null);
   };
 
   const filteredAssets = assets.filter(asset => {
@@ -368,7 +382,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   });
 
   return (
-    <div className="space-y-6">
+    <div className="mt-10 space-y-6">
       {/* Assets Toolbar */}
       <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         {/* Left side: Add Assets Button and Search */}
@@ -546,7 +560,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       <div onClick={(e) => e.stopPropagation()} data-dropdown-container>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -670,6 +684,14 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
           })}
         </div>
       )}
+
+      {/* Edit Asset Modal */}
+      <EditAssetModal
+        asset={editingAsset}
+        isOpen={editModalOpen}
+        onClose={handleEditModalClose}
+        onAssetUpdated={handleAssetUpdated}
+      />
     </div>
   );
 }

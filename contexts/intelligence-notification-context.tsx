@@ -7,6 +7,7 @@ import {
   type IntelligenceNotification 
 } from "@/components/ui/intelligence-notification";
 import { useElitePulse } from "@/contexts/elite-pulse-context";
+import { canAccessFeaturesWithFallback } from "@/lib/auth-utils";
 
 interface IntelligenceNotificationContextType {
   addNotification: (notification: Omit<IntelligenceNotification, 'id' | 'timestamp'>) => string;
@@ -47,12 +48,16 @@ export function IntelligenceNotificationProvider({
     urgentNotifications
   } = useIntelligenceNotifications();
 
+  // Check authentication first
+  const isAuthenticated = canAccessFeaturesWithFallback();
+  
+  // Always call useElitePulse (React hook rules), but guard the usage
   const { state, hasIntelligence } = useElitePulse();
   const [lastUpdateTime, setLastUpdateTime] = useState<number | null>(null);
 
   // Auto-generate notifications from Elite Pulse intelligence updates
   useEffect(() => {
-    if (!enableAutoNotifications || !hasIntelligence) return;
+    if (!enableAutoNotifications || !hasIntelligence || !isAuthenticated) return;
 
     const currentUpdateTime = state.intelligence.lastUpdate?.getTime();
     if (!currentUpdateTime || currentUpdateTime === lastUpdateTime) return;
@@ -74,21 +79,23 @@ export function IntelligenceNotificationProvider({
       autoHide: true,
       hideAfter: 10000
     });
-  }, [state.intelligence.lastUpdate, hasIntelligence, enableAutoNotifications, lastUpdateTime, addNotification]);
+  }, [state.intelligence.lastUpdate, hasIntelligence, enableAutoNotifications, lastUpdateTime, addNotification, isAuthenticated]);
 
   // Handle notification actions (navigation, etc.)
   const handleNotificationAction = useCallback((notification: IntelligenceNotification) => {
+    if (!isAuthenticated) return;
+    
     if (notification.actionUrl) {
       // In a real app, you'd use router.push() here
-      console.log(`Navigate to: ${notification.actionUrl}`);
+      
     }
     
     // Track the action
     if (state.intelligence.subscriptions.has('user_interactions')) {
       // Track notification action
-      console.log(`Tracked notification action: ${notification.type} - ${notification.title}`);
+      
     }
-  }, [state.intelligence.subscriptions]);
+  }, [state.intelligence.subscriptions, isAuthenticated]);
 
   // Convenience methods for creating different types of notifications
   const notifyThreat = useCallback((title: string, message: string, metadata?: IntelligenceNotification['metadata']) => {

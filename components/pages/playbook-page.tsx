@@ -3,7 +3,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Layout } from "@/components/layout/layout"
 import { useTheme } from "@/contexts/theme-context"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, BookOpen } from "lucide-react"
@@ -151,20 +150,10 @@ export function PlaybookPage({
 
   if (!report && !isLoading) {
     return (
-      <Layout 
-        currentPage="strategy-engine"
-        title={
-          <div className="flex items-center space-x-2">
-            <BookOpen className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-            <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Report Not Found</Heading2>
-          </div>
-        } 
-        showBackButton 
-        onNavigate={() => onNavigate("my-playbooks")}
-      >
+      <>
         <div className={`w-full ${theme === "dark" ? "text-white" : "text-[#121212]"}`}>
-          <div className="p-6">
-            <div className="text-center py-8">
+          <div className="w-full">
+            <div className="text-center">
               <Paragraph className="text-destructive">The requested report could not be found.</Paragraph>
               <Button variant="outline" onClick={() => onNavigate("my-playbooks")} className="mt-4">
                 <ArrowLeft className="mr-2 w-4 h-4" />
@@ -173,33 +162,12 @@ export function PlaybookPage({
             </div>
           </div>
         </div>
-      </Layout>
+      </>
     )
   }
 
   return (
-    <Layout
-      currentPage="strategy-engine"
-      title={
-        report ? (
-          <div>
-            <div className="flex items-center space-x-2">
-              <BookOpen className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-              <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>
-                {report.metadata.title}
-              </Heading2>
-            </div>
-            {report.metadata.industry && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Industry: {report.metadata.industry}
-              </p>
-            )}
-          </div>
-        ) : undefined
-      }
-      showBackButton
-      onNavigate={() => onNavigate("my-playbooks")}
-    >
+    <>
       <AnimatePresence>
         {isLoading && (
           <motion.div 
@@ -217,7 +185,7 @@ export function PlaybookPage({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="space-y-4"
+          className="w-full"
         >
 
           {isMobileView ? (
@@ -263,6 +231,6 @@ export function PlaybookPage({
           )}
         </motion.div>
       )}
-    </Layout>
+    </>
   )
 }

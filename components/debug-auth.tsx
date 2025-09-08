@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { isAuthenticated, getValidToken } from "@/lib/auth-utils"
-import { FastSecureAPI } from "@/lib/fast-secure-api"
+import { secureApi } from "@/lib/secure-api"
 import { Button } from "@/components/ui/button"
 import { QuickLogin } from "@/components/quick-login"
 
@@ -30,7 +30,7 @@ export function DebugAuth() {
   const testDevelopments = async () => {
     setApiTest("Testing...")
     try {
-      const data = await FastSecureAPI.post('/api/developments', {
+      const data = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 10,
         sort_by: "date",
@@ -48,7 +48,7 @@ export function DebugAuth() {
   const testWealthRadar = async () => {
     setWealthRadarTest("Testing...")
     try {
-      const data = await FastSecureAPI.post('/api/developments', {
+      const data = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 5,
         sort_by: "date",
@@ -76,7 +76,7 @@ export function DebugAuth() {
       setEndpointTests(prev => ({ ...prev, [endpoint.name]: 'Testing...' }))
       
       try {
-        const data = await FastSecureAPI.post('/api/developments', endpoint.body, true, { enableCache: false })
+        const data = await secureApi.post('/api/developments', endpoint.body, true, { enableCache: false })
         
         const count = data.developments?.length || 0
         const sample = count > 0 ? data.developments[0] : null
@@ -98,7 +98,7 @@ export function DebugAuth() {
   const testElitePulse = async () => {
     setEndpointTests(prev => ({ ...prev, 'Elite Pulse Test': 'Testing...' }))
     try {
-      const data = await FastSecureAPI.post('/api/developments', {
+      const data = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 10,
         sort_by: "date",
@@ -123,7 +123,7 @@ export function DebugAuth() {
   const testInsiderBrief = async () => {
     setEndpointTests(prev => ({ ...prev, 'Insider Brief Test': 'Testing...' }))
     try {
-      const data = await FastSecureAPI.post('/api/developments', {
+      const data = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 8,
         sort_by: "date",
@@ -170,7 +170,7 @@ export function DebugAuth() {
 
       // Test 3: Test developments with current token
       try {
-        const devData = await FastSecureAPI.post('/api/developments', {
+        const devData = await secureApi.post('/api/developments', {
           page: 1,
           page_size: 3
         }, true, { enableCache: false })
@@ -220,7 +220,7 @@ export function DebugAuth() {
       }
 
       // Test API connectivity with current auth
-      const testResult = await FastSecureAPI.post('/api/developments', {
+      const testResult = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 1
       }, true, { enableCache: false })
@@ -332,7 +332,7 @@ export function DebugAuth() {
       {!isAuthenticated() && <QuickLogin />}
       
       <div className="text-xs text-muted-foreground">
-        API Base: {process.env.NEXT_PUBLIC_API_BASE_URL || "[DEFAULT_API_URL]"}
+        Debug Panel v1.0 - Environment: {process.env.NODE_ENV || "development"}
       </div>
     </div>
   )

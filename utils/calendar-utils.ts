@@ -73,7 +73,14 @@ export function formatDateRange(start: Date, end?: Date): string {
 // Function to submit event reservation to formspree
 export async function reserveEvent(event: any, email: string, name: string): Promise<boolean> {
   try {
-    const response = await fetch('https://formspree.io/f/your-formspree-id', {
+    // Use environment variable for formspree endpoint - NO hardcoded URLs
+    const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
+    if (!formspreeEndpoint) {
+      console.error('Formspree endpoint not configured');
+      return false;
+    }
+    
+    const response = await fetch(formspreeEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

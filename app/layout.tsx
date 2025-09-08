@@ -7,10 +7,6 @@ import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
-import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
-import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
-import { NotificationProvider } from "@/contexts/notification-context"
-import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import './globals.css'
 
@@ -102,7 +98,7 @@ export default function RootLayout({
           suppressHydrationWarning={true}
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
+              if ('serviceWorker' in navigator && !location.hostname.includes('localhost')) {
                 window.addEventListener('load', () => {
                   navigator.serviceWorker.register('/sw.js')
                     .catch(() => {});
@@ -118,28 +114,11 @@ export default function RootLayout({
             <ThemeProvider>
               <BusinessModeProvider>
                 <AuthPopupProvider>
-                  <ElitePulseErrorBoundary>
-                    <ElitePulseProvider>
-                      <NotificationProvider
-                        enablePolling={true}
-                        pollInterval={30000}
-                        enableSounds={true}
-                        enableBrowserNotifications={true}
-                      >
-                        <IntelligenceNotificationProvider 
-                          position="top-right"
-                          maxNotifications={5}
-                          enableAutoNotifications={true}
-                        >
-                          {children}
-                          <PWAInstallPrompt />
-                          <div id="toast-container" className="fixed top-0 right-0 z-50">
-                            {/* Toast container for notifications */}
-                          </div>
-                        </IntelligenceNotificationProvider>
-                      </NotificationProvider>
-                    </ElitePulseProvider>
-                  </ElitePulseErrorBoundary>
+                  {children}
+                  <PWAInstallPrompt />
+                  <div id="toast-container" className="fixed top-0 right-0 z-50">
+                    {/* Toast container for notifications */}
+                  </div>
                 </AuthPopupProvider>
               </BusinessModeProvider>
             </ThemeProvider>

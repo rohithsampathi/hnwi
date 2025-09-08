@@ -31,3 +31,15 @@ export const logSafeApiError = (message: string, endpoint?: string): void => {
   }
 }
 
+// Get full URL for an API endpoint
+export const getApiUrlForEndpoint = (endpoint: string): string => {
+  // Ensure endpoint starts with /
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanEndpoint}`;
+}
+
+// Get base URL for client-side usage
+export const getApiBaseUrl = (): string => {
+  return API_BASE_URL;
+}
+

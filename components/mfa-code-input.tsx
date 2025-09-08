@@ -27,7 +27,10 @@ export function MfaCodeInput({
   const [code, setCode] = useState("")
   const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
   const [canResend, setCanResend] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lastSubmittedCodeRef = useRef<string>("")
 
   // Initialize timer
   useEffect(() => {
@@ -52,6 +55,15 @@ export function MfaCodeInput({
     }
   }, [isResending])
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -68,14 +80,26 @@ export function MfaCodeInput({
       const updatedCode = newCode.join('')
       setCode(updatedCode)
 
+      // Reset last submitted code when user modifies the code
+      if (lastSubmittedCodeRef.current && updatedCode !== lastSubmittedCodeRef.current) {
+        lastSubmittedCodeRef.current = ""
+      }
+
       // Auto-focus next input
       if (cleanValue && index < 5) {
         inputRefs.current[index + 1]?.focus()
       }
 
-      // Auto-submit when all 6 digits are entered
+      // Auto-submit when all 6 digits are entered (debounced)
       if (updatedCode.length === 6 && updatedCode.replace(/\s/g, '').length === 6) {
-        setTimeout(() => handleSubmit(updatedCode), 50)
+        // Clear any existing timeout
+        if (submitTimeoutRef.current) {
+          clearTimeout(submitTimeoutRef.current)
+        }
+        // Debounce the submission to prevent double-submits
+        submitTimeoutRef.current = setTimeout(() => {
+          handleSubmit(updatedCode)
+        }, 150)
       }
     }
   }
@@ -106,20 +130,43 @@ export function MfaCodeInput({
     if (pastedText.length === 6) {
       setCode(pastedText)
       inputRefs.current[5]?.focus()
-      // Auto-submit pasted code
-      setTimeout(() => handleSubmit(pastedText), 100)
+      // Auto-submit pasted code (debounced)
+      if (submitTimeoutRef.current) {
+        clearTimeout(submitTimeoutRef.current)
+      }
+      submitTimeoutRef.current = setTimeout(() => {
+        handleSubmit(pastedText)
+      }, 200)
     }
   }
 
   const handleSubmit = async (codeToSubmit?: string) => {
     const finalCode = codeToSubmit || code
-    if (finalCode.length === 6) {
+    
+    // Prevent submission if already submitting or if this code was already submitted
+    if (isSubmitting || isLoading || finalCode.length !== 6 || lastSubmittedCodeRef.current === finalCode) {
+      return
+    }
+
+    // Set submitting state and track the code being submitted
+    setIsSubmitting(true)
+    lastSubmittedCodeRef.current = finalCode
+
+    try {
       await onSubmit(finalCode)
+    } catch (error) {
+      // Reset on error so user can retry
+      lastSubmittedCodeRef.current = ""
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   const handleResend = async () => {
     if (canResend && !isResending) {
+      // Reset submission tracking when getting a new code
+      lastSubmittedCodeRef.current = ""
+      setCode("")
       await onResend()
     }
   }
@@ -146,7 +193,7 @@ export function MfaCodeInput({
             onChange={(e) => handleCodeChange(e.target.value, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={index === 0 ? handlePaste : undefined}
-            disabled={isLoading}
+            disabled={isLoading || isSubmitting}
             className={`w-12 h-12 text-center text-lg font-mono border-2 transition-all duration-200 ${
               theme === "dark"
                 ? "bg-gray-800 border-gray-600 focus:border-primary"
@@ -178,14 +225,14 @@ export function MfaCodeInput({
       <div className="flex flex-col gap-3">
         <Button
           onClick={() => handleSubmit()}
-          disabled={code.length !== 6 || isLoading}
+          disabled={code.length !== 6 || isLoading || isSubmitting}
           className={`w-full h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
             theme === "dark" 
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-black text-white hover:bg-black/90"
           }`}
         >
-          {isLoading ? (
+          {(isLoading || isSubmitting) ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Verifying...

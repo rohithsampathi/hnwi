@@ -32,6 +32,24 @@ body {
   .safe-area-pt {
     padding-top: env(safe-area-inset-top);
   }
+
+  /* Hide scrollbars */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+
+  /* Hide all scrollbars globally */
+  .scrollbar-hide-all {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide-all::-webkit-scrollbar {
+    display: none;
+  }
   
   /* Premium slower animations */
   .premium-pulse {
@@ -184,6 +202,29 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  body::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+
+  /* Hide scrollbars on html element too */
+  html {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbars globally on all overflow elements */
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   
   /* Standardize border radius & styles across the app - CLEAN BUSINESS STANDARD */
@@ -613,7 +654,7 @@ footer nav button, footer nav div {
   box-shadow: 0 8px 25px rgba(156, 163, 175, 0.45) !important;
 }
 
-/* Premium loading screen animations for UHNWI experience */
+/* Premium loading screen animations for HNWI experience */
 @keyframes float {
   0%, 100% { 
     transform: translateY(0px) rotate(0deg); 

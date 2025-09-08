@@ -34,7 +34,8 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
     preferences,
     updatePreferences,
     fetchPreferences,
-    loading
+    loading,
+    preferencesLoading
   } = useNotificationContext();
 
   const [localPreferences, setLocalPreferences] = useState<UserNotificationPreferences | null>(null);
@@ -45,9 +46,46 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
 
   // Initialize local preferences
   useEffect(() => {
-    if (preferences) {
-      setLocalPreferences(preferences);
-    } else if (!localPreferences && !loading) {
+    if (preferences && !localPreferences) {
+      // Ensure all required fields are present with defaults
+      const normalizedPreferences = {
+        email_enabled: true,
+        push_enabled: false,
+        in_app_enabled: true,
+        sms_enabled: false,
+        quiet_hours_enabled: false,
+        quiet_hours_start: "22:00",
+        quiet_hours_end: "08:00",
+        event_types: {
+          elite_pulse: true,
+          hnwi_world: true,
+          crown_vault: true,
+          social_hub: true,
+          system_notification: true
+        },
+        frequency_limits: {
+          max_per_hour: 10,
+          max_per_day: 50
+        },
+        ...preferences,
+        event_types: {
+          elite_pulse_generated: true,
+          opportunity_added: true,
+          crown_vault_update: true,
+          social_event_added: true,
+          market_alert: true,
+          regulatory_update: true,
+          system_notification: true,
+          ...preferences.event_types
+        },
+        frequency_limits: {
+          max_per_hour: 10,
+          max_per_day: 50,
+          ...preferences.frequency_limits
+        }
+      };
+      setLocalPreferences(normalizedPreferences);
+    } else if (!preferences && !preferencesLoading && !localPreferences) {
       // If no preferences from context and not loading, create default ones
       const defaultPreferences: UserNotificationPreferences = {
         email_enabled: true,
@@ -58,12 +96,10 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
         quiet_hours_start: "22:00",
         quiet_hours_end: "08:00",
         event_types: {
-          elite_pulse_generated: true,
-          opportunity_added: true,
-          crown_vault_update: true,
-          social_event_added: true,
-          market_alert: true,
-          regulatory_update: true,
+          elite_pulse: true,
+          hnwi_world: true,
+          crown_vault: true,
+          social_hub: true,
           system_notification: true
         },
         frequency_limits: {
@@ -73,7 +109,7 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
       };
       setLocalPreferences(defaultPreferences);
     }
-  }, [preferences, loading]); // Remove localPreferences from deps to avoid infinite loops
+  }, [preferences, preferencesLoading]);
 
   // Check push notification support and status
   useEffect(() => {
@@ -84,18 +120,26 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
       if (supported) {
         const subscribed = await pushNotificationService.isSubscribed();
         setPushEnabled(subscribed);
+        
+        // Update local preferences to match actual browser state
+        if (localPreferences && localPreferences.push_enabled !== subscribed) {
+          setLocalPreferences(prev => prev ? {
+            ...prev,
+            push_enabled: subscribed
+          } : null);
+        }
       }
     };
 
     checkPushStatus();
-  }, []);
+  }, [localPreferences]);
 
   // Fetch preferences on mount
   useEffect(() => {
     fetchPreferences();
-  }, [fetchPreferences]);
+  }, []); // Remove fetchPreferences from dependencies to avoid infinite loop
 
-  if (!localPreferences) {
+  if (preferencesLoading || !localPreferences) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -146,6 +190,8 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
     setLocalPreferences(prev => prev ? {
       ...prev,
       frequency_limits: {
+        max_per_hour: 10,
+        max_per_day: 50,
         ...prev.frequency_limits,
         [field]: numValue
       }
@@ -156,49 +202,34 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
   const handlePushToggle = async () => {
     if (!pushSupported) return;
 
-    try {
-      const currentlyEnabled = localPreferences.push_enabled;
-      
-      if (currentlyEnabled) {
-        // Unsubscribe from push notifications
-        await pushNotificationService.unsubscribe();
-        setPushEnabled(false);
-        
-        // Update preferences
+    const currentlyEnabled = localPreferences.push_enabled;
+    
+    if (currentlyEnabled) {
+      // Disable push notifications
+      await pushNotificationService.unsubscribe();
+      setPushEnabled(false);
+      setLocalPreferences(prev => prev ? {
+        ...prev,
+        push_enabled: false
+      } : null);
+    } else {
+      // Enable push notifications - browser will ask for permission
+      const success = await pushNotificationService.subscribe();
+      if (success) {
+        setPushEnabled(true);
         setLocalPreferences(prev => prev ? {
           ...prev,
-          push_enabled: false
+          push_enabled: true
         } : null);
-      } else {
-        // Subscribe to push notifications
-        const success = await pushNotificationService.subscribe();
-        if (success) {
-          setPushEnabled(true);
-          
-          // Update preferences
-          setLocalPreferences(prev => prev ? {
-            ...prev,
-            push_enabled: true
-          } : null);
-        } else {
-          // If subscription failed, don't update local preferences
-          console.warn('Push notification subscription failed');
-        }
       }
-      setSaveStatus('idle'); // Mark as needing save
-    } catch (error) {
-      console.error('Failed to toggle push notifications:', error);
-      // Reset toggle if error occurred
-      const wasEnabled = localPreferences.push_enabled;
-      setPushEnabled(!wasEnabled);
     }
+    setSaveStatus('idle');
   };
 
   const handleTestNotification = async () => {
     try {
       await pushNotificationService.showTestNotification();
     } catch (error) {
-      console.error('Failed to show test notification:', error);
       alert('Failed to show test notification. Please check your browser permissions.');
     }
   };
@@ -225,19 +256,6 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
 
   const hasChanges = JSON.stringify(preferences) !== JSON.stringify(localPreferences);
 
-  // Show loading state if preferences are not yet loaded
-  if (!localPreferences) {
-    return (
-      <div className={`space-y-6 ${className}`}>
-        <Card>
-          <CardContent className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mr-2" />
-            <span className="text-muted-foreground">Loading notification preferences...</span>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -272,22 +290,34 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
               <div>
                 <Label className="text-sm font-medium">Push Notifications</Label>
                 <p className="text-xs text-muted-foreground">
-                  {pushSupported ? 'Browser push notifications' : 'Not supported in this browser'}
+                  {pushSupported 
+                    ? 'Browser push notifications' 
+                    : 'Not supported in this browser'
+                  }
                 </p>
                 {pushSupported && (
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant={localPreferences.push_enabled ? "default" : "secondary"} className="text-xs">
-                      {localPreferences.push_enabled ? 'Active' : 'Inactive'}
-                    </Badge>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={handleTestNotification}
-                      disabled={!localPreferences.push_enabled}
-                      className="text-xs h-6 px-2"
+                    <Badge 
+                      variant={pushEnabled ? "default" : "secondary"} 
+                      className="text-xs"
                     >
-                      Test
-                    </Button>
+                      {pushEnabled ? 'Subscribed' : 'Not Subscribed'}
+                    </Badge>
+                    {pushEnabled && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={handleTestNotification}
+                        className="text-xs h-6 px-2"
+                      >
+                        Test
+                      </Button>
+                    )}
+                    {Notification?.permission === 'denied' && (
+                      <span className="text-xs text-red-500">
+                        Permission denied - enable in browser settings
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -325,20 +355,31 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
         <CardContent className="space-y-3">
           {localPreferences?.event_types && Object.entries(localPreferences.event_types).map(([eventType, enabled]) => {
             const labels = {
-              elite_pulse_generated: 'Elite Pulse Intelligence',
-              opportunity_added: 'New Investment Opportunities',
-              crown_vault_update: 'Crown Vault Updates',
-              social_event_added: 'Social Events',
-              market_alert: 'Market Alerts',
-              regulatory_update: 'Regulatory Updates',
+              elite_pulse: 'Elite Pulse Intelligence Reports',
+              hnwi_world: 'Investment Opportunities',
+              crown_vault: 'Crown Vault Updates',
+              social_hub: 'Social Events & Gatherings',
               system_notification: 'System Notifications'
             };
 
+            const descriptions = {
+              elite_pulse: 'Strategic market intelligence and analysis',
+              hnwi_world: 'Exclusive investment and wealth opportunities',
+              crown_vault: 'Updates to your assets and heirs',
+              social_hub: 'High-society events and networking opportunities',
+              system_notification: 'Important system updates and maintenance'
+            };
+
             return (
-              <div key={eventType} className="flex items-center justify-between">
-                <Label className="text-sm font-medium">
-                  {labels[eventType as keyof typeof labels] || eventType}
-                </Label>
+              <div key={eventType} className="flex items-center justify-between py-2">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">
+                    {labels[eventType as keyof typeof labels] || eventType}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {descriptions[eventType as keyof typeof descriptions] || ''}
+                  </p>
+                </div>
                 <Switch 
                   checked={enabled}
                   onCheckedChange={() => handleEventTypeToggle(eventType as keyof UserNotificationPreferences['event_types'])}
@@ -411,7 +452,7 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
               type="number"
               min="1"
               max="100"
-              value={localPreferences.frequency_limits.max_per_hour}
+              value={localPreferences.frequency_limits?.max_per_hour || 10}
               onChange={(e) => handleFrequencyChange('max_per_hour', e.target.value)}
               className="mt-1"
             />
@@ -427,7 +468,7 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
               type="number"
               min="1"
               max="1000"
-              value={localPreferences.frequency_limits.max_per_day}
+              value={localPreferences.frequency_limits?.max_per_day || 50}
               onChange={(e) => handleFrequencyChange('max_per_day', e.target.value)}
               className="mt-1"
             />

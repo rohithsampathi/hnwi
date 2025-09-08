@@ -13,8 +13,8 @@ interface FeatureFlags {
 
 class FeatureFlagManager {
   private static flags: FeatureFlags = {
-    // Migration flags - start with new system DISABLED
-    USE_NEW_NAVIGATION: false,
+    // Migration flags - new route structure uses new navigation
+    USE_NEW_NAVIGATION: true,
     USE_NEW_AUTH_FLOW: false, 
     USE_NEW_STATE_MANAGEMENT: false,
     

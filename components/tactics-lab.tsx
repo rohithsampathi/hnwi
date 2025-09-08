@@ -326,7 +326,7 @@ export function TacticsLab() {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4">
-      <div className="font-body w-full mt-8">
+      <div className="font-body w-full">
         <form onSubmit={handleSubmit} className="mb-12">
           <div className="flex flex-col max-w-5xl mx-auto">
             <Textarea

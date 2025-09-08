@@ -275,19 +275,20 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     // Call backend API directly for assets using authenticated client with 10-minute caching
-    // Backend gets user_id from authentication context
-    const data = await secureApi.get('/api/crown-vault/assets/detailed', true, { enableCache: true, cacheDuration: 600000 });
+    // Pass owner_id as query parameter as required by the API endpoint
+    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
     const assets = data.assets || data || [];
     
-    // Ensure each asset has proper structure
+    // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
     return assets.filter((asset: any) => 
       asset && 
-      asset.asset_id && 
-      asset.asset_data &&
-      typeof asset.asset_data === 'object'
+      (asset._id || asset.asset_id || asset.id) // Accept MongoDB _id or other formats
     ).map((asset: any) => ({
       ...asset,
-      asset_data: {
+      // Normalize ID field
+      id: asset._id || asset.asset_id || asset.id,
+      // Create asset_data from MongoDB fields or existing asset_data
+      asset_data: asset.asset_data ? {
         name: asset.asset_data.name || 'Unnamed Asset',
         asset_type: asset.asset_data.asset_type || 'Unknown',
         value: asset.asset_data.value || 0,
@@ -295,6 +296,17 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         location: asset.asset_data.location || '',
         notes: asset.asset_data.notes || '',
         ...asset.asset_data
+      } : {
+        // MongoDB structure: build asset_data from direct fields
+        name: asset.decrypted_data?.name || `${asset.unit_count} ${asset.unit_type}`,
+        asset_type: asset.unit_type || 'Unknown',
+        value: (asset.unit_count || 0) * (asset.cost_per_unit || 0),
+        currency: 'USD',
+        location: asset.decrypted_data?.location || '',
+        notes: asset.decrypted_data?.notes || '',
+        unit_count: asset.unit_count,
+        unit_type: asset.unit_type,
+        cost_per_unit: asset.cost_per_unit
       },
       heir_ids: asset.heir_ids || [],
       heir_names: asset.heir_names || [],
@@ -619,7 +631,7 @@ export async function updateAssetHeirs(
     
     // Call Next.js API route (URL masked) - same pattern as other Crown Vault endpoints
     const endpoint = `/api/crown-vault/assets/${assetId}/heirs`;
-    const data = await secureApi.put(endpoint, { heir_ids: heirIds }, true);
+    const data = await secureApi.put(endpoint, heirIds, true);
     
     // Return updated data with proper structure
     return {
@@ -652,7 +664,7 @@ export async function updateCrownVaultAsset(
 
     const result = await secureApi.put(
       `/api/crown-vault/assets/${assetId}`,
-      { asset_data: updateData },
+      updateData,
       true
     );
 
@@ -665,21 +677,21 @@ export async function updateCrownVaultAsset(
 // Delete Crown Vault Asset
 export async function deleteCrownVaultAsset(assetId: string): Promise<{ message: string }> {
   try {
-    console.log('deleteCrownVaultAsset called with assetId:', assetId);
+    
     
     const userId = getCurrentUserId();
-    console.log('Current user ID:', userId);
+    
     
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
 
     const deleteUrl = `/api/crown-vault/assets/${assetId}`;
-    console.log('DELETE URL:', deleteUrl);
-    console.log('Making secureApi.delete call...');
+    
+    
     
     const result = await secureApi.delete(deleteUrl, true);
-    console.log('Delete API result:', result);
+    
     
     return {
       message: result.message || 'Asset deleted successfully'

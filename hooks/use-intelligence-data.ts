@@ -262,18 +262,6 @@ export function useIntelligenceData(userData?: any): UseIntelligenceDataResult {
         // Extract Implementation Roadmap - take everything from this section to the end
         const implementationRoadmapSection = ruschaData.match(/\*\*IMPLEMENTATION ROADMAP\*\*([\s\S]*?)$/i)
         
-        // Debug section extraction
-        console.log('=== SECTION EXTRACTION DEBUG ===')
-        console.log('Market Intelligence found:', !!marketIntelligenceSection)
-        console.log('Timing Catalyst found:', !!timingCatalystSection) 
-        console.log('Implementation Roadmap found:', !!implementationRoadmapSection)
-        
-        if (implementationRoadmapSection) {
-          console.log('Implementation Roadmap raw length:', implementationRoadmapSection[1].length)
-          console.log('Implementation Roadmap sample:', implementationRoadmapSection[1].substring(0, 300))
-          console.log('Implementation Roadmap full:', implementationRoadmapSection[1])
-        }
-        console.log('=== END SECTION DEBUG ===')
 
         // Return combined data if any sections are found
         if (marketIntelligenceSection || timingCatalystSection || implementationRoadmapSection) {

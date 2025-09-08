@@ -241,23 +241,13 @@ function OpportunityCard({
             
             {opportunity.riskLevel && (
               <Badge 
-                variant="outline" 
+                variant={
+                  opportunity.riskLevel === "Low" ? "default" :
+                  opportunity.riskLevel === "Medium" ? "secondary" : "destructive"
+                }
                 className="text-xs"
-                style={{ 
-                  borderColor: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High"),
-                  color: theme === "dark" 
-                    ? getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
-                    : (() => {
-                        switch (opportunity.riskLevel) {
-                          case "Low": return "#047857"; // darker green
-                          case "Medium": return "#D97706"; // darker amber  
-                          case "High": return "#DC2626"; // darker red
-                          default: return "#374151"; // darker gray
-                        }
-                      })()
-                }}
               >
-                {opportunity.riskLevel}
+                {opportunity.riskLevel} Risk
               </Badge>
             )}
           </div>
@@ -350,8 +340,8 @@ function OpportunityCard({
                       <div 
                         className="h-2 rounded-full transition-all duration-300"
                         style={{ 
-                          width: opportunity.riskLevel === 'Low' ? '25%' : 
-                                 opportunity.riskLevel === 'Medium' ? '60%' : '85%',
+                          width: opportunity.riskLevel === 'Low' ? '85%' : 
+                                 opportunity.riskLevel === 'Medium' ? '60%' : '25%',
                           backgroundColor: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
                         }}
                       />
@@ -1149,7 +1139,7 @@ export function OpportunityAtlasNew({
       </div>
       
       {/* Two Column Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 min-h-[500px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {/* Left Column - Categories (1 part) */}
         <div className="md:col-span-1 lg:col-span-2">
           <div className="h-full">
@@ -1216,14 +1206,13 @@ export function OpportunityAtlasNew({
                       <div className="flex justify-between text-xs pt-1">
                         <span className="text-muted-foreground">{category.medianReturn} returns</span>
                         <Badge 
-                          variant="outline" 
-                          className="text-xs px-1 py-0"
-                          style={{ 
-                            borderColor: getRiskColor(category.medianRisk),
-                            color: getRiskColor(category.medianRisk)
-                          }}
+                          variant={
+                            category.medianRisk === "Low" ? "default" :
+                            category.medianRisk === "Medium" ? "secondary" : "destructive"
+                          }
+                          className="text-xs px-2 py-0.5"
                         >
-                          {category.medianRisk}
+                          {category.medianRisk} Risk
                         </Badge>
                       </div>
                     </div>
@@ -1276,14 +1265,13 @@ export function OpportunityAtlasNew({
                       <div className="flex justify-between text-xs pt-1">
                         <span className="text-muted-foreground">{category.medianReturn} returns</span>
                         <Badge 
-                          variant="outline" 
-                          className="text-xs px-1 py-0"
-                          style={{ 
-                            borderColor: getRiskColor(category.medianRisk),
-                            color: getRiskColor(category.medianRisk)
-                          }}
+                          variant={
+                            category.medianRisk === "Low" ? "default" :
+                            category.medianRisk === "Medium" ? "secondary" : "destructive"
+                          }
+                          className="text-xs px-2 py-0.5"
                         >
-                          {category.medianRisk}
+                          {category.medianRisk} Risk
                         </Badge>
                       </div>
                     </div>
@@ -1330,7 +1318,7 @@ export function OpportunityAtlasNew({
               </div>
             </div>
             
-            <GoldenScroll maxHeight="calc(100vh - 300px)">
+            <GoldenScroll maxHeight="calc(100vh - 400px)">
               {selectedCategory ? (
                 <div className="space-y-3">
                   {getFilteredOpportunities(selectedCategory).length > 0 ? (
@@ -1410,7 +1398,7 @@ export function OpportunityAtlasNew({
       </div>
       
       {/* Footer disclaimer */}
-      <div className="mt-6 pt-4 border-t border-border text-center">
+      <div className="pt-4 border-t border-border text-center">
         <p className="text-xs text-muted-foreground">
           For Information only. HNWI Chronicles is not a broker-dealer
         </p>

@@ -60,7 +60,7 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
     const sessionCookie = cookies().get('session');
     const authToken = sessionCookie?.value || '';
     
-    // Use serverSecureApi to call external backend - no fallbacks
+    // Use secureApi to call external backend
     const endpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
     
     const backendAssets = await serverSecureApi.get(endpoint, authToken);

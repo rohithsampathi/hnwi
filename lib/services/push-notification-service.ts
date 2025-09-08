@@ -35,7 +35,7 @@ export class PushNotificationService {
   async initialize(): Promise<boolean> {
     try {
       if (!PushNotificationService.isSupported()) {
-        console.warn('Push notifications are not supported');
+        // Warning:('Push notifications are not supported');
         return false;
       }
 
@@ -45,14 +45,14 @@ export class PushNotificationService {
         updateViaCache: 'none'
       });
 
-      console.log('Service Worker registered successfully');
+      // Log:('Service Worker registered successfully');
 
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;
 
       return true;
     } catch (error) {
-      console.error('Failed to initialize push notifications:', error);
+      // Error:('Failed to initialize push notifications:', error);
       return false;
     }
   }
@@ -68,29 +68,33 @@ export class PushNotificationService {
       // Request permission if not granted
       const permission = await PushNotificationService.requestPermission();
       if (permission !== 'granted') {
-        console.warn('Push notification permission denied');
+        // Warning:('Push notification permission denied');
         return false;
       }
 
       // Get VAPID key from backend
-      const { public_key } = await notificationService.getVAPIDKey();
+      const { vapid_public_key } = await notificationService.getVAPIDKey();
 
       // Subscribe to push notifications
       this.subscription = await this.registration!.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(public_key)
+        applicationServerKey: this.urlBase64ToUint8Array(vapid_public_key)
       });
 
       // Send subscription to backend
+      const subscriptionJson = this.subscription.toJSON();
       await notificationService.subscribeToPush({
-        subscription: this.subscription.toJSON() as any,
-        user_agent: navigator.userAgent
+        endpoint: subscriptionJson.endpoint!,
+        keys: {
+          p256dh: subscriptionJson.keys!.p256dh,
+          auth: subscriptionJson.keys!.auth
+        }
       });
 
-      console.log('Successfully subscribed to push notifications');
+      // Log:('Successfully subscribed to push notifications');
       return true;
     } catch (error) {
-      console.error('Failed to subscribe to push notifications:', error);
+      // Error:('Failed to subscribe to push notifications:', error);
       return false;
     }
   }
@@ -106,10 +110,10 @@ export class PushNotificationService {
       // Notify backend
       await notificationService.unsubscribeFromPush();
 
-      console.log('Successfully unsubscribed from push notifications');
+      // Log:('Successfully unsubscribed from push notifications');
       return true;
     } catch (error) {
-      console.error('Failed to unsubscribe from push notifications:', error);
+      // Error:('Failed to unsubscribe from push notifications:', error);
       return false;
     }
   }
@@ -125,7 +129,7 @@ export class PushNotificationService {
       this.subscription = await this.registration!.pushManager.getSubscription();
       return this.subscription;
     } catch (error) {
-      console.error('Failed to get push subscription:', error);
+      // Error:('Failed to get push subscription:', error);
       return null;
     }
   }
@@ -155,7 +159,7 @@ export class PushNotificationService {
         }
       });
     } catch (error) {
-      console.error('Failed to show test notification:', error);
+      // Error:('Failed to show test notification:', error);
       throw error;
     }
   }
@@ -182,7 +186,7 @@ export class PushNotificationService {
     // This runs in the service worker context
     if (typeof self !== 'undefined' && 'addEventListener' in self) {
       self.addEventListener('push', (event: any) => {
-        console.log('Push message received:', event);
+        // Log:('Push message received:', event);
 
         let notificationData: any = {};
         
@@ -191,7 +195,7 @@ export class PushNotificationService {
             notificationData = event.data.json();
           }
         } catch (error) {
-          console.warn('Failed to parse push data as JSON:', error);
+          // Warning:('Failed to parse push data as JSON:', error);
           notificationData = {
             title: 'New Notification',
             body: event.data?.text() || 'You have a new notification'
@@ -232,7 +236,7 @@ export class PushNotificationService {
       });
 
       self.addEventListener('notificationclick', (event: any) => {
-        console.log('Notification clicked:', event);
+        // Log:('Notification clicked:', event);
 
         event.notification.close();
 
@@ -262,7 +266,7 @@ export class PushNotificationService {
       });
 
       self.addEventListener('notificationclose', (event: any) => {
-        console.log('Notification closed:', event);
+        // Log:('Notification closed:', event);
         // Track notification close analytics here if needed
       });
     }

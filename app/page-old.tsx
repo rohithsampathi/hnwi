@@ -7,7 +7,7 @@ import Image from "next/image"
 import { useTheme } from "@/contexts/theme-context"
 import { Shield } from "lucide-react"
 
-// Ultra-luxury checklist loading experience for UHNWIs
+// High-luxury checklist loading experience for HNWIs
 const LoadingComponent = ({ onComplete }: { onComplete?: () => void }) => {
   const { theme } = useTheme();
   const [completedSteps, setCompletedSteps] = React.useState<number[]>([]);

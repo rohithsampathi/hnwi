@@ -2,10 +2,13 @@
 // TypeScript interfaces for Elite Dashboard
 
 export interface User {
-  firstName: string
-  lastName: string
+  firstName?: string
+  lastName?: string
+  first_name?: string
+  last_name?: string
   email: string
   id?: string
+  user_id?: string
 }
 
 export interface HomeDashboardEliteProps {

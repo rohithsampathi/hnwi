@@ -11,12 +11,10 @@ const DEFAULT_PREFERENCES = {
   quiet_hours_start: "22:00",
   quiet_hours_end: "08:00",
   event_types: {
-    elite_pulse_generated: true,
-    opportunity_added: true,
-    crown_vault_update: true,
-    social_event_added: true,
-    market_alert: true,
-    regulatory_update: true,
+    elite_pulse: true,
+    hnwi_world: true,
+    crown_vault: true,
+    social_hub: true,
     system_notification: true
   },
   frequency_limits: {
@@ -27,15 +25,20 @@ const DEFAULT_PREFERENCES = {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = getCurrentUser();
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // For now, return default preferences
-    // In production, you'd fetch from database based on user.id
-    return NextResponse.json(DEFAULT_PREFERENCES);
+    // For now, return default preferences with user_id
+    // In production, you'd fetch from database based on user.userId
+    const preferencesWithUserId = {
+      user_id: user.userId,
+      ...DEFAULT_PREFERENCES
+    };
+    
+    return NextResponse.json(preferencesWithUserId);
   } catch (error) {
     console.error('Error fetching notification preferences:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = getCurrentUser();
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,9 +61,14 @@ export async function PUT(request: NextRequest) {
       ...preferences
     };
 
-    // In production, you'd save to database based on user.id
-    // For now, just return the updated preferences
-    return NextResponse.json(validatedPreferences);
+    // In production, you'd save to database based on user.userId
+    // For now, just return the updated preferences with user_id
+    const updatedPreferencesWithUserId = {
+      user_id: user.userId,
+      ...validatedPreferences
+    };
+    
+    return NextResponse.json(updatedPreferencesWithUserId);
   } catch (error) {
     console.error('Error updating notification preferences:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -56,20 +56,20 @@ const parseTimingAnalysis = (text: string) => {
     sixMonth: [] as string[]
   }
   
-  // Extract 4-Week Window section
-  const fourWeekMatch = text.match(/\*\*4-Week Window:\*\*(.*?)(?=\*\*[36]-Month|$)/s)
+  // Extract 4-Week Window section (handle variations like "4-Week Window (Critical)")
+  const fourWeekMatch = text.match(/\*\*4-Week Window[^:]*:\*\*(.*?)(?=\*\*(?:[36]-Month|$))/s)
   if (fourWeekMatch) {
     categories.fourWeek.push(fourWeekMatch[1].trim())
   }
   
   // Extract 3-Month Window section  
-  const threeMonthMatch = text.match(/\*\*3-Month Window:\*\*(.*?)(?=\*\*6-Month|$)/s)
+  const threeMonthMatch = text.match(/\*\*3-Month Window[^:]*:\*\*(.*?)(?=\*\*(?:6-Month|$))/s)
   if (threeMonthMatch) {
     categories.threeMonth.push(threeMonthMatch[1].trim())
   }
   
   // Extract 6-Month Window section
-  const sixMonthMatch = text.match(/\*\*6-Month Window:\*\*(.*?)(?=\*\*|$)/s)
+  const sixMonthMatch = text.match(/\*\*6-Month Window[^:]*:\*\*(.*?)(?=\*\*|$)/s)
   if (sixMonthMatch) {
     categories.sixMonth.push(sixMonthMatch[1].trim())
   }
@@ -116,33 +116,17 @@ const parseImplementationRoadmap = (text: string) => {
         }
       }
       
-      // Debug what content we're working with
-      console.log(`Priority ${priorityNumber} raw content:`, content.substring(0, 200))
-      console.log(`Steps extracted:`, priority.steps)
     }
     
     priorities.push(priority)
   }
   
-  // Debug what we found
-  console.log(`Parsed ${priorities.length} priorities from Implementation Roadmap`)
-  priorities.forEach((p, i) => {
-    console.log(`Priority ${i+1}: ${p.title} - ${p.description} (${p.steps.length} steps)`)
-  })
   
   return { priorities }
 }
 
 export function ElitePulseTab({ data }: ElitePulseTabProps) {
   const elitePulseData = data?.elitePulseData
-  
-  // Debug: Check what we're actually getting
-  console.log('=== DEBUG PARSING ===')
-  console.log('Market Intelligence Raw:', elitePulseData?.marketIntelligence?.substring(0, 200))
-  console.log('Timing Catalyst Raw:', elitePulseData?.timingCatalyst?.substring(0, 200))
-  console.log('Implementation Raw FULL:', elitePulseData?.implementationRoadmap)
-  console.log('=== END DEBUG ===')
-  
   // Use the data extracted from Ruscha intelligence sections
   const hasElitePulseData = !!elitePulseData && (elitePulseData?.marketIntelligence || elitePulseData?.timingCatalyst || elitePulseData?.implementationRoadmap)
   
@@ -151,12 +135,6 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
   const timingAnalysis = parseTimingAnalysis(elitePulseData?.timingCatalyst || '')
   const implementationRoadmap = parseImplementationRoadmap(elitePulseData?.implementationRoadmap || '')
   
-  // Debug parsed results
-  console.log('=== PARSED RESULTS ===')
-  console.log('Market Assessment:', marketAssessment)
-  console.log('Timing Analysis:', timingAnalysis)
-  console.log('Implementation:', implementationRoadmap)
-  console.log('=== END PARSED ===')
 
   return (
     <div className="space-y-6">
@@ -190,9 +168,39 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
                     <div className="space-y-4">
                       {marketAssessment.juicy.map((opportunity, index) => (
                         <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {opportunity.replace(/\(#\d+\)/g, '')}
-                          </p>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            {(() => {
+                              const text = opportunity.replace(/\(#\d+\)/g, '')
+                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
+                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
+                              
+                              return bullets.map((bullet, idx) => (
+                                <div key={idx} className="flex items-start space-x-2 mb-2">
+                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                                  <div className="leading-relaxed">
+                                    {(() => {
+                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
+                                      const colonIndex = cleanText.indexOf(':')
+                                      
+                                      if (colonIndex > 0) {
+                                        const heading = cleanText.substring(0, colonIndex)
+                                        const content = cleanText.substring(colonIndex + 1).trim()
+                                        
+                                        return (
+                                          <>
+                                            <span className="font-bold">{heading}:</span>
+                                            {content && <span className="ml-1">{content}</span>}
+                                          </>
+                                        )
+                                      }
+                                      
+                                      return <span>{cleanText}</span>
+                                    })()}
+                                  </div>
+                                </div>
+                              ))
+                            })()}
+                          </div>
                         </div>
                       ))}
                       {marketAssessment.juicy.length === 0 && (
@@ -215,9 +223,39 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
                     <div className="space-y-4">
                       {marketAssessment.moderate.map((opportunity, index) => (
                         <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {opportunity.replace(/\(#\d+\)/g, '')}
-                          </p>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            {(() => {
+                              const text = opportunity.replace(/\(#\d+\)/g, '')
+                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
+                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
+                              
+                              return bullets.map((bullet, idx) => (
+                                <div key={idx} className="flex items-start space-x-2 mb-2">
+                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                                  <div className="leading-relaxed">
+                                    {(() => {
+                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
+                                      const colonIndex = cleanText.indexOf(':')
+                                      
+                                      if (colonIndex > 0) {
+                                        const heading = cleanText.substring(0, colonIndex)
+                                        const content = cleanText.substring(colonIndex + 1).trim()
+                                        
+                                        return (
+                                          <>
+                                            <span className="font-bold">{heading}:</span>
+                                            {content && <span className="ml-1">{content}</span>}
+                                          </>
+                                        )
+                                      }
+                                      
+                                      return <span>{cleanText}</span>
+                                    })()}
+                                  </div>
+                                </div>
+                              ))
+                            })()}
+                          </div>
                         </div>
                       ))}
                       {marketAssessment.moderate.length === 0 && (
@@ -240,9 +278,39 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
                     <div className="space-y-4">
                       {marketAssessment.farFetched.map((opportunity, index) => (
                         <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">
-                            {opportunity.replace(/\(#\d+\)/g, '')}
-                          </p>
+                          <div className="text-sm text-foreground leading-relaxed">
+                            {(() => {
+                              const text = opportunity.replace(/\(#\d+\)/g, '')
+                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
+                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
+                              
+                              return bullets.map((bullet, idx) => (
+                                <div key={idx} className="flex items-start space-x-2 mb-2">
+                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                                  <div className="leading-relaxed">
+                                    {(() => {
+                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
+                                      const colonIndex = cleanText.indexOf(':')
+                                      
+                                      if (colonIndex > 0) {
+                                        const heading = cleanText.substring(0, colonIndex)
+                                        const content = cleanText.substring(colonIndex + 1).trim()
+                                        
+                                        return (
+                                          <>
+                                            <span className="font-bold">{heading}:</span>
+                                            {content && <span className="ml-1">{content}</span>}
+                                          </>
+                                        )
+                                      }
+                                      
+                                      return <span>{cleanText}</span>
+                                    })()}
+                                  </div>
+                                </div>
+                              ))
+                            })()}
+                          </div>
                         </div>
                       ))}
                       {marketAssessment.farFetched.length === 0 && (
@@ -364,9 +432,49 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
                       <div className="flex-1">
                         <h4 className="font-semibold text-foreground mb-2">{priority.title}</h4>
                         {priority.description && (
-                          <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                            {priority.description}
-                          </p>
+                          <div className="text-sm text-muted-foreground mb-4 leading-relaxed space-y-3">
+                            {(() => {
+                              const formatText = (text: string) => {
+                                // Split by **headers** and format as sections
+                                const sections = text.split(/\*\*(.*?)\*\*:?/).filter(Boolean)
+                                const formattedSections: JSX.Element[] = []
+                                
+                                for (let i = 0; i < sections.length; i += 2) {
+                                  const header = sections[i]
+                                  const content = sections[i + 1]
+                                  
+                                  if (header && content) {
+                                    formattedSections.push(
+                                      <div key={i} className="space-y-2">
+                                        <h5 className="font-semibold text-foreground text-sm">
+                                          {header.replace(/\*\*/g, '')}
+                                        </h5>
+                                        <div className="ml-2 space-y-1.5">
+                                          {content.split(' - ').filter(item => item.trim()).map((item, idx) => (
+                                            <div key={idx} className="flex items-start space-x-2 text-xs">
+                                              <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
+                                              <span className="leading-relaxed">
+                                                {item.trim().replace(/^-\s*/, '')}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+                                }
+                                
+                                // If no structured format found, return original text
+                                if (formattedSections.length === 0) {
+                                  return <span>{text}</span>
+                                }
+                                
+                                return <>{formattedSections}</>
+                              }
+                              
+                              return formatText(priority.description)
+                            })()}
+                          </div>
                         )}
                         
                         {priority.steps.length > 0 && (

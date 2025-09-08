@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
 import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCurrentDevice, shouldSkip2FA } from "@/lib/auth-utils"
+import { ShieldLoader } from "@/components/ui/shield-loader"
 
 interface AuthPopupProps {
   isOpen: boolean
@@ -130,22 +131,19 @@ export function AuthPopup({
 
     try {
       // Step 1: Call standard login endpoint
+      // In reauth mode, use storedEmail if available, otherwise use email state
+      const loginEmail = isReauthMode && storedEmail ? storedEmail : email;
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginEmail, password }),
       })
 
       const result = await response.json()
 
-      // Debug: Log response status and headers
-      console.log('Login response:', {
-        status: response.status,
-        retryAfter: response.headers.get('Retry-After'),
-        result: result
-      })
 
       if (response.status === 429) {
         // Rate limited - show clear security message with countdown
@@ -196,9 +194,11 @@ export function AuthPopup({
           })
         }
         
-        handleClose()
-        onSuccess?.()
-        onClose()
+        // Small delay to allow UI feedback, then close
+        setTimeout(() => {
+          handleClose()
+          onSuccess?.()
+        }, 100)
       } else {
         setError(result.error || "Login failed")
       }
@@ -215,6 +215,9 @@ export function AuthPopup({
       return
     }
 
+    setIsLoading(true)
+    setError(null)
+
     try {
       const response = await fetch('/api/auth/mfa/verify', {
         method: 'POST',
@@ -222,7 +225,7 @@ export function AuthPopup({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          email,
+          email: isReauthMode && storedEmail ? storedEmail : email,
           mfa_code: code,
           mfa_token: mfaToken
         }),
@@ -269,17 +272,18 @@ export function AuthPopup({
           })
         }
         
-        // Reset form
-        handleClose()
-        
-        // Call success callback and close
-        onSuccess?.()
-        onClose()
+        // Small delay to allow UI feedback, then close
+        setTimeout(() => {
+          handleClose()
+          onSuccess?.()
+        }, 100)
       } else {
         setError(result.error || "Invalid verification code")
       }
     } catch (error) {
       setError("Verification failed. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -340,15 +344,20 @@ export function AuthPopup({
     setIsReauthMode(false)
     setStoredEmail("")
     setRememberDevice(false)
+    setIsLoading(false)
     if (countdownInterval.current) {
       clearInterval(countdownInterval.current)
       countdownInterval.current = null
     }
-    onClose()
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        handleClose()
+        onClose()
+      }
+    }}>
       <DialogContent className={showMfa ? "sm:max-w-lg" : "sm:max-w-md"}>
         {!showMfa ? (
           // Login Form
@@ -451,7 +460,10 @@ export function AuthPopup({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleClose}
+                  onClick={() => {
+                    handleClose()
+                    onClose()
+                  }}
                   disabled={isLoading}
                   className="flex-1"
                 >
@@ -508,6 +520,7 @@ export function AuthPopup({
                     setShowMfa(false)
                     setMfaToken(null)
                     setError(null)
+                    setIsLoading(false)
                   }}
                   className="text-sm"
                 >

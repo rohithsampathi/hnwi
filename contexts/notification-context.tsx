@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { useNotifications, UseNotificationsReturn } from "@/lib/hooks/useNotifications";
 import { 
   NotificationRecord, 
@@ -56,6 +56,7 @@ export function NotificationProvider({
     pollInterval,
     autoFetch: true
   });
+  
 
   // UI state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -76,7 +77,6 @@ export function NotificationProvider({
   }, [isCenterOpen]);
 
   const setCenterOpen = useCallback((open: boolean) => {
-    console.log('setCenterOpen called with:', open);
     setIsCenterOpen(open);
     // Close dropdown when center opens
     if (open && isDropdownOpen) {
@@ -139,7 +139,7 @@ export function NotificationProvider({
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.3);
     } catch (error) {
-      console.warn('Failed to play notification sound:', error);
+      // Silently fail sound playback
     }
   }, [enableSounds]);
 
@@ -180,7 +180,7 @@ export function NotificationProvider({
           setCenterOpen(true);
         };
       } catch (error) {
-        console.warn('Failed to show browser notification:', error);
+        // Silently fail browser notification
       }
     }
   }, [enableBrowserNotifications, notificationHook.markAsRead, setCenterOpen]);
@@ -191,7 +191,7 @@ export function NotificationProvider({
       if (Notification.permission === 'default') {
         Notification.requestPermission().then(permission => {
           if (permission === 'granted') {
-            console.log('Browser notification permission granted');
+            // Permission granted
           }
         });
       }
@@ -232,9 +232,9 @@ export function NotificationProvider({
 
   // Auto-fetch notifications based on filter
   useEffect(() => {
-    const filterParam = filter === 'all' ? undefined : filter;
-    notificationHook.fetchNotifications(1, filterParam);
-  }, [filter, notificationHook.fetchNotifications]); // Include fetchNotifications in dependencies
+    const unreadOnly = filter === 'unread';
+    notificationHook.fetchNotifications(20, 0, unreadOnly);
+  }, [filter, notificationHook.fetchNotifications]);
 
   // Close dropdown/center when clicking outside (handled by components)
   const closeAll = useCallback(() => {
@@ -265,7 +265,7 @@ export function NotificationProvider({
     });
   }, [notificationHook.deleteNotification]);
 
-  const value: NotificationContextType = {
+  const value: NotificationContextType = useMemo(() => ({
     // Hook values
     ...notificationHook,
     
@@ -296,7 +296,28 @@ export function NotificationProvider({
     // Sound and visual feedback
     playNotificationSound,
     showBrowserNotification
-  };
+  }), [
+    notificationHook,
+    enhancedMarkAsRead,
+    enhancedDeleteNotification,
+    isDropdownOpen,
+    isCenterOpen,
+    selectedNotifications,
+    filter,
+    setDropdownOpen,
+    setCenterOpen,
+    toggleNotificationSelection,
+    selectAllNotifications,
+    clearSelection,
+    setFilter,
+    getNotificationsByType,
+    getNotificationsByPriority,
+    hasUnreadNotifications,
+    hasUrgentNotifications,
+    playNotificationSound,
+    showBrowserNotification
+  ]);
+
 
   return (
     <NotificationContext.Provider value={value}>

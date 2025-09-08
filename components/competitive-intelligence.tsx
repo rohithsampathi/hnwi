@@ -8,6 +8,7 @@ import { getIndustryColor } from "@/utils/color-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
+import { CheckmateLoader } from "@/components/ui/checkmate-loader"
 
 interface CompetitiveIntelligenceProps {
   industry: string
@@ -102,7 +103,7 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
             <CardContent className="pt-6">
               {isLoading ? (
                 <div className="flex justify-center items-center h-24">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <CheckmateLoader size="md" text="Analyzing competitive intelligence..." />
                 </div>
               ) : (
                 <div className="flex justify-between items-center">

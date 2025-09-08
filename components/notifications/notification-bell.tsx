@@ -48,20 +48,17 @@ export function NotificationBell({
   const handleClick = () => {
     if (!showDropdown) return;
     
-    console.log('Bell clicked, unreadCount:', unreadCount, 'loading:', loading);
     
     try {
       // If there are no notifications or we're in an error state, go directly to notification center
       if (unreadCount === 0 || error) {
-        console.log('Opening notification center');
         setCenterOpen(true);
       } else {
         // Otherwise show dropdown as normal
-        console.log('Opening dropdown');
         setDropdownOpen(!isDropdownOpen);
       }
     } catch (error) {
-      console.error('Error in handleClick:', error);
+      // Handle click error silently
       // Fallback: always try to open notification center
       setCenterOpen(true);
     }

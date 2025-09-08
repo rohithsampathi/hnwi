@@ -69,7 +69,7 @@ export function NotificationDropdown({
     try {
       await markAllAsRead();
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      // Failed to mark all as read
     }
   };
 

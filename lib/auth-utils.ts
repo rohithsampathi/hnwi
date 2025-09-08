@@ -61,25 +61,53 @@ export const clearInvalidToken = (): void => {
 export const getSessionState = (): SessionState => {
   if (typeof window === 'undefined') return SessionState.UNAUTHENTICATED;
   
-  const storedState = localStorage.getItem(SESSION_STATE_KEY) as SessionState;
-  const token = getValidToken();
-  
-  // If no token, always unauthenticated
-  if (!token) {
-    if (storedState && storedState !== SessionState.UNAUTHENTICATED) {
-      setSessionState(SessionState.UNAUTHENTICATED);
+  try {
+    const storedState = localStorage.getItem(SESSION_STATE_KEY) as SessionState;
+    const token = getValidToken();
+    
+    // If no token, always unauthenticated
+    if (!token) {
+      try {
+        if (storedState && storedState !== SessionState.UNAUTHENTICATED) {
+          setSessionState(SessionState.UNAUTHENTICATED);
+        }
+      } catch {
+        // Ignore setSessionState errors
+      }
+      return SessionState.UNAUTHENTICATED;
     }
-    return SessionState.UNAUTHENTICATED;
+    
+    // If token is invalid/expired, mark as expired
+    if (!isTokenValid(token)) {
+      try {
+        setSessionState(SessionState.EXPIRED);
+      } catch {
+        // Ignore setSessionState errors
+      }
+      return SessionState.EXPIRED;
+    }
+    
+    // If we have a valid token but no stored state, set as authenticated
+    if (!storedState) {
+      try {
+        setSessionState(SessionState.AUTHENTICATED);
+      } catch {
+        // Ignore setSessionState errors
+      }
+      return SessionState.AUTHENTICATED;
+    }
+    
+    // Return stored state or default to authenticated
+    return storedState || SessionState.AUTHENTICATED;
+  } catch (error) {
+    // If anything fails, fall back to simple token-based check
+    try {
+      const token = getValidToken();
+      return token ? SessionState.AUTHENTICATED : SessionState.UNAUTHENTICATED;
+    } catch {
+      return SessionState.UNAUTHENTICATED;
+    }
   }
-  
-  // If token is invalid/expired, mark as expired
-  if (!isTokenValid(token)) {
-    setSessionState(SessionState.EXPIRED);
-    return SessionState.EXPIRED;
-  }
-  
-  // Return stored state or default to authenticated
-  return storedState || SessionState.AUTHENTICATED;
 };
 
 // Set session state with race condition protection
@@ -147,8 +175,17 @@ export const isSessionLocked = (): boolean => {
 
 // Legacy function - now considers locked state as authenticated for token purposes
 export const isAuthenticated = (): boolean => {
-  const state = getSessionState();
-  return state === SessionState.AUTHENTICATED || state === SessionState.LOCKED_INACTIVE;
+  try {
+    const state = getSessionState();
+    return state === SessionState.AUTHENTICATED || state === SessionState.LOCKED_INACTIVE;
+  } catch (error) {
+    // If session state checking fails, fall back to simple token check
+    try {
+      return !!getValidToken();
+    } catch {
+      return false;
+    }
+  }
 };
 
 // New function to check if user can access features (not locked)
@@ -181,7 +218,6 @@ export const enableLegacySessionMode = (): void => {
   if (typeof window === 'undefined') return;
   
   localStorage.setItem('hnwi_legacy_session_mode', 'true');
-  console.warn('HNWI: Legacy session mode enabled - smart inactivity disabled');
 };
 
 // Check if legacy mode is enabled
@@ -209,12 +245,23 @@ export const getSessionStateWithFallback = (): SessionState => {
 
 // Check if can access features with legacy fallback
 export const canAccessFeaturesWithFallback = (): boolean => {
-  if (isLegacySessionMode()) {
-    // In legacy mode, just check token validity
-    return !!getValidToken();
+  try {
+    if (isLegacySessionMode()) {
+      // In legacy mode, just check token validity
+      return !!getValidToken();
+    }
+    
+    // For notifications, we should allow access if user is authenticated (even if locked)
+    // since notifications don't require active interaction
+    return isAuthenticated();
+  } catch (error) {
+    // If there's any error in session checking, fall back to simple token check
+    try {
+      return !!getValidToken();
+    } catch {
+      return false;
+    }
   }
-  
-  return canAccessFeatures();
 };
 
 // Device Trust Integration
@@ -235,7 +282,6 @@ export const trustCurrentDevice = (): boolean => {
     DeviceTrustManager.trustDevice(userId);
     return true;
   } catch (error) {
-    console.error('Failed to trust device:', error);
     return false;
   }
 };
@@ -274,4 +320,32 @@ export const isAuthenticatedWithDeviceTrust = (): {
     isDeviceTrusted: deviceTrusted,
     needsReauth: sessionState === SessionState.LOCKED_INACTIVE && !deviceTrusted
   };
+};
+
+// Get current user from localStorage or session
+export const getCurrentUser = (): { userId: string; token: string } | null => {
+  if (typeof window === 'undefined') return null;
+  
+  const token = getValidToken();
+  const userId = localStorage.getItem('userId');
+  
+  if (!token || !userId) {
+    return null;
+  }
+  
+  return { userId, token };
+};
+
+// Get user object from localStorage  
+export const getCurrentUserObject = (): any | null => {
+  if (typeof window === 'undefined') return null;
+  
+  const userObjectStr = localStorage.getItem('userObject');
+  if (!userObjectStr) return null;
+  
+  try {
+    return JSON.parse(userObjectStr);
+  } catch (error) {
+    return null;
+  }
 };

@@ -78,7 +78,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
                   </div>
                 </div>
                 <p className={`text-sm font-medium mb-3 uppercase tracking-wide ${theme === 'dark' ? 'text-white/70' : 'text-black/70'}`}>Total Portfolio Value</p>
-                <p className={`${getDynamicTextSize(`$${formatValue(totalValue)}`)} font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>${formatValue(totalValue)}</p>
+                <p className={`${getDynamicTextSize(formatValue(totalValue))} font-black mb-4 tracking-tight ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>{formatValue(totalValue)}</p>
                 <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-black/60'}`}>Secured in Crown Vault</p>
               </div>
               

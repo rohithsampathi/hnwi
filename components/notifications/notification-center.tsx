@@ -81,15 +81,15 @@ export function NotificationCenter({
   const hasSelectedNotifications = selectedNotifications.size > 0;
 
   const handleLoadMore = async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || loading) return;
     
     setIsLoadingMore(true);
     try {
-      const nextPage = Math.floor(notifications.length / 20) + 1;
-      const filterParam = filter === 'all' ? undefined : filter;
-      await fetchNotifications(nextPage, filterParam);
+      const offset = notifications.length;
+      const unreadOnly = filter === 'unread';
+      await fetchNotifications(20, offset, unreadOnly);
     } catch (error) {
-      console.error('Failed to load more notifications:', error);
+      // Failed to load more
     } finally {
       setIsLoadingMore(false);
     }
@@ -102,7 +102,7 @@ export function NotificationCenter({
       await batchMarkAsRead(Array.from(selectedNotifications));
       clearSelection();
     } catch (error) {
-      console.error('Failed to batch mark as read:', error);
+      // Failed to batch mark as read
     }
   };
 
@@ -113,7 +113,7 @@ export function NotificationCenter({
       await batchDelete(Array.from(selectedNotifications));
       clearSelection();
     } catch (error) {
-      console.error('Failed to batch delete:', error);
+      // Failed to batch delete
     }
   };
 
@@ -172,7 +172,11 @@ export function NotificationCenter({
                 className="hover:bg-muted/50"
                 title="Refresh notifications"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
               </Button>
               
               <Button
@@ -311,7 +315,12 @@ export function NotificationCenter({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
-          {error ? (
+          {loading && notifications.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading notifications...</span>
+            </div>
+          ) : error ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
@@ -383,13 +392,6 @@ export function NotificationCenter({
                       ) : null}
                       Load more notifications
                     </Button>
-                  </div>
-                )}
-                
-                {loading && notifications.length === 0 && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Loading notifications...</span>
                   </div>
                 )}
               </div>

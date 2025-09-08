@@ -148,13 +148,33 @@ export async function POST(request: NextRequest) {
           requestPayload: JSON.stringify(backendVerifyRequest, null, 2)
         })
 
-        logger.info('About to call secureApi.post with endpoint /api/auth/mfa/verify')
+        logger.info('About to call backend MFA verification endpoint')
         
-        const backendResponse = await secureApi.post('/api/auth/mfa/verify', backendVerifyRequest, false)
-        logger.info('Backend response received', { response: backendResponse })
+        // Use direct fetch for auth endpoints to handle error responses properly
+        const { API_BASE_URL } = await import("@/config/api");
+        const backendUrl = `${API_BASE_URL}/api/auth/mfa/verify`;
+        
+        const fetchResponse = await fetch(backendUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(backendVerifyRequest),
+        });
 
-        // Backend verification successful
-        if (backendResponse.success) {
+        const backendResponse = await fetchResponse.json();
+        
+        logger.info('Backend MFA verification response received', { 
+          status: fetchResponse.status,
+          success: backendResponse.success,
+          hasUser: !!backendResponse.user,
+          hasAccessToken: !!backendResponse.access_token,
+          error: backendResponse.error,
+          message: backendResponse.message
+        })
+
+        // Handle different response statuses
+        if (fetchResponse.status === 200 && backendResponse.success) {
           // Normalize user object to ensure consistent id presence
           const backendUser = backendResponse.user || {}
           const normalizedUserId = backendUser.user_id || backendUser.id || backendUser._id
@@ -190,11 +210,16 @@ export async function POST(request: NextRequest) {
           logger.warn('Backend MFA verification failed', {
             email,
             attempts: proxySession.attempts,
-            backendError: backendResponse.error
+            backendStatus: fetchResponse.status,
+            backendError: backendResponse.error,
+            backendMessage: backendResponse.message
           })
           
+          // Return the specific error from backend, or a default message
+          const errorMessage = backendResponse.error || backendResponse.message || "Invalid verification code";
+          
           return NextResponse.json(
-            { success: false, error: backendResponse.error || "Invalid verification code" },
+            { success: false, error: errorMessage },
             { status: 401 }
           )
         }
@@ -202,15 +227,14 @@ export async function POST(request: NextRequest) {
       } catch (backendError) {
         proxySession.attempts++
         
-        logger.error('Backend MFA verification error', {
+        logger.error('Backend MFA verification network/parsing error', {
           email,
           attempts: proxySession.attempts,
-          error: backendError instanceof Error ? backendError.message : String(backendError),
-          backendErrorDetails: backendError
+          error: backendError instanceof Error ? backendError.message : String(backendError)
         })
         
         return NextResponse.json(
-          { success: false, error: "Verification failed. Please try again." },
+          { success: false, error: "Network error during verification. Please try again." },
           { status: 500 }
         )
       }

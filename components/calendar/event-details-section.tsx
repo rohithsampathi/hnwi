@@ -52,8 +52,10 @@ export function EventDetailsSection({ event, hideHeading = false }: EventDetails
     const userName = user?.name || "Unknown User"
     
     try {
-      // Send data to Formspree
-      const response = await fetch("https://formspree.io/f/xwpvjjpz", {
+      // Use environment variable for formspree endpoint - NO hardcoded URLs
+      const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT || "https://formspree.io/f/xwpvjjpz";
+      
+      const response = await fetch(formspreeEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

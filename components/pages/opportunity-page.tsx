@@ -6,11 +6,12 @@
 
 import React, { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Layout } from "@/components/layout/layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PremiumBadge } from "@/components/ui/premium-badge"
 import { Heading2, Paragraph } from "@/components/ui/typography"
+import { PageHeaderWithBack } from "@/components/ui/back-button"
+import { PageWrapper } from "@/components/ui/page-wrapper"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { useTheme } from "@/contexts/theme-context"
@@ -32,8 +33,9 @@ import {
 } from "@/components/ui/dialog"
 
 interface OpportunityPageProps {
-  region: string
+  region?: string // Make region optional since not all opportunities come from regions
   opportunityId: string
+  onNavigate?: (route: string) => void
 }
 
 // Map opportunity types to icons
@@ -54,7 +56,7 @@ export function OpportunityPage({
   region, 
   opportunityId, 
   onNavigate 
-}: OpportunityPageProps & { onNavigate?: (route: string) => void }) {
+}: OpportunityPageProps) {
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
@@ -189,27 +191,29 @@ export function OpportunityPage({
 
   if (loading) {
     return (
-      <Layout currentPage="prive-exchange" title="Loading Opportunity" showBackButton onNavigate={handleNavigation}>
+      <PageWrapper>
         <div className="flex items-center justify-center h-[50vh]">
           <CrownLoader size="lg" text="Loading opportunity details..." />
         </div>
-      </Layout>
+      </PageWrapper>
     )
   }
 
   if (error || !opportunity) {
     return (
-      <Layout currentPage="prive-exchange" title="Opportunity Not Found" showBackButton onNavigate={handleNavigation}>
-        <Card className="w-full bg-background text-foreground">
-          <CardContent>
-            <Heading2 className="text-2xl font-bold mb-4">Opportunity Not Found</Heading2>
-            <Paragraph>{error || "The requested opportunity could not be found. Please try again."}</Paragraph>
-            <Button onClick={() => handleNavigation("prive-exchange")} className="mt-4">
-              Return to Privé Exchange
-            </Button>
-          </CardContent>
-        </Card>
-      </Layout>
+      <PageWrapper>
+        <div className="px-4 sm:px-6 lg:px-8">
+          <Card className="w-full bg-background text-foreground">
+            <CardContent className="p-6">
+              <Heading2 className="text-2xl font-bold mb-4">Opportunity Not Found</Heading2>
+              <Paragraph>{error || "The requested opportunity could not be found. Please try again."}</Paragraph>
+              <Button onClick={() => handleNavigation("prive-exchange")} className="mt-4">
+                Return to Privé Exchange
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </PageWrapper>
     )
   }
 
@@ -224,18 +228,18 @@ export function OpportunityPage({
   }
 
   return (
-    <>
-      <Layout
-        currentPage="prive-exchange"
-        title={
-          <div className="flex items-center space-x-2">
-            {React.createElement(getOpportunityIcon(opportunity.type), { className: "w-6 h-6 text-primary" })}
-            <Heading2>Investment Opportunity</Heading2>
-          </div>
-        }
-        showBackButton
-        onNavigate={handleNavigation}
-      >
+    <PageWrapper>
+      {/* Back Button */}
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        <PageHeaderWithBack
+          title={opportunity.title}
+          subtitle="Investment Opportunity Details"
+          onBack={() => handleNavigation("back")}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="px-4 sm:px-6 lg:px-8">
         <Card 
           className={`w-full border-none ${getMetallicCardStyle(theme).className}`}
           style={{
@@ -270,7 +274,7 @@ export function OpportunityPage({
           
           <CardContent>
             {/* 2. Primary Content Area - Narrative */}
-            <div className="pt-8">
+            <div className="w-full">
               <Paragraph className="text-lg leading-relaxed">
                 {opportunity.description}
               </Paragraph>
@@ -278,7 +282,7 @@ export function OpportunityPage({
             
             {/* 3. Risk Assessment */}
             {opportunity.riskLevel && (
-              <div className="space-y-6 mt-16">
+              <div className="space-y-6">
                 <div className="text-center space-y-3">
                   <CardTitle className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
                     Internal Risk Assessment
@@ -340,7 +344,7 @@ export function OpportunityPage({
             )}
             
             {/* 4. Strategic Analysis & Key Numbers */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-20">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left 2/3 - Strategic Analysis */}
               <div className="lg:col-span-2 space-y-4">
                 {opportunity.fullAnalysis && (
@@ -456,7 +460,7 @@ export function OpportunityPage({
                     )}
                     
                     {(opportunity.region || opportunity.country) && (
-                      <div className="pt-4 border-t border-primary/20">
+                      <div className="border-t border-primary/20">
                         <div className="text-xs font-bold text-muted-foreground uppercase tracking-widest text-center mb-3">Geographic Focus</div>
                         <div className="space-y-2">
                           {opportunity.region && (
@@ -481,7 +485,7 @@ export function OpportunityPage({
             
             {/* 5. Investment Assessment - World-Class Analysis */}
             {(opportunity.pros || opportunity.cons) && (
-              <div className="space-y-12 mt-32">
+              <div className="space-y-12">
                 {/* Section Header */}
                 <div className="text-center space-y-4">
                   <div className="inline-flex items-center gap-3">
@@ -591,7 +595,7 @@ export function OpportunityPage({
             )}
             
             {/* 6. Express Interest CTA */}
-            <div className="flex justify-center py-8 mt-20">
+            <div className="flex justify-center">
               <Button 
                 onClick={handleTalkToConcierge} 
                 className="px-12 py-6 text-lg font-semibold shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70" 
@@ -609,16 +613,14 @@ export function OpportunityPage({
             </div>
             
             {/* 7. On-Page Legal Footnote */}
-            <div className="text-center pt-8 mt-12 border-t border-border/50">
+            <div className="text-center border-t border-border/50">
               <Paragraph className="text-xs text-muted-foreground">
                 For Information only · HNWI Chronicles is not a broker-dealer and does not provide personalised investment advice.
               </Paragraph>
             </div>
           </CardContent>
         </Card>
-
-      </Layout>
-
+      </div>
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
@@ -650,6 +652,6 @@ export function OpportunityPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </PageWrapper>
   )
 }

@@ -122,7 +122,7 @@ export class SecureAPI {
     const safeEndpoint = endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/]+/, '/api');
     // Don't log in production to avoid any URL exposure in browser console
     if (process.env.NODE_ENV === 'development') {
-      console.error(`API Error: ${safeEndpoint} - Status: ${status || 'Unknown'} - ${error || 'Request failed'}`);
+      // API error logged internally
     }
   }
 
@@ -322,7 +322,7 @@ const checkSessionAccess = (endpoint: string): void => {
     }
   } catch (error) {
     // If there's an error with smart session checking, fallback to simple token check
-    console.warn('Smart session check failed, falling back to token check:', error);
+    // Smart session check failed, falling back to token check
     const token = getValidToken();
     if (!token) {
       throw new APIError(
@@ -586,6 +586,139 @@ export const secureApi = {
 export const secureFetch = SecureAPI.secureFetch.bind(SecureAPI);
 export const secureJsonFetch = SecureAPI.secureJsonFetch.bind(SecureAPI);
 export const buildApiUrl = SecureAPI.buildUrl.bind(SecureAPI);
+
+// Server-side API for use in API routes (bypasses client-side session checks)
+export const serverSecureApi = {
+  async post(endpoint: string, data: any, serverToken?: string): Promise<any> {
+    try {
+      const { API_BASE_URL } = await import("@/config/api");
+      const url = `${API_BASE_URL}${endpoint}`;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (serverToken) {
+        headers['Authorization'] = `Bearer ${serverToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new APIError(`Request failed with status ${response.status}`, response.status, endpoint);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError('Server request failed', 500, endpoint);
+    }
+  },
+
+  async get(endpoint: string, serverToken?: string): Promise<any> {
+    try {
+      const { API_BASE_URL } = await import("@/config/api");
+      const url = `${API_BASE_URL}${endpoint}`;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (serverToken) {
+        headers['Authorization'] = `Bearer ${serverToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new APIError(`Request failed with status ${response.status}`, response.status, endpoint);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError('Server request failed', 500, endpoint);
+    }
+  },
+
+  async put(endpoint: string, data: any, serverToken?: string): Promise<any> {
+    try {
+      const { API_BASE_URL } = await import("@/config/api");
+      const url = `${API_BASE_URL}${endpoint}`;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (serverToken) {
+        headers['Authorization'] = `Bearer ${serverToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new APIError(`Request failed with status ${response.status}`, response.status, endpoint);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError('Server request failed', 500, endpoint);
+    }
+  },
+
+  async delete(endpoint: string, serverToken?: string): Promise<any> {
+    try {
+      const { API_BASE_URL } = await import("@/config/api");
+      const url = `${API_BASE_URL}${endpoint}`;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (serverToken) {
+        headers['Authorization'] = `Bearer ${serverToken}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new APIError(`Request failed with status ${response.status}`, response.status, endpoint);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return { success: true };
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error;
+      }
+      throw new APIError('Server request failed', 500, endpoint);
+    }
+  }
+};
 
 // Export only secure methods, not the base URL
 export default secureApi;

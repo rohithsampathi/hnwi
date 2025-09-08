@@ -6,7 +6,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await getCurrentUser();
+    const user = getCurrentUser();
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -15,7 +15,7 @@ export async function POST(
     const { id } = params;
 
     // In production, you'd update the notification status in database
-    console.log(`Marking notification ${id} as read for user ${user.id}`);
+    
 
     return NextResponse.json({ success: true, id, status: 'read' });
   } catch (error) {

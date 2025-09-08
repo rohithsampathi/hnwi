@@ -9,7 +9,7 @@ import { BarChart3, Gem, Globe, Users, Crown } from "lucide-react"
 import { OverviewTab } from "./tabs/overview-tab"
 import { OpportunitiesTab } from "./tabs/opportunities-tab"
 import { ElitePulseTab } from "./tabs/wealth-flow-tab"
-import { NetworkTab } from "./tabs/network-tab"
+// import { NetworkTab } from "./tabs/network-tab"
 import { CrownVaultTab } from "./tabs/crown-vault-tab"
 import type { ProcessedIntelligenceData, User } from "@/types/dashboard"
 
@@ -17,7 +17,7 @@ interface EliteTabsProps {
   data: ProcessedIntelligenceData
   onNavigate: (route: string) => void
   user: User
-  variant?: 'default' | 'sidebar' | 'mobile' | 'content' | 'mobile-content'
+  variant?: 'default' | 'sidebar' | 'mobile' | 'content' | 'mobile-content' | 'mobile-sticky'
   activeTab?: string
   setActiveTab?: (tab: string) => void
 }
@@ -54,12 +54,12 @@ export function EliteTabs({ data, onNavigate, user, variant = 'default', activeT
       icon: Crown,
       component: <CrownVaultTab data={data} onNavigate={onNavigate} user={user} />
     },
-    {
-      value: 'network',
-      label: 'Network',
-      icon: Users,
-      component: <NetworkTab data={data} />
-    }
+    // {
+    //   value: 'network',
+    //   label: 'Network',
+    //   icon: Users,
+    //   component: <NetworkTab data={data} />
+    // }
   ]
 
   // Sidebar variant (desktop left column)
@@ -92,13 +92,35 @@ export function EliteTabs({ data, onNavigate, user, variant = 'default', activeT
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
-            className={`flex items-center px-4 py-2 rounded-xl whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm ${
+            className={`flex items-center px-4 py-1.5 rounded-xl whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm ${
               activeTab === tab.value
                 ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105'
                 : 'bg-card/50 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:bg-card hover:shadow-md'
             }`}
           >
             <tab.icon className="h-3 w-3 mr-2" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  // Mobile sticky variant (compact horizontal tabs)
+  if (variant === 'mobile-sticky') {
+    return (
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        {tabItems.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={`flex items-center px-3 py-1 rounded-lg whitespace-nowrap text-xs font-medium transition-all duration-200 ${
+              activeTab === tab.value
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card/60'
+            }`}
+          >
+            <tab.icon className="h-2.5 w-2.5 mr-1.5" />
             {tab.label}
           </button>
         ))}
@@ -130,7 +152,7 @@ export function EliteTabs({ data, onNavigate, user, variant = 'default', activeT
   return (
     <div className="pb-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 bg-gradient-to-r from-background/80 via-background/50 to-background/80 backdrop-blur-md p-1 rounded-xl shadow-sm border border-border/50">
+        <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-background/80 via-background/50 to-background/80 backdrop-blur-md p-1 rounded-xl shadow-sm border border-border/50">
           {tabItems.map((tab) => (
             <TabsTrigger 
               key={tab.value}
