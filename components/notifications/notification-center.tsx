@@ -205,10 +205,10 @@ export function NotificationCenter({
             {/* Filter dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-primary" />
+                <Button variant="outline" className="group flex items-center gap-2 hover:text-white">
+                  <Filter className="w-4 h-4 text-primary group-hover:text-white" />
                   {filter === 'all' ? 'All' : filter === 'unread' ? 'Unread' : 'Read'}
-                  <ChevronDown className="w-4 h-4 text-primary" />
+                  <ChevronDown className="w-4 h-4 text-primary group-hover:text-white" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

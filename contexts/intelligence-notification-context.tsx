@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   IntelligenceNotificationContainer, 
   useIntelligenceNotifications,
@@ -39,6 +40,7 @@ export function IntelligenceNotificationProvider({
   maxNotifications = 5,
   enableAutoNotifications = true
 }: IntelligenceNotificationProviderProps) {
+  const router = useRouter();
   const {
     notifications,
     addNotification,
@@ -75,7 +77,7 @@ export function IntelligenceNotificationProvider({
       message: 'New market intelligence is available across Crown Vault, Opportunities, and Peer Analysis.',
       source: 'elite_pulse',
       actionLabel: 'View Dashboard',
-      actionUrl: '/elite-pulse',
+      actionUrl: '/dashboard',
       autoHide: true,
       hideAfter: 10000
     });
@@ -86,8 +88,11 @@ export function IntelligenceNotificationProvider({
     if (!isAuthenticated) return;
     
     if (notification.actionUrl) {
-      // In a real app, you'd use router.push() here
+      // Navigate to the specified URL
+      router.push(notification.actionUrl);
       
+      // Dismiss the notification after navigation
+      removeNotification(notification.id);
     }
     
     // Track the action
@@ -95,7 +100,7 @@ export function IntelligenceNotificationProvider({
       // Track notification action
       
     }
-  }, [state.intelligence.subscriptions, isAuthenticated]);
+  }, [router, removeNotification, state.intelligence.subscriptions, isAuthenticated]);
 
   // Convenience methods for creating different types of notifications
   const notifyThreat = useCallback((title: string, message: string, metadata?: IntelligenceNotification['metadata']) => {

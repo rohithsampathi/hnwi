@@ -52,19 +52,32 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
     setIsLoading(true);
     try {
       const updateData = {
-        name: formData.name,
-        asset_type: formData.asset_type,
-        value: parseFloat(formData.value) || 0,
-        currency: formData.currency,
-        location: formData.location,
-        notes: formData.notes
+        structured_data: {
+          name: formData.name,
+          asset_type: formData.asset_type,
+          value: parseFloat(formData.value) || 0,
+          currency: formData.currency,
+          location: formData.location,
+          notes: formData.notes
+        }
       };
 
       
       const updatedAsset = await updateCrownVaultAsset(asset.asset_id, updateData);
       
-      
-      onAssetUpdated(updatedAsset);
+      if (updatedAsset) {
+        onAssetUpdated(updatedAsset);
+      } else {
+        // If API didn't return updated asset, create one from original asset + form data
+        const fallbackUpdatedAsset: CrownVaultAsset = {
+          ...asset,
+          asset_data: {
+            ...asset.asset_data,
+            ...updateData
+          }
+        };
+        onAssetUpdated(fallbackUpdatedAsset);
+      }
       onClose();
       
       toast({

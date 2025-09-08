@@ -267,12 +267,12 @@ export const ASSET_IMAGE_MAP: Record<string, AssetImageConfig> = {
     keywords: ["gold", "bars", "precious", "investment"]
   },
   "silver": {
-    unsplashId: "photo-1610375461246-83df859d849d", // Silver bars
+    unsplashId: "photo-1639322537231-2f206e06af84", // Silver bars and coins
     alt: "Premium silver investment",
     keywords: ["silver", "bars", "precious", "metals"]
   },
   "silver bars": {
-    unsplashId: "photo-1610375461246-83df859d849d", // Silver bars
+    unsplashId: "photo-1639322537231-2f206e06af84", // Silver bars and coins
     alt: "Premium silver bars",
     keywords: ["silver", "bars", "precious", "metals"]
   },

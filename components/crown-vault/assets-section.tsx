@@ -341,6 +341,11 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
 
   // Handle asset update from modal
   const handleAssetUpdated = (updatedAsset: CrownVaultAsset) => {
+    if (!updatedAsset || !updatedAsset.asset_id) {
+      console.error('handleAssetUpdated called with invalid updatedAsset:', updatedAsset);
+      return;
+    }
+    
     setAssets(prevAssets => 
       prevAssets.map(asset => 
         asset.asset_id === updatedAsset.asset_id ? updatedAsset : asset
