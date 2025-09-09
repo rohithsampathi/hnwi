@@ -83,7 +83,7 @@ export function getNotificationContent(notification: any) {
         icon: config?.icon || '🏛️',
         primaryText: 'New Elite Pulse Analysis Available',
         secondaryText: notification.data?.analysis?.wealth_migration?.volume || 'Strategic intelligence update',
-        actionUrl: `/elite-pulse/${notification.data?.analysis_id || ''}`,
+        actionUrl: '/',
         color: config?.color
       };
     
