@@ -93,10 +93,18 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   }
   
   // Ensure user data includes necessary properties, especially company info
+  const initialCompanyName = user.company || 
+                            user.company_info?.name || 
+                            user.profile?.company_info?.name || 
+                            "";
+  
   const enhancedUser = {
     ...user,
-    company: user.company || (user.profile?.company_info?.name || ""),
-    company_info: user.company_info || user.profile?.company_info || { name: user.company || "" },
+    company: initialCompanyName,
+    company_info: {
+      ...(user.company_info || user.profile?.company_info || {}),
+      name: initialCompanyName
+    }
   }
   const [editedUser, setEditedUser] = useState(enhancedUser)
   const { toast } = useToast()
@@ -284,10 +292,19 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         // User data fetched successfully
         
         // Enhance user data with company info handling
+        // Priority: company field > company_info.name > profile.company_info.name
+        const companyName = userData.company || 
+                          userData.company_info?.name || 
+                          userData.profile?.company_info?.name || 
+                          "";
+        
         const enhancedUserData = {
           ...userData,
-          company: userData.company || (userData.profile?.company_info?.name || ""),
-          company_info: userData.company_info || userData.profile?.company_info || { name: userData.company || "" },
+          company: companyName,
+          company_info: {
+            ...(userData.company_info || userData.profile?.company_info || {}),
+            name: companyName
+          }
         };
         
         setEditedUser(enhancedUserData);
@@ -381,8 +398,9 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         crypto_investor: Boolean(editedUser.crypto_investor),
         land_investor: Boolean(editedUser.land_investor),
         bio: String(editedUser.bio),
+        company: String(editedUser.company || editedUser.company_info?.name || ""), // Add top-level company field
         company_info: {
-          name: String(editedUser.company || ""),
+          name: String(editedUser.company || editedUser.company_info?.name || ""),
           about: editedUser.company_info?.about || ""
         }
       }
@@ -535,10 +553,10 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                   {editedUser.name || "Welcome"}
                 </h1>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground mb-4">
-                  {editedUser.company && (
+                  {(editedUser.company || editedUser.company_info?.name || editedUser.profile?.company_info?.name) && (
                     <div className="flex items-center gap-1">
                       <Building2 className="w-4 h-4" />
-                      <span className="text-sm">{editedUser.company}</span>
+                      <span className="text-sm">{editedUser.company || editedUser.company_info?.name || editedUser.profile?.company_info?.name}</span>
                     </div>
                   )}
                   {editedUser.city && editedUser.country && (
@@ -1056,7 +1074,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Company</p>
-                          <p className="font-medium">{editedUser.company || "Not specified"}</p>
+                          <p className="font-medium">{editedUser.company || editedUser.company_info?.name || editedUser.profile?.company_info?.name || "Not specified"}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Industries</p>

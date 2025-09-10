@@ -24,7 +24,18 @@ export async function GET(
     
     try {
       const data = await secureApi.get(endpoint, requireAuth);
-      return NextResponse.json(data, { status: 200 });
+      
+      // Ensure company data is properly structured in the response
+      const enhancedData = {
+        ...data,
+        company: data.company || data.company_info?.name || "",
+        company_info: {
+          ...(data.company_info || {}),
+          name: data.company || data.company_info?.name || ""
+        }
+      };
+      
+      return NextResponse.json(enhancedData, { status: 200 });
       
     } catch (apiError) {
       console.error('Backend request failed:', apiError);
@@ -94,7 +105,18 @@ export async function PUT(
     
     try {
       const data = await secureApi.put(endpoint, body, requireAuth);
-      return NextResponse.json(data, { status: 200 });
+      
+      // Ensure the response includes the company data
+      const enhancedResponse = {
+        ...data,
+        company: body.company || body.company_info?.name || data.company || data.company_info?.name || "",
+        company_info: {
+          ...(data.company_info || body.company_info || {}),
+          name: body.company || body.company_info?.name || data.company || data.company_info?.name || ""
+        }
+      };
+      
+      return NextResponse.json(enhancedResponse, { status: 200 });
       
     } catch (apiError) {
       console.error('Backend request failed:', apiError);

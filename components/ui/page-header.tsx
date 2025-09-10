@@ -3,10 +3,11 @@
 
 "use client"
 
-import { ArrowLeft, Crown } from "lucide-react"
+import { ArrowLeft, Crown, Home, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
 import type { PageHeaderConfig } from "@/lib/page-headers"
 
 interface PageHeaderProps {
@@ -23,6 +24,23 @@ export function PageHeader({
   className 
 }: PageHeaderProps) {
   const { theme } = useTheme()
+  const pathname = usePathname()
+  
+  // Map routes to their specific icons
+  const getPageIcon = () => {
+    if (pathname.includes('/dashboard')) return Home
+    if (pathname.includes('/prive-exchange')) return Gem
+    if (pathname.includes('/hnwi-world') || pathname.includes('/strategy-vault')) return Globe
+    if (pathname.includes('/crown-vault')) return Crown
+    if (pathname.includes('/social-hub')) return Users
+    if (pathname.includes('/tactics-lab') || pathname.includes('/strategy-engine')) return Beaker
+    if (pathname.includes('/profile')) return UserCircle2
+    if (pathname.includes('/playbooks')) return BookOpen
+    // Default to Crown for any other pages
+    return Crown
+  }
+  
+  const PageIcon = getPageIcon()
 
   const handleBack = () => {
     if (onBack) {
@@ -52,7 +70,7 @@ export function PageHeader({
       
       <div className="mb-0">
         <div className="flex items-center gap-3 mb-1">
-          <Crown className="h-6 w-6 text-primary" />
+          <PageIcon className="h-6 w-6 text-primary" />
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">
             {config.title}
           </h1>
