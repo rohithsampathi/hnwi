@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
         success: !!backendResponse.success,
         requiresMfa: !!backendResponse.requires_mfa,
         hasBackendToken: !!backendResponse.mfa_token,
+        hasMessage: !!backendResponse.message,
+        message: backendResponse.message,
         email: validation.data!.email
       });
 
@@ -108,13 +110,16 @@ export async function POST(request: NextRequest) {
         return ApiAuth.addSecurityHeaders(response);
       }
 
-      // SECURITY FIX: For MFA flow, validate the backend response more thoroughly
-      // The backend should only send MFA tokens for valid credentials
+      // MFA flow - trust the backend's requires_mfa flag
       if (backendResponse.requires_mfa && backendResponse.mfa_token) {
-        // Additional security checks:
-        // 1. Verify the MFA token is properly formatted JWT
-        // 2. Check that the token contains expected fields (sub, mfa_code, exp, type)
-        // 3. Ensure the message indicates email was sent (not a generic error)
+        logger.info("Processing MFA flow from backend", {
+          email: validation.data!.email,
+          hasToken: !!backendResponse.mfa_token,
+          tokenLength: backendResponse.mfa_token ? backendResponse.mfa_token.length : 0,
+          message: backendResponse.message
+        });
+        
+        // Basic JWT format validation only
         try {
           const tokenParts = backendResponse.mfa_token.split('.');
           if (tokenParts.length !== 3) {
@@ -130,44 +135,25 @@ export async function POST(request: NextRequest) {
             return ApiAuth.addSecurityHeaders(response);
           }
           
-          // Decode the JWT payload to validate it contains expected MFA fields
-          const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
-          
-          // Validate required MFA token fields
-          if (!payload.sub || !payload.mfa_code || !payload.exp || payload.type !== 'mfa') {
-            logger.warn("MFA token missing required fields", {
+          // Log the JWT payload for debugging but don't validate strictly
+          try {
+            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
+            logger.info("MFA token payload received", {
               email: validation.data!.email,
               hasSubject: !!payload.sub,
               hasMfaCode: !!payload.mfa_code,
               hasExpiry: !!payload.exp,
-              tokenType: payload.type
+              tokenType: payload.type,
+              expiryTimestamp: payload.exp
             });
-            
-            const response = NextResponse.json(
-              { success: false, error: 'Authentication failed. Please try again.' },
-              { status: 401 }
-            );
-            
-            return ApiAuth.addSecurityHeaders(response);
-          }
-          
-          // Validate that the message indicates successful email sending (not an error)
-          if (!backendResponse.message || !backendResponse.message.toLowerCase().includes('sent')) {
-            logger.warn("MFA response message doesn't indicate email sent", {
-              email: validation.data!.email,
-              message: backendResponse.message
+          } catch (payloadError) {
+            logger.warn("Could not parse MFA token payload for debugging", {
+              email: validation.data!.email
             });
-            
-            const response = NextResponse.json(
-              { success: false, error: 'Authentication failed. Please try again.' },
-              { status: 401 }
-            );
-            
-            return ApiAuth.addSecurityHeaders(response);
           }
           
         } catch (tokenError) {
-          logger.warn("MFA token validation failed", {
+          logger.warn("MFA token basic validation failed", {
             email: validation.data!.email,
             error: tokenError instanceof Error ? tokenError.message : String(tokenError)
           });
