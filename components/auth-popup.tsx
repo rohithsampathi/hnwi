@@ -41,6 +41,7 @@ export function AuthPopup({
   const [isReauthMode, setIsReauthMode] = useState(false)
   const [storedEmail, setStoredEmail] = useState("")
   const [rememberDevice, setRememberDevice] = useState(false)
+  
   const countdownInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Start countdown timer for rate limit
@@ -427,21 +428,70 @@ export function AuthPopup({
                 </div>
               </div>
 
-              {/* Remember Device Checkbox */}
-              <div className="flex items-center space-x-2">
+              {/* Remember Device Checkbox - App Theme Colors */}
+              <div 
+                className="flex items-center space-x-3 mt-6 p-4 rounded-lg border-2"
+                style={{ 
+                  backgroundColor: theme === 'dark' ? 'hsl(0 0% 3.9%)' : 'hsl(0 0% 100%)',
+                  borderColor: theme === 'dark' ? 'hsl(43 74% 49%)' : 'hsl(0 0% 0%)',
+                  boxShadow: theme === 'dark' 
+                    ? '0 4px 12px hsla(43, 74%, 49%, 0.15)' 
+                    : '0 4px 12px hsla(0, 0%, 0%, 0.1)'
+                }}
+              >
+                {/* Custom Checkbox - App Colors */}
+                <div
+                  onClick={() => !isLoading && setRememberDevice(!rememberDevice)}
+                  className="cursor-pointer flex-shrink-0"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '6px',
+                    border: `2px solid ${theme === 'dark' ? 'hsl(43 74% 49%)' : 'hsl(0 0% 0%)'}`,
+                    backgroundColor: rememberDevice 
+                      ? (theme === 'dark' ? 'hsl(43 74% 49%)' : 'hsl(0 0% 0%)')
+                      : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {rememberDevice && (
+                    <svg 
+                      width="14" 
+                      height="14" 
+                      viewBox="0 0 16 16" 
+                      fill="none"
+                      style={{ 
+                        color: theme === 'dark' ? 'hsl(0 0% 10%)' : 'hsl(0 0% 98%)'
+                      }}
+                    >
+                      <path 
+                        d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  )}
+                </div>
+                
+                {/* Hidden input for form compatibility */}
                 <input
                   type="checkbox"
                   id="rememberDevice"
                   checked={rememberDevice}
                   onChange={(e) => setRememberDevice(e.target.checked)}
                   disabled={isLoading}
-                  className="h-4 w-4 rounded border-muted-foreground/30 text-primary focus:ring-primary focus:ring-2 focus:ring-offset-2"
+                  style={{ display: 'none' }}
                 />
+                
                 <label 
                   htmlFor="rememberDevice" 
-                  className="text-sm text-muted-foreground cursor-pointer select-none"
+                  onClick={() => !isLoading && setRememberDevice(!rememberDevice)}
+                  className="cursor-pointer select-none flex-1 text-sm font-semibold"
+                  style={{ color: theme === 'dark' ? 'hsl(43 74% 49%)' : 'hsl(0 0% 0%)' }}
                 >
-                  Remember this device for 7 days
+                  🔒 Remember this device for 7 days
                 </label>
               </div>
 
@@ -503,7 +553,7 @@ export function AuthPopup({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="mt-4">
+            <div className="mt-4 space-y-6">
               <MfaCodeInput
                 onSubmit={handleMfaSubmit}
                 onResend={handleMfaResend}
@@ -511,8 +561,9 @@ export function AuthPopup({
                 isResending={isResending}
                 error={error}
               />
+
               
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center">
                 <Button
                   type="button"
                   variant="ghost"

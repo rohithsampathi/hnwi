@@ -35,9 +35,8 @@ export function middleware(request: NextRequest) {
     "default-src 'self'",
     // Dynamic script sources - allow inline scripts with nonce for all environments
     `script-src 'self' 'nonce-${nonce}' ${isDev ? `'unsafe-inline' 'unsafe-eval'` : `'unsafe-inline'`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
-    // Style sources with nonce support - allow unsafe-inline for all environments to support dynamic styles
-    // In development, skip nonce for styles to avoid hydration mismatches
-    `style-src 'self' 'unsafe-inline' ${isDev ? '' : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
+    // SECURITY: Style sources with nonce support - unsafe-inline only in development
+    `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`} https://fonts.googleapis.com`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
     `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app ${backendUrl} https://api-js.mixpanel.com https://formspree.io`,

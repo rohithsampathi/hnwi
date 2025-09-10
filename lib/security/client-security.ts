@@ -1,5 +1,6 @@
 import { AES256Encryption, SecureStorage } from "./encryption";
 import { SessionState, setSessionState, updateLastActivity, getSessionState } from "../auth-utils";
+import { getSecurityConfig } from "./config";
 
 interface SecurityConfig {
   sessionTimeout: number;
@@ -11,14 +12,17 @@ interface SecurityConfig {
 }
 
 export class ClientSecurityManager {
-  private static config: SecurityConfig = {
-    sessionTimeout: 30 * 60 * 1000, // 30 minutes
-    maxLoginAttempts: 3,
-    lockoutDuration: 30 * 60 * 1000, // 30 minutes
-    requireMFA: true,
-    enforcePasswordPolicy: true,
-    dataRetentionDays: 90
-  };
+  private static getConfig(): SecurityConfig {
+    const globalConfig = getSecurityConfig();
+    return {
+      sessionTimeout: globalConfig.session.timeout, // Use centralized config (30 minutes)
+      maxLoginAttempts: globalConfig.authentication.maxLoginAttempts,
+      lockoutDuration: globalConfig.authentication.lockoutDuration,
+      requireMFA: globalConfig.authentication.mfaRequired,
+      enforcePasswordPolicy: true,
+      dataRetentionDays: 90
+    };
+  }
 
   private static loginAttempts = new Map<string, { count: number; lockedUntil?: number }>();
   private static sessionActivity = new Map<string, number>();
@@ -47,7 +51,7 @@ export class ClientSecurityManager {
       }
       
       // If user has been inactive for the timeout period, lock the session
-      if (inactiveTime > ClientSecurityManager.config.sessionTimeout) {
+      if (inactiveTime > ClientSecurityManager.getConfig().sessionTimeout) {
         ClientSecurityManager.lockSession(userId);
       }
     };
@@ -119,8 +123,8 @@ export class ClientSecurityManager {
       };
     }
 
-    if (attempt && attempt.count >= ClientSecurityManager.config.maxLoginAttempts) {
-      const lockedUntil = Date.now() + ClientSecurityManager.config.lockoutDuration;
+    if (attempt && attempt.count >= ClientSecurityManager.getConfig().maxLoginAttempts) {
+      const lockedUntil = Date.now() + ClientSecurityManager.getConfig().lockoutDuration;
       ClientSecurityManager.loginAttempts.set(email, { 
         count: attempt.count, 
         lockedUntil 
@@ -131,7 +135,7 @@ export class ClientSecurityManager {
       };
     }
 
-    const remainingAttempts = ClientSecurityManager.config.maxLoginAttempts - (attempt?.count || 0);
+    const remainingAttempts = ClientSecurityManager.getConfig().maxLoginAttempts - (attempt?.count || 0);
     return { 
       allowed: true, 
       remainingAttempts 
@@ -149,7 +153,7 @@ export class ClientSecurityManager {
   }
 
   static validatePassword(password: string): { valid: boolean; errors: string[] } {
-    if (!ClientSecurityManager.config.enforcePasswordPolicy) {
+    if (!ClientSecurityManager.getConfig().enforcePasswordPolicy) {
       return { valid: true, errors: [] };
     }
 

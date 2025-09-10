@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { secureApi } from "@/lib/secure-api"
+import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
 import type { IntelligenceData, ProcessedIntelligenceData } from "@/types/dashboard"
 
 // Helper function to extract structured opportunities from Ruscha intelligence data
@@ -85,10 +86,12 @@ export function useIntelligenceData(userData?: any): UseIntelligenceDataResult {
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
-  const userId = useMemo(() => 
-    userData?.id || userData?.user_id || userData?.userId || userData?._id || localStorage.getItem('userId'),
-    [userData]
-  )
+  const userId = useMemo(() => {
+    // Use centralized auth manager for user ID
+    const authUser = getCurrentUser()
+    return userData?.id || userData?.user_id || userData?.userId || userData?._id || 
+           authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
+  }, [userData])
 
   const fetchIntelligence = useCallback(async (forceRefresh = false) => {
     if (!userId) {

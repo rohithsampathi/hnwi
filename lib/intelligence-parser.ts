@@ -50,10 +50,8 @@ export interface ParsedIntelligence {
 }
 
 export function parseRuschaIntelligence(data: string, metadata?: any): ParsedIntelligence {
-  console.log('🔍 Parser: Starting parse with data length:', data.length)
   
   const lines = data.split('\n').filter(line => line.trim());
-  console.log('🔍 Parser: Found', lines.length, 'lines to parse')
   
   let executiveSummary = ''
   const opportunities: OpportunityTier[] = []
@@ -71,7 +69,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
     // Skip markdown headers and empty lines
     if (line.startsWith('**') && line.endsWith('**')) {
       currentSection = line.replace(/\*\*/g, '').toUpperCase()
-      console.log('🔍 Parser: Section changed to:', currentSection)
       continue
     }
     
@@ -79,7 +76,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
     if (currentSection.includes('EXECUTIVE') && line && !line.includes('$')) {
       if (!executiveSummary && line.length > 50) {
         executiveSummary = line
-        console.log('🔍 Parser: Executive summary found:', executiveSummary.substring(0, 100) + '...')
       }
     }
     
@@ -100,7 +96,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
       const tierMatch = line.match(/TIER (\d+)/)
       if (tierMatch) {
         currentTier = parseInt(tierMatch[1]) as 1 | 2 | 3
-        console.log('🔍 Parser: Found tier:', currentTier)
       }
     }
     
@@ -112,12 +107,10 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
                               line.match(/^\d+\.\s*(.+)/)
       
       if (opportunityMatch) {
-        console.log('🔍 Parser: Found opportunity:', opportunityMatch[1])
         
         // Save previous opportunity
         if (currentOpportunity?.title) {
           opportunities.push(currentOpportunity as OpportunityTier)
-          console.log('🔍 Parser: Saved opportunity:', currentOpportunity.title)
         }
         
         currentOpportunity = {
@@ -136,12 +129,10 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
     if (line.match(/^PRIORITY \d+:/)) {
       const priorityMatch = line.match(/^PRIORITY (\d+):\s*(.+)/)
       if (priorityMatch) {
-        console.log('🔍 Parser: Found priority opportunity:', priorityMatch[2])
         
         // Save previous opportunity
         if (currentOpportunity?.title) {
           opportunities.push(currentOpportunity as OpportunityTier)
-          console.log('🔍 Parser: Saved opportunity:', currentOpportunity.title)
         }
         
         // Assign tier based on priority number (1-3 map to tiers 1-3)
@@ -164,7 +155,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
         const capitalMatch = line.match(/\$([0-9,]+)K?-?\$?([0-9,]+)?K/) ||
                             line.match(/\$([0-9,]+)K/)
         if (capitalMatch) {
-          console.log('🔍 Parser: Found capital requirement:', capitalMatch[0])
           
           const min = parseInt(capitalMatch[1].replace(',', '')) * 1000
           const max = capitalMatch[2] ? parseInt(capitalMatch[2].replace(',', '')) * 1000 : min * 1.5
@@ -245,7 +235,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
         const urgency = timeline.includes('4-6 weeks') || timeline.includes('2-3 weeks') ? 'urgent' :
                        timeline.includes('8-12 weeks') || timeline.includes('6-8 weeks') ? 'medium' : 'strategic'
         
-        console.log('🔍 Parser: Found timing window:', timeline, 'urgency:', urgency)
         
         timingWindows.push({
           duration: timeline,
@@ -261,7 +250,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
         const urgency = duration.includes('week') ? 'urgent' :
                        duration.includes('3') && duration.includes('month') ? 'medium' : 'strategic'
         
-        console.log('🔍 Parser: Found timing pattern:', duration, windowMatch[2])
         
         timingWindows.push({
           duration: duration,
@@ -275,7 +263,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
   // Save last opportunity
   if (currentOpportunity?.title) {
     opportunities.push(currentOpportunity as OpportunityTier)
-    console.log('🔍 Parser: Saved final opportunity:', currentOpportunity.title)
   }
   
   // Assign juiciness ratings based on market assessment
@@ -287,17 +274,6 @@ export function parseRuschaIntelligence(data: string, metadata?: any): ParsedInt
     }
   })
 
-  console.log('🔍 Parser: Final results:', {
-    executiveSummaryLength: executiveSummary.length,
-    opportunitiesCount: opportunities.length,
-    timingWindowsCount: timingWindows.length,
-    hasWealthMigration: !!wealthMigration,
-    marketAssessmentCounts: {
-      juicy: marketAssessment.juicy.length,
-      moderate: marketAssessment.moderate.length,
-      farFetched: marketAssessment.farFetched.length
-    }
-  })
 
   return {
     executiveSummary: executiveSummary || 'HNWI portfolios facing critical rebalancing with emerging opportunities',

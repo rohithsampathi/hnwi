@@ -6,6 +6,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { secureApi } from "@/lib/secure-api"
+import { getCurrentUser, getCurrentUserId, getAuthToken } from "@/lib/auth-manager"
 
 // ================== INTELLIGENCE TYPES ==================
 
@@ -489,12 +490,6 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       // Set as current dashboard
       dispatch({ type: 'SET_DASHBOARD', payload: dashboard })
 
-      console.log('✅ Elite Pulse Intelligence Dashboard loaded:', {
-        elitePulse: !!dashboard.intelligence.elite_pulse,
-        crownVault: !!dashboard.intelligence.crown_vault_impact,
-        opportunities: !!dashboard.intelligence.opportunity_alignment,
-        peerIntelligence: !!dashboard.intelligence.peer_intelligence
-      })
 
     } catch (error: any) {
       console.error('❌ Elite Pulse Intelligence fetch failed:', error)
@@ -515,14 +510,6 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
   }, [])
 
   const refreshIntelligence = useCallback(async () => {
-    console.log('🧠 Elite Pulse Context: refreshIntelligence called, user object:', {
-      hasUser: !!user,
-      fullUser: user,
-      userType: typeof user,
-      userId: user?.user_id || user?.id || 'NO_USER_ID',
-      userKeys: user ? Object.keys(user) : [],
-      possibleIdFields: user ? Object.keys(user).filter(key => key.toLowerCase().includes('id')) : []
-    });
     
     if (user?.user_id || user?.id) {
       
@@ -538,10 +525,6 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
           key.toLowerCase().includes('user')
         );
         
-        console.log('🧠 Elite Pulse Context: Available ID-like fields:', possibleIds.map(key => ({
-          key,
-          value: (user as any)[key]
-        })));
         
         // Try using the first available ID-like field
         if (possibleIds.length > 0) {
@@ -583,7 +566,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           user_id: user.user_id || user.id,
@@ -610,7 +593,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           user_id: user.user_id || user.id,
@@ -678,63 +661,11 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     }
   }, [])
 
-  // Auto-fetch intelligence when user is authenticated or user ID is available (same logic as Crown Vault)
+  // Auto-fetch intelligence when user is authenticated or user ID is available
   useEffect(() => {
-    // Use the same getCurrentUserId logic as Crown Vault
-    const getCurrentUserId = (): string | null => {
-      if (typeof window !== 'undefined') {
-        
-        // First try SecureStorage (new auth system)
-        try {
-          const { SecureStorage } = require('@/lib/security/encryption');
-          const userId = SecureStorage.getItem('userId');
-          if (userId) return userId;
-        } catch (error) {
-          // SecureStorage not available, continue with localStorage
-        }
-        
-        // Then try localStorage (old auth system)
-        let userId = localStorage.getItem('userId');
-        if (userId) return userId;
-
-        // Try to get from mixpanel cookie which contains the user_id
-        try {
-          
-          const mixpanelCookie = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('mp_e6df9ca97b553d8a7954cda47f2f6516_mixpanel='));
-          
-          
-          
-          if (mixpanelCookie) {
-            const mixpanelData = JSON.parse(decodeURIComponent(mixpanelCookie.split('=')[1]));
-            
-            
-            if (mixpanelData.$user_id || mixpanelData.distinct_id) {
-              const userId = mixpanelData.$user_id || mixpanelData.distinct_id;
-              
-              // Store it in localStorage for future use
-              localStorage.setItem('userId', userId);
-              return userId;
-            }
-          } else {
-            
-          }
-        } catch (error) {
-          
-          // Ignore cookie parsing errors
-        }
-        
-        // If we still don't have a user ID, let's try the hardcoded test user that was working
-        
-        const testUserId = '59363d04-eb97-4224-94cf-16ca0d4f746e';
-        localStorage.setItem('userId', testUserId);
-        return testUserId;
-      }
-      return null;
-    };
-
-    const authUserId = user?.user_id || user?.id;
+    // Use centralized auth manager to get user ID
+    const authUser = getCurrentUser();
+    const authUserId = user?.user_id || user?.id || authUser?.userId || authUser?.user_id || authUser?.id;
     const storageUserId = getCurrentUserId();
     const effectiveUserId = authUserId || storageUserId;
     
@@ -750,42 +681,9 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     if (!state.userInteractions.preferences.autoRefresh) return
 
     const interval = setInterval(() => {
-      // Use same logic to get user ID
-      const getCurrentUserId = (): string | null => {
-        if (typeof window !== 'undefined') {
-          try {
-            const { SecureStorage } = require('@/lib/security/encryption');
-            const userId = SecureStorage.getItem('userId');
-            if (userId) return userId;
-          } catch (error) {
-            // Continue with localStorage
-          }
-          
-          let userId = localStorage.getItem('userId');
-          if (userId) return userId;
-
-          try {
-            const mixpanelCookie = document.cookie
-              .split('; ')
-              .find(row => row.startsWith('mp_e6df9ca97b553d8a7954cda47f2f6516_mixpanel='));
-            
-            if (mixpanelCookie) {
-              const mixpanelData = JSON.parse(decodeURIComponent(mixpanelCookie.split('=')[1]));
-              if (mixpanelData.$user_id || mixpanelData.distinct_id) {
-                const userId = mixpanelData.$user_id || mixpanelData.distinct_id;
-                localStorage.setItem('userId', userId);
-                return userId;
-              }
-            }
-          } catch (error) {
-            // Ignore cookie parsing errors
-          }
-          return null;
-        }
-        return null;
-      };
-
-      const authUserId = user?.user_id || user?.id;
+      // Use centralized auth manager to get user ID
+      const authUser = getCurrentUser();
+      const authUserId = user?.user_id || user?.id || authUser?.userId || authUser?.user_id || authUser?.id;
       const storageUserId = getCurrentUserId();
       const effectiveUserId = authUserId || storageUserId;
       

@@ -1,9 +1,31 @@
 // lib/secure-api.ts
+// SOTA 2025 Centralized Secure API Handler
+// Single source of truth for ALL authenticated API calls with built-in auth management
+// All backend URLs are masked for security
 
-// Security wrapper for API calls to prevent URL exposure in console logs
 import { API_BASE_URL } from "@/config/api";
-import { getValidToken, clearInvalidToken, canAccessFeatures, isSessionLocked, SessionState, canAccessFeaturesWithFallback, isLegacySessionMode } from "@/lib/auth-utils";
+import { 
+  authManager,
+  getAuthToken as getAuthManagerToken,
+  getCurrentUserId,
+  getCurrentUser,
+  isAuthenticated as isAuthManagerAuthenticated,
+  refreshUser
+} from "@/lib/auth-manager";
 import { cacheDebugger } from "@/lib/cache-debug";
+
+// Mask backend URL for security - NEVER expose real backend URL
+const MASKED_API_URL = '/api';
+
+// Security function to mask any backend URLs in strings
+const maskBackendUrl = (str: string): string => {
+  if (!str) return str;
+  // Replace any occurrence of the backend URL with masked version
+  return str
+    .replace(new RegExp(API_BASE_URL, 'g'), MASKED_API_URL)
+    .replace(/https?:\/\/[^\s\/]+(\/api)?/g, MASKED_API_URL)
+    .replace(/localhost:\d+/g, MASKED_API_URL);
+};
 
 interface SecureFetchOptions extends RequestInit {
   timeout?: number;
@@ -107,22 +129,100 @@ class APIError extends Error {
     public status?: number,
     public endpoint?: string
   ) {
-    super(message);
+    super(maskBackendUrl(message));
     this.name = 'APIError';
     // Sanitize endpoint to hide backend URL
     if (this.endpoint) {
-      this.endpoint = this.endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/]+/, '/api');
+      this.endpoint = maskBackendUrl(this.endpoint);
+    }
+    // Mask stack trace as well
+    if (this.stack) {
+      this.stack = maskBackendUrl(this.stack);
     }
   }
 }
 
+// Central Auth Wrapper - ALL auth logic in one place
+class AuthWrapper {
+  private static instance: AuthWrapper;
+  private tokenRefreshPromise: Promise<any> | null = null;
+  
+  private constructor() {}
+  
+  public static getInstance(): AuthWrapper {
+    if (!AuthWrapper.instance) {
+      AuthWrapper.instance = new AuthWrapper();
+    }
+    return AuthWrapper.instance;
+  }
+  
+  // Get valid token with automatic refresh if needed
+  public async getValidToken(): Promise<string | null> {
+    // Ensure auth manager is initialized
+    authManager.ensureInitialized();
+    
+    const token = getAuthManagerToken();
+    if (!token) return null;
+    
+    // Check if token is about to expire (within 5 minutes)
+    const expiry = authManager.getTokenExpiry();
+    if (expiry.expiresIn < 300000) { // 5 minutes
+      // Token about to expire, try to refresh
+      if (!this.tokenRefreshPromise) {
+        this.tokenRefreshPromise = refreshUser().finally(() => {
+          this.tokenRefreshPromise = null;
+        });
+      }
+      await this.tokenRefreshPromise;
+      return getAuthManagerToken();
+    }
+    
+    return token;
+  }
+  
+  // Check if user is authenticated and can make API calls
+  public canMakeApiCall(): boolean {
+    authManager.ensureInitialized();
+    return isAuthManagerAuthenticated();
+  }
+  
+  // Get auth headers for requests
+  public async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = await this.getValidToken();
+    if (!token) return {};
+    
+    // Only return Authorization header - backend extracts user ID from JWT
+    // X-User-Id header causes CORS issues with the backend
+    return {
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  
+  // Handle auth errors
+  public handleAuthError(error: any): void {
+    // Only logout on 401 (unauthorized) - means token is invalid
+    if (error?.status === 401) {
+      // Token invalid or expired - logout
+      authManager.logout();
+      // Redirect to login page (root with splash screen)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
+    // 403 (forbidden) means user is authenticated but lacks permission
+    // Don't logout, just show error to user
+  }
+}
+
+const authWrapper = AuthWrapper.getInstance();
+
 export class SecureAPI {
   private static logSafeError(endpoint: string, status?: number, error?: string): void {
-    // Log without exposing full URLs - only show endpoint paths
-    const safeEndpoint = endpoint.replace(API_BASE_URL, '/api').replace(/https?:\/\/[^\/]+/, '/api');
+    // Log without exposing full URLs - only show masked endpoint paths
+    const safeEndpoint = maskBackendUrl(endpoint);
     // Don't log in production to avoid any URL exposure in browser console
     if (process.env.NODE_ENV === 'development') {
-      // API error logged internally
+      console.debug(`[SecureAPI] ${safeEndpoint} - ${error || 'Error'} ${status ? `(${status})` : ''}`);
     }
   }
 
@@ -278,8 +378,8 @@ const createSecureError = (message: string, statusCode?: number): Error => {
   return error;
 };
 
-// Check if session allows API calls
-const checkSessionAccess = (endpoint: string): void => {
+// Check if session allows API calls - centralized auth check
+const checkSessionAccess = async (endpoint: string): Promise<void> => {
   // Skip check for public endpoints (like auth endpoints)
   const publicEndpoints = ['/api/auth/', '/api/csrf-token', '/api/og'];
   
@@ -287,54 +387,27 @@ const checkSessionAccess = (endpoint: string): void => {
     return; // Allow public endpoints
   }
   
-  // In legacy mode, skip smart session checks
-  if (isLegacySessionMode()) {
-    // Just check if we have a valid token (old behavior)
-    const token = getValidToken();
-    if (!token) {
-      throw new APIError(
-        'Authentication required to access this resource.',
-        401,
-        endpoint
-      );
-    }
-    return;
+  // Use centralized auth wrapper
+  if (!authWrapper.canMakeApiCall()) {
+    throw new APIError(
+      'Authentication required. Please sign in to continue.',
+      401,
+      endpoint
+    );
   }
   
-  // Smart session checking (new behavior)
-  try {
-    // Check if session is locked
-    if (isSessionLocked()) {
-      throw new APIError(
-        'Session locked due to inactivity. Please reauthenticate to continue.',
-        423, // 423 Locked status code
-        endpoint
-      );
-    }
-    
-    // Check if user can access features (not just authenticated)
-    if (!canAccessFeaturesWithFallback()) {
-      throw new APIError(
-        'Authentication required to access this resource.',
-        401,
-        endpoint
-      );
-    }
-  } catch (error) {
-    // If there's an error with smart session checking, fallback to simple token check
-    // Smart session check failed, falling back to token check
-    const token = getValidToken();
-    if (!token) {
-      throw new APIError(
-        'Authentication required to access this resource.',
-        401,
-        endpoint
-      );
-    }
+  // Verify we can get a valid token
+  const token = await authWrapper.getValidToken();
+  if (!token) {
+    throw new APIError(
+      'Session expired. Please sign in again.',
+      401,
+      endpoint
+    );
   }
 };
 
-// Secure fetch wrapper that matches backend expectations
+// Secure fetch wrapper that matches backend expectations - CENTRALIZED
 export const secureApiCall = async (
   endpoint: string, 
   options: RequestInit = {},
@@ -342,13 +415,7 @@ export const secureApiCall = async (
   serverToken?: string
 ): Promise<Response> => {
   try {
-    // Clear any invalid tokens first (only on client side)
-    if (typeof window !== 'undefined') {
-      clearInvalidToken();
-    }
-    
-    // Always use the backend URL directly
-    const { API_BASE_URL } = await import("@/config/api");
+    // Always use the backend URL directly (but never expose it)
     const url = `${API_BASE_URL}${endpoint}`;
     
     const headers: Record<string, string> = {
@@ -356,22 +423,28 @@ export const secureApiCall = async (
       ...(options.headers as Record<string, string>),
     };
 
-    // Check for valid token if auth is required
-    if (requireAuth) {
-      const token = getValidToken();
-      
-      if (!token) {
-        // No valid token - throw auth error instead of making failed request
+    // Use centralized auth wrapper for auth headers
+    if (requireAuth && !serverToken) {
+      const authHeaders = await authWrapper.getAuthHeaders();
+      if (!authHeaders.Authorization) {
         throw new APIError('Authentication required - please log in', 401, endpoint);
       }
-      
-      headers['Authorization'] = `Bearer ${token}`;
+      Object.assign(headers, authHeaders);
+    } else if (serverToken) {
+      // Server-side token
+      headers['Authorization'] = `Bearer ${serverToken}`;
     }
 
     const response = await fetch(url, {
       ...options,
       headers,
     });
+    
+    // Handle auth errors centrally - only for 401 (unauthorized)
+    if (response.status === 401) {
+      authWrapper.handleAuthError({ status: response.status });
+    }
+    // 403 is a permission issue, not an auth issue - don't logout
 
     return response;
   } catch (error) {
@@ -388,7 +461,7 @@ export const secureApi = {
   async post(endpoint: string, data: any, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number; cacheKey?: string }): Promise<any> {
     // Check session access if auth is required
     if (requireAuth) {
-      checkSessionAccess(endpoint);
+      await checkSessionAccess(endpoint);
     }
     
     const { enableCache = false, cacheDuration = 300000, cacheKey: customCacheKey } = cacheOptions || {}; // 5 minutes default for POST
@@ -464,7 +537,7 @@ export const secureApi = {
   async get(endpoint: string, requireAuth: boolean = true, cacheOptions?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
     // Check session access if auth is required
     if (requireAuth) {
-      checkSessionAccess(endpoint);
+      await checkSessionAccess(endpoint);
     }
     
     const { enableCache = false, cacheDuration = 600000 } = cacheOptions || {};
@@ -530,7 +603,7 @@ export const secureApi = {
   async put(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
     // Check session access if auth is required
     if (requireAuth) {
-      checkSessionAccess(endpoint);
+      await checkSessionAccess(endpoint);
     }
     
     try {
@@ -555,7 +628,7 @@ export const secureApi = {
   async delete(endpoint: string, requireAuth: boolean = true): Promise<any> {
     // Check session access if auth is required
     if (requireAuth) {
-      checkSessionAccess(endpoint);
+      await checkSessionAccess(endpoint);
     }
     
     try {
@@ -719,6 +792,24 @@ export const serverSecureApi = {
     }
   }
 };
+
+// Export centralized auth utilities
+export const getAuthenticatedUser = () => getCurrentUser();
+export const getAuthenticatedUserId = () => getCurrentUserId();
+export const isUserAuthenticated = () => isAuthManagerAuthenticated();
+export const refreshAuthToken = () => refreshUser();
+
+// Debug helper for auth issues
+export const debugAuth = () => {
+  if (typeof window === 'undefined') return;
+  
+};
+
+// Add debug helper to window for debugging
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).secureApiDebug = debugAuth;
+  (window as any).secureApi = secureApi;
+}
 
 // Export only secure methods, not the base URL
 export default secureApi;

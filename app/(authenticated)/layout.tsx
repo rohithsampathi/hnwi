@@ -16,6 +16,8 @@ import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boun
 import { getApiUrlForEndpoint } from "@/config/api"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
+import { getCurrentUser, getCurrentUserId, getAuthToken, isAuthenticated as checkAuth } from "@/lib/auth-manager"
+import '@/lib/auth/debug-helper' // Load debug helper
 
 interface AuthenticatedLayoutProps {
   children: ReactNode
@@ -97,11 +99,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   useEffect(() => {
     if (!mounted) return
     
-    const checkAuth = () => {
-      // Fast local auth check - no server calls for speed
-      const token = localStorage.getItem("token")
-      const userId = localStorage.getItem("userId")
-      const userObject = localStorage.getItem("userObject")
+    const checkAuthStatus = () => {
+      // Use centralized auth manager
+      const token = getAuthToken()
+      const userId = getCurrentUserId()
+      const authUser = getCurrentUser()
 
       if (!token || !userId) {
         setIsAuthenticated(false)
@@ -110,51 +112,22 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         return
       }
 
-      // Set user from localStorage immediately for speed
-      if (userObject) {
-        try {
-          const parsedUser = JSON.parse(userObject)
-          setUser(parsedUser)
-          setIsAuthenticated(true)
-          setIsInitialLoad(false)
-          
-          // Background validation (non-blocking)
-          validateTokenInBackground(token)
-        } catch (e) {
-          setIsAuthenticated(false)
-          setIsInitialLoad(false)
-          router.push("/")
-        }
+      // Set user from auth manager
+      if (authUser) {
+        setUser(authUser)
+        setIsAuthenticated(true)
+        setIsInitialLoad(false)
+        
+        // Skip background validation - it's causing logout issues
+        // The token is already validated by the auth manager
       } else {
         setIsAuthenticated(true)
         setIsInitialLoad(false)
       }
     }
 
-    // Background token validation (doesn't block UI)
-    const validateTokenInBackground = async (token: string) => {
-      try {
-        const response = await fetch(getApiUrlForEndpoint('/api/auth/session'), {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-
-        if (!response.ok) {
-          // Token invalid, redirect after delay to avoid disrupting UX
-          setTimeout(() => {
-            localStorage.removeItem("token")
-            localStorage.removeItem("userId")
-            localStorage.removeItem("userObject")
-            router.push("/")
-          }, 1000)
-        }
-      } catch (error) {
-        // Silent fail - don't disrupt user experience
-      }
-    }
+    // Background validation removed - was causing immediate logout issues
+    // The auth manager already validates tokens properly
 
     // Execute auth check with timeout fallback
     const timeoutId = setTimeout(() => {
@@ -163,7 +136,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }, 500)
 
     try {
-      checkAuth()
+      checkAuthStatus()
       clearTimeout(timeoutId)
     } catch (error) {
       clearTimeout(timeoutId)

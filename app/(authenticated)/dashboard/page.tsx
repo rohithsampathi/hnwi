@@ -6,21 +6,19 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { HomeDashboardElite } from "@/components/home-dashboard-elite"
 import { MetaTags } from "@/components/meta-tags"
+import { getCurrentUser } from "@/lib/auth-manager"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   
-  // Load user data from localStorage
+  // Load user data from centralized auth
   useEffect(() => {
-    const userObject = localStorage.getItem("userObject")
-    if (userObject) {
-      try {
-        const parsedUser = JSON.parse(userObject)
-        setUser(parsedUser)
-      } catch (e) {
-        console.error("Error parsing user data:", e)
-      }
+    const authUser = getCurrentUser()
+    if (authUser) {
+      setUser(authUser)
+    } else {
+      console.warn('[Dashboard] No user found in auth manager')
     }
   }, [])
 

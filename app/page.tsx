@@ -5,6 +5,7 @@
 import { useRouter } from "next/navigation"
 import React, { useEffect, useState } from "react"
 import { SplashScreen } from "@/components/splash-screen"
+import { getCurrentUser, getAuthToken } from "@/lib/auth-manager"
 
 export default function Home() {
   const router = useRouter()
@@ -16,10 +17,10 @@ export default function Home() {
     setIsHydrated(true)
     
     // Quick auth check - if user has valid session, redirect to dashboard
-    const token = localStorage.getItem("token")
-    const userId = localStorage.getItem("userId")
+    const user = getCurrentUser()
+    const token = getAuthToken()
     
-    if (token && userId) {
+    if (token && user?.userId) {
       // User appears to be logged in, redirect to dashboard immediately
       setIsRedirecting(true)
       // Small delay to prevent flash of content

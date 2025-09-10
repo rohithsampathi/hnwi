@@ -1,14 +1,36 @@
 // lib/api.ts
+// Centralized API layer using secure-api for all auth handling
 
-import { secureApi } from "@/lib/secure-api"
-import { getValidToken } from "@/lib/auth-utils"
+import secureApi, { 
+  getAuthenticatedUserId,
+  getAuthenticatedUser,
+  isUserAuthenticated,
+  CacheControl 
+} from "@/lib/secure-api"
+
+// Use centralized auth check from secure-api
+// Import auth manager to ensure initialization
+import { authManager } from '@/lib/auth-manager';
+
+const getCurrentUserId = () => {
+  // Ensure auth manager is initialized before getting user ID
+  authManager.ensureInitialized();
+  return getAuthenticatedUserId();
+};
+const getCurrentUser = () => {
+  // Ensure auth manager is initialized before getting user
+  authManager.ensureInitialized();
+  return getAuthenticatedUser();
+};
 
 // Helper function to check if error is authentication-related
 const isAuthError = (error: any): boolean => {
   const errorMessage = error?.message || error?.toString() || '';
   return errorMessage.includes('Authentication required') || 
          errorMessage.includes('please log in') || 
-         error?.status === 401;
+         errorMessage.includes('Session expired') ||
+         error?.status === 401 ||
+         error?.status === 403;
 };
 
 export interface CryptoData {
@@ -71,32 +93,55 @@ export interface SocialEvent {
 
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
-    const data = await secureApi.get('/api/events/', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for social events
-    return data.events.map((event: any) => ({
-      id: event.id,
-      name: event.name,
-      date: new Date(event.start_date).toLocaleDateString('en-US', { 
-        month: 'short',
-        day: 'numeric', 
-        year: 'numeric'
-      }),
-      time: new Date(event.start_date).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric'
-      }),
-      location: event.location,
-      attendees: event.attendees,
-      summary: event.summary,
-      category: event.category,
-      start_date: event.start_date,
-      end_date: event.end_date,
-      venue: event.venue,
-      status: event.status,
-      metadata: event.metadata,
-      tags: event.tags
-    }))
-  } catch (error) {
+    // Call new secure Family Office endpoint with 30-minute caching
+    const data = await secureApi.get('/api/developments/social-events', true, { enableCache: true, cacheDuration: 1800000 }); // 30 minutes for luxury events
+    
+    // Handle new response format: {events: [...], total_count, user_tier, etc.}
+    if (data.events && Array.isArray(data.events)) {
+      return data.events.map((event: any) => ({
+        id: event.id,
+        name: event.name,
+        date: new Date(event.start_date).toLocaleDateString('en-US', { 
+          month: 'short',
+          day: 'numeric', 
+          year: 'numeric'
+        }),
+        time: new Date(event.start_date).toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: 'numeric'
+        }),
+        location: event.location,
+        attendees: event.attendees || 0,
+        summary: event.summary,
+        category: event.category,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        venue: event.venue,
+        status: event.status,
+        metadata: event.metadata,
+        tags: event.tags
+      }));
+    }
+    
+    return [];
+  } catch (error: any) {
     console.error('Failed to fetch events:', error);
+    
+    // Handle Family Office tier requirement with enhanced error details
+    if (error?.status === 403) {
+      const errorDetail = error.detail || error.error || {};
+      throw {
+        status: 403,
+        detail: {
+          error: errorDetail.error || "Social Hub is exclusively for Family Office members",
+          current_tier: errorDetail.current_tier || "unknown",
+          required_tier: errorDetail.required_tier || "family_office",
+          upgrade_url: errorDetail.upgrade_url || "/subscription/upgrade",
+          feature: errorDetail.feature || "social_events_access"
+        }
+      };
+    }
+    
     throw new Error('Unable to load events. Please try again later.');
   }
 }
@@ -222,56 +267,17 @@ export interface BatchAssetResponse {
   }[];
 }
 
-// Get user ID from multiple sources (localStorage, session, mixpanel)
-function getCurrentUserId(): string | null {
-  if (typeof window !== 'undefined') {
-    // First try SecureStorage (new auth system)
-    try {
-      const { SecureStorage } = require('@/lib/security/encryption');
-      const userId = SecureStorage.getItem('userId');
-      if (userId) {
-        return userId;
-      }
-    } catch (error) {
-      // SecureStorage not available, continue with localStorage
-    }
-    
-    // Then try localStorage (old auth system)
-    let userId = localStorage.getItem('userId');
-    if (userId) {
-      return userId;
-    }
-
-    // Try to get from mixpanel cookie which contains the user_id
-    try {
-      const mixpanelCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('mp_e6df9ca97b553d8a7954cda47f2f6516_mixpanel='));
-      
-      if (mixpanelCookie) {
-        const mixpanelData = JSON.parse(decodeURIComponent(mixpanelCookie.split('=')[1]));
-        if (mixpanelData.$user_id || mixpanelData.distinct_id) {
-          const userId = mixpanelData.$user_id || mixpanelData.distinct_id;
-          // Store it in localStorage for future use
-          localStorage.setItem('userId', userId);
-          return userId;
-        }
-      }
-    } catch (error) {
-      // Ignore cookie parsing errors
-    }
-
-    // No valid user ID found
-    return null;
-  }
-  return null;
-}
+// getCurrentUserId is now imported from secure-api at the top
 
 // Crown Vault Assets API
 export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultAsset[]> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
+      console.error('[CrownVault] No user ID found. Auth state:', {
+        isAuthenticated: isUserAuthenticated(),
+        user: getCurrentUser()
+      });
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     // Call backend API directly for assets using authenticated client with 10-minute caching

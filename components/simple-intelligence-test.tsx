@@ -37,7 +37,6 @@ export function SimpleIntelligenceTest() {
       }
 
       const result = await response.json()
-      console.log('✅ Data received:', result)
       setData(result)
       setError(null)
     } catch (err: any) {

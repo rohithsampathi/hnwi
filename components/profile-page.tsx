@@ -39,7 +39,8 @@ import {
   Users,
   Vault,
   ArrowRight,
-  Plus
+  Plus,
+  CreditCard
 } from "lucide-react"
 import { OnboardingWizard } from "./onboarding-wizard"
 import { useOnboarding } from "@/contexts/onboarding-context"
@@ -53,7 +54,13 @@ import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
 import { processAssetCategories } from "@/lib/category-utils"
 import { secureApi } from "@/lib/secure-api"
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor, getVisibleSubtextColor, getMatteCardStyle, getMetallicCardStyle, getSubtleCardStyle } from "@/lib/colors"
+import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser } from "@/lib/auth-manager"
 import { NotificationPreferences } from "@/components/notifications/notification-preferences"
+import { SubscriptionCard } from "@/components/subscription/subscription-card"
+import { BillingHistory } from "@/components/subscription/billing-history"
+import { PlanUpgradeModal } from "@/components/subscription/plan-upgrade-modal"
+import { BillingManagementModal } from "@/components/billing/billing-management-modal"
+import type { SubscriptionTier } from "@/types/user"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -102,14 +109,141 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   const [vaultStats, setVaultStats] = useState<CrownVaultStats | null>(null)
   const [vaultAssets, setVaultAssets] = useState<CrownVaultAsset[]>([])
   const [vaultLoading, setVaultLoading] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showBillingModal, setShowBillingModal] = useState(false)
+  
+  const getTierDisplayName = (tier: string) => {
+    switch (tier) {
+      case 'family_office':
+        return 'Family Office'
+      case 'professional':
+        return 'Professional'
+      case 'essential':
+        return 'Essential'
+      default:
+        return 'Free'
+    }
+  }
+  const [billingHistory, setBillingHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
-  const fetchVaultStats = useCallback(async () => {
+  // Enhanced billing history fetch with better error handling
+  const fetchBillingHistory = useCallback(async () => {
+    setLoadingHistory(true)
+    try {
+      const response = await secureApi.get('/api/subscriptions/payment-history', true, { 
+        enableCache: true, 
+        cacheDuration: 300000 // 5 minutes cache
+      })
+      
+      if (response && response.success) {
+        // Convert backend format to frontend format
+        const formattedTransactions = (response.payments || []).map((payment: any) => ({
+          id: payment.transaction_id || payment.id,
+          amount: payment.amount, // Keep in original format (INR)
+          currency: payment.currency || 'INR',
+          description: payment.description || 'Subscription Payment',
+          date: payment.date,
+          status: payment.status === 'captured' ? 'success' : payment.status,
+          invoice_url: payment.invoice_url,
+          invoice_number: payment.invoice_number,
+          can_download_invoice: payment.can_download_invoice
+        }))
+        setBillingHistory(formattedTransactions)
+      } else {
+        // Fallback to empty array if no data
+        setBillingHistory([])
+      }
+    } catch (error) {
+      console.error('Error fetching billing history:', error)
+      // Don't show error toast, just use empty array
+      setBillingHistory([])
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [])
+
+  // Enhanced download invoice functionality with generation fallback
+  const handleDownloadInvoice = useCallback(async (transactionId: string) => {
+    try {
+      // Find the payment in billing history
+      const payment = billingHistory.find((p: any) => p.id === transactionId)
+      
+      if (payment && payment.invoice_url && payment.can_download_invoice) {
+        // Direct download available
+        const link = document.createElement('a')
+        link.href = payment.invoice_url
+        link.download = `invoice-${payment.invoice_number || payment.id}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        toast({
+          title: "Download Started",
+          description: "Invoice download has started successfully.",
+        })
+      } else {
+        // Try to generate invoice for this transaction
+        try {
+          toast({
+            title: "Generating Invoice",
+            description: "Generating invoice, please wait...",
+          })
+
+          const response = await secureApi.post('/api/subscriptions/generate-invoice', {
+            transaction_id: transactionId
+          }, true)
+          
+          if (response && response.success) {
+            toast({
+              title: "Invoice Generated!",
+              description: "Invoice has been generated. Please refresh to download.",
+            })
+            
+            // Refresh billing history to get updated invoice links
+            await fetchBillingHistory()
+          } else {
+            toast({
+              title: "Invoice Not Available",
+              description: "Invoice is not available for this transaction.",
+              variant: "destructive"
+            })
+          }
+        } catch (generateError) {
+          console.error('Error generating invoice:', generateError)
+          toast({
+            title: "Invoice Not Available", 
+            description: "Unable to generate invoice for this transaction.",
+            variant: "destructive"
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error downloading invoice:', error)
+      toast({
+        title: "Download Failed",
+        description: "Failed to download invoice. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }, [billingHistory, toast, fetchBillingHistory])
+
+  const fetchVaultStats = useCallback(async (userIdParam?: string) => {
     try {
       setVaultLoading(true)
-      // Fetch both stats and assets like Crown Vault page does
+      // Get the user ID from parameter or state
+      const authUser = getCurrentUser()
+      const userIdToUse = userIdParam || userId || authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
+      
+      if (!userIdToUse) {
+        console.error('No user ID available for Crown Vault')
+        return
+      }
+      
+      // Fetch both stats and assets like Crown Vault page does, passing the userId
       const [stats, assets] = await Promise.all([
-        getCrownVaultStats(),
-        getCrownVaultAssets()
+        getCrownVaultStats(userIdToUse),
+        getCrownVaultAssets(userIdToUse)
       ])
       setVaultStats(stats)
       setVaultAssets(assets)
@@ -119,7 +253,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
     } finally {
       setVaultLoading(false)
     }
-  }, [])
+  }, [userId])
 
   // Data processing functions like Crown Vault page
   const getTotalValue = () => {
@@ -177,24 +311,26 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
   useEffect(() => {
     // First check if user data already has the correct ID
     if (user && (user.user_id || user._id)) {
-      const userApiId = user.user_id || user._id
-      // Store the user ID from the API
-      localStorage.setItem("userId", userApiId)
+      const userApiId = user.user_id || user._id || user.id
+      // Store the user ID from the API using centralized auth
+      updateAuthUser({ ...user, userId: userApiId, user_id: userApiId, id: userApiId })
       setUserId(userApiId)
       fetchUserData(userApiId)
-      fetchVaultStats() // Fetch Crown Vault stats
+      fetchVaultStats(userApiId) // Fetch Crown Vault stats with userId
+      fetchBillingHistory() // Fetch billing history
     } else {
       // Fallback to stored ID if available
-      const storedUserId = localStorage.getItem("userId")
+      const storedUserId = getCurrentUserId()
       if (storedUserId) {
         setUserId(storedUserId)
         fetchUserData(storedUserId)
-        fetchVaultStats() // Fetch Crown Vault stats
+        fetchVaultStats(storedUserId) // Fetch Crown Vault stats with userId
+        fetchBillingHistory() // Fetch billing history
       } else {
         setIsLoading(false)
       }
     }
-  }, [fetchUserData, fetchVaultStats, user])
+  }, [fetchUserData, fetchVaultStats, fetchBillingHistory, user])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditedUser({ ...editedUser, [e.target.name]: e.target.value })
@@ -295,8 +431,8 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       };
       
       
-      // Update local storage with the latest user object
-      localStorage.setItem("userObject", JSON.stringify(mergedUser));
+      // Update centralized auth with the latest user object
+      updateAuthUser(mergedUser);
       
       // Call the update handler with updated user
       onUpdateUser(mergedUser);
@@ -677,6 +813,16 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     >
                       Preferences
                     </button>
+                    <button
+                      onClick={() => setActiveTab('subscription')}
+                      className={`px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-300 ${
+                        activeTab === 'subscription'
+                          ? 'bg-primary text-white shadow-lg'
+                          : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
+                      }`}
+                    >
+                      Subscription
+                    </button>
                   </div>
                 </div>
 
@@ -959,6 +1105,35 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                     </div>
                   )}
 
+                  {activeTab === 'subscription' && (
+                    <div className="space-y-6">
+                      {/* Subscription Overview */}
+                      <SubscriptionCard
+                        subscription={editedUser.subscription || {
+                          tier: (editedUser.tier || editedUser.subscription_tier || 'family_office') as SubscriptionTier,
+                          status: 'active',
+                          auto_renew: true,
+                          billing_cycle: 'monthly'
+                        }}
+                        onUpgrade={() => setShowUpgradeModal(true)}
+                        onManage={() => setShowBillingModal(true)}
+                        onCancel={() => {
+                          toast({
+                            title: "Cancel Subscription",
+                            description: "Please contact support to cancel your subscription.",
+                          })
+                        }}
+                      />
+                      
+                      {/* Billing History */}
+                      <BillingHistory
+                        transactions={billingHistory}
+                        onDownloadInvoice={handleDownloadInvoice}
+                      />
+                      
+                    </div>
+                  )}
+
                   {activeTab === 'preferences' && (
                     <div className="space-y-6">
                   {/* Investment Preferences */}
@@ -1013,6 +1188,58 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
           isOpen={isChangePasswordOpen}
           onClose={() => setIsChangePasswordOpen(false)}
           userId={editedUser.user_id}
+        />
+        
+        {/* Plan Upgrade Modal */}
+        <PlanUpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          currentTier={editedUser.subscription?.tier || editedUser.tier || editedUser.subscription_tier || 'family_office'}
+          onSuccess={(tier, billingCycle) => {
+            // Update user subscription in state
+            const updatedUser = {
+              ...editedUser,
+              subscription: {
+                ...editedUser.subscription,
+                tier,
+                status: 'active' as const,
+                billing_cycle: billingCycle,
+                auto_renew: true,
+                next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              }
+            }
+            setEditedUser(updatedUser)
+            onUpdateUser(updatedUser)
+            
+            // Add mock transaction
+            const getPlanAmount = () => {
+              const amounts = {
+                essential: { monthly: 9900, yearly: 99000 },
+                professional: { monthly: 29900, yearly: 299000 },
+                family_office: { monthly: 59900, yearly: 599000 }
+              }
+              return amounts[tier as keyof typeof amounts]?.[billingCycle] || 0
+            }
+            
+            const getPlanName = () => {
+              return tier === 'family_office' ? 'Family Office' : tier.charAt(0).toUpperCase() + tier.slice(1)
+            }
+            
+            // Refresh billing history after successful upgrade
+            fetchBillingHistory()
+            
+            toast({
+              title: "Subscription Updated",
+              description: `Successfully upgraded to ${tier} plan!`,
+            })
+          }}
+        />
+
+        {/* Billing Management Modal */}
+        <BillingManagementModal
+          isOpen={showBillingModal}
+          onClose={() => setShowBillingModal(false)}
+          user={editedUser}
         />
       </div>
     </>

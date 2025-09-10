@@ -3,6 +3,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PremiumBadge } from "@/components/ui/premium-badge"
@@ -69,8 +70,15 @@ export function SocialHub() {
         const fetchedEvents = await getEvents()
         setEvents(fetchedEvents)
         setError(null)
-      } catch (err) {
-        setError("Failed to load events")
+      } catch (err: any) {
+        console.error('Failed to fetch events:', err);
+        
+        // Handle Family Office tier requirement
+        if (err?.status === 403 && err?.detail) {
+          setError(`Family Office Access Required: ${err.detail.error}`);
+        } else {
+          setError("Failed to load events");
+        }
       } finally {
         setLoading(false)
       }
@@ -83,8 +91,10 @@ export function SocialHub() {
     setIsProcessing(true)
     setSelectedEvent(event)
     
-    const userId = user?.id || localStorage.getItem("userId") || ""
-    const userEmail = user?.email || localStorage.getItem("userEmail") || ""
+    // Use centralized auth manager
+    const authUser = getCurrentUser()
+    const userId = user?.id || authUser?.userId || getCurrentUserId() || ""
+    const userEmail = user?.email || authUser?.email || ""
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
     
     try {

@@ -22,6 +22,7 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    optimizeCss: true,
   },
   
   // Suppress development warnings
@@ -40,7 +41,25 @@ const nextConfig = {
       config.ignoreWarnings = [
         /Critical dependency: the request of a dependency is an expression/,
         /webpack\/lib\/cache\/PackFileCacheStrategy/,
+        /was preloaded using link preload but not used/,
       ]
+      
+      // Optimize CSS preloading in development
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks?.cacheGroups,
+            styles: {
+              name: 'styles',
+              type: 'css/mini-extract',
+              chunks: 'all',
+              enforce: true,
+            },
+          },
+        },
+      }
     }
     return config
   },

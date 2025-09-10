@@ -117,6 +117,13 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
            errorMessage.includes('please log in') || 
            error?.status === 401;
   };
+  
+  // Helper function to detect permission errors
+  const isPermissionError = (error: any): boolean => {
+    return error?.status === 403 || 
+           (error?.message && error.message.includes('403')) ||
+           (error?.message && error.message.includes('Forbidden'));
+  };
 
   // Processing phases for asset upload
   const processingPhases = [
@@ -140,9 +147,10 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
         if (!isMounted) return;
         
-        // Check for authentication errors
+        // Check for authentication and permission errors
         const failedResults = [assetsData, statsData, heirsData].filter(result => result.status === 'rejected');
         const hasAuthErrors = failedResults.some(result => isAuthenticationError(result.reason));
+        const hasPermissionErrors = failedResults.some(result => isPermissionError(result.reason));
         
         if (hasAuthErrors && failedResults.length > 0) {
           // Show auth popup instead of console errors
@@ -157,6 +165,16 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
             }
           });
           return;
+        }
+        
+        if (hasPermissionErrors && failedResults.length > 0) {
+          // Show permission error message
+          toast({
+            title: "Premium Feature",
+            description: "Crown Vault requires a premium subscription. Please upgrade your account to access this feature.",
+            variant: "destructive"
+          });
+          // Don't return - show the page with empty data
         }
         
         // Handle successful data loading

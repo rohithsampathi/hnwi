@@ -6,9 +6,11 @@ export interface User {
   lastName?: string
   first_name?: string
   last_name?: string
+  name?: string
   email: string
   id?: string
   user_id?: string
+  userId?: string
 }
 
 export interface HomeDashboardEliteProps {

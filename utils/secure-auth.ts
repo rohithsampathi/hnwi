@@ -82,9 +82,7 @@ class SecureAuthManager {
       throw new Error("Invalid credentials");
     }
 
-    // Hash password before sending to server
-    const hashedPassword = AES256Encryption.hash(password, { algorithm: "sha512" });
-
+    // Send plain password to backend (backend handles hashing)
     try {
       // Make secure API call
       const response = await SecureAPIClient.secureRequest("/api/auth/login", {
@@ -94,7 +92,7 @@ class SecureAuthManager {
         },
         body: JSON.stringify({
           email: sanitizedEmail,
-          password: hashedPassword
+          password: password
         })
       });
 

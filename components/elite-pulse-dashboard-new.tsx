@@ -53,20 +53,9 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
   const isLoading = useIntelligenceLoading()
   const error = useIntelligenceError()
 
-  // Debug Crown Vault data
-  console.log('🏰 Elite Pulse Dashboard New - COMPONENT IS RENDERING')
-  console.log('🏰 Elite Pulse Dashboard New - Crown Vault Debug:', {
-    crownVaultImpact,
-    hasCrownVaultImpact: !!crownVaultImpact,
-    crownVaultKeys: crownVaultImpact ? Object.keys(crownVaultImpact) : [],
-    executiveSummary: crownVaultImpact?.executive_summary,
-    state: state
-  })
 
   // Show raw ruscha intelligence data
   const ruschaData = (state?.intelligence?.dashboard?.intelligence as any)?.ruscha_intelligence?.data
-  console.log('🔍 RAW RUSCHA INTELLIGENCE DATA (Elite Pulse Dashboard New):', ruschaData)
-  console.log('🔍 FULL INTELLIGENCE OBJECT:', state?.intelligence?.dashboard?.intelligence)
 
   // UI State
   const [activeSection, setActiveSection] = useState('overview')
@@ -93,22 +82,6 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
   // Debug logging
   useEffect(() => {
     const effectiveUser = userData || user;
-    console.log('🎯 Elite Pulse Dashboard New: Component state:', {
-      hasUserData: !!userData,
-      hasAuthUser: !!user,
-      effectiveUser: effectiveUser,
-      userId: effectiveUser?.user_id || effectiveUser?.id || 'NO_USER_ID',
-      userKeys: effectiveUser ? Object.keys(effectiveUser) : [],
-      hasElitePulseData: !!elitePulseData,
-      elitePulseData: elitePulseData ? 'DATA_AVAILABLE' : 'NO_DATA',
-      isLoading,
-      error,
-      intelligenceState: {
-        hasDashboard: !!state.intelligence.dashboard,
-        lastUpdated: state.intelligence.lastUpdated,
-        updateCount: state.intelligence.updateCount
-      }
-    });
   }, [userData, user, elitePulseData, isLoading, error, state.intelligence])
 
   // Manual fetch with userData
@@ -116,11 +89,6 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
     const effectiveUser = userData || user;
     const userId = effectiveUser?.user_id || effectiveUser?.id;
     
-    console.log('🎯 Manual fetch triggered with user:', {
-      effectiveUser,
-      userId,
-      hasUserId: !!userId
-    });
     
     if (userId) {
       // Use the hook that was called at component level

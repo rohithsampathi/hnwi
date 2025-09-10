@@ -263,6 +263,21 @@ export class ApiAuth {
   }
 
   /**
+   * Legacy method name - alias for validateRequest
+   */
+  static async verifyRequest(
+    request: NextRequest,
+    options: ApiAuthOptions = {}
+  ): Promise<{
+    success: boolean;
+    user?: { id: string; email: string; role: string };
+    error?: string;
+    status?: number;
+  }> {
+    return this.validateRequest(request, options);
+  }
+
+  /**
    * Security headers for API responses
    */
   static addSecurityHeaders(response: NextResponse): NextResponse {

@@ -36,7 +36,10 @@ export function EliteFooter({ user }: EliteFooterProps) {
         ))}
       </div>
       <div className="text-xs text-muted-foreground">
-        Generated for: <span className="font-medium">{user?.firstName || 'User'} {user?.lastName || ''}</span>
+        Generated for: <span className="font-medium">
+          {user?.firstName || user?.first_name || user?.name || user?.email?.split('@')[0] || 'User'}
+          {user?.lastName || user?.last_name ? ` ${user?.lastName || user?.last_name}` : ''}
+        </span>
       </div>
     </motion.div>
   )

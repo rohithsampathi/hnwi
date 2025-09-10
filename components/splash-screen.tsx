@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { motion } from "framer-motion"
+import { loginUser, debugAuth } from "@/lib/auth-manager"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +39,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   const [showMfa, setShowMfa] = useState(false)
   const [mfaToken, setMfaToken] = useState<string | null>(null)
   const [isResending, setIsResending] = useState(false)
+  const [rememberDevice, setRememberDevice] = useState(false)
 
   const handleCreateAccount = () => {
     setShowOnboarding(true)
@@ -146,32 +148,52 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             localStorage.setItem('token', result.access_token)
           }
           
-          const userData = {
-            userId: result.user?.id,
-            email: result.user?.email,
-            firstName: result.user?.firstName || result.user?.name?.split(' ')[0] || "User",
-            lastName: result.user?.lastName || (result.user?.name?.split(' ').slice(1).join(' ') || ""),
-            profile: result.user?.profile || {},
-            token: result.access_token || ""
-          }
-
-          // CRITICAL: Store userId and userObject for authenticated layout checks
-          if (result.user?.id) {
-            localStorage.setItem('userId', result.user.id)
-          }
-          if (userData) {
-            localStorage.setItem('userObject', JSON.stringify(userData))
+          // Use AuthManager to handle user login and normalization
+          const normalizedUser = loginUser(result.user, result.access_token)
+          
+          if (!normalizedUser) {
+            console.error('Failed to normalize user data')
+            setError('Authentication failed. Please try again.')
+            return
           }
           
-          toast({
-            title: "Login Successful",
-            description: `Welcome back, ${userData.firstName}!`,
-          })
+          // Handle device trust if checkbox was checked
+          if (rememberDevice) {
+            try {
+              // Import device trust function
+              const { trustCurrentDevice } = await import("@/lib/device-trust")
+              const trustSuccess = trustCurrentDevice()
+              if (trustSuccess) {
+                toast({
+                  title: "Login Successful",
+                  description: `Welcome back, ${normalizedUser.firstName}! Device trusted for 7 days.`,
+                })
+              } else {
+                toast({
+                  title: "Login Successful", 
+                  description: `Welcome back, ${normalizedUser.firstName}!`,
+                })
+              }
+            } catch (error) {
+              console.error('Device trust error:', error)
+              toast({
+                title: "Login Successful",
+                description: `Welcome back, ${normalizedUser.firstName}!`,
+              })
+            }
+          } else {
+            toast({
+              title: "Login Successful",
+              description: `Welcome back, ${normalizedUser.firstName}!`,
+            })
+          }
+          
+          debugAuth()
           
           handleClose()
           
           if (onLoginSuccess) {
-            onLoginSuccess(userData)
+            onLoginSuccess(normalizedUser)
           }
           
           resetOnboarding()
@@ -185,7 +207,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         setIsLoading(false)
       }
     },
-    [email, password, isLoading, toast]
+    [email, password, isLoading, toast, rememberDevice]
   )
 
   const handleMfaSubmit = async (code: string) => {
@@ -215,34 +237,54 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           localStorage.setItem('token', result.access_token)
         }
         
-        const userData = {
-          userId: result.user?.id,
-          email: result.user?.email,
-          firstName: result.user?.firstName || result.user?.name?.split(' ')[0] || "User",
-          lastName: result.user?.lastName || (result.user?.name?.split(' ').slice(1).join(' ') || ""),
-          profile: result.user?.profile || {},
-          token: result.access_token || ""
-        }
-
-        // CRITICAL: Store userId and userObject for authenticated layout checks
-        if (result.user?.id) {
-          localStorage.setItem('userId', result.user.id)
-        }
-        if (userData) {
-          localStorage.setItem('userObject', JSON.stringify(userData))
+        // Use AuthManager to handle user login and normalization
+        const normalizedUser = loginUser(result.user, result.access_token)
+        
+        if (!normalizedUser) {
+          console.error('Failed to normalize user data after MFA')
+          setError('Authentication failed. Please try again.')
+          return
         }
         
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${userData.firstName}!`,
-        })
+        // Handle device trust if checkbox was checked
+        if (rememberDevice) {
+          try {
+            // Import device trust function
+            const { trustCurrentDevice } = await import("@/lib/device-trust")
+            const trustSuccess = trustCurrentDevice()
+            if (trustSuccess) {
+              toast({
+                title: "Login Successful",
+                description: `Welcome back, ${normalizedUser.firstName}! Device trusted for 7 days.`,
+              })
+            } else {
+              toast({
+                title: "Login Successful", 
+                description: `Welcome back, ${normalizedUser.firstName}!`,
+              })
+            }
+          } catch (error) {
+            console.error('Device trust error:', error)
+            toast({
+              title: "Login Successful",
+              description: `Welcome back, ${normalizedUser.firstName}!`,
+            })
+          }
+        } else {
+          toast({
+            title: "Login Successful",
+            description: `Welcome back, ${normalizedUser.firstName}!`,
+          })
+        }
+        
+        debugAuth()
         
         // Reset form
         handleClose()
         
         // Call success callback
         if (onLoginSuccess) {
-          onLoginSuccess(userData)
+          onLoginSuccess(normalizedUser)
         }
         
         resetOnboarding()
@@ -300,6 +342,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     setShowMfa(false)
     setMfaToken(null)
     setIsResending(false)
+    setRememberDevice(false)
   }
 
   if (showOnboarding) {
@@ -572,6 +615,27 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                           <Eye className="h-5 w-5 text-muted-foreground" />
                         )}
                       </button>
+                    </div>
+
+                    {/* Simple Remember Device Checkbox */}
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        id="rememberDevice"
+                        checked={rememberDevice}
+                        onChange={(e) => setRememberDevice(e.target.checked)}
+                        disabled={isLoading}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        style={{ 
+                          accentColor: theme === 'dark' ? 'hsl(43 74% 49%)' : 'hsl(0 0% 0%)'
+                        }}
+                      />
+                      <label 
+                        htmlFor="rememberDevice"
+                        className="text-sm text-muted-foreground cursor-pointer select-none"
+                      >
+                        Remember this device for 7 days
+                      </label>
                     </div>
 
                     {error && <p className="text-red-500 text-sm text-center">{error}</p>}

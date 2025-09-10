@@ -30,6 +30,7 @@ import CrownVaultPage from "./pages/crown-vault-page"
 import { handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 import { setupLegacyNavigation, useNewNavigation } from "@/lib/unified-navigation"
+import { getCurrentUser, getCurrentUserId, getAuthToken, updateUser as updateAuthUser, loginUser as authManagerLogin } from "@/lib/auth-manager"
 
 // LoginPage is now consolidated into SplashScreen
 
@@ -95,15 +96,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           return;
         }
         
-        // PRIORITY 1: Check localStorage for immediate session restoration (prevents race conditions)
+        // PRIORITY 1: Check centralized auth for immediate session restoration (prevents race conditions)
         if (!user) {
-          const storedUserId = localStorage.getItem("userId");
-          const storedToken = localStorage.getItem("token");
-          const storedUserObject = localStorage.getItem("userObject");
+          const authUser = getCurrentUser();
+          const storedUserId = authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId();
+          const storedToken = getAuthToken();
           
-          if (storedUserId && storedToken && storedUserObject) {
+          if (storedUserId && storedToken && authUser) {
             try {
-              const userObj = JSON.parse(storedUserObject);
+              const userObj = authUser;
               // Immediately restore user state to prevent navigation issues
               if (isMounted && userObj.id) {
                 setUser(userObj);
@@ -116,7 +117,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               }
             } catch (e) {
               // Invalid stored user object, continue to server validation
-              localStorage.removeItem("userObject");
+              // Auth manager will handle cleanup
             }
           }
         }
@@ -146,14 +147,12 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               
               setUser(userObj);
 
-              // Store the token for API calls if provided
+              // Store auth data using centralized auth manager
               if (data.token) {
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("userId", userObj.user_id || userObj.id);
+                authManagerLogin(userObj, data.token);
+              } else {
+                updateAuthUser(userObj);
               }
-              
-              // Store complete user object for immediate restoration
-              localStorage.setItem("userObject", JSON.stringify(userObj));
   
               // SECURITY: Store only non-sensitive display data in sessionStorage
               sessionStorage.setItem("userDisplay", JSON.stringify({
@@ -165,9 +164,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
             } else {
               setUser(null);
               sessionStorage.removeItem("userDisplay");
-              localStorage.removeItem("token");
-              localStorage.removeItem("userId");
-              localStorage.removeItem("userObject");
+              // Auth manager handles cleanup
+              handleLogout();
             }
             
             setHasCheckedSession(true);

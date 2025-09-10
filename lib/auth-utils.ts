@@ -1,6 +1,14 @@
 // lib/auth-utils.ts - Enhanced authentication utility functions with session state management
+// Layer 4: Auth Utilities - Uses ONLY auth-manager (no circular deps)
 
 import DeviceTrustManager from './device-trust';
+import { 
+  getCurrentUser as getAuthManagerUser, 
+  getCurrentUserId as getAuthManagerUserId, 
+  getAuthToken as getAuthManagerToken,
+  isAuthenticated as isAuthManagerAuthenticated,
+  authManager
+} from '@/lib/auth-manager';
 
 // Session states for smart inactivity management
 export enum SessionState {
@@ -28,7 +36,10 @@ export const isTokenValid = (token: string | null): boolean => {
   
   try {
     // Decode JWT payload (second part of token)
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    
+    const payload = JSON.parse(atob(parts[1]));
     
     // Check if token has expired
     if (payload.exp && payload.exp * 1000 < Date.now()) {
@@ -44,16 +55,19 @@ export const isTokenValid = (token: string | null): boolean => {
 export const getValidToken = (): string | null => {
   if (typeof window === 'undefined') return null;
   
-  const token = localStorage.getItem('token');
+  // Use auth manager to get token
+  const token = getAuthManagerToken();
   return isTokenValid(token) ? token : null;
 };
 
 export const clearInvalidToken = (): void => {
   if (typeof window === 'undefined') return;
   
-  const token = localStorage.getItem('token');
+  // Use auth manager to check token
+  const token = getAuthManagerToken();
   if (token && !isTokenValid(token)) {
-    localStorage.removeItem('token');
+    // Token is invalid, use auth manager to logout
+    authManager.logout();
   }
 };
 
@@ -173,13 +187,13 @@ export const isSessionLocked = (): boolean => {
   return getSessionState() === SessionState.LOCKED_INACTIVE;
 };
 
-// Legacy function - now considers locked state as authenticated for token purposes
+// Legacy function - now uses auth manager for authentication check
 export const isAuthenticated = (): boolean => {
   try {
-    const state = getSessionState();
-    return state === SessionState.AUTHENTICATED || state === SessionState.LOCKED_INACTIVE;
+    // Use auth manager's authentication check
+    return isAuthManagerAuthenticated();
   } catch (error) {
-    // If session state checking fails, fall back to simple token check
+    // If checking fails, fall back to token validation
     try {
       return !!getValidToken();
     } catch {
@@ -267,7 +281,7 @@ export const canAccessFeaturesWithFallback = (): boolean => {
 // Device Trust Integration
 export const isDeviceTrusted = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const userId = localStorage.getItem('userId');
+  const userId = getAuthManagerUserId();
   if (!userId) return false;
   
   return DeviceTrustManager.isDeviceTrusted(userId);
@@ -275,7 +289,7 @@ export const isDeviceTrusted = (): boolean => {
 
 export const trustCurrentDevice = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const userId = localStorage.getItem('userId');
+  const userId = getAuthManagerUserId();
   if (!userId) return false;
   
   try {
@@ -288,7 +302,7 @@ export const trustCurrentDevice = (): boolean => {
 
 export const shouldSkip2FA = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const userId = localStorage.getItem('userId');
+  const userId = getAuthManagerUserId();
   if (!userId) return false;
   
   return DeviceTrustManager.shouldSkip2FA(userId);
@@ -296,7 +310,7 @@ export const shouldSkip2FA = (): boolean => {
 
 export const getDeviceTrustInfo = (): { isTrusted: boolean; timeRemaining: string } => {
   if (typeof window === 'undefined') return { isTrusted: false, timeRemaining: '' };
-  const userId = localStorage.getItem('userId');
+  const userId = getAuthManagerUserId();
   if (!userId) return { isTrusted: false, timeRemaining: '' };
   
   return {
@@ -322,12 +336,12 @@ export const isAuthenticatedWithDeviceTrust = (): {
   };
 };
 
-// Get current user from localStorage or session
+// Get current user from centralized auth manager
 export const getCurrentUser = (): { userId: string; token: string } | null => {
   if (typeof window === 'undefined') return null;
   
   const token = getValidToken();
-  const userId = localStorage.getItem('userId');
+  const userId = getAuthManagerUserId();
   
   if (!token || !userId) {
     return null;
@@ -336,16 +350,9 @@ export const getCurrentUser = (): { userId: string; token: string } | null => {
   return { userId, token };
 };
 
-// Get user object from localStorage  
+// Get user object from centralized auth manager
 export const getCurrentUserObject = (): any | null => {
   if (typeof window === 'undefined') return null;
   
-  const userObjectStr = localStorage.getItem('userObject');
-  if (!userObjectStr) return null;
-  
-  try {
-    return JSON.parse(userObjectStr);
-  } catch (error) {
-    return null;
-  }
+  return getAuthManagerUser();
 };

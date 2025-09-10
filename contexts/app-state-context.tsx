@@ -5,6 +5,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from "react"
 import DeviceTrustManager from "@/lib/device-trust"
 import { SessionState, getSessionState } from "@/lib/auth-utils"
+import { getCurrentUser, getCurrentUserId, getAuthToken, updateUser as updateAuthUser, logoutUser } from "@/lib/auth-manager"
 
 // ================== TYPES ==================
 
@@ -286,16 +287,16 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
           else if (path.includes('/profile')) targetPage = 'profile'
         }
 
-        // Check persisted session
-        const storedUserId = localStorage.getItem("userId")
-        const storedToken = localStorage.getItem("token")  
-        const storedUserObject = localStorage.getItem("userObject")
+        // Check persisted session using centralized auth
+        const authUser = getCurrentUser()
+        const storedUserId = authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
+        const storedToken = getAuthToken()
         
-        let user: User | null = null
+        let user: User | null = authUser
         
-        if (storedUserId && storedToken && storedUserObject) {
+        if (storedUserId && storedToken && authUser) {
           try {
-            user = JSON.parse(storedUserObject)
+            user = authUser
             
             // Update device trust status
             const deviceTrusted = DeviceTrustManager.isDeviceTrusted(storedUserId)
@@ -307,7 +308,8 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
             }
           } catch (e) {
             // Invalid stored user data
-            localStorage.removeItem("userObject")
+            // Auth manager will handle cleanup
+            logoutUser()
           }
         }
         
@@ -346,11 +348,9 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
       const data = await response.json()
       
       if (!data.user) {
-        // Session expired
+        // Session expired - use centralized logout
         dispatch({ type: 'SET_USER', payload: null })
-        localStorage.removeItem("token")
-        localStorage.removeItem("userId") 
-        localStorage.removeItem("userObject")
+        logoutUser()
         sessionStorage.removeItem("userDisplay")
       }
     } catch (error) {
@@ -405,10 +405,8 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
     dispatch({ type: 'SET_USER', payload: user })
     
     if (user) {
-      // Store user data
-      localStorage.setItem("userId", user.user_id || user.id)
-      localStorage.setItem("userEmail", user.email)
-      localStorage.setItem("userObject", JSON.stringify(user))
+      // Store user data using centralized auth
+      updateAuthUser(user)
       
       // Update device trust
       const deviceTrusted = DeviceTrustManager.isDeviceTrusted(user.user_id || user.id)
@@ -436,7 +434,7 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
   }, [])
 
   const trustDevice = useCallback(() => {
-    const userId = localStorage.getItem("userId")
+    const userId = getCurrentUserId()
     if (userId) {
       const success = DeviceTrustManager.trustDevice(userId)
       dispatch({ type: 'TRUST_DEVICE', payload: success })

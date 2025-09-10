@@ -7,6 +7,7 @@ import { validateInput, loginSchema } from '@/lib/validation'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
 import { secureApi } from '@/lib/secure-api'
+import { SessionEncryption } from '@/lib/session-encryption'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,30 +25,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TEMPORARILY DISABLED - Apply login rate limiting
-    // const rateLimitResult = await RateLimiter.checkLimit(request, 'LOGIN');
-    // if (!rateLimitResult.allowed) {
-    //   logger.warn("Login rate limit exceeded", {
-    //     ip: ApiAuth.getClientIP(request),
-    //     attempts: rateLimitResult.totalHits,
-    //     userAgent: request.headers.get('user-agent')
-    //   });
-    //   
-    //   // Block IP after 3 consecutive rate limit violations
-    //   if (rateLimitResult.totalHits > 8) {
-    //     RateLimiter.blockIP(ApiAuth.getClientIP(request), 30 * 60 * 1000); // 30 minutes
-    //   }
-    //   
-    //   const response = NextResponse.json(
-    //     { success: false, error: 'Too many login attempts' },
-    //     { status: 429 }
-    //   );
-    //   
-    //   // Add rate limit headers
-    //   response.headers.set('Retry-After', Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString());
-    //   return ApiAuth.addSecurityHeaders(response);
-    // }
-    const rateLimitResult = { remainingRequests: 999 }; // Mock for testing
+    // SECURITY: Production rate limiting (disabled only in development)
+    let rateLimitResult;
+    if (process.env.NODE_ENV === 'production') {
+      rateLimitResult = await RateLimiter.checkLimit(request, 'LOGIN');
+      if (!rateLimitResult.allowed) {
+        logger.warn("Login rate limit exceeded", {
+          ip: ApiAuth.getClientIP(request),
+          attempts: rateLimitResult.totalHits,
+          userAgent: request.headers.get('user-agent')
+        });
+        
+        // Block IP after 8 consecutive rate limit violations
+        if (rateLimitResult.totalHits > 8) {
+          RateLimiter.blockIP(ApiAuth.getClientIP(request), 30 * 60 * 1000); // 30 minutes
+        }
+        
+        const response = NextResponse.json(
+          { success: false, error: 'Too many login attempts' },
+          { status: 429 }
+        );
+        
+        // Add rate limit headers
+        response.headers.set('Retry-After', Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString());
+        return ApiAuth.addSecurityHeaders(response);
+      }
+    } else {
+      // Development mode - relaxed rate limiting for testing
+      rateLimitResult = { remainingRequests: 999 };
+    }
 
     // Validate request size
     if (!ApiAuth.validateRequestSize(request)) {
@@ -173,11 +179,10 @@ export async function POST(request: NextRequest) {
           
           return ApiAuth.addSecurityHeaders(response);
         }
-        // Generate frontend session token
-        const frontendToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-          .map(b => b.toString(16).padStart(2, '0')).join('');
+        // SECURITY: Generate secure frontend session token
+        const frontendToken = SessionEncryption.generateSecureToken();
 
-        // Create proxy session storing backend data
+        // SECURITY: Create encrypted MFA session
         if (!global.mfaSessions) {
           global.mfaSessions = new Map();
         }
@@ -191,11 +196,19 @@ export async function POST(request: NextRequest) {
           attempts: 0
         };
 
-        global.mfaSessions.set(frontendToken, proxySession);
+        // SECURITY: Encrypt session data before storing
+        const encryptedSession = SessionEncryption.encrypt(proxySession);
+        global.mfaSessions.set(frontendToken, encryptedSession);
 
-        // Clean up expired sessions
-        for (const [key, session] of global.mfaSessions.entries()) {
-          if (session.expiresAt < Date.now()) {
+        // SECURITY: Clean up expired encrypted sessions
+        for (const [key, encryptedSessionData] of global.mfaSessions.entries()) {
+          try {
+            const session = SessionEncryption.decrypt(encryptedSessionData);
+            if (session.expiresAt < Date.now()) {
+              global.mfaSessions.delete(key);
+            }
+          } catch (error) {
+            // Remove corrupted/invalid encrypted sessions
             global.mfaSessions.delete(key);
           }
         }

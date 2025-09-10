@@ -4,6 +4,7 @@ import { logger } from "@/lib/secure-logger"
 import { cookies } from "next/headers"
 import { SignJWT } from "jose"
 import { secureApi } from "@/lib/secure-api"
+import { SessionEncryption } from "@/lib/session-encryption"
 
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET
@@ -70,7 +71,27 @@ export async function POST(request: NextRequest) {
         global.mfaSessions = new Map()
       }
 
-      const proxySession = global.mfaSessions.get(mfa_token)
+      // SECURITY: Decrypt the encrypted session
+      const encryptedSession = global.mfaSessions.get(mfa_token)
+      let proxySession;
+      
+      try {
+        proxySession = encryptedSession ? SessionEncryption.decrypt(encryptedSession) : null;
+      } catch (error) {
+        logger.warn('MFA verification failed - session decryption failed', {
+          frontendToken: mfa_token.substring(0, 8) + "...",
+          email,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        
+        // Remove corrupted session
+        global.mfaSessions.delete(mfa_token);
+        
+        return NextResponse.json(
+          { success: false, error: "Invalid or expired session. Please try logging in again." },
+          { status: 401 }
+        )
+      }
       
       logger.info('MFA verification debug', {
         providedFrontendToken: mfa_token.substring(0, 8) + "...",

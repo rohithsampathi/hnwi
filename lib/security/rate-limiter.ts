@@ -128,10 +128,10 @@ export class RateLimiters {
       maxRequests: 3
     });
 
-    // Data access: 1000 per hour
+    // Data access: 200 per hour (sufficient for normal usage)
     RateLimiter.getInstance(RateLimiters.DATA_ACCESS, {
       windowMs: 60 * 60 * 1000,
-      maxRequests: 1000
+      maxRequests: 200
     });
 
     // File upload: 10 per hour

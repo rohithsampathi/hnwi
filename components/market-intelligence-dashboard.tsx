@@ -74,7 +74,8 @@ const timeRanges = [
   { value: '14d', label: '14D' },
   { value: '21d', label: '21D' },
   { value: '1m', label: '1M' },
-  { value: '3m', label: '3M' }
+  { value: '3m', label: '3M' },
+  { value: '6m', label: '6M' }
 ]
 
 // Client-side date filtering helper (same as development-stream.tsx)
@@ -103,6 +104,9 @@ const applyClientSideDateFilter = (items: any[], timeRange: string): any[] => {
       break;
     case '3m':
       cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    case '6m':
+      cutoffDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
       break;
     default:
       return items;
@@ -349,6 +353,9 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           break;
         case '90d':
           timeframe = '3m';
+          break;
+        case '6m':
+          timeframe = '6m';
           break;
         default:
           timeframe = selectedTimeRange;

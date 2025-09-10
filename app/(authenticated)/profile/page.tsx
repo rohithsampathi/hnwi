@@ -7,24 +7,26 @@ import { useState, useEffect } from "react"
 import { ProfilePage } from "@/components/profile-page"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { BackButton } from "@/components/ui/back-button"
+import { getCurrentUser, updateUser, logoutUser } from "@/lib/auth-manager"
 
 export default function ProfileRoute() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  // Use AuthManager to get current user
+  const [user, setUser] = useState<any>(() => getCurrentUser())
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Get user from localStorage or API
-    const storedUser = localStorage.getItem("userObject")
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser)
-        setUser(parsedUser)
-      } catch (error) {
-        // Handle error silently
+    // If no user, try to get from AuthManager
+    if (!user) {
+      const currentUser = getCurrentUser()
+      if (currentUser) {
+        setUser(currentUser)
+      } else {
+        // No user found, redirect to login
+        console.error('[Profile] No authenticated user found')
+        router.push("/")
       }
     }
-    setLoading(false)
   }, [])
 
   const handleNavigation = (route: string) => {
@@ -54,15 +56,17 @@ export default function ProfileRoute() {
     }
   }
 
-  const handleUpdateUser = (updatedUser: any) => {
-    setUser(updatedUser)
-    localStorage.setItem("userObject", JSON.stringify(updatedUser))
+  const handleUpdateUser = (updatedUserData: any) => {
+    // Use AuthManager to update user
+    const updated = updateUser(updatedUserData)
+    if (updated) {
+      setUser(updated)
+    }
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("userId")
-    localStorage.removeItem("userObject")
+    // Use AuthManager to logout
+    logoutUser()
     router.push("/")
   }
 
