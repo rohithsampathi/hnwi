@@ -10,11 +10,8 @@ import { secureApi } from '@/lib/secure-api'
 import { SessionEncryption } from '@/lib/session-encryption'
 
 export async function POST(request: NextRequest) {
-  console.log('[Login Route] POST /api/auth/login called');
-  
   try {
     logger.debug("Login API endpoint called");
-    console.log('[Login Route] Starting login process');
 
     // Check if IP is blocked
     if (RateLimiter.isBlocked(request)) {
@@ -86,29 +83,16 @@ export async function POST(request: NextRequest) {
 
     // Use secureApi to call backend - never expose backend URL
     try {
-      logger.info("Calling backend login endpoint", {
-        email: validation.data!.email,
-        endpoint: '/api/auth/login',
-        requireAuth: false
-      });
-      
-      console.log('[Login Route] About to call secureApi.post');
       const backendResponse = await secureApi.post('/api/auth/login', validation.data!, false);
-      console.log('[Login Route] secureApi.post returned successfully');
 
-      const responseInfo = {
+      logger.info("Backend login response received", {
         success: !!backendResponse.success,
         requiresMfa: !!backendResponse.requires_mfa,
         hasBackendToken: !!backendResponse.mfa_token,
         hasMessage: !!backendResponse.message,
         message: backendResponse.message,
-        email: validation.data!.email,
-        fullResponse: JSON.stringify(backendResponse),
-        responseKeys: Object.keys(backendResponse)
-      };
-      
-      logger.info("Backend login response received", responseInfo);
-      console.log('[Login Route] Backend response details:', responseInfo);
+        email: validation.data!.email
+      });
 
       // PRODUCTION FIX: Check for MFA token FIRST before checking errors
       // Backend may send both error message AND MFA token for security
@@ -258,19 +242,10 @@ export async function POST(request: NextRequest) {
       }
       
     } catch (apiError) {
-      // Detailed error logging
-      const errorDetails = {
-        message: apiError instanceof Error ? apiError.message : String(apiError),
-        name: apiError instanceof Error ? apiError.name : undefined,
-        stack: apiError instanceof Error ? apiError.stack : undefined,
-        stringified: JSON.stringify(apiError),
-        type: typeof apiError,
-        email: validation.data!.email,
-        endpoint: '/api/auth/login'
-      };
-      
-      logger.warn("Backend login request failed with detailed error", errorDetails);
-      console.error('[Login Route] Caught error from secureApi.post:', errorDetails);
+      logger.warn("Backend login request failed", { 
+        error: apiError instanceof Error ? apiError.message : String(apiError),
+        email: validation.data!.email
+      });
       
       // Check if this is a rate limit error (429)
       const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);

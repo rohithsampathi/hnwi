@@ -27,21 +27,12 @@ const getEncryptionKey = (): Buffer => {
     return padded
   }
   // Fallback to a generated key (not recommended for production)
-  console.warn('[SessionEncryption] No encryption key found in environment, using random key')
   return crypto.randomBytes(32)
 }
 
 const ENCRYPTION_KEY = getEncryptionKey()
 const ALGORITHM = 'aes-256-gcm'
 
-// Log key status on initialization (without exposing the key)
-if (typeof process !== 'undefined' && process.env) {
-  console.log('[SessionEncryption] Encryption key status:', {
-    hasMfaKey: !!process.env.MFA_SESSION_KEY,
-    hasMasterKey: !!process.env.MASTER_ENCRYPTION_KEY,
-    keyLength: ENCRYPTION_KEY.length
-  })
-}
 
 export class SessionEncryption {
   static encrypt(data: any): string {
@@ -58,7 +49,6 @@ export class SessionEncryption {
       // Combine iv, authTag, and encrypted data
       return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`
     } catch (error) {
-      console.error('[SessionEncryption] Encryption error:', error)
       throw new Error('Failed to encrypt session data')
     }
   }
@@ -82,7 +72,6 @@ export class SessionEncryption {
       
       return JSON.parse(decrypted)
     } catch (error) {
-      console.error('[SessionEncryption] Decryption error:', error)
       throw new Error('Failed to decrypt session data')
     }
   }
