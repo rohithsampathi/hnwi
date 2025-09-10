@@ -4,6 +4,13 @@
 // Point to the actual backend API, not the frontend
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
 
+// Debug logging for production
+if (typeof window !== 'undefined') {
+  console.log('[Config] Client-side API_BASE_URL:', API_BASE_URL ? '[SET]' : '[NOT SET]');
+} else {
+  console.log('[Config] Server-side API_BASE_URL:', API_BASE_URL ? '[SET]' : '[NOT SET]');
+}
+
 // Helper to create safe error messages without URL exposure
 export const createSafeApiError = (message: string, endpoint?: string): Error => {
   if (!endpoint) {

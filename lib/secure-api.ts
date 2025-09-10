@@ -423,6 +423,7 @@ export const secureApiCall = async (
       console.log('[SecureAPI] Login request to backend:', {
         endpoint,
         apiBaseUrl: API_BASE_URL ? 'Set' : 'Not set',
+        actualUrl: url.replace(API_BASE_URL, '[BACKEND]'),
         requireAuth
       });
     }
@@ -444,14 +445,42 @@ export const secureApiCall = async (
       headers['Authorization'] = `Bearer ${serverToken}`;
     }
 
+    // Log the actual request being made
+    if (endpoint.includes('/api/auth/')) {
+      console.log('[SecureAPI] Making fetch request:', {
+        url: url.replace(API_BASE_URL, '[BACKEND]'),
+        method: options.method || 'GET',
+        hasBody: !!options.body,
+        headers: Object.keys(headers)
+      });
+    }
+    
     const response = await fetch(url, {
       ...options,
       headers,
     });
     
+    // Log the response immediately
+    if (endpoint.includes('/api/auth/')) {
+      console.log('[SecureAPI] Fetch response received:', {
+        endpoint,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: {
+          contentType: response.headers.get('content-type'),
+          contentLength: response.headers.get('content-length')
+        }
+      });
+    }
+    
     // Handle auth errors centrally - only for 401 (unauthorized)
     if (response.status === 401) {
-      authWrapper.handleAuthError({ status: response.status });
+      if (endpoint.includes('/api/auth/')) {
+        console.log('[SecureAPI] 401 detected for auth endpoint, NOT triggering logout');
+      } else {
+        authWrapper.handleAuthError({ status: response.status });
+      }
     }
     // 403 is a permission issue, not an auth issue - don't logout
 
@@ -532,19 +561,57 @@ export const secureApi = {
 
       // Special handling for auth endpoints - log and return data even on non-OK status
       if (endpoint.includes('/api/auth/')) {
-        const responseData = await response.json();
+        console.log('[SecureAPI] Processing auth endpoint response in post()', {
+          endpoint,
+          responseStatus: response.status,
+          responseOk: response.ok
+        });
         
-        // Log for debugging in production
-        if (!response.ok) {
-          console.warn(`[SecureAPI] Auth endpoint ${endpoint} returned status ${response.status}`, {
-            data: responseData,
-            url: maskBackendUrl(`${API_BASE_URL}${endpoint}`)
+        try {
+          const responseText = await response.text();
+          console.log('[SecureAPI] Raw response text length:', responseText.length);
+          
+          let responseData;
+          try {
+            responseData = JSON.parse(responseText);
+            console.log('[SecureAPI] Successfully parsed JSON response:', {
+              hasError: !!responseData.error,
+              hasRequiresMfa: !!responseData.requires_mfa,
+              hasMfaToken: !!responseData.mfa_token,
+              hasAccessToken: !!responseData.access_token,
+              hasSuccess: !!responseData.success
+            });
+          } catch (parseError) {
+            console.error('[SecureAPI] Failed to parse response as JSON:', {
+              error: parseError instanceof Error ? parseError.message : String(parseError),
+              firstChars: responseText.substring(0, 100)
+            });
+            responseData = { error: 'Invalid JSON response', raw: responseText.substring(0, 500) };
+          }
+          
+          // Log for debugging in production
+          if (!response.ok) {
+            console.warn(`[SecureAPI] Auth endpoint ${endpoint} returned non-OK status ${response.status}`, {
+              data: responseData,
+              url: maskBackendUrl(`${API_BASE_URL}${endpoint}`)
+            });
+          } else {
+            console.log(`[SecureAPI] Auth endpoint ${endpoint} returned OK status`, {
+              hasData: !!responseData
+            });
+          }
+          
+          // Return data regardless of status for auth endpoints
+          // The route handler will decide what to do with it
+          return responseData;
+        } catch (jsonError) {
+          console.error(`[SecureAPI] Critical error processing auth response for ${endpoint}`, {
+            status: response.status,
+            error: jsonError instanceof Error ? jsonError.message : String(jsonError)
           });
+          // Return empty object to prevent crash
+          return { error: 'Failed to process response', status: response.status };
         }
-        
-        // Return data regardless of status for auth endpoints
-        // The route handler will decide what to do with it
-        return responseData;
       }
 
       if (!response.ok) {
