@@ -135,6 +135,7 @@ export function AuthPopup({
       // In reauth mode, use storedEmail if available, otherwise use email state
       const loginEmail = isReauthMode && storedEmail ? storedEmail : email;
       
+      console.log('[AuthPopup] Sending login request to /api/auth/login');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -143,7 +144,23 @@ export function AuthPopup({
         body: JSON.stringify({ email: loginEmail, password }),
       })
 
+      console.log('[AuthPopup] Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: {
+          contentType: response.headers.get('content-type'),
+          retryAfter: response.headers.get('retry-after')
+        }
+      });
+
       const result = await response.json()
+      console.log('[AuthPopup] Response data:', {
+        hasError: !!result.error,
+        hasRequiresMfa: !!result.requires_mfa,
+        hasMfaToken: !!result.mfa_token,
+        hasSuccess: !!result.success
+      });
 
 
       if (response.status === 429) {

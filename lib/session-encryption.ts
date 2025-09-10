@@ -1,14 +1,54 @@
 import crypto from 'crypto'
 
-const ENCRYPTION_KEY = process.env.MFA_SESSION_KEY || crypto.randomBytes(32).toString('hex')
+// Ensure we have a proper 32-byte key for AES-256
+const getEncryptionKey = (): Buffer => {
+  const key = process.env.MFA_SESSION_KEY || process.env.MASTER_ENCRYPTION_KEY
+  if (key) {
+    // If key is base64 encoded
+    if (key.includes('=') || /^[A-Za-z0-9+/]+$/.test(key)) {
+      const buffer = Buffer.from(key, 'base64')
+      // Ensure it's exactly 32 bytes
+      if (buffer.length >= 32) {
+        return buffer.slice(0, 32)
+      }
+      // Pad if too short
+      const padded = Buffer.alloc(32)
+      buffer.copy(padded)
+      return padded
+    }
+    // If key is hex encoded
+    const hexBuffer = Buffer.from(key, 'hex')
+    if (hexBuffer.length >= 32) {
+      return hexBuffer.slice(0, 32)
+    }
+    // Pad if too short
+    const padded = Buffer.alloc(32)
+    hexBuffer.copy(padded)
+    return padded
+  }
+  // Fallback to a generated key (not recommended for production)
+  console.warn('[SessionEncryption] No encryption key found in environment, using random key')
+  return crypto.randomBytes(32)
+}
+
+const ENCRYPTION_KEY = getEncryptionKey()
 const ALGORITHM = 'aes-256-gcm'
+
+// Log key status on initialization (without exposing the key)
+if (typeof process !== 'undefined' && process.env) {
+  console.log('[SessionEncryption] Encryption key status:', {
+    hasMfaKey: !!process.env.MFA_SESSION_KEY,
+    hasMasterKey: !!process.env.MASTER_ENCRYPTION_KEY,
+    keyLength: ENCRYPTION_KEY.length
+  })
+}
 
 export class SessionEncryption {
   static encrypt(data: any): string {
     try {
       const text = JSON.stringify(data)
       const iv = crypto.randomBytes(16)
-      const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY)
+      const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
       
       let encrypted = cipher.update(text, 'utf8', 'hex')
       encrypted += cipher.final('hex')
@@ -18,6 +58,7 @@ export class SessionEncryption {
       // Combine iv, authTag, and encrypted data
       return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`
     } catch (error) {
+      console.error('[SessionEncryption] Encryption error:', error)
       throw new Error('Failed to encrypt session data')
     }
   }
@@ -33,7 +74,7 @@ export class SessionEncryption {
       const iv = Buffer.from(ivHex, 'hex')
       const authTag = Buffer.from(authTagHex, 'hex')
       
-      const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY)
+      const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
       decipher.setAuthTag(authTag)
       
       let decrypted = decipher.update(encrypted, 'hex', 'utf8')
@@ -41,6 +82,7 @@ export class SessionEncryption {
       
       return JSON.parse(decrypted)
     } catch (error) {
+      console.error('[SessionEncryption] Decryption error:', error)
       throw new Error('Failed to decrypt session data')
     }
   }
