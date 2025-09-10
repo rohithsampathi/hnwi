@@ -94,10 +94,12 @@ export async function POST(request: NextRequest) {
         email: validation.data!.email
       });
 
-      // SECURITY FIX: Check if backend explicitly indicates authentication failure
-      // If there's an explicit error, reject the login attempt
-      if (backendResponse.error) {
-        logger.warn("Backend login failed with error", {
+      // PRODUCTION FIX: If backend sends MFA token, always proceed to MFA flow
+      // Backend validates email and sends MFA token for valid accounts
+      // Don't block on error messages if MFA token is present
+      if (backendResponse.error && !backendResponse.mfa_token) {
+        // Only reject if no MFA token is provided
+        logger.warn("Backend login failed with no MFA token", {
           email: validation.data!.email,
           error: backendResponse.error
         });
@@ -110,8 +112,8 @@ export async function POST(request: NextRequest) {
         return ApiAuth.addSecurityHeaders(response);
       }
 
-      // MFA flow - trust the backend's requires_mfa flag
-      if (backendResponse.requires_mfa && backendResponse.mfa_token) {
+      // MFA flow - proceed if backend sends MFA token OR explicitly requires MFA
+      if ((backendResponse.requires_mfa || backendResponse.mfa_token) && backendResponse.mfa_token) {
         logger.info("Processing MFA flow from backend", {
           email: validation.data!.email,
           hasToken: !!backendResponse.mfa_token,
