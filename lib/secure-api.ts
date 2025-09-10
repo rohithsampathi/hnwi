@@ -418,6 +418,15 @@ export const secureApiCall = async (
     // Always use the backend URL directly (but never expose it)
     const url = `${API_BASE_URL}${endpoint}`;
     
+    // Debug logging for auth endpoints only
+    if (endpoint.includes('/api/auth/login')) {
+      console.log('[SecureAPI] Login request to backend:', {
+        endpoint,
+        apiBaseUrl: API_BASE_URL ? 'Set' : 'Not set',
+        requireAuth
+      });
+    }
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -520,6 +529,23 @@ export const secureApi = {
         method: 'POST',
         body: JSON.stringify(data),
       }, requireAuth);
+
+      // Special handling for auth endpoints - log and return data even on non-OK status
+      if (endpoint.includes('/api/auth/')) {
+        const responseData = await response.json();
+        
+        // Log for debugging in production
+        if (!response.ok) {
+          console.warn(`[SecureAPI] Auth endpoint ${endpoint} returned status ${response.status}`, {
+            data: responseData,
+            url: maskBackendUrl(`${API_BASE_URL}${endpoint}`)
+          });
+        }
+        
+        // Return data regardless of status for auth endpoints
+        // The route handler will decide what to do with it
+        return responseData;
+      }
 
       if (!response.ok) {
         throw createSecureError('Request failed', response.status);

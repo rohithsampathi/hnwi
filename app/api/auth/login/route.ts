@@ -91,7 +91,8 @@ export async function POST(request: NextRequest) {
         hasBackendToken: !!backendResponse.mfa_token,
         hasMessage: !!backendResponse.message,
         message: backendResponse.message,
-        email: validation.data!.email
+        email: validation.data!.email,
+        fullResponse: JSON.stringify(backendResponse)
       });
 
       // PRODUCTION FIX: Check for MFA token FIRST before checking errors
@@ -244,7 +245,10 @@ export async function POST(request: NextRequest) {
     } catch (apiError) {
       logger.warn("Backend login request failed", { 
         error: apiError instanceof Error ? apiError.message : String(apiError),
-        email: validation.data!.email
+        errorStack: apiError instanceof Error ? apiError.stack : undefined,
+        errorName: apiError instanceof Error ? apiError.name : undefined,
+        email: validation.data!.email,
+        endpoint: '/api/auth/login'
       });
       
       // Check if this is a rate limit error (429)
