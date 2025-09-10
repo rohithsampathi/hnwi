@@ -702,7 +702,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                           setMfaToken(null)
                           setError("")
                         }}
-                        className="text-sm"
+                        className="text-sm hover:text-white"
                       >
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         Back to login

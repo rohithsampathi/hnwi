@@ -94,24 +94,8 @@ export async function POST(request: NextRequest) {
         email: validation.data!.email
       });
 
-      // PRODUCTION FIX: If backend sends MFA token, always proceed to MFA flow
-      // Backend validates email and sends MFA token for valid accounts
-      // Don't block on error messages if MFA token is present
-      if (backendResponse.error && !backendResponse.mfa_token) {
-        // Only reject if no MFA token is provided
-        logger.warn("Backend login failed with no MFA token", {
-          email: validation.data!.email,
-          error: backendResponse.error
-        });
-        
-        const response = NextResponse.json(
-          { success: false, error: backendResponse.error },
-          { status: 401 }
-        );
-        
-        return ApiAuth.addSecurityHeaders(response);
-      }
-
+      // PRODUCTION FIX: Check for MFA token FIRST before checking errors
+      // Backend may send both error message AND MFA token for security
       // MFA flow - proceed if backend sends MFA token OR explicitly requires MFA
       if ((backendResponse.requires_mfa || backendResponse.mfa_token) && backendResponse.mfa_token) {
         logger.info("Processing MFA flow from backend", {
@@ -215,6 +199,21 @@ export async function POST(request: NextRequest) {
         });
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
+        return ApiAuth.addSecurityHeaders(response);
+      }
+
+      // Check for errors AFTER MFA check - only reject if no MFA token was provided
+      if (backendResponse.error && !backendResponse.mfa_token) {
+        logger.warn("Backend login failed with no MFA token", {
+          email: validation.data!.email,
+          error: backendResponse.error
+        });
+        
+        const response = NextResponse.json(
+          { success: false, error: backendResponse.error },
+          { status: 401 }
+        );
+        
         return ApiAuth.addSecurityHeaders(response);
       }
 
