@@ -154,11 +154,6 @@ export async function POST(request: NextRequest) {
         // SECURITY: Generate secure frontend session token
         const frontendToken = SessionEncryption.generateSecureToken();
 
-        // SECURITY: Create encrypted MFA session
-        if (!global.mfaSessions) {
-          global.mfaSessions = new Map();
-        }
-
         const proxySession = {
           email: validation.data!.email,
           frontendToken,
@@ -168,23 +163,9 @@ export async function POST(request: NextRequest) {
           attempts: 0
         };
 
-        // SECURITY: Encrypt session data before storing
+        // SECURITY: Encrypt session data and store in HTTP-only cookie
         const encryptedSession = SessionEncryption.encrypt(proxySession);
-        global.mfaSessions.set(frontendToken, encryptedSession);
-
-        // SECURITY: Clean up expired encrypted sessions
-        for (const [key, encryptedSessionData] of global.mfaSessions.entries()) {
-          try {
-            const session = SessionEncryption.decrypt(encryptedSessionData);
-            if (session.expiresAt < Date.now()) {
-              global.mfaSessions.delete(key);
-            }
-          } catch (error) {
-            // Remove corrupted/invalid encrypted sessions
-            global.mfaSessions.delete(key);
-          }
-        }
-
+        
         logger.info("Created proxy MFA session", {
           email: validation.data!.email,
           frontendToken: frontendToken.substring(0, 8) + "...",
@@ -196,6 +177,24 @@ export async function POST(request: NextRequest) {
           requires_mfa: true,
           mfa_token: frontendToken, // Frontend gets local token
           message: backendResponse.message || "MFA code sent"
+        });
+        
+        // Store encrypted session in HTTP-only cookie for serverless persistence
+        response.cookies.set('mfa_session', encryptedSession, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 5 * 60, // 5 minutes
+          path: '/'
+        });
+        
+        // Also store the token mapping in cookie
+        response.cookies.set(`mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 5 * 60, // 5 minutes
+          path: '/'
         });
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());

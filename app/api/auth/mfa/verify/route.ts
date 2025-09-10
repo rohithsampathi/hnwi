@@ -66,13 +66,18 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Retrieve the proxy MFA session using frontend token
-      if (!global.mfaSessions) {
-        global.mfaSessions = new Map()
+      // Retrieve the proxy MFA session from cookies (serverless-safe)
+      const cookieStore = cookies();
+      
+      // Try to get session from token-specific cookie first
+      let encryptedSession = cookieStore.get(`mfa_token_${mfa_token.substring(0, 8)}`)?.value;
+      
+      // Fallback to general mfa_session cookie if not found
+      if (!encryptedSession) {
+        encryptedSession = cookieStore.get('mfa_session')?.value;
       }
-
+      
       // SECURITY: Decrypt the encrypted session
-      const encryptedSession = global.mfaSessions.get(mfa_token)
       let proxySession;
       
       try {
@@ -84,20 +89,22 @@ export async function POST(request: NextRequest) {
           error: error instanceof Error ? error.message : String(error)
         });
         
-        // Remove corrupted session
-        global.mfaSessions.delete(mfa_token);
-        
-        return NextResponse.json(
+        // Clear corrupted session cookies
+        const errorResponse = NextResponse.json(
           { success: false, error: "Invalid or expired session. Please try logging in again." },
           { status: 401 }
-        )
+        );
+        errorResponse.cookies.delete('mfa_session');
+        errorResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
+        
+        return errorResponse;
       }
       
       logger.info('MFA verification debug', {
         providedFrontendToken: mfa_token.substring(0, 8) + "...",
         email,
-        totalSessions: global.mfaSessions.size,
         sessionExists: !!proxySession,
+        sessionSource: encryptedSession ? 'cookie' : 'not found'
       })
       
       if (!proxySession) {
@@ -127,31 +134,38 @@ export async function POST(request: NextRequest) {
 
       // Check if session is expired
       if (proxySession.expiresAt < Date.now()) {
-        global.mfaSessions.delete(mfa_token)
+        // Clear cookies on expiry
+        const expiredResponse = NextResponse.json(
+          { success: false, error: "Session expired. Please try logging in again." },
+          { status: 401 }
+        );
+        expiredResponse.cookies.delete('mfa_session');
+        expiredResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
         
         logger.warn('MFA verification failed - session expired', {
           email: proxySession.email
         })
         
-        return NextResponse.json(
-          { success: false, error: "Session expired. Please try logging in again." },
-          { status: 401 }
-        )
+        return expiredResponse;
       }
 
       // Check attempt limit
       if (proxySession.attempts >= 5) {
-        global.mfaSessions.delete(mfa_token)
         await RateLimiter.recordViolation(request, 'MFA_VERIFY')
+        
+        // Clear cookies on too many attempts
+        const blockedResponse = NextResponse.json(
+          { success: false, error: "Too many failed attempts. Please try logging in again." },
+          { status: 429 }
+        );
+        blockedResponse.cookies.delete('mfa_session');
+        blockedResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
         
         logger.warn('MFA verification failed - too many attempts', {
           email: proxySession.email
         })
         
-        return NextResponse.json(
-          { success: false, error: "Too many failed attempts. Please try logging in again." },
-          { status: 429 }
-        )
+        return blockedResponse;
       }
 
       // Use secureApi to verify with backend - backend validates via email + MFA code
@@ -208,25 +222,54 @@ export async function POST(request: NextRequest) {
           // Create JWT token and set secure cookie  
           const token = backendResponse.access_token || await createToken(normalizedUser)
           const sessionCookieName = getSecureCookieName("session")
-          cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
-
-          // Clean up the proxy session
-          global.mfaSessions.delete(mfa_token)
+          
+          const successResponse = NextResponse.json({
+            success: true,
+            access_token: token,
+            user: normalizedUser,
+            message: backendResponse.message || "Login successful"
+          });
+          
+          // Set session cookie
+          successResponse.cookies.set(sessionCookieName, token, COOKIE_OPTIONS);
+          
+          // Clean up the MFA session cookies
+          successResponse.cookies.delete('mfa_session');
+          successResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
 
           logger.info('MFA verification successful via backend', { 
             email,
             userId: normalizedUser.id
           })
 
-          return NextResponse.json({
-            success: true,
-            access_token: token,
-            user: normalizedUser,
-            message: backendResponse.message || "Login successful"
-          })
+          return successResponse;
         } else {
           // Backend verification failed - increment attempts
           proxySession.attempts++
+          
+          // Update the session in cookie with incremented attempts
+          const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
+          
+          const failResponse = NextResponse.json(
+            { success: false, error: backendResponse.error || backendResponse.message || "Invalid verification code" },
+            { status: 401 }
+          );
+          
+          // Update cookies with new attempt count
+          failResponse.cookies.set('mfa_session', updatedEncryptedSession, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 5 * 60, // 5 minutes
+            path: '/'
+          });
+          failResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 5 * 60, // 5 minutes
+            path: '/'
+          });
           
           logger.warn('Backend MFA verification failed', {
             email,
@@ -236,17 +279,35 @@ export async function POST(request: NextRequest) {
             backendMessage: backendResponse.message
           })
           
-          // Return the specific error from backend, or a default message
-          const errorMessage = backendResponse.error || backendResponse.message || "Invalid verification code";
-          
-          return NextResponse.json(
-            { success: false, error: errorMessage },
-            { status: 401 }
-          )
+          return failResponse;
         }
 
       } catch (backendError) {
         proxySession.attempts++
+        
+        // Update the session in cookie with incremented attempts
+        const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
+        
+        const errorResponse = NextResponse.json(
+          { success: false, error: "Network error during verification. Please try again." },
+          { status: 500 }
+        );
+        
+        // Update cookies with new attempt count
+        errorResponse.cookies.set('mfa_session', updatedEncryptedSession, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 5 * 60, // 5 minutes
+          path: '/'
+        });
+        errorResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 5 * 60, // 5 minutes
+          path: '/'
+        });
         
         logger.error('Backend MFA verification network/parsing error', {
           email,
@@ -254,10 +315,7 @@ export async function POST(request: NextRequest) {
           error: backendError instanceof Error ? backendError.message : String(backendError)
         })
         
-        return NextResponse.json(
-          { success: false, error: "Network error during verification. Please try again." },
-          { status: 500 }
-        )
+        return errorResponse;
       }
     } catch (processingError) {
       logger.error('MFA verify processing error', {
