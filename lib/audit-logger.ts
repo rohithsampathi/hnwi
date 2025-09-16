@@ -1,6 +1,7 @@
 // lib/audit-logger.ts - Comprehensive audit logging for compliance (GDPR, SOC2)
 
 import { logger } from './secure-logger';
+import { anonymizeIP, sanitizeUserAgent } from './security/sanitization';
 
 // Audit event types for HNWI application
 export enum AuditEventType {
@@ -349,13 +350,11 @@ export class AuditLogger {
   // Private helper methods
 
   private static sanitizeIP(ip: string): string {
-    // Mask last octet for privacy
-    return ip.replace(/\.\d+$/, '.***');
+    return anonymizeIP(ip);
   }
 
   private static sanitizeUserAgent(userAgent: string): string {
-    // Keep only browser and OS info, remove specific version details
-    return userAgent.substring(0, 100) + (userAgent.length > 100 ? '...' : '');
+    return sanitizeUserAgent(userAgent);
   }
 
   private static sanitizeDetails(details?: Record<string, any>): Record<string, any> | undefined {

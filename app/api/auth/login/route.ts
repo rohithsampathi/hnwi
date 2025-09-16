@@ -8,6 +8,7 @@ import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
 import { secureApi } from '@/lib/secure-api'
 import { SessionEncryption } from '@/lib/session-encryption'
+import { createSafeErrorResponse, sanitizeLoggingContext } from '@/lib/security/sanitization'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +16,13 @@ export async function POST(request: NextRequest) {
 
     // Check if IP is blocked
     if (RateLimiter.isBlocked(request)) {
-      logger.warn("Login attempt from blocked IP", {
+      const context = sanitizeLoggingContext({
         ip: ApiAuth.getClientIP(request),
         userAgent: request.headers.get('user-agent')
       });
+      logger.warn("Login attempt from blocked IP", context);
       return NextResponse.json(
-        { success: false, error: 'Access temporarily blocked' },
+        createSafeErrorResponse('Access temporarily blocked'),
         { status: 429 }
       );
     }
@@ -30,19 +32,20 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV === 'production') {
       rateLimitResult = await RateLimiter.checkLimit(request, 'LOGIN');
       if (!rateLimitResult.allowed) {
-        logger.warn("Login rate limit exceeded", {
+        const context = sanitizeLoggingContext({
           ip: ApiAuth.getClientIP(request),
-          attempts: rateLimitResult.totalHits,
-          userAgent: request.headers.get('user-agent')
+          userAgent: request.headers.get('user-agent'),
+          attempts: rateLimitResult.totalHits
         });
-        
+        logger.warn("Login rate limit exceeded", context);
+
         // Block IP after 8 consecutive rate limit violations
         if (rateLimitResult.totalHits > 8) {
           RateLimiter.blockIP(ApiAuth.getClientIP(request), 30 * 60 * 1000); // 30 minutes
         }
-        
+
         const response = NextResponse.json(
-          { success: false, error: 'Too many login attempts' },
+          createSafeErrorResponse('Too many login attempts'),
           { status: 429 }
         );
         
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Validate request size
     if (!ApiAuth.validateRequestSize(request)) {
       return NextResponse.json(
-        { success: false, error: 'Request too large' },
+        createSafeErrorResponse('Request too large'),
         { status: 413 }
       );
     }
@@ -71,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       logger.warn("Login validation failed", { errors: validation.errors });
       return NextResponse.json(
-        { success: false, error: 'Invalid input data', details: validation.errors },
+        createSafeErrorResponse('Invalid input data'),
         { status: 400 }
       );
     }
@@ -114,28 +117,28 @@ export async function POST(request: NextRequest) {
             });
             
             const response = NextResponse.json(
-              { success: false, error: 'Authentication failed. Please try again.' },
+              createSafeErrorResponse('Authentication failed'),
               { status: 401 }
             );
-            
+
             return ApiAuth.addSecurityHeaders(response);
           }
           
-          // Log the JWT payload for debugging but don't validate strictly
-          try {
-            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
-            logger.info("MFA token payload received", {
-              email: validation.data!.email,
-              hasSubject: !!payload.sub,
-              hasMfaCode: !!payload.mfa_code,
-              hasExpiry: !!payload.exp,
-              tokenType: payload.type,
-              expiryTimestamp: payload.exp
-            });
-          } catch (payloadError) {
-            logger.warn("Could not parse MFA token payload for debugging", {
-              email: validation.data!.email
-            });
+          // Basic token structure validation (no payload logging in production)
+          if (process.env.NODE_ENV !== 'production') {
+            try {
+              const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
+              logger.debug("MFA token structure validated", {
+                email: validation.data!.email,
+                hasSubject: !!payload.sub,
+                hasExpiry: !!payload.exp,
+                tokenType: payload.type ? 'mfa' : 'unknown'
+              });
+            } catch (payloadError) {
+              logger.debug("Token payload validation skipped", {
+                email: validation.data!.email
+              });
+            }
           }
           
         } catch (tokenError) {
@@ -145,10 +148,10 @@ export async function POST(request: NextRequest) {
           });
           
           const response = NextResponse.json(
-            { success: false, error: 'Authentication failed. Please try again.' },
+            createSafeErrorResponse('Authentication failed'),
             { status: 401 }
           );
-          
+
           return ApiAuth.addSecurityHeaders(response);
         }
         // SECURITY: Generate secure frontend session token
@@ -209,7 +212,7 @@ export async function POST(request: NextRequest) {
         });
         
         const response = NextResponse.json(
-          { success: false, error: backendResponse.error },
+          createSafeErrorResponse(backendResponse.error),
           { status: 401 }
         );
         
@@ -233,7 +236,7 @@ export async function POST(request: NextRequest) {
         });
         
         const response = NextResponse.json(
-          { success: false, error: 'Authentication service error. Please try again.' },
+          createSafeErrorResponse('Authentication service error'),
           { status: 500 }
         );
         
@@ -250,7 +253,7 @@ export async function POST(request: NextRequest) {
       const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
       if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.toLowerCase().includes('too many')) {
         const response = NextResponse.json(
-          { success: false, error: 'Too many login attempts. Please wait before trying again.' },
+          createSafeErrorResponse('Too many login attempts'),
           { status: 429 }
         );
         // Add retry-after header for rate limit
@@ -259,7 +262,7 @@ export async function POST(request: NextRequest) {
       }
       
       const response = NextResponse.json(
-        { success: false, error: 'Authentication failed. Please try again.' },
+        createSafeErrorResponse('Authentication failed'),
         { status: 401 }
       );
       
@@ -267,20 +270,21 @@ export async function POST(request: NextRequest) {
     }
     
   } catch (error) {
-    logger.error("Login API error", { 
-      error: error instanceof Error ? error.message : String(error),
+    const context = sanitizeLoggingContext({
       ip: ApiAuth.getClientIP(request),
-      userAgent: request.headers.get('user-agent')
+      userAgent: request.headers.get('user-agent'),
+      endpoint: '/api/auth/login'
     });
-    
+    logger.error("Login API error", {
+      error: error instanceof Error ? error.message : String(error),
+      ...context
+    });
+
     const response = NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Login failed'
-      },
+      createSafeErrorResponse(error),
       { status: 500 }
     );
-    
+
     return ApiAuth.addSecurityHeaders(response);
   }
 }

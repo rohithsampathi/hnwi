@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from './secure-logger';
+import { sanitizeLoggingContext } from './security/sanitization';
 
 interface CSRFTokenData {
   token: string;
@@ -87,18 +88,24 @@ export class CSRFProtection {
       const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
       
       if (!csrfCookie) {
-        logger.warn('CSRF validation failed - no cookie found', {
+        const context = sanitizeLoggingContext({
           endpoint: new URL(request.url).pathname,
-          method: request.method
+          method: request.method,
+          userAgent: request.headers.get('user-agent'),
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
         });
+        logger.warn('CSRF validation failed - no cookie found', context);
         return { valid: false, error: 'CSRF cookie missing' };
       }
       
       if (!csrfHeader) {
-        logger.warn('CSRF validation failed - no header found', {
+        const context = sanitizeLoggingContext({
           endpoint: new URL(request.url).pathname,
-          method: request.method
+          method: request.method,
+          userAgent: request.headers.get('user-agent'),
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
         });
+        logger.warn('CSRF validation failed - no header found', context);
         return { valid: false, error: 'CSRF token missing in header' };
       }
 
@@ -124,9 +131,14 @@ export class CSRFProtection {
       // Validate User-Agent hasn't changed (basic anti-hijacking)
       const currentUserAgent = request.headers.get('user-agent') || '';
       if (tokenData.userAgent !== currentUserAgent) {
+        const context = sanitizeLoggingContext({
+          endpoint: new URL(request.url).pathname,
+          userAgent: currentUserAgent,
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+        });
         logger.warn('CSRF validation failed - user agent mismatch', {
-          originalUA: tokenData.userAgent?.substring(0, 50) + '...',
-          currentUA: currentUserAgent?.substring(0, 50) + '...'
+          ...context,
+          tokenUserAgent: tokenData.userAgent?.substring(0, 20) + '...'
         });
         return { valid: false, error: 'CSRF token invalid - security check failed' };
       }
@@ -160,12 +172,14 @@ export class CSRFProtection {
         const validation = this.validateCSRFToken(request);
         
         if (!validation.valid) {
-          logger.warn('CSRF protection blocked request', {
+          const context = sanitizeLoggingContext({
             method: request.method,
             endpoint: new URL(request.url).pathname,
             error: validation.error,
-            userAgent: request.headers.get('user-agent')
+            userAgent: request.headers.get('user-agent'),
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
           });
+          logger.warn('CSRF protection blocked request', context);
           
           return NextResponse.json(
             { 

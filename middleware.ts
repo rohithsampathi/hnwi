@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { RateLimiter } from "./lib/rate-limiter";
 import { AuditLogger, AuditEventType, AuditSeverity } from "./lib/audit-logger";
 import { CSRFProtection } from "./lib/csrf-protection";
+import { sanitizeLoggingContext } from "./lib/security/sanitization";
 
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -117,17 +118,19 @@ async function handleAPIRequest(request: NextRequest, response: NextResponse) {
 
   // Log API access for audit purposes
   try {
+    const context = sanitizeLoggingContext({
+      endpoint: pathname,
+      method,
+      userAgent: request.headers.get('user-agent') || undefined,
+      ip: getClientIP(request),
+      requestId: request.headers.get('X-Request-ID') || crypto.randomUUID()
+    });
+
     await AuditLogger.logEvent(
       AuditEventType.SENSITIVE_DATA_ACCESSED,
       `API_${method}_${pathname}`,
       'pending',
-      {
-        endpoint: pathname,
-        method,
-        userAgent: request.headers.get('user-agent') || undefined,
-        ipAddress: getClientIP(request),
-        requestId: request.headers.get('X-Request-ID') || crypto.randomUUID()
-      }
+      context
     );
   } catch (error) {
     // Audit logging failure shouldn't break the request
