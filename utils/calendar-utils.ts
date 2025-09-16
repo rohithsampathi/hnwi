@@ -76,7 +76,6 @@ export async function reserveEvent(event: any, email: string, name: string): Pro
     // Use environment variable for formspree endpoint - NO hardcoded URLs
     const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
     if (!formspreeEndpoint) {
-      console.error('Formspree endpoint not configured');
       return false;
     }
     

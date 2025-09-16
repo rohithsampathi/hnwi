@@ -110,7 +110,6 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
         setPaymentMethods(formattedMethods)
       }
     } catch (error) {
-      console.error('Error fetching payment methods:', error)
       // Don't show error to user, just keep empty array
       setPaymentMethods([])
     } finally {
@@ -133,7 +132,6 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
         setRecentPayments(recentSuccessful)
       }
     } catch (error) {
-      console.error('Error fetching recent payments:', error)
       setRecentPayments([])
     }
   }, [])
@@ -340,7 +338,6 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
         throw new Error(response.message || 'Failed to save payment method')
       }
     } catch (error: any) {
-      console.error('Error saving card from payment:', error)
       toast({
         title: "Error",
         description: error.message || "Failed to save payment method. Please try again.",

@@ -65,14 +65,12 @@ export class SecureTokenStorage {
       const expiry = parseInt(expiryStr)
       if (Date.now() > expiry) {
         this.clearToken()
-        console.warn('[SecureTokenStorage] Token expired, cleared from storage')
       }
     }
     
     // Validate JWT structure
     if (!this.isValidJWT(this.memoryToken)) {
       this.clearToken()
-      console.warn('[SecureTokenStorage] Invalid token format, cleared from storage')
     }
   }
 
@@ -109,7 +107,6 @@ export class SecureTokenStorage {
     
     // Validate token format
     if (!this.isValidJWT(token)) {
-      console.error('[SecureTokenStorage] Attempted to store invalid token')
       return
     }
     

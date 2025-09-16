@@ -30,7 +30,6 @@ export default function TestAuthPage() {
       }
       
       setAuthState(state)
-      console.log('[TestAuth] Current state:', state)
       
       // Debug auth
       debugAuth()
@@ -63,7 +62,6 @@ export default function TestAuthPage() {
     const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItMTIzIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxOTk5OTk5OTk5fQ.test'
     
     const user = loginUser(testUser, testToken)
-    console.log('[TestAuth] Login result:', user)
     
     // Refresh state
     window.location.reload()

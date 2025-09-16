@@ -222,7 +222,6 @@ export class SecureAPI {
     const safeEndpoint = maskBackendUrl(endpoint);
     // Don't log in production to avoid any URL exposure in browser console
     if (process.env.NODE_ENV === 'development') {
-      console.debug(`[SecureAPI] ${safeEndpoint} - ${error || 'Error'} ${status ? `(${status})` : ''}`);
     }
   }
 

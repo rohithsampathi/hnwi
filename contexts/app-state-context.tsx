@@ -328,9 +328,8 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
         }
 
       } catch (error) {
-        console.error('App initialization failed:', error)
         dispatch({
-          type: 'INITIALIZE_APP', 
+          type: 'INITIALIZE_APP',
           payload: { currentPage: 'splash' }
         })
       }
@@ -354,7 +353,6 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
         sessionStorage.removeItem("userDisplay")
       }
     } catch (error) {
-      console.warn("Background session validation failed:", error)
     }
   }, [])
 

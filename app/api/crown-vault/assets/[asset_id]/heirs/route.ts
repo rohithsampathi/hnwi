@@ -30,20 +30,12 @@ export const PUT = ApiAuth.withAuth(async (
     // Use secureApi for secure backend communication with proper PUT method
     const endpoint = `/api/crown-vault/assets/${assetId}/heirs?owner_id=${user.id}`;
     
-    // Debug: Log the exact data being sent to backend
-    console.log('Heir assignment - sending to backend:', {
-      endpoint,
-      heirIds,
-      heirIdsType: typeof heirIds,
-      isArray: Array.isArray(heirIds)
-    });
     
     const response = await secureApi.put(endpoint, heirIds, true);
 
     return ApiAuth.addSecurityHeaders(NextResponse.json(response, { status: 200 }));
 
   } catch (error) {
-    console.error('Crown Vault heir assignment error:', error);
     return ApiAuth.addSecurityHeaders(NextResponse.json(
       { error: 'Failed to update heir assignment' },
       { status: 500 }
@@ -94,7 +86,6 @@ export const GET = ApiAuth.withAuth(async (
     ));
 
   } catch (error) {
-    console.error('Crown Vault heir assignment fetch error:', error);
     return ApiAuth.addSecurityHeaders(NextResponse.json(
       { error: 'Failed to fetch heir assignment' },
       { status: 500 }

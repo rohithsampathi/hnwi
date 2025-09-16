@@ -125,7 +125,6 @@ export async function getEvents(): Promise<SocialEvent[]> {
     
     return [];
   } catch (error: any) {
-    console.error('Failed to fetch events:', error);
     
     // Handle Family Office tier requirement with enhanced error details
     if (error?.status === 403) {
@@ -173,7 +172,6 @@ export async function getOpportunities(): Promise<Opportunity[]> {
     const data = await secureApi.get('/api/opportunities', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for investment opportunities
     return data as Opportunity[];
   } catch (error) {
-    console.error('Failed to fetch opportunities from backend:', error);
     throw new Error('Unable to load investment opportunities. Please try again later.');
   }
 }
@@ -274,10 +272,6 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
-      console.error('[CrownVault] No user ID found. Auth state:', {
-        isAuthenticated: isUserAuthenticated(),
-        user: getCurrentUser()
-      });
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     // Call backend API directly for assets using authenticated client with 10-minute caching
@@ -321,7 +315,6 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
   } catch (error) {
     // Only log non-authentication errors to avoid console spam
     if (!isAuthError(error)) {
-      console.error('Failed to fetch Crown Vault assets:', error);
     }
     throw error; // Re-throw the original error for proper handling upstream
   }
@@ -381,7 +374,6 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
   } catch (error) {
     // Only log non-authentication errors to avoid console spam
     if (!isAuthError(error)) {
-      console.error('Failed to fetch Crown Vault stats:', error);
     }
     throw error; // Re-throw the original error for proper handling upstream
   }
@@ -421,7 +413,6 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
   } catch (error) {
     // Only log non-authentication errors to avoid console spam
     if (!isAuthError(error)) {
-      console.error('Failed to fetch Crown Vault heirs:', error);
     }
     throw error; // Re-throw the original error for proper handling upstream
   }
@@ -703,7 +694,6 @@ export async function deleteCrownVaultAsset(assetId: string): Promise<{ message:
       message: result.message || 'Asset deleted successfully'
     };
   } catch (error) {
-    console.error('Error in deleteCrownVaultAsset:', error);
     throw error;
   }
 }

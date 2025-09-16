@@ -38,7 +38,6 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Failed to delete notification:', error);
     return NextResponse.json(
       { error: 'Failed to delete notification' },
       { status: 500 }

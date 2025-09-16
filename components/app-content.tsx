@@ -205,7 +205,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       } catch (error) {
         // Background validation failed, but don't disrupt current session
         // Only log for debugging
-        console.warn("Background session validation failed:", error);
       }
     };
 
@@ -695,35 +694,46 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         return <SplashScreen onLogin={() => {}} onLoginSuccess={handleLoginSuccess} showLogin={true} />
 
       case "dashboard":
+        // Only show dashboard if we have a valid user AND session check is complete
+        if (!isSessionCheckComplete) {
+          // Still checking auth, show loading
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+              <ShieldLoader />
+            </div>
+          );
+        }
+
         // Enhanced authentication check with localStorage fallback
-        const hasValidSession = user || (
-          localStorage.getItem("userId") && 
-          localStorage.getItem("token") && 
+        const hasValidLocalStorage = (
+          localStorage.getItem("userId") &&
+          localStorage.getItem("token") &&
           localStorage.getItem("userObject")
         );
-        
+
+        const skipSplash = sessionStorage.getItem("skipSplash");
+
+        // Only allow session if we have a valid user object AND valid storage
+        const hasValidSession = user && (hasValidLocalStorage || skipSplash);
+
         if (!hasValidSession) {
-          // Only redirect if we've finished checking the session AND no valid localStorage data
-          if (isSessionCheckComplete) {
-            // Redirect to splash
-            setTimeout(() => handleNavigation("splash"), 0);
-            return (
-              <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-emerald-900 to-black">
-                <div className="text-emerald-400 text-xl">Redirecting to login...</div>
-              </div>
-            );
-          } else {
-            // Still checking auth, return null to let parent handle loading
-            return null;
-          }
+          // Clear any stale session flags
+          sessionStorage.removeItem("skipSplash");
+          // Redirect to splash
+          setTimeout(() => handleNavigation("splash"), 0);
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-emerald-900 to-black">
+              <div className="text-emerald-400 text-xl">Redirecting to login...</div>
+            </div>
+          );
         }
-        
+
         // User is authenticated, show dashboard without back button
         return (
-            <HomeDashboardElite 
-              user={user} 
-              onNavigate={handleNavigation} 
-              isFromSignupFlow={isFromSignupFlow} 
+            <HomeDashboardElite
+              user={user}
+              onNavigate={handleNavigation}
+              isFromSignupFlow={isFromSignupFlow}
               userData={user}
             />
         )

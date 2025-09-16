@@ -108,7 +108,6 @@ export async function PUT(
       }, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error updating heir:', fetchError);
       return NextResponse.json(
         { error: 'Failed to update heir' },
         { status: 500 }
@@ -116,7 +115,6 @@ export async function PUT(
     }
 
   } catch (error) {
-    console.error('Crown Vault heir update error:', error);
     return NextResponse.json(
       { error: 'Failed to update heir' },
       { status: 500 }
@@ -180,7 +178,6 @@ export async function DELETE(
       }, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error deleting heir:', fetchError);
       return NextResponse.json(
         { error: 'Failed to delete heir' },
         { status: 500 }
@@ -188,7 +185,6 @@ export async function DELETE(
     }
 
   } catch (error) {
-    console.error('Crown Vault heir deletion error:', error);
     return NextResponse.json(
       { error: 'Failed to delete heir' },
       { status: 500 }
@@ -270,7 +266,6 @@ export async function GET(
       }, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error fetching heir details:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch heir details' },
         { status: 500 }
@@ -278,7 +273,6 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('Crown Vault heir fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch heir' },
       { status: 500 }

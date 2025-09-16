@@ -95,20 +95,12 @@ export async function GET(
       }
     };
 
-    console.log('✅ Intelligence Dashboard API: Successfully compiled intelligence:', {
-      elitePulse: !!dashboard.intelligence.elite_pulse,
-      crownVault: !!dashboard.intelligence.crown_vault_impact,
-      opportunities: !!dashboard.intelligence.opportunity_alignment,
-      peerIntelligence: !!dashboard.intelligence.peer_intelligence
-    });
 
     return NextResponse.json(dashboard, { status: 200 });
 
   } catch (error) {
-    console.error('❌ Intelligence Dashboard API error:', error);
-    
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch intelligence dashboard',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

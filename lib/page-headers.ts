@@ -71,6 +71,11 @@ export const PAGE_HEADERS: Record<string, PageHeaderConfig> = {
     description: 'Global insights and intelligence for high-net-worth individuals.',
     showBackButton: true,
   },
+  'ask-rohith': {
+    title: 'Ask Rohith',
+    description: 'Your private intelligence ally with full portfolio awareness and memory. Get strategic insights and market intelligence.',
+    showBackButton: true,
+  },
   'industry-pulse': {
     title: 'Industry Pulse', 
     description: 'Real-time insights and trends across key industries.',

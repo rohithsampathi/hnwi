@@ -23,7 +23,6 @@ export default function ProfileRoute() {
         setUser(currentUser)
       } else {
         // No user found, redirect to login
-        console.error('[Profile] No authenticated user found')
         router.push("/")
       }
     }

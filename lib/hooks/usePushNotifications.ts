@@ -35,7 +35,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const subscribed = await pushNotificationService.isSubscribed();
       setIsSubscribed(subscribed);
     } catch (err) {
-      console.error('Failed to check push notification status:', err);
       setError(err instanceof Error ? err.message : 'Failed to check status');
     }
   }, [isSupported]);
@@ -58,7 +57,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to request permission';
       setError(errorMessage);
-      console.error('Failed to request push notification permission:', err);
       return false;
     } finally {
       setLoading(false);
@@ -87,7 +85,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to subscribe to push notifications';
       setError(errorMessage);
-      console.error('Failed to subscribe to push notifications:', err);
       return false;
     } finally {
       setLoading(false);
@@ -110,7 +107,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to unsubscribe from push notifications';
       setError(errorMessage);
-      console.error('Failed to unsubscribe from push notifications:', err);
       return false;
     } finally {
       setLoading(false);

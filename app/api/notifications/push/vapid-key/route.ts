@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 
     if (!vapidPublicKey) {
-      console.error('VAPID_PUBLIC_KEY not configured in environment variables');
       return NextResponse.json(
         { error: 'Push notifications not configured' },
         { status: 503 }
@@ -17,7 +16,6 @@ export async function GET(request: NextRequest) {
       vapid_public_key: vapidPublicKey
     });
   } catch (error) {
-    console.error('Failed to get VAPID key:', error);
     return NextResponse.json(
       { error: 'Failed to get VAPID key' },
       { status: 500 }

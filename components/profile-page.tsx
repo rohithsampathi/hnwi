@@ -163,7 +163,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         setBillingHistory([])
       }
     } catch (error) {
-      console.error('Error fetching billing history:', error)
       // Don't show error toast, just use empty array
       setBillingHistory([])
     } finally {
@@ -218,7 +217,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
             })
           }
         } catch (generateError) {
-          console.error('Error generating invoice:', generateError)
           toast({
             title: "Invoice Not Available", 
             description: "Unable to generate invoice for this transaction.",
@@ -227,7 +225,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         }
       }
     } catch (error) {
-      console.error('Error downloading invoice:', error)
       toast({
         title: "Download Failed",
         description: "Failed to download invoice. Please try again.",
@@ -244,7 +241,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       const userIdToUse = userIdParam || userId || authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
       
       if (!userIdToUse) {
-        console.error('No user ID available for Crown Vault')
         return
       }
       
@@ -256,7 +252,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       setVaultStats(stats)
       setVaultAssets(assets)
     } catch (error) {
-      console.error('Error fetching vault stats:', error);
       // Don't set fallback data - leave states as null/empty to indicate failure
     } finally {
       setVaultLoading(false)

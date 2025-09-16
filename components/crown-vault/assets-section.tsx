@@ -317,7 +317,6 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
       });
 
     } catch (error) {
-      console.error('Delete asset error:', error);
       toast({
         title: "Deletion Failed",
         description: error instanceof Error ? error.message : "Failed to delete asset. Please try again.",
@@ -342,7 +341,6 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   // Handle asset update from modal
   const handleAssetUpdated = (updatedAsset: CrownVaultAsset) => {
     if (!updatedAsset || !updatedAsset.asset_id) {
-      console.error('handleAssetUpdated called with invalid updatedAsset:', updatedAsset);
       return;
     }
     

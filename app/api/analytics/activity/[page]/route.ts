@@ -20,22 +20,20 @@ export async function GET(
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Check if it's a 404 error and return reasonable defaults
       if (apiError instanceof Error && apiError.message.includes('404')) {
         const baseActivity = getBaseActivityForPage(page);
-        
+
         return NextResponse.json({
           page_viewers: baseActivity.viewers,
           recent_actions: baseActivity.actions,
           trending_content: baseActivity.trending
         }, { status: 200 });
       }
-      
+
       // Return fallback data when backend is unavailable
       const baseActivity = getBaseActivityForPage(page);
-      
+
       return NextResponse.json({
         page_viewers: baseActivity.viewers,
         recent_actions: baseActivity.actions,
@@ -44,8 +42,6 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('Page activity error:', error);
-    
     // Always return some data even if there's an error
     return NextResponse.json({
       page_viewers: 0,

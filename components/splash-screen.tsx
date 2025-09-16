@@ -72,6 +72,21 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     setShowPassword(!showPassword)
   }
 
+  const handleClose = () => {
+    setEmail("")
+    setPassword("")
+    setError("")
+    setShowPassword(false)
+    setShowMfa(false)
+    setMfaToken(null)
+    setIsResending(false)
+    setRememberDevice(false)
+
+    // Set session flags to prevent splash screen loop
+    sessionStorage.setItem("skipSplash", "true")
+    sessionStorage.setItem("currentPage", "dashboard")
+  }
+
   const handleOnboardingComplete = (userData: any) => {
     // Handle successful registration
     
@@ -152,7 +167,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           const normalizedUser = loginUser(result.user, result.access_token)
           
           if (!normalizedUser) {
-            console.error('Failed to normalize user data')
             setError('Authentication failed. Please try again.')
             return
           }
@@ -175,7 +189,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                 })
               }
             } catch (error) {
-              console.error('Device trust error:', error)
               toast({
                 title: "Login Successful",
                 description: `Welcome back, ${normalizedUser.firstName}!`,
@@ -189,9 +202,9 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           }
           
           debugAuth()
-          
+
           handleClose()
-          
+
           if (onLoginSuccess) {
             onLoginSuccess(normalizedUser)
           }
@@ -241,7 +254,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         const normalizedUser = loginUser(result.user, result.access_token)
         
         if (!normalizedUser) {
-          console.error('Failed to normalize user data after MFA')
           setError('Authentication failed. Please try again.')
           return
         }
@@ -264,7 +276,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               })
             }
           } catch (error) {
-            console.error('Device trust error:', error)
             toast({
               title: "Login Successful",
               description: `Welcome back, ${normalizedUser.firstName}!`,
@@ -281,7 +292,11 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         
         // Reset form
         handleClose()
-        
+
+        // Set flags to prevent splash screen from showing again
+        sessionStorage.setItem("skipSplash", "true")
+        sessionStorage.setItem("currentPage", "dashboard")
+
         // Call success callback
         if (onLoginSuccess) {
           onLoginSuccess(normalizedUser)
@@ -332,17 +347,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     } finally {
       setIsResending(false)
     }
-  }
-
-  const handleClose = () => {
-    setEmail("")
-    setPassword("")
-    setError("")
-    setShowPassword(false)
-    setShowMfa(false)
-    setMfaToken(null)
-    setIsResending(false)
-    setRememberDevice(false)
   }
 
   if (showOnboarding) {

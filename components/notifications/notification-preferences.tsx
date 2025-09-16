@@ -247,7 +247,6 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
       // Clear success status after 3 seconds
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      console.error('Failed to save preferences:', error);
       setSaveStatus('error');
     } finally {
       setSaving(false);

@@ -269,7 +269,6 @@ export async function getCurrentUser(): Promise<User | null> {
     const session = await getSession()
     return session.user
   } catch (error) {
-    console.error("Error getting current user:", error)
     return null
   }
 }
@@ -419,7 +418,6 @@ export async function handleSessionRequest(): Promise<SessionResponse> {
     // If no valid session found
     return { user: null };
   } catch (error) {
-    console.error("Session request error:", error);
     return { user: null, error: "Failed to get session" };
   }
 }

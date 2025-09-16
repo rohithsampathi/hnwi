@@ -107,7 +107,6 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         const parsedUser = JSON.parse(userObject)
         setUser(parsedUser)
       } catch (e) {
-        console.error("Error parsing user data:", e)
       }
     }
   }, [])

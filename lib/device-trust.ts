@@ -78,13 +78,11 @@ export class DeviceTrustManager {
       // Verify device fingerprint hasn't changed significantly
       const currentFingerprint = this.generateDeviceFingerprint();
       if (trust.deviceFingerprint !== currentFingerprint) {
-        console.warn('Device fingerprint mismatch - device may have changed');
         // Don't remove trust immediately, but flag it
       }
       
       return trust;
     } catch (error) {
-      console.error('Error reading device trust:', error);
       localStorage.removeItem(DEVICE_TRUST_KEY);
       return null;
     }
@@ -185,7 +183,6 @@ export class DeviceTrustManager {
       
       localStorage.setItem(TRUSTED_DEVICES_KEY, JSON.stringify(devices));
     } catch (error) {
-      console.error('Error updating trusted devices list:', error);
     }
   }
 
@@ -214,7 +211,6 @@ export class DeviceTrustManager {
       const stored = localStorage.getItem(TRUSTED_DEVICES_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.error('Error reading trusted devices:', error);
       return [];
     }
   }
@@ -234,7 +230,6 @@ export class DeviceTrustManager {
         this.removeTrust();
       }
     } catch (error) {
-      console.error('Error removing trusted device:', error);
     }
   }
 

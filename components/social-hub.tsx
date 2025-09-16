@@ -71,8 +71,6 @@ export function SocialHub() {
         setEvents(fetchedEvents)
         setError(null)
       } catch (err: any) {
-        console.error('Failed to fetch events:', err);
-        
         // Handle Family Office tier requirement
         if (err?.status === 403 && err?.detail) {
           setError(`Family Office Access Required: ${err.detail.error}`);

@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return fallback time series data when backend is unavailable
       const timeframe = body.timeframe || '1Y';
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Industry Trends API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch industry trends data' },
       { status: 500 }
@@ -97,7 +95,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return fallback data when backend is unavailable
       return NextResponse.json({
@@ -119,7 +116,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Industry Trends API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch industry trends data' },
       { status: 500 }

@@ -25,7 +25,6 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       
       // Backend returns direct array, not wrapped in {heirs: [...]}
       if (!Array.isArray(backendHeirs)) {
-        console.error('Invalid heirs data format - expected array, got:', typeof backendHeirs);
         throw new Error('Invalid heirs data format');
       }
 
@@ -46,7 +45,6 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       }, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error fetching heirs from backend:', fetchError);
       
       // Try to fetch heirs from assets endpoint as fallback using serverSecureApi
       try {
@@ -86,7 +84,6 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
           }, { status: 200 });
         }
       } catch (assetsError) {
-        console.error('Error fetching heirs from assets:', assetsError);
       }
       
       // Return empty heirs if all fails
@@ -97,7 +94,6 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
     }
 
   } catch (error) {
-    console.error('Crown Vault heirs fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch heirs' },
       { status: 500 }
@@ -118,7 +114,6 @@ export const POST = ApiAuth.withAuth(async (request: NextRequest, user) => {
       const data = await secureApi.post(endpoint, body, true);
       return NextResponse.json(data, { status: 201 });
     } catch (error) {
-      console.error('Error creating heir:', error);
       
       // Return success response as fallback
       return NextResponse.json({
@@ -132,7 +127,6 @@ export const POST = ApiAuth.withAuth(async (request: NextRequest, user) => {
     }
 
   } catch (error) {
-    console.error('Crown Vault heirs creation error:', error);
     return NextResponse.json(
       { error: 'Failed to create heir' },
       { status: 500 }

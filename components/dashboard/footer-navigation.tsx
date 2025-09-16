@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, CalendarIcon, Crown, UserCircle2, Globe, Gem } from "lucide-react"
+import { Brain, CalendarIcon, Crown, UserCircle2, Globe, Gem } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 
@@ -19,7 +19,7 @@ export function FooterNavigation({
   const router = useRouter()
 
   const navItems = [
-    { name: "Home", icon: Home, route: "/dashboard", alwaysShow: true },
+    { name: "Home", icon: Brain, route: "/dashboard", alwaysShow: true },
     { name: "HNWI World", icon: Globe, route: "/hnwi-world", alwaysShow: true },
     { name: "Crown Vault", icon: Crown, route: "/crown-vault", alwaysShow: true },
     { name: "Privé Exchange", icon: Gem, route: "/prive-exchange", alwaysShow: true },

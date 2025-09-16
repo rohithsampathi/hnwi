@@ -102,8 +102,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(stats, { status: 200 });
 
     } catch (fetchError) {
-      console.error('Error fetching assets for stats:', fetchError);
-      
       // Return default empty stats if backend fails
       const fallbackStats: VaultStats = {
         total_assets: 0,
@@ -118,7 +116,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Crown Vault stats fetch error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch vault statistics' },
       { status: 500 }

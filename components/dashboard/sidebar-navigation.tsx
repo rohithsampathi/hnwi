@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Home, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -82,43 +82,43 @@ export function SidebarNavigation({
 
   // All navigation items with business mode flags - Reordered as requested
   const allNavItems = [
-    { name: "Home", icon: Home, route: "dashboard", businessOnly: false },
-    { 
-      name: "Privé Exchange", 
-      icon: Gem, 
+    { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
+    {
+      name: "Ask Rohith",
+      icon: Bot,
+      route: "ask-rohith",
+      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
+      isNew: true,
+      businessOnly: false
+    },
+    {
+      name: "Privé Exchange",
+      icon: Gem,
       route: "prive-exchange",
       description: "Off-market opportunities. Member referrals only.",
       businessOnly: false
     },
-    { 
-      name: "HNWI World", 
-      icon: Globe, 
+    {
+      name: "HNWI World",
+      icon: Globe,
       route: "strategy-vault",
-      description: memberAnalytics ? 
-        `What ${memberAnalytics.active_members_24h} members are discussing privately` : 
+      description: memberAnalytics ?
+        `What ${memberAnalytics.active_members_24h} members are discussing privately` :
         "Private intelligence network",
       businessOnly: false
     },
-    { 
-      name: "Crown Vault", 
-      icon: Crown, 
+    {
+      name: "Crown Vault",
+      icon: Crown,
       route: "crown-vault",
       description: "Generational wealth architecture. Built for families that think in decades.",
       businessOnly: false
     },
-    { 
-      name: "Social Hub", 
-      icon: Users, 
+    {
+      name: "Social Hub",
+      icon: Users,
       route: "social-hub",
       description: "Where the right people gather. Invitation verification required.",
-      businessOnly: false
-    },
-    { 
-      name: "Tactics Lab", 
-      icon: Beaker, 
-      route: "strategy-engine",
-      description: "Wealth Strategy Assistant helping entrepreneurs get detailed analysis on HNWI World interests. A strategy engine, not a chatbot.",
-      beta: true,
       businessOnly: false
     },
     // War Room - Hidden for now
@@ -140,17 +140,17 @@ export function SidebarNavigation({
   const mainNavItems = filteredNavItems.slice(0, 4)
   const additionalNavItems = filteredNavItems.slice(4)
 
-  // Mobile bottom nav items - Updated order: Home, Privé, HNWI World  
+  // Mobile bottom nav items - Updated order: Home, Ask Rohith, Privé Exchange
   const mobileNavItems = [
-    { name: "Home", icon: Home, route: "dashboard" },
+    { name: "Home", icon: Brain, route: "dashboard" },
+    { name: "Ask Rohith", icon: Bot, route: "ask-rohith", isNew: true },
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
-    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
   ]
 
-  // Additional menu items for three dots dropdown - Updated order: Crown Vault, Tactics Lab, Social Hub, Profile
+  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Profile
   const moreMenuItems = [
+    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
-    { name: "Tactics Lab", icon: Beaker, route: "strategy-engine" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
   ]
@@ -161,8 +161,8 @@ export function SidebarNavigation({
       router.push("/dashboard")
     } else if (route === "strategy-vault") {
       router.push("/hnwi-world") // HNWI World maps to hnwi-world
-    } else if (route === "strategy-engine") {
-      router.push("/tactics-lab")
+    } else if (route === "ask-rohith") {
+      router.push("/ask-rohith")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "prive-exchange") {
@@ -315,9 +315,9 @@ export function SidebarNavigation({
                               "text-sm font-semibold tracking-wide",
                               isActive ? "text-primary" : ""
                             )}>{item.name}</span>
-                            {item.beta && (
+                            {(item.beta || item.isNew) && (
                               <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                Beta
+                                {item.isNew ? "New" : "Beta"}
                               </span>
                             )}
                           </div>
@@ -384,9 +384,9 @@ export function SidebarNavigation({
                                   "text-sm font-semibold tracking-wide",
                                   isActive ? "text-primary" : ""
                                 )}>{item.name}</span>
-                                {item.beta && (
+                                {(item.beta || item.isNew) && (
                                   <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                    Beta
+                                    {item.isNew ? "New" : "Beta"}
                                   </span>
                                 )}
                               </div>
@@ -528,12 +528,17 @@ export function SidebarNavigation({
                 key={item.route}
                 variant="ghost"
                 size="sm"
-                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
+                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative"
                 onClick={() => handleNavigate(item.route)}
               >
+                {item.isNew && (
+                  <span className="absolute top-1 right-1 text-[8px] bg-primary/20 text-primary px-1 py-0.5 rounded-full font-medium">
+                    New
+                  </span>
+                )}
                 <item.icon className={`h-6 w-6 mb-1 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
                 <span className={`text-[10px] font-medium leading-tight text-center ${isActive ? 'text-primary' : ''}`}>
-                  {item.name === "HNWI World" ? "HNWI" : item.name}
+                  {item.name === "Ask Rohith" ? "Rohith" : item.name === "HNWI World" ? "HNWI" : item.name}
                 </span>
               </Button>
             )

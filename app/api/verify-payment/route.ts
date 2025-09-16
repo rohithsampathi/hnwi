@@ -83,9 +83,8 @@ export async function POST(req: Request) {
       })
     }
   } catch (error) {
-    console.error('Payment verification error:', error)
     return NextResponse.json(
-      { success: false, message: "Payment verification failed" }, 
+      { success: false, message: "Payment verification failed" },
       { status: 500 }
     )
   }
@@ -201,12 +200,11 @@ export async function PUT(req: Request) {
         break
       
       default:
-        console.log(`Unhandled webhook event: ${event}`)
+        // Unhandled webhook event
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Webhook processing error:', error)
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 }
@@ -217,21 +215,17 @@ export async function PUT(req: Request) {
 // Webhook handler functions
 async function handleSubscriptionCharged(payload: any) {
   // Update subscription status and create transaction record
-  console.log('Subscription charged:', payload)
 }
 
 async function handleSubscriptionCancelled(payload: any) {
   // Mark subscription as cancelled
-  console.log('Subscription cancelled:', payload)
 }
 
 async function handleSubscriptionExpired(payload: any) {
   // Mark subscription as expired
-  console.log('Subscription expired:', payload)
 }
 
 async function handlePaymentFailed(payload: any) {
   // Handle failed payment and notify user
-  console.log('Payment failed:', payload)
 }
 

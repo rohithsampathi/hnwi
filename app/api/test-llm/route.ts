@@ -44,7 +44,6 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('LLM test error:', error);
     
     return NextResponse.json({
       success: false,

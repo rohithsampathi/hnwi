@@ -16,7 +16,7 @@ export default function PriveExchangeRoute() {
     } else if (route === "hnwi-world") {
       router.push("/hnwi-world")
     } else if (route === "strategy-engine") {
-      router.push("/tactics-lab")
+      router.push("/ask-rohith")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "invest-scan") {

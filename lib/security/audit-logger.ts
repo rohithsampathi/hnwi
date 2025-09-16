@@ -185,7 +185,6 @@ export class AuditLogger {
         AuditLogger.sendToServer(criticalLogs);
       }
     } catch (error) {
-      console.error("Failed to persist audit logs:", error);
     }
   }
 
@@ -205,7 +204,6 @@ export class AuditLogger {
       AuditLogger.logs = decrypted.logs;
       AuditLogger.metrics = decrypted.metrics;
     } catch (error) {
-      console.error("Failed to load persisted audit logs:", error);
     }
   }
 
@@ -232,7 +230,6 @@ export class AuditLogger {
   private static alertSecurityTeam(log: AuditLog): void {
     // Implementation would alert security team
     // This is a placeholder for the actual implementation
-    console.error("SECURITY ALERT:", log);
   }
 
   private static getClientIP(): string | undefined {
@@ -328,7 +325,6 @@ export const auditLogger = {
       );
     } catch (error) {
       // Silent fail for audit logging to prevent breaking app functionality
-      console.warn('Audit logging failed:', error);
     }
   }
 };

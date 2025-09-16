@@ -23,7 +23,6 @@ export default function TestSecureApiPage() {
       timestamp: new Date().toISOString()
     };
     setAuthStatus(status);
-    console.log("[Test] Auth Status:", status);
   };
 
   const testCrownVault = async () => {
@@ -34,7 +33,6 @@ export default function TestSecureApiPage() {
         throw new Error("No user ID found");
       }
 
-      console.log("[Test] Testing Crown Vault with userId:", userId);
       
       // Test Crown Vault assets
       const assets = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true);
@@ -54,9 +52,7 @@ export default function TestSecureApiPage() {
       };
 
       setApiTestResults(prev => ({ ...prev, crownVault: results }));
-      console.log("[Test] Crown Vault Results:", results);
     } catch (error) {
-      console.error("[Test] Crown Vault Error:", error);
       setApiTestResults(prev => ({ 
         ...prev, 
         crownVault: { 
@@ -73,7 +69,6 @@ export default function TestSecureApiPage() {
   const testDashboard = async () => {
     try {
       setLoading(true);
-      console.log("[Test] Testing Dashboard...");
       
       // Test analytics
       const analytics = await secureApi.post('/api/analytics/activity', {
@@ -88,9 +83,7 @@ export default function TestSecureApiPage() {
       };
 
       setApiTestResults(prev => ({ ...prev, dashboard: results }));
-      console.log("[Test] Dashboard Results:", results);
     } catch (error) {
-      console.error("[Test] Dashboard Error:", error);
       setApiTestResults(prev => ({ 
         ...prev, 
         dashboard: { 

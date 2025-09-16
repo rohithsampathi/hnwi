@@ -492,19 +492,12 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
 
 
     } catch (error: any) {
-      console.error('❌ Elite Pulse Intelligence fetch failed:', error)
-      console.error('❌ Error details:', {
-        message: error.message,
-        status: error.status,
-        userId: userId
-      });
       dispatch({ type: 'SET_ERROR', payload: error.message })
-      
+
       // Try to use cached data as fallback
       const cached = getCachedDashboard(userId)
       if (cached) {
         dispatch({ type: 'SET_DASHBOARD', payload: cached })
-        console.warn('🔄 Using cached Elite Pulse data as fallback')
       }
     }
   }, [])
@@ -515,7 +508,6 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       
       await fetchIntelligenceDashboard(user.user_id || user.id, { force: true })
     } else {
-      console.warn('🧠 Elite Pulse Context: No user ID found, skipping intelligence fetch');
       
       // Try to find alternative ID fields
       if (user) {
@@ -573,7 +565,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
           intelligence_type: intelligenceType,
           intelligence_id: intelligenceId
         })
-      }).catch(console.error) // Fire and forget
+      }).catch(() => {}) // Fire and forget
     }
   }, [user])
 
@@ -601,7 +593,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
           action,
           context
         })
-      }).catch(console.error) // Fire and forget
+      }).catch(() => {}) // Fire and forget
     }
   }, [user])
 
@@ -656,7 +648,6 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
         const preferences = JSON.parse(stored)
         dispatch({ type: 'UPDATE_PREFERENCES', payload: preferences })
       } catch (error) {
-        console.error('Failed to load Elite Pulse preferences:', error)
       }
     }
   }, [])

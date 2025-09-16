@@ -40,7 +40,6 @@ export function SimpleIntelligenceTest() {
       setData(result)
       setError(null)
     } catch (err: any) {
-      console.error('❌ Error:', err)
       setError(err.message)
     } finally {
       setLoading(false)

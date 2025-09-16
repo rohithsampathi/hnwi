@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('SecureApi request failed:', apiError);
       
       // Return fallback global Elite Pulse analysis when backend is unavailable
       return NextResponse.json({
@@ -49,7 +48,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Elite Pulse Global API error:', error);
     return NextResponse.json(
       { 
         error: "No Elite Pulse analysis found",

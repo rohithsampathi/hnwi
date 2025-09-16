@@ -3,7 +3,7 @@
 
 "use client"
 
-import { ArrowLeft, Crown, Home, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield } from "lucide-react"
+import { ArrowLeft, Crown, Brain, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield, MessageSquare, Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { cn } from "@/lib/utils"
@@ -28,11 +28,12 @@ export function PageHeader({
   
   // Map routes to their specific icons
   const getPageIcon = () => {
-    if (pathname.includes('/dashboard')) return Home
+    if (pathname.includes('/dashboard')) return Brain
     if (pathname.includes('/prive-exchange')) return Gem
     if (pathname.includes('/hnwi-world') || pathname.includes('/strategy-vault')) return Globe
     if (pathname.includes('/crown-vault')) return Crown
     if (pathname.includes('/social-hub')) return Users
+    if (pathname.includes('/ask-rohith')) return Bot
     if (pathname.includes('/tactics-lab') || pathname.includes('/strategy-engine')) return Beaker
     if (pathname.includes('/profile')) return UserCircle2
     if (pathname.includes('/playbooks')) return BookOpen

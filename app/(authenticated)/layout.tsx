@@ -34,6 +34,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
+    if (pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-rohith', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }
     if (pathname.includes('/prive-exchange')) return { title: '', currentPage: 'prive-exchange', showBackButton: true }
     if (pathname.includes('/crown-vault')) return { title: '', currentPage: 'crown-vault', showBackButton: true }
@@ -59,6 +60,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // Map internal routes to Next.js routes
     if (route === "dashboard") {
       router.push("/dashboard")
+    } else if (route === "ask-rohith") {
+      router.push("/ask-rohith")
     } else if (route === "strategy-vault") {
       router.push("/hnwi-world")
     } else if (route === "strategy-engine") {

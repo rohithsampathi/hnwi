@@ -97,7 +97,6 @@ export class ClientSecurityManager {
         }, 100);
       }
     } catch (error) {
-      console.error('Error locking session:', error);
       // Fallback to old behavior if there's an error
       ClientSecurityManager.terminateSession(userId);
     }
@@ -253,12 +252,10 @@ export class SecureAPIClient {
       const xcontent = response.headers.get("X-Content-Type-Options");
       
       if (!csp || !xframe || !xcontent) {
-        console.warn("Missing security headers in API response");
       }
 
       return response;
     } catch (error) {
-      console.error("Secure request failed:", error);
       throw error;
     }
   }
@@ -273,7 +270,6 @@ export class SecureAPIClient {
       const parsed = JSON.parse(encryptedData);
       return AES256Encryption.decryptObject(parsed, encryptionKey);
     } catch (error) {
-      console.error("Failed to decrypt response:", error);
       throw new Error("Invalid encrypted response");
     }
   }
@@ -330,7 +326,6 @@ export class BiometricAuth {
       });
       return credential;
     } catch (error) {
-      console.error("Biometric registration failed:", error);
       throw error;
     }
   }
@@ -356,7 +351,6 @@ export class BiometricAuth {
       });
       return assertion;
     } catch (error) {
-      console.error("Biometric authentication failed:", error);
       throw error;
     }
   }

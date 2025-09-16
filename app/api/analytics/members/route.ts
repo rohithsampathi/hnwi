@@ -17,8 +17,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Check if it's a 404 error and return reasonable defaults
       if (apiError instanceof Error && apiError.message.includes('404')) {
         return NextResponse.json({
@@ -28,7 +26,7 @@ export async function GET(request: NextRequest) {
           regions: {}
         }, { status: 200 });
       }
-      
+
       // Return fallback data when backend is unavailable
       return NextResponse.json({
         total_members: 0,
@@ -39,8 +37,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Member analytics error:', error);
-    
     // Always return some data even if there's an error
     return NextResponse.json({
       total_members: 0,

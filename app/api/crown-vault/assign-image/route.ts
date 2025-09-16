@@ -44,8 +44,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Image assignment API error:', error);
-    
     // Return fallback assignment on error
     const fallbackConfig = ASSET_IMAGE_MAP.default;
     const fallbackAssignment = {

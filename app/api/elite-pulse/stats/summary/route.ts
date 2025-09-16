@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return fallback stats when backend is unavailable
       return NextResponse.json({
@@ -35,7 +34,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Elite Pulse Stats API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch Elite Pulse statistics' },
       { status: 500 }

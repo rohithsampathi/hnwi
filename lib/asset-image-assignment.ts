@@ -54,7 +54,6 @@ export const assignImageWithLLM = async (assetName: string, assetType: string, a
       confidence: 0.95
     };
   } catch (error) {
-    console.error('Image assignment failed:', error);
     // Fallback to default
     const defaultConfig = ASSET_IMAGE_MAP.default;
     return {
@@ -178,7 +177,6 @@ export const assignImageViaAPI = async (
     }
     
   } catch (error) {
-    console.error('API image assignment failed:', error);
     
     // Fallback to local smart assignment
     return assignImageWithLLM(assetName, assetType, assetDescription);
@@ -245,7 +243,6 @@ export const assignImageWithActualLLM = async (assetName: string, assetType: str
       };
     }
   } catch (error) {
-    console.error('LLM image assignment failed:', error);
   }
   
   // Fallback to rule-based assignment

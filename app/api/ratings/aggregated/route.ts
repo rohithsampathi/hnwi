@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return fallback aggregated ratings when backend is unavailable
       return NextResponse.json({
@@ -40,7 +39,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Ratings aggregated API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch aggregated ratings' },
       { status: 500 }

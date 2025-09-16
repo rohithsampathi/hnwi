@@ -35,10 +35,6 @@ export async function POST(request: NextRequest) {
     // 2. Store the subscription in your database
     // 3. Associate it with the user for sending push notifications
     
-    console.log('Push subscription received:', {
-      endpoint: body.endpoint,
-      hasKeys: !!body.keys.p256dh && !!body.keys.auth
-    });
 
     // Mock response - in real implementation, save to database
     return NextResponse.json({
@@ -47,7 +43,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Failed to process push subscription:', error);
     return NextResponse.json(
       { error: 'Failed to process push subscription' },
       { status: 500 }

@@ -206,7 +206,6 @@ export class E2EEncryption {
         verified
       };
     } catch (error) {
-      console.error("Decryption failed:", error);
       throw new Error("Failed to decrypt message");
     }
   }

@@ -295,31 +295,26 @@ export function getSecurityConfig(): SecurityConfig {
 export function validateSecurityConfig(config: SecurityConfig): boolean {
   // Validate encryption settings
   if (config.encryption.keyLength < 32) {
-    console.error("Encryption key length must be at least 32 bytes");
     return false;
   }
 
   // Validate authentication settings
   if (config.authentication.passwordMinLength < 8) {
-    console.error("Password minimum length must be at least 8 characters");
     return false;
   }
 
   // Validate session settings
   if (config.session.timeout < 300000) { // 5 minutes
-    console.error("Session timeout must be at least 5 minutes");
     return false;
   }
 
   // Validate rate limiting
   if (config.rateLimit.maxRequests < 10) {
-    console.error("Rate limit must allow at least 10 requests");
     return false;
   }
 
   // Validate GDPR settings
   if (config.gdpr.enabled && !config.gdpr.dpoEmail) {
-    console.error("DPO email must be provided when GDPR is enabled");
     return false;
   }
 
@@ -330,7 +325,6 @@ export const securityConfig = getSecurityConfig();
 
 // Validate configuration on load
 if (!validateSecurityConfig(securityConfig)) {
-  console.error("Invalid security configuration detected");
   if (process.env.NODE_ENV === "production") {
     throw new Error("Security configuration validation failed");
   }

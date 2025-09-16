@@ -26,7 +26,6 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Failed to process push unsubscription:', error);
     return NextResponse.json(
       { error: 'Failed to process push unsubscription' },
       { status: 500 }

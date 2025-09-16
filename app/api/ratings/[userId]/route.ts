@@ -28,7 +28,6 @@ export async function PUT(
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return success response when backend is unavailable
       return NextResponse.json({
@@ -43,7 +42,6 @@ export async function PUT(
     }
 
   } catch (error) {
-    console.error('Ratings API error:', error);
     return NextResponse.json(
       { error: 'Failed to submit rating' },
       { status: 500 }
@@ -77,7 +75,6 @@ export async function GET(
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
       
       // Return fallback user rating when backend is unavailable
       return NextResponse.json({
@@ -88,7 +85,6 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('Ratings API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user rating' },
       { status: 500 }

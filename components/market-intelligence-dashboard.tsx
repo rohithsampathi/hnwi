@@ -430,8 +430,6 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       }
       
     } catch (error) {
-      console.error('Fetch developments error:', error);
-      
       // Only show toast error if it's not a timeout/abort
       if (error.name !== 'AbortError' && error.name !== 'TimeoutError') {
         toast({
@@ -538,7 +536,6 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                     }
                     setSelectedTimeRange(value);
                   } catch (error) {
-                    console.error('Date filter error:', error);
                     toast({
                       title: "Filter Error",
                       description: "Please try again",
@@ -846,7 +843,6 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                       }
                       setSelectedTimeRange(value);
                     } catch (error) {
-                      console.error('Date filter error:', error);
                       toast({
                         title: "Filter Error",
                         description: "Please try again",

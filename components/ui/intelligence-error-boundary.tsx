@@ -30,7 +30,6 @@ export class ElitePulseErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Elite Pulse Intelligence Error:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 

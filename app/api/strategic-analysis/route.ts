@@ -17,8 +17,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Return fallback strategic analysis when backend is unavailable
       return NextResponse.json({
         analysis: {
@@ -29,7 +27,7 @@ export async function POST(request: NextRequest) {
           ],
           recommendations: [
             "Consider increasing exposure to alternative investments",
-            "Monitor geopolitical developments affecting market stability", 
+            "Monitor geopolitical developments affecting market stability",
             "Evaluate ESG investment opportunities for long-term value creation"
           ],
           risk_assessment: {
@@ -49,7 +47,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Strategic Analysis API error:', error);
     return NextResponse.json(
       { error: 'Failed to generate strategic analysis' },
       { status: 500 }
@@ -74,8 +71,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Return fallback strategic analysis when backend is unavailable
       return NextResponse.json({
         analysis: {
@@ -87,7 +82,7 @@ export async function GET(request: NextRequest) {
           ],
           strategic_themes: [
             "Digital transformation acceleration",
-            "Sustainable investing mainstreaming", 
+            "Sustainable investing mainstreaming",
             "Geopolitical risk management"
           ]
         },
@@ -96,7 +91,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Strategic Analysis API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch strategic analysis' },
       { status: 500 }

@@ -355,7 +355,7 @@ const secureAuth = SecureAuthManager.getInstance();
 
 // Initialize on module load
 if (typeof window !== "undefined") {
-  secureAuth.initialize().catch(console.error);
+  secureAuth.initialize().catch(() => {});
 
   // Add activity tracking listeners
   ["mousedown", "keydown", "scroll", "touchstart"].forEach(event => {

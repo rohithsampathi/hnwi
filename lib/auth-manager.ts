@@ -55,7 +55,6 @@ export class AuthenticationManager {
     const hasUser = userStorage.hasUser()
     
     if (hasToken && !hasUser) {
-      console.warn('[AuthManager] Token exists but no user data - attempting recovery')
       // Try to get user from token
       const userFromToken = userStorage.getUserFromToken()
       if (userFromToken && userFromToken.userId) {
@@ -65,7 +64,6 @@ export class AuthenticationManager {
         this.logout()
       }
     } else if (!hasToken && hasUser) {
-      console.warn('[AuthManager] User data exists but no token - clearing user')
       userStorage.clearUser()
     }
   }
@@ -89,7 +87,6 @@ export class AuthenticationManager {
     const normalizedUser = setUserData(userData)
     
     if (!normalizedUser) {
-      console.error('[AuthManager] Failed to store user data')
       clearAuthToken()
       return null
     }
@@ -201,7 +198,6 @@ export class AuthenticationManager {
     try {
       const token = this.getAuthToken()
       if (!token) {
-        console.warn('[AuthManager] No token for refresh')
         return null
       }
       
@@ -219,11 +215,9 @@ export class AuthenticationManager {
         }
       } else if (response.status === 401) {
         // Token invalid - logout
-        console.warn('[AuthManager] Token invalid during refresh')
         this.logout()
       }
     } catch (error) {
-      console.error('[AuthManager] Failed to refresh auth:', error)
     }
     
     return null

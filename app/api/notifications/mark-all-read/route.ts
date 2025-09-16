@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Failed to mark all notifications as read:', error);
     return NextResponse.json(
       { error: 'Failed to mark all notifications as read' },
       { status: 500 }

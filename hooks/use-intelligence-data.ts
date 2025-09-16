@@ -67,7 +67,6 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
     
     return opportunities
   } catch (error) {
-    console.error('Error extracting tier opportunities:', error)
     return []
   }
 }

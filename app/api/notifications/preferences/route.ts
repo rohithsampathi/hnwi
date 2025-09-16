@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(preferencesWithUserId);
   } catch (error) {
-    console.error('Error fetching notification preferences:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -70,7 +69,6 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json(updatedPreferencesWithUserId);
   } catch (error) {
-    console.error('Error updating notification preferences:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

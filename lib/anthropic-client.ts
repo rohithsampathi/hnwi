@@ -65,7 +65,6 @@ export const assignImageWithClaude = async (
     return validatedCategory;
     
   } catch (error) {
-    console.error('Claude API error:', error);
     
     // Fallback to rule-based assignment on API failure
     return getFallbackImageCategory(assetName, assetType);
@@ -173,7 +172,6 @@ export const testAnthropicConnection = async (): Promise<boolean> => {
     return responseText.includes('connected');
     
   } catch (error) {
-    console.error('Anthropic connection test failed:', error);
     return false;
   }
 };

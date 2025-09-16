@@ -132,7 +132,6 @@ export class SecureStorage {
       );
       return decrypted.value;
     } catch (error) {
-      console.error("Failed to decrypt data:", error);
       return null;
     }
   }

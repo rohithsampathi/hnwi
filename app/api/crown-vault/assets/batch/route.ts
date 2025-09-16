@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: 200 });
 
   } catch (error) {
-    console.error('Crown Vault batch processing error:', error);
     return NextResponse.json(
       { error: 'Failed to process assets' },
       { status: 500 }

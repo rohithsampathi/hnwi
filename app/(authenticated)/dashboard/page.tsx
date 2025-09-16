@@ -17,8 +17,6 @@ export default function DashboardPage() {
     const authUser = getCurrentUser()
     if (authUser) {
       setUser(authUser)
-    } else {
-      console.warn('[Dashboard] No user found in auth manager')
     }
   }, [])
 
@@ -27,7 +25,7 @@ export default function DashboardPage() {
     if (route === "strategy-vault") {
       router.push("/prive-exchange")
     } else if (route === "strategy-engine") {
-      router.push("/tactics-lab")
+      router.push("/ask-rohith")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "prive-exchange") {

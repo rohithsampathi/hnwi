@@ -38,8 +38,6 @@ export async function GET(
       return NextResponse.json(enhancedData, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Return fallback user data when backend is unavailable
       return NextResponse.json({
         id: userId,
@@ -73,7 +71,6 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('Users API error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user data' },
       { status: 500 }
@@ -119,8 +116,6 @@ export async function PUT(
       return NextResponse.json(enhancedResponse, { status: 200 });
       
     } catch (apiError) {
-      console.error('Backend request failed:', apiError);
-      
       // Return success response when backend is unavailable
       return NextResponse.json({
         success: true,
@@ -130,7 +125,6 @@ export async function PUT(
     }
 
   } catch (error) {
-    console.error('Users API error:', error);
     return NextResponse.json(
       { error: 'Failed to update user data' },
       { status: 500 }

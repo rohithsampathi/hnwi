@@ -87,7 +87,6 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
       });
 
     } catch (error) {
-      console.error('Update asset error:', error);
       toast({
         title: "Update Failed",
         description: error instanceof Error ? error.message : "Failed to update asset. Please try again.",

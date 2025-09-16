@@ -85,7 +85,6 @@ export class UserDataStorage {
         const user = JSON.parse(stored)
         this.cachedUser = this.normalizeUser(user)
       } catch (error) {
-        console.error('[UserDataStorage] Failed to parse stored user:', error)
         this.clearUser()
       }
     } else {
@@ -106,7 +105,6 @@ export class UserDataStorage {
           this.setUser(normalized)
         }
       } catch (error) {
-        console.error('[UserDataStorage] Failed to migrate legacy user:', error)
       }
     }
   }
@@ -128,7 +126,6 @@ export class UserDataStorage {
                   null
     
     if (!userId) {
-      console.error('[UserDataStorage] No user ID found in data:', userData)
       return null
     }
     
@@ -201,7 +198,6 @@ export class UserDataStorage {
     
     const normalized = this.normalizeUser(userData)
     if (!normalized) {
-      console.error('[UserDataStorage] Failed to normalize user data')
       return null
     }
     
@@ -228,7 +224,6 @@ export class UserDataStorage {
     if (!tokenStorage.hasValidToken()) {
       // Only clear and warn if we actually had user data
       if (this.cachedUser) {
-        console.warn('[UserDataStorage] Token expired, clearing user data')
         this.clearUser()
       }
       return null
@@ -247,7 +242,6 @@ export class UserDataStorage {
         this.cachedUser = this.normalizeUser(user)
         return this.cachedUser
       } catch (error) {
-        console.error('[UserDataStorage] Failed to parse stored user:', error)
         this.clearUser()
       }
     }
@@ -296,7 +290,6 @@ export class UserDataStorage {
   public updateUser(updates: Partial<NormalizedUser>): NormalizedUser | null {
     const current = this.getUser()
     if (!current) {
-      console.error('[UserDataStorage] Cannot update - no user found')
       return null
     }
     

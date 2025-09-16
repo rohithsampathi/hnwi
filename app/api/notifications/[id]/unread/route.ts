@@ -38,7 +38,6 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Failed to mark notification as unread:', error);
     return NextResponse.json(
       { error: 'Failed to mark notification as unread' },
       { status: 500 }
