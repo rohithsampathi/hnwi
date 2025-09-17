@@ -169,7 +169,7 @@ export function AuthPopup({
       } else if (result.access_token) {
         // Direct login success (shouldn't happen with MFA enabled)
         if (result.access_token) {
-          localStorage.setItem('token', result.access_token)
+          // Backend sets httpOnly cookies
         }
         
         // Update session state to authenticated (unlocked)
@@ -247,7 +247,7 @@ export function AuthPopup({
       if (result.success) {
         // Store token in localStorage for frontend auth checks
         if (result.access_token) {
-          localStorage.setItem('token', result.access_token)
+          // Backend sets httpOnly cookies
         }
         
         // Update session state to authenticated (unlocked)

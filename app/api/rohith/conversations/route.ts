@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { serverSecureApi } from "@/lib/secure-api"
 import { getCurrentUserId } from "@/lib/auth-manager"
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,8 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Get authentication cookies
+    const accessTokenCookie = cookies().get('access_token');
+    const refreshTokenCookie = cookies().get('refresh_token');
+    const authCookies = `access_token=${accessTokenCookie?.value || ''}; refresh_token=${refreshTokenCookie?.value || ''}`;
+
     // Use serverSecureApi for server-side API calls
-    const conversations = await serverSecureApi.get('/api/rohith/conversations')
+    const conversations = await serverSecureApi.get('/api/rohith/conversations', authCookies)
 
     return NextResponse.json(conversations)
 

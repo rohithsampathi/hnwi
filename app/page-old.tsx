@@ -438,7 +438,7 @@ export default function Home() {
       } catch (error) {
         
         // Fallback to localStorage check for backward compatibility
-        const token = localStorage.getItem("token");
+        // Auth via cookies
         const userId = localStorage.getItem("userId");
         const isAuthenticatedFallback = !!(token && userId);
         

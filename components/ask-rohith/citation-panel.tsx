@@ -64,7 +64,9 @@ export function CitationPanel({
         // Fetch each development individually from public endpoint
         for (const citationId of citationIds) {
           try {
-            const response = await fetch(`/api/developments/public/${citationId}`)
+            const response = await fetch(`/api/developments/public/${citationId}`, {
+              credentials: 'include' // CRITICAL: Send cookies with request
+            })
 
             if (response.ok) {
               const dev = await response.json()

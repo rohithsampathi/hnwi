@@ -8,38 +8,78 @@ import { logger } from '@/lib/secure-logger'
 // GET handler for retrieving the session
 export async function GET() {
   try {
-    // Read session cookie or token from cookie storage
+    // Read backend cookies (FastAPI sets these directly)
     const cookieStore = cookies();
-    const sessionToken = cookieStore.get('session_token')?.value;
-    
-    // Also check traditional session cookie
-    const traditionaSession = cookieStore.get('session')?.value;
-    
-    if (!sessionToken && !traditionaSession) {
+    const accessToken = cookieStore.get('access_token')?.value;
+    const refreshToken = cookieStore.get('refresh_token')?.value;
+
+    // Log what cookies we're receiving
+    const allCookies = cookieStore.getAll();
+    logger.info('Session check - cookies received', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      cookieNames: allCookies.map(c => c.name),
+      accessTokenLength: accessToken?.length || 0
+    });
+
+    // Only check backend cookies - no frontend session management
+    if (!accessToken) {
+      logger.info('No access_token cookie found');
       return NextResponse.json({ user: null }, { status: 200 });
     }
     
-    // Check if we need to validate a token or extract user from cookies
-    if (sessionToken || traditionaSession) {
-      try {
-        // If you have stored user data in session_user cookie, retrieve it
-        const userDataCookie = cookieStore.get('session_user')?.value;
-        if (userDataCookie) {
-          const userData = JSON.parse(userDataCookie);
-          // Also provide the session token for frontend localStorage
-          return NextResponse.json({ 
-            user: userData,
-            token: sessionToken || traditionaSession 
-          });
+    // We have an access token - fetch user from backend or decode JWT
+    try {
+      // Try to decode JWT to get user data
+      if (accessToken.includes('.')) {
+        try {
+          const parts = accessToken.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+
+            // Extract user data from JWT payload
+            const user = {
+              id: payload.user_id || payload.userId || payload.id || payload.sub,
+              user_id: payload.user_id || payload.userId || payload.id || payload.sub,
+              email: payload.email,
+              firstName: payload.firstName || payload.first_name || payload.name?.split(' ')[0],
+              lastName: payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' '),
+              role: payload.role || 'user',
+              ...payload // Include any additional fields
+            };
+
+            return NextResponse.json({ user });
+          }
+        } catch (jwtError) {
+          logger.error('Error decoding JWT token', { error: jwtError });
         }
-        
-        // For API token validation, you would need to implement proper validation here
-        // For now, don't fall back to demo user if there's a token present but invalid
-        // that would make it impossible to see actual login results
-      } catch (error) {
-        logger.error('Error parsing user session data', { error: error instanceof Error ? error.message : String(error) });
-        return NextResponse.json({ user: null }, { status: 200 });
       }
+
+      // If we can't decode the JWT, fetch user from backend
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const userResponse = await fetch(`${backendUrl}/api/auth/session`, {
+          headers: {
+            'Cookie': `access_token=${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (userData) {
+            return NextResponse.json({ user: userData });
+          }
+        }
+      } catch (fetchError) {
+        logger.error('Error fetching user from backend', { error: fetchError });
+      }
+
+      // If we can't get user data, return null
+      return NextResponse.json({ user: null }, { status: 200 });
+    } catch (error) {
+      logger.error('Error in session handler', { error: error instanceof Error ? error.message : String(error) });
+      return NextResponse.json({ user: null }, { status: 200 });
     }
     
     // If no valid session found, return null (not demo user)

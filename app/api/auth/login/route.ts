@@ -84,9 +84,20 @@ export async function POST(request: NextRequest) {
       hasPassword: !!validation.data!.password
     });
 
-    // Use secureApi to call backend - never expose backend URL
+    // Call backend directly from server-side - no CORS issue here
     try {
-      const backendResponse = await secureApi.post('/api/auth/login', validation.data!, false);
+      const { API_BASE_URL } = await import("@/config/api");
+      const backendUrl = `${API_BASE_URL}/api/auth/login`;
+
+      const backendFetchResponse = await fetch(backendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(validation.data!),
+      });
+
+      const backendResponse = await backendFetchResponse.json();
 
       logger.info("Backend login response received", {
         success: !!backendResponse.success,
@@ -96,6 +107,21 @@ export async function POST(request: NextRequest) {
         message: backendResponse.message,
         email: validation.data!.email
       });
+
+      // Check if backend call was successful
+      if (!backendFetchResponse.ok && !backendResponse.requires_mfa) {
+        logger.warn("Backend login failed", {
+          status: backendFetchResponse.status,
+          error: backendResponse.error || backendResponse.message
+        });
+
+        const response = NextResponse.json(
+          createSafeErrorResponse(backendResponse.error || backendResponse.message || 'Authentication failed'),
+          { status: backendFetchResponse.status }
+        );
+
+        return ApiAuth.addSecurityHeaders(response);
+      }
 
       // PRODUCTION FIX: Check for MFA token FIRST before checking errors
       // Backend may send both error message AND MFA token for security

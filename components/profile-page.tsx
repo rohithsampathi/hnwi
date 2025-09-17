@@ -56,6 +56,7 @@ import { secureApi } from "@/lib/secure-api"
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor, getVisibleSubtextColor, getMatteCardStyle, getMetallicCardStyle, getSubtleCardStyle } from "@/lib/colors"
 import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser } from "@/lib/auth-manager"
 import { NotificationPreferences } from "@/components/notifications/notification-preferences"
+import { GDPRComplianceToggle } from "@/components/gdpr-compliance-toggle"
 import { SubscriptionCard } from "@/components/subscription/subscription-card"
 import { BillingHistory } from "@/components/subscription/billing-history"
 import { PlanUpgradeModal } from "@/components/subscription/plan-upgrade-modal"
@@ -1149,6 +1150,9 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
 
                   {activeTab === 'preferences' && (
                     <div className="space-y-6">
+                  {/* GDPR Privacy Compliance */}
+                  <GDPRComplianceToggle />
+
                   {/* Investment Preferences */}
                   <Card className="border-0 shadow-lg bg-card/50 backdrop-blur">
                     <CardHeader>
@@ -1175,7 +1179,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   {/* Notification Preferences */}
                   <Card className="border-0 shadow-lg bg-card/50 backdrop-blur">
                     <CardHeader>

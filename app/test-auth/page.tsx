@@ -23,7 +23,7 @@ export default function TestAuthPage() {
         token: getAuthToken(),
         isAuthenticated: isAuthenticated(),
         localStorage: {
-          token: localStorage.getItem('token'),
+          // Cookies handle auth - no token needed
           userId: localStorage.getItem('userId'),
           userObject: localStorage.getItem('userObject')
         }

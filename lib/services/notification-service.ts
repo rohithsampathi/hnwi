@@ -78,8 +78,8 @@ class NotificationService {
 
     try {
       const response = await secureApi.get(
-        `${this.baseUrl}/inbox?${params}`, 
-        true, 
+        `${this.baseUrl}/inbox?${params}`,
+        true,
         { enableCache: true, cacheDuration: 30000 } // 30s cache for inbox
       );
       return response;

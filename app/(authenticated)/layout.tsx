@@ -16,7 +16,7 @@ import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boun
 import { getApiUrlForEndpoint } from "@/config/api"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
-import { getCurrentUser, getCurrentUserId, getAuthToken, isAuthenticated as checkAuth } from "@/lib/auth-manager"
+import { getCurrentUser, getCurrentUserId, isAuthenticated as checkAuth } from "@/lib/auth-manager"
 import '@/lib/auth/debug-helper' // Load debug helper
 
 interface AuthenticatedLayoutProps {
@@ -104,11 +104,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     
     const checkAuthStatus = () => {
       // Use centralized auth manager
-      const token = getAuthToken()
       const userId = getCurrentUserId()
       const authUser = getCurrentUser()
 
-      if (!token || !userId) {
+      // With cookie-based auth, we check for user data, not tokens
+      if (!userId || !authUser) {
         setIsAuthenticated(false)
         setIsInitialLoad(false)
         router.push("/")

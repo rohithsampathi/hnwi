@@ -5,7 +5,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from "react"
 import DeviceTrustManager from "@/lib/device-trust"
 import { SessionState, getSessionState } from "@/lib/auth-utils"
-import { getCurrentUser, getCurrentUserId, getAuthToken, updateUser as updateAuthUser, logoutUser } from "@/lib/auth-manager"
+import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser, logoutUser } from "@/lib/auth-manager"
 
 // ================== TYPES ==================
 
@@ -290,11 +290,11 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
         // Check persisted session using centralized auth
         const authUser = getCurrentUser()
         const storedUserId = authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
-        const storedToken = getAuthToken()
-        
+        // With cookie-based auth, we don't check tokens
+
         let user: User | null = authUser
-        
-        if (storedUserId && storedToken && authUser) {
+
+        if (storedUserId && authUser) {
           try {
             user = authUser
             
@@ -417,9 +417,8 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
     } else {
       // Clear user data
       localStorage.removeItem("userId")
-      localStorage.removeItem("userEmail")  
+      localStorage.removeItem("userEmail")
       localStorage.removeItem("userObject")
-      localStorage.removeItem("token")
       sessionStorage.removeItem("userDisplay")
       
       // Navigate to splash

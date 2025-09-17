@@ -30,7 +30,7 @@ import CrownVaultPage from "./pages/crown-vault-page"
 import { handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/auth-actions"
 import { useToast } from "@/components/ui/use-toast"
 import { setupLegacyNavigation, useNewNavigation } from "@/lib/unified-navigation"
-import { getCurrentUser, getCurrentUserId, getAuthToken, updateUser as updateAuthUser, loginUser as authManagerLogin } from "@/lib/auth-manager"
+import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser, loginUser as authManagerLogin } from "@/lib/auth-manager"
 
 // LoginPage is now consolidated into SplashScreen
 
@@ -100,9 +100,9 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (!user) {
           const authUser = getCurrentUser();
           const storedUserId = authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId();
-          const storedToken = getAuthToken();
-          
-          if (storedUserId && storedToken && authUser) {
+
+          // With cookie-based auth, we check for user data, not tokens
+          if (storedUserId && authUser) {
             try {
               const userObj = authUser;
               // Immediately restore user state to prevent navigation issues
@@ -110,7 +110,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
                 setUser(userObj);
                 setHasCheckedSession(true);
                 setIsSessionCheckComplete(true);
-                
+
                 // Continue with background validation but don't block navigation
                 setTimeout(() => validateSessionInBackground(userObj), 100);
                 return;
@@ -148,12 +148,13 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               setUser(userObj);
 
               // Store auth data using centralized auth manager
-              if (data.token) {
-                authManagerLogin(userObj, data.token);
-              } else {
-                updateAuthUser(userObj);
-              }
-  
+              // Cookies handle auth - no token in JavaScript
+              updateAuthUser(userObj);
+
+              // Store user data in sessionStorage for dashboard check
+              sessionStorage.setItem("userId", userObj.id);
+              sessionStorage.setItem("userObject", JSON.stringify(userObj));
+
               // SECURITY: Store only non-sensitive display data in sessionStorage
               sessionStorage.setItem("userDisplay", JSON.stringify({
                 firstName: userObj.firstName,
@@ -163,6 +164,8 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
               }));
             } else {
               setUser(null);
+              sessionStorage.removeItem("userId");
+              sessionStorage.removeItem("userObject");
               sessionStorage.removeItem("userDisplay");
               // Auth manager handles cleanup
               handleLogout();
@@ -197,7 +200,6 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         if (!data.user && isMounted) {
           // Session expired, need to logout
           setUser(null);
-          localStorage.removeItem("token");
           localStorage.removeItem("userId");
           localStorage.removeItem("userObject");
           sessionStorage.removeItem("userDisplay");
@@ -392,7 +394,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         localStorage.setItem("userObject", JSON.stringify(userObject));
         
         if (data.token) {
-          localStorage.setItem("token", data.token);
+          // Cookies handle auth
         }
         
         // Navigate to dashboard
@@ -430,9 +432,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         // Store the ID from API response if available, fall back to id from auth
         const userId = result.user.user_id || (result.user as any)._id || result.user.id;
         localStorage.setItem("userId", userId)
-        if (result.token) {
-          localStorage.setItem("token", result.token)
-        }
+        // Cookies handle auth - no token storage needed
         handleNavigation("dashboard")
       } else {
         throw new Error(result.error || "Onboarding failed")
@@ -456,9 +456,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           // Store the ID from API response if available, fall back to id from auth
           const userId = result.user.user_id || (result.user as any)._id || result.user.id;
           localStorage.setItem("userId", userId)
-          if (result.token) {
-            localStorage.setItem("token", result.token)
-          }
+          // Cookies handle auth - no token storage needed
           
           // Store the updated user object in localStorage
           localStorage.setItem("userObject", JSON.stringify(result.user));
@@ -533,7 +531,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       setUser(null);
       localStorage.removeItem("userId");
       localStorage.removeItem("userEmail");
-      localStorage.removeItem("token");
+      localStorage.removeItem("userObject");
       
       // Reset state
       setHasCheckedSession(false);
@@ -564,30 +562,14 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     try {
       // Extract profile from the response
       const profile = userData.profile || {};
-      
+
       // Extract user ID from multiple possible sources
-      let userId = null;
-      
-      // First, try to extract from JWT token if available
-      if (userData.token) {
-        try {
-          const tokenParts = userData.token.split('.');
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            userId = payload.user_id || payload.userId || payload.id;
-          }
-        } catch (e) {
-          // JWT parsing failed, will fall back to direct fields
-        }
-      }
-      
-      // Fallback to direct fields if JWT parsing didn't work
-      if (!userId) {
-        userId = userData.userId || 
-                userData.user_id || 
-                userData.id || 
-                profile.user_id || 
-                profile.userId || 
+      // No token parsing needed - cookies handle auth
+      const userId = userData.userId ||
+                userData.user_id ||
+                userData.id ||
+                profile.user_id ||
+                profile.userId ||
                 profile.id ||
                 userData._id ||
                 profile._id;
@@ -629,31 +611,31 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
       
       // Set user in state
       setUser(userObject);
-      
+
+      // Store in auth manager (no token needed - cookies handle auth)
+      authManagerLogin(userObject);
+
       // Mark session as checked to bypass the session check
       setHasCheckedSession(true);
       setIsSessionCheckComplete(true);
-      
-      // Store user info in localStorage
-      localStorage.setItem("userId", userId);
-      localStorage.setItem("userEmail", userObject.email);
-      
-      // Always ensure a token is stored
-      if (userData.token) {
-        localStorage.setItem("token", userData.token);
-      } else {
-        // Create a fallback token to maintain session
-        localStorage.setItem("token", "session-token-" + Date.now());
-      }
-      
-      // Also store the complete user object for session recovery
-      localStorage.setItem("userObject", JSON.stringify(userObject));
+
+      // Store user info in sessionStorage (NOT localStorage - cookies handle auth)
+      sessionStorage.setItem("userId", userId);
+      sessionStorage.setItem("userEmail", userObject.email);
+      sessionStorage.setItem("userObject", JSON.stringify(userObject));
+
+      // NO TOKEN STORAGE - tokens are in httpOnly cookies!
       
       // Store current page for refresh persistence
       sessionStorage.setItem("currentPage", "dashboard");
-      
-      // Navigate to dashboard
-      handleNavigation("dashboard");
+
+      // Set skip splash flag to prevent validation race condition
+      sessionStorage.setItem("skipSplash", "true");
+
+      // Navigate to dashboard with a small delay to ensure state is updated
+      setTimeout(() => {
+        handleNavigation("dashboard");
+      }, 50);
       resetOnboarding();
       
       // Show success toast
@@ -704,17 +686,17 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           );
         }
 
-        // Enhanced authentication check with localStorage fallback
-        const hasValidLocalStorage = (
-          localStorage.getItem("userId") &&
-          localStorage.getItem("token") &&
-          localStorage.getItem("userObject")
+        // Cookie-based authentication check - NO token in localStorage!
+        // Auth is determined by httpOnly cookies, we just check for user data
+        const hasValidUserData = (
+          sessionStorage.getItem("userId") &&
+          sessionStorage.getItem("userObject")
         );
 
         const skipSplash = sessionStorage.getItem("skipSplash");
 
-        // Only allow session if we have a valid user object AND valid storage
-        const hasValidSession = user && (hasValidLocalStorage || skipSplash);
+        // Check if we have user data (actual auth is via cookies)
+        const hasValidSession = user && (hasValidUserData || skipSplash);
 
         if (!hasValidSession) {
           // Clear any stale session flags

@@ -161,6 +161,7 @@ export const assignImageViaAPI = async (
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // CRITICAL: Send cookies with request
       body: JSON.stringify({
         assetName,
         assetType,

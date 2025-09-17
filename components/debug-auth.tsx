@@ -318,7 +318,7 @@ export function DebugAuth() {
           </Button>
           <Button 
             onClick={() => {
-              localStorage.removeItem('token')
+              // Cookies handle auth - no token removal needed
               window.location.reload()
             }} 
             variant="destructive" 

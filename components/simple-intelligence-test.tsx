@@ -30,7 +30,9 @@ export function SimpleIntelligenceTest() {
     try {
       setLoading(true)
       
-      const response = await fetch('/api/debug/ruscha-raw')
+      const response = await fetch('/api/debug/ruscha-raw', {
+        credentials: 'include' // CRITICAL: Send cookies with request
+      })
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`)

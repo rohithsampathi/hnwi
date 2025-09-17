@@ -16,27 +16,22 @@ const STATIC_CACHE_URLS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Installing...');
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static assets');
         return cache.addAll(STATIC_CACHE_URLS);
       })
       .then(() => {
-        console.log('Service Worker: Installation complete');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('Service Worker: Installation failed', error);
       })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Activating...');
   
   event.waitUntil(
     caches.keys()
@@ -44,14 +39,12 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log('Service Worker: Deleting old cache', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('Service Worker: Activation complete');
         return self.clients.claim();
       })
   );
@@ -103,7 +96,6 @@ self.addEventListener('fetch', (event) => {
 
 // Push event - handle push notifications
 self.addEventListener('push', (event) => {
-  console.log('Service Worker: Push message received', event);
 
   let notificationData = {};
   
@@ -112,7 +104,6 @@ self.addEventListener('push', (event) => {
       notificationData = event.data.json();
     }
   } catch (error) {
-    console.warn('Service Worker: Failed to parse push data as JSON', error);
     notificationData = {
       title: 'HNWI Chronicles',
       body: event.data?.text() || 'You have a new notification'
@@ -155,7 +146,6 @@ self.addEventListener('push', (event) => {
 
 // Notification click event - handle user interaction with notifications
 self.addEventListener('notificationclick', (event) => {
-  console.log('Service Worker: Notification clicked', event);
 
   const notification = event.notification;
   const action = event.action;
@@ -166,7 +156,6 @@ self.addEventListener('notificationclick', (event) => {
 
   // Handle dismiss action
   if (action === 'dismiss') {
-    console.log('Service Worker: Notification dismissed');
     return;
   }
 
@@ -185,7 +174,6 @@ self.addEventListener('notificationclick', (event) => {
       );
 
       if (existingClient && 'focus' in existingClient) {
-        console.log('Service Worker: Focusing existing window');
         return existingClient.focus();
       }
 
@@ -195,18 +183,15 @@ self.addEventListener('notificationclick', (event) => {
       );
 
       if (appClient && 'navigate' in appClient && 'focus' in appClient) {
-        console.log('Service Worker: Navigating existing window');
         return appClient.navigate(urlToOpen).then(() => appClient.focus());
       }
 
       // If no window/tab is open, open a new one
       if (self.clients.openWindow) {
-        console.log('Service Worker: Opening new window');
         return self.clients.openWindow(urlToOpen);
       }
     })
     .catch((error) => {
-      console.error('Service Worker: Error handling notification click', error);
     })
   );
 
@@ -231,7 +216,6 @@ self.addEventListener('notificationclick', (event) => {
 
 // Notification close event - handle when user dismisses notification
 self.addEventListener('notificationclose', (event) => {
-  console.log('Service Worker: Notification closed', event);
   
   const data = event.notification.data || {};
   
@@ -254,7 +238,6 @@ self.addEventListener('notificationclose', (event) => {
 
 // Background sync event - handle offline actions
 self.addEventListener('sync', (event) => {
-  console.log('Service Worker: Background sync', event.tag);
 
   if (event.tag === 'notification-sync') {
     event.waitUntil(
@@ -277,7 +260,6 @@ self.addEventListener('sync', (event) => {
 
 // Message event - handle messages from the main thread
 self.addEventListener('message', (event) => {
-  console.log('Service Worker: Message received', event.data);
 
   if (event.data && event.data.type) {
     switch (event.data.type) {
@@ -300,9 +282,7 @@ self.addEventListener('message', (event) => {
         break;
       
       default:
-        console.log('Service Worker: Unknown message type', event.data.type);
     }
   }
 });
 
-console.log('Service Worker: Script loaded successfully');

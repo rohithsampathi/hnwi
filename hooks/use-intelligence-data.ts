@@ -102,8 +102,8 @@ export function useIntelligenceData(userData?: any): UseIntelligenceDataResult {
       setRefreshing(forceRefresh)
       // Call backend API directly with authentication - using HNWI integrated endpoint with 5-minute caching
       // Bypass cache on force refresh
-      const data = await secureApi.get(`/api/hnwi/intelligence/dashboard/${userId}`, true, { 
-        enableCache: !forceRefresh, 
+      const data = await secureApi.get(`/api/hnwi/intelligence/dashboard/${userId}`, true, {
+        enableCache: !forceRefresh,
         cacheDuration: 300000 // 5 minutes cache for intelligence data
       })
       setIntelligenceData(data)

@@ -32,14 +32,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    
-    // Get session token for authentication
-    const sessionCookie = cookies().get('session');
-    const authToken = sessionCookie?.value || '';
-    
+
+    // Get authentication cookies
+    const accessTokenCookie = cookies().get('access_token');
+    const refreshTokenCookie = cookies().get('refresh_token');
+    const authCookies = `access_token=${accessTokenCookie?.value || ''}; refresh_token=${refreshTokenCookie?.value || ''}`;
+
     // Use serverSecureApi to call external backend - no fallbacks
     const endpoint = '/api/crown-vault/assets/batch';
-    const data = await serverSecureApi.post(endpoint, batchData, authToken);
+    const data = await serverSecureApi.post(endpoint, batchData, authCookies);
 
     return NextResponse.json(data, { status: 200 });
 

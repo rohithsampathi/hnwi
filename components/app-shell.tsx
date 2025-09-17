@@ -137,12 +137,7 @@ export function AppShell() {
         profile: profile
       }
       
-      // Store token
-      if (userData.token) {
-        localStorage.setItem("token", userData.token)
-      } else {
-        localStorage.setItem("token", "session-token-" + Date.now())
-      }
+      // Cookies handle auth - no token storage needed
       
       setUser(userObject)
       resetOnboarding()
@@ -167,7 +162,7 @@ export function AppShell() {
       if (result.success && result.user) {
         setUser(result.user)
         if (result.token) {
-          localStorage.setItem("token", result.token)
+          // Backend sets cookies
         }
         navigate("dashboard")
       } else {
@@ -188,7 +183,7 @@ export function AppShell() {
       if (result.success && result.user) {
         setUser(result.user)
         if (result.token) {
-          localStorage.setItem("token", result.token)
+          // Backend sets cookies
         }
         
         toast({

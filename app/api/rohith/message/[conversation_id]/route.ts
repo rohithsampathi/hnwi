@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { serverSecureApi } from "@/lib/secure-api"
 import { getCurrentUserId } from "@/lib/auth-manager"
+import { cookies } from 'next/headers';
 
 export async function POST(
   request: NextRequest,
@@ -47,11 +48,16 @@ export async function POST(
       )
     }
 
+    // Get authentication cookies
+    const accessTokenCookie = cookies().get('access_token');
+    const refreshTokenCookie = cookies().get('refresh_token');
+    const authCookies = `access_token=${accessTokenCookie?.value || ''}; refresh_token=${refreshTokenCookie?.value || ''}`;
+
     try {
       // Use serverSecureApi for server-side API calls
       const chatResponse = await serverSecureApi.post(`/api/rohith/message/${conversation_id}`, {
         message: message
-      })
+      }, authCookies)
       return NextResponse.json(chatResponse)
     } catch (error: any) {
       if (error.status === 404) {

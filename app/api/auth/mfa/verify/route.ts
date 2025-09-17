@@ -14,28 +14,29 @@ function getJWTSecret(): Uint8Array {
   return new TextEncoder().encode(secret)
 }
 
-function getSecureCookieName(baseName: string): string {
-  if (process.env.NODE_ENV === 'production') {
-    return `__Host-${baseName}`
-  } else {
-    return `__Secure-${baseName}`
-  }
-}
+// Removed frontend session management - backend handles all cookies now
+// function getSecureCookieName(baseName: string): string {
+//   if (process.env.NODE_ENV === 'production') {
+//     return `__Host-${baseName}`
+//   } else {
+//     return `__Secure-${baseName}`
+//   }
+// }
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
-  maxAge: 60 * 60 * 24, // 24 hours
-}
+// const COOKIE_OPTIONS = {
+//   httpOnly: true,
+//   secure: process.env.NODE_ENV === "production",
+//   sameSite: "strict" as const,
+//   maxAge: 60 * 60 * 24, // 24 hours
+// }
 
-async function createToken(user: any): Promise<string> {
-  return await new SignJWT({ ...user })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("24h")
-    .sign(getJWTSecret())
-}
+// async function createToken(user: any): Promise<string> {
+//   return await new SignJWT({ ...user })
+//     .setProtectedHeader({ alg: "HS256" })
+//     .setIssuedAt()
+//     .setExpirationTime("24h")
+//     .sign(getJWTSecret())
+// }
 
 export async function POST(request: NextRequest) {
   try {
@@ -197,13 +198,30 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(backendVerifyRequest),
         });
 
+        // Get all headers including Set-Cookie
+        const setCookieHeaders: string[] = [];
+        // @ts-ignore - accessing raw headers
+        const rawHeaders = fetchResponse.headers.raw?.() || {};
+        if (rawHeaders['set-cookie']) {
+          setCookieHeaders.push(...rawHeaders['set-cookie']);
+        } else {
+          // Try alternative method for getting cookies
+          const setCookieHeader = fetchResponse.headers.get('set-cookie');
+          if (setCookieHeader) {
+            setCookieHeaders.push(setCookieHeader);
+          }
+        }
+
         const backendResponse = await fetchResponse.json();
-        
-        logger.info('Backend MFA verification response received', { 
+
+        // Log the full response structure (without sensitive data)
+        logger.info('Backend MFA verification response received', {
           status: fetchResponse.status,
           success: backendResponse.success,
           hasUser: !!backendResponse.user,
           hasAccessToken: !!backendResponse.access_token,
+          hasRefreshToken: !!backendResponse.refresh_token,
+          responseKeys: Object.keys(backendResponse),
           error: backendResponse.error,
           message: backendResponse.message
         })
@@ -219,27 +237,75 @@ export async function POST(request: NextRequest) {
             user_id: normalizedUserId || backendUser.user_id
           }
 
-          // Create JWT token and set secure cookie  
-          const token = backendResponse.access_token || await createToken(normalizedUser)
-          const sessionCookieName = getSecureCookieName("session")
-          
+          // DON'T create our own session cookie - backend already set cookies!
+          // Just pass through the backend response
           const successResponse = NextResponse.json({
             success: true,
-            access_token: token,
             user: normalizedUser,
             message: backendResponse.message || "Login successful"
           });
-          
-          // Set session cookie
-          successResponse.cookies.set(sessionCookieName, token, COOKIE_OPTIONS);
-          
-          // Clean up the MFA session cookies
+
+          // Forward backend cookies to the browser
+          logger.info('Setting cookies from backend response', {
+            hasSetCookieHeaders: setCookieHeaders.length > 0,
+            setCookieCount: setCookieHeaders.length,
+            hasAccessTokenInBody: !!backendResponse.access_token,
+            hasRefreshTokenInBody: !!backendResponse.refresh_token
+          });
+
+          // First, try to forward Set-Cookie headers from backend
+          if (setCookieHeaders.length > 0) {
+            setCookieHeaders.forEach(cookieString => {
+              // Parse the cookie to extract name and value
+              const [nameValue, ...options] = cookieString.split(';').map(s => s.trim());
+              const [name, value] = nameValue.split('=');
+
+              if (name === 'access_token' || name === 'refresh_token') {
+                const maxAge = name === 'access_token' ? 15 * 60 : 7 * 24 * 60 * 60;
+                successResponse.cookies.set(name, value, {
+                  httpOnly: true,
+                  secure: process.env.NODE_ENV === 'production',
+                  sameSite: 'lax',
+                  path: '/',
+                  maxAge
+                });
+                logger.info(`Cookie ${name} set from backend header`);
+              }
+            });
+          }
+
+          // Fallback: If no cookies in headers but tokens in body, set them manually
+          if (backendResponse.access_token) {
+            successResponse.cookies.set('access_token', backendResponse.access_token, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 15 * 60 // 15 minutes
+            });
+            logger.info('access_token cookie set from response body');
+          }
+
+          if (backendResponse.refresh_token) {
+            successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 7 * 24 * 60 * 60 // 7 days
+            });
+            logger.info('refresh_token cookie set from response body');
+          }
+
+          // Clean up the frontend MFA session cookies
           successResponse.cookies.delete('mfa_session');
           successResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
 
-          logger.info('MFA verification successful via backend', { 
+          logger.info('MFA verification successful via backend', {
             email,
-            userId: normalizedUser.id
+            userId: normalizedUser.id,
+            hasAccessToken: !!backendResponse.access_token,
+            hasRefreshToken: !!backendResponse.refresh_token
           })
 
           return successResponse;

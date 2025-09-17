@@ -103,7 +103,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     // Store auth data in localStorage (same pattern as login-page.tsx)
     localStorage.setItem("userId", authData.userId);
     localStorage.setItem("userEmail", authData.email);
-    localStorage.setItem("token", authData.token);
+    // Backend sets cookies
     
     // Store user object for recovery if needed
     localStorage.setItem("userObject", JSON.stringify(authData));
@@ -144,6 +144,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Enable cookies
           body: JSON.stringify({ email, password }),
         })
 
@@ -159,12 +160,10 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           })
         } else if (result.access_token) {
           // Direct login success (shouldn't happen with MFA enabled)
-          if (result.access_token) {
-            localStorage.setItem('token', result.access_token)
-          }
-          
-          // Use AuthManager to handle user login and normalization
-          const normalizedUser = loginUser(result.user, result.access_token)
+          // Backend has set cookies - no need to store tokens
+
+          // Use AuthManager to handle user data (not tokens!)
+          const normalizedUser = loginUser(result.user)
           
           if (!normalizedUser) {
             setError('Authentication failed. Please try again.')
@@ -235,7 +234,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        credentials: 'include', // Enable cookies
+        body: JSON.stringify({
           email,
           mfa_code: code,
           mfa_token: mfaToken
@@ -245,14 +245,16 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
       const result = await response.json()
 
       if (result.success) {
-        // Store token in localStorage for frontend auth checks
-        if (result.access_token) {
-          localStorage.setItem('token', result.access_token)
-        }
-        
-        // Use AuthManager to handle user login and normalization
-        const normalizedUser = loginUser(result.user, result.access_token)
-        
+        // Backend has set httpOnly cookies - we don't need to handle tokens!
+        // The cookies are automatically sent with all future requests
+
+        // Mark as authenticated in our state manager
+        const { setAuthState } = await import("@/lib/secure-api");
+        setAuthState(true);
+
+        // Store user data for UI display (NOT the token!)
+        const normalizedUser = loginUser(result.user) // No token parameter needed
+
         if (!normalizedUser) {
           setError('Authentication failed. Please try again.')
           return
@@ -289,7 +291,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         }
         
         debugAuth()
-        
+
         // Reset form
         handleClose()
 
@@ -297,10 +299,13 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         sessionStorage.setItem("skipSplash", "true")
         sessionStorage.setItem("currentPage", "dashboard")
 
-        // Call success callback
-        if (onLoginSuccess) {
-          onLoginSuccess(normalizedUser)
-        }
+        // Small delay to ensure auth state is fully synchronized before triggering navigation
+        setTimeout(() => {
+          // Call success callback
+          if (onLoginSuccess) {
+            onLoginSuccess(normalizedUser)
+          }
+        }, 100)
         
         resetOnboarding()
         setIsFromSignupFlow(false)

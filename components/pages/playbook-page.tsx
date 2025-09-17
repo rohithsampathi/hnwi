@@ -57,7 +57,7 @@ export function PlaybookPage({
   const fetchPlaybook = useCallback(async () => {
     setIsLoading(true)
     try {
-      const token = localStorage.getItem("token")
+      // Auth via cookies
       const headers: HeadersInit = {
         "Content-Type": "application/json"
       }

@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { serverSecureApi } from "@/lib/secure-api"
 import { getCurrentUserId } from "@/lib/auth-manager"
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,10 +37,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get authentication cookies
+    const accessTokenCookie = cookies().get('access_token');
+    const refreshTokenCookie = cookies().get('refresh_token');
+    const authCookies = `access_token=${accessTokenCookie?.value || ''}; refresh_token=${refreshTokenCookie?.value || ''}`;
+
     // Use serverSecureApi for server-side API calls
     const conversationData = await serverSecureApi.post('/api/rohith/start', {
       message: firstMessage
-    })
+    }, authCookies)
 
     return NextResponse.json(conversationData)
 

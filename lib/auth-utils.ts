@@ -2,10 +2,9 @@
 // Layer 4: Auth Utilities - Uses ONLY auth-manager (no circular deps)
 
 import DeviceTrustManager from './device-trust';
-import { 
-  getCurrentUser as getAuthManagerUser, 
-  getCurrentUserId as getAuthManagerUserId, 
-  getAuthToken as getAuthManagerToken,
+import {
+  getCurrentUser as getAuthManagerUser,
+  getCurrentUserId as getAuthManagerUserId,
   isAuthenticated as isAuthManagerAuthenticated,
   authManager
 } from '@/lib/auth-manager';
@@ -21,7 +20,6 @@ export enum SessionState {
 
 interface SessionInfo {
   state: SessionState;
-  token: string | null;
   lockedAt?: number;
   lastActivity?: number;
 }
@@ -31,42 +29,37 @@ const SESSION_STATE_KEY = 'hnwi_session_state';
 const LAST_ACTIVITY_KEY = 'hnwi_last_activity';
 const LOCKED_AT_KEY = 'hnwi_locked_at';
 
-export const isTokenValid = (token: string | null): boolean => {
-  if (!token) return false;
-  
+// Token validation no longer needed - cookies handle auth
+export const isTokenValid = (): boolean => {
+  // Check if we have valid user data instead
+  const user = getAuthManagerUser();
+  return !!user;
+};
+
+// Legacy function kept for compatibility
+const _legacyTokenCheck = () => {
   try {
-    // Decode JWT payload (second part of token)
-    const parts = token.split('.');
-    if (parts.length !== 3) return false;
-    
-    const payload = JSON.parse(atob(parts[1]));
-    
-    // Check if token has expired
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      return false;
-    }
-    
-    return true;
+    return false;
   } catch {
     return false;
   }
 };
 
+// Cookies handle auth - no token needed in JavaScript
 export const getValidToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  
-  // Use auth manager to get token
-  const token = getAuthManagerToken();
-  return isTokenValid(token) ? token : null;
+
+  // Return null as tokens are in httpOnly cookies
+  return null;
 };
 
 export const clearInvalidToken = (): void => {
   if (typeof window === 'undefined') return;
-  
-  // Use auth manager to check token
-  const token = getAuthManagerToken();
-  if (token && !isTokenValid(token)) {
-    // Token is invalid, use auth manager to logout
+
+  // Cookies handle auth - check user data instead
+  const user = getAuthManagerUser();
+  if (!user) {
+    // No valid session, use auth manager to logout
     authManager.logout();
   }
 };
@@ -77,10 +70,10 @@ export const getSessionState = (): SessionState => {
   
   try {
     const storedState = localStorage.getItem(SESSION_STATE_KEY) as SessionState;
-    const token = getValidToken();
-    
-    // If no token, always unauthenticated
-    if (!token) {
+    const user = getAuthManagerUser();
+
+    // If no user, always unauthenticated
+    if (!user) {
       try {
         if (storedState && storedState !== SessionState.UNAUTHENTICATED) {
           setSessionState(SessionState.UNAUTHENTICATED);
@@ -193,9 +186,9 @@ export const isAuthenticated = (): boolean => {
     // Use auth manager's authentication check
     return isAuthManagerAuthenticated();
   } catch (error) {
-    // If checking fails, fall back to token validation
+    // If checking fails, check for user data
     try {
-      return !!getValidToken();
+      return !!getAuthManagerUser();
     } catch {
       return false;
     }
@@ -224,7 +217,7 @@ export const clearSessionState = (): void => {
   localStorage.removeItem(SESSION_STATE_KEY);
   localStorage.removeItem(LAST_ACTIVITY_KEY);
   localStorage.removeItem(LOCKED_AT_KEY);
-  localStorage.removeItem('token');
+  // Cookies handle auth - no token removal needed
 };
 
 // ROLLBACK FUNCTION: Disable smart inactivity and revert to old behavior

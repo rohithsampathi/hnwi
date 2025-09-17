@@ -31,45 +31,42 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     
     // Get auth status once on mount with enhanced session state support
     const getAuthStatus = async () => {
-      const token = localStorage.getItem("token");
+      // Cookies handle auth now - only check user data
       const userId = localStorage.getItem("userId");
       const userObject = localStorage.getItem("userObject");
-      
+
       // Import auth utils for enhanced session checking
       try {
         const { isAuthenticated: checkAuth, getSessionState, SessionState } = await import("@/lib/auth-utils");
         const authResult = checkAuth();
         const sessionState = getSessionState();
-        
+
         // Consider both authenticated and locked sessions as "logged in" for routing
         const isLoggedIn = authResult || sessionState === SessionState.LOCKED_INACTIVE;
-        
+
         return {
-          token,
           userId,
           userObject,
           isAuthenticated: isLoggedIn
         };
       } catch (error) {
-        // Fallback to simple token check
+        // Fallback to simple user data check
         return {
-          token,
           userId,
           userObject,
-          isAuthenticated: !!(token && userId)
+          isAuthenticated: !!(userId && userObject)
         };
       }
     };
     
     // Make the auth status check async
-    getAuthStatus().then(({ token, userId, userObject, isAuthenticated }) => {
+    getAuthStatus().then(({ userId, userObject, isAuthenticated }) => {
       // Session recovery - do this only once on mount
-      if (!token && userObject) {
+      if (userObject && !userId) {
         try {
           const parsedUser = JSON.parse(userObject);
           if (parsedUser && parsedUser.id) {
             localStorage.setItem("userId", parsedUser.id);
-            localStorage.setItem("token", "recovered-session-token");
             // We won't re-render since this effect only runs once on mount
           }
         } catch (e) {
@@ -184,18 +181,12 @@ export default function AppWrapper({ initialRoute, skipSplash = false }: AppWrap
     // Special case for login - need to handle it specially so it doesn't get overridden
     if (route === 'login') {
       // Force removal of stored auth info to prevent automatic redirection
-      const hasToken = localStorage.getItem("token");
-      if (hasToken) {
-        // Temporarily remove token to allow login page to show
-        const tempToken = localStorage.getItem("token");
-        const tempUserId = localStorage.getItem("userId");
-        
+      const userId = localStorage.getItem("userId");
+      if (userId) {
         // Store temporarily
-        sessionStorage.setItem("tempToken", tempToken || "");
-        sessionStorage.setItem("tempUserId", tempUserId || "");
-        
+        sessionStorage.setItem("tempUserId", userId || "");
+
         // Remove from localStorage to prevent auto-redirect
-        localStorage.removeItem("token");
         localStorage.removeItem("userId");
         localStorage.removeItem("userObject");
       }

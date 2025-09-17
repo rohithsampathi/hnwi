@@ -185,6 +185,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // CRITICAL: Send cookies with request
         body: JSON.stringify({
           conversationId,
           userId: userContext?.userId || 'anonymous',

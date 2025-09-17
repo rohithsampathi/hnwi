@@ -32,7 +32,7 @@ export function QuickLogin() {
       }, false, { enableCache: false })
 
       if (response.token) {
-        localStorage.setItem('token', response.token)
+        // Backend sets httpOnly cookies
         setResult("✅ Login successful! Token stored.")
         setTimeout(() => {
           window.location.reload()

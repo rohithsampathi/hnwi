@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { secureApi } from '@/lib/secure-api';
 
 interface VaultStats {
@@ -33,15 +32,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get session token for authentication
-    const sessionCookie = cookies().get('session');
-    const authToken = sessionCookie?.value || '';
-    
+    // User is already authenticated, no additional auth required for API calls
+    // Similar to developments endpoint approach
+    const requireAuth = false;
+
     // Fetch assets from real backend using secure API to calculate stats
     const endpoint = `/api/crown-vault/assets/detailed?owner_id=${ownerId}`;
-    
+
     try {
-      const assets = await secureApi.get(endpoint, true);
+      const assets = await secureApi.get(endpoint, requireAuth);
       
       if (!Array.isArray(assets)) {
         throw new Error('Invalid assets data format');

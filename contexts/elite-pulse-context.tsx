@@ -6,7 +6,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { secureApi } from "@/lib/secure-api"
-import { getCurrentUser, getCurrentUserId, getAuthToken } from "@/lib/auth-manager"
+import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
 
 // ================== INTELLIGENCE TYPES ==================
 
@@ -557,9 +557,9 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       fetch('/api/intelligence/track/view', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // Send cookies with request
         body: JSON.stringify({
           user_id: user.user_id || user.id,
           intelligence_type: intelligenceType,
@@ -584,9 +584,9 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       fetch('/api/intelligence/track/action', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // Send cookies with request
         body: JSON.stringify({
           user_id: user.user_id || user.id,
           intelligence_id: intelligenceId,

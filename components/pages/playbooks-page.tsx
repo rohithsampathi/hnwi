@@ -246,7 +246,7 @@ export function PlayBooksPage({
     try {
       // Try multiple auth methods
       let userId = localStorage.getItem("userId");
-      let token = localStorage.getItem("token");
+      // Auth via cookies
       
       // If not in localStorage, try from userData
       if ((!userId || !token) && userData) {

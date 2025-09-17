@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
     // Debug info
     debug: () => authManager.debug(),
     
-    // Test login
+    // Test login (cookies handle auth - no token needed)
     testLogin: () => {
       const testUser = {
         id: '59363d04-eb97-4224-94cf-16ca0d4f746e',
@@ -26,18 +26,16 @@ if (typeof window !== 'undefined') {
         lastName: 'User',
         role: 'user'
       }
-      
-      const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1OTM2M2QwNC1lYjk3LTQyMjQtOTRjZi0xNmNhMGQ0Zjc0NmUiLCJlbWFpbCI6InRlc3RAaG53aS5jb20iLCJleHAiOjE5OTk5OTk5OTl9.test'
-      
-      return authManager.login(testUser, testToken)
+
+      return authManager.login(testUser)
     },
     
-    // Check localStorage
+    // Check localStorage (legacy data only)
     checkLocalStorage: () => ({
-      token: localStorage.getItem('token'),
+      // Cookies handle auth - no token needed in localStorage
       userId: localStorage.getItem('userId'),
       userObject: localStorage.getItem('userObject'),
-      hnwi_auth_token: localStorage.getItem('hnwi_auth_token'),
+      // Note: hnwi_auth_token removed - tokens now in httpOnly cookies
       hnwi_user_data: localStorage.getItem('hnwi_user_data')
     }),
     

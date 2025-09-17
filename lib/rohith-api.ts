@@ -147,13 +147,13 @@ export class RohithAPI {
         // Parse title if it's JSON format
         let title = conv.title || "New Conversation"
 
-        // Check if title looks like JSON (starts with { and contains "message")
-        if (typeof title === 'string' && title.startsWith('{') && title.includes('"message"')) {
+        // Check if title looks like JSON (starts with { and contains "message" or "initial_message")
+        if (typeof title === 'string' && title.startsWith('{') && (title.includes('"message"') || title.includes('"initial_message"'))) {
           try {
             const parsed = JSON.parse(title)
-            const message = parsed.message || parsed.content || title
+            const message = parsed.initial_message || parsed.message || parsed.content || title
             // Convert to sentence case
-            title = message.charAt(0).toUpperCase() + message.slice(1).toLowerCase()
+            title = message.charAt(0).toUpperCase() + message.slice(1)
             // Truncate if needed
             if (title.length > 60) {
               title = title.substring(0, 57) + "..."
@@ -162,10 +162,10 @@ export class RohithAPI {
             // If parsing fails, use the original but clean it up
             title = title.replace(/[{}"]/g, '').substring(0, 60)
           }
-        } else if (typeof title === 'object' && title.message) {
-          // If title is already an object with message property
-          const message = title.message || title.content || "New Conversation"
-          title = message.charAt(0).toUpperCase() + message.slice(1).toLowerCase()
+        } else if (typeof title === 'object' && (title.initial_message || title.message)) {
+          // If title is already an object with initial_message or message property
+          const message = title.initial_message || title.message || title.content || "New Conversation"
+          title = message.charAt(0).toUpperCase() + message.slice(1)
           if (title.length > 60) {
             title = title.substring(0, 57) + "..."
           }
@@ -206,17 +206,35 @@ export class RohithAPI {
       }
 
       // Transform the response to match our frontend format
-      const messages: Message[] = response.messages.map((msg: any) => ({
-        id: msg.message_id || crypto.randomUUID(),
-        role: msg.role,
-        content: msg.content,
-        timestamp: new Date(msg.timestamp),
-        messageId: msg.message_id, // Include backend message ID for feedback
-        context: msg.role === "assistant" ? {
-          hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["rohith_api"],
-          responseTime: msg.context?.response_time || 3000
-        } : msg.context
-      }))
+      const messages: Message[] = response.messages.map((msg: any) => {
+        let content = msg.content || msg.message || ""
+
+        // Parse content if it's JSON format containing initial_message
+        if (typeof content === 'string' && content.startsWith('{') && content.includes('"initial_message"')) {
+          try {
+            const parsed = JSON.parse(content)
+            content = parsed.initial_message || parsed.message || content
+          } catch (e) {
+            // If parsing fails, use the original content
+            content = content
+          }
+        } else if (typeof content === 'object' && content.initial_message) {
+          // If content is already an object with initial_message property
+          content = content.initial_message || content.message || "Message"
+        }
+
+        return {
+          id: msg.message_id || crypto.randomUUID(),
+          role: msg.role,
+          content: content,
+          timestamp: new Date(msg.timestamp),
+          messageId: msg.message_id, // Include backend message ID for feedback
+          context: msg.role === "assistant" ? {
+            hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["rohith_api"],
+            responseTime: msg.context?.response_time || 3000
+          } : msg.context
+        }
+      })
 
       // Get the first conversation from the list to get title and other metadata
       // Or use a separate endpoint if needed
@@ -456,6 +474,7 @@ export class RohithAPI {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // CRITICAL: Send cookies with request
         body: JSON.stringify({ conversationId, userId, conversationData })
       })
 
@@ -496,7 +515,9 @@ export class RohithAPI {
   async getSharedConversation(shareId: string): Promise<ConversationWithMessages | null> {
     try {
       // First try the new MongoDB-backed endpoint
-      const response = await fetch(`/api/conversations/share?shareId=${shareId}`)
+      const response = await fetch(`/api/conversations/share?shareId=${shareId}`, {
+        credentials: 'include' // CRITICAL: Send cookies with request
+      })
 
       if (response.ok) {
         const data = await response.json()

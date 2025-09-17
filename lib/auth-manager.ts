@@ -1,280 +1,206 @@
 // lib/auth-manager.ts
-// Layer 3: Authentication Manager - Orchestrates auth operations
-// Uses ONLY the storage layers (no circular dependencies)
+// Cookie-Based Authentication Manager - No Token Storage
+// Works with httpOnly cookies set by backend
 
-import { tokenStorage, getAuthToken as getStoredToken, setAuthToken, clearAuthToken } from './auth/secure-token-storage'
-import { userStorage, getUserData, setUserData, clearUserData, getUserId as getStoredUserId, type NormalizedUser } from './auth/user-data-storage'
+export interface User {
+  id: string;
+  user_id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  role?: string;
+  [key: string]: any;
+}
 
-/**
- * SOTA 2025 Authentication Manager
- * - Central orchestrator for all auth operations
- * - Uses layered storage architecture
- * - No direct localStorage access
- * - Single source of truth for auth state
- */
 export class AuthenticationManager {
-  private static instance: AuthenticationManager
-  private initialized: boolean = false
+  private static instance: AuthenticationManager;
+  private user: User | null = null;
+  private authenticated: boolean = false;
 
   private constructor() {
-    // Only initialize in browser environment
     if (typeof window !== 'undefined') {
-      this.initialize()
+      this.initialize();
     }
   }
 
-  /**
-   * Get singleton instance
-   */
   public static getInstance(): AuthenticationManager {
     if (!AuthenticationManager.instance) {
-      AuthenticationManager.instance = new AuthenticationManager()
+      AuthenticationManager.instance = new AuthenticationManager();
     }
-    return AuthenticationManager.instance
+    return AuthenticationManager.instance;
   }
 
-  /**
-   * Initialize the auth manager
-   */
   private initialize(): void {
-    if (this.initialized || typeof window === 'undefined') return
-    
-    
-    // Storage layers auto-initialize from localStorage
-    // Just verify we have consistent state
-    this.verifyAuthState()
-    
-    this.initialized = true
-  }
+    if (typeof window === 'undefined') return;
 
-  /**
-   * Verify auth state consistency
-   */
-  private verifyAuthState(): void {
-    const hasToken = tokenStorage.hasValidToken()
-    const hasUser = userStorage.hasUser()
-    
-    if (hasToken && !hasUser) {
-      // Try to get user from token
-      const userFromToken = userStorage.getUserFromToken()
-      if (userFromToken && userFromToken.userId) {
-        userStorage.setUser(userFromToken)
-      } else {
-        // Inconsistent state - clear everything
-        this.logout()
-      }
-    } else if (!hasToken && hasUser) {
-      userStorage.clearUser()
-    }
-  }
-
-  /**
-   * Login user - store token and user data
-   */
-  public login(userData: any, token?: string): NormalizedUser | null {
-    
-    // Store token if provided
-    if (token) {
-      setAuthToken(token)
-      
-      // Also store in legacy location for backwards compatibility
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', token)
+    // Try to recover user from sessionStorage
+    const storedUser = sessionStorage.getItem('userObject');
+    if (storedUser) {
+      try {
+        this.user = JSON.parse(storedUser);
+        // If we have user data in sessionStorage, we're authenticated
+        // (the backend cookies will validate on API calls)
+        this.authenticated = true;
+      } catch (error) {
+        console.error('Failed to parse stored user:', error);
       }
     }
-    
-    // Store user data
-    const normalizedUser = setUserData(userData)
-    
-    if (!normalizedUser) {
-      clearAuthToken()
-      return null
-    }
-    
-    
-    // Emit login event for other components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:login', { 
-        detail: { user: normalizedUser } 
-      }))
-    }
-    
-    return normalizedUser
   }
 
-  /**
-   * Logout user - clear all auth data
-   */
+  public login(userData: User): User {
+    if (typeof window === 'undefined') return userData;
+
+    // Store user data in memory and sessionStorage
+    this.user = userData;
+    this.authenticated = true;
+
+    // Store user data in sessionStorage (NOT localStorage - session only)
+    sessionStorage.setItem('userEmail', userData.email || '');
+    sessionStorage.setItem('userId', userData.id || userData.user_id || '');
+    sessionStorage.setItem('userObject', JSON.stringify(userData));
+
+    // Emit login event
+    window.dispatchEvent(new CustomEvent('auth:login', {
+      detail: { user: userData }
+    }));
+
+    return userData;
+  }
+
   public logout(): void {
-    
-    // Clear storage layers
-    clearAuthToken()
-    clearUserData()
-    
-    // Clear legacy storage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userEmail')
-      sessionStorage.clear()
-      
-      // Emit logout event
-      window.dispatchEvent(new CustomEvent('auth:logout'))
-    }
-    
+    if (typeof window === 'undefined') return;
+
+    // Clear user data
+    this.user = null;
+    this.authenticated = false;
+
+    // Clear all storage
+    sessionStorage.clear();
+
+    // Clear legacy localStorage (migration cleanup)
+    // Cookies handle auth - no token removal needed
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userObject');
+
+    // Emit logout event
+    window.dispatchEvent(new CustomEvent('auth:logout'));
   }
 
-  /**
-   * Get current user
-   */
-  public getCurrentUser(): NormalizedUser | null {
-    // Ensure initialization before getting user
-    this.ensureInitialized()
-    return getUserData()
-  }
-
-  /**
-   * Get current user ID (optimized)
-   */
-  public getUserId(): string | null {
-    // Ensure initialization before getting user ID
-    this.ensureInitialized()
-    return getStoredUserId()
-  }
-
-  /**
-   * Get authentication token
-   */
   public getAuthToken(): string | null {
-    // First try the new secure storage
-    const token = getStoredToken()
-    if (token) return token
-    
-    // Fallback to legacy token for backwards compatibility
+    // Tokens are in httpOnly cookies now - not accessible to JS
+    return null;
+  }
+
+  public getCurrentUser(): User | null {
+    return this.user;
+  }
+
+  public getUserId(): string | null {
+    if (this.user) {
+      return this.user.id || this.user.user_id;
+    }
+
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('token')
+      return sessionStorage.getItem('userId');
     }
-    
-    return null
+
+    return null;
   }
 
-  /**
-   * Ensure initialization (for client-side)
-   */
-  public ensureInitialized(): void {
-    if (!this.initialized && typeof window !== 'undefined') {
-      this.initialize()
-    }
-  }
-
-  /**
-   * Check if user is authenticated
-   */
   public isAuthenticated(): boolean {
-    // Ensure we're initialized if on client
-    this.ensureInitialized()
-    return tokenStorage.hasValidToken() && userStorage.hasUser()
+    // We track auth state based on successful login/logout
+    // The actual auth is determined by httpOnly cookies
+    return this.authenticated;
   }
 
-  /**
-   * Update user data
-   */
-  public updateUser(updates: Partial<NormalizedUser>): NormalizedUser | null {
-    const updated = userStorage.updateUser(updates)
-    
-    if (updated && typeof window !== 'undefined') {
+  public setAuthenticated(value: boolean): void {
+    this.authenticated = value;
+  }
+
+  public ensureInitialized(): void {
+    // No-op for compatibility
+  }
+
+  public updateUser(updates: Partial<User>): User | null {
+    if (!this.user) return null;
+
+    this.user = { ...this.user, ...updates };
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('userObject', JSON.stringify(this.user));
+
       // Emit update event
-      window.dispatchEvent(new CustomEvent('auth:userUpdated', { 
-        detail: { user: updated } 
-      }))
+      window.dispatchEvent(new CustomEvent('auth:userUpdated', {
+        detail: { user: this.user }
+      }));
     }
-    
-    return updated
+
+    return this.user;
   }
 
-  /**
-   * Refresh authentication from backend
-   */
-  public async refreshAuth(): Promise<NormalizedUser | null> {
+  public async refreshAuth(): Promise<User | null> {
     try {
-      const token = this.getAuthToken()
-      if (!token) {
-        return null
-      }
-      
       const response = await fetch('/api/auth/session', {
+        credentials: 'include', // Send cookies
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         }
-      })
-      
+      });
+
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
         if (data.user) {
-          // Update user data
-          return this.updateUser(data.user)
+          this.login(data.user);
+          return this.user;
         }
       } else if (response.status === 401) {
-        // Token invalid - logout
-        this.logout()
+        // Not authenticated
+        this.logout();
       }
     } catch (error) {
+      console.warn('Failed to refresh auth:', error);
     }
-    
-    return null
+
+    return null;
   }
 
-  /**
-   * Set authentication from session (for SSR)
-   */
-  public setAuthFromSession(userData: any, token: string): void {
-    if (!userData || !token) return
-    this.login(userData, token)
-  }
-
-  /**
-   * Get auth headers for API requests
-   */
   public getAuthHeaders(): Record<string, string> {
-    const token = this.getAuthToken()
-    if (!token) return {}
-    
-    return {
-      'Authorization': `Bearer ${token}`
-    }
+    // No Authorization header needed - cookies handle auth
+    return {};
   }
 
-  /**
-   * Check token expiry
-   */
   public getTokenExpiry(): { expired: boolean; expiresIn: number } {
-    const expiresIn = tokenStorage.getTimeUntilExpiry()
+    // We can't check httpOnly cookie expiry from JS
+    // Assume valid if authenticated
     return {
-      expired: expiresIn <= 0,
-      expiresIn
-    }
-  }
-
-  /**
-   * Debug authentication state
-   */
-  public debug(): void {
+      expired: !this.authenticated,
+      expiresIn: this.authenticated ? 900000 : 0 // 15 minutes assumed
+    };
   }
 }
 
 // Export singleton instance
-export const authManager = AuthenticationManager.getInstance()
+export const authManager = AuthenticationManager.getInstance();
 
-// Export convenience functions (for backwards compatibility)
-export const getCurrentUserId = () => authManager.getUserId()
-export const getCurrentUser = () => authManager.getCurrentUser()
-export const getAuthToken = () => authManager.getAuthToken()
-export const isAuthenticated = () => authManager.isAuthenticated()
-export const loginUser = (userData: any, token?: string) => authManager.login(userData, token)
-export const logoutUser = () => authManager.logout()
-export const updateUser = (updates: any) => authManager.updateUser(updates)
-export const refreshUser = () => authManager.refreshAuth()
-export const getAuthHeaders = () => authManager.getAuthHeaders()
-export const debugAuth = () => authManager.debug()
+// Export convenience functions
+export const getCurrentUserId = () => authManager.getUserId();
+export const getCurrentUser = () => authManager.getCurrentUser();
+export const getAuthToken = () => authManager.getAuthToken(); // Always returns null now
+export const isAuthenticated = () => authManager.isAuthenticated();
+export const loginUser = (userData: User) => authManager.login(userData); // No token param!
+export const logoutUser = () => authManager.logout();
+export const updateUser = (updates: Partial<User>) => authManager.updateUser(updates);
+export const refreshUser = () => authManager.refreshAuth();
+export const getAuthHeaders = () => authManager.getAuthHeaders();
+export const debugAuth = () => {
+  if (typeof window === 'undefined') return;
+
+  const user = authManager.getCurrentUser();
+
+  // Debug logging disabled
+};
 
 // Export type
-export type { NormalizedUser } from './auth/user-data-storage'
+export type { User as NormalizedUser };

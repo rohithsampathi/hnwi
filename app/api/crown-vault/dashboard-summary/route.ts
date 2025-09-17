@@ -56,14 +56,15 @@ export const GET = ApiAuth.withAuth(async (request: NextRequest, user) => {
       // Allow for now - TODO: implement proper ownership validation
     }
 
-    // Get session token for authentication
-    const sessionCookie = cookies().get('session');
-    const authToken = sessionCookie?.value || '';
-    
+    // Get authentication cookies
+    const accessTokenCookie = cookies().get('access_token');
+    const refreshTokenCookie = cookies().get('refresh_token');
+    const authCookies = `access_token=${accessTokenCookie?.value || ''}; refresh_token=${refreshTokenCookie?.value || ''}`;
+
     // Use serverSecureApi to call external backend - no fallbacks
     const endpoint = `/api/crown-vault/dashboard-summary?owner_id=${ownerId}`;
-    
-    const dashboardData = await serverSecureApi.get(endpoint, authToken);
+
+    const dashboardData = await serverSecureApi.get(endpoint, authCookies);
 
     // Return the data directly from backend
     const apiResponse = NextResponse.json(dashboardData, { status: 200 });

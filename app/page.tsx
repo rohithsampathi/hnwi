@@ -5,7 +5,7 @@
 import { useRouter } from "next/navigation"
 import React, { useEffect, useState } from "react"
 import { SplashScreen } from "@/components/splash-screen"
-import { getCurrentUser, getAuthToken } from "@/lib/auth-manager"
+import { getCurrentUser } from "@/lib/auth-manager"
 
 export default function Home() {
   const router = useRouter()
@@ -15,18 +15,17 @@ export default function Home() {
   useEffect(() => {
     // Mark as hydrated to prevent SSR/client mismatch
     setIsHydrated(true)
-    
+
     // Quick auth check - if user has valid session, redirect to dashboard
     const user = getCurrentUser()
-    const token = getAuthToken()
-    
-    if (token && user?.userId) {
+
+    if (user && (user.id || user.user_id)) {
       // User appears to be logged in, redirect to dashboard immediately
       setIsRedirecting(true)
-      // Small delay to prevent flash of content
+      // Longer delay to ensure auth state is fully synced after MFA
       setTimeout(() => {
         router.push("/dashboard")
-      }, 100)
+      }, 200)
     }
   }, [router])
 
