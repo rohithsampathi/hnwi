@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useTheme } from "@/contexts/theme-context"
 import { Bot, User, Clock, BookOpen, Copy, Check, FileText, ThumbsUp, ThumbsDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, parseMessageContent } from "@/lib/utils"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
 import type { Message } from "@/types/rohith"
 import type { Citation } from "@/lib/parse-dev-citations"
@@ -43,17 +43,20 @@ export function MessageBubble({
   const isUser = message.role === "user"
   const isAssistant = message.role === "assistant"
 
-  // Format message with global citation numbers
+  // Format message with global citation numbers and parse JSON content
   useEffect(() => {
-    if (isAssistant && globalCitations && message.content.includes("[Dev ID:")) {
-      let formatted = message.content
+    // First, parse the message content to handle JSON
+    const parsedContent = parseMessageContent(message.content)
+
+    if (isAssistant && globalCitations && parsedContent.includes("[Dev ID:")) {
+      let formatted = parsedContent
       const citationsInMessage: Citation[] = []
 
       // Replace each Dev ID with its global citation number
       const devIdPattern = /\[Dev ID:\s*([^\]]+)\]/g
       let match
 
-      while ((match = devIdPattern.exec(message.content)) !== null) {
+      while ((match = devIdPattern.exec(parsedContent)) !== null) {
         const devId = match[1].trim()
         const citation = globalCitations.get(devId)
 
@@ -74,7 +77,7 @@ export function MessageBubble({
       setFormattedContent(formatted)
       setMessageCitations(citationsInMessage)
     } else {
-      setFormattedContent(message.content)
+      setFormattedContent(parsedContent)
       setMessageCitations([])
     }
   }, [message.content, isAssistant, globalCitations])
@@ -95,7 +98,7 @@ export function MessageBubble({
   // Copy message content
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(message.content)
+      await navigator.clipboard.writeText(formattedContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
@@ -223,7 +226,7 @@ export function MessageBubble({
                     "text-sm leading-relaxed whitespace-pre-wrap m-0",
                     isUser ? "text-primary-foreground" : "text-foreground"
                   )}>
-                    {message.content}
+                    {formattedContent}
                   </p>
                 )}
               </div>

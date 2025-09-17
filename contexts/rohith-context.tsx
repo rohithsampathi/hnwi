@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from "react"
 import { getCurrentUser } from "@/lib/auth-manager"
+import { createConversationTitle } from "@/lib/utils"
 import {
   rohithAPI,
   loadUserContext,
@@ -229,10 +230,10 @@ export function RohithProvider({ children }: RohithProviderProps) {
         const conversationId = typeof response === 'string' ? response : response.conversation_id
 
 
-        // Create new conversation object
+        // Create new conversation object with properly formatted title
         const newConversation: Conversation = {
           id: conversationId,
-          title: firstMessage.length > 60 ? firstMessage.substring(0, 60) + "..." : firstMessage,
+          title: createConversationTitle(firstMessage),
           userId: state.userContext?.userId || "",
           createdAt: new Date(),
           updatedAt: new Date(),
