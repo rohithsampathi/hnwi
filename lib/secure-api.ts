@@ -22,22 +22,19 @@ export const setAuthState = (authenticated: boolean): void => {
   isAuthenticatedCache = authenticated;
 };
 
-// Clear auth state and redirect
+// Clear auth state (no redirect - let the layout handle it)
 const handleAuthError = (): void => {
   isAuthenticatedCache = false;
 
-  // Clear any client-side state
-  if (typeof window !== 'undefined') {
-    // Clear any legacy localStorage (migration cleanup)
-    // Cookies handle auth - no token removal needed
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userObject');
-    sessionStorage.clear();
+  // DON'T clear session data on API failures!
+  // This was causing auth to break when any API returned 401
+  // The user might still be logged in, just that specific API failed
 
-    // Redirect to login
-    window.location.href = '/';
-  }
+  // Only clear auth if we're absolutely sure the user is logged out
+  // Let the authenticated layout handle the actual logout
+
+  // Don't redirect here - let the authenticated layout handle redirects
+  // This prevents infinite loops when API calls fail
 };
 
 // Cookie-based API call wrapper
@@ -72,32 +69,8 @@ export const secureApiCall = async (
 
     // Handle authentication errors
     if (response.status === 401 && requireAuth) {
-      // Try to refresh token automatically
-      try {
-        const refreshResponse = await fetch(`/api/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': getCookie('csrf_token') || '',
-          },
-          credentials: 'include',
-        });
-
-        if (refreshResponse.ok) {
-          // Retry original request with new token
-          return fetch(url, {
-            ...options,
-            headers,
-            credentials: 'include',
-          });
-        }
-      } catch (error) {
-        // Refresh failed, clear auth
-        handleAuthError();
-        throw new Error('Authentication failed - session expired');
-      }
-
-      // If refresh didn't work, clear auth
+      // Don't try to refresh - endpoint doesn't exist
+      // Just clear auth state and return error
       handleAuthError();
       throw new Error('Authentication failed - please login again');
     }
@@ -263,7 +236,7 @@ export const logoutUser = async (): Promise<void> => {
     // Call logout endpoint to clear cookies
     await secureApi.post('/api/auth/logout', {}, true);
   } catch (error) {
-    console.warn('Logout request failed:', error);
+    // Logout request failed;
   }
 
   // Clear client state
@@ -323,7 +296,7 @@ export const refreshAuthToken = async (): Promise<any> => {
     return null;
   } catch (error) {
     setAuthState(false);
-    console.warn('Failed to refresh token:', error);
+    // Failed to refresh token;
     return null;
   }
 };

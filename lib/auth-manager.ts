@@ -36,6 +36,7 @@ export class AuthenticationManager {
 
     // Try to recover user from sessionStorage
     const storedUser = sessionStorage.getItem('userObject');
+
     if (storedUser) {
       try {
         this.user = JSON.parse(storedUser);
@@ -43,7 +44,7 @@ export class AuthenticationManager {
         // (the backend cookies will validate on API calls)
         this.authenticated = true;
       } catch (error) {
-        console.error('Failed to parse stored user:', error);
+        // Failed to parse stored user;
       }
     }
   }
@@ -94,10 +95,26 @@ export class AuthenticationManager {
   }
 
   public getCurrentUser(): User | null {
+    // Always check sessionStorage first to ensure we have the latest data
+    // This is important for navigation between pages
+    if (typeof window !== 'undefined' && !this.user) {
+      const storedUser = sessionStorage.getItem('userObject');
+      if (storedUser) {
+        try {
+          this.user = JSON.parse(storedUser);
+          this.authenticated = true;
+        } catch (error) {
+          // Failed to parse stored user;
+        }
+      }
+    }
     return this.user;
   }
 
   public getUserId(): string | null {
+    // First ensure we have the latest user data
+    this.getCurrentUser();
+
     if (this.user) {
       return this.user.id || this.user.user_id;
     }
@@ -110,9 +127,9 @@ export class AuthenticationManager {
   }
 
   public isAuthenticated(): boolean {
-    // We track auth state based on successful login/logout
-    // The actual auth is determined by httpOnly cookies
-    return this.authenticated;
+    // Check if we have user data which indicates authentication
+    const user = this.getCurrentUser();
+    return this.authenticated || !!user;
   }
 
   public setAuthenticated(value: boolean): void {
@@ -151,6 +168,7 @@ export class AuthenticationManager {
 
       if (response.ok) {
         const data = await response.json();
+
         if (data.user) {
           this.login(data.user);
           return this.user;
@@ -160,7 +178,7 @@ export class AuthenticationManager {
         this.logout();
       }
     } catch (error) {
-      console.warn('Failed to refresh auth:', error);
+      // Failed to refresh auth;
     }
 
     return null;

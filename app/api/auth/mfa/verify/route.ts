@@ -264,12 +264,12 @@ export async function POST(request: NextRequest) {
                 const maxAge = name === 'access_token' ? 15 * 60 : 7 * 24 * 60 * 60;
                 successResponse.cookies.set(name, value, {
                   httpOnly: true,
-                  secure: process.env.NODE_ENV === 'production',
+                  secure: false, // Match backend's secure=False for local dev
                   sameSite: 'lax',
                   path: '/',
                   maxAge
                 });
-                logger.info(`Cookie ${name} set from backend header`);
+                logger.info(`Cookie ${name} set from backend header with secure=false`);
               }
             });
           }
@@ -278,23 +278,29 @@ export async function POST(request: NextRequest) {
           if (backendResponse.access_token) {
             successResponse.cookies.set('access_token', backendResponse.access_token, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
+              secure: false, // Match backend's secure=False for local dev
               sameSite: 'lax',
               path: '/',
               maxAge: 15 * 60 // 15 minutes
             });
-            logger.info('access_token cookie set from response body');
+            logger.info('access_token cookie set from response body', {
+              tokenLength: backendResponse.access_token.length,
+              secure: false
+            });
           }
 
           if (backendResponse.refresh_token) {
             successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
+              secure: false, // Match backend's secure=False for local dev
               sameSite: 'lax',
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days
             });
-            logger.info('refresh_token cookie set from response body');
+            logger.info('refresh_token cookie set from response body', {
+              tokenLength: backendResponse.refresh_token.length,
+              secure: false
+            });
           }
 
           // Clean up the frontend MFA session cookies

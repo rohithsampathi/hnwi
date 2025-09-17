@@ -117,9 +117,8 @@ export function OpportunityPage({
           router.push("/prive-exchange");
         }
       } else if (path === "dashboard") {
-        // Special handling for dashboard to maintain state
-        sessionStorage.setItem("skipSplash", "true");
-        router.push("/");
+        // Navigate to dashboard route directly
+        router.push("/dashboard");
       } else {
         // Normalize the path and navigate
         const normalizedPath = path.replace(/^\/+/, "");

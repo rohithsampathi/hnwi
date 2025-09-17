@@ -71,9 +71,12 @@ export function CitationPanel({
             if (response.ok) {
               const dev = await response.json()
 
-              newDevs.set(dev.id, {
-                id: dev.id,
-                title: dev.title || dev.name || `Development ${dev.id}`,
+              // Handle both _id (MongoDB) and id formats
+              const developmentId = dev._id || dev.id || citationId
+
+              newDevs.set(citationId, {  // Use citationId as the key since that's what we lookup with
+                id: developmentId,
+                title: dev.title || dev.name || `Development ${developmentId}`,
                 description: dev.description || dev.summary?.substring(0, 200) || "Development details",
                 industry: dev.industry || "Market Intelligence",
                 product: dev.product,

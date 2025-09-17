@@ -95,22 +95,33 @@ export default function SharedConversationPage() {
 
     // Go through all messages in order to build global citation map
     conversation.messages.forEach(msg => {
-      if (msg.role === "assistant" && msg.content.includes("[Dev ID:")) {
-        const devIdPattern = /\[Dev ID:\s*([^\]]+)\]/g
-        let match
+      // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
+      const hasCitations = msg.role === "assistant" && (msg.content.includes("[Dev ID:") || msg.content.includes("[DEVID -"))
 
-        while ((match = devIdPattern.exec(msg.content)) !== null) {
-          const devId = match[1].trim()
+      if (hasCitations) {
+        // Support both citation formats
+        const devIdPatterns = [
+          /\[Dev ID:\s*([^\]]+)\]/g,  // Original format: [Dev ID: xyz]
+          /\[DEVID\s*-\s*([^\]]+)\]/g  // New format: [DEVID - xyz]
+        ]
 
-          // Only add if we haven't seen this Dev ID before
-          if (!allCitations.has(devId)) {
-            allCitations.set(devId, {
-              id: devId,
-              number: citationNumber++,
-              originalText: match[0]
-            })
+        devIdPatterns.forEach(pattern => {
+          pattern.lastIndex = 0 // Reset pattern
+          let match
+
+          while ((match = pattern.exec(msg.content)) !== null) {
+            const devId = match[1].trim()
+
+            // Only add if we haven't seen this Dev ID before
+            if (!allCitations.has(devId)) {
+              allCitations.set(devId, {
+                id: devId,
+                number: citationNumber++,
+                originalText: match[0]
+              })
+            }
           }
-        }
+        })
       }
     })
 

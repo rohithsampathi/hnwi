@@ -30,6 +30,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState("")
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
@@ -100,55 +101,63 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
-    
-    const checkAuthStatus = () => {
-      // Use centralized auth manager
-      const userId = getCurrentUserId()
-      const authUser = getCurrentUser()
+    if (!mounted || isCheckingAuth || isAuthenticated !== null) return
 
-      // With cookie-based auth, we check for user data, not tokens
-      if (!userId || !authUser) {
+    const checkAuthStatus = async () => {
+      setIsCheckingAuth(true)
+
+      try {
+        // Use centralized auth manager
+        let userId = getCurrentUserId()
+        let authUser = getCurrentUser()
+
+        // If no user data initially, wait a bit for it to be available
+        // This handles the case where we navigate here right after MFA
+        if (!userId || !authUser) {
+          // Wait for auth data to be available (from MFA completion)
+          await new Promise(resolve => setTimeout(resolve, 500))
+
+          // Check again after delay
+          userId = getCurrentUserId()
+          authUser = getCurrentUser()
+
+          // If still no user, try one more time with the auth manager refresh
+          if (!userId || !authUser) {
+            const { refreshUser } = await import("@/lib/auth-manager")
+            authUser = await refreshUser()
+            userId = authUser?.id || authUser?.user_id
+          }
+        }
+
+        // With cookie-based auth, we check for user data, not tokens
+        if (!userId || !authUser) {
+          setIsAuthenticated(false)
+          setIsInitialLoad(false)
+          router.push("/")
+          return
+        }
+
+        // Set user from auth manager
+        if (authUser) {
+          setUser(authUser)
+          setIsAuthenticated(true)
+          setIsInitialLoad(false)
+        } else {
+          setIsAuthenticated(true)
+          setIsInitialLoad(false)
+        }
+      } catch (error) {
+        // Auth check failed
         setIsAuthenticated(false)
         setIsInitialLoad(false)
-        router.push("/")
-        return
-      }
-
-      // Set user from auth manager
-      if (authUser) {
-        setUser(authUser)
-        setIsAuthenticated(true)
-        setIsInitialLoad(false)
-        
-        // Skip background validation - it's causing logout issues
-        // The token is already validated by the auth manager
-      } else {
-        setIsAuthenticated(true)
-        setIsInitialLoad(false)
+      } finally {
+        setIsCheckingAuth(false)
       }
     }
 
-    // Background validation removed - was causing immediate logout issues
-    // The auth manager already validates tokens properly
-
-    // Execute auth check with timeout fallback
-    const timeoutId = setTimeout(() => {
-      setIsAuthenticated(true)
-      setIsInitialLoad(false)
-    }, 500)
-
-    try {
-      checkAuthStatus()
-      clearTimeout(timeoutId)
-    } catch (error) {
-      clearTimeout(timeoutId)
-      setIsAuthenticated(false)
-      setIsInitialLoad(false)
-    }
-
-    return () => clearTimeout(timeoutId)
-  }, [router, mounted])
+    // Execute auth check
+    checkAuthStatus()
+  }, [mounted, isCheckingAuth, isAuthenticated]) // Only check when mounted and not already checking
 
   // Only show elite loading for initial page load, not internal navigation
   if (isAuthenticated === null) {

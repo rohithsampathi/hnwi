@@ -139,13 +139,19 @@ export class SessionManager {
       // Check for session_token cookie (used by current auth system)
       let sessionToken = cookieStore.get('session_token')?.value;
       logger.debug('session_token cookie:', { found: !!sessionToken });
-      
+
+      // Check for access_token cookie (used by new MFA system)
+      if (!sessionToken) {
+        sessionToken = cookieStore.get('access_token')?.value;
+        logger.debug('access_token cookie:', { found: !!sessionToken });
+      }
+
       // Fallback to traditional session cookie
       if (!sessionToken) {
         sessionToken = cookieStore.get('session')?.value;
         logger.debug('session cookie:', { found: !!sessionToken });
       }
-      
+
       // Fallback to secure cookie name (for compatibility)
       if (!sessionToken) {
         const sessionCookieName = getSecureCookieName('session');

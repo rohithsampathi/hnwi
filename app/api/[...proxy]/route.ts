@@ -120,7 +120,6 @@ async function handler(request: NextRequest) {
 
     return response
   } catch (error) {
-    console.error('Proxy error:', error)
     return NextResponse.json(
       { error: 'Failed to proxy request to backend' },
       { status: 500 }

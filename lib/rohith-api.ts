@@ -1,8 +1,7 @@
 // lib/rohith-api.ts
 // API service layer for Ask Rohith feature with SOTA Graph integration
 
-import { secureApi } from "@/lib/secure-api"
-import { getCurrentUserId } from "@/lib/auth-manager"
+import { secureApi, getCurrentUserId } from "@/lib/secure-api"
 import { getCrownVaultAssets, getCrownVaultStats } from "@/lib/api"
 import type {
   UserPortfolioContext,
@@ -147,29 +146,8 @@ export class RohithAPI {
         // Parse title if it's JSON format
         let title = conv.title || "New Conversation"
 
-        // Check if title looks like JSON (starts with { and contains "message" or "initial_message")
-        if (typeof title === 'string' && title.startsWith('{') && (title.includes('"message"') || title.includes('"initial_message"'))) {
-          try {
-            const parsed = JSON.parse(title)
-            const message = parsed.initial_message || parsed.message || parsed.content || title
-            // Convert to sentence case
-            title = message.charAt(0).toUpperCase() + message.slice(1)
-            // Truncate if needed
-            if (title.length > 60) {
-              title = title.substring(0, 57) + "..."
-            }
-          } catch (e) {
-            // If parsing fails, use the original but clean it up
-            title = title.replace(/[{}"]/g, '').substring(0, 60)
-          }
-        } else if (typeof title === 'object' && (title.initial_message || title.message)) {
-          // If title is already an object with initial_message or message property
-          const message = title.initial_message || title.message || title.content || "New Conversation"
-          title = message.charAt(0).toUpperCase() + message.slice(1)
-          if (title.length > 60) {
-            title = title.substring(0, 57) + "..."
-          }
-        }
+        // More robust title processing
+        title = this.cleanConversationTitle(title)
 
         return {
           id: conv.conversation_id,
@@ -396,15 +374,23 @@ export class RohithAPI {
    */
   async updateConversationTitle(conversationId: string, newTitle: string): Promise<boolean> {
     try {
+      // Clean the title before sending
+      const cleanedTitle = this.cleanConversationTitle(newTitle)
+
       // Use a specific endpoint for title updates
       const response = await secureApi.post(
         `/api/rohith/conversation/${conversationId}/title`,
-        { title: newTitle },
+        { title: cleanedTitle },
         true
       )
 
-      // Clear cache to refresh data
+      // Clear cache to refresh data - clear both conversation cache and list cache
       this.clearConversationCache(conversationId)
+
+      // Also clear the conversations list cache to ensure it gets fresh data
+      import("@/lib/secure-api").then(({ CacheControl }) => {
+        CacheControl.delete('/api/rohith/conversations')
+      })
 
       return response.success === true || response.status === 'success'
     } catch (error) {
@@ -593,6 +579,77 @@ export class RohithAPI {
     import("@/lib/secure-api").then(({ CacheControl }) => {
       cacheKeys.forEach(key => CacheControl.delete(key))
     })
+  }
+
+  /**
+   * Clean conversation title - handles JSON, objects, and malformed titles
+   */
+  private cleanConversationTitle(title: any): string {
+    if (!title) return "New Conversation"
+
+    // If it's already a clean string that doesn't look like JSON, return it
+    if (typeof title === 'string' && !title.startsWith('{') && !title.includes('"initial_message"') && !title.includes('"message"')) {
+      return title.length > 60 ? title.substring(0, 57) + "..." : title
+    }
+
+    let cleanTitle = "New Conversation"
+
+    try {
+      // Handle string that might be JSON
+      if (typeof title === 'string') {
+        // Check if it's JSON-like
+        if (title.startsWith('{') || title.includes('"initial_message"') || title.includes('"message"')) {
+          try {
+            const parsed = JSON.parse(title)
+            cleanTitle = parsed.initial_message || parsed.message || parsed.content || parsed.text || "New Conversation"
+          } catch (e) {
+            // If JSON parsing fails, try to extract content manually
+            const messageMatch = title.match(/"(?:initial_message|message|content)"\s*:\s*"([^"]+)"/)
+            if (messageMatch && messageMatch[1]) {
+              cleanTitle = messageMatch[1]
+            } else {
+              // Last resort: clean up the string
+              cleanTitle = title.replace(/[{}"]/g, '').replace(/initial_message|message|content/g, '').trim()
+              if (!cleanTitle || cleanTitle.length < 3) {
+                cleanTitle = "New Conversation"
+              }
+            }
+          }
+        } else {
+          cleanTitle = title
+        }
+      }
+      // Handle object directly
+      else if (typeof title === 'object' && title !== null) {
+        cleanTitle = title.initial_message || title.message || title.content || title.text || "New Conversation"
+      }
+
+      // Clean and format the title
+      if (typeof cleanTitle === 'string') {
+        cleanTitle = cleanTitle.trim()
+
+        // Remove any remaining JSON artifacts
+        cleanTitle = cleanTitle.replace(/^[{",]+|[}",]+$/g, '')
+
+        // Ensure it's not empty
+        if (!cleanTitle || cleanTitle.length < 2) {
+          cleanTitle = "New Conversation"
+        }
+
+        // Capitalize first letter
+        cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1)
+
+        // Truncate if needed
+        if (cleanTitle.length > 60) {
+          cleanTitle = cleanTitle.substring(0, 57) + "..."
+        }
+      }
+
+    } catch (error) {
+      cleanTitle = "New Conversation"
+    }
+
+    return cleanTitle
   }
 
   /**

@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import secureApi, { 
-  debugAuth, 
-  getAuthenticatedUser, 
+import secureApi, {
+  getAuthenticatedUser,
   getAuthenticatedUserId,
   isUserAuthenticated 
 } from "@/lib/secure-api";
@@ -98,7 +97,7 @@ export default function TestSecureApiPage() {
   };
 
   const runDebugAuth = () => {
-    debugAuth();
+    // Debug auth removed (console logging removed)
   };
 
   useEffect(() => {

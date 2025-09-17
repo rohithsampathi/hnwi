@@ -48,31 +48,43 @@ export function MessageBubble({
     // First, parse the message content to handle JSON
     const parsedContent = parseMessageContent(message.content)
 
-    if (isAssistant && globalCitations && parsedContent.includes("[Dev ID:")) {
+    // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
+    const hasCitations = parsedContent.includes("[Dev ID:") || parsedContent.includes("[DEVID -")
+
+    if (isAssistant && globalCitations && hasCitations) {
       let formatted = parsedContent
       const citationsInMessage: Citation[] = []
 
       // Replace each Dev ID with its global citation number
-      const devIdPattern = /\[Dev ID:\s*([^\]]+)\]/g
-      let match
+      // Support both formats: [Dev ID: ...] and [DEVID - ...]
+      const devIdPatterns = [
+        /\[Dev ID:\s*([^\]]+)\]/g,  // Original format: [Dev ID: xyz]
+        /\[DEVID\s*-\s*([^\]]+)\]/g  // New format: [DEVID - xyz]
+      ]
 
-      while ((match = devIdPattern.exec(parsedContent)) !== null) {
-        const devId = match[1].trim()
-        const citation = globalCitations.get(devId)
+      devIdPatterns.forEach(pattern => {
+        let match
+        // Reset pattern for each iteration
+        pattern.lastIndex = 0
 
-        if (citation) {
-          // Add to this message's citations list
-          if (!citationsInMessage.find(c => c.id === devId)) {
-            citationsInMessage.push(citation)
+        while ((match = pattern.exec(parsedContent)) !== null) {
+          const devId = match[1].trim()
+          const citation = globalCitations.get(devId)
+
+          if (citation) {
+            // Add to this message's citations list
+            if (!citationsInMessage.find(c => c.id === devId)) {
+              citationsInMessage.push(citation)
+            }
+
+            // Replace with citation number
+            formatted = formatted.replace(
+              match[0],
+              `<citation data-id="${devId}" data-number="${citation.number}">[${citation.number}]</citation>`
+            )
           }
-
-          // Replace with citation number
-          formatted = formatted.replace(
-            match[0],
-            `<citation data-id="${devId}" data-number="${citation.number}">[${citation.number}]</citation>`
-          )
         }
-      }
+      })
 
       setFormattedContent(formatted)
       setMessageCitations(citationsInMessage)

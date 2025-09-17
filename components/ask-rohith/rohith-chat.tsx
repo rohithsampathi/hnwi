@@ -73,6 +73,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
     isLoading,
     isTyping,
     isContextLoaded,
+    isConversationsLoading,
     userContext,
 
     // Actions
@@ -82,7 +83,8 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
     clearCurrentConversation,
     createNewConversation,
     submitMessageFeedback,
-    updateConversationTitle
+    updateConversationTitle,
+    loadConversations
   } = useRohith()
 
   // Track if user sent a message to decide when to auto-scroll
@@ -246,22 +248,33 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
 
     // Go through all messages in order to build global citation map
     currentMessages.forEach(msg => {
-      if (msg.role === "assistant" && msg.content.includes("[Dev ID:")) {
-        const devIdPattern = /\[Dev ID:\s*([^\]]+)\]/g
-        let match
+      // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
+      const hasCitations = msg.role === "assistant" && (msg.content.includes("[Dev ID:") || msg.content.includes("[DEVID -"))
 
-        while ((match = devIdPattern.exec(msg.content)) !== null) {
-          const devId = match[1].trim()
+      if (hasCitations) {
+        // Support both citation formats
+        const devIdPatterns = [
+          /\[Dev ID:\s*([^\]]+)\]/g,  // Original format: [Dev ID: xyz]
+          /\[DEVID\s*-\s*([^\]]+)\]/g  // New format: [DEVID - xyz]
+        ]
 
-          // Only add if we haven't seen this Dev ID before
-          if (!allCitations.has(devId)) {
-            allCitations.set(devId, {
-              id: devId,
-              number: citationNumber++,
-              originalText: match[0]
-            })
+        devIdPatterns.forEach(pattern => {
+          pattern.lastIndex = 0 // Reset pattern
+          let match
+
+          while ((match = pattern.exec(msg.content)) !== null) {
+            const devId = match[1].trim()
+
+            // Only add if we haven't seen this Dev ID before
+            if (!allCitations.has(devId)) {
+              allCitations.set(devId, {
+                id: devId,
+                number: citationNumber++,
+                originalText: match[0]
+              })
+            }
           }
-        }
+        })
       }
     })
 
@@ -322,9 +335,8 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                   onDeleteConversation={deleteConversation}
                   onShareConversation={handleShareConversation}
                   onUpdateConversationTitle={updateConversationTitle}
-                  isLoading={isLoading}
-                  showPageHeader={false}
-                  onBack={() => onNavigate?.("dashboard")}
+                  onReloadConversations={loadConversations}
+                  isLoading={isConversationsLoading}
                 />
               </div>
             </motion.div>

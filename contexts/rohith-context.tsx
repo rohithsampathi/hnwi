@@ -4,7 +4,7 @@
 "use client"
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from "react"
-import { getCurrentUser } from "@/lib/auth-manager"
+import { getCurrentUser, getCurrentUserId } from "@/lib/secure-api"
 import { createConversationTitle } from "@/lib/utils"
 import {
   rohithAPI,
@@ -49,6 +49,7 @@ type RohithAction =
   | { type: "SET_ERROR"; payload: string | null }
   | { type: "SET_USER_CONTEXT"; payload: UserPortfolioContext }
   | { type: "SET_CONVERSATIONS"; payload: Conversation[] }
+  | { type: "SET_CONVERSATIONS_LOADING"; payload: boolean }
   | { type: "SET_ACTIVE_CONVERSATION"; payload: string | null }
   | { type: "SET_CURRENT_MESSAGES"; payload: Message[] }
   | { type: "ADD_MESSAGE"; payload: Message }
@@ -65,6 +66,7 @@ const initialState: RohithContextState = {
   isLoading: false,
   isTyping: false,
   isContextLoaded: false,
+  isConversationsLoading: false,
   error: null
 }
 
@@ -84,6 +86,9 @@ function rohithReducer(state: RohithContextState, action: RohithAction): RohithC
 
     case "SET_CONVERSATIONS":
       return { ...state, conversations: action.payload }
+
+    case "SET_CONVERSATIONS_LOADING":
+      return { ...state, isConversationsLoading: action.payload }
 
     case "SET_ACTIVE_CONVERSATION":
       return { ...state, activeConversationId: action.payload }
@@ -155,8 +160,10 @@ export function RohithProvider({ children }: RohithProviderProps) {
         dispatch({ type: "SET_USER_CONTEXT", payload: context })
 
         // Also load conversations
+        dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: true })
         const conversations = await getConversations()
         dispatch({ type: "SET_CONVERSATIONS", payload: conversations })
+        dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: false })
 
       } catch (error) {
         dispatch({ type: "SET_ERROR", payload: "Failed to load context" })
@@ -165,10 +172,12 @@ export function RohithProvider({ children }: RohithProviderProps) {
       }
     }
 
-    const user = getCurrentUser()
-    if (user?.userId) {
+    // Use secure-api's getCurrentUserId instead of auth-manager
+    const userId = getCurrentUserId()
+    if (userId) {
       initializeContext()
     }
+    // Don't load until user is authenticated
   }, [])
 
   const contextActions: RohithContextActions = {
@@ -186,10 +195,13 @@ export function RohithProvider({ children }: RohithProviderProps) {
 
     loadConversations: async () => {
       try {
+        dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: true })
         const conversations = await getConversations()
         dispatch({ type: "SET_CONVERSATIONS", payload: conversations })
       } catch (error) {
         dispatch({ type: "SET_ERROR", payload: "Failed to load conversations" })
+      } finally {
+        dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: false })
       }
     },
 

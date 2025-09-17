@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useTheme } from "@/contexts/theme-context"
-import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +31,6 @@ import {
   MoreVertical,
   Clock,
   MessageCircle,
-  Bot,
   Share2,
   Edit2,
   Check,
@@ -53,10 +52,9 @@ interface ConversationSidebarProps {
   onDeleteConversation: (conversationId: string) => void
   onShareConversation?: (conversationId: string) => void
   onUpdateConversationTitle?: (conversationId: string, newTitle: string) => void
+  onReloadConversations?: () => Promise<void>
   isLoading?: boolean
   className?: string
-  showPageHeader?: boolean
-  onBack?: () => void
 }
 
 export function ConversationSidebar({
@@ -67,10 +65,9 @@ export function ConversationSidebar({
   onDeleteConversation,
   onShareConversation,
   onUpdateConversationTitle,
+  onReloadConversations,
   isLoading = false,
-  className,
-  showPageHeader = false,
-  onBack
+  className
 }: ConversationSidebarProps) {
   const { theme } = useTheme()
   const { toast } = useToast()
@@ -79,6 +76,7 @@ export function ConversationSidebar({
   const [conversationToDelete, setConversationToDelete] = useState<{id: string, title: string} | null>(null)
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
+  const [isReloading, setIsReloading] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
 
   // Filter conversations based on search query
@@ -115,6 +113,18 @@ export function ConversationSidebar({
       })
       // Close the dialog after successful deletion
       setConversationToDelete(null)
+
+      // Reload conversations after deletion
+      if (onReloadConversations) {
+        setIsReloading(true)
+        try {
+          await onReloadConversations()
+        } catch (reloadError) {
+          // Failed to reload conversations after deletion
+        } finally {
+          setIsReloading(false)
+        }
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -140,6 +150,18 @@ export function ConversationSidebar({
           title: "Success",
           description: "Conversation title updated",
         })
+
+        // Reload conversations after title update
+        if (onReloadConversations) {
+          setIsReloading(true)
+          try {
+            await onReloadConversations()
+          } catch (reloadError) {
+            // Failed to reload conversations after title update
+          } finally {
+            setIsReloading(false)
+          }
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -169,48 +191,39 @@ export function ConversationSidebar({
       "flex flex-col h-full bg-background border-r border-border",
       className
     )}>
-      {/* Page Header (when sidebar is expanded) */}
-      {showPageHeader && (
-        <div className="flex-shrink-0 p-4 border-b border-border">
-          <PageHeaderWithBack onBack={onBack} />
-        </div>
-      )}
 
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <Bot className="h-5 w-5 text-primary" />
-              <h2 className="font-semibold text-lg">Ask Rohith</h2>
-            </div>
-            <p className="text-xs text-muted-foreground ml-7">Your private intelligence ally</p>
+        {/* Search and New Conversation */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+            />
           </div>
           <Button
             onClick={onNewConversation}
             size="sm"
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 p-0 flex-shrink-0"
             disabled={isLoading}
           >
             <Plus className="h-4 w-4" />
           </Button>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9"
-          />
         </div>
       </div>
 
       {/* Conversations List - Scrollable Area */}
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-2">
+          {isReloading ? (
+            <div className="flex items-center justify-center py-8">
+              <CrownLoader size="sm" text="Updating conversations..." />
+            </div>
+          ) : (
             <AnimatePresence>
               {filteredConversations.length === 0 ? (
                 <motion.div
@@ -382,6 +395,7 @@ export function ConversationSidebar({
                 ))
               )}
             </AnimatePresence>
+          )}
         </div>
       </ScrollArea>
 

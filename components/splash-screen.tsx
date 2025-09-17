@@ -259,7 +259,13 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           setError('Authentication failed. Please try again.')
           return
         }
-        
+
+        // Ensure session storage is properly updated
+        sessionStorage.setItem("userEmail", normalizedUser.email || "")
+        sessionStorage.setItem("userId", normalizedUser.id || normalizedUser.user_id || "")
+        sessionStorage.setItem("userObject", JSON.stringify(normalizedUser))
+
+
         // Handle device trust if checkbox was checked
         if (rememberDevice) {
           try {
@@ -273,7 +279,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               })
             } else {
               toast({
-                title: "Login Successful", 
+                title: "Login Successful",
                 description: `Welcome back, ${normalizedUser.firstName}!`,
               })
             }
@@ -289,7 +295,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             description: `Welcome back, ${normalizedUser.firstName}!`,
           })
         }
-        
+
         debugAuth()
 
         // Reset form
@@ -299,13 +305,27 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         sessionStorage.setItem("skipSplash", "true")
         sessionStorage.setItem("currentPage", "dashboard")
 
-        // Small delay to ensure auth state is fully synchronized before triggering navigation
-        setTimeout(() => {
-          // Call success callback
-          if (onLoginSuccess) {
-            onLoginSuccess(normalizedUser)
+        // Verify user data is available before navigation
+        const { getCurrentUser } = await import("@/lib/auth-manager")
+        const verifyAndNavigate = () => {
+          const storedUser = getCurrentUser()
+          if (storedUser) {
+            // User data is confirmed stored, safe to navigate
+            if (onLoginSuccess) {
+              onLoginSuccess(normalizedUser)
+            }
+          } else {
+            // If not yet available, retry once more
+            setTimeout(() => {
+              if (onLoginSuccess) {
+                onLoginSuccess(normalizedUser)
+              }
+            }, 50)
           }
-        }, 100)
+        }
+
+        // Small delay to ensure auth state is fully synchronized before triggering navigation
+        setTimeout(verifyAndNavigate, 150)
         
         resetOnboarding()
         setIsFromSignupFlow(false)

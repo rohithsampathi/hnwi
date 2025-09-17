@@ -59,6 +59,7 @@ export interface RohithContextState {
   isLoading: boolean
   isTyping: boolean
   isContextLoaded: boolean
+  isConversationsLoading: boolean
   error: string | null
 }
 

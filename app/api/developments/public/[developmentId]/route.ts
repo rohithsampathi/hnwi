@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { secureApi } from "@/lib/secure-api"
+// Public development endpoint for shared citations
+// This endpoint should work without authentication for shared conversations
+
+import { NextRequest, NextResponse } from 'next/server'
+import { API_BASE_URL } from '@/config/api'
 
 export async function GET(
   request: NextRequest,
@@ -10,42 +13,56 @@ export async function GET(
 
     if (!developmentId) {
       return NextResponse.json(
-        { error: "Development ID is required" },
+        { error: 'Development ID is required' },
         { status: 400 }
       )
     }
 
-    // Fetch from backend - no fallback
-    const endpoint = `/api/developments/public/${developmentId}`
+    // Call backend without authentication - this should be a public endpoint
+    const backendUrl = `${API_BASE_URL}/api/developments/public/${developmentId}`
 
-    const devData = await secureApi.get(endpoint, false, {
-      enableCache: true,
-      cacheDuration: 600000 // Cache for 10 minutes
+    // Fetching from backend public endpoint
+
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'NextJS-Proxy/1.0',
+      },
     })
 
-    if (!devData) {
+    // Backend response received
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      // Backend returned error
+
       return NextResponse.json(
-        { error: "Development not found" },
-        { status: 404 }
+        {
+          error: 'Failed to fetch development data',
+          details: response.status === 401 ? 'Backend requires authentication for public endpoint' : errorText
+        },
+        { status: response.status }
       )
     }
 
-    return NextResponse.json({
-      id: developmentId,
-      ...devData
-    }, { status: 200 })
+    const data = await response.json()
 
-  } catch (error: any) {
-    // Check if it's a 404 error
-    if (error.status === 404 || error.message?.includes("not found")) {
-      return NextResponse.json(
-        { error: "Development not found" },
-        { status: 404 }
-      )
-    }
+    return NextResponse.json(data, {
+      status: 200,
+      headers: {
+        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+      },
+    })
+
+  } catch (error) {
+    // Error occurred during fetch
 
     return NextResponse.json(
-      { error: "Failed to fetch development" },
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

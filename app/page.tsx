@@ -11,28 +11,51 @@ export default function Home() {
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
     // Mark as hydrated to prevent SSR/client mismatch
     setIsHydrated(true)
 
-    // Quick auth check - if user has valid session, redirect to dashboard
-    const user = getCurrentUser()
+    // Prevent multiple checks and infinite loops
+    if (isRedirecting || hasCheckedAuth) return
 
-    if (user && (user.id || user.user_id)) {
-      // User appears to be logged in, redirect to dashboard immediately
-      setIsRedirecting(true)
-      // Longer delay to ensure auth state is fully synced after MFA
-      setTimeout(() => {
+    const checkAuth = async () => {
+      setHasCheckedAuth(true)
+
+      // Check if we're coming from a successful login
+      const currentPage = sessionStorage.getItem("currentPage")
+      if (currentPage === "dashboard") {
+        // User should be on dashboard, redirect there
+        setIsRedirecting(true)
         router.push("/dashboard")
-      }, 200)
+        return
+      }
+
+      // Quick auth check - if user has valid session, redirect to dashboard
+      let user = getCurrentUser()
+
+      // If no user in memory, try to refresh from cookies (hard refresh case)
+      if (!user) {
+        const { refreshUser } = await import("@/lib/auth-manager")
+        user = await refreshUser()
+      }
+
+      if (user && (user.id || user.user_id)) {
+        // User appears to be logged in, redirect to dashboard immediately
+        setIsRedirecting(true)
+        router.push("/dashboard")
+      }
     }
-  }, [router])
+
+    checkAuth()
+  }, [isRedirecting, hasCheckedAuth]) // Remove router dependency
 
   // Show splash screen for unauthenticated users
   const handleLoginSuccess = (userData: any) => {
     setIsRedirecting(true)
-    router.push("/dashboard")
+    // Use replace instead of push to prevent back navigation issues
+    router.replace("/dashboard")
   }
 
   // Show loading until hydrated to prevent layout shift

@@ -57,7 +57,7 @@ export async function GET() {
 
       // If we can't decode the JWT, fetch user from backend
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
         const userResponse = await fetch(`${backendUrl}/api/auth/session`, {
           headers: {
             'Cookie': `access_token=${accessToken}`,
