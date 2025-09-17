@@ -1,8 +1,11 @@
 // config/api.ts
 
-// Centralized API configuration with URL protection
-// Point to the actual backend API, not the frontend
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
+// Centralized API configuration
+// Backend URL is ONLY available server-side
+// Client-side always uses relative URLs through Next.js API routes
+
+// This should only be used in API routes, never in client code
+export const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
 
 
 // Helper to create safe error messages without URL exposure
@@ -32,15 +35,21 @@ export const logSafeApiError = (message: string, endpoint?: string): void => {
   }
 }
 
-// Get full URL for an API endpoint
+// Get full URL for an API endpoint (server-side only)
 export const getApiUrlForEndpoint = (endpoint: string): string => {
+  if (typeof window !== 'undefined') {
+    throw new Error('getApiUrlForEndpoint should not be called from client-side code');
+  }
   // Ensure endpoint starts with /
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return `${API_BASE_URL}${cleanEndpoint}`;
 }
 
-// Get base URL for client-side usage
+// Get base URL (server-side only)
 export const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    throw new Error('getApiBaseUrl should not be called from client-side code');
+  }
   return API_BASE_URL;
 }
 

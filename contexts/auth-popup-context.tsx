@@ -7,7 +7,7 @@ interface AuthPopupContextType {
   showAuthPopup: (options?: {
     title?: string
     description?: string
-    onSuccess?: () => void
+    onSuccess?: (userData?: any) => void
   }) => void
   hideAuthPopup: () => void
 }
@@ -23,13 +23,13 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
   const [popupOptions, setPopupOptions] = useState<{
     title?: string
     description?: string
-    onSuccess?: () => void
+    onSuccess?: (userData?: any) => void
   }>({})
 
   const showAuthPopup = useCallback((options: {
     title?: string
     description?: string
-    onSuccess?: () => void
+    onSuccess?: (userData?: any) => void
   } = {}) => {
     setPopupOptions(options)
     setIsOpen(true)
@@ -40,8 +40,8 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
     setPopupOptions({})
   }, [])
 
-  const handleSuccess = useCallback(() => {
-    popupOptions.onSuccess?.()
+  const handleSuccess = useCallback((userData?: any) => {
+    popupOptions.onSuccess?.(userData)
     hideAuthPopup()
   }, [popupOptions, hideAuthPopup])
 

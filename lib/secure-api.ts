@@ -1,8 +1,7 @@
 // lib/secure-api.ts
 // Cookie-Based Secure API Handler - SOTA httpOnly Cookie Authentication
 // No tokens in JavaScript = XSS-proof authentication
-
-import { API_BASE_URL } from "@/config/api";
+// All requests go through Next.js API routes - backend URL never exposed to client
 
 // Helper to read CSRF token from cookie (only CSRF is readable)
 const getCookie = (name: string): string | null => {
@@ -47,7 +46,8 @@ export const secureApiCall = async (
   options: RequestInit = {},
   requireAuth: boolean = true
 ): Promise<Response> => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Always use relative URLs - goes through Next.js API routes
+  const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ export const secureApiCall = async (
     if (response.status === 401 && requireAuth) {
       // Try to refresh token automatically
       try {
-        const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        const refreshResponse = await fetch(`/api/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -304,7 +304,7 @@ export const getCurrentUserId = (): string | null => {
 // Refresh token function
 export const refreshAuthToken = async (): Promise<any> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    const response = await fetch(`/api/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -328,10 +328,13 @@ export const refreshAuthToken = async (): Promise<any> => {
   }
 };
 
-// Server-side API for use in API routes (Next.js SSR)
+// Server-side API removed - all calls go through client-side secureApi
+// which uses relative URLs to Next.js API routes
+// Backend URL is never exposed to the client
 export const serverSecureApi = {
   async get(endpoint: string, cookies?: string): Promise<any> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    // Always use relative URLs - goes through Next.js API routes
+  const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -353,7 +356,8 @@ export const serverSecureApi = {
   },
 
   async post(endpoint: string, data: any, cookies?: string): Promise<any> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    // Always use relative URLs - goes through Next.js API routes
+  const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -376,7 +380,8 @@ export const serverSecureApi = {
   },
 
   async put(endpoint: string, data: any, cookies?: string): Promise<any> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    // Always use relative URLs - goes through Next.js API routes
+  const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -399,7 +404,8 @@ export const serverSecureApi = {
   },
 
   async delete(endpoint: string, cookies?: string): Promise<any> {
-    const url = `${API_BASE_URL}${endpoint}`;
+    // Always use relative URLs - goes through Next.js API routes
+  const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };

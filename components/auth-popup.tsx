@@ -249,34 +249,35 @@ export function AuthPopup({
         if (result.access_token) {
           // Backend sets httpOnly cookies
         }
-        
+
         // Update session state to authenticated (unlocked)
         setSessionState(SessionState.AUTHENTICATED)
-        
+
         // Trust device if checkbox was checked
         if (rememberDevice) {
           const trustSuccess = trustCurrentDevice();
           if (trustSuccess) {
             toast({
               title: "Secure access restored",
-              description: isReauthMode 
-                ? "Session unlocked and device trusted for 7 days. Your work has been preserved." 
+              description: isReauthMode
+                ? "Session unlocked and device trusted for 7 days. Your work has been preserved."
                 : "Elite authentication successful. Device trusted for 7 days.",
             })
           }
         } else {
           toast({
             title: "Secure access restored",
-            description: isReauthMode 
-              ? "Session unlocked. Your work has been preserved." 
+            description: isReauthMode
+              ? "Session unlocked. Your work has been preserved."
               : "Elite authentication successful. Intelligence feed reconnected.",
           })
         }
-        
+
         // Small delay to allow UI feedback, then close
         setTimeout(() => {
           handleClose()
-          onSuccess?.()
+          // Pass the user data to onSuccess callback
+          onSuccess?.(result.user || result)
         }, 100)
       } else {
         setError(result.error || "Invalid verification code")
