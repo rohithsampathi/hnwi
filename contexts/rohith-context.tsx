@@ -18,6 +18,7 @@ import {
   createMessage,
   submitFeedback as apiSubmitFeedback
 } from "@/lib/rohith-api"
+import { BackgroundSyncService } from "@/lib/services/background-sync-service"
 import type {
   RohithContextState,
   UserPortfolioContext,
@@ -364,13 +365,22 @@ export function RohithProvider({ children }: RohithProviderProps) {
         }
 
       } catch (error) {
-        dispatch({ type: "SET_ERROR", payload: "Failed to send message. Please try again." })
+        try {
+          // If direct API call fails, try background sync
+          await BackgroundSyncService.queueMessageSend(
+            `/api/rohith/message/${state.activeConversationId}`,
+            { message, conversationId: state.activeConversationId }
+          )
 
-        // Remove the user message that was optimistically added if sending failed
-        // This prevents the UI from showing a message that was never actually sent
-        const currentMessages = state.currentMessages
-        const updatedMessages = currentMessages.slice(0, -1) // Remove last message (the user message we just added)
-        dispatch({ type: "SET_CURRENT_MESSAGES", payload: updatedMessages })
+          dispatch({ type: "SET_ERROR", payload: "Message queued for when you're back online." })
+        } catch (syncError) {
+          dispatch({ type: "SET_ERROR", payload: "Failed to send message. Please try again." })
+
+          // Remove the user message that was optimistically added if both sending and sync failed
+          const currentMessages = state.currentMessages
+          const updatedMessages = currentMessages.slice(0, -1) // Remove last message (the user message we just added)
+          dispatch({ type: "SET_CURRENT_MESSAGES", payload: updatedMessages })
+        }
       } finally {
         dispatch({ type: "SET_TYPING", payload: false })
       }

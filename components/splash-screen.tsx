@@ -394,7 +394,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         <div className="w-full flex justify-center py-6 md:py-8 border-t border-border/20">
           <div className="w-full max-w-7xl px-4">
             <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-              Enterprise Security Standards
+              Enterprise Security Architecture
             </p>
             
             {/* Auto-scrolling container optimized for 55" screens */}
@@ -748,7 +748,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           <div className="w-full flex justify-center py-6 md:py-8 border-t border-border/20">
             <div className="w-full max-w-7xl px-4">
               <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-                Enterprise Security Standards
+                Enterprise Security Architecture
               </p>
               
               {/* Auto-scrolling container optimized for 55" screens */}
@@ -1011,7 +1011,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           <div className="w-full flex justify-center mt-8 md:mt-12 py-6 md:py-8 border-t border-border/20">
             <div className="w-full max-w-7xl px-4">
               <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-                Enterprise Security Standards
+                Enterprise-Security Standard Architecture
               </p>
               
               {/* Auto-scrolling container optimized for 55" screens */}

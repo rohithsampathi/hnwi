@@ -3,6 +3,9 @@
 // No tokens in JavaScript = XSS-proof authentication
 // All requests go through Next.js API routes - backend URL never exposed to client
 
+import { EnhancedCacheService } from './services/enhanced-cache-service'
+import { CachePolicyService } from './services/cache-policy-service'
+
 // Helper to read CSRF token from cookie (only CSRF is readable)
 const getCookie = (name: string): string | null => {
   if (typeof window === 'undefined') return null;
@@ -223,12 +226,64 @@ setInterval(() => {
   }
 }, 60000); // Clean every minute
 
+// Determine cache type based on endpoint
+function getCacheType(endpoint: string): keyof typeof CachePolicyService.POLICIES | null {
+  if (endpoint.includes('/intelligence') || endpoint.includes('/hnwi') || endpoint.includes('/developments')) {
+    return 'INTELLIGENCE_BRIEF'
+  }
+  if (endpoint.includes('/crown-vault')) {
+    return 'CROWN_VAULT'
+  }
+  if (endpoint.includes('/opportunities')) {
+    return 'OPPORTUNITIES'
+  }
+  if (endpoint.includes('/rohith')) {
+    return 'ROHITH_MESSAGES'
+  }
+  if (endpoint.includes('/social') || endpoint.includes('/events')) {
+    return 'SOCIAL_EVENTS'
+  }
+  if (endpoint.includes('/profile') || endpoint.includes('/preferences')) {
+    return 'USER_PREFERENCES'
+  }
+  return null
+}
+
 // Simplified secure API methods
 export const secureApi = {
-  async get(endpoint: string, requireAuth: boolean = true, options?: { enableCache?: boolean; cacheDuration?: number }): Promise<any> {
-    const { enableCache = false, cacheDuration = 300000 } = options || {}; // Default 5 minutes
+  async get(endpoint: string, requireAuth: boolean = true, options?: {
+    enableCache?: boolean;
+    cacheDuration?: number;
+    intelligentCache?: boolean;
+  }): Promise<any> {
+    const { enableCache = false, cacheDuration = 300000, intelligentCache = true } = options || {};
 
-    // Check cache first if enabled
+    // Use intelligent caching if enabled
+    if (intelligentCache) {
+      const cacheType = getCacheType(endpoint)
+      if (cacheType) {
+        try {
+          const response = await EnhancedCacheService.fetch(endpoint, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(requireAuth && getCookie('csrf_token') ? { 'X-CSRF-Token': getCookie('csrf_token')! } : {})
+            }
+          }, cacheType)
+
+          if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`)
+          }
+
+          return await response.json()
+        } catch (error) {
+          // Fallback to standard API call
+        }
+      }
+    }
+
+    // Fallback to original caching logic
     if (enableCache) {
       const cacheKey = `${endpoint}`;
       const cached = apiCache.get(cacheKey);

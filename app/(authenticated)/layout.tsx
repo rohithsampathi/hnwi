@@ -19,6 +19,7 @@ import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
 import { getCurrentUser, getCurrentUserId, isAuthenticated as checkAuth } from "@/lib/auth-manager"
 import TokenRefreshManager from "@/components/token-refresh-manager"
+import BackgroundSyncInitializer from "@/components/background-sync-initializer"
 import '@/lib/auth/debug-helper' // Load debug helper
 
 interface AuthenticatedLayoutProps {
@@ -197,6 +198,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                         user={user}
                       >
                         <TokenRefreshManager refreshIntervalHours={20} />
+                        <BackgroundSyncInitializer />
                         {children}
                         <Toaster />
                       </Layout>
