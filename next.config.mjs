@@ -88,8 +88,16 @@ const pwaConfig = withPWA({
       },
     },
     {
-      // API routes - Network first with background sync
-      urlPattern: /\/api\//,
+      // Auth endpoints - NEVER cache authentication
+      urlPattern: /\/api\/auth\//,
+      handler: 'NetworkOnly',
+      options: {
+        cacheName: 'no-cache',
+      },
+    },
+    {
+      // Non-auth API routes - Network first with background sync
+      urlPattern: /\/api\/(?!auth)/,
       handler: 'NetworkFirst',
       options: {
         cacheName: 'api-cache',
