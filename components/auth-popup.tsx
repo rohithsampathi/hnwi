@@ -225,10 +225,11 @@ export function AuthPopup({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           email: isReauthMode && storedEmail ? storedEmail : email,
           mfa_code: code,
-          mfa_token: mfaToken
+          mfa_token: mfaToken,
+          rememberMe: rememberDevice
         }),
       })
 

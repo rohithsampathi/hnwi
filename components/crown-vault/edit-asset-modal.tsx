@@ -24,7 +24,8 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
   const [formData, setFormData] = useState({
     name: "",
     asset_type: "",
-    value: "",
+    unit_count: "1",
+    cost_per_unit: "0",
     currency: "USD",
     location: "",
     notes: ""
@@ -33,10 +34,16 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
   // Reset form data when asset changes
   useEffect(() => {
     if (asset) {
+      // Try to get unit_count and cost_per_unit from asset_data
+      const unitCount = asset.asset_data?.unit_count || 1;
+      const costPerUnit = asset.asset_data?.cost_per_unit ||
+        (asset.asset_data?.value ? asset.asset_data.value / unitCount : 0);
+
       setFormData({
         name: asset.asset_data?.name || "",
         asset_type: asset.asset_data?.asset_type || "",
-        value: asset.asset_data?.value?.toString() || "",
+        unit_count: unitCount.toString(),
+        cost_per_unit: costPerUnit.toString(),
         currency: asset.asset_data?.currency || "USD",
         location: asset.asset_data?.location || "",
         notes: asset.asset_data?.notes || ""
@@ -52,17 +59,16 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
     setIsLoading(true);
     try {
       const updateData = {
-        structured_data: {
-          name: formData.name,
-          asset_type: formData.asset_type,
-          value: parseFloat(formData.value) || 0,
-          currency: formData.currency,
-          location: formData.location,
-          notes: formData.notes
-        }
+        name: formData.name,
+        asset_type: formData.asset_type,
+        unit_count: parseFloat(formData.unit_count) || 1,
+        cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
+        currency: formData.currency,
+        location: formData.location,
+        notes: formData.notes
       };
 
-      
+
       const updatedAsset = await updateCrownVaultAsset(asset.asset_id, updateData);
       
       if (updatedAsset) {
@@ -73,7 +79,14 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
           ...asset,
           asset_data: {
             ...asset.asset_data,
-            ...updateData
+            name: formData.name,
+            asset_type: formData.asset_type,
+            unit_count: parseFloat(formData.unit_count) || 1,
+            cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
+            value: (parseFloat(formData.unit_count) || 1) * (parseFloat(formData.cost_per_unit) || 0),
+            currency: formData.currency,
+            location: formData.location,
+            notes: formData.notes
           }
         };
         onAssetUpdated(fallbackUpdatedAsset);
@@ -153,30 +166,58 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
             </Select>
           </div>
 
-          {/* Value and Currency */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="value">Value</Label>
-              <Input
-                id="value"
-                type="number"
-                value={formData.value}
-                onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
-                placeholder="0"
-                min="0"
-                step="0.01"
-                disabled={isLoading}
-              />
+          {/* Unit Count and Cost Per Unit */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="unit_count">Unit Count</Label>
+                <Input
+                  id="unit_count"
+                  type="number"
+                  value={formData.unit_count}
+                  onChange={(e) => setFormData(prev => ({ ...prev, unit_count: e.target.value }))}
+                  placeholder="1"
+                  min="0"
+                  step="0.01"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cost_per_unit">Cost Per Unit</Label>
+                <Input
+                  id="cost_per_unit"
+                  type="number"
+                  value={formData.cost_per_unit}
+                  onChange={(e) => setFormData(prev => ({ ...prev, cost_per_unit: e.target.value }))}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  disabled={isLoading}
+                />
+              </div>
             </div>
+
+            {/* Total Value Display */}
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Total Value:</span>
+                <span className="text-lg font-bold">
+                  {formData.currency} {((parseFloat(formData.unit_count) || 0) * (parseFloat(formData.cost_per_unit) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Currency */}
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <Select 
+              <Select
                 value={formData.currency}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
                 disabled={isLoading}
+                required
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="cursor-pointer">
+                  <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
@@ -222,6 +263,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
               variant="outline"
               onClick={handleClose}
               disabled={isLoading}
+              className="hover:text-white"
             >
               Cancel
             </Button>

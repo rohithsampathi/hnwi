@@ -43,6 +43,14 @@ export function MessageBubble({
   const isUser = message.role === "user"
   const isAssistant = message.role === "assistant"
 
+  // Parse bullet points with side headings (• Heading: content)
+  const parseBulletPoints = (text: string): string => {
+    // Convert bullet points like "• Dubai luxury surge: content" to structured HTML
+    return text.replace(/• ([^:]+):\s*([^\n•]+)/g, (match, heading, content) => {
+      return `<div><span class="text-primary mr-2">•</span><strong class="text-foreground font-semibold">${heading.trim()}:</strong> <span class="text-foreground">${content.trim()}</span></div>`
+    })
+  }
+
   // Format message with global citation numbers and parse JSON content
   useEffect(() => {
     // First, parse the message content to handle JSON
@@ -86,10 +94,14 @@ export function MessageBubble({
         }
       })
 
-      setFormattedContent(formatted)
+      // Apply bullet point parsing
+      const bulletParsed = parseBulletPoints(formatted)
+      setFormattedContent(bulletParsed)
       setMessageCitations(citationsInMessage)
     } else {
-      setFormattedContent(parsedContent)
+      // Apply bullet point parsing
+      const bulletParsed = parseBulletPoints(parsedContent)
+      setFormattedContent(bulletParsed)
       setMessageCitations([])
     }
   }, [message.content, isAssistant, globalCitations])
@@ -234,12 +246,15 @@ export function MessageBubble({
                     </div>
                   </div>
                 ) : (
-                  <p className={cn(
-                    "text-sm leading-relaxed whitespace-pre-wrap m-0",
-                    isUser ? "text-primary-foreground" : "text-foreground"
-                  )}>
-                    {formattedContent}
-                  </p>
+                  <div
+                    className={cn(
+                      "text-sm leading-relaxed whitespace-pre-wrap m-0",
+                      isUser ? "text-primary-foreground" : "text-foreground"
+                    )}
+                    dangerouslySetInnerHTML={{
+                      __html: formattedContent
+                    }}
+                  />
                 )}
               </div>
 
@@ -306,22 +321,20 @@ export function MessageBubble({
           </div>
 
           {/* Message Context (for assistant messages) */}
-          {showContext && isAssistant && message.context && (
+          {showContext && isAssistant && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               className="mt-2 text-xs text-muted-foreground space-y-1"
             >
-              {/* HNWI Knowledge Sources */}
-              {message.context.hnwiKnowledgeSources && message.context.hnwiKnowledgeSources.length > 0 && (
-                <div className="flex items-center space-x-1">
-                  <BookOpen className="h-3 w-3" />
-                  <span>{message.context.hnwiKnowledgeSources.length} HNWI knowledge sources</span>
-                </div>
-              )}
+              {/* HNWI Knowledge Sources - Dynamic count: 1 base + number of citations */}
+              <div className="flex items-center space-x-1">
+                <BookOpen className="h-3 w-3" />
+                <span>{1 + messageCitations.length} HNWI knowledge source{messageCitations.length === 0 ? '' : 's'}</span>
+              </div>
 
               {/* Response time */}
-              {message.context.responseTime && (
+              {message.context?.responseTime && (
                 <div className="flex items-center space-x-1">
                   <Clock className="h-3 w-3" />
                   <span>{(message.context.responseTime / 1000).toFixed(1)}s</span>

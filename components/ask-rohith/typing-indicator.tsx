@@ -1,10 +1,10 @@
 // components/ask-rohith/typing-indicator.tsx
-// Typing indicator for Rohith responses
+// Typing indicator for Rohith responses with progressive status messages
 
 "use client"
 
-import React from "react"
-import { motion } from "framer-motion"
+import React, { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "@/contexts/theme-context"
 import { Bot } from "lucide-react"
@@ -14,11 +14,60 @@ interface TypingIndicatorProps {
   showPortfolioContext?: boolean
 }
 
+// Status messages with their durations
+const statusMessages = [
+  { text: "Browsing HNWI knowledge base", duration: 2000 },
+  { text: "Found relevant citations", duration: 3000 },
+  { text: "Deep analysis on related citations", duration: 2000 },
+  { text: "Compiling my response", duration: 3000 }
+]
+
 export function TypingIndicator({
   message = "Rohith is thinking...",
   showPortfolioContext = false
 }: TypingIndicatorProps) {
   const { theme } = useTheme()
+  const [currentStatusIndex, setCurrentStatusIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  useEffect(() => {
+    if (!showPortfolioContext) return
+
+    let timeoutId: NodeJS.Timeout
+
+    const advanceStatus = () => {
+      if (currentStatusIndex < statusMessages.length - 1) {
+        // Start fade out
+        setIsTransitioning(true)
+
+        // After fade out, change text and fade in
+        setTimeout(() => {
+          setCurrentStatusIndex(prev => prev + 1)
+          setIsTransitioning(false)
+        }, 300) // Match fade out duration
+
+        // Schedule next status change
+        timeoutId = setTimeout(
+          advanceStatus,
+          statusMessages[currentStatusIndex + 1].duration + 300 // Add transition time
+        )
+      }
+    }
+
+    // Start the sequence after initial delay
+    timeoutId = setTimeout(
+      advanceStatus,
+      statusMessages[currentStatusIndex].duration
+    )
+
+    return () => clearTimeout(timeoutId)
+  }, [currentStatusIndex, showPortfolioContext])
+
+  // Reset when a new message starts
+  useEffect(() => {
+    setCurrentStatusIndex(0)
+    setIsTransitioning(false)
+  }, [showPortfolioContext])
 
   const dotVariants = {
     initial: { y: 0 },
@@ -36,6 +85,20 @@ export function TypingIndicator({
       opacity: 0,
       y: -10,
       transition: { duration: 0.2 }
+    }
+  }
+
+  const statusVariants = {
+    initial: { opacity: 0, y: 5 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3 }
+    },
+    exit: {
+      opacity: 0,
+      y: -5,
+      transition: { duration: 0.3 }
     }
   }
 
@@ -64,42 +127,70 @@ export function TypingIndicator({
         }
       `}>
         <div className="flex flex-col space-y-2">
-          {/* Main typing message */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground font-medium">
-              {message}
-            </span>
+          {/* Main typing message - only show if not showing portfolio context */}
+          {!showPortfolioContext && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground font-medium">
+                {message}
+              </span>
 
-            {/* Animated dots */}
-            <div className="flex space-x-1">
-              {[0, 1, 2].map((index) => (
-                <motion.div
-                  key={index}
-                  className="w-2 h-2 bg-primary rounded-full"
-                  variants={dotVariants}
-                  animate="animate"
-                  transition={{
-                    duration: 0.6,
-                    repeat: Infinity,
-                    repeatType: "reverse",
-                    delay: index * 0.2
-                  }}
-                />
-              ))}
+              {/* Animated dots */}
+              <div className="flex space-x-1">
+                {[0, 1, 2].map((index) => (
+                  <motion.div
+                    key={index}
+                    className="w-2 h-2 bg-primary rounded-full"
+                    variants={dotVariants}
+                    animate="animate"
+                    transition={{
+                      duration: 0.6,
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      delay: index * 0.2
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Portfolio context indicator */}
+          {/* Progressive status messages with fade transitions */}
           {showPortfolioContext && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="flex items-center space-x-2 text-xs text-muted-foreground"
-            >
-              <div className="w-1 h-1 bg-primary/50 rounded-full animate-pulse"></div>
-              <span>Browsing HNWI knowledge base</span>
-            </motion.div>
+            <div className="flex items-center space-x-2 h-5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStatusIndex}
+                  variants={statusVariants}
+                  initial="initial"
+                  animate={isTransitioning ? "exit" : "animate"}
+                  exit="exit"
+                  className="flex items-center space-x-2"
+                >
+                  <div className="w-1 h-1 bg-primary/50 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-muted-foreground font-medium">
+                    {statusMessages[currentStatusIndex].text}
+                  </span>
+
+                  {/* Animated dots */}
+                  <div className="flex space-x-1">
+                    {[0, 1, 2].map((index) => (
+                      <motion.div
+                        key={index}
+                        className="w-2 h-2 bg-primary rounded-full"
+                        variants={dotVariants}
+                        animate="animate"
+                        transition={{
+                          duration: 0.6,
+                          repeat: Infinity,
+                          repeatType: "reverse",
+                          delay: index * 0.2
+                        }}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>

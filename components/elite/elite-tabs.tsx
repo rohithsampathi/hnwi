@@ -20,9 +20,11 @@ interface EliteTabsProps {
   variant?: 'default' | 'sidebar' | 'mobile' | 'content' | 'mobile-content' | 'mobile-sticky'
   activeTab?: string
   setActiveTab?: (tab: string) => void
+  onCitationClick?: (citationId: string) => void
+  citations?: Array<{ id: string; number: number; originalText: string }>
 }
 
-export function EliteTabs({ data, onNavigate, user, variant = 'default', activeTab: propActiveTab, setActiveTab: propSetActiveTab }: EliteTabsProps) {
+export function EliteTabs({ data, onNavigate, user, variant = 'default', activeTab: propActiveTab, setActiveTab: propSetActiveTab, onCitationClick, citations = [] }: EliteTabsProps) {
   const [localActiveTab, setLocalActiveTab] = useState('overview')
   
   // Use prop state if provided, otherwise use local state
@@ -34,25 +36,25 @@ export function EliteTabs({ data, onNavigate, user, variant = 'default', activeT
       value: 'overview',
       label: 'Overview',
       icon: BarChart3,
-      component: <OverviewTab data={data} activeTab={activeTab} setActiveTab={setActiveTab} />
+      component: <OverviewTab data={data} activeTab={activeTab} setActiveTab={setActiveTab} onCitationClick={onCitationClick} citations={citations} />
     },
     {
       value: 'elite-pulse',
       label: 'Elite Pulse',
       icon: Globe,
-      component: <ElitePulseTab data={data} />
+      component: <ElitePulseTab data={data} onCitationClick={onCitationClick} citations={citations} />
     },
     {
       value: 'opportunities',
-      label: 'Privé Exchange Updates', 
+      label: 'Privé Exchange Updates',
       icon: Gem,
-      component: <OpportunitiesTab data={data} onNavigate={onNavigate} />
+      component: <OpportunitiesTab data={data} onNavigate={onNavigate} onCitationClick={onCitationClick} citations={citations} />
     },
     {
       value: 'crown-vault',
       label: 'Crown Vault Impact',
       icon: Crown,
-      component: <CrownVaultTab data={data} onNavigate={onNavigate} user={user} />
+      component: <CrownVaultTab data={data} onNavigate={onNavigate} user={user} onCitationClick={onCitationClick} citations={citations} />
     },
     // {
     //   value: 'network',

@@ -3,138 +3,153 @@
 
 "use client"
 
+import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Heading3 } from "@/components/ui/typography"
-import { Globe, PieChart, Clock, Map, TrendingUp, ArrowRightLeft, Target, BarChart3, Zap } from "lucide-react"
+import { Globe, PieChart, Clock, TrendingUp, ArrowRightLeft, Target, BarChart3, Zap, DollarSign, ArrowRight, ChevronDown, ChevronUp, Lightbulb } from "lucide-react"
+import { CitationText } from "../citation-text"
+import { parseDevCitations } from "@/lib/parse-dev-citations"
+import { motion } from "framer-motion"
+import { useTheme } from "@/contexts/theme-context"
+import { getMetallicCardStyle } from "@/lib/colors"
 import type { ProcessedIntelligenceData } from "@/types/dashboard"
 
 interface ElitePulseTabProps {
   data: ProcessedIntelligenceData
+  onCitationClick?: (citationId: string) => void
+  citations?: Array<{ id: string; number: number; originalText: string }>
 }
 
-// Elite Pulse data parsing functions based on actual data format from console
-const parseMarketAssessment = (text: string) => {
-  if (!text) return { juicy: [], moderate: [], farFetched: [] }
-  
-  const categories = {
-    juicy: [] as string[],
-    moderate: [] as string[],
-    farFetched: [] as string[]
-  }
-  
-  // Extract JUICY OPPORTUNITIES section
-  const juicyMatch = text.match(/\*\*JUICY OPPORTUNITIES:\*\*(.*?)(?=\*\*[A-Z]|$)/s)
-  if (juicyMatch) {
-    const juicyContent = juicyMatch[1].trim()
-    categories.juicy.push(juicyContent)
-  }
-  
-  // Extract MODERATE OPPORTUNITIES section
-  const moderateMatch = text.match(/\*\*MODERATE OPPORTUNITIES:\*\*(.*?)(?=\*\*[A-Z]|$)/s)
-  if (moderateMatch) {
-    const moderateContent = moderateMatch[1].trim()
-    categories.moderate.push(moderateContent)
-  }
-  
-  // Extract FAR-FETCHED OPPORTUNITIES section
-  const farFetchedMatch = text.match(/\*\*FAR-FETCHED OPPORTUNITIES:\*\*(.*?)(?=\*\*[A-Z]|$)/s)
-  if (farFetchedMatch) {
-    const farFetchedContent = farFetchedMatch[1].trim()
-    categories.farFetched.push(farFetchedContent)
-  }
-  
-  return categories
-}
+// Parse Implementation Roadmap into structured sections with headings and bullet points
+function parseImplementationRoadmap(text: string) {
+  if (!text) return []
 
-const parseTimingAnalysis = (text: string) => {
-  if (!text) return { fourWeek: [], threeMonth: [], sixMonth: [] }
-  
-  const categories = {
-    fourWeek: [] as string[],
-    threeMonth: [] as string[],
-    sixMonth: [] as string[]
-  }
-  
-  // Extract 4-Week Window section (handle variations like "4-Week Window (Critical)")
-  const fourWeekMatch = text.match(/\*\*4-Week Window[^:]*:\*\*(.*?)(?=\*\*(?:[36]-Month|$))/s)
-  if (fourWeekMatch) {
-    categories.fourWeek.push(fourWeekMatch[1].trim())
-  }
-  
-  // Extract 3-Month Window section  
-  const threeMonthMatch = text.match(/\*\*3-Month Window[^:]*:\*\*(.*?)(?=\*\*(?:6-Month|$))/s)
-  if (threeMonthMatch) {
-    categories.threeMonth.push(threeMonthMatch[1].trim())
-  }
-  
-  // Extract 6-Month Window section
-  const sixMonthMatch = text.match(/\*\*6-Month Window[^:]*:\*\*(.*?)(?=\*\*|$)/s)
-  if (sixMonthMatch) {
-    categories.sixMonth.push(sixMonthMatch[1].trim())
-  }
-  
-  return categories
-}
+  const sections = []
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
 
-const parseImplementationRoadmap = (text: string) => {
-  if (!text) return { priorities: [] }
-  
-  const priorities = []
-  
-  // More flexible regex to capture all priority sections - look for double asterisk patterns
-  const priorityMatches = text.matchAll(/\*\*Priority (\d+):\s*(.*?)\*\*([\s\S]*?)(?=\*\*Priority \d+:|$)/g)
-  
-  for (const match of priorityMatches) {
-    const priorityNumber = match[1]
-    const title = match[2].trim()
-    const content = match[3].trim()
-    
-    const priority = {
-      title: `Priority ${priorityNumber}`,
-      description: title,
-      steps: [] as string[]
+  let currentSection = null
+
+  for (const line of lines) {
+    // More comprehensive heading detection:
+    // 1. **Text** or **Text:** (bold markdown)
+    // 2. Text: (any text ending with colon)
+    // 3. **Text (without closing **)
+    // 4. Lines that are ALL CAPS and seem like headings
+
+    let headingText = null
+
+    // Pattern 1: Bold markdown headings **Text** or **Text:**
+    const boldMatch = line.match(/^\*\*(.*?)\*\*:?$/)
+    if (boldMatch) {
+      headingText = boldMatch[1].trim()
     }
-    
-    // Extract execution steps from content - handle multiple formats
-    if (content) {
-      // First try to find "Execution Steps:" section
-      const executionMatch = content.match(/Execution Steps?:([\s\S]*?)(?=\*\*|$)/i)
-      let stepsContent = executionMatch ? executionMatch[1] : content
-      
-      // Extract steps - handle both dash and numbered formats
-      const lines = stepsContent.split('\n')
-      for (const line of lines) {
-        const cleanLine = line.trim()
-        if (!cleanLine) continue
-        
-        // Match lines starting with "- Week", "- Month", or numbered items with Week/Month
-        if (cleanLine.match(/^-\s+(Week|Month)\s+[\d-]+:/i) || 
-            cleanLine.match(/^\d+\.\s+(Week|Month)\s+[\d-]+:/i) ||
-            cleanLine.match(/^-\s+.{15,}/)) { // Any dash item with reasonable content
-          priority.steps.push(cleanLine)
+
+    // Pattern 2: Any text ending with colon (but not if it's clearly a sentence)
+    const colonMatch = line.match(/^([^:]{3,50}):$/)
+    if (colonMatch && !boldMatch) {
+      const potentialHeading = colonMatch[1].trim()
+      // Only treat as heading if it doesn't look like a sentence (no lowercase words after first word)
+      if (!/\b[a-z]+\s+[a-z]/.test(potentialHeading) || /^(immediate|q1|q2|q3|q4|platform|access|phase|step|stage|tier)/i.test(potentialHeading)) {
+        headingText = potentialHeading
+      }
+    }
+
+    // Pattern 3: Malformed markdown patterns like *Text**: or **Text*: or *Text*:
+    const malformedMatch = line.match(/^\*+([^*]+)\*+:?\s*$/)
+    if (malformedMatch && !boldMatch && !colonMatch) {
+      headingText = malformedMatch[1].trim()
+    }
+
+    // Pattern 4: ALL CAPS short lines that look like section headers
+    if (!headingText && line.length < 50 && line === line.toUpperCase() && /^[A-Z\s\d:.-]+$/.test(line)) {
+      headingText = line.replace(/:$/, '').trim()
+    }
+
+    if (headingText) {
+      // Save previous section if exists
+      if (currentSection && currentSection.bulletPoints.length > 0) {
+        sections.push(currentSection)
+      }
+
+      // Start new section
+      currentSection = {
+        heading: headingText,
+        bulletPoints: []
+      }
+    } else if (currentSection && line.length > 0) {
+      // Check if this line might actually be a heading we missed in the first pass
+      let potentialHeadingText = null
+
+      // Check for malformed markdown patterns that should be headings
+      const malformedHeadingMatch = line.match(/^\*+([^*]+)\*+:?\s*$/)
+      if (malformedHeadingMatch) {
+        potentialHeadingText = malformedHeadingMatch[1].trim()
+      }
+
+      // Check for colon endings that should be headings
+      const colonHeadingMatch = line.match(/^([^:]{3,50}):$/)
+      if (colonHeadingMatch && !malformedHeadingMatch) {
+        const potentialHeading = colonHeadingMatch[1].trim()
+        if (!/\b[a-z]+\s+[a-z]/.test(potentialHeading) || /^(immediate|q1|q2|q3|q4|platform|access|phase|step|stage|tier)/i.test(potentialHeading)) {
+          potentialHeadingText = potentialHeading
         }
       }
-      
+
+      if (potentialHeadingText) {
+        // This line is actually a heading, create new section
+        if (currentSection.bulletPoints.length > 0) {
+          sections.push(currentSection)
+        }
+        currentSection = {
+          heading: potentialHeadingText,
+          bulletPoints: []
+        }
+      } else {
+        // Add content to current section
+        // Remove bullet point markers if present
+        let cleanLine = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim()
+
+        if (cleanLine.length > 0) {
+          currentSection.bulletPoints.push(cleanLine)
+        }
+      }
+    } else if (!currentSection && line.length > 0) {
+      // If we haven't found a heading yet, create a section without the "Implementation Overview" heading
+      const cleanLine = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').replace(/^\*\*(.*?)\*\*/, '$1').trim()
+      if (cleanLine.length > 0) {
+        // Create a section but without a default heading
+        currentSection = {
+          heading: '', // Empty heading instead of "Implementation Overview"
+          bulletPoints: [cleanLine]
+        }
+      }
     }
-    
-    priorities.push(priority)
   }
-  
-  
-  return { priorities }
+
+  // Add final section
+  if (currentSection && currentSection.bulletPoints.length > 0) {
+    sections.push(currentSection)
+  }
+
+  return sections
 }
 
-export function ElitePulseTab({ data }: ElitePulseTabProps) {
+export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePulseTabProps) {
   const elitePulseData = data?.elitePulseData
+
+  // Create citation map from global citations
+  const citationMap = useMemo(() => {
+    const map = new Map<string, number>()
+    citations.forEach(citation => {
+      map.set(citation.id, citation.number)
+    })
+    return map
+  }, [citations])
+
   // Use the data extracted from Ruscha intelligence sections
   const hasElitePulseData = !!elitePulseData && (elitePulseData?.marketIntelligence || elitePulseData?.timingCatalyst || elitePulseData?.implementationRoadmap)
-  
-  // Parse data according to user specifications
-  const marketAssessment = parseMarketAssessment(elitePulseData?.marketIntelligence || '')
-  const timingAnalysis = parseTimingAnalysis(elitePulseData?.timingCatalyst || '')
-  const implementationRoadmap = parseImplementationRoadmap(elitePulseData?.implementationRoadmap || '')
-  
 
   return (
     <div className="space-y-6">
@@ -150,365 +165,319 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
 
       {hasElitePulseData ? (
         <div className="space-y-8">
-          {/* Market Assessment - Three Categories */}
+          {/* Market Insights */}
           {elitePulseData?.marketIntelligence && (
-            <div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* High Popular */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <TrendingUp className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">High Popular</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {marketAssessment.juicy.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {marketAssessment.juicy.map((opportunity, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <div className="text-sm text-foreground leading-relaxed">
-                            {(() => {
-                              const text = opportunity.replace(/\(#\d+\)/g, '')
-                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
-                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
-                              
-                              return bullets.map((bullet, idx) => (
-                                <div key={idx} className="flex items-start space-x-2 mb-2">
-                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
-                                  <div className="leading-relaxed">
-                                    {(() => {
-                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
-                                      const colonIndex = cleanText.indexOf(':')
-                                      
-                                      if (colonIndex > 0) {
-                                        const heading = cleanText.substring(0, colonIndex)
-                                        const content = cleanText.substring(colonIndex + 1).trim()
-                                        
-                                        return (
-                                          <>
-                                            <span className="font-bold">{heading}:</span>
-                                            {content && <span className="ml-1">{content}</span>}
-                                          </>
-                                        )
-                                      }
-                                      
-                                      return <span>{cleanText}</span>
-                                    })()}
-                                  </div>
-                                </div>
-                              ))
-                            })()}
-                          </div>
-                        </div>
-                      ))}
-                      {marketAssessment.juicy.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No high popular opportunities identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Moderate Popular */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <BarChart3 className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">Moderate Popular</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {marketAssessment.moderate.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {marketAssessment.moderate.map((opportunity, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <div className="text-sm text-foreground leading-relaxed">
-                            {(() => {
-                              const text = opportunity.replace(/\(#\d+\)/g, '')
-                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
-                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
-                              
-                              return bullets.map((bullet, idx) => (
-                                <div key={idx} className="flex items-start space-x-2 mb-2">
-                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
-                                  <div className="leading-relaxed">
-                                    {(() => {
-                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
-                                      const colonIndex = cleanText.indexOf(':')
-                                      
-                                      if (colonIndex > 0) {
-                                        const heading = cleanText.substring(0, colonIndex)
-                                        const content = cleanText.substring(colonIndex + 1).trim()
-                                        
-                                        return (
-                                          <>
-                                            <span className="font-bold">{heading}:</span>
-                                            {content && <span className="ml-1">{content}</span>}
-                                          </>
-                                        )
-                                      }
-                                      
-                                      return <span>{cleanText}</span>
-                                    })()}
-                                  </div>
-                                </div>
-                              ))
-                            })()}
-                          </div>
-                        </div>
-                      ))}
-                      {marketAssessment.moderate.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No moderate popular opportunities identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Less Popular */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <Zap className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">Less Popular</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {marketAssessment.farFetched.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {marketAssessment.farFetched.map((opportunity, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <div className="text-sm text-foreground leading-relaxed">
-                            {(() => {
-                              const text = opportunity.replace(/\(#\d+\)/g, '')
-                              // Split only by dashes with proper spacing before and after (not part of words like "self-guided")
-                              const bullets = text.split(/\s+-\s+/).filter(item => item.trim())
-                              
-                              return bullets.map((bullet, idx) => (
-                                <div key={idx} className="flex items-start space-x-2 mb-2">
-                                  <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
-                                  <div className="leading-relaxed">
-                                    {(() => {
-                                      const cleanText = bullet.trim().replace(/^-\s*/, '')
-                                      const colonIndex = cleanText.indexOf(':')
-                                      
-                                      if (colonIndex > 0) {
-                                        const heading = cleanText.substring(0, colonIndex)
-                                        const content = cleanText.substring(colonIndex + 1).trim()
-                                        
-                                        return (
-                                          <>
-                                            <span className="font-bold">{heading}:</span>
-                                            {content && <span className="ml-1">{content}</span>}
-                                          </>
-                                        )
-                                      }
-                                      
-                                      return <span>{cleanText}</span>
-                                    })()}
-                                  </div>
-                                </div>
-                              ))
-                            })()}
-                          </div>
-                        </div>
-                      ))}
-                      {marketAssessment.farFetched.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No less popular opportunities identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+            <div className="space-y-4">
+              {/* Content without citations */}
+              <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                {(() => {
+                  // Remove citation markers from the text
+                  const cleanText = elitePulseData.marketIntelligence
+                    .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                    .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                    .trim()
+                  return cleanText
+                })()}
               </div>
+
+              {/* Citations at the end */}
+              {(() => {
+                const { citations: textCitations } = parseDevCitations(elitePulseData.marketIntelligence)
+                if (textCitations.length > 0) {
+                  return (
+                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
+                      <span className="text-xs text-muted-foreground mr-1">Sources:</span>
+                      {textCitations.map((citation, idx) => {
+                        const displayNumber = citationMap?.get(citation.id) ?? citation.number
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => onCitationClick?.(citation.id)}
+                            className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
+                            aria-label={`Citation ${displayNumber}`}
+                          >
+                            [{displayNumber}]
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                }
+                return null
+              })()}
             </div>
           )}
 
-          {/* Timing Catalyst Analysis - Three Time Windows */}
+          {/* Tier Opportunities Section */}
+          {(data.tier1Opportunities?.length > 0 || data.tier2Opportunities?.length > 0 || data.tier3Opportunities?.length > 0) && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <DollarSign className="h-6 w-6 text-primary" />
+                <div>
+                  <h2 className="text-xl font-bold">Investment Opportunities by Capital Tier</h2>
+                  <p className="text-sm text-muted-foreground">Categorized by minimum capital requirements</p>
+                </div>
+              </div>
+
+              {/* $100K Opportunities */}
+              {data.tier1Opportunities && data.tier1Opportunities.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-foreground">$100K Entry Opportunities</h4>
+                      <p className="text-xs text-muted-foreground">Accessible entry-level investments</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {data.tier1Opportunities.length} Available
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {data.tier1Opportunities
+                      .filter((opp: any) => {
+                        const risk = opp.riskRating?.toLowerCase()
+                        return risk?.includes('high') || risk?.includes('medium') || opp.impact === 'high' || opp.impact === 'medium'
+                      })
+                      .slice(0, 3)
+                      .map((opp: any, index: number) => (
+                        <TierOpportunityCard
+                          key={index}
+                          opportunity={opp}
+                          index={index}
+                          tier={1}
+                          onCitationClick={onCitationClick}
+                          citationMap={citationMap}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* $500K Opportunities */}
+              {data.tier2Opportunities && data.tier2Opportunities.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-foreground">$500K Growth Opportunities</h4>
+                      <p className="text-xs text-muted-foreground">Mid-tier strategic investments</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {data.tier2Opportunities.length} Available
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {data.tier2Opportunities
+                      .filter((opp: any) => {
+                        const risk = opp.riskRating?.toLowerCase()
+                        return risk?.includes('high') || risk?.includes('medium') || opp.impact === 'high' || opp.impact === 'medium'
+                      })
+                      .slice(0, 3)
+                      .map((opp: any, index: number) => (
+                        <TierOpportunityCard
+                          key={index}
+                          opportunity={opp}
+                          index={index}
+                          tier={2}
+                          onCitationClick={onCitationClick}
+                          citationMap={citationMap}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* $1M Opportunities */}
+              {data.tier3Opportunities && data.tier3Opportunities.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-base font-semibold text-foreground">$1M+ Premium Opportunities</h4>
+                      <p className="text-xs text-muted-foreground">Elite-tier institutional deals</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {data.tier3Opportunities.length} Available
+                    </Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {data.tier3Opportunities
+                      .slice(0, 3)
+                      .map((opp: any, index: number) => (
+                        <TierOpportunityCard
+                          key={index}
+                          opportunity={opp}
+                          index={index}
+                          tier={3}
+                          onCitationClick={onCitationClick}
+                          citationMap={citationMap}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Timing Catalyst */}
           {elitePulseData?.timingCatalyst && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold flex items-center">
-                  <Clock className="h-5 w-5 text-primary mr-3" />
-                  Timing Catalyst Analysis
-                </h3>
-                <Badge variant="outline" className="text-xs">
-                  {timingAnalysis.fourWeek.length + timingAnalysis.threeMonth.length + timingAnalysis.sixMonth.length} Time Windows
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* 4 Week Window */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <Zap className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">4 Week Window</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {timingAnalysis.fourWeek.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {timingAnalysis.fourWeek.map((catalyst, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">{catalyst}</p>
-                        </div>
-                      ))}
-                      {timingAnalysis.fourWeek.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No 4-week catalysts identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+            <Card className="bg-muted/20 border-border">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Clock className="h-6 w-6 text-primary" />
+                  <div>
+                    <h2 className="text-xl font-bold">Timing Catalyst Analysis</h2>
+                    <p className="text-sm text-muted-foreground">Market timing and catalytic events</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {/* Content without citations */}
+                  <div className="space-y-2 ml-4">
+                    {(() => {
+                      // Remove citation markers from the text
+                      const cleanText = elitePulseData.timingCatalyst
+                        .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                        .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                        .trim()
 
-                {/* 3 Month Window */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <Clock className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">3 Month Window</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {timingAnalysis.threeMonth.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {timingAnalysis.threeMonth.map((catalyst, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">{catalyst}</p>
-                        </div>
-                      ))}
-                      {timingAnalysis.threeMonth.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No 3-month catalysts identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                      return cleanText
+                        .split(/(?<=[.!?])\s+/)
+                        .filter((sentence: string) => sentence.trim().length > 0)
+                        .map((sentence: string, index: number) => (
+                          <div key={index} className="flex items-start">
+                            <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                            <span className="text-sm text-foreground leading-relaxed">
+                              {sentence.trim()}
+                            </span>
+                          </div>
+                        ))
+                    })()}
+                  </div>
 
-                {/* 6 Month Window */}
-                <Card className="bg-muted/20 border-border">
-                  <CardContent className="p-5">
-                    <div className="flex items-center mb-4">
-                      <Target className="h-5 w-5 text-primary mr-2" />
-                      <h4 className="font-semibold text-foreground">6 Month Window</h4>
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {timingAnalysis.sixMonth.length}
-                      </Badge>
-                    </div>
-                    <div className="space-y-4">
-                      {timingAnalysis.sixMonth.map((catalyst, index) => (
-                        <div key={index} className="p-3 bg-white/70 dark:bg-black/20 rounded-lg">
-                          <p className="text-sm text-foreground leading-relaxed">{catalyst}</p>
+                  {/* Citations at the end */}
+                  {(() => {
+                    const { citations: textCitations } = parseDevCitations(elitePulseData.timingCatalyst)
+                    if (textCitations.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
+                          <span className="text-xs text-muted-foreground mr-1">Sources:</span>
+                          {textCitations.map((citation, idx) => {
+                            const displayNumber = citationMap?.get(citation.id) ?? citation.number
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => onCitationClick?.(citation.id)}
+                                className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
+                                aria-label={`Citation ${displayNumber}`}
+                              >
+                                [{displayNumber}]
+                              </button>
+                            )
+                          })}
                         </div>
-                      ))}
-                      {timingAnalysis.sixMonth.length === 0 && (
-                        <p className="text-sm text-muted-foreground italic">No 6-month catalysts identified</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Implementation Roadmap - Priorities with Week Steps */}
+          {/* Implementation Roadmap */}
           {elitePulseData?.implementationRoadmap && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold flex items-center">
-                  <Target className="h-5 w-5 text-primary mr-3" />
-                  Implementation Roadmap
-                </h3>
-                <Badge variant="outline" className="text-xs">
-                  {implementationRoadmap.priorities.length} Priorities
-                </Badge>
-              </div>
-              
-              <div className="space-y-6">
-                {implementationRoadmap.priorities.map((priority, index) => (
-                  <div key={index} className="border-l-4 border-primary/20 pl-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 text-primary text-sm font-bold flex items-center justify-center flex-shrink-0">
-                        P{index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-foreground mb-2">{priority.title}</h4>
-                        {priority.description && (
-                          <div className="text-sm text-muted-foreground mb-4 leading-relaxed space-y-3">
-                            {(() => {
-                              const formatText = (text: string) => {
-                                // Split by **headers** and format as sections
-                                const sections = text.split(/\*\*(.*?)\*\*:?/).filter(Boolean)
-                                const formattedSections: JSX.Element[] = []
-                                
-                                for (let i = 0; i < sections.length; i += 2) {
-                                  const header = sections[i]
-                                  const content = sections[i + 1]
-                                  
-                                  if (header && content) {
-                                    formattedSections.push(
-                                      <div key={i} className="space-y-2">
-                                        <h5 className="font-semibold text-foreground text-sm">
-                                          {header.replace(/\*\*/g, '')}
-                                        </h5>
-                                        <div className="ml-2 space-y-1.5">
-                                          {content.split(' - ').filter(item => item.trim()).map((item, idx) => (
-                                            <div key={idx} className="flex items-start space-x-2 text-xs">
-                                              <div className="w-1.5 h-1.5 bg-primary rounded-full mt-1.5 flex-shrink-0" />
-                                              <span className="leading-relaxed">
-                                                {item.trim().replace(/^-\s*/, '')}
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )
-                                  }
-                                }
-                                
-                                // If no structured format found, return original text
-                                if (formattedSections.length === 0) {
-                                  return <span>{text}</span>
-                                }
-                                
-                                return <>{formattedSections}</>
-                              }
-                              
-                              return formatText(priority.description)
-                            })()}
-                          </div>
-                        )}
-                        
-                        {priority.steps.length > 0 && (
-                          <div>
-                            <h5 className="font-medium text-foreground mb-3">Execution Steps:</h5>
-                            <div className="space-y-2">
-                              {priority.steps.map((step, stepIndex) => (
-                                <p key={stepIndex} className="text-sm text-foreground">
-                                  {step.replace(/^-\s*/, '')}
-                                </p>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+            <Card className="bg-muted/20 border-border">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Target className="h-6 w-6 text-primary" />
+                  <div>
+                    <h2 className="text-xl font-bold">Implementation Roadmap</h2>
+                    <p className="text-sm text-muted-foreground">Strategic execution timeline</p>
                   </div>
-                ))}
-                
-                {implementationRoadmap.priorities.length === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground italic">No implementation priorities identified</p>
-                  </div>
-                )}
-              </div>
-            </div>
+                </div>
+                <div className="space-y-6">
+                  {/* Content sections without citations */}
+                  {(() => {
+                    // Remove citation markers from the entire text
+                    const cleanRoadmap = elitePulseData.implementationRoadmap
+                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                      .trim()
+
+                    return parseImplementationRoadmap(cleanRoadmap).map((section, index) => (
+                      <div key={index} className="space-y-3">
+                        {section.heading && section.heading !== '' && (
+                          <h4 className="font-semibold text-foreground text-base border-b border-border pb-2">
+                            {section.heading}
+                          </h4>
+                        )}
+                        <div className="space-y-2 ml-4">
+                          {section.bulletPoints.map((point, pointIndex) => {
+                            // Parse the point to handle asterisk formatting
+                            let formattedPoint = point
+                            // Handle patterns like *TEXT**: or **TEXT*: or *TEXT*:
+                            const asteriskMatch = point.match(/^\*+([^*:]+)\*+:\s*(.*)$/)
+
+                            if (asteriskMatch) {
+                              // Render with bold prefix
+                              return (
+                                <div key={pointIndex} className="flex items-start">
+                                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                                  <span className="text-sm text-foreground leading-relaxed">
+                                    <span className="font-bold">{asteriskMatch[1]}:</span>{' '}
+                                    {asteriskMatch[2]}
+                                  </span>
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <div key={pointIndex} className="flex items-start">
+                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                                <span className="text-sm text-foreground leading-relaxed">
+                                  {formattedPoint}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  })()}
+
+                  {/* Citations at the end */}
+                  {(() => {
+                    const { citations: textCitations } = parseDevCitations(elitePulseData.implementationRoadmap)
+                    if (textCitations.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
+                          <span className="text-xs text-muted-foreground mr-1">Sources:</span>
+                          {textCitations.map((citation, idx) => {
+                            const displayNumber = citationMap?.get(citation.id) ?? citation.number
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => onCitationClick?.(citation.id)}
+                                className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
+                                aria-label={`Citation ${displayNumber}`}
+                              >
+                                [{displayNumber}]
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       ) : (
         <div className="text-center py-12">
-          <Globe className="h-16 w-16 text-muted-foreground mx-auto mb-6 opacity-50" />
-          <Heading3 className="mb-4">Elite Pulse</Heading3>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Real-time elite wealth migration, arbitrage opportunities, and insider intelligence will be displayed here as data becomes available.
+          <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">No Elite Pulse Data Available</h3>
+          <p className="text-muted-foreground mb-6">
+            Elite Pulse analysis will appear here when market intelligence is generated.
           </p>
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto text-sm text-muted-foreground">
             <div className="p-4 rounded-lg bg-muted/20">
@@ -527,5 +496,145 @@ export function ElitePulseTab({ data }: ElitePulseTabProps) {
         </div>
       )}
     </div>
+  )
+}
+
+// TierOpportunityCard component with always visible analysis
+interface TierOpportunityCardProps {
+  opportunity: any
+  index: number
+  tier: 1 | 2 | 3
+  onCitationClick?: (citationId: string) => void
+  citationMap?: Map<string, number>
+}
+
+const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citationMap }: TierOpportunityCardProps) => {
+  const { theme } = useTheme()
+  const metallicStyle = getMetallicCardStyle(theme)
+
+  // Determine impact level based on risk rating or other factors
+  const getImpactLevel = () => {
+    const risk = opportunity.riskRating?.toLowerCase()
+    if (risk?.includes('high') || opportunity.impact === 'high') return 'HIGH'
+    if (risk?.includes('medium') || opportunity.impact === 'medium') return 'MEDIUM'
+    return 'LOW'
+  }
+
+  const impactLevel = getImpactLevel()
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={`${metallicStyle.className} hover:shadow-lg transition-all overflow-visible`}
+      style={metallicStyle.style}
+    >
+      <Card className="bg-transparent border-0 overflow-visible">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h5 className="font-semibold text-sm text-primary mb-2">{opportunity.title}</h5>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {/* Impact Badge */}
+                  <Badge
+                    variant={impactLevel === 'HIGH' ? 'destructive' : impactLevel === 'MEDIUM' ? 'secondary' : 'outline'}
+                    className="text-xs"
+                  >
+                    {impactLevel} IMPACT
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {opportunity.totalCapitalRequired}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {opportunity.riskRating}
+                  </Badge>
+                  {opportunity.location && opportunity.location !== 'Global Markets' && (
+                    <Badge variant="outline" className="text-xs">
+                      {opportunity.location}
+                    </Badge>
+                  )}
+                  {opportunity.sector && (
+                    <Badge variant="outline" className="text-xs">
+                      {opportunity.sector}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Always visible analysis */}
+            {opportunity.description && (
+              <div className="pt-3 border-t border-border space-y-3">
+                {/* Full content without citations - increased font size and better formatting */}
+                <div className="text-sm text-foreground/80 leading-relaxed break-words max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+                  {(() => {
+                    // Remove citation markers from the text
+                    const cleanText = opportunity.description
+                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                      .trim()
+                    // Ensure proper formatting - preserve paragraphs but remove excessive whitespace
+                    return cleanText.split('\n').map(line => line.trim()).filter(line => line).join('\n\n')
+                  })()}
+                </div>
+
+                {/* Citations at the end */}
+                {(() => {
+                  const { citations: textCitations } = parseDevCitations(opportunity.description)
+                  if (textCitations.length > 0) {
+                    return (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-xs text-muted-foreground mr-1">Sources:</span>
+                        {textCitations.map((citation, idx) => {
+                          const displayNumber = citationMap?.get(citation.id) ?? citation.number
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => onCitationClick?.(citation.id)}
+                              className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 py-0.5 rounded transition-colors"
+                              aria-label={`Citation ${displayNumber}`}
+                            >
+                              [{displayNumber}]
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+
+                {/* Additional fields if available */}
+                {opportunity.minimumNetWorth && (
+                  <div className="mt-3">
+                    <Badge variant="outline" className="text-xs">
+                      Min. Net Worth: {opportunity.minimumNetWorth}
+                    </Badge>
+                  </div>
+                )}
+
+                {(opportunity.taxEfficiency || opportunity.professionalTimeline) && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {opportunity.taxEfficiency && (
+                      <Badge variant="outline" className="text-xs">
+                        Tax: {opportunity.taxEfficiency}
+                      </Badge>
+                    )}
+                    {opportunity.professionalTimeline && (
+                      <Badge variant="outline" className="text-xs">
+                        Timeline: {opportunity.professionalTimeline}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   )
 }

@@ -1,8 +1,7 @@
 // components/pages/ask-rohith-page.tsx
-
 "use client"
 
-import React, { useEffect } from "react"
+import React from "react"
 import { RohithProvider } from "@/contexts/rohith-context"
 import { RohithChat } from "@/components/ask-rohith/rohith-chat"
 

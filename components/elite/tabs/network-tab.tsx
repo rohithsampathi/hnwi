@@ -23,38 +23,7 @@ export function NetworkTab({ data }: NetworkTabProps) {
   const metallicStyle = getMetallicCardStyle(theme)
   const hasNetworkData = data.peerSignals && Object.keys(data.peerSignals).length > 0
 
-  // Placeholder data when no network data is available
-  const placeholderNetworkData = {
-    active_members_today: 247,
-    similar_profiles: 18,
-    avg_portfolio: "£2.4M",
-    action_window: "12d",
-    trending_opportunities: [
-      {
-        sector: "AI & Technology",
-        region: "Silicon Valley",
-        peer_interest: "Very High",
-        timeline: "2-3 weeks",
-        members_interested: 23
-      },
-      {
-        sector: "Renewable Energy",
-        region: "Northern Europe", 
-        peer_interest: "High",
-        timeline: "1-2 months",
-        members_interested: 19
-      },
-      {
-        sector: "Real Estate",
-        region: "London",
-        peer_interest: "Moderate",
-        timeline: "4-6 weeks", 
-        members_interested: 15
-      }
-    ]
-  }
-
-  const networkData = hasNetworkData ? data.peerSignals : placeholderNetworkData
+  const networkData = data.peerSignals
   const shouldShowPlaceholder = !hasNetworkData
 
   return (
@@ -95,7 +64,7 @@ export function NetworkTab({ data }: NetworkTabProps) {
           </div>
           
           <div className="space-y-3">
-            {(networkData.trending_opportunities || []).map((opp: any, index: number) => (
+            {hasNetworkData && (networkData.trending_opportunities || []).map((opp: any, index: number) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, x: -10 }}
@@ -148,7 +117,7 @@ export function NetworkTab({ data }: NetworkTabProps) {
           
           {shouldShowPlaceholder && (
             <p className="text-xs text-muted-foreground mt-4 text-center">
-              Real network intelligence appears when you connect with the elite peer network
+              No network data available from the intelligence endpoint
             </p>
           )}
         </motion.div>

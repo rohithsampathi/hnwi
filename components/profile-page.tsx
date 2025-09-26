@@ -49,7 +49,7 @@ import { ChangePasswordPopup } from "./change-password-popup"
 import { MetaTags } from "./meta-tags"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { motion } from "framer-motion"
-import { getCrownVaultStats, getCrownVaultAssets, type CrownVaultStats, type CrownVaultAsset } from "@/lib/api"
+import { getCrownVaultStats, getCrownVaultAssets, getCrownVaultHeirs, type CrownVaultStats, type CrownVaultAsset } from "@/lib/api"
 import { PortfolioCategoryGrid } from "@/components/ui/portfolio-category-grid"
 import { processAssetCategories } from "@/lib/category-utils"
 import { secureApi } from "@/lib/secure-api"
@@ -77,9 +77,10 @@ interface ProfilePageProps {
   user: User | null | undefined
   onUpdateUser: (updatedUser: User) => void
   onLogout?: () => void
+  loadVaultData?: boolean // Optional prop to control when to load Crown Vault data
 }
 
-export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) {
+export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = false }: ProfilePageProps) {
   const { theme } = useTheme()
   const [isEditing, setIsEditing] = useState(false)
   const { showOnboardingWizard, setShowOnboardingWizard } = useOnboarding()
@@ -245,12 +246,20 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
         return
       }
       
-      // Fetch both stats and assets like Crown Vault page does, passing the userId
-      const [stats, assets] = await Promise.all([
+      // Fetch stats, assets, and heirs like Crown Vault page does, passing the userId
+      const [stats, assets, heirs] = await Promise.all([
         getCrownVaultStats(userIdToUse),
-        getCrownVaultAssets(userIdToUse)
+        getCrownVaultAssets(userIdToUse),
+        getCrownVaultHeirs(userIdToUse).catch(() => []) // Fallback to empty array if heirs fetch fails
       ])
-      setVaultStats(stats)
+
+      // Update stats with actual heirs count
+      const updatedStats = {
+        ...stats,
+        total_heirs: Array.isArray(heirs) ? heirs.length : 0  // Use actual heirs count
+      }
+
+      setVaultStats(updatedStats)
       setVaultAssets(assets)
     } catch (error) {
       // Don't set fallback data - leave states as null/empty to indicate failure
@@ -258,6 +267,13 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       setVaultLoading(false)
     }
   }, [userId])
+
+  // Function to load vault data on demand
+  const loadVaultDataOnDemand = useCallback(async () => {
+    if (!vaultStats && !vaultLoading && userId) {
+      await fetchVaultStats(userId)
+    }
+  }, [vaultStats, vaultLoading, userId, fetchVaultStats])
 
   // Data processing functions like Crown Vault page
   const getTotalValue = () => {
@@ -329,21 +345,37 @@ export function ProfilePage({ user, onUpdateUser, onLogout }: ProfilePageProps) 
       updateAuthUser({ ...user, userId: userApiId, user_id: userApiId, id: userApiId })
       setUserId(userApiId)
       fetchUserData(userApiId)
-      fetchVaultStats(userApiId) // Fetch Crown Vault stats with userId
-      fetchBillingHistory() // Fetch billing history
+      if (loadVaultData) {
+        fetchVaultStats(userApiId) // Only fetch Crown Vault stats if explicitly requested
+      }
     } else {
       // Fallback to stored ID if available
       const storedUserId = getCurrentUserId()
       if (storedUserId) {
         setUserId(storedUserId)
         fetchUserData(storedUserId)
-        fetchVaultStats(storedUserId) // Fetch Crown Vault stats with userId
-        fetchBillingHistory() // Fetch billing history
+        if (loadVaultData) {
+          fetchVaultStats(storedUserId) // Only fetch Crown Vault stats if explicitly requested
+        }
       } else {
         setIsLoading(false)
       }
     }
-  }, [fetchUserData, fetchVaultStats, fetchBillingHistory, user])
+  }, [fetchUserData, fetchVaultStats, user, loadVaultData])
+
+  // Fetch billing history once when userId is set
+  useEffect(() => {
+    if (userId) {
+      fetchBillingHistory()
+    }
+  }, [userId, fetchBillingHistory])
+
+  // Load vault data when Crown Vault tab is activated (if not already loaded)
+  useEffect(() => {
+    if (activeTab === 'crown-vault' && !vaultStats && !vaultLoading && userId && !loadVaultData) {
+      loadVaultDataOnDemand()
+    }
+  }, [activeTab, vaultStats, vaultLoading, userId, loadVaultData, loadVaultDataOnDemand])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditedUser({ ...editedUser, [e.target.name]: e.target.value })

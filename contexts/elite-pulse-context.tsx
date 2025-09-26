@@ -3,7 +3,7 @@
 
 "use client"
 
-import { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from "react"
+import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, useRef } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { secureApi } from "@/lib/secure-api"
 import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
@@ -449,14 +449,20 @@ interface ElitePulseProviderProps {
 export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
   const [state, dispatch] = useReducer(elitePulseReducer, initialState)
   const { user, isAuthenticated } = useAuth()
+  const fetchInProgressRef = useRef(false) // Prevent duplicate calls
 
   // ================== METHODS ==================
 
   const fetchIntelligenceDashboard = useCallback(async (
-    userId: string, 
+    userId: string,
     options: { force?: boolean; cacheTtl?: number } = {}
   ) => {
     const { force = false, cacheTtl = 300000 } = options // 5 minutes default
+
+    // Prevent duplicate calls
+    if (fetchInProgressRef.current && !force) {
+      return
+    }
 
     // Check cache first unless forced
     if (!force) {
@@ -467,6 +473,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       }
     }
 
+    fetchInProgressRef.current = true
     dispatch({ type: 'SET_LOADING', payload: true })
     
 
@@ -499,6 +506,8 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       if (cached) {
         dispatch({ type: 'SET_DASHBOARD', payload: cached })
       }
+    } finally {
+      fetchInProgressRef.current = false
     }
   }, [])
 
@@ -652,45 +661,27 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     }
   }, [])
 
-  // Auto-fetch intelligence when user is authenticated or user ID is available
+  // DISABLED: Auto-fetch is now handled by AppDataProvider
+  // This prevents duplicate API calls
+  /*
   useEffect(() => {
-    // Use centralized auth manager to get user ID
-    const authUser = getCurrentUser();
-    const authUserId = user?.user_id || user?.id || authUser?.userId || authUser?.user_id || authUser?.id;
-    const storageUserId = getCurrentUserId();
-    const effectiveUserId = authUserId || storageUserId;
-    
+    // Auto-fetch disabled - handled by AppDataProvider
+  }, [])
+  */
 
-    // Only fetch if user is authenticated AND we have a user ID
-    if (isAuthenticated && effectiveUserId) {
-      fetchIntelligenceDashboard(effectiveUserId)
+  // Auto-refresh interval - using useRef to avoid dependency issues
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // DISABLED: Auto-refresh is now handled by AppDataProvider
+  // This prevents duplicate API calls
+  useEffect(() => {
+    // Clear any existing interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current)
+      refreshIntervalRef.current = null
     }
-  }, [isAuthenticated, user, fetchIntelligenceDashboard])
-
-  // Auto-refresh interval
-  useEffect(() => {
-    if (!state.userInteractions.preferences.autoRefresh) return
-
-    const interval = setInterval(() => {
-      // Use centralized auth manager to get user ID
-      const authUser = getCurrentUser();
-      const authUserId = user?.user_id || user?.id || authUser?.userId || authUser?.user_id || authUser?.id;
-      const storageUserId = getCurrentUserId();
-      const effectiveUserId = authUserId || storageUserId;
-      
-      if (effectiveUserId) {
-        fetchIntelligenceDashboard(effectiveUserId)
-      }
-    }, state.userInteractions.preferences.refreshInterval)
-
-    return () => clearInterval(interval)
-  }, [
-    state.userInteractions.preferences.autoRefresh,
-    state.userInteractions.preferences.refreshInterval,
-    isAuthenticated,
-    user,
-    fetchIntelligenceDashboard
-  ])
+    // Auto-refresh disabled - handled by AppDataProvider
+  }, [])
 
   // ================== CONTEXT VALUE ==================
 

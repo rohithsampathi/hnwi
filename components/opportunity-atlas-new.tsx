@@ -40,6 +40,7 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import type { Opportunity } from "@/lib/api";
+import { CitationText } from "@/components/elite/citation-text";
 
 interface OpportunityAtlasProps {
   categories: AssetCategoryData[];
@@ -57,6 +58,7 @@ interface OpportunityAtlasProps {
     timingEdge?: string;
   } | null;
   onOpportunityView?: (opportunityId: string) => void;
+  targetOpportunityId?: string | null;
 }
 
 // Icon mapping for categories
@@ -187,24 +189,6 @@ function OpportunityCard({
               <h4 className={`font-semibold text-sm line-clamp-2 ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
                 {opportunity.title}
               </h4>
-              {/* Elite Pulse Scoring Badge */}
-              {scoring && (
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge 
-                    variant="outline" 
-                    className="text-xs px-2 py-0.5 font-medium"
-                    style={{
-                      ...getConvictionStyle(scoring.conviction),
-                      borderWidth: '1px'
-                    }}
-                  >
-                    Elite Pulse: {scoring.conviction.toUpperCase()}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Score: {Math.round(scoring.score)}/100
-                  </span>
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2 ml-2 flex-shrink-0">
               {opportunity.region && (
@@ -540,6 +524,188 @@ function OpportunityCard({
                 )}
               </div>
 
+
+              {/* Victor Analysis Section - Only show if we have actual Victor data, not just basic opportunity fields */}
+              {(opportunity.victor_reasoning || opportunity.strategic_insights || opportunity.risk_assessment || opportunity.victor_action || opportunity.confidence_level || opportunity.opportunity_window || opportunity.victor_score) && (
+                <div className="mt-6 p-4 rounded-lg border border-border bg-card">
+
+                  <div className="space-y-3">
+
+                    {/* Elite Pulse Analysis - Only show if we have actual Victor analysis */}
+                    {(opportunity.victor_reasoning || opportunity.reasoning || opportunity.analysis) && (
+                      <div className="text-xs">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-semibold text-foreground">Elite Pulse Analysis</span>
+                          {/* Victor Score Badge */}
+                          {opportunity.victor_score && (
+                            <div
+                              className="px-2 py-0.5 rounded-full text-xs font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg group flex-shrink-0"
+                              style={{
+                                background: opportunity.victor_score === 'JUICY'
+                                  ? "linear-gradient(135deg, #DC143C 0%, #FF1744 25%, #B71C1C 50%, #FF1744 75%, #DC143C 100%)" // Metallic ruby
+                                  : opportunity.victor_score === 'MODERATE'
+                                  ? "linear-gradient(135deg, #FFB300 0%, #FFC107 25%, #FF8F00 50%, #FFC107 75%, #FFB300 100%)" // Metallic topaz
+                                  : "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)", // Metallic emerald for FAR_FETCHED
+                                border: opportunity.victor_score === 'JUICY'
+                                  ? "2px solid rgba(220, 20, 60, 0.5)"
+                                  : opportunity.victor_score === 'MODERATE'
+                                  ? "2px solid rgba(255, 193, 7, 0.5)"
+                                  : "2px solid rgba(16, 185, 129, 0.5)",
+                                boxShadow: opportunity.victor_score === 'JUICY'
+                                  ? "0 2px 8px rgba(220, 20, 60, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                  : opportunity.victor_score === 'MODERATE'
+                                  ? "0 2px 8px rgba(255, 193, 7, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                  : "0 2px 8px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+                                color: "#ffffff",
+                                textShadow: "0 1px 2px rgba(0, 0, 0, 0.4)"
+                              }}
+                            >
+                              {opportunity.victor_score}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-muted-foreground leading-relaxed">
+                          <CitationText
+                            text={opportunity.victor_reasoning || opportunity.reasoning || opportunity.analysis}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Strategic Insights */}
+                    {opportunity.strategic_insights && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block mb-1">Strategic Insights</span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          <CitationText
+                            text={opportunity.strategic_insights}
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Opportunity Window */}
+                    {opportunity.opportunity_window && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block mb-1">Timing Window</span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          {opportunity.opportunity_window}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pros and Cons */}
+                    {(opportunity.pros || opportunity.cons) && (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {opportunity.pros && opportunity.pros.length > 0 && (
+                          <div>
+                            <span className="font-semibold text-primary block mb-1">Pros</span>
+                            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                              {opportunity.pros.slice(0, 3).map((pro: string, idx: number) => (
+                                <li key={idx} className="text-[10px]">{pro}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {opportunity.cons && opportunity.cons.length > 0 && (
+                          <div>
+                            <span className="font-semibold text-primary opacity-80 block mb-1">Cons</span>
+                            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                              {opportunity.cons.slice(0, 3).map((con: string, idx: number) => (
+                                <li key={idx} className="text-[10px]">{con}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Risk Assessment - Highlighted */}
+                    {(opportunity.risk_assessment || opportunity.hnwi_alignment) && (
+                      <div className="text-xs p-3 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+                        <span className="font-semibold text-primary block mb-2 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                          Risk Assessment
+                        </span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          {opportunity.risk_assessment || opportunity.hnwi_alignment || 'Standard market risk applies. Monitor position regularly.'}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Market Pulse Alignment */}
+                    {opportunity.elite_pulse_alignment && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block mb-1">Market Pulse</span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          {opportunity.elite_pulse_alignment}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legacy fields */}
+                    {opportunity.key_factors && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block mb-1">Key Factors</span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          {opportunity.key_factors}
+                        </div>
+                      </div>
+                    )}
+
+                    {opportunity.implementation && (
+                      <div className="text-xs">
+                        <span className="font-semibold text-foreground block mb-1">Implementation</span>
+                        <div className="text-muted-foreground leading-relaxed">
+                          {opportunity.implementation}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action and Confidence Section */}
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {opportunity.victor_action && (
+                            <Badge
+                              variant={opportunity.victor_action === 'BUY' ? 'default' :
+                                      opportunity.victor_action === 'SELL' ? 'destructive' :
+                                      'secondary'}
+                              className="text-xs font-bold"
+                            >
+                              {opportunity.victor_action}
+                            </Badge>
+                          )}
+                        </div>
+                        {opportunity.confidence_level && (
+                          <div className="flex items-center space-x-2 text-xs">
+                            <span className="text-muted-foreground">Confidence:</span>
+                            <span className="font-medium text-foreground">{Math.round(opportunity.confidence_level * 100)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collapse Arrow - Centered */}
+                  <div className="flex justify-center mt-2 pt-2 border-t border-border/50">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClick(); // This toggles the expanded state
+                      }}
+                      className="p-1 rounded-full hover:bg-muted transition-colors group"
+                      aria-label="Collapse"
+                    >
+                      <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </button>
+                  </div>
+
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
@@ -549,12 +715,14 @@ function OpportunityCard({
                     e.stopPropagation();
                     onShare(opportunity);
                   }}
-                  className={`flex items-center gap-1 transition-colors text-xs px-3 py-1.5 h-7 font-medium ${
-                    opportunity?.id && shareState?.[opportunity.id] 
-                      ? 'bg-green-50 border-green-500 text-green-700' 
-                      : theme === 'dark' 
-                        ? 'text-white hover:text-gray-200' 
-                        : 'text-black hover:text-gray-700'
+                  className={`flex items-center gap-1 transition-all text-xs px-3 py-1.5 h-7 font-medium ${
+                    opportunity?.id && shareState?.[opportunity.id]
+                      ? theme === 'dark'
+                        ? 'bg-green-900/20 border-green-500 text-green-400 hover:bg-primary hover:text-white hover:border-primary'
+                        : 'bg-green-50 border-green-500 text-green-700 hover:bg-primary hover:text-white hover:border-primary'
+                      : theme === 'dark'
+                        ? 'text-white hover:bg-primary hover:text-white hover:border-primary'
+                        : 'text-black hover:bg-primary hover:text-white hover:border-primary'
                   }`}
                 >
                   {opportunity?.id && shareState?.[opportunity.id] ? (
@@ -595,13 +763,14 @@ function OpportunityCard({
   );
 }
 
-export function OpportunityAtlasNew({ 
+export function OpportunityAtlasNew({
   categories,
-  selectedCategory, 
-  onCategorySelect, 
+  selectedCategory,
+  onCategorySelect,
   className = "",
   opportunityScoring,
-  onOpportunityView
+  onOpportunityView,
+  targetOpportunityId
 }: OpportunityAtlasProps) {
   const { theme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState('all');
@@ -653,7 +822,115 @@ export function OpportunityAtlasNew({
       observer.disconnect();
     };
   }, [screenSize]);
-  
+
+  // Scroll to target opportunity when specified
+  useEffect(() => {
+    if (targetOpportunityId && categories.length > 0) {
+
+      // Find the opportunity across all categories
+      let foundOpportunity: Opportunity | null = null;
+      let foundCategory: AssetCategoryData | null = null;
+      let bestMatch: { opportunity: Opportunity; category: AssetCategoryData; score: number } | null = null;
+
+      const searchTerm = decodeURIComponent(targetOpportunityId).toLowerCase();
+
+      for (const category of categories) {
+        // Check for ID match first (in case we have a real MongoDB ID)
+        const idMatch = category.opportunities.find(opp => opp.id === targetOpportunityId);
+        if (idMatch) {
+          foundOpportunity = idMatch;
+          foundCategory = category;
+          break;
+        }
+
+        // Main flow: Use intelligent fuzzy matching for all title-based searches
+        category.opportunities.forEach(opp => {
+          const oppTitle = opp.title.toLowerCase();
+          let matchScore = 0;
+
+          // Exact title match gets highest score
+          if (oppTitle === searchTerm) {
+            matchScore = 100;
+          } else {
+            // Smart keyword matching
+            const searchWords = searchTerm.split(' ').filter(w => w.length > 2);
+            const titleWords = oppTitle.split(' ').filter(w => w.length > 2);
+
+            // Score each matching word
+            searchWords.forEach(searchWord => {
+              titleWords.forEach(titleWord => {
+                if (titleWord === searchWord) {
+                  matchScore += 3; // Exact word match
+                } else if (titleWord.includes(searchWord) || searchWord.includes(titleWord)) {
+                  matchScore += 2; // Partial word match
+                }
+              });
+            });
+
+            // Industry/type specific matching
+            const keyTerms = [
+              ['platinum', 'metal', 'precious'],
+              ['real estate', 'property', 'development', 'residential', 'commercial'],
+              ['shortage', 'supply', 'demand', 'scarcity'],
+              ['global', 'international', 'worldwide'],
+              ['tech', 'technology', 'software', 'ai', 'artificial'],
+              ['energy', 'renewable', 'solar', 'wind', 'battery'],
+              ['equity', 'private', 'venture', 'capital']
+            ];
+
+            keyTerms.forEach(termGroup => {
+              const searchHasTerm = termGroup.some(term => searchTerm.includes(term));
+              const titleHasTerm = termGroup.some(term => oppTitle.includes(term));
+              if (searchHasTerm && titleHasTerm) {
+                matchScore += 5; // Bonus for matching industry/type
+              }
+            });
+          }
+
+          // Track the best match
+          if (matchScore > 0 && (!bestMatch || matchScore > bestMatch.score)) {
+            bestMatch = { opportunity: opp, category, score: matchScore };
+          }
+        });
+      }
+
+      // Use the best match found (lowered threshold to 1 for any match)
+      if (!foundOpportunity && bestMatch && bestMatch.score > 0) {
+        foundOpportunity = bestMatch.opportunity;
+        foundCategory = bestMatch.category;
+      }
+
+      if (foundOpportunity && foundCategory) {
+
+        // Show ALL opportunities instead of filtering by category for better UX
+        // This allows users to explore other opportunities while having the target expanded
+        onCategorySelect(null);
+
+        // Expand the opportunity
+        setExpandedOpportunityId(foundOpportunity.id);
+
+        // Scroll to the opportunity card after a short delay
+        setTimeout(() => {
+          const element = document.getElementById(`opportunity-card-${foundOpportunity.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 800); // Slightly longer delay to ensure DOM is ready
+      } else {
+
+        // Show all opportunities even when no exact match is found
+        onCategorySelect(null);
+
+        // Still show a helpful message but more subtle
+        toast({
+          title: "Showing All Opportunities",
+          description: "Browse all available opportunities that may match your interest.",
+          duration: 3000,
+        });
+      }
+    }
+  }, [targetOpportunityId, categories, onCategorySelect]);
+
   const maxDealCount = Math.max(...categories.map(c => c.liveDealCount), 1);
   const totalDealCount = categories.reduce((sum, category) => sum + category.liveDealCount, 0);
   
@@ -712,11 +989,11 @@ export function OpportunityAtlasNew({
       });
       return;
     }
-    
+
     try {
-      // Build the opportunity URL
+      // Build the opportunity URL using the public share route
       const baseUrl = window.location.origin;
-      const opportunityUrl = `${baseUrl}/prive-exchange/${opportunity.region}/${opportunity.id}`;
+      const opportunityUrl = `${baseUrl}/share/opportunity/${opportunity.id}`;
       
       await navigator.clipboard.writeText(opportunityUrl);
       

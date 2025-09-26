@@ -40,7 +40,7 @@ function getJWTSecret(): Uint8Array {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, mfa_code, mfa_token } = await request.json()
+    const { email, mfa_code, mfa_token, rememberMe = false } = await request.json()
 
     if (!email || !mfa_code || !mfa_token) {
       return NextResponse.json(
@@ -261,7 +261,8 @@ export async function POST(request: NextRequest) {
               const [name, value] = nameValue.split('=');
 
               if (name === 'access_token' || name === 'refresh_token') {
-                const maxAge = name === 'access_token' ? 15 * 60 : 7 * 24 * 60 * 60;
+                const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
+                const maxAge = name === 'access_token' ? accessTokenAge : 7 * 24 * 60 * 60; // Refresh token always 7 days
                 successResponse.cookies.set(name, value, {
                   httpOnly: true,
                   secure: false, // Match backend's secure=False for local dev
@@ -276,12 +277,13 @@ export async function POST(request: NextRequest) {
 
           // Fallback: If no cookies in headers but tokens in body, set them manually
           if (backendResponse.access_token) {
+            const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
             successResponse.cookies.set('access_token', backendResponse.access_token, {
               httpOnly: true,
               secure: false, // Match backend's secure=False for local dev
               sameSite: 'lax',
               path: '/',
-              maxAge: 15 * 60 // 15 minutes
+              maxAge: accessTokenAge
             });
             logger.info('access_token cookie set from response body', {
               tokenLength: backendResponse.access_token.length,
@@ -301,6 +303,20 @@ export async function POST(request: NextRequest) {
               tokenLength: backendResponse.refresh_token.length,
               secure: false
             });
+          }
+
+          // Store remember me preference for future token refreshes
+          if (rememberMe) {
+            successResponse.cookies.set('remember_me', 'true', {
+              httpOnly: true,
+              secure: false,
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token
+            });
+          } else {
+            // Ensure the cookie is cleared if not remembering
+            successResponse.cookies.delete('remember_me');
           }
 
           // Clean up the frontend MFA session cookies

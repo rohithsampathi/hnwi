@@ -50,6 +50,42 @@ body {
   .scrollbar-hide-all::-webkit-scrollbar {
     display: none;
   }
+
+  /* Custom scrollbar for sidebar */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+  }
+
+  /* Dark mode scrollbar for sidebar */
+  .dark .sidebar-scroll {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .dark .sidebar-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
   
   /* Premium slower animations */
   .premium-pulse {
@@ -218,13 +254,33 @@ body {
     display: none;
   }
 
-  /* Hide scrollbars globally on all overflow elements */
-  * {
+  /* Hide scrollbars globally on all overflow elements EXCEPT sidebar */
+  *:not(.sidebar-scroll) {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  *::-webkit-scrollbar {
+  *:not(.sidebar-scroll)::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Allow scrollbars in sidebar */
+  .sidebar-scroll {
+    -ms-overflow-style: auto !important;
+    scrollbar-width: thin !important;
+  }
+  .sidebar-scroll::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+  }
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.3) !important;
   }
   
   /* Standardize border radius & styles across the app - CLEAN BUSINESS STANDARD */
@@ -705,4 +761,41 @@ footer nav button, footer nav div {
 .animate-scroll {
   animation: scroll 30s linear infinite;
   white-space: nowrap;
+}
+
+/* HNWI-friendly risk indicator animations - sophisticated and non-intrusive */
+@keyframes hnwi-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 20, 60, 0);
+  }
+  20% {
+    box-shadow: 0 0 8px 2px rgba(220, 20, 60, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 20, 60, 0);
+  }
+}
+
+@keyframes hnwi-emphasis {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Animation utilities for HNWI risk indicators */
+.animate-hnwi-glow {
+  animation: hnwi-glow 2s ease-out;
+}
+
+.animate-hnwi-emphasis {
+  animation: hnwi-emphasis 1.5s ease-in-out;
 }

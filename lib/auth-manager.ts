@@ -159,6 +159,34 @@ export class AuthenticationManager {
 
   public async refreshAuth(): Promise<User | null> {
     try {
+      // First try to refresh the token
+      const refreshResponse = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (refreshResponse.ok) {
+        // Token refreshed successfully, now get current session
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json();
+          if (data.user) {
+            this.login(data.user);
+            return this.user;
+          }
+        }
+      }
+
+      // If token refresh failed, try session check directly
       const response = await fetch('/api/auth/session', {
         credentials: 'include', // Send cookies
         headers: {
@@ -194,7 +222,7 @@ export class AuthenticationManager {
     // Assume valid if authenticated
     return {
       expired: !this.authenticated,
-      expiresIn: this.authenticated ? 900000 : 0 // 15 minutes assumed
+      expiresIn: this.authenticated ? 3600000 : 0 // 1 hour (60 * 60 * 1000 ms)
     };
   }
 }

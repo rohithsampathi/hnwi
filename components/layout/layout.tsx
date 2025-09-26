@@ -28,16 +28,17 @@ interface LayoutProps {
   onNavigate: (route: string) => void
   sidebarCollapsed?: boolean
   currentPage?: string
+  user?: any
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "" }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "", user: propUser }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
   const router = useRouter()
   const pathname = usePathname()
   const [showHeartbeat, setShowHeartbeat] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<any>(propUser || null)
   const [headerHeight, setHeaderHeight] = useState(0)
   const [sidebarState, setSidebarState] = useState(true) // Track sidebar collapse state (true = collapsed)
   const [isDesktop, setIsDesktop] = useState(false) // Track if desktop
@@ -99,17 +100,22 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     return () => clearInterval(interval)
   }, [])
 
-  // Load user data from localStorage
+  // Update user state when propUser changes, with localStorage fallback
   useEffect(() => {
-    const userObject = localStorage.getItem("userObject")
-    if (userObject) {
-      try {
-        const parsedUser = JSON.parse(userObject)
-        setUser(parsedUser)
-      } catch (e) {
+    if (propUser) {
+      setUser(propUser)
+    } else {
+      // Fallback to localStorage if no prop user provided
+      const userObject = localStorage.getItem("userObject")
+      if (userObject) {
+        try {
+          const parsedUser = JSON.parse(userObject)
+          setUser(parsedUser)
+        } catch (e) {
+        }
       }
     }
-  }, [])
+  }, [propUser])
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -173,14 +179,14 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         const pageHeaderConfig = getPageHeader(pathname, user)
         if (pageHeaderConfig) {
           return (
-            <div 
+            <div
               className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border"
-              style={{ 
-                marginLeft: isDesktop 
+              style={{
+                marginLeft: isDesktop
                   ? (sidebarState ? '64px' : '256px') : '0'
               }}
             >
-              <PageHeader 
+              <PageHeader
                 config={pageHeaderConfig}
                 onNavigate={onNavigate}
               />

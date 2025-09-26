@@ -2,12 +2,14 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { AuthPopup } from "@/components/auth-popup"
+import { registerAuthPopupCallback } from "@/lib/secure-api"
 
 interface AuthPopupContextType {
   showAuthPopup: (options?: {
     title?: string
     description?: string
     onSuccess?: (userData?: any) => void
+    onClose?: () => void
   }) => void
   hideAuthPopup: () => void
 }
@@ -24,26 +26,41 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
     title?: string
     description?: string
     onSuccess?: (userData?: any) => void
+    onClose?: () => void
   }>({})
 
   const showAuthPopup = useCallback((options: {
     title?: string
     description?: string
     onSuccess?: (userData?: any) => void
+    onClose?: () => void
   } = {}) => {
+    // Prevent multiple popups
+    if (isOpen) {
+      return;
+    }
     setPopupOptions(options)
     setIsOpen(true)
-  }, [])
+  }, [isOpen])
 
   const hideAuthPopup = useCallback(() => {
+    // Call onClose if provided and popup was actually open
+    if (isOpen && popupOptions.onClose) {
+      popupOptions.onClose();
+    }
     setIsOpen(false)
     setPopupOptions({})
-  }, [])
+  }, [isOpen, popupOptions])
 
   const handleSuccess = useCallback((userData?: any) => {
     popupOptions.onSuccess?.(userData)
     hideAuthPopup()
   }, [popupOptions, hideAuthPopup])
+
+  // Register with secure API for automatic 401 handling
+  useEffect(() => {
+    registerAuthPopupCallback(showAuthPopup);
+  }, [showAuthPopup])
 
   // Listen for session-locked events from ClientSecurityManager
   useEffect(() => {

@@ -1,5 +1,5 @@
 // lib/intelligence-parser.ts
-// Intelligence Parser for MoE v4 Presidential Brief
+// Intelligence Parser for HNWI Presidential Brief
 // Parses Ruscha-style intelligence markdown into structured data
 
 export interface OpportunityTier {

@@ -238,7 +238,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         body: JSON.stringify({
           email,
           mfa_code: code,
-          mfa_token: mfaToken
+          mfa_token: mfaToken,
+          rememberMe: rememberDevice
         }),
       })
 

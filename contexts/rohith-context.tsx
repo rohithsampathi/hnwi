@@ -152,23 +152,37 @@ export function RohithProvider({ children }: RohithProviderProps) {
 
   // Load user context on mount
   useEffect(() => {
+    let mounted = true
+    let initializationComplete = false
+
     const initializeContext = async () => {
+      // Prevent duplicate initialization
+      if (!mounted || initializationComplete) return
+
       try {
         dispatch({ type: "SET_LOADING", payload: true })
 
         const context = await loadUserContext()
+        if (!mounted) return // Component unmounted, stop execution
+
         dispatch({ type: "SET_USER_CONTEXT", payload: context })
 
         // Also load conversations
         dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: true })
         const conversations = await getConversations()
+        if (!mounted) return // Component unmounted, stop execution
+
         dispatch({ type: "SET_CONVERSATIONS", payload: conversations })
         dispatch({ type: "SET_CONVERSATIONS_LOADING", payload: false })
+        initializationComplete = true
 
       } catch (error) {
+        if (!mounted) return // Component unmounted, stop execution
         dispatch({ type: "SET_ERROR", payload: "Failed to load context" })
       } finally {
-        dispatch({ type: "SET_LOADING", payload: false })
+        if (mounted) {
+          dispatch({ type: "SET_LOADING", payload: false })
+        }
       }
     }
 
@@ -178,6 +192,10 @@ export function RohithProvider({ children }: RohithProviderProps) {
       initializeContext()
     }
     // Don't load until user is authenticated
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const contextActions: RohithContextActions = {

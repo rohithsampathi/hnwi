@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,8 @@ const SkeletonCard = () => (
 export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const { theme } = useTheme();
   const { showAuthPopup } = useAuthPopup();
-  
+  const searchParams = useSearchParams();
+
   // Core state
   const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<CrownVaultAsset[]>([]);
@@ -86,6 +88,8 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
   const [isHeirDetailOpen, setIsHeirDetailOpen] = useState(false);
   const [isAddHeirModalOpen, setIsAddHeirModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [successData, setSuccessData] = useState<{assets: CrownVaultAsset[], totalValue: number} | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<CrownVaultAsset | null>(null);
   const [selectedHeir, setSelectedHeir] = useState<CrownVaultHeir | null>(null);
 
@@ -109,6 +113,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const [isCreatingHeir, setIsCreatingHeir] = useState(false);
 
   const { toast } = useToast();
+  const isLoadingData = useRef(false);
 
   // Helper function to detect authentication errors
   const isAuthenticationError = (error: any): boolean => {
@@ -133,20 +138,51 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     { icon: Shield, text: "Finalizing vault security protocols..." }
   ];
 
-  // Load initial data
+  // Handle URL query parameters
   useEffect(() => {
-    let isMounted = true;
+    const tab = searchParams.get('tab');
+    const assetId = searchParams.get('asset');
 
-    const loadInitialData = async () => {
+    if (tab) {
+      // Set the active tab based on query parameter
+      if (tab === 'assets') {
+        setActiveTab('assets');
+      } else if (tab === 'heirs') {
+        setActiveTab('heirs');
+      } else if (tab === 'activity') {
+        setActiveTab('activity');
+      } else {
+        setActiveTab('summary');
+      }
+    }
+
+    // If there's an asset ID, we'll handle it after assets are loaded
+    if (assetId && assets.length > 0) {
+      const targetAsset = assets.find(a =>
+        a.id === assetId || a._id === assetId || a.asset_id === assetId
+      );
+      if (targetAsset) {
+        setSelectedAsset(targetAsset);
+        // Optionally open the asset detail modal or scroll to it
+        // For now, just select it
+      }
+    }
+  }, [searchParams, assets]);
+
+  // Load initial data function - defined outside useEffect so it can be called from auth callback
+  const loadInitialData = async () => {
+    // Prevent concurrent loads
+    if (isLoadingData.current) return;
+    isLoadingData.current = true;
+
+    setLoading(true);
       try {
         const [assetsData, statsData, heirsData] = await Promise.allSettled([
           getCrownVaultAssets(),
-          getCrownVaultStats(), 
+          getCrownVaultStats(),
           getCrownVaultHeirs()
         ]);
 
-        if (!isMounted) return;
-        
         // Check for authentication and permission errors
         const failedResults = [assetsData, statsData, heirsData].filter(result => result.status === 'rejected');
         const hasAuthErrors = failedResults.some(result => isAuthenticationError(result.reason));
@@ -159,9 +195,10 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
             description: "Please sign in to access your Crown Vault data.",
             onSuccess: () => {
               // Retry loading data after successful login
+              isLoadingData.current = false; // Reset flag to allow reload
               setTimeout(() => {
                 loadInitialData();
-              }, 100);
+              }, 500);
             }
           });
           return;
@@ -181,11 +218,26 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         if (assetsData.status === 'fulfilled') {
           setAssets(assetsData.value);
         }
+
+        let loadedStats = null;
         if (statsData.status === 'fulfilled') {
-          setStats(statsData.value);
+          loadedStats = statsData.value;
         }
+
         if (heirsData.status === 'fulfilled') {
-          setHeirs(heirsData.value);
+          const heirsArray = heirsData.value;
+          setHeirs(heirsArray);
+
+          // Update stats with actual heirs count if stats were loaded
+          if (loadedStats) {
+            setStats({
+              ...loadedStats,
+              total_heirs: heirsArray.length  // Use actual heirs count
+            });
+          }
+        } else if (loadedStats) {
+          // If heirs failed but stats succeeded, still set stats
+          setStats(loadedStats);
         }
 
         // Handle non-auth errors (if any)
@@ -198,37 +250,35 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           });
         }
 
-      } catch (error) {
-        if (isAuthenticationError(error)) {
-          showAuthPopup({
-            title: "Authentication Required",
-            description: "Please sign in to access your Crown Vault data.",
-            onSuccess: () => {
-              setTimeout(() => {
-                loadInitialData();
-              }, 100);
-            }
-          });
-        } else {
-          toast({
-            title: "Error Loading Vault",
-            description: "Failed to load your Crown Vault data. Please try again.",
-            variant: "destructive"
-          });
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+    } catch (error) {
+      if (isAuthenticationError(error)) {
+        showAuthPopup({
+          title: "Authentication Required",
+          description: "Please sign in to access your Crown Vault data.",
+          onSuccess: () => {
+            isLoadingData.current = false; // Reset flag to allow reload
+            setTimeout(() => {
+              loadInitialData();
+            }, 500);
+          }
+        });
+      } else {
+        toast({
+          title: "Error Loading Vault",
+          description: "Failed to load your Crown Vault data. Please try again.",
+          variant: "destructive"
+        });
       }
-    };
+    } finally {
+      setLoading(false);
+      isLoadingData.current = false;
+    }
+  };
 
+  // Load initial data on mount
+  useEffect(() => {
     loadInitialData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [toast]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Asset processing handler
   const handleAddAssets = async () => {
@@ -257,7 +307,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
       }
       
       setAssets(prevAssets => [...prevAssets, ...result.assets]);
-      
+
       // Update stats
       const newTotalValue = result.assets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0);
       if (stats) {
@@ -267,13 +317,11 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           total_value: prev.total_value + newTotalValue,
         } : prev);
       }
-      
-      toast({
-        title: "✓ Assets Added to Your Vault",
-        description: `${result.assets.length} premium asset${result.assets.length > 1 ? 's' : ''} secured with enterprise-grade encryption.`,
-        variant: "default"
-      });
-      
+
+      // Show detailed success modal instead of just toast
+      setSuccessData({ assets: result.assets, totalValue: newTotalValue });
+      setIsSuccessModalOpen(true);
+
       setRawText("");
       setContext("");
       setIsAddModalOpen(false);
@@ -315,6 +363,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
       });
 
       setHeirs(prevHeirs => [...prevHeirs, newHeir]);
+
+      // Update stats with new heirs count
+      if (stats) {
+        setStats(prev => prev ? {
+          ...prev,
+          total_heirs: prev.total_heirs + 1
+        } : prev);
+      }
 
       toast({
         title: "✓ Heir Added Successfully",
@@ -358,6 +414,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         heir_ids: asset.heir_ids?.filter(id => id !== heirId) || [],
         heir_names: asset.heir_names?.filter((_, index) => asset.heir_ids?.[index] !== heirId) || []
       })));
+
+      // Update stats with new heirs count
+      if (stats) {
+        setStats(prev => prev ? {
+          ...prev,
+          total_heirs: Math.max(0, prev.total_heirs - 1)
+        } : prev);
+      }
 
       toast({
         title: "✓ Heir Deleted",
@@ -415,13 +479,6 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         title: "Success",
         description: "Heir updated successfully",
       });
-      
-      // Refresh heirs data
-      try {
-        const updatedHeirs = await getCrownVaultHeirs();
-        setHeirs(updatedHeirs);
-      } catch (error) {
-      }
     } catch (error) {
       toast({
         title: "Error", 
@@ -532,6 +589,122 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           isProcessing={isProcessing}
           processingPhase={processingPhase}
         />
+
+        {/* Asset Addition Success Modal */}
+        <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-green-500/10 rounded-full">
+                  <Shield className="h-6 w-6 text-green-500" />
+                </div>
+                Assets Successfully Added to Your Vault
+              </DialogTitle>
+            </DialogHeader>
+
+            {successData && (
+              <div className="space-y-6">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        {successData.assets.length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Asset{successData.assets.length > 1 ? 's' : ''} Added
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary mb-1">
+                        ${successData.totalValue.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Total Value Secured
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Asset Details */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">Added Assets:</h3>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {successData.assets.map((asset, index) => (
+                      <Card key={index} className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                              {asset.asset_data.asset_type?.toLowerCase() === 'real estate' ? (
+                                <Building className="h-4 w-4 text-primary" />
+                              ) : (
+                                <DollarSign className="h-4 w-4 text-primary" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-foreground">
+                                {asset.asset_data.name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {asset.asset_data.asset_type} • {asset.asset_data.location || 'Location TBD'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-foreground">
+                              ${asset.asset_data.value?.toLocaleString() || '0'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {asset.asset_data.currency || 'USD'}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Security Notice */}
+                <Card className="p-4 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-5 w-5 text-green-600" />
+                    <div>
+                      <div className="font-medium text-green-800 dark:text-green-200">
+                        Enterprise-Grade Security Applied
+                      </div>
+                      <div className="text-sm text-green-700 dark:text-green-300">
+                        Your assets are protected with military-grade encryption and stored securely in your Crown Vault.
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsSuccessModalOpen(false)}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsSuccessModalOpen(false);
+                      setActiveTab('assets');
+                    }}
+                    className="gap-2"
+                  >
+                    <Shield className="h-4 w-4" />
+                    View All Assets
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
             {/* Heir Detail Modal */}
             <Dialog open={isHeirDetailOpen} onOpenChange={setIsHeirDetailOpen}>

@@ -59,22 +59,24 @@ export function EliteMetrics({ data }: EliteMetricsProps) {
     if (typeof value === 'number') {
       return formatCurrency(value);
     }
-    return '$25.2B'; // Fallback value
+    return '$0'; // No data available
   }
 
   const metrics = [
     {
       icon: Target,
-      value: data.opportunities.length,
+      value: data.opportunities?.length || 0,
       label: "Active Opportunities",
-      subValue: `${data.juicyOpportunities.length} High Priority`,
+      subValue: `${data.juicyOpportunities?.length || 0} High Priority`,
       delay: 0.1
     },
     {
       icon: DollarSign,
-      value: formatCurrency(data.totalOpportunityValue),
-      label: "Total Opportunity Value", 
-      delta: `+${((data.totalOpportunityValue / 10000000) * 100).toFixed(1)}%`,
+      value: formatCurrency(data.totalOpportunityValue || 0),
+      label: "Total Opportunity Value",
+      delta: data.totalOpportunityValueDelta ?
+        `${data.totalOpportunityValueDelta > 0 ? '+' : ''}${data.totalOpportunityValueDelta.toFixed(1)}%` :
+        `+${(((data.totalOpportunityValue || 0) / 10000000) * 100).toFixed(1)}%`,
       deltaLabel: "potential",
       delay: 0.2
     },
@@ -87,7 +89,7 @@ export function EliteMetrics({ data }: EliteMetricsProps) {
     },
     {
       icon: Award,
-      value: `${(data.confidence * 100).toFixed(0)}%`,
+      value: `${((data.confidence || 0) * 100).toFixed(0)}%`,
       label: "Framework Confidence",
       subValue: "System reliability",
       delay: 0.5

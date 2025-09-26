@@ -21,13 +21,17 @@ export function HomeDashboardElite({
 }: HomeDashboardEliteProps) {
   const [activeTab, setActiveTab] = useState('overview')
 
-  const { 
-    data: intelligenceData, 
-    loading, 
-    error, 
+  const {
+    data: intelligenceData,
+    loading,
+    error,
     refreshing,
-    refresh 
-  } = useIntelligenceData(userData)
+    refresh
+  } = useIntelligenceData(userData, {
+    loadCrownVaultMongoDB: true,      // MongoDB data IS needed for Crown Vault Impact tab
+    loadKatherineAnalysis: true,       // Katherine analysis for Crown Vault Impact tab
+    loadVictorAnalysis: true           // Victor analysis for Opportunities tab
+  })
 
   
 

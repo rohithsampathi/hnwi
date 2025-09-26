@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,18 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  Plus, Shield, Users, Building, Car, Gem, Palette, DollarSign, 
+import {
+  Plus, Shield, Users, Building, Car, Gem, Palette, DollarSign,
   Search, Loader2, Vault, MapPin, FileText, AlertTriangle, Zap, Clock,
-  Info, MoreVertical, Edit, Trash2
+  Info, MoreVertical, Edit, Trash2, ChevronUp, BarChart3, ChevronDown,
+  Brain, Target, TrendingUp
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsset, deleteCrownVaultAsset } from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
 import { EditAssetModal } from "./edit-asset-modal";
 import { getCategoryGroup, getCategoryDisplayName } from "@/lib/category-utils";
+import { CitationText } from "@/components/elite/citation-text";
 
 interface AssetsSectionProps {
   assets: CrownVaultAsset[];
@@ -29,6 +31,269 @@ interface AssetsSectionProps {
   onAssetClick: (asset: CrownVaultAsset) => void;
   setAssets: React.Dispatch<React.SetStateAction<CrownVaultAsset[]>>;
 }
+
+// Katherine Portfolio Analysis Component
+const KatherinePortfolioAnalysis = ({ assets }: { assets: CrownVaultAsset[] }) => {
+  const { theme } = useTheme();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Extract Katherine analysis data from assets
+  const getKatherineAnalysis = () => {
+    const analysisData = assets
+      .filter(asset => asset.elite_pulse_impact?.katherine_ai_analysis)
+      .map(asset => ({
+        assetName: asset.asset_data.name,
+        assetType: asset.asset_data.asset_type,
+        assetValue: asset.asset_data.value,
+        riskLevel: asset.elite_pulse_impact?.risk_level,
+        analysis: asset.elite_pulse_impact?.katherine_ai_analysis
+      }));
+
+    // Aggregate portfolio insights
+    const totalAnalyzedValue = analysisData.reduce((sum, item) => sum + (item.assetValue || 0), 0);
+    const riskBreakdown = analysisData.reduce((acc, item) => {
+      const risk = item.riskLevel || 'UNKNOWN';
+      acc[risk] = (acc[risk] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Get overall portfolio assessment
+    const highRiskAssets = analysisData.filter(item => item.riskLevel === 'HIGH');
+    const mediumRiskAssets = analysisData.filter(item => item.riskLevel === 'MEDIUM');
+    const lowRiskAssets = analysisData.filter(item => item.riskLevel === 'LOW');
+
+    // Generate portfolio summary
+    const overallRisk = highRiskAssets.length > 0 ? 'HIGH' :
+                       mediumRiskAssets.length > 2 ? 'MEDIUM' : 'LOW';
+
+    return {
+      analysisData,
+      totalAnalyzedValue,
+      riskBreakdown,
+      highRiskAssets,
+      mediumRiskAssets,
+      lowRiskAssets,
+      overallRisk,
+      totalAssets: analysisData.length,
+      analysisAvailable: analysisData.length > 0
+    };
+  };
+
+  const portfolioAnalysis = getKatherineAnalysis();
+
+  if (!portfolioAnalysis.analysisAvailable) {
+    return (
+      <Card className="mt-6">
+        <CardContent className="p-6 text-center">
+          <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Katherine Portfolio Analysis</h3>
+          <p className="text-muted-foreground mb-4">
+            Portfolio analysis will be available once asset impact assessments are complete.
+          </p>
+          <Badge variant="outline" className="text-xs">
+            Analysis in Progress
+          </Badge>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mt-6" style={getMetallicCardStyle(theme).style}>
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-full">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Katherine Sterling-Chen Portfolio Analysis</h3>
+              <p className="text-sm text-muted-foreground">
+                Elite Pulse Intelligence Assessment • {portfolioAnalysis.totalAssets} Assets Analyzed
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-2"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Collapse
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4" />
+                View Analysis
+              </>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <CardContent className="pt-0 pb-6 space-y-6">
+
+              {/* Portfolio Risk Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="p-4 rounded-lg bg-muted/20 border border-muted text-center">
+                  <Target className="h-8 w-8 mx-auto mb-2 text-primary" />
+                  <p className="text-2xl font-bold text-foreground">
+                    ${(portfolioAnalysis.totalAnalyzedValue / 1000000).toFixed(1)}M
+                  </p>
+                  <p className="text-xs text-muted-foreground">Analyzed Value</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-center">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                  <p className="text-2xl font-bold text-red-700 dark:text-red-400">
+                    {portfolioAnalysis.riskBreakdown.HIGH || 0}
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400">High Risk Assets</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 text-center">
+                  <Clock className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                  <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+                    {portfolioAnalysis.riskBreakdown.MEDIUM || 0}
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400">Medium Risk Assets</p>
+                </div>
+
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 text-center">
+                  <Shield className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-400">
+                    {portfolioAnalysis.riskBreakdown.LOW || 0}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">Low Risk Assets</p>
+                </div>
+              </div>
+
+              {/* Overall Portfolio Assessment */}
+              <div className="p-4 rounded-lg border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <h4 className="font-semibold text-primary">Overall Portfolio Risk Assessment</h4>
+                  <Badge
+                    variant="outline"
+                    className={`ml-auto ${
+                      portfolioAnalysis.overallRisk === 'HIGH' ? 'border-red-500 text-red-700 bg-red-50 dark:bg-red-950/20 dark:text-red-400' :
+                      portfolioAnalysis.overallRisk === 'MEDIUM' ? 'border-orange-500 text-orange-700 bg-orange-50 dark:bg-orange-950/20 dark:text-orange-400' :
+                      'border-green-500 text-green-700 bg-green-50 dark:bg-green-950/20 dark:text-green-400'
+                    }`}
+                  >
+                    {portfolioAnalysis.overallRisk} RISK PORTFOLIO
+                  </Badge>
+                </div>
+                <div className="text-sm text-muted-foreground leading-relaxed">
+                  <CitationText
+                    text={
+                      portfolioAnalysis.overallRisk === 'HIGH'
+                        ? `Portfolio contains ${portfolioAnalysis.highRiskAssets.length} high-risk assets requiring immediate attention. Katherine recommends diversification and risk mitigation strategies to protect your wealth against market volatility.`
+                        : portfolioAnalysis.overallRisk === 'MEDIUM'
+                        ? `Portfolio shows balanced risk exposure with ${portfolioAnalysis.mediumRiskAssets.length} medium-risk assets. Katherine suggests monitoring market conditions and maintaining current allocation while considering strategic rebalancing.`
+                        : `Portfolio demonstrates conservative risk management with strong defensive positioning. Katherine recommends maintaining current allocation while exploring selective growth opportunities in emerging markets.`
+                    }
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* High Risk Assets Detail */}
+              {portfolioAnalysis.highRiskAssets.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    High Risk Assets Requiring Attention
+                  </h4>
+                  {portfolioAnalysis.highRiskAssets.slice(0, 3).map((asset, index) => (
+                    <div key={index} className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h5 className="font-medium text-red-800 dark:text-red-300">{asset.assetName}</h5>
+                          <p className="text-sm text-red-600 dark:text-red-400">
+                            {formatAssetType(asset.assetType)} • ${formatValue(asset.assetValue || 0)}
+                          </p>
+                        </div>
+                        <Badge variant="destructive" className="text-xs">HIGH RISK</Badge>
+                      </div>
+                      {asset.analysis?.strategic_assessment && (
+                        <div className="text-sm text-red-700 dark:text-red-300 leading-relaxed">
+                          <CitationText
+                            text={asset.analysis.strategic_assessment}
+                            className="text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Strategic Recommendations */}
+              <div className="p-4 rounded-lg bg-muted/10 border border-muted">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <h4 className="font-semibold text-foreground">Strategic Recommendations</h4>
+                </div>
+                <div className="space-y-3 text-sm">
+                  {portfolioAnalysis.highRiskAssets.length > 0 && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <div>
+                        <span className="font-medium text-foreground">Immediate Risk Mitigation:</span>
+                        <span className="text-muted-foreground ml-1">
+                          Review and consider rebalancing {portfolioAnalysis.highRiskAssets.length} high-risk assets to reduce portfolio volatility.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <span className="font-medium text-foreground">Portfolio Diversification:</span>
+                      <span className="text-muted-foreground ml-1">
+                        Maintain geographic and sector diversification across your ${(portfolioAnalysis.totalAnalyzedValue / 1000000).toFixed(1)}M analyzed portfolio.
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div>
+                      <span className="font-medium text-foreground">Regular Monitoring:</span>
+                      <span className="text-muted-foreground ml-1">
+                        Schedule quarterly reviews to assess changing risk profiles and market conditions.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Elite Pulse Intelligence Attribution */}
+              <div className="border-t border-muted-foreground/20 pt-4">
+                <p className="text-xs text-muted-foreground italic text-center">
+                  Analysis powered by Elite Pulse Intelligence System • Katherine Sterling-Chen AI
+                </p>
+              </div>
+
+            </CardContent>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  );
+};
 
 // Impact Analysis Component
 const ImpactAnalysisTag = ({ asset }: { asset: CrownVaultAsset }) => {
@@ -84,8 +349,8 @@ const ImpactAnalysisTag = ({ asset }: { asset: CrownVaultAsset }) => {
   return (
     <TooltipProvider>
       <div className="flex items-center gap-2">
-        <Badge 
-          variant="outline" 
+        <Badge
+          variant="outline"
           className="text-xs font-semibold text-primary border-primary/30 bg-primary/10 hover:bg-primary/20"
         >
           IMPACT: {riskLevel}
@@ -193,7 +458,7 @@ const getElitePulseImpactBadge = (asset: CrownVaultAsset) => {
           bg: 'bg-red-500/90 hover:bg-red-600/90',
           text: 'text-white',
           border: 'border-red-600',
-          pulse: 'animate-pulse'
+          pulse: 'ring-2 ring-red-500/40 hover:ring-red-500/60 animate-hnwi-glow'
         };
       case 'MEDIUM':
         return {
@@ -246,7 +511,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBy, setFilterBy] = useState("all");
-  const [sortBy, setSortBy] = useState("value-desc");
+  const [sortBy, setSortBy] = useState("risk");
   const [heirUpdateLoading, setHeirUpdateLoading] = useState<Set<string>>(new Set());
   const [newlyAddedAssets, setNewlyAddedAssets] = useState<Set<string>>(new Set());
   const [deletingAssets, setDeletingAssets] = useState<Set<string>>(new Set());
@@ -379,7 +644,21 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   const sortedAssets = [...filteredAssets].sort((a, b) => {
     // Safety checks for sorting
     if (!a?.asset_data || !b?.asset_data) return 0;
+
     switch (sortBy) {
+      case "risk":
+        // Sort by risk level: HIGH > MEDIUM > LOW > undefined
+        const riskOrder: { [key: string]: number } = { 'HIGH': 0, 'MEDIUM': 1, 'LOW': 2 };
+        const aRisk = a.elite_pulse_impact?.risk_level?.toUpperCase() || 'LOW';
+        const bRisk = b.elite_pulse_impact?.risk_level?.toUpperCase() || 'LOW';
+        const riskDiff = (riskOrder[aRisk] ?? 3) - (riskOrder[bRisk] ?? 3);
+
+        // If same risk level, sort by value descending
+        if (riskDiff === 0) {
+          return (b.asset_data.value || 0) - (a.asset_data.value || 0);
+        }
+        return riskDiff;
+
       case "value-desc":
         return (b.asset_data.value || 0) - (a.asset_data.value || 0);
       case "value-asc":
@@ -442,6 +721,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="risk">Risk Priority</SelectItem>
               <SelectItem value="value-desc">Value (High to Low)</SelectItem>
               <SelectItem value="value-asc">Value (Low to High)</SelectItem>
               <SelectItem value="date">Date Added</SelectItem>
@@ -501,15 +781,9 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                 className="group relative"
               >
                 {/* Flagship Asset Card - Matching Summary Cards Design */}
-                <div 
-                  className={`${getMetallicCardStyle(theme).className} hover:shadow-xl transition-all duration-300 cursor-pointer h-full overflow-hidden`} 
+                <div
+                  className={`${getMetallicCardStyle(theme).className} hover:shadow-xl transition-all duration-300 h-full overflow-hidden`}
                   style={getMetallicCardStyle(theme).style}
-                  onClick={(e) => {
-                    // Only trigger asset click if not clicking on dropdown or its children
-                    if (!e.target || !(e.target as Element).closest('[data-dropdown-container]')) {
-                      onAssetClick(asset);
-                    }
-                  }}
                 >
                   {/* Premium Asset Image - Full Width Top Banner */}
                   <div className="relative w-full h-48 mb-6">
@@ -533,8 +807,33 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                         const { icon: ImpactIcon, style, badgeText, tooltip, concern } = impactBadge;
                         
                         return (
-                          <div 
-                            className={`group px-2 py-1 rounded-full text-xs font-bold border-2 backdrop-blur-sm cursor-help transition-all duration-200 ${style.bg} ${style.text} ${style.border} ${style.pulse}`}
+                          <div
+                            className={`group px-2 py-1 rounded-full text-xs font-bold backdrop-blur-sm cursor-help transition-all duration-200 hover:scale-105 ${style.pulse}`}
+                            style={{
+                              background: impactBadge.riskLevel === 'HIGH'
+                                ? "linear-gradient(135deg, #DC143C 0%, #FF1744 25%, #B71C1C 50%, #FF1744 75%, #DC143C 100%)" // Metallic ruby
+                                : impactBadge.riskLevel === 'MEDIUM'
+                                ? "linear-gradient(135deg, #FFB300 0%, #FFC107 25%, #FF8F00 50%, #FFC107 75%, #FFB300 100%)" // Metallic topaz
+                                : impactBadge.riskLevel === 'LOW'
+                                ? "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)" // Metallic emerald
+                                : "linear-gradient(135deg, #6B7280 0%, #9CA3AF 25%, #4B5563 50%, #9CA3AF 75%, #6B7280 100%)", // Metallic gray
+                              border: impactBadge.riskLevel === 'HIGH'
+                                ? "2px solid rgba(220, 20, 60, 0.5)"
+                                : impactBadge.riskLevel === 'MEDIUM'
+                                ? "2px solid rgba(255, 193, 7, 0.5)"
+                                : impactBadge.riskLevel === 'LOW'
+                                ? "2px solid rgba(16, 185, 129, 0.5)"
+                                : "2px solid rgba(107, 114, 128, 0.5)",
+                              boxShadow: impactBadge.riskLevel === 'HIGH'
+                                ? "0 2px 8px rgba(220, 20, 60, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                : impactBadge.riskLevel === 'MEDIUM'
+                                ? "0 2px 8px rgba(255, 193, 7, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                : impactBadge.riskLevel === 'LOW'
+                                ? "0 2px 8px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                : "0 2px 8px rgba(107, 114, 128, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+                              color: "#ffffff",
+                              textShadow: "0 1px 2px rgba(0, 0, 0, 0.4)"
+                            }}
                             title={`${tooltip}\n\n${concern}`}
                           >
                             <div className="flex items-center gap-1">
@@ -559,14 +858,24 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                         <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white/80' : 'text-black/80'}`}>
                           {asset.asset_data.name || 'Unnamed Asset'}
                         </h3>
-                        {/* Value moved below title */}
+                        {/* Value with unit details */}
                         <div className="mt-2">
                           <p className={`text-2xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
                             ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
                           </p>
-                          <p className={`text-xs font-medium mt-1 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
-                            {asset.asset_data.currency || 'USD'} Secured
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {asset.asset_data.unit_count && asset.asset_data.cost_per_unit ? (
+                              <>
+                                <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
+                                  {asset.asset_data.unit_count} units @ {asset.asset_data.currency || 'USD'} {formatValue(asset.asset_data.cost_per_unit, asset.asset_data.currency)}/unit
+                                </p>
+                              </>
+                            ) : (
+                              <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
+                                {asset.asset_data.currency || 'USD'} Secured
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -616,6 +925,23 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                     <div className="mb-4">
                       <ImpactAnalysisTag asset={asset} />
                     </div>
+
+                    {/* Unit Details */}
+                    {asset.asset_data.unit_count && asset.asset_data.cost_per_unit && (
+                      <div className="text-left mb-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <BarChart3 className={`h-4 w-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`} />
+                          <div>
+                            <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white/70' : 'text-gray-700'}`}>
+                              Units: {asset.asset_data.unit_count}
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
+                              Cost per unit: {asset.asset_data.currency || 'USD'} {formatValue(asset.asset_data.cost_per_unit, asset.asset_data.currency)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Location */}
                     {asset.asset_data.location && (
@@ -693,11 +1019,15 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                   </div>
                   </div>
                 </div>
+
               </motion.div>
             );
           })}
         </div>
       )}
+
+      {/* Katherine Portfolio Analysis Section */}
+      <KatherinePortfolioAnalysis assets={sortedAssets} />
 
       {/* Edit Asset Modal */}
       <EditAssetModal

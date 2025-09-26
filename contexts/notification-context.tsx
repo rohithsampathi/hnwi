@@ -43,18 +43,19 @@ export interface NotificationProviderProps {
   enableBrowserNotifications?: boolean;
 }
 
-export function NotificationProvider({ 
+export function NotificationProvider({
   children,
   enablePolling = true,
   pollInterval = 30000, // 30 seconds
   enableSounds = true,
   enableBrowserNotifications = true
 }: NotificationProviderProps) {
-  // Use the notifications hook
+  // DISABLED: Auto-fetch is now handled by AppDataProvider
+  // This prevents duplicate API calls
   const notificationHook = useNotifications({
-    enablePolling,
+    enablePolling: false, // Disabled - handled by AppDataProvider
     pollInterval,
-    autoFetch: true
+    autoFetch: false // Disabled - handled by AppDataProvider
   });
   
 
@@ -230,11 +231,11 @@ export function NotificationProvider({
     showBrowserNotification
   ]);
 
-  // Auto-fetch notifications based on filter
+  // DISABLED: Auto-fetch is now handled by AppDataProvider
+  // Only fetch when explicitly requested
   useEffect(() => {
-    const unreadOnly = filter === 'unread';
-    notificationHook.fetchNotifications(20, 0, unreadOnly);
-  }, [filter, notificationHook.fetchNotifications]);
+    // Auto-fetch disabled - handled by AppDataProvider
+  }, []);
 
   // Close dropdown/center when clicking outside (handled by components)
   const closeAll = useCallback(() => {

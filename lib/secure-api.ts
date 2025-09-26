@@ -22,26 +22,133 @@ export const setAuthState = (authenticated: boolean): void => {
   isAuthenticatedCache = authenticated;
 };
 
+// Request queue for handling 401s
+interface QueuedRequest {
+  resolve: (value: Response) => void;
+  reject: (reason: any) => void;
+  endpoint: string;
+  options: RequestInit;
+  requireAuth: boolean;
+}
+
+let requestQueue: QueuedRequest[] = [];
+let isRefreshingAuth = false;
+let authPopupCallback: ((options?: any) => void) | null = null;
+
+// Register auth popup callback (called from AuthPopupProvider)
+export const registerAuthPopupCallback = (callback: (options?: any) => void): void => {
+  authPopupCallback = callback;
+};
+
+// Try to refresh token before showing auth error
+const tryRefreshToken = async (): Promise<boolean> => {
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        setAuthState(true);
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
+
 // Clear auth state (no redirect - let the layout handle it)
-const handleAuthError = (): void => {
+const handleAuthError = async (): Promise<boolean> => {
+  // If already refreshing, just return false
+  if (isRefreshingAuth) {
+    return false;
+  }
+
+  isRefreshingAuth = true;
+
+  // First try to refresh the token
+  const tokenRefreshed = await tryRefreshToken();
+
+  if (tokenRefreshed) {
+    // Token refresh successful
+    isRefreshingAuth = false;
+    processRequestQueue();
+    return true;
+  }
+
+  // Token refresh failed, now show auth popup
   isAuthenticatedCache = false;
 
-  // DON'T clear session data on API failures!
-  // This was causing auth to break when any API returned 401
-  // The user might still be logged in, just that specific API failed
+  // Show auth popup if registered
+  if (authPopupCallback) {
+    return new Promise((resolve) => {
+      authPopupCallback!({
+        title: "Session Expired",
+        description: "Your session has expired. Please sign in again to continue.",
+        onSuccess: () => {
+          // Auth successful, retry queued requests
+          isRefreshingAuth = false;
+          isAuthenticatedCache = true;
+          processRequestQueue();
+          resolve(true);
+        },
+        onClose: () => {
+          // Auth cancelled, fail queued requests
+          isRefreshingAuth = false;
+          failRequestQueue();
+          resolve(false);
+        }
+      });
+    });
+  }
 
-  // Only clear auth if we're absolutely sure the user is logged out
-  // Let the authenticated layout handle the actual logout
+  isRefreshingAuth = false;
+  return false;
+};
 
-  // Don't redirect here - let the authenticated layout handle redirects
-  // This prevents infinite loops when API calls fail
+// Process queued requests after successful re-auth
+const processRequestQueue = async (): Promise<void> => {
+  const queue = [...requestQueue];
+  requestQueue = [];
+
+  for (const request of queue) {
+    try {
+      const response = await secureApiCall(
+        request.endpoint,
+        request.options,
+        request.requireAuth
+      );
+      request.resolve(response);
+    } catch (error) {
+      request.reject(error);
+    }
+  }
+};
+
+// Fail all queued requests
+const failRequestQueue = (): void => {
+  const queue = [...requestQueue];
+  requestQueue = [];
+
+  for (const request of queue) {
+    request.reject(new Error('Authentication failed'));
+  }
 };
 
 // Cookie-based API call wrapper
 export const secureApiCall = async (
   endpoint: string,
   options: RequestInit = {},
-  requireAuth: boolean = true
+  requireAuth: boolean = true,
+  isRetry: boolean = false
 ): Promise<Response> => {
   // Always use relative URLs - goes through Next.js API routes
   const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -68,11 +175,30 @@ export const secureApiCall = async (
     });
 
     // Handle authentication errors
-    if (response.status === 401 && requireAuth) {
-      // Don't try to refresh - endpoint doesn't exist
-      // Just clear auth state and return error
-      handleAuthError();
-      throw new Error('Authentication failed - please login again');
+    if (response.status === 401 && requireAuth && !isRetry) {
+      // If already refreshing, queue this request
+      if (isRefreshingAuth) {
+        return new Promise((resolve, reject) => {
+          requestQueue.push({
+            resolve,
+            reject,
+            endpoint,
+            options,
+            requireAuth
+          });
+        });
+      }
+
+      // Try to refresh authentication
+      const authRestored = await handleAuthError();
+
+      if (authRestored) {
+        // Retry the request once after successful auth
+        return secureApiCall(endpoint, options, requireAuth, true);
+      } else {
+        // Auth failed or was cancelled
+        throw new Error('Authentication required');
+      }
     }
 
     return response;
@@ -200,6 +326,11 @@ export const secureApi = {
     }
     return { success: true };
   }
+};
+
+// Token refresh function (exported for external use)
+export const refreshToken = async (): Promise<boolean> => {
+  return tryRefreshToken();
 };
 
 // Session management functions (no tokens!)

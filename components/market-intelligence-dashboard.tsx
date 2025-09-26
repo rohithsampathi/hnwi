@@ -15,15 +15,15 @@ import { getMetallicCardStyle } from "@/lib/colors"
 import { secureApi } from "@/lib/secure-api"
 import { DevelopmentStream } from "@/components/development-stream"
 import { GoldenScroll } from "@/components/ui/golden-scroll"
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Building2, 
-  Coins, 
-  Bitcoin, 
-  CreditCard, 
-  PiggyBank, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Building2,
+  Coins,
+  Bitcoin,
+  CreditCard,
+  PiggyBank,
   Store,
   Filter,
   Clock,
@@ -42,6 +42,9 @@ import {
   Truck,
   ShieldCheck
 } from "lucide-react"
+import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
+import { extractDevIds } from "@/lib/parse-dev-citations"
+import type { Citation } from "@/lib/parse-dev-citations"
 
 interface IndustryTrend {
   industry: string
@@ -264,13 +267,82 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [totalDevelopments, setTotalDevelopments] = useState(0)
+
+  // Citation state
+  const [citations, setCitations] = useState<Citation[]>([])
+  const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null)
+  const [showCitationPanel, setShowCitationPanel] = useState(false)
+  const [globalCitationMap, setGlobalCitationMap] = useState<Map<string, number>>(new Map())
   
   // Mobile improvements state
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
   const [showStickySectors, setShowStickySectors] = useState(false)
-  
+
   const sectorsRef = useRef<HTMLDivElement>(null)
   const insiderBriefsRef = useRef<HTMLDivElement>(null)
+
+  // Handle citation click from development cards
+  const handleCitationClick = useCallback((citationId: string) => {
+    setSelectedCitationId(citationId)
+    setShowCitationPanel(true)
+  }, [])
+
+  // Handle citation selection from panel
+  const handleCitationSelect = useCallback((citationId: string) => {
+    setSelectedCitationId(citationId)
+  }, [])
+
+  // Handle development expansion and extract citations
+  const handleDevelopmentExpanded = useCallback((devId: string, isExpanded: boolean) => {
+    if (isExpanded) {
+      // Find the development
+      const dev = developments.find(d => d.id === devId)
+      if (dev && dev.summary) {
+        // Extract citations from the summary
+        const devIds = extractDevIds(dev.summary)
+        if (devIds.length > 0) {
+          // Build global citation map from all expanded developments
+          const globalMap = new Map<string, number>()
+          let citationNumber = 1
+
+          // First, collect all unique dev IDs from all currently expanded developments
+          const allUniqueDevIds = new Set<string>()
+          devIds.forEach(id => allUniqueDevIds.add(id))
+
+          // Assign numbers to unique dev IDs
+          Array.from(allUniqueDevIds).forEach(id => {
+            globalMap.set(id, citationNumber++)
+          })
+
+          // Create citations array with global numbers
+          const newCitations: Citation[] = devIds.map(id => ({
+            id,
+            number: globalMap.get(id)!,
+            originalText: `[Dev ID: ${id}]`
+          }))
+
+          setCitations(newCitations)
+          setGlobalCitationMap(globalMap)
+
+          // Auto-select first citation if panel is open
+          if (newCitations.length > 0 && showCitationPanel) {
+            setSelectedCitationId(newCitations[0].id)
+          }
+        } else {
+          // Clear citations if none found
+          setCitations([])
+          setGlobalCitationMap(new Map())
+          setSelectedCitationId(null)
+        }
+      }
+    } else {
+      // Clear citations when card is collapsed
+      setCitations([])
+      setGlobalCitationMap(new Map())
+      setSelectedCitationId(null)
+      setShowCitationPanel(false)
+    }
+  }, [developments, showCitationPanel])
   
   // Screen size detection for mobile/desktop check
   useEffect(() => {
@@ -754,7 +826,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           
           {/* Insider briefs - no internal scroll on mobile */}
           <div>
-            <DevelopmentStream 
+            <DevelopmentStream
               selectedIndustry={selectedIndustry}
               duration={selectedTimeRange}
               getIndustryColor={getIndustryColor}
@@ -765,6 +837,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               }}
               developments={developments}
               isLoading={isLoading}
+              onCitationClick={handleCitationClick}
+              onDevelopmentExpanded={handleDevelopmentExpanded}
             />
           </div>
         </div>
@@ -813,6 +887,22 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Mobile Citation Panel */}
+        {showCitationPanel && screenSize === 'mobile' && (
+          <AnimatePresence>
+            <EliteCitationPanel
+              citations={citations}
+              selectedCitationId={selectedCitationId}
+              onClose={() => {
+                setShowCitationPanel(false)
+                setCitations([])
+                setSelectedCitationId(null)
+              }}
+              onCitationSelect={handleCitationSelect}
+            />
+          </AnimatePresence>
+        )}
       </div>
     )
   }
@@ -820,10 +910,10 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   // Desktop layout (existing)
   return (
     <div className="w-full">
-      {/* Main Dashboard Content - No Background Style */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mt-4">
-        {/* Left Column - Activity Leaderboard (2 parts) */}
-        <div className="md:col-span-1 lg:col-span-2 h-full">
+      {/* Main Dashboard Content - Flex Layout for proper 3-column */}
+      <div className="flex flex-col lg:flex-row gap-8 mt-4">
+        {/* Left Column - Activity Leaderboard */}
+        <div className={`w-full ${showCitationPanel ? 'lg:w-[30%]' : 'lg:w-[40%]'} h-full flex-shrink-0 transition-all duration-300`}>
           <div className="h-full flex flex-col">
             {/* Header Section */}
             <div className="mb-3">
@@ -1020,8 +1110,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           </div>
         </div>
         
-        {/* Right Column - Insider Brief Stream (3 parts) */}
-        <div className="md:col-span-1 lg:col-span-3">
+        {/* Middle Column - Insider Brief Stream */}
+        <div className="w-full lg:flex-1 min-w-0">
           <div className="h-full flex flex-col">
             {/* Header Section */}
             <div className="mb-3">
@@ -1076,11 +1166,30 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   }}
                   developments={developments}
                   isLoading={isLoading}
+                  onCitationClick={handleCitationClick}
+                  onDevelopmentExpanded={handleDevelopmentExpanded}
+                  citationMap={globalCitationMap}
                 />
               </GoldenScroll>
             </div>
           </div>
         </div>
+
+        {/* Right Column - Citations Panel (Desktop Only) */}
+        {showCitationPanel && (
+          <div className="hidden lg:block">
+            <EliteCitationPanel
+              citations={citations}
+              selectedCitationId={selectedCitationId}
+              onClose={() => {
+                setShowCitationPanel(false)
+                setCitations([])
+                setSelectedCitationId(null)
+              }}
+              onCitationSelect={handleCitationSelect}
+            />
+          </div>
+        )}
       </div>
       
       {/* Footer disclaimer */}

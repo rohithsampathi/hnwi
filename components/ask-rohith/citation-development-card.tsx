@@ -124,7 +124,7 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
 
       let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
       formattedText = formattedText.replace(
-        /(Opportunities:|Risks:|Recommendations & Future Paths:|Winners:|Losers:)/g,
+        /(Opportunities:|Risks:|Recommendations & Future Paths:|Winners:|Losers:|Entry Point:|Potential Moves:|Entry Points:|Potential Move:)/g,
         "<strong>$1</strong>",
       )
 

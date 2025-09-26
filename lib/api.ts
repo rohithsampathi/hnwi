@@ -165,6 +165,18 @@ export interface Opportunity {
   pros?: string[];
   cons?: string[];
   fullAnalysis?: string;
+  // Victor analysis fields
+  victor_reasoning?: string;
+  strategic_insights?: string;
+  opportunity_window?: string;
+  risk_assessment?: string;
+  elite_pulse_alignment?: string;
+  key_factors?: string;
+  implementation?: string;
+  victor_action?: string;
+  confidence_level?: number;
+  victor_score?: string;
+  hnwi_alignment?: string;
 }
 
 export async function getOpportunities(): Promise<Opportunity[]> {
@@ -204,6 +216,8 @@ export interface CrownVaultAsset {
     location?: string;
     notes?: string;
     decryption_error?: boolean;
+    unit_count?: number;
+    cost_per_unit?: number;
   };
   heir_ids: string[];
   heir_names: string[];
@@ -212,17 +226,26 @@ export interface CrownVaultAsset {
   // Elite Pulse Intelligence Enhancement from Backend
   elite_pulse_impact?: {
     risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
-    ui_display: {
+    timestamp?: string;
+    ui_display?: {
       badge_text: string;
       tooltip_title: string;
       risk_indicator: string;
       risk_badge_color: string;
       concern_summary: string;
+      recommendation?: string;
     };
     asset_specific_threat?: string;
     recommended_action?: string;
     timeline?: string;
     katherine_analysis?: string;
+    // Nested Katherine AI Analysis (newer structure)
+    katherine_ai_analysis?: {
+      victor_reasoning?: string;
+      strategic_assessment?: string;
+      strategic_insights?: string;
+      risk_assessment?: string;
+    };
   };
 }
 
@@ -278,7 +301,7 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     // Pass owner_id as query parameter as required by the API endpoint
     const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
     const assets = data.assets || data || [];
-    
+
     // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
     return assets.filter((asset: any) => 
       asset && 
@@ -308,6 +331,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         unit_type: asset.unit_type,
         cost_per_unit: asset.cost_per_unit
       },
+      // Preserve elite_pulse_impact field from MongoDB
+      elite_pulse_impact: asset.elite_pulse_impact || null,
       heir_ids: asset.heir_ids || [],
       heir_names: asset.heir_names || [],
       created_at: asset.created_at || new Date().toISOString()
@@ -327,49 +352,57 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Fetch stats, heirs, and assets in parallel with 10-minute caching for optimal UX
-    // Backend expects owner_id parameter
-    const [statsData, heirsData, assetsData] = await Promise.all([
-      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null),
-      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => []),
-      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => [])
-    ]);
+    // ONLY fetch stats endpoint - do NOT fetch heirs and assets here
+    // The Crown Vault page already calls getCrownVaultAssets and getCrownVaultHeirs separately
+    const statsData = await secureApi.get(
+      `/api/crown-vault/stats?owner_id=${userId}`,
+      true,
+      { enableCache: true, cacheDuration: 600000 }
+    ).catch(() => null);
 
     if (!statsData) {
       throw new Error(`Error fetching Crown Vault stats`);
     }
 
-    // Backend returns direct array, not wrapped in {heirs: []}
-    const heirsArray = Array.isArray(heirsData) ? heirsData : (heirsData?.heirs || []);
-    const heirsCount = heirsArray.length;
-    
-    // Generate recent activity from assets data (most recent first)
-    const assetsArray = Array.isArray(assetsData) ? assetsData : [];
-    const recentActivity = assetsArray
-      .sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at || 0).getTime();
-        const dateB = new Date(b.created_at || 0).getTime();
-        return dateB - dateA; // Newest first
-      })
-      .slice(0, 5) // Take only 5 most recent
-      .map((asset: any) => ({
-        action: "asset_added",
-        asset_name: asset.asset_data?.name || 'Unnamed Asset',
-        timestamp: asset.created_at || new Date().toISOString(),
-        details: `Added ${asset.asset_data?.name || 'asset'} worth $${(asset.asset_data?.value || 0).toLocaleString()}`
-      }));
+    // No need to fetch heirs and assets data here
+    // The backend stats endpoint should already include total_heirs and recent_activity
     
 
     // Transform backend stats format to match frontend expectations
-    const finalStats = {
+    // Ensure proper format for asset_breakdown
+    const assetBreakdown: CrownVaultStats['asset_breakdown'] = {};
+    if (statsData.assets_by_type || statsData.asset_categories || statsData.asset_breakdown) {
+      const breakdown = statsData.assets_by_type || statsData.asset_categories || statsData.asset_breakdown || {};
+      for (const [key, value] of Object.entries(breakdown)) {
+        if (typeof value === 'object' && value !== null) {
+          assetBreakdown[key] = {
+            count: (value as any).count || 0,
+            total_value: (value as any).total_value || 0
+          };
+        }
+      }
+    }
+
+    // Ensure proper format for recent_activity
+    const recentActivity: CrownVaultStats['recent_activity'] = [];
+    if (Array.isArray(statsData.recent_activity)) {
+      recentActivity.push(...statsData.recent_activity.map((activity: any) => ({
+        action: activity.action || 'unknown',
+        asset_name: activity.asset_name,
+        timestamp: activity.timestamp || new Date().toISOString(),
+        details: activity.details || ''
+      })));
+    }
+
+    const finalStats: CrownVaultStats = {
       total_assets: statsData.total_assets || 0,
-      total_value: statsData.total_value_usd || 0,
-      total_heirs: heirsCount,
-      last_updated: statsData.last_snapshot || new Date().toISOString(),
-      asset_breakdown: statsData.assets_by_type || {},
-      recent_activity: recentActivity  // Generated from assets data
+      total_value: statsData.total_value_usd || statsData.total_value || 0,
+      total_heirs: statsData.total_heirs || 0,
+      last_updated: statsData.last_snapshot || statsData.last_updated || new Date().toISOString(),
+      asset_breakdown: assetBreakdown,
+      recent_activity: recentActivity
     };
-    
+
     return finalStats;
   } catch (error) {
     // Only log non-authentication errors to avoid console spam
@@ -450,14 +483,9 @@ export async function processCrownVaultAssetsBatch(
     // Backend gets user_id from authentication context, not query param
     const batchResult = await secureApi.post('/api/crown-vault/assets/batch', batchData);
     
-    // Get fresh data after successful batch processing (cache-busting)
-    const refreshedData = await Promise.all([
-      secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: false }),
-      secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: false }),
-      secureApi.get(`/api/crown-vault/stats?owner_id=${userId}`, true, { enableCache: false })
-    ]);
-    
-    return { ...batchResult, refreshedData };
+    // Return only the batch result - the calling component will refresh data if needed
+    // This avoids duplicate API calls when the page already loads this data
+    return batchResult;
   } catch (error) {
     throw error;
   }
@@ -645,12 +673,23 @@ export async function updateAssetHeirs(
 export async function updateCrownVaultAsset(
   assetId: string,
   updateData: Partial<{
-    name: string;
-    asset_type: string;
-    value: number;
-    currency: string;
-    location: string;
-    notes: string;
+    name?: string;
+    asset_type?: string;
+    unit_count?: number;
+    cost_per_unit?: number;
+    value?: number; // Keep for backward compatibility
+    currency?: string;
+    location?: string;
+    notes?: string;
+    structured_data?: {
+      name?: string;
+      asset_type?: string;
+      unit_count?: number;
+      cost_per_unit?: number;
+      currency?: string;
+      location?: string;
+      notes?: string;
+    };
   }>
 ): Promise<CrownVaultAsset> {
   try {
@@ -659,9 +698,21 @@ export async function updateCrownVaultAsset(
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
 
+    // If structured_data is provided, use it directly
+    // Otherwise, construct the payload from individual fields
+    const payload = updateData.structured_data ? updateData : {
+      name: updateData.name,
+      asset_type: updateData.asset_type,
+      unit_count: updateData.unit_count,
+      cost_per_unit: updateData.cost_per_unit,
+      currency: updateData.currency,
+      location: updateData.location,
+      notes: updateData.notes
+    };
+
     const result = await secureApi.put(
       `/api/crown-vault/assets/${assetId}`,
-      updateData,
+      payload,
       true
     );
 

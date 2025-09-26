@@ -2,7 +2,7 @@
 // API service layer for Ask Rohith feature with SOTA Graph integration
 
 import { secureApi, getCurrentUserId } from "@/lib/secure-api"
-import { getCrownVaultAssets, getCrownVaultStats } from "@/lib/api"
+// Removed Crown Vault imports - not needed for Ask Rohith
 import type {
   UserPortfolioContext,
   UserContextResponse,
@@ -50,25 +50,19 @@ export class RohithAPI {
         return cached.data
       }
 
-      // For now, load from existing Crown Vault and user APIs until SOTA Graph is ready
-      const [crownVaultStats, crownVaultAssets, userProfile] = await Promise.all([
-        getCrownVaultStats().catch(() => null),
-        getCrownVaultAssets().catch(() => []),
-        secureApi.get(`/api/users/${targetUserId}`, true, { enableCache: true, cacheDuration: 600000 }).catch(() => null)
-      ])
+      // Only load user profile, skip Crown Vault data for Ask Rohith
+      const userProfile = await secureApi.get(`/api/users/${targetUserId}`, true, {
+        enableCache: true,
+        cacheDuration: 600000
+      }).catch(() => null)
 
-      // Calculate portfolio metrics from Crown Vault data
-      const assets = Array.isArray(crownVaultAssets) ? crownVaultAssets : []
-      const stats = crownVaultStats || {}
-
-      // Data loaded successfully
-
-      const totalValue = stats.total_value || assets.reduce((sum: number, asset: any) => sum + (asset.asset_data?.value || 0), 0)
-      const realEstateAssets = assets.filter((asset: any) => asset.asset_data?.asset_type === 'Real Estate')
-      const preciousMetalsAssets = assets.filter((asset: any) => asset.asset_data?.asset_type === 'Precious Metals')
-
-      const realEstateValue = realEstateAssets.reduce((sum: number, asset: any) => sum + (asset.asset_data?.value || 0), 0)
-      const preciousMetalsValue = preciousMetalsAssets.reduce((sum: number, asset: any) => sum + (asset.asset_data?.value || 0), 0)
+      // Use placeholder data for portfolio metrics on Ask Rohith page
+      // This avoids loading Crown Vault data unnecessarily
+      const assets: any[] = []
+      const stats = {}
+      const totalValue = 0
+      const realEstateValue = 0
+      const preciousMetalsValue = 0
 
       const userContext: UserPortfolioContext = {
         userId: targetUserId,

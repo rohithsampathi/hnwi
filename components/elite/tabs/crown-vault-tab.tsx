@@ -3,139 +3,115 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Crown, Activity, AlertCircle, CheckCircle2, ArrowRight, Loader2, Clock, ChevronDown, ChevronUp, TrendingDown, TrendingUp, Shield } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
+import { CitationText } from "../citation-text"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/contexts/theme-context"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
 import { getMetallicCardStyle } from "@/lib/colors"
-import { getCrownVaultAssets, type CrownVaultAsset } from "@/lib/api"
-import { secureApi } from "@/lib/secure-api"
 import type { ProcessedIntelligenceData, User } from "@/types/dashboard"
 
 interface CrownVaultTabProps {
   data: ProcessedIntelligenceData
   onNavigate: (route: string) => void
   user: User
+  onCitationClick?: (citationId: string) => void
+  citations?: Array<{ id: string; number: number; originalText: string }>
 }
 
-export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
+export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citations = [] }: CrownVaultTabProps) {
   const { theme } = useTheme()
   const { showAuthPopup } = useAuthPopup()
   const metallicStyle = getMetallicCardStyle(theme)
-  
-  // State for fetching Crown Vault assets (parent doesn't load them)
-  const [assets, setAssets] = useState<CrownVaultAsset[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set())
-  
-  // Helper function to detect authentication errors
-  const isAuthenticationError = (error: any): boolean => {
-    const errorMessage = error?.message || error?.toString() || '';
-    return errorMessage.includes('Authentication required') || 
-           errorMessage.includes('please log in') || 
-           error?.status === 401;
-  };
-  
-  // Fetch Crown Vault assets with Elite Pulse impact data
-  useEffect(() => {
-    let isMounted = true;
-    
-    async function fetchAssetsWithImpact() {
-      if (!user?.userId) {
-        setLoading(false)
-        return
-      }
-      
-      try {
-        setLoading(true)
-        
-        // Use secureApi directly to call external backend with detailed assets
-        const detailedAssets = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${user.userId}`, true)
-        
-        
-        if (!isMounted) return;
-        
-        // Process assets to extract impact data following the real MongoDB structure
-        const processedAssets = detailedAssets.map((asset: any) => {
 
-          return {
-            ...asset,
-            id: asset._id || asset.id, // MongoDB uses _id
-            // Extract latest tags from tags array (tags[0].tags)
-            tags: asset.tags?.[0]?.tags || [],
-            // Elite Pulse impact data (direct from MongoDB)
-            elite_pulse_impact: asset.elite_pulse_impact,
-            // Asset basic info using MongoDB field structure
-            asset_data: {
-              name: asset.decrypted_data?.name || `${asset.unit_count} ${asset.unit_type}`,
-              asset_type: asset.unit_type,
-              value: asset.unit_count * asset.cost_per_unit,
-              unit_count: asset.unit_count,
-              unit_type: asset.unit_type,
-              cost_per_unit: asset.cost_per_unit,
-              ...asset.asset_data
-            },
-            // Calculate total value from MongoDB fields
-            total_value: asset.unit_count * asset.cost_per_unit
-          }
-        })
-        
-        setAssets(processedAssets)
-        setError(null)
-      } catch (err) {
-        if (!isMounted) return;
-        
-        
-        if (isAuthenticationError(err)) {
-          // Show auth popup instead of generic error
-          showAuthPopup({
-            title: "Authentication Required",
-            description: "Please sign in to view your Crown Vault impact analysis.",
-            onSuccess: () => {
-              // Retry loading data after successful login
-              setTimeout(() => {
-                fetchAssetsWithImpact();
-              }, 100);
-            }
-          });
-        } else {
-          setError('Failed to load Crown Vault impact analysis')
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-    
-    fetchAssetsWithImpact()
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.userId, showAuthPopup])
-  
-  const hasAssets = assets && assets.length > 0
-  
-  // Helper functions for asset cards
-  const toggleAssetExpansion = (assetId: string) => {
-    setExpandedAssets(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(assetId)) {
-        newSet.delete(assetId)
-      } else {
-        newSet.add(assetId)
-      }
-      return newSet
+  // Create citation map from global citations
+  const citationMap = useMemo(() => {
+    const map = new Map<string, number>()
+    citations.forEach(citation => {
+      map.set(citation.id, citation.number)
     })
-  }
+    return map
+  }, [citations])
+
+  // Use intelligence data from the hook
+
+  // Use real Crown Vault data from MongoDB first, analysis as fallback
+  const realCrownVaultAssets = data.realCrownVaultAssets || []
+  const realCrownVaultStats = data.realCrownVaultStats || {}
+  const crownVaultAnalysis = data.crownVaultAnalysis || {}
+  const analysisImpactedAssets = data.impactedAssets || []
+
+  // Prioritize real MongoDB data over analysis
+  const impactedAssets = realCrownVaultAssets.length > 0 ? realCrownVaultAssets : analysisImpactedAssets
+  const totalExposure = realCrownVaultStats.total_value || data.totalExposure
+  const crownVaultSummary = realCrownVaultStats.last_updated ?
+    `${realCrownVaultStats.total_assets} assets worth $${(realCrownVaultStats.total_value || 0).toLocaleString()}` :
+    data.crownVaultSummary
+
+
+  // Process assets data - use elite_pulse_impact from backend directly
+  const assets = impactedAssets.map((asset: any, index: number) => {
+    const assetValue = asset.total_value || asset.current_value || asset.value ||
+                      (asset.unit_count && asset.cost_per_unit ? asset.unit_count * asset.cost_per_unit : 0)
+
+    return {
+      ...asset,
+      id: asset.id || asset._id || asset.asset_id || `asset-${index}`,
+      // Real Crown Vault assets have asset_data structure
+      asset_data: asset.asset_data || {
+        name: asset.asset_name || asset.name || asset.decrypted_data?.name || `Asset ${index + 1}`,
+        asset_type: asset.asset_type || asset.type || asset.unit_type || 'Investment',
+        value: assetValue,
+        currency: asset.currency || 'USD',
+        location: asset.location || asset.decrypted_data?.location || '',
+        notes: asset.notes || asset.decrypted_data?.notes || ''
+      },
+      total_value: assetValue,
+      // Use elite_pulse_impact from backend if available
+      elite_pulse_impact: asset.elite_pulse_impact ? (() => {
+        const normalizedRiskLevel = asset.elite_pulse_impact.risk_level?.toUpperCase() || 'LOW';
+        return {
+          ...asset.elite_pulse_impact,
+          // Normalize risk_level to uppercase for consistency
+          risk_level: normalizedRiskLevel,
+          // Map backend fields to UI fields for consistency
+          risk_badge_color: asset.elite_pulse_impact.ui_display?.risk_badge_color ||
+                           (normalizedRiskLevel === 'HIGH' ? 'red' :
+                            normalizedRiskLevel === 'MEDIUM' ? 'orange' : 'green'),
+          key_concern: asset.elite_pulse_impact.analysis ||
+                      asset.elite_pulse_impact.ui_display?.concern_summary ||
+                      asset.elite_pulse_impact.asset_specific_threat ||
+                      'Latest portfolio analysis',
+          action_timeline: asset.elite_pulse_impact.timeline || 'Review recommended',
+          portfolio_conviction: 'High',
+          whisper_intelligence: asset.elite_pulse_impact.recommendation ||
+                              asset.elite_pulse_impact.recommended_action ||
+                              'Monitor asset performance closely',
+          confidence_score: asset.elite_pulse_impact.confidence_score ||
+                           asset.elite_pulse_impact.confidence_level ||
+                           (normalizedRiskLevel === 'HIGH' ? 0.85 :
+                            normalizedRiskLevel === 'MEDIUM' ? 0.75 : 0.65),
+          ui_display: asset.elite_pulse_impact.ui_display || {
+            badge_text: normalizedRiskLevel,
+            concern_summary: asset.elite_pulse_impact.analysis || asset.elite_pulse_impact.asset_specific_threat || '',
+            action_needed: asset.elite_pulse_impact.recommendation || asset.elite_pulse_impact.recommended_action || 'Monitor asset performance'
+          }
+        };
+      })() : null // If no elite_pulse_impact from backend, set to null to filter out later
+    }
+  })
+
+  const hasAssets = assets && assets.length > 0
+  const loading = false // Analysis data is already loaded
+
+
+  // Helper functions for asset cards
   
   const getRiskIcon = (riskLevel: string) => {
     switch(riskLevel) {
@@ -181,12 +157,13 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
         {hasAssets && (
           <div className="mt-6 space-y-4 max-w-4xl mx-auto">
             {(() => {
-              const assetsWithImpact = assets.filter((asset: any) => 
-                (asset.tags && asset.tags.length > 0) || asset.elite_pulse_impact
+              // Only count assets that have impact analysis from backend
+              const assetsWithImpact = assets.filter((asset: any) =>
+                asset.elite_pulse_impact !== null && asset.elite_pulse_impact !== undefined
               );
-              const criticalAssets = assets.filter((asset: any) => 
-                asset.elite_pulse_impact?.risk_level === 'HIGH' || 
-                asset.elite_pulse_impact?.risk_level === 'MEDIUM'
+              const criticalAssets = assets.filter((asset: any) =>
+                asset.elite_pulse_impact &&
+                asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH'
               );
               
               return (
@@ -201,16 +178,18 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                   
                   <div className="grid gap-4">
                     {assets
-                      .filter((asset: any) => 
-                        // Only show assets with HIGH or MEDIUM risk levels
-                        asset.elite_pulse_impact?.risk_level === 'HIGH' || 
-                        asset.elite_pulse_impact?.risk_level === 'MEDIUM'
+                      .filter((asset: any) =>
+                        // Only show assets with impact analysis from backend
+                        // AND with HIGH or MEDIUM risk levels (handle case variations)
+                        asset.elite_pulse_impact &&
+                        (asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH' ||
+                         asset.elite_pulse_impact.risk_level?.toUpperCase() === 'MEDIUM')
                       )
                 .sort((a: any, b: any) => {
-                  // Sort by risk level priority: HIGH > MEDIUM > LOW
+                  // Sort by risk level priority: HIGH > MEDIUM > LOW (handle case variations)
                   const riskPriority = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-                  const aRisk = riskPriority[a.elite_pulse_impact?.risk_level] || 0;
-                  const bRisk = riskPriority[b.elite_pulse_impact?.risk_level] || 0;
+                  const aRisk = riskPriority[a.elite_pulse_impact?.risk_level?.toUpperCase()] || 0;
+                  const bRisk = riskPriority[b.elite_pulse_impact?.risk_level?.toUpperCase()] || 0;
                   if (aRisk !== bRisk) return bRisk - aRisk;
                   
                   // Secondary sort by asset value for same risk level
@@ -225,7 +204,6 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                   const riskLevel = eliteImpact?.risk_level || 'LOW'
                   const riskColor = eliteImpact?.risk_badge_color || 'green'
                   const assetId = asset.id || asset.asset_id || `asset-${index}`
-                  const isExpanded = expandedAssets.has(assetId)
                   const actionUrgency = getActionUrgency(eliteImpact?.action_timeline)
                   
                   return (
@@ -236,19 +214,22 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                       className={cn(
                         metallicStyle.className,
-                        "text-left border-l-4 relative cursor-pointer transition-all duration-200",
-                        // Enhanced border colors for high impact using app primary colors
-                        riskColor === 'red' ? 'border-l-primary/80 shadow-lg shadow-primary/20' :
-                        riskColor === 'orange' ? 'border-l-primary/60 shadow-lg shadow-primary/15' : 
-                        'border-l-primary/40',
-                        // Special highlighting for HIGH risk assets using app primary colors
-                        riskLevel === 'HIGH' && 'ring-1 ring-primary/40 bg-primary/5',
-                        riskLevel === 'MEDIUM' && 'ring-1 ring-primary/30 bg-primary/3',
+                        "text-left border-l-4 relative transition-all duration-200 cursor-pointer",
                         // Hover effects
-                        'hover:shadow-lg hover:scale-[1.02] hover:ring-1 hover:ring-primary/20'
+                        'hover:shadow-lg hover:scale-[1.02]'
                       )}
-                      style={metallicStyle.style}
-                      onClick={() => toggleAssetExpansion(assetId)}
+                      style={{
+                        ...metallicStyle.style,
+                        borderLeftColor: riskLevel === 'HIGH'
+                          ? '#DC143C' // Ruby red
+                          : riskLevel === 'MEDIUM'
+                          ? '#FFB300' // Topaz amber
+                          : '#10B981' // Emerald green
+                      }}
+                      onClick={() => {
+                        // Navigate to Crown Vault page assets tab with asset ID as query param
+                        onNavigate(`crown-vault?tab=assets&asset=${assetId}`)
+                      }}
                     >
                       <div className="p-4">
                         {/* Asset Header */}
@@ -263,19 +244,42 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                               </div>
                               <div className="flex items-center space-x-2">
                                 {eliteImpact && (
-                                  <Badge 
-                                    variant="outline" 
+                                  <div
                                     className={cn(
-                                      "text-xs flex items-center space-x-1",
-                                      riskColor === 'red' ? 'border-primary/50 text-primary' :
-                                      riskColor === 'orange' ? 'border-primary/40 text-primary' :
-                                      'border-primary/30 text-primary'
+                                      "px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1",
+                                      "transition-all duration-300 hover:scale-105 hover:shadow-lg group",
+                                      riskLevel === 'HIGH' && "ring-2 ring-red-500/30 animate-hnwi-emphasis"
                                     )}
+                                    style={{
+                                      background: riskLevel === 'HIGH'
+                                        ? "linear-gradient(135deg, #DC143C 0%, #FF1744 25%, #B71C1C 50%, #FF1744 75%, #DC143C 100%)" // Metallic ruby
+                                        : riskLevel === 'MEDIUM'
+                                        ? "linear-gradient(135deg, #FFB300 0%, #FFC107 25%, #FF8F00 50%, #FFC107 75%, #FFB300 100%)" // Metallic topaz
+                                        : "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)", // Metallic emerald
+                                      border: riskLevel === 'HIGH'
+                                        ? "2px solid rgba(220, 20, 60, 0.5)"
+                                        : riskLevel === 'MEDIUM'
+                                        ? "2px solid rgba(255, 193, 7, 0.5)"
+                                        : "2px solid rgba(16, 185, 129, 0.5)",
+                                      boxShadow: riskLevel === 'HIGH'
+                                        ? "0 2px 8px rgba(220, 20, 60, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                        : riskLevel === 'MEDIUM'
+                                        ? "0 2px 8px rgba(255, 193, 7, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
+                                        : "0 2px 8px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+                                      color: "#ffffff",
+                                      textShadow: "0 1px 2px rgba(0, 0, 0, 0.4)"
+                                    }}
                                   >
-                                    <span>{riskLevel}</span>
-                                  </Badge>
+                                    {riskLevel === 'HIGH' ? (
+                                      <AlertCircle className="h-3 w-3" />
+                                    ) : riskLevel === 'MEDIUM' ? (
+                                      <Clock className="h-3 w-3" />
+                                    ) : (
+                                      <Shield className="h-3 w-3" />
+                                    )}
+                                    <span className="text-[10px] font-extrabold tracking-wide">{riskLevel} RISK</span>
+                                  </div>
                                 )}
-                                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                               </div>
                             </div>
                             
@@ -292,44 +296,9 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                           </div>
                         </div>
                         
-                        {/* Quick Impact Summary - Always Visible */}
-                        {eliteImpact && (
-                          <div className="mb-3 p-2 bg-muted/30 rounded">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <AlertCircle className={`h-3 w-3 ${
-                                riskColor === 'red' ? 'text-primary' :
-                                riskColor === 'orange' ? 'text-primary' : 'text-primary'
-                              }`} />
-                              <span className="text-xs font-medium text-primary">Key Concern</span>
-                              {eliteImpact.action_timeline && (
-                                <Badge 
-                                  variant="outline" 
-                                  className={cn(
-                                    "text-xs ml-auto",
-                                    actionUrgency === 'urgent' ? 'border-primary/50 text-primary' :
-                                    actionUrgency === 'moderate' ? 'border-primary/40 text-primary' :
-                                    'border-primary/30 text-primary'
-                                  )}
-                                >
-                                  {eliteImpact.action_timeline}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-xs text-foreground leading-relaxed">
-                              {eliteImpact.key_concern}
-                            </p>
-                          </div>
-                        )}
                         
-                        {/* Expandable Detailed Section */}
-                        {isExpanded && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="space-y-3 border-t border-border pt-3"
-                          >
+                        {/* Detailed Section - Always Visible */}
+                        <div className="space-y-3 border-t border-border pt-3 mt-3">
                             {/* Elite Pulse Details */}
                             {eliteImpact && (
                               <div className="space-y-2">
@@ -348,11 +317,11 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                                   </div>
                                 )}
                                 
-                                {eliteImpact.katherine_conviction && (
+                                {eliteImpact.portfolio_conviction && (
                                   <div className="flex items-center justify-between text-xs">
-                                    <span className="text-muted-foreground">HC Conviction</span>
+                                    <span className="text-muted-foreground">Portfolio Conviction</span>
                                     <Badge variant="outline" className="text-xs">
-                                      {eliteImpact.katherine_conviction}
+                                      {eliteImpact.portfolio_conviction}
                                     </Badge>
                                   </div>
                                 )}
@@ -364,53 +333,37 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                                       <span className="text-xs font-medium text-primary">Recommended Action</span>
                                     </div>
                                     <p className="text-xs text-foreground pl-5">
-                                      {eliteImpact.ui_display.action_needed}
+                                      <CitationText
+                                        text={eliteImpact.ui_display.action_needed}
+                                        onCitationClick={onCitationClick}
+                                        citationMap={citationMap}
+                                      />
                                     </p>
                                   </div>
                                 )}
                               </div>
                             )}
-                            
-                            
-                            {/* Whisper Intelligence */}
-                            {eliteImpact?.whisper_intelligence && (
-                              <div>
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Crown className="h-3 w-3 text-primary" />
-                                  <span className="text-xs font-medium text-primary">Key Finding</span>
-                                </div>
-                                <p className="text-xs text-foreground italic leading-relaxed">
-                                  "{eliteImpact.whisper_intelligence}"
-                                </p>
-                              </div>
-                            )}
-                          </motion.div>
-                        )}
-                        
-                        {/* Expand/Collapse Hint */}
-                        <div className="mt-2 text-center">
-                          <div className="text-xs text-muted-foreground flex items-center justify-center space-x-1">
-                            <span>Click to {isExpanded ? 'collapse' : 'expand'} details</span>
-                          </div>
                         </div>
+                        
                       </div>
                     </motion.div>
                   )
                 })}
                 
                     {/* No high/medium impact assets found */}
-                    {assets.length > 0 && assets.filter(asset => 
-                      asset.elite_pulse_impact?.risk_level === 'HIGH' || 
-                      asset.elite_pulse_impact?.risk_level === 'MEDIUM'
+                    {assets.length > 0 && assets.filter(asset =>
+                      asset.elite_pulse_impact &&
+                      (asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH' ||
+                       asset.elite_pulse_impact.risk_level?.toUpperCase() === 'MEDIUM')
                     ).length === 0 && (
                       <div className="text-center py-8">
                         <Shield className="h-12 w-12 text-green-500/60 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-foreground mb-2">No Critical Impact Assets</h3>
                         <p className="text-muted-foreground mb-4">
-                          Your portfolio currently shows no assets with high or medium risk impact levels.
+                          Your portfolio analysis shows no assets with high or medium risk levels requiring immediate attention.
                         </p>
                         <div className="text-xs text-muted-foreground">
-                          Elite Pulse analysis will appear here when risk factors are detected.
+                          Elite Pulse continuously monitors your portfolio for emerging risks.
                         </div>
                       </div>
                     )}
@@ -422,10 +375,10 @@ export function CrownVaultTab({ data, onNavigate, user }: CrownVaultTabProps) {
                         <div className="text-xs text-muted-foreground">
                           Impact analysis for {assetsWithImpact.length} assets ({criticalAssets.length} critical)
                         </div>
-                        <Button 
+                        <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => onNavigate('crown-vault')}
+                          onClick={() => onNavigate('crown-vault?tab=assets')}
                           className="hover:text-white"
                         >
                           <Crown className="h-3 w-3 mr-1" />

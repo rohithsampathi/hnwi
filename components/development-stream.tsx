@@ -14,6 +14,8 @@ import React from "react" // Import React to fix the undeclared JSX variable
 import { useTheme } from "@/contexts/theme-context"
 import { getCardColors, getMatteCardStyle, getMetallicCardStyle } from "@/lib/colors"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
+import { CitationText } from "@/components/elite/citation-text"
+import { parseDevCitations } from "@/lib/parse-dev-citations"
 
 interface Development {
   id: string
@@ -66,6 +68,9 @@ interface DevelopmentStreamProps {
   elitePulseBriefIds?: string[] // Elite Pulse source brief IDs for tagging
   showElitePulseOnly?: boolean // Filter to show only Elite Pulse developments
   elitePulseImpactFilter?: 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW' // Impact level filter
+  onCitationClick?: (citationId: string) => void // Handler for citation clicks
+  onDevelopmentExpanded?: (devId: string, isExpanded: boolean) => void // Handler for development card expansion
+  citationMap?: Map<string, number> // Global citation number mapping
 }
 
 // Component now receives data as props, no API calls needed
@@ -140,8 +145,11 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
       )
       
       let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
+      // Convert markdown bold (**text**) to HTML bold
+      formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Also bold formatting for specific side headings with colons
       formattedText = formattedText.replace(
-        /(Opportunities:|Risks:|Recommendations & Future Paths:|Winners:|Losers:)/g,
+        /(Winners:|Losers:|Potential Moves:|Opportunities:|Risks:|Recommendations & Future Paths:|Entry Point:|Entry Points:|Potential Move:)/g,
         "<strong>$1</strong>",
       )
 
@@ -217,6 +225,9 @@ export function DevelopmentStream({
   elitePulseBriefIds = [],
   showElitePulseOnly = false,
   elitePulseImpactFilter = 'ALL',
+  onCitationClick,
+  onDevelopmentExpanded,
+  citationMap,
 }: DevelopmentStreamProps) {
   
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
@@ -265,14 +276,20 @@ export function DevelopmentStream({
   };
 
   const toggleCardExpansion = (id: string) => {
-    setExpandedCards((prev) => ({ ...prev, [id]: !prev[id] }))
-    
+    const newExpandedState = !expandedCards[id]
+    setExpandedCards((prev) => ({ ...prev, [id]: newExpandedState }))
+
+    // Notify parent about expansion change
+    if (onDevelopmentExpanded) {
+      onDevelopmentExpanded(id, newExpandedState)
+    }
+
     // Scroll to the beginning of the card after a short delay
     setTimeout(() => {
       const cardElement = document.getElementById(`development-card-${id}`);
       if (cardElement) {
-        cardElement.scrollIntoView({ 
-          behavior: 'smooth', 
+        cardElement.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -283,11 +300,11 @@ export function DevelopmentStream({
 
   return (
     <div>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <CrownLoader size="lg" text="Loading development updates..." />
-          </div>
-        ) : error ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <CrownLoader size="lg" text="Loading development updates..." />
+        </div>
+      ) : error ? (
         <div className="text-center py-8">
           <p className="text-lg font-semibold text-red-500">{error}</p>
           <p className="text-sm text-muted-foreground mt-2">
@@ -425,7 +442,16 @@ export function DevelopmentStream({
                             <h4 className="text-xl font-bold">HByte Summary</h4>
                           </div>
                           <div className="text-sm leading-relaxed pl-2">
-                            <p className="font-medium">{analysis.summary}</p>
+                            {onCitationClick ? (
+                              <CitationText
+                                text={analysis.summary}
+                                onCitationClick={onCitationClick}
+                                className="font-medium"
+                                citationMap={citationMap}
+                              />
+                            ) : (
+                              <p className="font-medium">{analysis.summary}</p>
+                            )}
                           </div>
                         </div>
 
@@ -445,20 +471,38 @@ export function DevelopmentStream({
                                       {item.isBullet ? (
                                         <div className="flex items-start py-0.5">
                                           <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-green-500"></div>
-                                          <span 
-                                            className="leading-relaxed font-medium"
-                                            dangerouslySetInnerHTML={{
-                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                            }}
-                                          />
+                                          {onCitationClick ? (
+                                            <CitationText
+                                              text={item.text.replace(/<[^>]*>/g, '')}
+                                              onCitationClick={onCitationClick}
+                                              className="leading-relaxed font-medium"
+                                              citationMap={citationMap}
+                                            />
+                                          ) : (
+                                            <span
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text
+                                              }}
+                                            />
+                                          )}
                                         </div>
                                       ) : (
-                                        <p 
-                                          className="leading-relaxed font-medium"
-                                          dangerouslySetInnerHTML={{
-                                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                          }}
-                                        />
+                                        onCitationClick ? (
+                                          <CitationText
+                                            text={item.text.replace(/<[^>]*>/g, '')}
+                                            onCitationClick={onCitationClick}
+                                            className="leading-relaxed font-medium"
+                                            citationMap={citationMap}
+                                          />
+                                        ) : (
+                                          <p
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text
+                                            }}
+                                          />
+                                        )
                                       )}
                                     </div>
                                   ))}
@@ -479,20 +523,38 @@ export function DevelopmentStream({
                                       {item.isBullet ? (
                                         <div className="flex items-start py-0.5">
                                           <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-red-500"></div>
-                                          <span 
-                                            className="leading-relaxed font-medium"
-                                            dangerouslySetInnerHTML={{
-                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                            }}
-                                          />
+                                          {onCitationClick ? (
+                                            <CitationText
+                                              text={item.text.replace(/<[^>]*>/g, '')}
+                                              onCitationClick={onCitationClick}
+                                              className="leading-relaxed font-medium"
+                                              citationMap={citationMap}
+                                            />
+                                          ) : (
+                                            <span
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text
+                                              }}
+                                            />
+                                          )}
                                         </div>
                                       ) : (
-                                        <p 
-                                          className="leading-relaxed font-medium"
-                                          dangerouslySetInnerHTML={{
-                                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                          }}
-                                        />
+                                        onCitationClick ? (
+                                          <CitationText
+                                            text={item.text.replace(/<[^>]*>/g, '')}
+                                            onCitationClick={onCitationClick}
+                                            className="leading-relaxed font-medium"
+                                            citationMap={citationMap}
+                                          />
+                                        ) : (
+                                          <p
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text
+                                            }}
+                                          />
+                                        )
                                       )}
                                     </div>
                                   ))}
@@ -516,20 +578,38 @@ export function DevelopmentStream({
                                   {item.isBullet ? (
                                     <div className="flex items-start py-0.5">
                                       <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-yellow-500"></div>
-                                      <span 
+                                      {onCitationClick ? (
+                                        <CitationText
+                                          text={item.text}
+                                          onCitationClick={onCitationClick}
+                                          className="leading-relaxed font-medium"
+                                          citationMap={citationMap}
+                                        />
+                                      ) : (
+                                        <span
+                                          className="leading-relaxed font-medium"
+                                          dangerouslySetInnerHTML={{
+                                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+                                  ) : (
+                                    onCitationClick ? (
+                                      <CitationText
+                                        text={item.text}
+                                        onCitationClick={onCitationClick}
+                                        className="leading-relaxed font-medium"
+                                        citationMap={citationMap}
+                                      />
+                                    ) : (
+                                      <p
                                         className="leading-relaxed font-medium"
                                         dangerouslySetInnerHTML={{
                                           __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                         }}
                                       />
-                                    </div>
-                                  ) : (
-                                    <p 
-                                      className="leading-relaxed font-medium"
-                                      dangerouslySetInnerHTML={{
-                                        __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                      }}
-                                    />
+                                    )
                                   )}
                                 </div>
                               ))}
@@ -566,20 +646,38 @@ export function DevelopmentStream({
                                       {item.isBullet ? (
                                         <div className="flex items-start py-0.5">
                                           <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
-                                          <span 
-                                            className="leading-relaxed font-medium"
-                                            dangerouslySetInnerHTML={{
-                                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '$1')
-                                            }}
-                                          />
+                                          {onCitationClick ? (
+                                            <CitationText
+                                              text={item.text.replace(/<[^>]*>/g, '')}
+                                              onCitationClick={onCitationClick}
+                                              className="leading-relaxed font-medium"
+                                              citationMap={citationMap}
+                                            />
+                                          ) : (
+                                            <span
+                                              className="leading-relaxed font-medium"
+                                              dangerouslySetInnerHTML={{
+                                                __html: item.text
+                                              }}
+                                            />
+                                          )}
                                         </div>
                                       ) : (
-                                        <p 
-                                          className="leading-relaxed font-medium"
-                                          dangerouslySetInnerHTML={{
-                                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '$1')
-                                          }}
-                                        />
+                                        onCitationClick ? (
+                                          <CitationText
+                                            text={item.text.replace(/<[^>]*>/g, '')}
+                                            onCitationClick={onCitationClick}
+                                            className="leading-relaxed font-medium"
+                                            citationMap={citationMap}
+                                          />
+                                        ) : (
+                                          <p
+                                            className="leading-relaxed font-medium"
+                                            dangerouslySetInnerHTML={{
+                                              __html: item.text
+                                            }}
+                                          />
+                                        )
                                       )}
                                     </div>
                                   ))}

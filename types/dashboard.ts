@@ -48,26 +48,50 @@ export interface IntelligenceData {
 }
 
 export interface ProcessedIntelligenceData {
+  // Dashboard Summary Data (for metrics cards)
+  confidence: number
   opportunities: any[]
+  totalOpportunityValue: number
+  totalOpportunityValueDelta?: number
+  peerSignals: any
+  dashboardSummary?: any
+
+  // Victor Opportunities Data (for Opportunities tab)
+  victorOpportunities: any[]
   juicyOpportunities: any[]
   moderateOpportunities: any[]
   farFetchedOpportunities: any[]
-  peerSignals: any
-  totalOpportunityValue: number
-  executiveSummary: string
-  confidence: number
-  generatedAt: string
+
+  // Katherine Crown Vault Data (for Crown Vault Impact tab)
+  crownVaultAnalysis: any
+  crownVaultSummary: string
+  totalExposure: string
   impactedAssets: any[]
-  networkData: any
-  wealthFlowData: any
-  tier1Opportunities: any[]
-  tier2Opportunities: any[]
-  tier3Opportunities: any[]
+
+  // Intelligence Content Data (for Overview and display)
+  intelligenceSummary: any
+  dashboardFormat: any
+  executiveSummary: string
   marketIntelligence: string
   timingAnalysis: string
   assetAllocation: string
   implementationRoadmap: string
   fullRuschaData: string
+  generatedAt: string
+
+  // Structured Tier Opportunities
+  tier1Opportunities: any[]
+  tier2Opportunities: any[]
+  tier3Opportunities: any[]
+
+  // Elite Pulse Data
+  elitePulseData: any
+
+  // Legacy/Raw Data
+  rawIntelligence: any
+  rawIntelligenceData: any
+  networkData: any
+  wealthFlowData: any
 }
 
 export interface EliteMetricsData {

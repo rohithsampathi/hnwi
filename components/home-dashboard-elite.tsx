@@ -3,14 +3,17 @@
 
 "use client"
 
-import React, { Suspense, useState, useEffect, useRef } from "react"
+import React, { Suspense, useState, useEffect, useRef, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useIntelligenceData } from "@/hooks/use-intelligence-data"
 import { EliteTabs } from "./elite/elite-tabs"
 import { EliteFooter } from "./elite/elite-footer"
 import { CrownLoader } from "./ui/crown-loader"
 import { EliteErrorState } from "./elite/elite-error-state"
+import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
+import { parseDevCitations } from "@/lib/parse-dev-citations"
 import type { HomeDashboardEliteProps } from "@/types/dashboard"
+import type { Citation } from "@/lib/parse-dev-citations"
 
 export function HomeDashboardElite({ 
   user, 
@@ -20,15 +23,84 @@ export function HomeDashboardElite({
   const [activeTab, setActiveTab] = useState('overview')
   const [showStickyTabs, setShowStickyTabs] = useState(false)
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
+  const [showCitationsPanel, setShowCitationsPanel] = useState(false)
+  const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
 
-  const { 
-    data: intelligenceData, 
-    loading, 
-    error, 
+  // Home Dashboard needs Katherine, Victor analysis AND MongoDB Crown Vault data for Crown Vault Impact tab
+  const {
+    data: intelligenceData,
+    loading,
+    error,
     refreshing,
-    refresh 
-  } = useIntelligenceData(userData)
+    refresh
+  } = useIntelligenceData(userData, {
+    loadCrownVaultMongoDB: true,      // MongoDB data IS needed for Crown Vault Impact tab
+    loadKatherineAnalysis: true,       // Katherine analysis for Crown Vault Impact tab
+    loadVictorAnalysis: true           // Victor analysis for Opportunities tab
+  })
+
+  // Extract citations from all content in the intelligence data
+  const citations = useMemo(() => {
+    if (!intelligenceData) return []
+
+    const allCitations: Citation[] = []
+    const seenIds = new Set<string>()
+
+    // Helper to extract citations from any text content
+    const extractFromText = (text: string | undefined | null) => {
+      if (!text || typeof text !== 'string') return
+      const { citations: extractedCitations } = parseDevCitations(text)
+      extractedCitations.forEach(citation => {
+        if (!seenIds.has(citation.id)) {
+          seenIds.add(citation.id)
+          allCitations.push({
+            ...citation,
+            number: allCitations.length + 1 // Renumber sequentially
+          })
+        }
+      })
+    }
+
+    // Extract from all possible content sources
+    extractFromText(intelligenceData.executiveSummary)
+    extractFromText(intelligenceData.marketIntelligence)
+    extractFromText(intelligenceData.timingAnalysis)
+    extractFromText(intelligenceData.assetAllocation)
+    extractFromText(intelligenceData.implementationRoadmap)
+    extractFromText(intelligenceData.fullRuschaData)
+
+    // Extract from dashboard format sections
+    if (intelligenceData.dashboardFormat) {
+      Object.values(intelligenceData.dashboardFormat).forEach(section => {
+        extractFromText(section as string)
+      })
+    }
+
+    // Extract from Crown Vault summary
+    extractFromText(intelligenceData.crownVaultSummary)
+
+    // Extract from Victor opportunities
+    intelligenceData.victorOpportunities?.forEach((opp: any) => {
+      extractFromText(opp.victor_reasoning)
+      extractFromText(opp.analysis)
+      extractFromText(opp.description)
+    })
+
+    return allCitations
+  }, [intelligenceData])
+
+  // Handle citation click
+  const handleCitationClick = (citationId: string) => {
+    setSelectedCitationId(citationId)
+    setShowCitationsPanel(true)
+  }
+
+  // Handle citation panel close
+  const handleCloseCitations = () => {
+    setShowCitationsPanel(false)
+    setSelectedCitationId(null)
+  }
 
   // Screen size detection
   useEffect(() => {
@@ -107,30 +179,34 @@ export function HomeDashboardElite({
           <div className="hidden lg:block w-64 flex-shrink-0">
             <div className="sticky top-6">
               <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
-                <EliteTabs 
+                <EliteTabs
                   data={intelligenceData}
                   onNavigate={onNavigate}
                   user={user}
                   variant="sidebar"
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
+                  onCitationClick={handleCitationClick}
+                  citations={citations}
                 />
               </Suspense>
             </div>
           </div>
 
-          {/* Right Column - Content */}
+          {/* Middle Column - Content */}
           <div className="flex-1 min-w-0">
             {/* Mobile Tabs - Static */}
             <div className="lg:hidden py-2 mb-4" ref={tabsRef}>
               <Suspense fallback={<div className="h-10 animate-pulse bg-muted rounded-lg" />}>
-                <EliteTabs 
+                <EliteTabs
                   data={intelligenceData}
                   onNavigate={onNavigate}
                   user={user}
                   variant="mobile"
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
+                  onCitationClick={handleCitationClick}
+                  citations={citations}
                 />
               </Suspense>
             </div>
@@ -139,13 +215,15 @@ export function HomeDashboardElite({
             <div className="hidden lg:block">
               <div className="h-[calc(100vh-280px)] overflow-y-auto scrollbar-hide pr-2">
                 <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
-                  <EliteTabs 
+                  <EliteTabs
                     data={intelligenceData}
                     onNavigate={onNavigate}
                     user={user}
                     variant="content"
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
+                    onCitationClick={handleCitationClick}
+                    citations={citations}
                   />
                 </Suspense>
               </div>
@@ -154,17 +232,33 @@ export function HomeDashboardElite({
             {/* Mobile Content */}
             <div className="lg:hidden">
               <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
-                <EliteTabs 
+                <EliteTabs
                   data={intelligenceData}
                   onNavigate={onNavigate}
                   user={user}
                   variant="mobile-content"
                   activeTab={activeTab}
                   setActiveTab={setActiveTab}
+                  onCitationClick={handleCitationClick}
+                  citations={citations}
                 />
               </Suspense>
             </div>
           </div>
+
+          {/* Right Column - Citations Panel (Desktop) */}
+          <AnimatePresence>
+            {showCitationsPanel && citations.length > 0 && (
+              <div className="hidden lg:block">
+                <EliteCitationPanel
+                  citations={citations}
+                  selectedCitationId={selectedCitationId}
+                  onClose={handleCloseCitations}
+                  onCitationSelect={setSelectedCitationId}
+                />
+              </div>
+            )}
+          </AnimatePresence>
         </div>
 
         <EliteFooter user={user} />
@@ -185,13 +279,15 @@ export function HomeDashboardElite({
             }}
           >
             <Suspense fallback={<div className="h-8 animate-pulse bg-muted rounded-lg" />}>
-              <EliteTabs 
+              <EliteTabs
                 data={intelligenceData}
                 onNavigate={onNavigate}
                 user={user}
                 variant="mobile-sticky"
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
+                onCitationClick={handleCitationClick}
+                citations={citations}
               />
             </Suspense>
           </motion.div>

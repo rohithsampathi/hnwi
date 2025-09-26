@@ -15,7 +15,7 @@ import { SplashScreen } from "./splash-screen"
 import { OnboardingPage } from "./onboarding-page"
 import { ProfilePage } from "./profile-page"
 import { useOnboarding } from "@/contexts/onboarding-context"
-import { Layout } from "./layout/layout"
+// Layout is now handled by app/(authenticated)/layout.tsx
 import { ShieldLoader } from "./ui/shield-loader"
 import { StrategyEnginePage } from "./pages/strategy-engine-page"
 import { StrategyVaultPage } from "./pages/strategy-vault-page"
@@ -721,31 +721,19 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         )
 
       case "profile":
-        return (
-          user && (
-            <Layout title="" onNavigate={handleNavigation} currentPage="profile">
-              <ProfilePage user={user} onUpdateUser={handleUpdateUserClick} onLogout={handleLogoutClick} />
-            </Layout>
-          )
-        )
+        return user && <ProfilePage user={user} onUpdateUser={handleUpdateUserClick} onLogout={handleLogoutClick} />
 
       case "strategy-engine":
-        return (
-          <Layout title="" onNavigate={handleNavigation} currentPage="strategy-engine">
-            <StrategyEnginePage onNavigate={handleNavigation} />
-          </Layout>
-        )
+        return <StrategyEnginePage onNavigate={handleNavigation} />
 
       case "strategy-vault":
         return (
-          <Layout title="" onNavigate={handleNavigation} currentPage="strategy-vault">
-            <StrategyVaultPage 
-              onNavigate={handleNavigation}
-              selectedIndustry={selectedIndustry}
-              timeRange={timeRange}
-              expandedDevelopmentId={expandedDevelopmentId}
-            />
-          </Layout>
+          <StrategyVaultPage
+            onNavigate={handleNavigation}
+            selectedIndustry={selectedIndustry}
+            timeRange={timeRange}
+            expandedDevelopmentId={expandedDevelopmentId}
+          />
         )
 
 
@@ -757,11 +745,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         )
 
       case "prive-exchange":
-        return (
-          <Layout title="" onNavigate={handleNavigation} currentPage="prive-exchange">
-            <PriveExchangePage onNavigate={handleNavigation} />
-          </Layout>
-        )
+        return <PriveExchangePage onNavigate={handleNavigation} />
 
       case "calendar-page":
         return <CalendarPage onNavigate={handleNavigation} />
@@ -788,18 +772,10 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         />
 
       case "social-hub":
-        return (
-          <Layout title="" onNavigate={handleNavigation} currentPage="social-hub">
-            <SocialHubPage onNavigate={handleNavigation} />
-          </Layout>
-        )
+        return <SocialHubPage onNavigate={handleNavigation} />
 
       case "crown-vault":
-        return (
-          <Layout title="" onNavigate={handleNavigation} currentPage="crown-vault">
-            <CrownVaultPage onNavigate={handleNavigation} />
-          </Layout>
-        )
+        return <CrownVaultPage onNavigate={handleNavigation} />
 
       default:
         return <div>Page not found</div>

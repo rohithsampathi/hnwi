@@ -7,7 +7,6 @@ import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useTheme } from "@/contexts/theme-context"
 import { cn } from "@/lib/utils"
@@ -188,7 +187,7 @@ export function ConversationSidebar({
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-background border-r border-border",
+      "flex flex-col h-full max-h-full bg-background overflow-hidden",
       className
     )}>
 
@@ -217,7 +216,7 @@ export function ConversationSidebar({
       </div>
 
       {/* Conversations List - Scrollable Area */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll min-h-0 max-h-full">
         <div className="p-2 space-y-2">
           {isReloading ? (
             <div className="flex items-center justify-center py-8">
@@ -397,7 +396,7 @@ export function ConversationSidebar({
             </AnimatePresence>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer - Fixed at bottom */}
       <div className="flex-shrink-0 p-4 border-t border-border bg-background">

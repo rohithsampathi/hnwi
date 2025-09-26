@@ -304,8 +304,8 @@ export function AppShell() {
         
         return (
           <div className={transitionClass}>
-            <Layout title="" onNavigate={navigate} showBackButton={false} currentPage={currentPage}>
-              <ElitePulseDashboardNew 
+            <Layout title="" onNavigate={navigate} showBackButton={false} currentPage={currentPage} user={user}>
+              <ElitePulseDashboardNew
                 userData={user}
               />
             </Layout>
@@ -317,15 +317,16 @@ export function AppShell() {
         
         return (
           <div className={transitionClass}>
-            <Layout 
+            <Layout
               title={
                 <div className="flex items-center space-x-2">
                   <UserCircle2 className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                   <Heading2 className={`${theme === "dark" ? "text-white" : "text-black"}`}>Profile</Heading2>
                 </div>
               }
-              showBackButton 
+              showBackButton
               onNavigate={navigate}
+              user={user}
             >
               <ProfilePage user={user} onUpdateUser={handleUpdateUserClick} onLogout={handleLogoutClick} />
             </Layout>

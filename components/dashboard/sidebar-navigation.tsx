@@ -55,8 +55,14 @@ export function SidebarNavigation({
     return () => window.removeEventListener('resize', checkTabletSize)
   }, [])
 
-  // Fetch member analytics
+  // Fetch member analytics (skip on Ask Rohith page)
   useEffect(() => {
+    // Skip analytics fetch on Ask Rohith page
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (pathname.includes('/ask-rohith')) {
+      return;
+    }
+
     const fetchAnalytics = async () => {
       try {
         const analytics = await getMemberAnalytics();
@@ -64,7 +70,7 @@ export function SidebarNavigation({
       } catch (error) {
       }
     };
-    
+
     fetchAnalytics();
     // Refresh every 5 minutes
     const interval = setInterval(fetchAnalytics, 300000);
@@ -532,8 +538,8 @@ export function SidebarNavigation({
                 onClick={() => handleNavigate(item.route)}
               >
                 {item.isNew && (
-                  <span className="absolute top-1 right-1 text-[8px] bg-primary/20 text-primary px-1 py-0.5 rounded-full font-medium">
-                    New
+                  <span className="absolute -top-1 -right-1 text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold z-10">
+                    NEW
                   </span>
                 )}
                 <item.icon className={`h-6 w-6 mb-1 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />

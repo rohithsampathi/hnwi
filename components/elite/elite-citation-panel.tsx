@@ -1,21 +1,17 @@
-// components/ask-rohith/citation-panel.tsx
-// Third column panel for displaying development citations from messages
+// components/elite/elite-citation-panel.tsx
+// Elite dashboard citation panel with fixed height matching central column
 
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { CitationDevelopmentCard } from "./citation-development-card"
-import {
-  X,
-  FileText
-} from "lucide-react"
+import { CitationDevelopmentCard } from "@/components/ask-rohith/citation-development-card"
+import { X, FileText } from "lucide-react"
 import type { Citation } from "@/lib/parse-dev-citations"
-import { secureApi } from "@/lib/secure-api"
 import { cn } from "@/lib/utils"
 
 interface Development {
@@ -35,19 +31,19 @@ interface Development {
   }>
 }
 
-interface CitationPanelProps {
+interface EliteCitationPanelProps {
   citations: Citation[]
   selectedCitationId: string | null
   onClose: () => void
   onCitationSelect: (citationId: string) => void
 }
 
-export function CitationPanel({
+export function EliteCitationPanel({
   citations,
   selectedCitationId,
   onClose,
   onCitationSelect
-}: CitationPanelProps) {
+}: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
 
@@ -65,16 +61,14 @@ export function CitationPanel({
         for (const citationId of citationIds) {
           try {
             const response = await fetch(`/api/developments/public/${citationId}`, {
-              credentials: 'include' // CRITICAL: Send cookies with request
+              credentials: 'include'
             })
 
             if (response.ok) {
               const dev = await response.json()
-
-              // Handle both _id (MongoDB) and id formats
               const developmentId = dev._id || dev.id || citationId
 
-              newDevs.set(citationId, {  // Use citationId as the key since that's what we lookup with
+              newDevs.set(citationId, {
                 id: developmentId,
                 title: dev.title || dev.name || `Development ${developmentId}`,
                 description: dev.description || dev.summary?.substring(0, 200) || "Development details",
@@ -87,7 +81,6 @@ export function CitationPanel({
               })
             }
           } catch (err) {
-            // Skip individual failures
             continue
           }
         }
@@ -105,7 +98,7 @@ export function CitationPanel({
 
   return (
     <>
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay Background */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -114,20 +107,16 @@ export function CitationPanel({
         onClick={onClose}
       />
 
-      {/* Desktop Panel - Traditional 3-column sidebar */}
+      {/* Desktop Panel - Sidebar in third column */}
       <motion.div
         initial={{ width: 0, opacity: 0 }}
-        animate={{ width: "min(400px, 30vw)", opacity: 1 }}
+        animate={{ width: 320, opacity: 1 }}
         exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden md:flex h-[calc(100vh-280px)] bg-background border-l border-border flex-col overflow-hidden"
-        style={{
-          position: 'sticky',
-          top: '24px'
-        }}
+        className="hidden md:flex w-[320px] flex-col bg-background border-l border-border h-[calc(100vh-280px)] sticky top-6"
       >
         {/* Desktop Header */}
-        <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
@@ -140,7 +129,7 @@ export function CitationPanel({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="h-8 w-8 p-0 hover:text-white"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -148,36 +137,38 @@ export function CitationPanel({
         </div>
 
         {/* Desktop Citation Tabs */}
-        <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="flex gap-1 overflow-x-auto">
-            {citations.map((citation) => (
-              <Button
-                key={citation.id}
-                variant={selectedCitationId === citation.id ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onCitationSelect(citation.id)}
-                className={cn(
-                  "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0",
-                  selectedCitationId === citation.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted-foreground/10"
-                )}
-              >
-                [{citation.number}]
-              </Button>
-            ))}
+        <div className="px-3 py-3 border-b border-border bg-muted/30 flex-shrink-0">
+          <div className="overflow-x-auto scrollbar-hide max-w-full">
+            <div className="flex gap-1 pb-1 min-w-max">
+              {citations.map((citation) => (
+                <Button
+                  key={citation.id}
+                  variant={selectedCitationId === citation.id ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onCitationSelect(citation.id)}
+                  className={cn(
+                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
+                    selectedCitationId === citation.id
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted-foreground/10"
+                  )}
+                >
+                  [{citation.number}]
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Desktop Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4">
+        <ScrollArea className="flex-1 px-4">
+          <div className="py-4">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <CrownLoader size="sm" text="Loading source..." />
               </div>
             ) : (
-              <AnimatePresence mode="wait">
+              <>
                 {selectedCitationId && (
                   <motion.div
                     key={selectedCitationId}
@@ -200,13 +191,13 @@ export function CitationPanel({
                       return (
                         <CitationDevelopmentCard
                           development={dev}
-                          citationNumber={undefined}
+                          citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
                         />
                       )
                     })()}
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </>
             )}
           </div>
         </ScrollArea>
@@ -220,7 +211,7 @@ export function CitationPanel({
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="md:hidden fixed inset-0 w-full z-50 h-full bg-background flex flex-col overflow-hidden"
       >
-        {/* Mobile Header */}
+        {/* Mobile Header with Close Button */}
         <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -234,7 +225,7 @@ export function CitationPanel({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-10 w-10 p-0 hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="h-10 w-10 p-0"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -243,23 +234,25 @@ export function CitationPanel({
 
         {/* Mobile Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="flex gap-1 overflow-x-auto">
-            {citations.map((citation) => (
-              <Button
-                key={citation.id}
-                variant={selectedCitationId === citation.id ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onCitationSelect(citation.id)}
-                className={cn(
-                  "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0",
-                  selectedCitationId === citation.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted-foreground/10"
-                )}
-              >
-                [{citation.number}]
-              </Button>
-            ))}
+          <div className="overflow-x-auto scrollbar-hide max-w-full">
+            <div className="flex gap-1 pb-1 min-w-max">
+              {citations.map((citation) => (
+                <Button
+                  key={citation.id}
+                  variant={selectedCitationId === citation.id ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onCitationSelect(citation.id)}
+                  className={cn(
+                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
+                    selectedCitationId === citation.id
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-muted-foreground/10"
+                  )}
+                >
+                  [{citation.number}]
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -271,7 +264,7 @@ export function CitationPanel({
                 <CrownLoader size="sm" text="Loading source..." />
               </div>
             ) : (
-              <AnimatePresence mode="wait">
+              <>
                 {selectedCitationId && (
                   <motion.div
                     key={selectedCitationId}
@@ -294,13 +287,13 @@ export function CitationPanel({
                       return (
                         <CitationDevelopmentCard
                           development={dev}
-                          citationNumber={undefined}
+                          citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
                         />
                       )
                     })()}
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </>
             )}
           </div>
         </ScrollArea>
@@ -308,5 +301,3 @@ export function CitationPanel({
     </>
   )
 }
-
-export default CitationPanel

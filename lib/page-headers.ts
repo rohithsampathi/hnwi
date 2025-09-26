@@ -98,14 +98,18 @@ export const NO_HEADER_ROUTES = [
 
 // Generate personalized greeting for dashboard
 function getDashboardGreeting(user: any): string {
-  if (!user?.name && !user?.firstName) return "Welcome back"
-  
-  const name = user.firstName || user.name || "there"
+  // Use exact same logic as EliteFooter which works correctly
+  const firstName = user?.firstName || user?.first_name || user?.name || user?.email?.split('@')[0] || 'User'
+  const lastName = user?.lastName || user?.last_name || ''
+  const fullName = lastName ? `${firstName} ${lastName}` : firstName
+
   const hour = new Date().getHours()
-  
-  if (hour < 12) return `Good morning, ${name}`
-  if (hour < 17) return `Good afternoon, ${name}`
-  return `Good evening, ${name}`
+
+  if (hour < 6) return `Midnight Wealth Watchlist, ${fullName}`
+  if (hour < 12) return `Morning Intelligence Brief, ${fullName}`
+  if (hour < 17) return `Midday Market Synthesis, ${fullName}`
+  if (hour < 22) return `Evening Capital Insights, ${fullName}`
+  return `Night Watch: Global Capital Flow, ${fullName}`
 }
 
 export function getPageHeader(pathname: string, user?: any): PageHeaderConfig | null {

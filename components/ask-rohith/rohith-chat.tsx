@@ -3,7 +3,7 @@
 
 "use client"
 
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,9 +61,9 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [showQuickPrompts, setShowQuickPrompts] = useState(true)
   const [showCitationPanel, setShowCitationPanel] = useState(false)
-  const [globalCitations, setGlobalCitations] = useState<Map<string, Citation>>(new Map())
   const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
 
   const {
     // Core state
@@ -107,6 +107,23 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
       }
     }
   }, [currentMessages.length, shouldAutoScroll, lastMessageCount])
+
+  // Track window width for responsive layout priority
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth
+      setWindowWidth(width)
+
+      // Priority 1: Hide sidebar only on small screens (below 768px)
+      // Let it shrink naturally on medium screens instead
+      if (width < 768) {
+        setSidebarCollapsed(true)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Focus input on component mount (but don't scroll to top)
   useEffect(() => {
@@ -241,15 +258,22 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
     return `Hello ${personalDetails.name}! I'm Rohith, your private intelligence ally. I'm aware of your ${portfolio.totalValue} portfolio with ${portfolio.totalAssets} assets and have access to ${portfolio.marketIntelligenceReports} market intelligence analyses. What can I help you with today?`
   }
 
-  // Parse all citations globally whenever messages change
-  useEffect(() => {
+  // Create stable dependency for citation processing - only assistant messages with content
+  const assistantMessages = useMemo(() => {
+    return currentMessages
+      .filter(msg => msg.role === "assistant" && msg.content && !msg.content.startsWith("..."))
+      .map(msg => msg.content)
+  }, [currentMessages])
+
+  // Parse all citations globally whenever assistant message content changes (memoized to prevent unnecessary updates)
+  const globalCitations = useMemo(() => {
     const allCitations = new Map<string, Citation>()
     let citationNumber = 1
 
-    // Go through all messages in order to build global citation map
-    currentMessages.forEach(msg => {
+    // Go through all assistant messages to build global citation map
+    assistantMessages.forEach(content => {
       // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
-      const hasCitations = msg.role === "assistant" && (msg.content.includes("[Dev ID:") || msg.content.includes("[DEVID -"))
+      const hasCitations = content.includes("[Dev ID:") || content.includes("[DEVID -")
 
       if (hasCitations) {
         // Support both citation formats
@@ -262,7 +286,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
           pattern.lastIndex = 0 // Reset pattern
           let match
 
-          while ((match = pattern.exec(msg.content)) !== null) {
+          while ((match = pattern.exec(content)) !== null) {
             const devId = match[1].trim()
 
             // Only add if we haven't seen this Dev ID before
@@ -278,8 +302,11 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
       }
     })
 
-    setGlobalCitations(allCitations)
-  }, [currentMessages])
+    return allCitations
+  }, [assistantMessages])
+
+  // Memoize citations array to prevent unnecessary re-renders
+  const citationsArray = useMemo(() => Array.from(globalCitations.values()), [globalCitations])
 
   const handleCitationClick = (citationId: string) => {
     setSelectedCitationId(citationId)
@@ -292,7 +319,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
   }
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="flex h-screen bg-background relative overflow-hidden max-h-screen">
       {/* Conversation Sidebar */}
       <AnimatePresence>
         {!sidebarCollapsed && (
@@ -308,13 +335,12 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
 
             {/* Sidebar - Independent scroll, flex-based */}
             <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 320, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              initial={{ x: -384 }}
+              animate={{ x: 0 }}
+              exit={{ x: -384 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="flex-shrink-0 bg-background border-r border-border z-10 overflow-hidden h-screen"
+              className="fixed md:relative top-0 left-0 w-96 xl:w-80 lg:w-72 md:w-64 h-screen md:h-full bg-background border-r border-border z-50 md:z-10 flex flex-col flex-shrink-0 max-h-screen overflow-hidden"
             >
-              <div className="w-80 h-full">
                 <ConversationSidebar
                   conversations={conversations}
                   activeConversationId={activeConversationId}
@@ -337,15 +363,15 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                   onUpdateConversationTitle={updateConversationTitle}
                   onReloadConversations={loadConversations}
                   isLoading={isConversationsLoading}
+                  className="h-full"
                 />
-              </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col relative min-w-0">
+      {/* Main Content Area - Always maintains full width, never shrinks */}
+      <div className="flex-1 flex flex-col relative min-w-0 max-w-none flex-grow">
         {/* Header Actions Bar */}
         <div className="bg-background/95 backdrop-blur-sm border-b border-border/50 flex-shrink-0 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-6 py-4">
@@ -615,15 +641,30 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
         )}
       </div>
 
-      {/* Citation Panel - Third Column */}
-      <AnimatePresence>
-        {showCitationPanel && (
+      {/* Citation Panel - Third Column - Hide only on mobile (below 768px) */}
+      <AnimatePresence mode="wait">
+        {showCitationPanel && windowWidth >= 768 && (
           <CitationPanel
-            citations={Array.from(globalCitations.values())}
+            key="desktop-citation-panel"
+            citations={citationsArray}
             selectedCitationId={selectedCitationId}
             onClose={handleCloseCitationPanel}
             onCitationSelect={setSelectedCitationId}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Citation Panel - Full Screen Overlay - Only on mobile */}
+      <AnimatePresence>
+        {showCitationPanel && windowWidth < 768 && (
+          <div key="mobile-citation-panel" className="fixed inset-0 z-50">
+            <CitationPanel
+              citations={citationsArray}
+              selectedCitationId={selectedCitationId}
+              onClose={handleCloseCitationPanel}
+              onCitationSelect={setSelectedCitationId}
+            />
+          </div>
         )}
       </AnimatePresence>
     </div>
