@@ -4,8 +4,21 @@
 // Backend URL is ONLY available server-side
 // Client-side always uses relative URLs through Next.js API routes
 
-// This should only be used in API routes, never in client code
+// SECURITY: This should ONLY be used in API routes, NEVER in client code
+// Client components MUST use secureApi which forces relative URLs
+if (typeof window !== 'undefined') {
+  throw new Error('API_BASE_URL cannot be imported in client-side code. Use secureApi instead.')
+}
+
 export const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
+
+// Validate API base URL is accessible (development only)
+if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {
+  // Quick connectivity check for development
+  fetch(API_BASE_URL + '/health', { method: 'HEAD' }).catch(() => {
+    console.warn('Backend might be unreachable at:', API_BASE_URL)
+  })
+}
 
 
 // Helper to create safe error messages without URL exposure

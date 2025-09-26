@@ -68,8 +68,14 @@ async function handler(request: NextRequest) {
       }
     }
 
-    // Make the request to the backend
-    const backendResponse = await fetch(backendUrl, options)
+    // Make the request to the backend with timeout and error handling
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+    const backendResponse = await fetch(backendUrl, {
+      ...options,
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId))
 
     // Get the response body
     let responseBody
@@ -120,9 +126,30 @@ async function handler(request: NextRequest) {
 
     return response
   } catch (error) {
+    // Better error handling for production debugging
+    let errorMessage = 'Failed to proxy request to backend'
+    let statusCode = 500
+
+    if (error.name === 'AbortError') {
+      errorMessage = 'Backend request timeout'
+      statusCode = 504
+    } else if (error.message?.includes('fetch')) {
+      errorMessage = 'Backend service unavailable'
+      statusCode = 503
+    }
+
+    // Log errors in development for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Proxy error:', error, 'URL:', backendUrl)
+    }
+
     return NextResponse.json(
-      { error: 'Failed to proxy request to backend' },
-      { status: 500 }
+      {
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        path: pathSegments.join('/')
+      },
+      { status: statusCode }
     )
   }
 }

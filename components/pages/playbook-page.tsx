@@ -57,15 +57,7 @@ export function PlaybookPage({
   const fetchPlaybook = useCallback(async () => {
     setIsLoading(true)
     try {
-      // Auth via cookies
-      const headers: HeadersInit = {
-        "Content-Type": "application/json"
-      }
-      
-      if (token) {
-        headers.Authorization = `Bearer ${token}`
-      }
-
+      // Use secure API which handles authentication via cookies
       const data = await secureApi.get(`/api/reports/${playbookId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for individual reports
       
       setReport({

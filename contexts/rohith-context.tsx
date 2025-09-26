@@ -365,18 +365,30 @@ export function RohithProvider({ children }: RohithProviderProps) {
         }
 
       } catch (error) {
+        // Main API call failed - try background sync as fallback only if available
+        let backgroundSyncWorked = false
+
         try {
-          // If direct API call fails, try background sync
-          await BackgroundSyncService.queueMessageSend(
-            `/api/rohith/message/${state.activeConversationId}`,
-            { message, conversationId: state.activeConversationId }
-          )
-
-          dispatch({ type: "SET_ERROR", payload: "Message queued for when you're back online." })
+          // Only attempt background sync if it's available and working
+          // This prevents IndexedDB errors from breaking the main flow
+          if (typeof window !== 'undefined' && window.indexedDB && BackgroundSyncService.isSupported()) {
+            await BackgroundSyncService.queueMessageSend(
+              `/api/rohith/message/${state.activeConversationId}`,
+              { message, conversationId: state.activeConversationId }
+            )
+            backgroundSyncWorked = true
+            dispatch({ type: "SET_ERROR", payload: "Message queued for when you're back online." })
+          }
         } catch (syncError) {
-          dispatch({ type: "SET_ERROR", payload: "Failed to send message. Please try again." })
+          // Background sync failed - this is expected in production if PWA isn't working
+          backgroundSyncWorked = false
+        }
 
-          // Remove the user message that was optimistically added if both sending and sync failed
+        // If background sync didn't work, show main error and remove optimistic message
+        if (!backgroundSyncWorked) {
+          dispatch({ type: "SET_ERROR", payload: "Failed to send message. Please check your connection and try again." })
+
+          // Remove the user message that was optimistically added
           const currentMessages = state.currentMessages
           const updatedMessages = currentMessages.slice(0, -1) // Remove last message (the user message we just added)
           dispatch({ type: "SET_CURRENT_MESSAGES", payload: updatedMessages })

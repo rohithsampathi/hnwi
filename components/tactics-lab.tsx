@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { API_BASE_URL } from "@/config/api"
-import { getValidToken } from "@/lib/auth-utils"
+import { secureApi } from "@/lib/secure-api"
 import { motion, AnimatePresence } from "framer-motion"
 import { Loader2, Lightbulb, ExternalLink, FileText, ChevronRight, Brain, Sparkles, Zap, TrendingUp } from "lucide-react"
 import { StrategicDashboard } from "./strategic-dashboard"
@@ -21,24 +20,6 @@ import { useTheme } from "@/contexts/theme-context"
 import { StrategyAtomAnimation } from "./strategy-atom-animation"
 import { Heading2, Heading3, Paragraph } from "@/components/ui/typography"
 
-const fetchWithTimeout = async (url: string, options: RequestInit, timeout = 180000, retries = 3) => {
-  const controller = new AbortController()
-  const id = setTimeout(() => controller.abort(), timeout)
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      })
-      clearTimeout(id)
-      return response
-    } catch (error) {
-      if (i === retries - 1) throw error
-      await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, i))) // Exponential backoff
-    }
-  }
-}
 
 const CyclingIcons = () => {
   const [currentIcon, setCurrentIcon] = useState(0)
@@ -88,34 +69,18 @@ export function TacticsLab() {
       setIsFirstQuestion(false)
 
       try {
-        const token = getValidToken();
-        if (!token) {
-          throw new Error("Authentication required. Please log in to use Strategy Engine.");
-        }
-
-        const response = await fetchWithTimeout(
-          `${API_BASE_URL}/api/chat/strategic-analysis`,
+        // Use secure API that handles authentication and routing properly
+        const response = await secureApi.post(
+          "/api/chat/strategic-analysis",
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              query: query,
-              time_range: timeRange
-            }),
+            query: query,
+            time_range: timeRange
           },
-          180000, // Updated timeout to 3 minutes
-          3,
+          true, // requireAuth
+          { enableCache: false }
         )
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-        }
-
-        const data: StrategicAnalysisResponse = await response.json()
+        const data: StrategicAnalysisResponse = response
         if (!data || typeof data !== "object") {
           throw new Error("Invalid response format")
         }

@@ -116,30 +116,51 @@ export class BackgroundSyncService {
   // Store sync data in IndexedDB
   private static async storeSyncData(data: SyncData): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.SYNC_STORE_NAME, 1)
+      const request = indexedDB.open(this.SYNC_STORE_NAME, 2) // Increment version to force upgrade
 
       request.onerror = () => reject(request.error)
 
       request.onupgradeneeded = () => {
         const db = request.result
-        if (!db.objectStoreNames.contains('sync_queue')) {
-          db.createObjectStore('sync_queue', { keyPath: 'id' })
+        // Clear old object stores if they exist to avoid conflicts
+        if (db.objectStoreNames.contains('sync_queue')) {
+          db.deleteObjectStore('sync_queue')
         }
+        // Create new object store
+        db.createObjectStore('sync_queue', { keyPath: 'id' })
       }
 
       request.onsuccess = () => {
         const db = request.result
-        const transaction = db.transaction(['sync_queue'], 'readwrite')
-        const store = transaction.objectStore('sync_queue')
 
-        const putRequest = store.put(data)
-        putRequest.onsuccess = () => {
+        // Check if object store exists before creating transaction
+        if (!db.objectStoreNames.contains('sync_queue')) {
           db.close()
-          resolve()
+          reject(new Error('Object store sync_queue not found'))
+          return
         }
-        putRequest.onerror = () => {
+
+        try {
+          const transaction = db.transaction(['sync_queue'], 'readwrite')
+          const store = transaction.objectStore('sync_queue')
+
+          const putRequest = store.put(data)
+          putRequest.onsuccess = () => {
+            db.close()
+            resolve()
+          }
+          putRequest.onerror = () => {
+            db.close()
+            reject(putRequest.error)
+          }
+
+          transaction.onerror = () => {
+            db.close()
+            reject(transaction.error)
+          }
+        } catch (error) {
           db.close()
-          reject(putRequest.error)
+          reject(error)
         }
       }
     })
@@ -148,23 +169,51 @@ export class BackgroundSyncService {
   // Remove sync data from IndexedDB
   private static async removeSyncData(id: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.SYNC_STORE_NAME, 1)
+      const request = indexedDB.open(this.SYNC_STORE_NAME, 2)
 
       request.onerror = () => reject(request.error)
 
+      request.onupgradeneeded = () => {
+        const db = request.result
+        // Clear old object stores if they exist to avoid conflicts
+        if (db.objectStoreNames.contains('sync_queue')) {
+          db.deleteObjectStore('sync_queue')
+        }
+        // Create new object store
+        db.createObjectStore('sync_queue', { keyPath: 'id' })
+      }
+
       request.onsuccess = () => {
         const db = request.result
-        const transaction = db.transaction(['sync_queue'], 'readwrite')
-        const store = transaction.objectStore('sync_queue')
 
-        const deleteRequest = store.delete(id)
-        deleteRequest.onsuccess = () => {
+        // Check if object store exists before creating transaction
+        if (!db.objectStoreNames.contains('sync_queue')) {
           db.close()
-          resolve()
+          reject(new Error('Object store sync_queue not found'))
+          return
         }
-        deleteRequest.onerror = () => {
+
+        try {
+          const transaction = db.transaction(['sync_queue'], 'readwrite')
+          const store = transaction.objectStore('sync_queue')
+
+          const deleteRequest = store.delete(id)
+          deleteRequest.onsuccess = () => {
+            db.close()
+            resolve()
+          }
+          deleteRequest.onerror = () => {
+            db.close()
+            reject(deleteRequest.error)
+          }
+
+          transaction.onerror = () => {
+            db.close()
+            reject(transaction.error)
+          }
+        } catch (error) {
           db.close()
-          reject(deleteRequest.error)
+          reject(error)
         }
       }
     })
@@ -173,23 +222,51 @@ export class BackgroundSyncService {
   // Get all pending sync data
   static async getPendingSyncData(): Promise<SyncData[]> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.SYNC_STORE_NAME, 1)
+      const request = indexedDB.open(this.SYNC_STORE_NAME, 2)
 
       request.onerror = () => reject(request.error)
 
+      request.onupgradeneeded = () => {
+        const db = request.result
+        // Clear old object stores if they exist to avoid conflicts
+        if (db.objectStoreNames.contains('sync_queue')) {
+          db.deleteObjectStore('sync_queue')
+        }
+        // Create new object store
+        db.createObjectStore('sync_queue', { keyPath: 'id' })
+      }
+
       request.onsuccess = () => {
         const db = request.result
-        const transaction = db.transaction(['sync_queue'], 'readonly')
-        const store = transaction.objectStore('sync_queue')
 
-        const getAllRequest = store.getAll()
-        getAllRequest.onsuccess = () => {
+        // Check if object store exists before creating transaction
+        if (!db.objectStoreNames.contains('sync_queue')) {
           db.close()
-          resolve(getAllRequest.result || [])
+          resolve([]) // Return empty array if no object store
+          return
         }
-        getAllRequest.onerror = () => {
+
+        try {
+          const transaction = db.transaction(['sync_queue'], 'readonly')
+          const store = transaction.objectStore('sync_queue')
+
+          const getAllRequest = store.getAll()
+          getAllRequest.onsuccess = () => {
+            db.close()
+            resolve(getAllRequest.result || [])
+          }
+          getAllRequest.onerror = () => {
+            db.close()
+            reject(getAllRequest.error)
+          }
+
+          transaction.onerror = () => {
+            db.close()
+            reject(transaction.error)
+          }
+        } catch (error) {
           db.close()
-          reject(getAllRequest.error)
+          resolve([]) // Return empty array on error
         }
       }
     })

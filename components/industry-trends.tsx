@@ -46,8 +46,7 @@ interface TimeSeriesResponse {
   end_date: string
 }
 
-// Import from config to ensure consistency
-import { API_BASE_URL } from "@/config/api"
+// Import secure API for all backend requests
 import { secureApi } from "@/lib/secure-api"
 
 function classifyProducts(products: Product): { [key: string]: string[] } {
