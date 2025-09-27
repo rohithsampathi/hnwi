@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { motion } from "framer-motion"
-import { loginUser, debugAuth } from "@/lib/auth-manager"
+import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -138,33 +138,21 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
       setError("")
 
       try {
-        // Step 1: Call standard login endpoint
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include', // Enable cookies
-          body: JSON.stringify({ email, password }),
-        })
+        // Use unified auth manager (leverages secure-api with URL masking)
+        const result = await unifiedAuthManager.login(email, password, rememberDevice)
 
-        const result = await response.json()
-
-        if (result.requires_mfa) {
+        if (result.requiresMFA) {
           // MFA is required - show MFA input
-          setMfaToken(result.mfa_token)
+          setMfaToken(result.mfaToken || '')
           setShowMfa(true)
           toast({
             title: "Security code sent",
             description: result.message || "Check your email for the 6-digit authentication code.",
           })
-        } else if (result.access_token) {
-          // Direct login success (shouldn't happen with MFA enabled)
-          // Backend has set cookies - no need to store tokens
+        } else if (result.success && result.user) {
+          // Direct login success - unified auth manager already handled all state sync
+          const normalizedUser = result.user
 
-          // Use AuthManager to handle user data (not tokens!)
-          const normalizedUser = loginUser(result.user)
-          
           if (!normalizedUser) {
             setError('Authentication failed. Please try again.')
             return
@@ -200,8 +188,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             })
           }
           
-          debugAuth()
-
           handleClose()
 
           if (onLoginSuccess) {
@@ -210,7 +196,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           
           resetOnboarding()
           setIsFromSignupFlow(false)
-        } else {
+        } else if (!result.success) {
           setError(result.error || "Login failed")
         }
       } catch (error) {
@@ -229,42 +215,17 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     }
 
     try {
-      const response = await fetch('/api/auth/mfa/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Enable cookies
-        body: JSON.stringify({
-          email,
-          mfa_code: code,
-          mfa_token: mfaToken,
-          rememberMe: rememberDevice
-        }),
-      })
+      // Use unified auth manager (leverages secure-api with URL masking)
+      const result = await unifiedAuthManager.verifyMFA(code, mfaToken, rememberDevice)
 
-      const result = await response.json()
-
-      if (result.success) {
-        // Backend has set httpOnly cookies - we don't need to handle tokens!
-        // The cookies are automatically sent with all future requests
-
-        // Mark as authenticated in our state manager
-        const { setAuthState } = await import("@/lib/secure-api");
-        setAuthState(true);
-
-        // Store user data for UI display (NOT the token!)
-        const normalizedUser = loginUser(result.user) // No token parameter needed
+      if (result.success && result.user) {
+        // Unified auth manager already handled all state sync
+        const normalizedUser = result.user
 
         if (!normalizedUser) {
           setError('Authentication failed. Please try again.')
           return
         }
-
-        // Ensure session storage is properly updated
-        sessionStorage.setItem("userEmail", normalizedUser.email || "")
-        sessionStorage.setItem("userId", normalizedUser.id || normalizedUser.user_id || "")
-        sessionStorage.setItem("userObject", JSON.stringify(normalizedUser))
 
 
         // Handle device trust if checkbox was checked
@@ -296,8 +257,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             description: `Welcome back, ${normalizedUser.firstName}!`,
           })
         }
-
-        debugAuth()
 
         // Reset form
         handleClose()
@@ -347,20 +306,11 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     setError("")
 
     try {
-      // For now, we'll re-initiate the login process to get a new code
-      // In a full implementation, you'd have a dedicated resend endpoint
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      // Re-initiate login process using unified auth manager to get a new MFA code
+      const result = await unifiedAuthManager.login(email, password, rememberDevice)
 
-      const result = await response.json()
-
-      if (result.requires_mfa) {
-        setMfaToken(result.mfa_token)
+      if (result.requiresMFA && result.mfaToken) {
+        setMfaToken(result.mfaToken)
         toast({
           title: "Code resent",
           description: result.message || "A new security code has been sent to your email.",

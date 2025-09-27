@@ -11,6 +11,7 @@ import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
 import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCurrentDevice, shouldSkip2FA } from "@/lib/auth-utils"
 import { ShieldLoader } from "@/components/ui/shield-loader"
+import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 
 interface AuthPopupProps {
   isOpen: boolean
@@ -131,48 +132,28 @@ export function AuthPopup({
     setError(null)
 
     try {
-      // Step 1: Call standard login endpoint
-      // In reauth mode, use storedEmail if available, otherwise use email state
+      // Use unified auth manager (leverages secure-api with URL masking)
       const loginEmail = isReauthMode && storedEmail ? storedEmail : email;
-      
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: loginEmail, password }),
-      })
 
-      const result = await response.json()
+      const result = await unifiedAuthManager.login(loginEmail, password, rememberDevice)
 
-
-      if (response.status === 429) {
+      if (result.error && result.error.includes('rate limit')) {
         // Rate limited - show clear security message with countdown
-        const retryAfter = response.headers.get('Retry-After') || '60'
-        const waitTime = parseInt(retryAfter)
-        
-        // Use the server error message or fallback to custom message
-        const errorMessage = result.error || 'Security Vault Activated. Too many login attempts detected.'
-        setError(errorMessage)
-        startCountdown(waitTime)
+        setError('Security Vault Activated. Too many login attempts detected.')
+        startCountdown(60)
         return
       }
 
-      if (result.requires_mfa) {
+      if (result.requiresMFA) {
         // MFA is required - show MFA input
-        setMfaToken(result.mfa_token)
+        setMfaToken(result.mfaToken || '')
         setShowMfa(true)
         toast({
           title: "Security code sent",
           description: result.message || "Check your email for the 6-digit authentication code.",
         })
-      } else if (result.access_token) {
-        // Direct login success (shouldn't happen with MFA enabled)
-        if (result.access_token) {
-          // Backend sets httpOnly cookies
-        }
-        
-        // Update session state to authenticated (unlocked)
+      } else if (result.success && result.user) {
+        // Direct login success - unified auth manager already handled all state sync
         setSessionState(SessionState.AUTHENTICATED)
         
         // Trust device if checkbox was checked
@@ -200,7 +181,7 @@ export function AuthPopup({
           handleClose()
           onSuccess?.()
         }, 100)
-      } else {
+      } else if (!result.success) {
         setError(result.error || "Login failed")
       }
     } catch (error) {
@@ -220,38 +201,18 @@ export function AuthPopup({
     setError(null)
 
     try {
-      const response = await fetch('/api/auth/mfa/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: isReauthMode && storedEmail ? storedEmail : email,
-          mfa_code: code,
-          mfa_token: mfaToken,
-          rememberMe: rememberDevice
-        }),
-      })
+      // Use unified auth manager (leverages secure-api with URL masking)
+      const result = await unifiedAuthManager.verifyMFA(code, mfaToken, rememberDevice)
 
-      const result = await response.json()
-
-      if (response.status === 429) {
-        // Rate limited during MFA verification - show clear security message with countdown
-        const retryAfter = response.headers.get('Retry-After') || '60'
-        const waitTime = parseInt(retryAfter)
-        
-        setError(`Security Vault Activated. Too many verification attempts detected.`)
-        startCountdown(waitTime)
+      if (result.error && result.error.includes('rate limit')) {
+        // Rate limited during MFA verification
+        setError('Security Vault Activated. Too many verification attempts detected.')
+        startCountdown(60)
         return
       }
 
-      if (result.success) {
-        // Store token in localStorage for frontend auth checks
-        if (result.access_token) {
-          // Backend sets httpOnly cookies
-        }
-
-        // Update session state to authenticated (unlocked)
+      if (result.success && result.user) {
+        // MFA success - unified auth manager already handled all state sync
         setSessionState(SessionState.AUTHENTICATED)
 
         // Trust device if checkbox was checked
@@ -278,9 +239,9 @@ export function AuthPopup({
         setTimeout(() => {
           handleClose()
           // Pass the user data to onSuccess callback
-          onSuccess?.(result.user || result)
+          onSuccess?.(result.user)
         }, 100)
-      } else {
+      } else if (!result.success) {
         setError(result.error || "Invalid verification code")
       }
     } catch (error) {

@@ -7,6 +7,7 @@ import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import { AuthSyncProvider } from "@/components/auth-sync-provider"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import './globals.css'
 
@@ -110,19 +111,21 @@ export default function RootLayout({
       </head>
       <body>
         <AuthProvider>
-          <OnboardingProvider>
-            <ThemeProvider>
-              <BusinessModeProvider>
-                <AuthPopupProvider>
-                  {children}
-                  <PWAInstallPrompt />
-                  <div id="toast-container" className="fixed top-0 right-0 z-50">
-                    {/* Toast container for notifications */}
-                  </div>
-                </AuthPopupProvider>
-              </BusinessModeProvider>
-            </ThemeProvider>
-          </OnboardingProvider>
+          <AuthSyncProvider>
+            <OnboardingProvider>
+              <ThemeProvider>
+                <BusinessModeProvider>
+                  <AuthPopupProvider>
+                    {children}
+                    <PWAInstallPrompt />
+                    <div id="toast-container" className="fixed top-0 right-0 z-50">
+                      {/* Toast container for notifications */}
+                    </div>
+                  </AuthPopupProvider>
+                </BusinessModeProvider>
+              </ThemeProvider>
+            </OnboardingProvider>
+          </AuthSyncProvider>
         </AuthProvider>
       </body>
     </html>
