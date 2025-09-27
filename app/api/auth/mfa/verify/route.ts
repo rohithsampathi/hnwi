@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
                 const maxAge = name === 'access_token' ? accessTokenAge : 7 * 24 * 60 * 60; // Refresh token always 7 days
                 successResponse.cookies.set(name, value, {
                   httpOnly: true,
-                  secure: false, // Match backend's secure=False for local dev
+                  secure: process.env.NODE_ENV === 'production',
                   sameSite: 'lax',
                   path: '/',
                   maxAge
@@ -280,28 +280,28 @@ export async function POST(request: NextRequest) {
             const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
             successResponse.cookies.set('access_token', backendResponse.access_token, {
               httpOnly: true,
-              secure: false, // Match backend's secure=False for local dev
+              secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               path: '/',
               maxAge: accessTokenAge
             });
             logger.info('access_token cookie set from response body', {
               tokenLength: backendResponse.access_token.length,
-              secure: false
+              secure: process.env.NODE_ENV === 'production'
             });
           }
 
           if (backendResponse.refresh_token) {
             successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
               httpOnly: true,
-              secure: false, // Match backend's secure=False for local dev
+              secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days
             });
             logger.info('refresh_token cookie set from response body', {
               tokenLength: backendResponse.refresh_token.length,
-              secure: false
+              secure: process.env.NODE_ENV === 'production'
             });
           }
 
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
           if (rememberMe) {
             successResponse.cookies.set('remember_me', 'true', {
               httpOnly: true,
-              secure: false,
+              secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token

@@ -27,8 +27,8 @@ export async function POST() {
 
     try {
       // Call backend to refresh the token
-      const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-      const backendResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
+      const { API_BASE_URL } = await import("@/config/api");
+      const backendResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ export async function POST() {
       const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
       response.cookies.set('access_token', tokenData.access_token, {
         httpOnly: true,
-        secure: false, // Match backend's secure=False for local dev
+        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
         maxAge: accessTokenAge
@@ -77,7 +77,7 @@ export async function POST() {
       if (tokenData.refresh_token) {
         response.cookies.set('refresh_token', tokenData.refresh_token, {
           httpOnly: true,
-          secure: false, // Match backend's secure=False for local dev
+          secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
           maxAge: 7 * 24 * 60 * 60 // 7 days

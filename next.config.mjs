@@ -88,9 +88,37 @@ const pwaConfig = withPWA({
       },
     },
     {
-      // Auth endpoints - NEVER cache authentication
+      // Auth endpoints - NEVER cache authentication (all methods)
       urlPattern: /\/api\/auth\//,
       handler: 'NetworkOnly',
+      method: 'GET',
+      options: {
+        cacheName: 'no-cache',
+      },
+    },
+    {
+      // Auth endpoints POST - NEVER cache authentication
+      urlPattern: /\/api\/auth\//,
+      handler: 'NetworkOnly',
+      method: 'POST',
+      options: {
+        cacheName: 'no-cache',
+      },
+    },
+    {
+      // Auth endpoints PUT - NEVER cache authentication
+      urlPattern: /\/api\/auth\//,
+      handler: 'NetworkOnly',
+      method: 'PUT',
+      options: {
+        cacheName: 'no-cache',
+      },
+    },
+    {
+      // Auth endpoints DELETE - NEVER cache authentication
+      urlPattern: /\/api\/auth\//,
+      handler: 'NetworkOnly',
+      method: 'DELETE',
       options: {
         cacheName: 'no-cache',
       },
