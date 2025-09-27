@@ -348,6 +348,8 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
   const [refreshing, setRefreshing] = useState(false)
   const fetchInProgressRef = useRef(false)
   const hasFetchedRef = useRef(false)
+  const failureCountRef = useRef(0)
+  const lastFailureTimeRef = useRef(0)
 
   const userId = useMemo(() => {
     // Use centralized auth manager for user ID
@@ -359,6 +361,16 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
   const fetchIntelligence = useCallback(async (forceRefresh = false) => {
     if (!userId) {
       setLoading(false)
+      return
+    }
+
+    // Circuit breaker: If too many recent failures, wait before retrying
+    const now = Date.now()
+    const timeSinceLastFailure = now - lastFailureTimeRef.current
+    const backoffTime = Math.min(5000 * Math.pow(2, failureCountRef.current), 30000) // Cap at 30 seconds
+
+    if (failureCountRef.current >= 3 && timeSinceLastFailure < backoffTime && !forceRefresh) {
+      setError(`Too many failures. Retrying in ${Math.ceil((backoffTime - timeSinceLastFailure) / 1000)} seconds...`)
       return
     }
 
@@ -387,45 +399,88 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       // Skip dashboard summary and intelligence if only Victor is needed
       const shouldLoadDashboardData = shouldLoadKatherineAnalysis // Only load dashboard data if Katherine analysis is needed
 
-      // Fetch all data in parallel for optimal performance - both analysis and real database data
-      const [summaryData, intelligenceData, crownVaultData, opportunitiesData, realOpportunities, realCrownVaultAssets, realCrownVaultStats] = await Promise.all([
-        // 1. Dashboard summary for metrics cards (only for Home Dashboard)
-        shouldLoadDashboardData ?
-          secureApi.get('/api/hnwi/dashboard/summary', true, {
+      // FIXED: Sequential request batching to prevent backend session corruption
+      // Instead of 7 concurrent requests overwhelming the backend, we'll batch them sequentially
+
+      let summaryData = null, intelligenceData = null, crownVaultData = null, opportunitiesData = null
+      let realOpportunities = [], realCrownVaultAssets = [], realCrownVaultStats = null
+
+      // Batch 1: Essential dashboard data (sequential to maintain session)
+      if (shouldLoadDashboardData) {
+        try {
+          // Wait 100ms between requests to prevent session corruption
+          summaryData = await secureApi.get('/api/hnwi/dashboard/summary', true, {
             enableCache: !forceRefresh,
-            cacheDuration: 60000 // 1 minute cache for summary data
-          }).catch(() => null) : Promise.resolve(null),
+            cacheDuration: 60000
+          }).catch(() => null)
 
-        // 2. Full intelligence content for display (only for Home Dashboard)
-        shouldLoadDashboardData ?
-          secureApi.get('/api/hnwi/intelligence/latest', true, {
+          if (summaryData) {
+            await new Promise(resolve => setTimeout(resolve, 150)) // Breathing room for backend
+          }
+
+          intelligenceData = await secureApi.get('/api/hnwi/intelligence/latest', true, {
             enableCache: !forceRefresh,
-            cacheDuration: 300000 // 5 minutes cache for intelligence data
-          }).catch(() => null) : Promise.resolve(null),
+            cacheDuration: 300000
+          }).catch(() => null)
+        } catch (error) {
+          // Dashboard data failed - continue with other requests
+        }
+      }
 
-        // 3. Katherine's Crown Vault analysis for Crown Vault Impact tab (only if needed)
-        shouldLoadKatherineAnalysis ?
-          secureApi.get('/api/hnwi/katherine/analysis/latest', true, {
-            enableCache: !forceRefresh,
-            cacheDuration: 300000 // 5 minutes cache
-          }).catch(() => null) : Promise.resolve(null),
+      // Batch 2: Analysis data (sequential)
+      if (shouldLoadKatherineAnalysis || shouldLoadVictorAnalysis) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 150)) // Session recovery time
 
-        // 4. Victor's opportunities analysis for Opportunities tab (only if needed)
-        shouldLoadVictorAnalysis ?
-          secureApi.get('/api/hnwi/victor/analysis/latest', true, {
-            enableCache: !forceRefresh,
-            cacheDuration: 300000 // 5 minutes cache
-          }).catch(() => null) : Promise.resolve(null),
+          if (shouldLoadKatherineAnalysis) {
+            crownVaultData = await secureApi.get('/api/hnwi/katherine/analysis/latest', true, {
+              enableCache: !forceRefresh,
+              cacheDuration: 300000
+            }).catch(() => null)
 
-        // 5. Real opportunities from MongoDB (/api/opportunities)
-        getOpportunities().catch(() => []),
+            if (crownVaultData) {
+              await new Promise(resolve => setTimeout(resolve, 100))
+            }
+          }
 
-        // 6. Real Crown Vault assets from MongoDB (only for Crown Vault page)
-        shouldLoadCrownVaultMongoDB ? getCrownVaultAssets().catch(() => []) : Promise.resolve([]),
+          if (shouldLoadVictorAnalysis) {
+            opportunitiesData = await secureApi.get('/api/hnwi/victor/analysis/latest', true, {
+              enableCache: !forceRefresh,
+              cacheDuration: 300000
+            }).catch(() => null)
+          }
+        } catch (error) {
+          // Analysis data failed - continue with MongoDB data
+        }
+      }
 
-        // 7. Real Crown Vault stats from MongoDB (only for Crown Vault page)
-        shouldLoadCrownVaultMongoDB ? getCrownVaultStats().catch(() => null) : Promise.resolve(null)
-      ])
+      // Batch 3: MongoDB data (can be parallel as these don't require heavy session state)
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100)) // Final breathing room
+
+        const mongoPromises = [
+          getOpportunities().catch(() => [])
+        ]
+
+        if (shouldLoadCrownVaultMongoDB) {
+          mongoPromises.push(
+            getCrownVaultAssets().catch(() => []),
+            getCrownVaultStats().catch(() => null)
+          )
+        }
+
+        const mongoResults = await Promise.all(mongoPromises)
+        realOpportunities = mongoResults[0]
+        if (shouldLoadCrownVaultMongoDB) {
+          realCrownVaultAssets = mongoResults[1] || []
+          realCrownVaultStats = mongoResults[2] || null
+        }
+      } catch (error) {
+        // MongoDB data failed - use empty defaults
+        realOpportunities = []
+        realCrownVaultAssets = []
+        realCrownVaultStats = null
+      }
 
       // Combine all data sources
       setIntelligenceData({
@@ -446,9 +501,43 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       })
       setError(null)
       hasFetchedRef.current = true
+      // Reset failure count on success
+      failureCountRef.current = 0
+      lastFailureTimeRef.current = 0
     } catch (error: any) {
-      // All endpoints failed - error logged to monitoring system
-      setError(error.message)
+      // Enhanced error handling for session degradation patterns
+      let errorMessage = error.message || 'Failed to load intelligence data'
+
+      // Detect backend session corruption patterns
+      if (errorMessage.includes('user_context') ||
+          errorMessage.includes('State object') ||
+          errorMessage.includes('500')) {
+        errorMessage = 'Backend session temporarily unavailable. Data will reload automatically.'
+
+        // Auto-retry after session corruption (don't spam the user)
+        if (!hasFetchedRef.current) {
+          setTimeout(() => {
+            fetchIntelligence(true) // Force refresh to rebuild session
+          }, 3000) // Wait 3 seconds for backend to stabilize
+        }
+      } else if (errorMessage.includes('401') ||
+                 errorMessage.includes('Authentication')) {
+        errorMessage = 'Session expired. Please sign in again to continue.'
+      } else if (errorMessage.includes('429') ||
+                 errorMessage.includes('rate limit')) {
+        errorMessage = 'Too many requests. Retrying automatically...'
+
+        // Auto-retry rate limit after delay
+        setTimeout(() => {
+          fetchIntelligence(true)
+        }, 5000)
+      }
+
+      // Track failures for circuit breaker
+      failureCountRef.current += 1
+      lastFailureTimeRef.current = Date.now()
+
+      setError(errorMessage)
     } finally {
       setLoading(false)
       setRefreshing(false)

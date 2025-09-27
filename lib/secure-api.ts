@@ -127,7 +127,9 @@ const processRequestQueue = async (): Promise<void> => {
       const response = await secureApiCall(
         request.endpoint,
         request.options,
-        request.requireAuth
+        request.requireAuth,
+        0, // Reset retry count for queued requests
+        3  // Standard max retries
       );
       request.resolve(response);
     } catch (error) {
@@ -146,12 +148,13 @@ const failRequestQueue = (): void => {
   }
 };
 
-// Cookie-based API call wrapper
+// Enhanced API call wrapper with session recovery and exponential backoff
 export const secureApiCall = async (
   endpoint: string,
   options: RequestInit = {},
   requireAuth: boolean = true,
-  isRetry: boolean = false
+  retryCount: number = 0,
+  maxRetries: number = 3
 ): Promise<Response> => {
   // Always use relative URLs - goes through Next.js API routes
   const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -177,8 +180,8 @@ export const secureApiCall = async (
       credentials: 'include', // CRITICAL: Send cookies with request
     });
 
-    // Handle authentication errors
-    if (response.status === 401 && requireAuth && !isRetry) {
+    // Handle authentication errors with session recovery
+    if (response.status === 401 && requireAuth && retryCount === 0) {
       // If already refreshing, queue this request
       if (isRefreshingAuth) {
         return new Promise((resolve, reject) => {
@@ -196,20 +199,48 @@ export const secureApiCall = async (
       const authRestored = await handleAuthError();
 
       if (authRestored) {
-        // Retry the request once after successful auth
-        return secureApiCall(endpoint, options, requireAuth, true);
+        // Wait a bit for session to stabilize, then retry
+        await new Promise(resolve => setTimeout(resolve, 200));
+        return secureApiCall(endpoint, options, requireAuth, 1, maxRetries);
       } else {
-        // Auth failed or was cancelled
         throw new Error('Authentication required');
+      }
+    }
+
+    // Handle 500 errors with exponential backoff (backend session corruption)
+    if (response.status === 500 && retryCount < maxRetries) {
+      // Check if this is the specific "user_context" error from backend
+      try {
+        const errorText = await response.clone().text();
+        if (errorText.includes('user_context') || errorText.includes('State') || response.status === 500) {
+          // Backend session corruption - wait with exponential backoff
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Cap at 5 seconds
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+
+          // Retry the request
+          return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
+        }
+      } catch {
+        // If we can't read the error, still try backoff for 500 errors
+        const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
       }
     }
 
     return response;
   } catch (error) {
+    // Network errors - retry with exponential backoff
+    if (retryCount < maxRetries && !error.message.includes('Authentication')) {
+      const backoffDelay = Math.min(500 * Math.pow(2, retryCount), 3000); // Start smaller for network errors
+      await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
+    }
+
     if (error instanceof Error && error.message.includes('Authentication')) {
       throw error;
     }
-    throw new Error('Network request failed');
+    throw new Error('Network request failed after retries');
   }
 };
 
