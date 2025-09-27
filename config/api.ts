@@ -10,7 +10,7 @@ if (typeof window !== 'undefined') {
   throw new Error('API_BASE_URL cannot be imported in client-side code. Use secureApi instead.')
 }
 
-export const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
+export const API_BASE_URL = process.env.API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
 
 // Validate API base URL is accessible (development only)
 if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {

@@ -29,8 +29,8 @@ export function middleware(request: NextRequest) {
   
   // Dynamic script handling - no hardcoded hashes needed
   
-  // Get backend URL from environment variable for secure configuration
-  const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.example.com';
+  // Backend URL should not be exposed - all API calls go through Next.js API routes
+  const backendUrl = 'https://api.example.com'; // Not used in CSP, placeholder only
   
   const cspDirectives = [
     "default-src 'self'",
