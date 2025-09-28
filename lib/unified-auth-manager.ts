@@ -39,6 +39,7 @@ class UnifiedAuthManager {
     error: null
   }
   private listeners: Set<(state: AuthState) => void> = new Set()
+  private mfaEmail: string | null = null
 
   private constructor() {
     // Initialize with existing auth state on startup
@@ -93,16 +94,15 @@ class UnifiedAuthManager {
 
     try {
       // Use secure-api for masked backend communication
-      const response = await secureApi.post('/api/auth/login', {
+      const result = await secureApi.post('/api/auth/login', {
         email,
         password,
         rememberDevice
       })
 
-      const result = await response.json()
-
       if (result.requires_mfa && result.mfa_token) {
-        // MFA required - don't update auth state yet
+        // MFA required - store email for MFA verification and don't update auth state yet
+        this.mfaEmail = email
         this.updateAuthState({ isLoading: false })
         return {
           success: true,
@@ -161,17 +161,17 @@ class UnifiedAuthManager {
 
     try {
       // Use secure-api for masked backend communication
-      const response = await secureApi.post('/api/auth/mfa/verify', {
+      const result = await secureApi.post('/api/auth/mfa/verify', {
+        email: this.mfaEmail,
         mfa_code: code,
         mfa_token: mfaToken,
-        rememberDevice
+        rememberMe: rememberDevice
       })
 
-      const result = await response.json()
-
       if (result.success && result.user) {
-        // MFA success - sync all auth systems
+        // MFA success - sync all auth systems and clear stored email
         await this.syncAuthSystems(result.user)
+        this.mfaEmail = null
 
         this.updateAuthState({
           isAuthenticated: true,
@@ -179,6 +179,11 @@ class UnifiedAuthManager {
           isLoading: false,
           error: null
         })
+
+        // Force session check to ensure backend sync
+        setTimeout(() => {
+          this.checkSession()
+        }, 100)
 
         return {
           success: true,
@@ -218,8 +223,7 @@ class UnifiedAuthManager {
 
     try {
       // Use secure-api for masked backend communication
-      const response = await secureApi.get('/api/auth/session')
-      const result = await response.json()
+      const result = await secureApi.get('/api/auth/session')
 
       if (result.user) {
         // Session valid - sync all auth systems
@@ -266,9 +270,9 @@ class UnifiedAuthManager {
   public async refreshSession(): Promise<User | null> {
     try {
       // Use secure-api for masked backend communication
-      const response = await secureApi.post('/api/auth/refresh')
+      const result = await secureApi.post('/api/auth/refresh')
 
-      if (response.ok) {
+      if (result.success) {
         // Token refreshed, now check session
         return await this.checkSession().then(state => state.user)
       }
@@ -332,7 +336,10 @@ class UnifiedAuthManager {
     // 2. Clear secure-api state
     setAuthState(false)
 
-    // 3. Emit logout event
+    // 3. Clear stored MFA email
+    this.mfaEmail = null
+
+    // 4. Emit logout event
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:logout'))
     }

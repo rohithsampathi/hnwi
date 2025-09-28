@@ -4,6 +4,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { loginUser, logoutUser, getCurrentUser, isAuthenticated as authManagerAuthenticated } from '@/lib/auth-manager'
 import { setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
+import { logger } from '@/lib/secure-logger'
 
 interface UseAuthSyncOptions {
   autoSync?: boolean
@@ -18,7 +19,7 @@ export function useAuthSync(options: UseAuthSyncOptions = {}) {
 
   const log = useCallback((message: string, data?: any) => {
     if (debug && typeof window !== 'undefined') {
-      console.log(`[AuthSync] ${message}`, data || '')
+      logger.debug(`[AuthSync] ${message}`, data)
     }
   }, [debug])
 
@@ -84,20 +85,36 @@ export function useAuthSync(options: UseAuthSyncOptions = {}) {
             onAuthChange?.(true, normalizedUser)
             log('Auth state sync completed successfully')
           } else {
-            log('No session found, clearing auth states')
+            log('No session found - checking if we should clear auth states')
 
-            // Clear all auth states
+            // Only clear auth states if we have no existing user data
+            // This prevents clearing auth when cookies are temporarily not available
+            if (!currentUser) {
+              log('No existing user data found, clearing auth states')
+              logoutUser()
+              setAuthState(false)
+              onAuthChange?.(false, null)
+            } else {
+              log('Keeping existing user data despite session check failure')
+              // Keep existing auth state but don't mark as authenticated
+              // This allows for a grace period while cookie issues are resolved
+            }
+          }
+        } else if (response.status === 401) {
+          log('Session expired - checking if we should clear auth states')
+
+          // Only clear auth states if we have no existing user data
+          // This prevents clearing auth when there are temporary authentication issues
+          if (!currentUser) {
+            log('No existing user data found, clearing auth states after 401')
             logoutUser()
             setAuthState(false)
             onAuthChange?.(false, null)
+          } else {
+            log('Keeping existing user data despite 401 - may be cookie issue')
+            // Keep existing user data but mark as potentially unauthenticated
+            // This prevents immediate logout on navigation when cookies aren't sent properly
           }
-        } else if (response.status === 401) {
-          log('Session expired, clearing auth states')
-
-          // Clear all auth states
-          logoutUser()
-          setAuthState(false)
-          onAuthChange?.(false, null)
         } else {
           log('Session check failed', { status: response.status })
         }

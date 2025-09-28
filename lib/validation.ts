@@ -14,7 +14,11 @@ export const loginSchema = z.object({
   password: z
     .string()
     .min(1, 'Password is required')
-    .max(1000, 'Password too long') // Prevent DoS attacks
+    .max(1000, 'Password too long'), // Prevent DoS attacks
+  rememberDevice: z
+    .boolean()
+    .optional()
+    .default(false)
 });
 
 // User creation/update validation schema  

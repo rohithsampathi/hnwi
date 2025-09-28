@@ -180,6 +180,17 @@ export const secureApiCall = async (
       credentials: 'include', // CRITICAL: Send cookies with request
     });
 
+    // Handle rate limiting with exponential backoff
+    if (response.status === 429 && retryCount < maxRetries) {
+      const retryAfter = response.headers.get('retry-after');
+      const backoffDelay = retryAfter ?
+        parseInt(retryAfter) * 1000 :
+        Math.min(1000 * Math.pow(2, retryCount), 10000); // Cap at 10 seconds
+
+      await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
+    }
+
     // Handle authentication errors with session recovery
     if (response.status === 401 && requireAuth && retryCount === 0) {
       // If already refreshing, queue this request
@@ -247,6 +258,9 @@ export const secureApiCall = async (
 // Simple in-memory cache for GET requests
 const apiCache = new Map<string, { data: any; timestamp: number; duration: number }>();
 
+// Request deduplication to prevent multiple parallel requests
+const pendingRequests = new Map<string, Promise<any>>();
+
 // Clear expired cache entries periodically
 setInterval(() => {
   const now = Date.now();
@@ -289,6 +303,12 @@ export const secureApi = {
   }): Promise<any> {
     const { enableCache = false, cacheDuration = 300000, intelligentCache = true } = options || {};
 
+    // Request deduplication - prevent multiple parallel requests to the same endpoint
+    const requestKey = `GET:${endpoint}`;
+    if (pendingRequests.has(requestKey)) {
+      return pendingRequests.get(requestKey);
+    }
+
     // Use intelligent caching if enabled
     if (intelligentCache) {
       const cacheType = getCacheType(endpoint)
@@ -314,34 +334,45 @@ export const secureApi = {
       }
     }
 
-    // Fallback to original caching logic
-    if (enableCache) {
-      const cacheKey = `${endpoint}`;
-      const cached = apiCache.get(cacheKey);
-      if (cached && (Date.now() - cached.timestamp) < cached.duration) {
-        return cached.data;
+    // Create and store the request promise
+    const requestPromise = (async () => {
+      try {
+        // Fallback to original caching logic
+        if (enableCache) {
+          const cacheKey = `${endpoint}`;
+          const cached = apiCache.get(cacheKey);
+          if (cached && (Date.now() - cached.timestamp) < cached.duration) {
+            return cached.data;
+          }
+        }
+
+        const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Store in cache if enabled
+        if (enableCache) {
+          const cacheKey = `${endpoint}`;
+          apiCache.set(cacheKey, {
+            data,
+            timestamp: Date.now(),
+            duration: cacheDuration
+          });
+        }
+
+        return data;
+      } finally {
+        // Clean up pending request
+        pendingRequests.delete(requestKey);
       }
-    }
+    })();
 
-    const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Store in cache if enabled
-    if (enableCache) {
-      const cacheKey = `${endpoint}`;
-      apiCache.set(cacheKey, {
-        data,
-        timestamp: Date.now(),
-        duration: cacheDuration
-      });
-    }
-
-    return data;
+    pendingRequests.set(requestKey, requestPromise);
+    return requestPromise;
   },
 
   async post(endpoint: string, data: any, requireAuth: boolean = true, options?: { enableCache?: boolean }): Promise<any> {

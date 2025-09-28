@@ -16,7 +16,7 @@ export const API_BASE_URL = process.env.API_BASE_URL || "https://hnwi-uwind-p8oq
 if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {
   // Quick connectivity check for development
   fetch(API_BASE_URL + '/health', { method: 'HEAD' }).catch(() => {
-    console.warn('Backend might be unreachable at:', API_BASE_URL)
+    // Backend connectivity warning removed for security
   })
 }
 
