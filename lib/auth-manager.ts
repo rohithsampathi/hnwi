@@ -97,15 +97,23 @@ export class AuthenticationManager {
   public getCurrentUser(): User | null {
     // Always check sessionStorage first to ensure we have the latest data
     // This is important for navigation between pages
-    if (typeof window !== 'undefined' && !this.user) {
+    if (typeof window !== 'undefined') {
       const storedUser = sessionStorage.getItem('userObject');
       if (storedUser) {
         try {
-          this.user = JSON.parse(storedUser);
-          this.authenticated = true;
+          const parsedUser = JSON.parse(storedUser);
+          // Update in-memory cache if sessionStorage has newer data
+          if (!this.user || JSON.stringify(this.user) !== storedUser) {
+            this.user = parsedUser;
+            this.authenticated = true;
+          }
         } catch (error) {
           // Failed to parse stored user;
         }
+      } else {
+        // No user in sessionStorage - clear memory cache
+        this.user = null;
+        this.authenticated = false;
       }
     }
     return this.user;

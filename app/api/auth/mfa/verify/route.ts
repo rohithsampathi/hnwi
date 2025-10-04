@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
             successResponse.cookies.set('access_token', backendResponse.access_token, {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
-              sameSite: 'strict',
+              sameSite: 'lax', // Changed from 'strict' to 'lax' for better compatibility with API calls
               path: '/',
               maxAge: accessTokenAge
             });

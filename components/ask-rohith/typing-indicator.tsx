@@ -7,19 +7,17 @@ import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "@/contexts/theme-context"
-import { Bot } from "lucide-react"
+import { Bot, Brain } from "lucide-react"
 
 interface TypingIndicatorProps {
   message?: string
   showPortfolioContext?: boolean
 }
 
-// Status messages with their durations
+// Status messages with their durations - loop between thinking and contemplating
 const statusMessages = [
-  { text: "Browsing HNWI knowledge base", duration: 2000 },
-  { text: "Found relevant citations", duration: 3000 },
-  { text: "Deep analysis on related citations", duration: 2000 },
-  { text: "Compiling my response", duration: 3000 }
+  { text: "Rohith is Thinking...", duration: 3000 },
+  { text: "And now contemplating...", duration: 3000 }
 ]
 
 export function TypingIndicator({
@@ -36,22 +34,24 @@ export function TypingIndicator({
     let timeoutId: NodeJS.Timeout
 
     const advanceStatus = () => {
-      if (currentStatusIndex < statusMessages.length - 1) {
-        // Start fade out
-        setIsTransitioning(true)
+      // Start fade out
+      setIsTransitioning(true)
 
-        // After fade out, change text and fade in
-        setTimeout(() => {
-          setCurrentStatusIndex(prev => prev + 1)
-          setIsTransitioning(false)
-        }, 300) // Match fade out duration
+      // After fade out, change text and fade in
+      setTimeout(() => {
+        // Loop back to start after reaching the end
+        setCurrentStatusIndex(prev => (prev + 1) % statusMessages.length)
+        setIsTransitioning(false)
+      }, 300) // Match fade out duration
 
-        // Schedule next status change
-        timeoutId = setTimeout(
-          advanceStatus,
-          statusMessages[currentStatusIndex + 1].duration + 300 // Add transition time
-        )
-      }
+      // Calculate next index for duration lookup (with wrapping)
+      const nextIndex = (currentStatusIndex + 1) % statusMessages.length
+
+      // Schedule next status change
+      timeoutId = setTimeout(
+        advanceStatus,
+        statusMessages[nextIndex].duration + 300 // Add transition time
+      )
     }
 
     // Start the sequence after initial delay
@@ -166,28 +166,23 @@ export function TypingIndicator({
                   exit="exit"
                   className="flex items-center space-x-2"
                 >
-                  <div className="w-1 h-1 bg-primary/50 rounded-full animate-pulse"></div>
+                  {/* Animated Brain Icon */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: [0, 5, -5, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <Brain className="w-4 h-4 text-primary" />
+                  </motion.div>
                   <span className="text-sm text-muted-foreground font-medium">
                     {statusMessages[currentStatusIndex].text}
                   </span>
-
-                  {/* Animated dots */}
-                  <div className="flex space-x-1">
-                    {[0, 1, 2].map((index) => (
-                      <motion.div
-                        key={index}
-                        className="w-2 h-2 bg-primary rounded-full"
-                        variants={dotVariants}
-                        animate="animate"
-                        transition={{
-                          duration: 0.6,
-                          repeat: Infinity,
-                          repeatType: "reverse",
-                          delay: index * 0.2
-                        }}
-                      />
-                    ))}
-                  </div>
                 </motion.div>
               </AnimatePresence>
             </div>

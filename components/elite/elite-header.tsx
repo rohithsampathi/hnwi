@@ -58,7 +58,19 @@ export function EliteHeader({
             </div>
             <div className="flex-1 min-w-0">
               <Heading2 className="bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">
-                {getTimeBasedGreeting()}, {user?.firstName || user?.first_name || user?.name || user?.email?.split('@')[0] || 'Principal'}{user?.lastName || user?.last_name ? ` ${user?.lastName || user?.last_name}` : ''}
+                {getTimeBasedGreeting()}, {(() => {
+                  // Try name field first (most reliable for full name)
+                  if (user?.name) return user.name
+
+                  // Then try firstName + lastName combination
+                  const firstName = user?.firstName || user?.first_name
+                  const lastName = user?.lastName || user?.last_name
+                  if (firstName && lastName) return `${firstName} ${lastName}`
+                  if (firstName) return firstName
+
+                  // Fallback to email username or 'Principal'
+                  return user?.email?.split('@')[0] || 'Principal'
+                })()}
               </Heading2>
             </div>
           </div>

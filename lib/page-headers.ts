@@ -98,10 +98,26 @@ export const NO_HEADER_ROUTES = [
 
 // Generate personalized greeting for dashboard
 function getDashboardGreeting(user: any): string {
-  // Use exact same logic as EliteFooter which works correctly
-  const firstName = user?.firstName || user?.first_name || user?.name || user?.email?.split('@')[0] || 'User'
-  const lastName = user?.lastName || user?.last_name || ''
-  const fullName = lastName ? `${firstName} ${lastName}` : firstName
+  // Get user's full name - same logic as profile page
+  let fullName = 'User'
+
+  // Try name field first (most reliable for full name)
+  if (user?.name) {
+    fullName = user.name
+  } else {
+    // Then try firstName + lastName combination
+    const firstName = user?.firstName || user?.first_name
+    const lastName = user?.lastName || user?.last_name
+
+    if (firstName && lastName) {
+      fullName = `${firstName} ${lastName}`
+    } else if (firstName) {
+      fullName = firstName
+    } else {
+      // Fallback to email username
+      fullName = user?.email?.split('@')[0] || 'User'
+    }
+  }
 
   const hour = new Date().getHours()
 

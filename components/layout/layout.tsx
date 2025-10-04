@@ -100,13 +100,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     return () => clearInterval(interval)
   }, [])
 
-  // Update user state when propUser changes, with localStorage fallback
+  // Update user state when propUser changes, with sessionStorage fallback
   useEffect(() => {
     if (propUser) {
       setUser(propUser)
     } else {
-      // Fallback to localStorage if no prop user provided
-      const userObject = localStorage.getItem("userObject")
+      // Fallback to sessionStorage if no prop user provided
+      const userObject = sessionStorage.getItem("userObject")
       if (userObject) {
         try {
           const parsedUser = JSON.parse(userObject)
@@ -115,6 +115,21 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         }
       }
     }
+
+    // Listen for auth updates to refresh user data
+    const handleAuthUpdate = () => {
+      const updatedUserObject = sessionStorage.getItem("userObject")
+      if (updatedUserObject) {
+        try {
+          const parsedUser = JSON.parse(updatedUserObject)
+          setUser(parsedUser)
+        } catch (e) {
+        }
+      }
+    }
+
+    window.addEventListener('auth:login', handleAuthUpdate)
+    return () => window.removeEventListener('auth:login', handleAuthUpdate)
   }, [propUser])
 
   const handleLogoClick = (e: React.MouseEvent) => {

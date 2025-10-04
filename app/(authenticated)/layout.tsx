@@ -161,6 +161,19 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     checkAuthStatus()
   }, [mounted, isCheckingAuth, isAuthenticated]) // Only check when mounted and not already checking
 
+  // Listen for auth updates to refresh user data
+  useEffect(() => {
+    const handleAuthUpdate = () => {
+      const updatedUser = getCurrentUser()
+      if (updatedUser) {
+        setUser(updatedUser)
+      }
+    }
+
+    window.addEventListener('auth:login', handleAuthUpdate)
+    return () => window.removeEventListener('auth:login', handleAuthUpdate)
+  }, [])
+
   // Only show elite loading for initial page load, not internal navigation
   if (isAuthenticated === null) {
     return <EliteLoadingState message="Reconnecting to secure networks" />

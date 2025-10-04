@@ -120,11 +120,7 @@ export function CitationPanel({
         animate={{ width: "min(400px, 30vw)", opacity: 1 }}
         exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden md:flex h-[calc(100vh-280px)] bg-background border-l border-border flex-col overflow-hidden"
-        style={{
-          position: 'sticky',
-          top: '24px'
-        }}
+        className="hidden md:flex h-full bg-background border-l border-border flex-col overflow-hidden flex-shrink-0"
       >
         {/* Desktop Header */}
         <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">

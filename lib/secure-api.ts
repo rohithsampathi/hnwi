@@ -5,6 +5,7 @@
 
 import { EnhancedCacheService } from './services/enhanced-cache-service'
 import { CachePolicyService } from './services/cache-policy-service'
+import { authManager } from './auth-manager'
 
 // Helper to read CSRF token from cookie (only CSRF is readable)
 const getCookie = (name: string): string | null => {
@@ -17,12 +18,22 @@ const getCookie = (name: string): string | null => {
 let isAuthenticatedCache: boolean | null = null;
 
 export const isAuthenticated = (): boolean => {
-  // We can't check httpOnly cookies, so we track auth state
-  return isAuthenticatedCache ?? false;
+  // Check both our cache and authManager for consistency
+  const managerAuth = authManager.isAuthenticated()
+  if (managerAuth && isAuthenticatedCache === false) {
+    // AuthManager has auth but we don't - sync it
+    isAuthenticatedCache = true
+  } else if (!managerAuth && isAuthenticatedCache === true) {
+    // We have auth but authManager doesn't - clear it
+    isAuthenticatedCache = false
+  }
+  return isAuthenticatedCache ?? managerAuth
 };
 
 export const setAuthState = (authenticated: boolean): void => {
   isAuthenticatedCache = authenticated;
+  // Keep authManager in sync
+  authManager.setAuthenticated(authenticated)
 };
 
 // Request queue for handling 401s
@@ -187,6 +198,7 @@ export const secureApiCall = async (
         parseInt(retryAfter) * 1000 :
         Math.min(1000 * Math.pow(2, retryCount), 10000); // Cap at 10 seconds
 
+      console.warn(`[API] Rate limited on ${endpoint}, retrying after ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, backoffDelay));
       return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
     }
@@ -210,8 +222,11 @@ export const secureApiCall = async (
       const authRestored = await handleAuthError();
 
       if (authRestored) {
-        // Wait a bit for session to stabilize, then retry
-        await new Promise(resolve => setTimeout(resolve, 200));
+        // Wait for cookies to propagate after refresh (critical for Crown Vault endpoints)
+        // The browser needs time to process Set-Cookie headers from the refresh response
+        // Especially important with httpOnly cookies that can't be accessed by JavaScript
+        console.log(`[API] Auth refreshed for ${endpoint}, waiting 750ms for cookies to propagate...`);
+        await new Promise(resolve => setTimeout(resolve, 750));
         return secureApiCall(endpoint, options, requireAuth, 1, maxRetries);
       } else {
         throw new Error('Authentication required');
@@ -309,19 +324,13 @@ export const secureApi = {
       return pendingRequests.get(requestKey);
     }
 
-    // Use intelligent caching if enabled
+    // Use intelligent caching if enabled - but go through secureApiCall for auth handling
     if (intelligentCache) {
       const cacheType = getCacheType(endpoint)
       if (cacheType) {
         try {
-          const response = await EnhancedCacheService.fetch(endpoint, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(requireAuth && getCookie('csrf_token') ? { 'X-CSRF-Token': getCookie('csrf_token')! } : {})
-            }
-          }, cacheType)
+          // Use secureApiCall to ensure proper auth handling
+          const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth)
 
           if (!response.ok) {
             throw new Error(`Request failed with status ${response.status}`)

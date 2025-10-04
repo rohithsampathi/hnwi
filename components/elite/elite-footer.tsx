@@ -37,8 +37,19 @@ export function EliteFooter({ user }: EliteFooterProps) {
       </div>
       <div className="text-xs text-muted-foreground">
         Generated for: <span className="font-medium">
-          {user?.firstName || user?.first_name || user?.name || user?.email?.split('@')[0] || 'User'}
-          {user?.lastName || user?.last_name ? ` ${user?.lastName || user?.last_name}` : ''}
+          {(() => {
+            // Try name field first (most reliable for full name)
+            if (user?.name) return user.name
+
+            // Then try firstName + lastName combination
+            const firstName = user?.firstName || user?.first_name
+            const lastName = user?.lastName || user?.last_name
+            if (firstName && lastName) return `${firstName} ${lastName}`
+            if (firstName) return firstName
+
+            // Fallback to email username or 'User'
+            return user?.email?.split('@')[0] || 'User'
+          })()}
         </span>
       </div>
     </motion.div>

@@ -11,12 +11,26 @@ import { getCurrentUser } from "@/lib/auth-manager"
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
-  
-  // Load user data from centralized auth
+
+  // Load user data from centralized auth and listen for updates
   useEffect(() => {
     const authUser = getCurrentUser()
     if (authUser) {
       setUser(authUser)
+    }
+
+    // Listen for auth state changes to update user
+    const handleAuthUpdate = (event: any) => {
+      const updatedUser = getCurrentUser()
+      if (updatedUser) {
+        setUser(updatedUser)
+      }
+    }
+
+    window.addEventListener('auth:login', handleAuthUpdate)
+
+    return () => {
+      window.removeEventListener('auth:login', handleAuthUpdate)
     }
   }, [])
 

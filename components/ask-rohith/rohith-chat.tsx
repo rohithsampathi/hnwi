@@ -319,7 +319,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
   }
 
   return (
-    <div className="flex h-screen bg-background relative overflow-hidden max-h-screen">
+    <div className="flex h-screen bg-background relative overflow-hidden">
       {/* Conversation Sidebar */}
       <AnimatePresence>
         {!sidebarCollapsed && (
@@ -333,13 +333,13 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
               onClick={() => setSidebarCollapsed(true)}
             />
 
-            {/* Sidebar - Independent scroll, flex-based */}
+            {/* Sidebar - Fixed on mobile, relative on desktop, independent scroll */}
             <motion.div
               initial={{ x: -384 }}
               animate={{ x: 0 }}
               exit={{ x: -384 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed md:relative top-0 left-0 w-96 xl:w-80 lg:w-72 md:w-64 h-screen md:h-full bg-background border-r border-border z-50 md:z-10 flex flex-col flex-shrink-0 max-h-screen overflow-hidden"
+              className="fixed md:relative top-0 left-0 w-96 xl:w-80 lg:w-72 md:w-64 h-screen md:h-full bg-background border-r border-border z-50 md:z-10 flex flex-col flex-shrink-0"
             >
                 <ConversationSidebar
                   conversations={conversations}
@@ -371,7 +371,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
       </AnimatePresence>
 
       {/* Main Content Area - Always maintains full width, never shrinks */}
-      <div className="flex-1 flex flex-col relative min-w-0 max-w-none flex-grow">
+      <div className="flex-1 flex flex-col relative min-w-0 max-w-none h-full overflow-hidden">
         {/* Header Actions Bar */}
         <div className="bg-background/95 backdrop-blur-sm border-b border-border/50 flex-shrink-0 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto px-6 py-4">
@@ -427,12 +427,12 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
           </div>
         </div>
 
-        {/* Main Chat Area - Scrollable */}
+        {/* Main Chat Area - Scrollable only when there are messages */}
         <div
           ref={scrollContainerRef}
           className={cn(
-            "flex-1 overflow-y-auto",
-            currentMessages.length > 0 ? "pb-32" : "pb-16"
+            "flex-1",
+            currentMessages.length > 0 && "overflow-y-auto pb-32"
           )}
         >
           <div className="max-w-4xl mx-auto px-6 pt-8 pb-4">

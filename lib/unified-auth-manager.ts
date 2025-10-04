@@ -226,12 +226,17 @@ class UnifiedAuthManager {
       const result = await secureApi.get('/api/auth/session')
 
       if (result.user) {
-        // Session valid - sync all auth systems
-        await this.syncAuthSystems(result.user)
+        // Preserve existing user data and merge with session response
+        // This prevents losing user profile fields like 'name' that might not be in session response
+        const existingUser = getCurrentUser()
+        const mergedUser = existingUser ? { ...existingUser, ...result.user } : result.user
+
+        // Session valid - sync all auth systems with merged user data
+        await this.syncAuthSystems(mergedUser)
 
         this.updateAuthState({
           isAuthenticated: true,
-          user: result.user,
+          user: mergedUser,
           isLoading: false,
           error: null
         })

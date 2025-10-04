@@ -399,81 +399,51 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       // Skip dashboard summary and intelligence if only Victor is needed
       const shouldLoadDashboardData = shouldLoadKatherineAnalysis // Only load dashboard data if Katherine analysis is needed
 
-      // FIXED: Sequential request batching to prevent backend session corruption
-      // Instead of 7 concurrent requests overwhelming the backend, we'll batch them sequentially
+      // OPTIMIZED: Sequential request batching with proper delays to prevent rate limiting
+      // Backend rate limiter needs ~200ms between requests even for whitelisted IPs
 
       let summaryData = null, intelligenceData = null, crownVaultData = null, opportunitiesData = null
       let realOpportunities = [], realCrownVaultAssets = [], realCrownVaultStats = null
 
-      // Batch 1: Essential dashboard data (sequential to maintain session)
+      // Helper function to safely fetch with delay
+      const fetchWithDelay = async (endpoint: string, cacheDuration: number, delay: number = 250) => {
+        try {
+          await new Promise(resolve => setTimeout(resolve, delay))
+          return await secureApi.get(endpoint, true, {
+            enableCache: !forceRefresh,
+            cacheDuration: cacheDuration
+          })
+        } catch (error) {
+          return null
+        }
+      }
+
+      // Batch 1: Essential dashboard data (sequential with proper delays)
       if (shouldLoadDashboardData) {
-        try {
-          // Wait 100ms between requests to prevent session corruption
-          summaryData = await secureApi.get('/api/hnwi/dashboard/summary', true, {
-            enableCache: !forceRefresh,
-            cacheDuration: 60000
-          }).catch(() => null)
-
-          if (summaryData) {
-            await new Promise(resolve => setTimeout(resolve, 150)) // Breathing room for backend
-          }
-
-          intelligenceData = await secureApi.get('/api/hnwi/intelligence/latest', true, {
-            enableCache: !forceRefresh,
-            cacheDuration: 300000
-          }).catch(() => null)
-        } catch (error) {
-          // Dashboard data failed - continue with other requests
-        }
+        summaryData = await fetchWithDelay('/api/hnwi/dashboard/summary', 60000, 0) // No delay for first request
+        intelligenceData = await fetchWithDelay('/api/hnwi/intelligence/latest', 300000, 300) // 300ms delay
       }
 
-      // Batch 2: Analysis data (sequential)
+      // Batch 2: Analysis data (sequential with delays)
       if (shouldLoadKatherineAnalysis || shouldLoadVictorAnalysis) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 150)) // Session recovery time
+        if (shouldLoadKatherineAnalysis) {
+          crownVaultData = await fetchWithDelay('/api/hnwi/katherine/analysis/latest', 300000, 300)
+        }
 
-          if (shouldLoadKatherineAnalysis) {
-            crownVaultData = await secureApi.get('/api/hnwi/katherine/analysis/latest', true, {
-              enableCache: !forceRefresh,
-              cacheDuration: 300000
-            }).catch(() => null)
-
-            if (crownVaultData) {
-              await new Promise(resolve => setTimeout(resolve, 100))
-            }
-          }
-
-          if (shouldLoadVictorAnalysis) {
-            opportunitiesData = await secureApi.get('/api/hnwi/victor/analysis/latest', true, {
-              enableCache: !forceRefresh,
-              cacheDuration: 300000
-            }).catch(() => null)
-          }
-        } catch (error) {
-          // Analysis data failed - continue with MongoDB data
+        if (shouldLoadVictorAnalysis) {
+          opportunitiesData = await fetchWithDelay('/api/hnwi/victor/analysis/latest', 300000, 300)
         }
       }
 
-      // Batch 3: MongoDB data (can be parallel as these don't require heavy session state)
+      // Batch 3: MongoDB data (sequential - no parallel to avoid rate limits)
       try {
-        await new Promise(resolve => setTimeout(resolve, 100)) // Final breathing room
-
-        const mongoPromises = [
-          getOpportunities().catch(() => [])
-        ]
+        // Get opportunities first
+        realOpportunities = await fetchWithDelay('/api/opportunities', 600000, 300).then(data => data || [])
 
         if (shouldLoadCrownVaultMongoDB) {
-          mongoPromises.push(
-            getCrownVaultAssets().catch(() => []),
-            getCrownVaultStats().catch(() => null)
-          )
-        }
-
-        const mongoResults = await Promise.all(mongoPromises)
-        realOpportunities = mongoResults[0]
-        if (shouldLoadCrownVaultMongoDB) {
-          realCrownVaultAssets = mongoResults[1] || []
-          realCrownVaultStats = mongoResults[2] || null
+          // Get Crown Vault data sequentially with delays
+          realCrownVaultAssets = await fetchWithDelay(`/api/crown-vault/assets/detailed?owner_id=${userId}`, 600000, 300).then(data => data?.assets || [])
+          realCrownVaultStats = await fetchWithDelay(`/api/crown-vault/stats?owner_id=${userId}`, 600000, 300)
         }
       } catch (error) {
         // MongoDB data failed - use empty defaults

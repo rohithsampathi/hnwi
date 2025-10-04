@@ -187,12 +187,12 @@ export function ConversationSidebar({
 
   return (
     <div className={cn(
-      "flex flex-col h-full max-h-full bg-background overflow-hidden",
+      "flex flex-col h-full bg-background overflow-hidden",
       className
     )}>
 
       {/* Header */}
-      <div className="flex-shrink-0 p-4 border-b border-border">
+      <div className="flex-shrink-0 p-3 border-b border-border">
         {/* Search and New Conversation */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
