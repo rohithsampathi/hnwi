@@ -170,20 +170,17 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
                 <>
                   <h4 className="font-semibold mb-4 flex items-center text-foreground text-left">
                     <Activity className="h-4 w-4 mr-2" />
-                    Top 3 High & Medium Impact Assets 
+                    Portfolio Impact Analysis
                     <Badge variant="outline" className="ml-2">
-                      {criticalAssets.length} Critical | {assetsWithImpact.length} Total
+                      {criticalAssets.length} High Risk | {assetsWithImpact.length} Total Assets
                     </Badge>
                   </h4>
-                  
+
                   <div className="grid gap-4">
                     {assets
                       .filter((asset: any) =>
-                        // Only show assets with impact analysis from backend
-                        // AND with HIGH or MEDIUM risk levels (handle case variations)
-                        asset.elite_pulse_impact &&
-                        (asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH' ||
-                         asset.elite_pulse_impact.risk_level?.toUpperCase() === 'MEDIUM')
+                        // Show ALL assets with impact analysis from backend
+                        asset.elite_pulse_impact !== null && asset.elite_pulse_impact !== undefined
                       )
                 .sort((a: any, b: any) => {
                   // Sort by risk level priority: HIGH > MEDIUM > LOW (handle case variations)

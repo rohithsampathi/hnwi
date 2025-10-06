@@ -80,6 +80,7 @@ interface PageHeaderWithBackProps {
   className?: string
   children?: React.ReactNode
   showBackButton?: boolean
+  icon?: React.ComponentType<{ className?: string }>
 }
 
 export function PageHeaderWithBack({
@@ -89,13 +90,25 @@ export function PageHeaderWithBack({
   onBack,
   className,
   children,
-  showBackButton = true
+  showBackButton = true,
+  icon: Icon
 }: PageHeaderWithBackProps) {
+  const { theme } = useTheme()
+
   return (
     <div className={cn("space-y-2", className)}>
       {showBackButton && (
         <BackButton onNavigate={onNavigate} onClick={onBack} />
       )}
+      <div className="flex items-center gap-3">
+        {Icon && (
+          <Icon className={cn(
+            "h-8 w-8",
+            theme === "dark" ? "text-primary" : "text-primary"
+          )} />
+        )}
+        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+      </div>
       {children}
       {description && (
         <p className="text-muted-foreground text-base leading-tight">

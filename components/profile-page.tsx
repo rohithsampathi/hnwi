@@ -5,6 +5,7 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { useTheme } from "@/contexts/theme-context"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -82,9 +83,10 @@ interface ProfilePageProps {
 
 export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = false }: ProfilePageProps) {
   const { theme } = useTheme()
+  const searchParams = useSearchParams()
   const [isEditing, setIsEditing] = useState(false)
   const { showOnboardingWizard, setShowOnboardingWizard } = useOnboarding()
-  
+
   // Guard clause: Return loading state if user is not defined
   if (!user) {
     return (
@@ -93,13 +95,13 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       </div>
     )
   }
-  
+
   // Ensure user data includes necessary properties, especially company info
-  const initialCompanyName = user.company || 
-                            user.company_info?.name || 
-                            user.profile?.company_info?.name || 
+  const initialCompanyName = user.company ||
+                            user.company_info?.name ||
+                            user.profile?.company_info?.name ||
                             "";
-  
+
   const enhancedUser = {
     ...user,
     company: initialCompanyName,
@@ -115,7 +117,13 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   const [isLoading, setIsLoading] = useState(true)
   const isRefreshingRef = useRef(false)
   const lastFetchTimeRef = useRef(0)
-  const [activeTab, setActiveTab] = useState("crown-vault")
+
+  // Check for tab query parameter and use it, otherwise default to crown-vault
+  const tabFromUrl = searchParams?.get('tab')
+  const initialTab = tabFromUrl && ['crown-vault', 'overview', 'professional', 'preferences', 'subscription'].includes(tabFromUrl)
+    ? tabFromUrl
+    : "crown-vault"
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [vaultStats, setVaultStats] = useState<CrownVaultStats | null>(null)
   const [vaultAssets, setVaultAssets] = useState<CrownVaultAsset[]>([])
   const [vaultLoading, setVaultLoading] = useState(false)
@@ -124,14 +132,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   
   const getTierDisplayName = (tier: string) => {
     switch (tier) {
-      case 'family_office':
-        return 'Family Office'
-      case 'professional':
-        return 'Professional'
-      case 'essential':
-        return 'Essential'
+      case 'architect':
+        return 'Architect'
+      case 'operator':
+        return 'Operator'
+      case 'observer':
+        return 'Observer'
       default:
-        return 'Free'
+        return 'Observer'
     }
   }
   const [billingHistory, setBillingHistory] = useState([])
@@ -376,6 +384,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       loadVaultDataOnDemand()
     }
   }, [activeTab, vaultStats, vaultLoading, userId, loadVaultData, loadVaultDataOnDemand])
+
+  // Update activeTab when URL parameter changes
+  useEffect(() => {
+    const tabFromUrl = searchParams?.get('tab')
+    if (tabFromUrl && ['crown-vault', 'overview', 'professional', 'preferences', 'subscription'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [searchParams])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditedUser({ ...editedUser, [e.target.name]: e.target.value })
@@ -1271,7 +1287,10 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
             }
             
             const getPlanName = () => {
-              return tier === 'family_office' ? 'Family Office' : tier.charAt(0).toUpperCase() + tier.slice(1)
+              if (tier === 'architect') return 'Architect'
+              if (tier === 'operator') return 'Operator'
+              if (tier === 'observer') return 'Observer'
+              return tier.charAt(0).toUpperCase() + tier.slice(1)
             }
             
             // Refresh billing history after successful upgrade

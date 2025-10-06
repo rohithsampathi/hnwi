@@ -437,7 +437,7 @@ export function PlayBooksPage({
     <>
       <MetaTags
         title="War Room: Strategic Playbooks & Intelligence | HNWI Chronicles"
-        description="Institutional-grade strategic intelligence and exclusive playbooks. Where smart wealth accesses the insights that create generational advantage."
+        description="HNWI Pattern Intelligence and exclusive playbooks. Where smart wealth accesses the insights that create generational advantage."
         image="https://app.hnwichronicles.com/images/war-room-og.png"
         url="https://app.hnwichronicles.com/war-room"
       />

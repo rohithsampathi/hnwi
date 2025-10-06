@@ -1,4 +1,4 @@
-export type SubscriptionTier = 'free' | 'essential' | 'professional' | 'family_office'
+export type SubscriptionTier = 'observer' | 'operator' | 'architect'
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial'
 
 export interface BillingTransaction {

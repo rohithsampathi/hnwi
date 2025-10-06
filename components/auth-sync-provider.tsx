@@ -16,15 +16,6 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
     // Subscribe to unified auth manager (which leverages secure-api)
     const unsubscribe = unifiedAuthManager.subscribe((state) => {
       setAuthState(state)
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[UnifiedAuth] State changed:', {
-          authenticated: state.isAuthenticated,
-          userEmail: state.user?.email,
-          loading: state.isLoading,
-          error: state.error
-        })
-      }
     })
 
     // Initial session check using secure-api

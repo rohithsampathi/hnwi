@@ -102,8 +102,12 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
     const trimmedLine = line.trim()
     if (trimmedLine === "") return
 
+    // Check for special sub-section markers (Winners:, Losers:, Potential Moves:)
+    // Allow optional markdown bold markers (**) and whitespace before colon
+    const isSpecialSubSection = /^\*{0,2}(Winners?|Losers?|Potential Moves?)\*{0,2}\s*:?$/i.test(trimmedLine)
+
     // Check for markdown style ## headings and handle all uppercase headings
-    if ((trimmedLine.startsWith("##") || trimmedLine.toUpperCase() === trimmedLine) && trimmedLine !== "") {
+    if ((trimmedLine.startsWith("##") || trimmedLine.toUpperCase() === trimmedLine || isSpecialSubSection) && trimmedLine !== "") {
       if (currentSection.title) {
         const lowerTitle = currentSection.title.toLowerCase()
         
@@ -120,29 +124,47 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
         
         currentSection = { title: "", content: [] }
       }
-      // Remove ## prefix if present
-      const titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+      // Remove ## prefix if present, and remove trailing colon for special sub-sections
+      let titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+      if (isSpecialSubSection) {
+        // Remove markdown bold markers, trailing colon, and whitespace
+        titleText = titleText.replace(/^\*{0,2}/, '').replace(/\*{0,2}\s*:?$/, '')
+      }
       currentSection.title = toTitleCase(titleText)
     } else if (currentSection.title) {
       const explicitBulletPoint = trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || /^\d+\.\s/.test(trimmedLine)
-      
-      // Check if this section should treat all lines as bullet points and split by periods
-      const bulletSections = [
-        "key moves", 
-        "long term", 
+
+      // Sections where ONLY lines starting with "Text:" pattern should be bullets
+      const colonBasedBulletSections = [
+        "winners",
+        "losers",
+        "potential moves",
+        "potential move",
+        "key moves",
+        "market shifts",
+        "long term",
         "long-term",
         "wealth impact",
-        "sentiment tracker", 
-        "market impact", 
-        "investment implications",
-        "impact",
-        "implications",
-        "tracker",
-        "moves"
+        "sentiment tracker",
+        "hnwi sentiment"
       ]
-      const shouldTreatAsBullet = bulletSections.some(section => 
+      const isColonBasedSection = colonBasedBulletSections.some(section =>
         currentSection.title.toLowerCase().includes(section)
       )
+
+      // Check BEFORE removing bullet markers AND markdown bold markers - pattern is "Text:" at start
+      const lineWithoutMarker = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "").replace(/^\*{0,2}/, '').replace(/\*{0,2}:/, ':')
+      const startsWithColonPattern = /^[A-Z][^:]+:/.test(lineWithoutMarker)
+      const shouldBeBulletWithColon = isColonBasedSection && startsWithColonPattern
+
+      // Legacy sections that treat ALL lines as bullets (if any remain)
+      const allLinesBulletSections = [] // Empty now - all sections use colon-based logic
+      const shouldTreatAsBullet = allLinesBulletSections.some(section =>
+        currentSection.title.toLowerCase().includes(section)
+      )
+
+      // Sections that should NOT be split by periods (all colon-based sections)
+      const shouldNotSplit = isColonBasedSection
       
       let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
       // Convert markdown bold (**text**) to HTML bold
@@ -152,19 +174,26 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
         /(Winners:|Losers:|Potential Moves:|Opportunities:|Risks:|Recommendations & Future Paths:|Entry Point:|Entry Points:|Potential Move:)/g,
         "<strong>$1</strong>",
       )
+      // ADDITIVE: Bold any text before a colon at the start of a line (sub-sub-headings)
+      // This catches patterns like "Key Strategy:", "Important Note:", etc.
+      // Only if not already wrapped in <strong> tags
+      if (!formattedText.includes('<strong>') && formattedText.match(/^[A-Z][^:]+:/)) {
+        formattedText = formattedText.replace(/^([^:]+:)/, '<strong>$1</strong>')
+      }
 
       // If this is a bullet section, split by periods and create separate bullets
-      if (shouldTreatAsBullet && !explicitBulletPoint) {
+      // EXCEPT for Winners/Losers/Potential Moves which should keep full lines as single bullets
+      if (shouldTreatAsBullet && !explicitBulletPoint && !shouldNotSplit) {
         // Split by periods but keep periods that are likely abbreviations or decimals
         const parts = formattedText.split(/\.\s+(?=[A-Z])/).filter(part => part.trim().length > 0)
-        
+
         parts.forEach((part, index) => {
           let cleanPart = part.trim()
           // Add period back if it was removed and it's not the last part
           if (index < parts.length - 1 && !cleanPart.endsWith('.')) {
             cleanPart += '.'
           }
-          
+
           if (cleanPart.length > 0) {
             currentSection.content.push({
               text: cleanPart,
@@ -174,7 +203,10 @@ const formatAnalysis = (summary: string): FormattedAnalysis => {
         })
       } else {
         // Regular processing for other content
-        const isBulletPoint = explicitBulletPoint || shouldTreatAsBullet
+        // For colon-based sections: only lines with "Text:" pattern get bullets
+        // For other sections: use shouldTreatAsBullet logic
+        const isBulletPoint = explicitBulletPoint || shouldTreatAsBullet || shouldBeBulletWithColon
+
         currentSection.content.push({
           text: formattedText,
           isBullet: isBulletPoint,
@@ -455,169 +487,7 @@ export function DevelopmentStream({
                           </div>
                         </div>
 
-                        {/* Winners and Losers */}
-                        {(analysis.winners || analysis.losers) && (
-                          <div className="space-y-6 mb-6">
-                            {analysis.winners && (
-                              <div className="pb-2">
-                                <div className="flex items-center mb-4">
-                                  <TrendingUp className="h-4 w-4 text-green-500 mr-3" />
-                                  <h5 className="font-bold text-lg text-green-600 dark:text-green-400">Winners</h5>
-                                </div>
-                                
-                                <div className="space-y-0 pl-2 mb-6">
-                                  {analysis.winners!.content.map((item, pIndex) => (
-                                    <div key={`winner-${pIndex}`} className="text-sm">
-                                      {item.isBullet ? (
-                                        <div className="flex items-start py-0.5">
-                                          <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-green-500"></div>
-                                          {onCitationClick ? (
-                                            <CitationText
-                                              text={item.text.replace(/<[^>]*>/g, '')}
-                                              onCitationClick={onCitationClick}
-                                              className="leading-relaxed font-medium"
-                                              citationMap={citationMap}
-                                            />
-                                          ) : (
-                                            <span
-                                              className="leading-relaxed font-medium"
-                                              dangerouslySetInnerHTML={{
-                                                __html: item.text
-                                              }}
-                                            />
-                                          )}
-                                        </div>
-                                      ) : (
-                                        onCitationClick ? (
-                                          <CitationText
-                                            text={item.text.replace(/<[^>]*>/g, '')}
-                                            onCitationClick={onCitationClick}
-                                            className="leading-relaxed font-medium"
-                                            citationMap={citationMap}
-                                          />
-                                        ) : (
-                                          <p
-                                            className="leading-relaxed font-medium"
-                                            dangerouslySetInnerHTML={{
-                                              __html: item.text
-                                            }}
-                                          />
-                                        )
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {analysis.losers && (
-                              <div className="pb-2">
-                                <div className="flex items-center mb-4">
-                                  <AlertCircle className="h-4 w-4 text-red-500 mr-3" />
-                                  <h5 className="font-bold text-lg text-red-600 dark:text-red-400">Losers</h5>
-                                </div>
-                                
-                                <div className="space-y-0 pl-2 mb-6">
-                                  {analysis.losers!.content.map((item, pIndex) => (
-                                    <div key={`loser-${pIndex}`} className="text-sm">
-                                      {item.isBullet ? (
-                                        <div className="flex items-start py-0.5">
-                                          <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-red-500"></div>
-                                          {onCitationClick ? (
-                                            <CitationText
-                                              text={item.text.replace(/<[^>]*>/g, '')}
-                                              onCitationClick={onCitationClick}
-                                              className="leading-relaxed font-medium"
-                                              citationMap={citationMap}
-                                            />
-                                          ) : (
-                                            <span
-                                              className="leading-relaxed font-medium"
-                                              dangerouslySetInnerHTML={{
-                                                __html: item.text
-                                              }}
-                                            />
-                                          )}
-                                        </div>
-                                      ) : (
-                                        onCitationClick ? (
-                                          <CitationText
-                                            text={item.text.replace(/<[^>]*>/g, '')}
-                                            onCitationClick={onCitationClick}
-                                            className="leading-relaxed font-medium"
-                                            citationMap={citationMap}
-                                          />
-                                        ) : (
-                                          <p
-                                            className="leading-relaxed font-medium"
-                                            dangerouslySetInnerHTML={{
-                                              __html: item.text
-                                            }}
-                                          />
-                                        )
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Potential Moves */}
-                        {analysis.potentialMoves && (
-                          <div className="mb-6 pb-2">
-                            <div className="flex items-center mb-4">
-                              <TrendingUp className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-3" />
-                              <h5 className="font-bold text-lg text-yellow-700 dark:text-yellow-300">Potential Moves</h5>
-                            </div>
-                            
-                            <div className="space-y-0 pl-2 mb-6">
-                              {analysis.potentialMoves!.content.map((item, pIndex) => (
-                                <div key={`move-${pIndex}`} className="text-sm">
-                                  {item.isBullet ? (
-                                    <div className="flex items-start py-0.5">
-                                      <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-yellow-500"></div>
-                                      {onCitationClick ? (
-                                        <CitationText
-                                          text={item.text}
-                                          onCitationClick={onCitationClick}
-                                          className="leading-relaxed font-medium"
-                                          citationMap={citationMap}
-                                        />
-                                      ) : (
-                                        <span
-                                          className="leading-relaxed font-medium"
-                                          dangerouslySetInnerHTML={{
-                                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                          }}
-                                        />
-                                      )}
-                                    </div>
-                                  ) : (
-                                    onCitationClick ? (
-                                      <CitationText
-                                        text={item.text}
-                                        onCitationClick={onCitationClick}
-                                        className="leading-relaxed font-medium"
-                                        citationMap={citationMap}
-                                      />
-                                    ) : (
-                                      <p
-                                        className="leading-relaxed font-medium"
-                                        dangerouslySetInnerHTML={{
-                                          __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                        }}
-                                      />
-                                    )
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Analysis Sections */}
+                        {/* Analysis Sections - Winners/Losers/Potential Moves now nested under "Why This Matters" */}
                         <div className="space-y-6">
                           {analysis.sections.map((section, index) => {
                             const getSectionIcon = (title: string) => {
@@ -628,9 +498,10 @@ export function DevelopmentStream({
                               if (lowerTitle.includes('data') || lowerTitle.includes('number')) return BarChart3
                               return PieChart
                             }
-                            
+
                             const IconComponent = getSectionIcon(section.title)
-                            
+                            const isWhyThisMatters = section.title.toLowerCase().includes('why this matters')
+
                             return (
                               <div key={`section-${index}`} className="pb-2">
                                 <div className="flex items-center mb-4">
@@ -639,7 +510,7 @@ export function DevelopmentStream({
                                   </div>
                                   <h5 className="font-bold text-lg">{section.title}</h5>
                                 </div>
-                                
+
                                 <div className="space-y-0 pl-2">
                                   {section.content.map((item, pIndex) => (
                                     <div key={`item-${pIndex}`} className="text-sm">
@@ -648,7 +519,7 @@ export function DevelopmentStream({
                                           <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
                                           {onCitationClick ? (
                                             <CitationText
-                                              text={item.text.replace(/<[^>]*>/g, '')}
+                                              text={item.text}
                                               onCitationClick={onCitationClick}
                                               className="leading-relaxed font-medium"
                                               citationMap={citationMap}
@@ -665,7 +536,7 @@ export function DevelopmentStream({
                                       ) : (
                                         onCitationClick ? (
                                           <CitationText
-                                            text={item.text.replace(/<[^>]*>/g, '')}
+                                            text={item.text}
                                             onCitationClick={onCitationClick}
                                             className="leading-relaxed font-medium"
                                             citationMap={citationMap}
@@ -682,6 +553,170 @@ export function DevelopmentStream({
                                     </div>
                                   ))}
                                 </div>
+
+                                {/* Nested sub-sections under "Why This Matters" */}
+                                {isWhyThisMatters && (
+                                  <div className="mt-6 pl-4 space-y-6">
+                                    {/* Winners sub-section */}
+                                    {analysis.winners && (
+                                      <div className="pb-2">
+                                        <div className="flex items-center mb-3">
+                                          <TrendingUp className={`h-4 w-4 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                          <h6 className="font-bold text-base">Winners</h6>
+                                        </div>
+
+                                        <div className="space-y-0 pl-2">
+                                          {analysis.winners!.content.map((item, pIndex) => (
+                                            <div key={`winner-${pIndex}`} className="text-sm">
+                                              {item.isBullet ? (
+                                                <div className="flex items-start py-0.5">
+                                                  <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
+                                                  {onCitationClick ? (
+                                                    <CitationText
+                                                      text={item.text}
+                                                      onCitationClick={onCitationClick}
+                                                      className="leading-relaxed font-medium"
+                                                      citationMap={citationMap}
+                                                    />
+                                                  ) : (
+                                                    <span
+                                                      className="leading-relaxed font-medium"
+                                                      dangerouslySetInnerHTML={{
+                                                        __html: item.text
+                                                      }}
+                                                    />
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                onCitationClick ? (
+                                                  <CitationText
+                                                    text={item.text}
+                                                    onCitationClick={onCitationClick}
+                                                    className="leading-relaxed font-medium"
+                                                    citationMap={citationMap}
+                                                  />
+                                                ) : (
+                                                  <p
+                                                    className="leading-relaxed font-medium"
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: item.text
+                                                    }}
+                                                  />
+                                                )
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Losers sub-section */}
+                                    {analysis.losers && (
+                                      <div className="pb-2">
+                                        <div className="flex items-center mb-3">
+                                          <AlertCircle className={`h-4 w-4 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                          <h6 className="font-bold text-base">Losers</h6>
+                                        </div>
+
+                                        <div className="space-y-0 pl-2">
+                                          {analysis.losers!.content.map((item, pIndex) => (
+                                            <div key={`loser-${pIndex}`} className="text-sm">
+                                              {item.isBullet ? (
+                                                <div className="flex items-start py-0.5">
+                                                  <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
+                                                  {onCitationClick ? (
+                                                    <CitationText
+                                                      text={item.text}
+                                                      onCitationClick={onCitationClick}
+                                                      className="leading-relaxed font-medium"
+                                                      citationMap={citationMap}
+                                                    />
+                                                  ) : (
+                                                    <span
+                                                      className="leading-relaxed font-medium"
+                                                      dangerouslySetInnerHTML={{
+                                                        __html: item.text
+                                                      }}
+                                                    />
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                onCitationClick ? (
+                                                  <CitationText
+                                                    text={item.text}
+                                                    onCitationClick={onCitationClick}
+                                                    className="leading-relaxed font-medium"
+                                                    citationMap={citationMap}
+                                                  />
+                                                ) : (
+                                                  <p
+                                                    className="leading-relaxed font-medium"
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: item.text
+                                                    }}
+                                                  />
+                                                )
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Potential Moves sub-section */}
+                                    {analysis.potentialMoves && (
+                                      <div className="pb-2">
+                                        <div className="flex items-center mb-3">
+                                          <TrendingUp className={`h-4 w-4 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                                          <h6 className="font-bold text-base">Potential Moves</h6>
+                                        </div>
+
+                                        <div className="space-y-0 pl-2">
+                                          {analysis.potentialMoves!.content.map((item, pIndex) => (
+                                            <div key={`move-${pIndex}`} className="text-sm">
+                                              {item.isBullet ? (
+                                                <div className="flex items-start py-0.5">
+                                                  <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
+                                                  {onCitationClick ? (
+                                                    <CitationText
+                                                      text={item.text}
+                                                      onCitationClick={onCitationClick}
+                                                      className="leading-relaxed font-medium"
+                                                      citationMap={citationMap}
+                                                    />
+                                                  ) : (
+                                                    <span
+                                                      className="leading-relaxed font-medium"
+                                                      dangerouslySetInnerHTML={{
+                                                        __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                      }}
+                                                    />
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                onCitationClick ? (
+                                                  <CitationText
+                                                    text={item.text}
+                                                    onCitationClick={onCitationClick}
+                                                    className="leading-relaxed font-medium"
+                                                    citationMap={citationMap}
+                                                  />
+                                                ) : (
+                                                  <p
+                                                    className="leading-relaxed font-medium"
+                                                    dangerouslySetInnerHTML={{
+                                                      __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                    }}
+                                                  />
+                                                )
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             )
                           })}

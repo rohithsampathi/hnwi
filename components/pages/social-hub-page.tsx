@@ -16,7 +16,7 @@ export function SocialHubPage({ onNavigate }: { onNavigate: (route: string) => v
   const { theme } = useTheme();
   return (
       <div className="w-full">
-        <SocialHub />
+        <SocialHub onNavigate={onNavigate} />
       </div>
   )
 }

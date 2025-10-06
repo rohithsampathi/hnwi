@@ -675,7 +675,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
               </section>
             )}
 
-            {/* Institutional Intelligence Section */}
+            {/* HNWI Pattern Intelligence Section */}
             {elitePulseData.pattern_recognition.institutional_positioning && (
               <section ref={institutionalRef} className="space-y-4">
                 <div className="lg:hidden mb-4">

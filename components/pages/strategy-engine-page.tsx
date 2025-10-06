@@ -34,7 +34,7 @@ export function StrategyEnginePage({ onNavigate }: { onNavigate: (route: string)
     <>
       <MetaTags
         title="Tactics Lab: Strategic Intelligence Engine | HNWI Chronicles"
-        description="Where smart wealth goes for strategic intelligence. AI-powered analysis engine delivering institutional-grade insights and strategic implications before markets catch up."
+        description="Where smart wealth goes for strategic intelligence. AI-powered analysis engine delivering HNWI Pattern Intelligence insights and strategic implications before markets catch up."
         image="https://app.hnwichronicles.com/images/tactics-lab-og.png"
         url="https://app.hnwichronicles.com/tactics-lab"
       />

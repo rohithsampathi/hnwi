@@ -406,11 +406,19 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className={`text-xl font-bold ${getVisibleTextColor(theme)}`}>
-                        {user.subscription?.tier === 'family_office' ? 'Family Office' :
-                         user.tier === 'family_office' ? 'Family Office' :
-                         'Family Office'} Plan
+                        {user.subscription?.tier === 'architect' ? 'Architect' :
+                         user.subscription?.tier === 'operator' ? 'Operator' :
+                         user.tier === 'architect' ? 'Architect' :
+                         user.tier === 'operator' ? 'Operator' :
+                         'Observer'} Plan
                       </h3>
-                      <p className="text-muted-foreground">$599.00 / month</p>
+                      <p className="text-muted-foreground">
+                        ${user.subscription?.tier === 'architect' ? '1,499' :
+                          user.subscription?.tier === 'operator' ? '599' :
+                          user.tier === 'architect' ? '1,499' :
+                          user.tier === 'operator' ? '599' :
+                          '199'}.00 / month
+                      </p>
                     </div>
                     <Badge 
                       style={{

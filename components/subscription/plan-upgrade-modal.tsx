@@ -35,37 +35,40 @@ interface PlanUpgradeModalProps {
 
 const PLANS = [
   {
-    tier: 'essential' as SubscriptionTier,
-    name: 'Essential',
+    tier: 'observer' as SubscriptionTier,
+    name: 'Observer',
     icon: Shield,
-    monthlyPrice: 99,
-    yearlyPrice: 990,
+    monthlyPrice: 199,
+    yearlyPrice: 1990,
     color: 'from-blue-500 to-cyan-600',
-    tagline: 'Perfect for staying informed',
+    tagline: '"Watch HNWI\'s" - Market Intelligence Dashboard',
     features: [
+      'HNWI World tracking 140,000+ wealth movements',
       'Daily intelligence briefs (6 AM UTC)',
-      'Intelligence from 140,000+ wealth movements',
-      '30-day archive access'
+      '30-day archive access',
+      'Elite Pulse market intelligence',
+      'Pattern recognition insights'
     ],
     limitations: [
       'No Privé Exchange access',
       'No Crown Vault access',
-      'No WhatsApp updates'
+      'No Social Hub access'
     ]
   },
   {
-    tier: 'professional' as SubscriptionTier,
-    name: 'Professional',
+    tier: 'operator' as SubscriptionTier,
+    name: 'Operator',
     icon: Zap,
-    monthlyPrice: 299,
-    yearlyPrice: 2990,
+    monthlyPrice: 599,
+    yearlyPrice: 5990,
     color: 'from-purple-500 to-indigo-600',
     badge: 'Most Popular',
-    tagline: 'For active wealth management',
+    tagline: '"Think Like HNWI" - Strategic Intelligence',
     features: [
-      'Everything in Essential',
+      'Everything in Observer',
       'Privé Exchange - off-market opportunities',
       'Crown Vault - succession planning (10 assets)',
+      'Ask Rohith - 24/7 AI intelligence ally',
       '90-day archive access',
       'Monthly strategy call',
       'WhatsApp updates for urgent intelligence'
@@ -73,16 +76,17 @@ const PLANS = [
     limitations: []
   },
   {
-    tier: 'family_office' as SubscriptionTier,
-    name: 'Family Office',
+    tier: 'architect' as SubscriptionTier,
+    name: 'Architect',
     icon: Crown,
-    monthlyPrice: 599,
-    yearlyPrice: 5990,
+    monthlyPrice: 1499,
+    yearlyPrice: 14990,
     color: 'from-yellow-500 to-amber-600',
-    tagline: 'For complex portfolios',
+    tagline: '"Build HNWI Chronicles" - Complete Intelligence Ecosystem',
     features: [
-      'Everything in Professional',
+      'Everything in Operator',
       'Unlimited Crown Vault storage',
+      'Social Hub - elite networking events',
       'Direct WhatsApp access to analysts',
       'Custom portfolio impact analysis',
       'Full historical archive (1,562 briefs)',
@@ -95,22 +99,22 @@ const PLANS = [
 
 // Razorpay payment button IDs (these should be configured in your Razorpay dashboard)
 const PAYMENT_BUTTON_IDS = {
-  essential_monthly: 'pl_essential_monthly',
-  essential_yearly: 'pl_essential_yearly',
-  professional_monthly: 'pl_professional_monthly',
-  professional_yearly: 'pl_professional_yearly',
-  family_office_monthly: 'pl_family_office_monthly',
-  family_office_yearly: 'pl_family_office_yearly'
+  observer_monthly: 'pl_observer_monthly',
+  observer_yearly: 'pl_observer_yearly',
+  operator_monthly: 'pl_operator_monthly',
+  operator_yearly: 'pl_operator_yearly',
+  architect_monthly: 'pl_architect_monthly',
+  architect_yearly: 'pl_architect_yearly'
 }
 
-export function PlanUpgradeModal({ 
-  isOpen, 
-  onClose, 
-  currentTier = 'free',
-  onSuccess 
+export function PlanUpgradeModal({
+  isOpen,
+  onClose,
+  currentTier = 'observer',
+  onSuccess
 }: PlanUpgradeModalProps) {
   const { theme } = useTheme()
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('professional')
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('operator')
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
   const [isProcessing, setIsProcessing] = useState(false)
   
@@ -131,10 +135,8 @@ export function PlanUpgradeModal({
   }
   
   const getPaymentButtonId = () => {
-    if (selectedTier === 'free') return null
     // Map tier names to match payment button IDs
-    const tierKey = selectedTier === 'family_office' ? 'family_office' : selectedTier
-    return PAYMENT_BUTTON_IDS[`${tierKey}_${billingCycle}` as keyof typeof PAYMENT_BUTTON_IDS]
+    return PAYMENT_BUTTON_IDS[`${selectedTier}_${billingCycle}` as keyof typeof PAYMENT_BUTTON_IDS]
   }
   
   const handlePaymentSuccess = () => {
@@ -199,7 +201,7 @@ export function PlanUpgradeModal({
                   
                   <div className={`
                     relative overflow-hidden rounded-lg border p-6 transition-all
-                    ${plan.tier === 'professional' ? 'border-yellow-500 bg-gray-900' : 'border-gray-700 bg-gray-900/50'}
+                    ${plan.tier === 'operator' ? 'border-yellow-500 bg-gray-900' : 'border-gray-700 bg-gray-900/50'}
                   `}>
                       
                       {/* Plan Header */}
@@ -238,8 +240,8 @@ export function PlanUpgradeModal({
                       <Button
                         onClick={() => setSelectedTier(plan.tier)}
                         className={`w-full ${
-                          plan.tier === 'professional' 
-                            ? 'bg-yellow-500 hover:bg-yellow-600 text-black font-bold' 
+                          plan.tier === 'operator'
+                            ? 'bg-yellow-500 hover:bg-yellow-600 text-black font-bold'
                             : 'bg-transparent border border-yellow-500 text-yellow-500 hover:bg-yellow-500/10'
                         }`}
                       >
@@ -264,7 +266,7 @@ export function PlanUpgradeModal({
               Cancel
             </Button>
             
-            {selectedTier !== 'free' && getPaymentButtonId() ? (
+            {getPaymentButtonId() && currentTier !== selectedTier ? (
               <div className="flex-1">
                 <RazorpayButton
                   playbookId={`subscription_${selectedTier}_${billingCycle}`}
@@ -272,16 +274,6 @@ export function PlanUpgradeModal({
                   paymentButtonId={getPaymentButtonId()!}
                 />
               </div>
-            ) : selectedTier === 'free' && currentTier !== 'free' ? (
-              <Button
-                onClick={() => {
-                  onSuccess?.(selectedTier, billingCycle)
-                  onClose()
-                }}
-                className="flex-1 bg-red-600 text-white hover:bg-red-700"
-              >
-                Downgrade to Free
-              </Button>
             ) : (
               <Button
                 disabled

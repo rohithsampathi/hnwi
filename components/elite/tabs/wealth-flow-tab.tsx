@@ -22,6 +22,13 @@ interface ElitePulseTabProps {
   citations?: Array<{ id: string; number: number; originalText: string }>
 }
 
+// Helper function to convert markdown bold to HTML strong tags
+function convertMarkdownBold(text: string): string {
+  if (!text) return ''
+  // Convert **text** to <strong>text</strong>
+  return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+}
+
 // Parse Implementation Roadmap into structured sections with headings and bullet points
 function parseImplementationRoadmap(text: string) {
   if (!text) return []
@@ -169,16 +176,20 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
           {elitePulseData?.marketIntelligence && (
             <div className="space-y-4">
               {/* Content without citations */}
-              <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                {(() => {
-                  // Remove citation markers from the text
-                  const cleanText = elitePulseData.marketIntelligence
-                    .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                    .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                    .trim()
-                  return cleanText
-                })()}
-              </div>
+              <div
+                className="text-sm text-foreground leading-relaxed whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{
+                  __html: (() => {
+                    // Remove citation markers from the text
+                    const cleanText = elitePulseData.marketIntelligence
+                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                      .trim()
+                    // Convert markdown bold to HTML
+                    return convertMarkdownBold(cleanText)
+                  })()
+                }}
+              />
 
               {/* Citations at the end */}
               {(() => {
@@ -343,9 +354,10 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
                         .map((sentence: string, index: number) => (
                           <div key={index} className="flex items-start">
                             <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                            <span className="text-sm text-foreground leading-relaxed">
-                              {sentence.trim()}
-                            </span>
+                            <span
+                              className="text-sm text-foreground leading-relaxed"
+                              dangerouslySetInnerHTML={{ __html: convertMarkdownBold(sentence.trim()) }}
+                            />
                           </div>
                         ))
                     })()}
@@ -404,36 +416,23 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
                     return parseImplementationRoadmap(cleanRoadmap).map((section, index) => (
                       <div key={index} className="space-y-3">
                         {section.heading && section.heading !== '' && (
-                          <h4 className="font-semibold text-foreground text-base border-b border-border pb-2">
-                            {section.heading}
-                          </h4>
+                          <h4
+                            className="font-semibold text-foreground text-base border-b border-border pb-2"
+                            dangerouslySetInnerHTML={{ __html: convertMarkdownBold(section.heading) }}
+                          />
                         )}
                         <div className="space-y-2 ml-4">
                           {section.bulletPoints.map((point, pointIndex) => {
-                            // Parse the point to handle asterisk formatting
-                            let formattedPoint = point
-                            // Handle patterns like *TEXT**: or **TEXT*: or *TEXT*:
-                            const asteriskMatch = point.match(/^\*+([^*:]+)\*+:\s*(.*)$/)
-
-                            if (asteriskMatch) {
-                              // Render with bold prefix
-                              return (
-                                <div key={pointIndex} className="flex items-start">
-                                  <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                                  <span className="text-sm text-foreground leading-relaxed">
-                                    <span className="font-bold">{asteriskMatch[1]}:</span>{' '}
-                                    {asteriskMatch[2]}
-                                  </span>
-                                </div>
-                              )
-                            }
+                            // Convert markdown bold to HTML for all bullet points
+                            const htmlPoint = convertMarkdownBold(point)
 
                             return (
                               <div key={pointIndex} className="flex items-start">
                                 <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                                <span className="text-sm text-foreground leading-relaxed">
-                                  {formattedPoint}
-                                </span>
+                                <span
+                                  className="text-sm text-foreground leading-relaxed"
+                                  dangerouslySetInnerHTML={{ __html: htmlPoint }}
+                                />
                               </div>
                             )
                           })}
@@ -536,7 +535,7 @@ const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citati
             {/* Header */}
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h5 className="font-semibold text-sm text-primary mb-2">{opportunity.title}</h5>
+                <h5 className="font-semibold text-sm text-primary mb-2" dangerouslySetInnerHTML={{ __html: convertMarkdownBold(opportunity.title) }} />
                 <div className="flex flex-wrap gap-2 mb-3">
                   {/* Impact Badge */}
                   <Badge
@@ -569,17 +568,22 @@ const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citati
             {opportunity.description && (
               <div className="pt-3 border-t border-border space-y-3">
                 {/* Full content without citations - increased font size and better formatting */}
-                <div className="text-sm text-foreground/80 leading-relaxed break-words max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-                  {(() => {
-                    // Remove citation markers from the text
-                    const cleanText = opportunity.description
-                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                      .trim()
-                    // Ensure proper formatting - preserve paragraphs but remove excessive whitespace
-                    return cleanText.split('\n').map(line => line.trim()).filter(line => line).join('\n\n')
-                  })()}
-                </div>
+                <div
+                  className="text-sm text-foreground/80 leading-relaxed break-words max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                  dangerouslySetInnerHTML={{
+                    __html: (() => {
+                      // Remove citation markers from the text
+                      const cleanText = opportunity.description
+                        .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+                        .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+                        .trim()
+                      // Ensure proper formatting - preserve paragraphs but remove excessive whitespace
+                      const formattedText = cleanText.split('\n').map(line => line.trim()).filter(line => line).join('\n\n')
+                      // Convert markdown bold to HTML
+                      return convertMarkdownBold(formattedText)
+                    })()
+                  }}
+                />
 
                 {/* Citations at the end */}
                 {(() => {

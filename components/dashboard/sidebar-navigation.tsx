@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -127,12 +127,19 @@ export function SidebarNavigation({
       description: "Where the right people gather. Invitation verification required.",
       businessOnly: false
     },
+    {
+      name: "Trusted Network",
+      icon: Network,
+      route: "trusted-network",
+      description: "Vetted executors for intelligence-driven action",
+      businessOnly: false
+    },
     // War Room - Hidden for now
-    // { 
-    //   name: "War Room", 
-    //   icon: Shield, 
+    // {
+    //   name: "War Room",
+    //   icon: Shield,
     //   route: "war-room",
-    //   description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with institutional-grade tactical frameworks.",
+    //   description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with HNWI Pattern Intelligence tactical frameworks.",
     //   businessOnly: true
     // },
     { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
@@ -153,11 +160,12 @@ export function SidebarNavigation({
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
   ]
 
-  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Profile
+  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Trusted Network, Profile
   const moreMenuItems = [
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
+    { name: "Trusted Network", icon: Network, route: "trusted-network" },
     { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
   ]
 
@@ -175,6 +183,8 @@ export function SidebarNavigation({
       router.push("/prive-exchange")
     } else if (route === "crown-vault") {
       router.push("/crown-vault")
+    } else if (route === "trusted-network") {
+      router.push("/trusted-network")
     } else if (route === "calendar-page") {
       router.push("/calendar")
     } else if (route === "profile") {

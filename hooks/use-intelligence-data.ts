@@ -28,11 +28,6 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
     cleanData = cleanData.replace(/([a-zA-Z])\s*\n\s*([a-zA-Z])\s*\n\s*([a-zA-Z])/g, '$1$2$3')
 
 
-    // Show a sample of the cleaned data to debug
-    if (cleanData.length > 0) {
-      const sample = cleanData.substring(0, 500)
-    }
-
     // Define tier headers - be flexible with formatting
     const tierHeaders = {
       1: ['TIER 1: $100K OPPORTUNITIES', 'TIER 1:', '$100K OPPORTUNITIES', '100K OPPORTUNITIES', 'Tier 1 Opportunities'],
@@ -105,29 +100,47 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
       // Skip the header line if it somehow got through
       if (text.toUpperCase().includes('TIER') && text.toUpperCase().includes('OPPORTUNITIES')) return
 
-      // Extract title - text before colon, or first sentence, or first few words
+      // PROPER PARSING: Backend sends **Title** on first line, description on subsequent lines
       let title = ''
-      let description = text
+      let description = ''
 
-      // Check for colon-separated title
-      const colonIndex = text.indexOf(':')
-      if (colonIndex > 0 && colonIndex < 100) {
-        title = text.substring(0, colonIndex).trim()
-        description = text.substring(colonIndex + 1).trim()
-      } else {
-        // Use first sentence or first 50 chars as title
-        const firstPeriod = text.indexOf('.')
-        if (firstPeriod > 0 && firstPeriod < 100) {
-          title = text.substring(0, firstPeriod).trim()
+      // Split by newline to separate title from description
+      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+
+      if (lines.length > 0) {
+        // First line is the title (may have **bold** markers)
+        const firstLine = lines[0]
+
+        // Check if first line has bold markers **Title**
+        const boldMatch = firstLine.match(/^\*\*([^*]+)\*\*/)
+        if (boldMatch) {
+          // Extract title from bold markers
+          title = boldMatch[1].trim()
+          // Description is everything after the first line (preserve newlines for paragraph structure)
+          description = lines.slice(1).join('\n').trim()
         } else {
-          // Take first few words
-          const words = text.split(/\s+/).slice(0, 6).join(' ')
-          title = words.length > 60 ? words.substring(0, 60) : words
+          // No bold markers - check for colon separator
+          const colonIndex = firstLine.indexOf(':')
+          if (colonIndex > 0 && colonIndex < 100) {
+            // Title: Description format
+            title = firstLine.substring(0, colonIndex).trim()
+            const restOfFirstLine = firstLine.substring(colonIndex + 1).trim()
+            const restOfLines = lines.slice(1).join('\n').trim()
+            description = restOfFirstLine + (restOfLines ? '\n' + restOfLines : '')
+          } else {
+            // First line is title, rest is description
+            title = firstLine
+            description = lines.slice(1).join('\n').trim()
+          }
         }
+      } else {
+        // Fallback if no lines (shouldn't happen)
+        title = `Opportunity ${index + 1}`
+        description = text
       }
 
-      // Clean up title - remove bullet markers and asterisks
-      title = title.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').replace(/\*+/g, '')
+      // Clean up title - remove any remaining asterisks or bullets
+      title = title.replace(/\*+/g, '').replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').trim()
 
       // Extract capital amounts
       const capitalMatches = text.match(/\$(\d+(?:,\d+)*(?:\.\d+)?[KMB]?)(?:\s*-\s*\$?(\d+(?:,\d+)*(?:\.\d+)?[KMB]?))?/gi)
@@ -176,7 +189,7 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
         location: location,
         sector: sector,
         tier: tier,
-        description: description.substring(0, 200) // Keep some description for context
+        description: description // Full description, no truncation
       })
 
     })
@@ -302,7 +315,7 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
           { title: 'Real Estate Syndication', totalCapitalRequired: '$450,000', riskRating: 'Medium' }
         ],
         3: [
-          { title: 'Institutional Grade Portfolio', totalCapitalRequired: '$1,000,000+', riskRating: 'Managed' },
+          { title: 'HNWI Pattern Intelligence Portfolio', totalCapitalRequired: '$1,000,000+', riskRating: 'Managed' },
           { title: 'Elite Private Equity Access', totalCapitalRequired: '$1,500,000', riskRating: 'Medium-High' },
           { title: 'Ultra-Premium Real Estate', totalCapitalRequired: '$2,000,000', riskRating: 'Low-Medium' }
         ]
@@ -442,7 +455,9 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
 
         if (shouldLoadCrownVaultMongoDB) {
           // Get Crown Vault data sequentially with delays
-          realCrownVaultAssets = await fetchWithDelay(`/api/crown-vault/assets/detailed?owner_id=${userId}`, 600000, 300).then(data => data?.assets || [])
+          const assetsResponse = await fetchWithDelay(`/api/crown-vault/assets/detailed?owner_id=${userId}`, 600000, 300)
+          // API returns array directly, not wrapped in {assets: [...]}
+          realCrownVaultAssets = Array.isArray(assetsResponse) ? assetsResponse : (assetsResponse?.assets || [])
           realCrownVaultStats = await fetchWithDelay(`/api/crown-vault/stats?owner_id=${userId}`, 600000, 300)
         }
       } catch (error) {

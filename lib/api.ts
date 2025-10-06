@@ -125,22 +125,27 @@ export async function getEvents(): Promise<SocialEvent[]> {
     
     return [];
   } catch (error: any) {
-    
-    // Handle Family Office tier requirement with enhanced error details
-    if (error?.status === 403) {
-      const errorDetail = error.detail || error.error || {};
-      throw {
+    console.error('getEvents error:', error);
+    console.error('getEvents error status:', error?.status);
+    console.error('getEvents error response:', error?.response);
+
+    // Handle tier requirement with enhanced error details
+    if (error?.status === 403 || error?.response?.status === 403) {
+      const errorDetail = error.detail || error.error || error?.response?.data || {};
+      const tierError = {
         status: 403,
         detail: {
-          error: errorDetail.error || "Social Hub is exclusively for Family Office members",
+          error: errorDetail.error || "Social Hub requires a premium tier",
           current_tier: errorDetail.current_tier || "unknown",
-          required_tier: errorDetail.required_tier || "family_office",
+          required_tier: errorDetail.required_tier || "premium",
           upgrade_url: errorDetail.upgrade_url || "/subscription/upgrade",
           feature: errorDetail.feature || "social_events_access"
         }
       };
+      console.error('Throwing tier error:', tierError);
+      throw tierError;
     }
-    
+
     throw new Error('Unable to load events. Please try again later.');
   }
 }
@@ -792,11 +797,11 @@ export interface ActivityStats {
 
 export async function getPageActivity(page: string): Promise<ActivityStats> {
   try {
-    const data = await secureApi.get(`/api/analytics/activity/${page}`, true, { 
-      enableCache: true, 
+    const data = await secureApi.get(`/api/analytics/activity/${page}`, true, {
+      enableCache: true,
       cacheDuration: 30000 // 30-second cache for activity data
     });
-    
+
     return {
       page_viewers: data.page_viewers || 0,
       recent_actions: data.recent_actions || 0,
@@ -808,5 +813,132 @@ export async function getPageActivity(page: string): Promise<ActivityStats> {
       recent_actions: 0,
       trending_content: []
     };
+  }
+}
+
+// Trusted Network Directory - Executor APIs
+import type {
+  Executor,
+  ExecutorListResponse,
+  ExecutorCategory,
+  ExecutorSubcategory,
+  IntroductionRequest,
+  IntroductionResponse,
+  UserIntroductionsResponse
+} from "@/types/executor";
+
+export interface ExecutorFilters {
+  category?: ExecutorCategory;
+  subcategory?: ExecutorSubcategory;
+  jurisdiction?: string;
+  language?: string;
+  accepting_clients?: boolean;
+  tier?: "strategic_partner" | "trusted_network";
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getExecutors(filters?: ExecutorFilters): Promise<ExecutorListResponse> {
+  try {
+    // Build query parameters
+    const params = new URLSearchParams();
+
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.subcategory) params.append("subcategory", filters.subcategory);
+    if (filters?.jurisdiction) params.append("jurisdiction", filters.jurisdiction);
+    if (filters?.language) params.append("language", filters.language);
+    if (filters?.accepting_clients !== undefined) params.append("accepting_clients", String(filters.accepting_clients));
+    if (filters?.tier) params.append("tier", filters.tier);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.limit) params.append("limit", String(filters.limit));
+    if (filters?.offset) params.append("offset", String(filters.offset));
+
+    const queryString = params.toString();
+    const endpoint = `/api/executors${queryString ? `?${queryString}` : ""}`;
+
+    const data = await secureApi.get(endpoint, true, {
+      enableCache: true,
+      cacheDuration: 600000 // 10-minute cache for executor list
+    });
+
+    return {
+      executors: data.executors || [],
+      total: data.total || 0,
+      limit: data.limit || 20,
+      offset: data.offset || 0
+    };
+  } catch (error: any) {
+    throw new Error(error?.message || "Unable to load executors. Please try again later.");
+  }
+}
+
+export async function getExecutor(executorId: string): Promise<Executor> {
+  try {
+    const data = await secureApi.get(`/api/executors/${executorId}`, true, {
+      enableCache: true,
+      cacheDuration: 600000 // 10-minute cache for executor details
+    });
+
+    return data as Executor;
+  } catch (error: any) {
+    if (error?.status === 404) {
+      throw new Error("Executor not found");
+    }
+    throw new Error(error?.message || "Unable to load executor details. Please try again later.");
+  }
+}
+
+export async function requestIntroduction(
+  executorId: string,
+  request: IntroductionRequest
+): Promise<IntroductionResponse> {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      throw new Error("User not authenticated. Please log in to request introductions.");
+    }
+
+    const data = await secureApi.post(
+      `/api/executors/${executorId}/request-introduction`,
+      request,
+      true
+    );
+
+    return {
+      intro_id: data.intro_id,
+      executor: data.executor,
+      intro_sent_at: data.intro_sent_at,
+      expected_response_time: data.expected_response_time,
+      message: data.message || "Introduction request sent successfully"
+    };
+  } catch (error: any) {
+    if (error?.status === 400) {
+      throw new Error(error?.message || "Executor is not currently accepting new clients");
+    }
+    if (error?.status === 404) {
+      throw new Error("Executor not found");
+    }
+    throw new Error(error?.message || "Unable to send introduction request. Please try again later.");
+  }
+}
+
+export async function getUserIntroductions(userId?: string): Promise<UserIntroductionsResponse> {
+  try {
+    const currentUserId = userId || getCurrentUserId();
+    if (!currentUserId) {
+      throw new Error("User not authenticated. Please log in to view introductions.");
+    }
+
+    const data = await secureApi.get(`/api/users/${currentUserId}/introductions`, true, {
+      enableCache: false // No cache for user's introduction history (real-time)
+    });
+
+    return {
+      introductions: data.introductions || [],
+      total: data.total || 0
+    };
+  } catch (error: any) {
+    throw new Error(error?.message || "Unable to load introduction history. Please try again later.");
   }
 }

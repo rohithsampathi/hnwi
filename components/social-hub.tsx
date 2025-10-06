@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -51,7 +51,11 @@ function getPatternClass(index: number, theme: string) {
     : PREMIUM_PATTERNS_LIGHT[index % PREMIUM_PATTERNS_LIGHT.length]
 }
 
-export function SocialHub() {
+interface SocialHubProps {
+  onNavigate?: (route: string) => void
+}
+
+export function SocialHub({ onNavigate }: SocialHubProps = {}) {
   const { theme } = useTheme()
   const { toast } = useToast()
   const { user } = useAuth()
@@ -62,28 +66,43 @@ export function SocialHub() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<SocialEvent | null>(null)
+  const hasFetchedRef = useRef(false)
+  const isFetchingRef = useRef(false)
 
   useEffect(() => {
+    // Wait for user authentication to be established before fetching
+    if (!user) {
+      return
+    }
+
+    // Prevent duplicate fetches
+    if (hasFetchedRef.current || isFetchingRef.current) {
+      return
+    }
+
     async function loadEvents() {
+      isFetchingRef.current = true
       try {
         setLoading(true)
         const fetchedEvents = await getEvents()
         setEvents(fetchedEvents)
         setError(null)
+        hasFetchedRef.current = true
       } catch (err: any) {
-        // Handle Family Office tier requirement
+        // Handle tier requirement
         if (err?.status === 403 && err?.detail) {
-          setError(`Family Office Access Required: ${err.detail.error}`);
+          setError(`Access Required: ${err.detail.error || 'You need a premium tier to access Social Hub'}`);
         } else {
           setError("Failed to load events");
         }
       } finally {
         setLoading(false)
+        isFetchingRef.current = false
       }
     }
 
     loadEvents()
-  }, [])
+  }, [user])
 
   const handleTalkToConcierge = async (event: SocialEvent) => {
     setIsProcessing(true)
@@ -165,8 +184,28 @@ export function SocialHub() {
 
   if (error) {
     return (
-      <div className="text-center p-4 text-red-500">
-        <p>Error: {error}</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                <Users className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold">Social Hub Access Required</h3>
+              <p className="text-sm text-muted-foreground">{error}</p>
+              {error.includes('tier') && (
+                <div className="pt-4">
+                  <button
+                    onClick={() => onNavigate?.('/profile?tab=subscription')}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                  >
+                    View Subscription Options
+                  </button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }

@@ -19,9 +19,9 @@ export function CitationText({ text, onCitationClick, className = "", citationMa
   // Parse citations and get formatted text
   const { formattedText, citations } = parseDevCitations(text)
 
-  // If no citations or no handler, just return the text
+  // If no citations or no handler, return text as HTML to preserve formatting
   if (citations.length === 0 || !onCitationClick) {
-    return <span className={className}>{text}</span>
+    return <span className={className} dangerouslySetInnerHTML={{ __html: text }} />
   }
 
   // Convert the formatted text with citation tags to React elements
@@ -49,7 +49,8 @@ export function CitationText({ text, onCitationClick, className = "", citationMa
           )
         }
 
-        return <span key={index}>{part}</span>
+        // Render as HTML to preserve bold tags and other formatting
+        return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />
       })}
     </span>
   )

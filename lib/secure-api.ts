@@ -225,7 +225,6 @@ export const secureApiCall = async (
         // Wait for cookies to propagate after refresh (critical for Crown Vault endpoints)
         // The browser needs time to process Set-Cookie headers from the refresh response
         // Especially important with httpOnly cookies that can't be accessed by JavaScript
-        console.log(`[API] Auth refreshed for ${endpoint}, waiting 750ms for cookies to propagate...`);
         await new Promise(resolve => setTimeout(resolve, 750));
         return secureApiCall(endpoint, options, requireAuth, 1, maxRetries);
       } else {
@@ -333,7 +332,20 @@ export const secureApi = {
           const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth)
 
           if (!response.ok) {
-            throw new Error(`Request failed with status ${response.status}`)
+            // Extract error details from response body before throwing
+            let errorDetail;
+            try {
+              errorDetail = await response.json();
+            } catch {
+              errorDetail = { error: `Request failed with status ${response.status}` };
+            }
+
+            // Throw error with full details from backend
+            const error = new Error(`Request failed with status ${response.status}`);
+            (error as any).status = response.status;
+            (error as any).detail = errorDetail;
+            (error as any).response = { status: response.status, data: errorDetail };
+            throw error;
           }
 
           return await response.json()
@@ -358,7 +370,20 @@ export const secureApi = {
         const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
 
         if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+          // Extract error details from response body before throwing
+          let errorDetail;
+          try {
+            errorDetail = await response.json();
+          } catch {
+            errorDetail = { error: `Request failed with status ${response.status}` };
+          }
+
+          // Throw error with full details from backend
+          const error = new Error(`Request failed with status ${response.status}`);
+          (error as any).status = response.status;
+          (error as any).detail = errorDetail;
+          (error as any).response = { status: response.status, data: errorDetail };
+          throw error;
         }
 
         const data = await response.json();
@@ -414,7 +439,20 @@ export const secureApi = {
     }
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      // Extract error details from response body before throwing
+      let errorDetail;
+      try {
+        errorDetail = await response.json();
+      } catch {
+        errorDetail = { error: `Request failed with status ${response.status}` };
+      }
+
+      // Throw error with full details from backend
+      const error = new Error(`Request failed with status ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).detail = errorDetail;
+      (error as any).response = { status: response.status, data: errorDetail };
+      throw error;
     }
 
     return await response.json();
@@ -432,7 +470,20 @@ export const secureApi = {
     );
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      // Extract error details from response body before throwing
+      let errorDetail;
+      try {
+        errorDetail = await response.json();
+      } catch {
+        errorDetail = { error: `Request failed with status ${response.status}` };
+      }
+
+      // Throw error with full details from backend
+      const error = new Error(`Request failed with status ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).detail = errorDetail;
+      (error as any).response = { status: response.status, data: errorDetail };
+      throw error;
     }
 
     return await response.json();
@@ -443,7 +494,20 @@ export const secureApi = {
     const response = await secureApiCall(endpoint, { method: 'DELETE' }, requireAuth);
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      // Extract error details from response body before throwing
+      let errorDetail;
+      try {
+        errorDetail = await response.json();
+      } catch {
+        errorDetail = { error: `Request failed with status ${response.status}` };
+      }
+
+      // Throw error with full details from backend
+      const error = new Error(`Request failed with status ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).detail = errorDetail;
+      (error as any).response = { status: response.status, data: errorDetail };
+      throw error;
     }
 
     const contentType = response.headers.get('content-type');

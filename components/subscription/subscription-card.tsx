@@ -26,28 +26,29 @@ interface SubscriptionCardProps {
 }
 
 const PLAN_FEATURES = {
-  free: [
-    "Basic market access",
-    "Limited features",
-    "Community access"
-  ],
-  essential: [
+  observer: [
+    "\"Watch HNWI's\" - Market Intelligence Dashboard",
+    "HNWI World tracking 140,000+ wealth movements",
     "Daily intelligence briefs (6 AM UTC)",
-    "Intelligence from 140,000+ wealth movements",
     "30-day archive access",
-    "Perfect for staying informed"
+    "Elite Pulse market intelligence",
+    "Pattern recognition insights"
   ],
-  professional: [
-    "Everything in Essential",
+  operator: [
+    "\"Think Like HNWI\" - Strategic Intelligence",
+    "Everything in Observer",
     "Privé Exchange - off-market opportunities",
     "Crown Vault - succession planning (10 assets)",
+    "Ask Rohith - 24/7 AI intelligence ally",
     "90-day archive access",
     "Monthly strategy call",
     "WhatsApp updates for urgent intelligence"
   ],
-  family_office: [
-    "Everything in Professional",
+  architect: [
+    "\"Build HNWI Chronicles\" - Complete Intelligence Ecosystem",
+    "Everything in Operator",
     "Unlimited Crown Vault storage",
+    "Social Hub - elite networking events",
     "Direct WhatsApp access to analysts",
     "Custom portfolio impact analysis",
     "Full historical archive (1,562 briefs)",
@@ -57,10 +58,9 @@ const PLAN_FEATURES = {
 }
 
 const PLAN_PRICING = {
-  free: { monthly: 0, yearly: 0 },
-  essential: { monthly: 99, yearly: 990 },
-  professional: { monthly: 299, yearly: 2990 },
-  family_office: { monthly: 599, yearly: 5990 }
+  observer: { monthly: 199, yearly: 1990 },
+  operator: { monthly: 599, yearly: 5990 },
+  architect: { monthly: 1499, yearly: 14990 }
 }
 
 export function SubscriptionCard({ 
@@ -71,30 +71,30 @@ export function SubscriptionCard({
 }: SubscriptionCardProps) {
   const { theme } = useTheme()
   
-  const currentTier = subscription?.tier || 'free'
-  
+  const currentTier = subscription?.tier || 'observer'
+
   const getTierDisplayName = (tier: string) => {
     switch (tier) {
-      case 'family_office':
-        return 'Family Office'
-      case 'professional':
-        return 'Professional'
-      case 'essential':
-        return 'Essential'
+      case 'architect':
+        return 'Architect'
+      case 'operator':
+        return 'Operator'
+      case 'observer':
+        return 'Observer'
       default:
-        return 'Free'
+        return 'Observer'
     }
   }
   const status = subscription?.status || 'active'
   const billing_cycle = subscription?.billing_cycle || 'monthly'
-  
+
   const getTierIcon = (tier: string) => {
     switch (tier) {
-      case 'family_office':
+      case 'architect':
         return <Crown className="w-5 h-5" />
-      case 'professional':
+      case 'operator':
         return <Zap className="w-5 h-5" />
-      case 'essential':
+      case 'observer':
         return <Shield className="w-5 h-5" />
       default:
         return <Shield className="w-5 h-5" />
@@ -272,8 +272,8 @@ export function SubscriptionCard({
           className="flex gap-3 pt-4 border-t"
           style={{ borderColor: theme === 'dark' ? 'hsl(43 74% 49% / 0.2)' : 'hsl(0 0% 0% / 0.2)' }}
         >
-          {currentTier !== 'family_office' && (
-            <Button 
+          {currentTier !== 'architect' && (
+            <Button
               onClick={onUpgrade}
               className="flex-1 hover:opacity-90"
               style={{
@@ -284,7 +284,7 @@ export function SubscriptionCard({
               Upgrade Plan
             </Button>
           )}
-          <Button 
+          <Button
             onClick={onManage}
             variant="outline"
             className="flex-1 hover:text-white dark:hover:text-black transition-colors"
@@ -303,7 +303,7 @@ export function SubscriptionCard({
           >
             Manage Billing
           </Button>
-          {status === 'active' && currentTier !== 'free' && (
+          {status === 'active' && (
             <Button 
               onClick={onCancel}
               variant="outline"
