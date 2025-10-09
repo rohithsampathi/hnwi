@@ -7,8 +7,19 @@
 /* Import Golden Dollar Scroll Styling */
 @import url("../styles/golden-scroll.css");
 
+/* Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
 body {
   font-family: "Trojan Pro", Arial, Helvetica, sans-serif;
+}
+
+/* PWA Support: Ensure safe areas are respected on iOS devices with notches */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 @layer utilities {

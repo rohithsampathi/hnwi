@@ -24,7 +24,7 @@ interface SessionConfig {
 const SESSION_CONFIG: SessionConfig = {
   maxAge: 24 * 60 * 60, // 24 hours
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility (allows top-level navigation)
   httpOnly: true,
   path: '/'
 };
@@ -133,8 +133,8 @@ export class SessionManager {
       const cookieStore = cookies();
       
       // Debug: Log all available cookies
-      const allCookies = Array.from(cookieStore.getAll().map(cookie => cookie.name)).join(', ');
-      logger.debug('Available cookies:', { cookies: allCookies });
+      const cookieNames = cookieStore.getAll().map(cookie => cookie.name);
+      logger.debug('Available cookies detected', { cookieCount: cookieNames.length });
       
       // Check for session_token cookie (used by current auth system)
       let sessionToken = cookieStore.get('session_token')?.value;

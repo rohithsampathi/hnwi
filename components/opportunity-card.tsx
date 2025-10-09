@@ -36,6 +36,15 @@ export function OpportunityCard({
       )}
       
       <CardContent className="p-6 flex-grow">
+        {opportunity.start_date && (
+          <p className="text-xs text-muted-foreground mb-2">
+            {new Date(opportunity.start_date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </p>
+        )}
         <h3 className="text-lg font-semibold mb-2">
           {opportunity.title}
         </h3>

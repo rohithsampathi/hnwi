@@ -18,21 +18,24 @@ interface OpportunitiesTabProps {
   onNavigate?: (route: string) => void
   onCitationClick?: (citationId: string) => void
   citations?: Array<{ id: string; number: number; originalText: string }>
+  citationMap?: Map<string, number>
 }
 
-export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations = [] }: OpportunitiesTabProps) {
+export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations = [], citationMap: citationMapProp }: OpportunitiesTabProps) {
   const { theme } = useTheme()
   const metallicStyle = getMetallicCardStyle(theme)
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set())
 
   // Create citation map from global citations
-  const citationMap = useMemo(() => {
+  const fallbackCitationMap = useMemo(() => {
     const map = new Map<string, number>()
     citations.forEach(citation => {
       map.set(citation.id, citation.number)
     })
     return map
   }, [citations])
+
+  const citationMap = citationMapProp ?? fallbackCitationMap
 
 
   // Use ONLY Victor analysis opportunities
@@ -127,6 +130,15 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     <div>
+                      {opp.start_date && (
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {new Date(opp.start_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      )}
                       <h4 className="font-semibold text-foreground text-sm">
                         {opp.title || opp.name || 'Investment Opportunity'}
                       </h4>

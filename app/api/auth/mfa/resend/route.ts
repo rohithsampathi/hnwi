@@ -4,8 +4,9 @@ import { logger } from "@/lib/secure-logger"
 import { secureApi } from "@/lib/secure-api"
 import { SessionEncryption } from "@/lib/session-encryption"
 import { cookies } from "next/headers"
+import { CSRFProtection } from "@/lib/csrf-protection"
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const { sessionToken } = await request.json()
 
@@ -119,14 +120,14 @@ export async function POST(request: NextRequest) {
           successResponse.cookies.set('mfa_session', updatedEncryptedSession, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
             maxAge: 5 * 60, // 5 minutes
             path: '/'
           });
           successResponse.cookies.set(`mfa_token_${sessionToken.substring(0, 8)}`, updatedEncryptedSession, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
             maxAge: 5 * 60, // 5 minutes
             path: '/'
           });
@@ -180,3 +181,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

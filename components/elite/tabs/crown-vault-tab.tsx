@@ -23,21 +23,24 @@ interface CrownVaultTabProps {
   user: User
   onCitationClick?: (citationId: string) => void
   citations?: Array<{ id: string; number: number; originalText: string }>
+  citationMap?: Map<string, number>
 }
 
-export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citations = [] }: CrownVaultTabProps) {
+export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citations = [], citationMap: citationMapProp }: CrownVaultTabProps) {
   const { theme } = useTheme()
   const { showAuthPopup } = useAuthPopup()
   const metallicStyle = getMetallicCardStyle(theme)
 
   // Create citation map from global citations
-  const citationMap = useMemo(() => {
+  const fallbackCitationMap = useMemo(() => {
     const map = new Map<string, number>()
     citations.forEach(citation => {
       map.set(citation.id, citation.number)
     })
     return map
   }, [citations])
+
+  const citationMap = citationMapProp ?? fallbackCitationMap
 
   // Use intelligence data from the hook
 

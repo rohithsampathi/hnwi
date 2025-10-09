@@ -13,6 +13,40 @@ import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCu
 import { ShieldLoader } from "@/components/ui/shield-loader"
 import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 
+const getClientCsrfToken = (): string | null => {
+  if (typeof document === "undefined") {
+    return null
+  }
+
+  const cookieNames = ['csrf_token', '__Secure-csrf_token', '__Host-csrf_token']
+
+  for (const name of cookieNames) {
+    const regex = new RegExp(`(?:^|; )${name}=([^;]+)`)
+    const match = document.cookie.match(regex)
+
+    if (match) {
+      try {
+        const cookieValue = decodeURIComponent(match[1])
+        // Cookie contains base64-encoded JSON: { token, timestamp, userAgent }
+        const tokenData = JSON.parse(atob(cookieValue))
+
+        // Verify token hasn't expired (1 hour)
+        const now = Date.now()
+        if (tokenData.timestamp && (now - tokenData.timestamp) > 3600000) {
+          continue // Try next cookie
+        }
+
+        return tokenData.token
+      } catch {
+        // If decoding fails, return raw value for backwards compatibility
+        return decodeURIComponent(match[1])
+      }
+    }
+  }
+
+  return null
+}
+
 interface AuthPopupProps {
   isOpen: boolean
   onClose: () => void
@@ -260,16 +294,28 @@ export function AuthPopup({
     setError(null)
 
     try {
-      // Use the proper MFA resend endpoint
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+
+      const csrfToken = getClientCsrfToken()
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
+
       const response = await fetch('/api/auth/mfa/resend', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
+        credentials: 'include',
         body: JSON.stringify({ sessionToken: mfaToken }),
       })
 
-      const result = await response.json()
+      let result: any = null
+      try {
+        result = await response.json()
+      } catch {
+        result = null
+      }
 
       if (response.status === 429) {
         // Rate limited during MFA resend - show clear security message with countdown
@@ -287,7 +333,7 @@ export function AuthPopup({
           description: result.message || "A new security code has been sent to your email.",
         })
       } else {
-        setError(result.error || "Failed to resend code")
+        setError(result?.error || "Failed to resend code")
       }
     } catch (error) {
       setError("Failed to resend code. Please try again.")

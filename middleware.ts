@@ -1,46 +1,68 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { RateLimiter } from "./lib/rate-limiter";
-import { AuditLogger, AuditEventType, AuditSeverity } from "./lib/audit-logger";
+import { AuditLogger, AuditEventType } from "./lib/audit-logger";
 import { CSRFProtection } from "./lib/csrf-protection";
 import { sanitizeLoggingContext } from "./lib/security/sanitization";
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const url = request.nextUrl;
-  
-  // Generate CSP nonce for inline scripts
-  const nonce = generateNonce();
+const PUBLIC_API_ENDPOINTS = ["/api/auth/csrf-token", "/api/og", "/api/auth/refresh"];
 
-  // Security Headers
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), interest-cohort=()");
-  
-  // Strict Transport Security (HSTS)
-  if (process.env.NODE_ENV === "production") {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+export async function middleware(request: NextRequest) {
+  const url = request.nextUrl;
+  const requestId = request.headers.get("X-Request-ID") || crypto.randomUUID();
+  const nonce = generateNonce();
+  const isDev = process.env.NODE_ENV !== "production";
+
+  let backendOrigin = "";
+  const apiBaseUrl = process.env.API_BASE_URL;
+  if (apiBaseUrl) {
+    try {
+      backendOrigin = new URL(apiBaseUrl).origin;
+    } catch {
+      backendOrigin = "";
+    }
   }
 
-  // Enhanced Content Security Policy with nonce and hash support
-  const isDev = process.env.NODE_ENV !== "production";
-  
-  // Dynamic script handling - no hardcoded hashes needed
-  
-  // Backend URL should not be exposed - all API calls go through Next.js API routes
-  const backendUrl = 'https://api.example.com'; // Not used in CSP, placeholder only
-  
+  const scriptSources = [
+    "'self'",
+    `'nonce-${nonce}'`,
+    "https://cdn.jsdelivr.net",
+    "https://unpkg.com",
+    "https://checkout.razorpay.com",
+    "https://api-js.mixpanel.com",
+  ];
+
+  if (isDev) {
+    scriptSources.push("'unsafe-inline'", "'unsafe-eval'");
+  } else {
+    scriptSources.push("'strict-dynamic'");
+  }
+
+  const styleSources = ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"];
+
+  const connectSources = [
+    "'self'",
+    "https://api.razorpay.com",
+    "https://*.vercel.app",
+    "wss://*.vercel.app",
+    "https://api-js.mixpanel.com",
+    "https://formspree.io",
+  ];
+
+  if (backendOrigin) {
+    connectSources.push(backendOrigin);
+  }
+
+  if (isDev) {
+    connectSources.push("http://localhost:*", "ws://localhost:*");
+  }
+
   const cspDirectives = [
     "default-src 'self'",
-    // Dynamic script sources - allow inline scripts with nonce for all environments
-    `script-src 'self' 'nonce-${nonce}' ${isDev ? `'unsafe-inline' 'unsafe-eval'` : `'unsafe-inline'`} https://cdn.jsdelivr.net https://unpkg.com https://checkout.razorpay.com https://api-js.mixpanel.com`,
-    // Style sources - allow unsafe-inline in production for now to fix CSP violations
-    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+    `script-src ${scriptSources.join(" ")}`,
+    `style-src ${styleSources.join(" ")}`,
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    `connect-src 'self' ${isDev ? 'http://localhost:* ws://localhost:*' : ''} https://api.razorpay.com https://*.vercel.app wss://*.vercel.app ${backendUrl} https://api-js.mixpanel.com https://formspree.io`,
+    `connect-src ${connectSources.join(" ")}`,
     "frame-src 'self' https://api.razorpay.com",
     "object-src 'none'",
     "base-uri 'self'",
@@ -48,119 +70,148 @@ export function middleware(request: NextRequest) {
     "frame-ancestors 'none'",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
-    ...(isDev ? [] : ["block-all-mixed-content", "upgrade-insecure-requests"])
   ];
 
-  response.headers.set(
-    "Content-Security-Policy",
-    cspDirectives.join("; ")
-  );
-
-  // Add CSP nonce to response for use by Next.js
-  response.headers.set("X-CSP-Nonce", nonce);
-
-  // CORS Headers for API routes with enhanced security
-  if (url.pathname.startsWith("/api/")) {
-    const origin = request.headers.get("origin");
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || ["http://localhost:3000"];
-    
-    if (origin && allowedOrigins.includes(origin)) {
-      response.headers.set("Access-Control-Allow-Origin", origin);
-      response.headers.set("Access-Control-Allow-Credentials", "true");
-      response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-      response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-CSRF-Token, X-Request-ID, X-Client-Version, X-Request-Timestamp");
-      response.headers.set("Access-Control-Max-Age", "86400");
-    }
-
-    // Enhanced API security checks
-    handleAPIRequest(request, response);
+  if (!isDev) {
+    cspDirectives.push("block-all-mixed-content", "upgrade-insecure-requests");
   }
 
-  // Add request ID for tracking
-  const requestId = request.headers.get("X-Request-ID") || crypto.randomUUID();
-  response.headers.set("X-Request-ID", requestId);
+  const securityHeaders: Record<string, string> = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    "Content-Security-Policy": cspDirectives.join("; "),
+    "X-CSP-Nonce": nonce,
+    "X-Request-ID": requestId,
+  };
+
+  if (!isDev) {
+    securityHeaders["Strict-Transport-Security"] =
+      "max-age=31536000; includeSubDomains; preload";
+  }
+
+  const isApiRoute = url.pathname.startsWith("/api/");
+  const isStateChanging =
+    request.method !== "GET" && request.method !== "HEAD" && request.method !== "OPTIONS";
+  const isPublicEndpoint = PUBLIC_API_ENDPOINTS.some((endpoint) =>
+    url.pathname.startsWith(endpoint),
+  );
+
+  const allowedOrigins =
+    process.env.ALLOWED_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ??
+    ["http://localhost:3000"];
+  const origin = request.headers.get("origin");
+
+  const applyCorsHeaders = (response: NextResponse) => {
+    if (isApiRoute && origin && allowedOrigins.includes(origin)) {
+      response.headers.set("Access-Control-Allow-Origin", origin);
+      response.headers.set("Access-Control-Allow-Credentials", "true");
+      response.headers.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      );
+      response.headers.set(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, X-CSRF-Token, X-Request-ID, X-Client-Version, X-Request-Timestamp",
+      );
+      response.headers.set("Access-Control-Max-Age", "86400");
+    }
+  };
+
+  if (isApiRoute && isStateChanging && !isPublicEndpoint) {
+    const csrfValidation = CSRFProtection.validateCSRFToken(request);
+    if (!csrfValidation.valid) {
+      const denied = NextResponse.json(
+        {
+          success: false,
+          error: csrfValidation.error || "CSRF validation failed",
+          code: "CSRF_TOKEN_INVALID",
+          requestId,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 403 },
+      );
+
+      applyCorsHeaders(denied);
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        denied.headers.set(key, value);
+      });
+
+      return denied;
+    }
+  }
+
+  const response = NextResponse.next();
+
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  applyCorsHeaders(response);
+
+  if (isApiRoute && !isPublicEndpoint) {
+    await handleAPIRequest(request, requestId);
+  }
 
   return response;
 }
 
-// Generate cryptographically secure CSP nonce
 function generateNonce(): string {
-  // Always generate dynamic nonce - no fixed values
   const array = new Uint8Array(16);
-  
-  // Use crypto.getRandomValues if available (browser/edge runtime)
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     crypto.getRandomValues(array);
   } else {
-    // Fallback for server-side where crypto.getRandomValues might not be available
     for (let i = 0; i < array.length; i++) {
       array[i] = Math.floor(Math.random() * 256);
     }
   }
-  
+
   return btoa(String.fromCharCode(...array));
 }
 
-// Enhanced API request security handler
-async function handleAPIRequest(request: NextRequest, response: NextResponse) {
+async function handleAPIRequest(request: NextRequest, requestId: string) {
   const pathname = new URL(request.url).pathname;
-  const method = request.method;
-  
-  // Skip security checks for certain endpoints
-  const publicEndpoints = [
-    '/api/auth/csrf-token',
-    '/api/og'
-  ];
-  
-  if (publicEndpoints.some(endpoint => pathname.startsWith(endpoint))) {
-    return;
-  }
 
-  // Log API access for audit purposes
   try {
     const context = sanitizeLoggingContext({
       endpoint: pathname,
-      method,
-      userAgent: request.headers.get('user-agent') || undefined,
+      method: request.method,
+      userAgent: request.headers.get("user-agent") || undefined,
       ip: getClientIP(request),
-      requestId: request.headers.get('X-Request-ID') || crypto.randomUUID()
+      requestId,
     });
 
     await AuditLogger.logEvent(
       AuditEventType.SENSITIVE_DATA_ACCESSED,
-      `API_${method}_${pathname}`,
-      'pending',
-      context
+      `API_${request.method}_${pathname}`,
+      "pending",
+      context,
     );
-  } catch (error) {
-    // Audit logging failure shouldn't break the request
+  } catch {
+    // Audit logging failure shouldn't block request flow
   }
 }
 
-// Extract client IP for security logging
 function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const real = request.headers.get('x-real-ip');
-  
+  const forwarded = request.headers.get("x-forwarded-for");
+  const real = request.headers.get("x-real-ip");
+
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    return forwarded.split(",")[0].trim();
   }
-  
+
   if (real) {
     return real.trim();
   }
-  
-  return request.ip || 'unknown';
+
+  return request.ip || "unknown";
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

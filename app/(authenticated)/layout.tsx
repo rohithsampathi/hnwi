@@ -9,6 +9,7 @@ import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
 import { AppDataProvider } from "@/contexts/app-data-context"
 import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
 import { NotificationProvider } from "@/contexts/notification-context"
@@ -187,39 +188,41 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     <ThemeProvider>
       <BusinessModeProvider>
         <AuthPopupProvider>
-          <OnboardingProvider>
-            <AppDataProvider>
-              <ElitePulseErrorBoundary>
-                <ElitePulseProvider>
-                  <NotificationProvider
-                    enablePolling={false}
-                    pollInterval={30000}
-                    enableSounds={true}
-                    enableBrowserNotifications={true}
-                  >
-                    <IntelligenceNotificationProvider
-                      position="top-right"
-                      maxNotifications={5}
-                      enableAutoNotifications={true}
+          <StepUpMfaProvider>
+            <OnboardingProvider>
+              <AppDataProvider>
+                <ElitePulseErrorBoundary>
+                  <ElitePulseProvider>
+                    <NotificationProvider
+                      enablePolling={false}
+                      pollInterval={30000}
+                      enableSounds={true}
+                      enableBrowserNotifications={true}
                     >
-                      <Layout
-                        title={pageConfig.title}
-                        onNavigate={handleNavigation}
-                        currentPage={pageConfig.currentPage}
-                        showBackButton={pageConfig.showBackButton}
-                        user={user}
+                      <IntelligenceNotificationProvider
+                        position="top-right"
+                        maxNotifications={5}
+                        enableAutoNotifications={true}
                       >
-                        <TokenRefreshManager refreshIntervalHours={20} />
-                        <BackgroundSyncInitializer />
-                        {children}
-                        <Toaster />
-                      </Layout>
-                    </IntelligenceNotificationProvider>
-                  </NotificationProvider>
-                </ElitePulseProvider>
-              </ElitePulseErrorBoundary>
-            </AppDataProvider>
-          </OnboardingProvider>
+                        <Layout
+                          title={pageConfig.title}
+                          onNavigate={handleNavigation}
+                          currentPage={pageConfig.currentPage}
+                          showBackButton={pageConfig.showBackButton}
+                          user={user}
+                        >
+                          <TokenRefreshManager refreshIntervalHours={20} />
+                          <BackgroundSyncInitializer />
+                          {children}
+                          <Toaster />
+                        </Layout>
+                      </IntelligenceNotificationProvider>
+                    </NotificationProvider>
+                  </ElitePulseProvider>
+                </ElitePulseErrorBoundary>
+              </AppDataProvider>
+            </OnboardingProvider>
+          </StepUpMfaProvider>
         </AuthPopupProvider>
       </BusinessModeProvider>
     </ThemeProvider>

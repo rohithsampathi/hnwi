@@ -1,11 +1,12 @@
 // app/api/auth/refresh/route.ts
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
+import { CSRFProtection } from '@/lib/csrf-protection'
 
 // POST handler for token refresh
-export async function POST() {
+async function handlePost(request: NextRequest) {
   try {
     const cookieStore = cookies();
     const refreshToken = cookieStore.get('refresh_token')?.value;
@@ -28,12 +29,18 @@ export async function POST() {
     try {
       // Call backend to refresh the token
       const { API_BASE_URL } = await import("@/config/api");
+
+      // Forward all cookies from request to backend
+      const cookies = request.cookies.getAll();
+      const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
       const backendResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': `refresh_token=${refreshToken}`
-        }
+          'Cookie': cookieHeader
+        },
+        credentials: 'include'
       });
 
       if (!backendResponse.ok) {
@@ -49,6 +56,9 @@ export async function POST() {
 
       const tokenData = await backendResponse.json();
 
+      // Get Set-Cookie headers from backend
+      const backendCookies = backendResponse.headers.get('set-cookie');
+
       if (!tokenData.access_token) {
         logger.warn('No access token in refresh response');
         return NextResponse.json({
@@ -62,6 +72,26 @@ export async function POST() {
         success: true,
         message: 'Token refreshed successfully'
       });
+
+      // Forward backend cookies if any
+      if (backendCookies) {
+        const cookies = backendCookies.split(',').map(c => c.trim());
+        cookies.forEach(cookie => {
+          const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim());
+          const [name, value] = nameValue.split('=');
+
+          response.cookies.set({
+            name,
+            value,
+            httpOnly: cookie.includes('HttpOnly'),
+            secure: cookie.includes('Secure') || process.env.NODE_ENV === 'production',
+            sameSite: cookie.includes('SameSite=Strict') ? 'strict' :
+                      cookie.includes('SameSite=Lax') ? 'lax' :
+                      cookie.includes('SameSite=None') ? 'none' : 'lax',
+            path: '/',
+          });
+        });
+      }
 
       // Set new access token cookie with appropriate lifespan based on remember me preference
       const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
@@ -112,3 +142,7 @@ export async function POST() {
     }, { status: 500 });
   }
 }
+
+// Refresh endpoint doesn't need CSRF protection since it uses httpOnly cookies
+// which are already CSRF-protected by SameSite and browser security
+export const POST = handlePost;

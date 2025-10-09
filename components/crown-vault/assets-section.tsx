@@ -1026,9 +1026,6 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
         </div>
       )}
 
-      {/* Katherine Portfolio Analysis Section */}
-      <KatherinePortfolioAnalysis assets={sortedAssets} />
-
       {/* Edit Asset Modal */}
       <EditAssetModal
         asset={editingAsset}

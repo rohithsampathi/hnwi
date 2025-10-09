@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/theme-context"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
 import AppShell from "./app-shell"
 
 interface AppRootProps {
@@ -19,9 +20,11 @@ export function AppRoot({ initialPage }: AppRootProps) {
       <BusinessModeProvider>
         <OnboardingProvider>
           <AuthPopupProvider>
-            <AppStateProvider initialPage={initialPage}>
-              <AppShell />
-            </AppStateProvider>
+            <StepUpMfaProvider>
+              <AppStateProvider initialPage={initialPage}>
+                <AppShell />
+              </AppStateProvider>
+            </StepUpMfaProvider>
           </AuthPopupProvider>
         </OnboardingProvider>
       </BusinessModeProvider>

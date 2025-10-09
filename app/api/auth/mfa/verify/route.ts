@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { SignJWT } from "jose"
 import { secureApi } from "@/lib/secure-api"
 import { SessionEncryption } from "@/lib/session-encryption"
+import { CSRFProtection } from "@/lib/csrf-protection"
 
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET
@@ -38,7 +39,7 @@ function getJWTSecret(): Uint8Array {
 //     .sign(getJWTSecret())
 // }
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const { email, mfa_code, mfa_token, rememberMe = false } = await request.json()
 
@@ -189,12 +190,18 @@ export async function POST(request: NextRequest) {
         // Use direct fetch for auth endpoints to handle error responses properly
         const { API_BASE_URL } = await import("@/config/api");
         const backendUrl = `${API_BASE_URL}/api/auth/mfa/verify`;
-        
+
+        // Forward all cookies from request to backend
+        const allCookies = request.cookies.getAll();
+        const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+
         const fetchResponse = await fetch(backendUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...(cookieHeader && { 'Cookie': cookieHeader }),
           },
+          credentials: 'include',
           body: JSON.stringify(backendVerifyRequest),
         });
 
@@ -266,7 +273,7 @@ export async function POST(request: NextRequest) {
                 successResponse.cookies.set(name, value, {
                   httpOnly: true,
                   secure: process.env.NODE_ENV === 'production',
-                  sameSite: 'strict',
+                  sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
                   path: '/',
                   maxAge
                 });
@@ -295,7 +302,7 @@ export async function POST(request: NextRequest) {
             successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
-              sameSite: 'strict',
+              sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days
             });
@@ -347,14 +354,14 @@ export async function POST(request: NextRequest) {
           failResponse.cookies.set('mfa_session', updatedEncryptedSession, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
             maxAge: 5 * 60, // 5 minutes
             path: '/'
           });
           failResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
             maxAge: 5 * 60, // 5 minutes
             path: '/'
           });
@@ -385,14 +392,14 @@ export async function POST(request: NextRequest) {
         errorResponse.cookies.set('mfa_session', updatedEncryptedSession, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
           maxAge: 5 * 60, // 5 minutes
           path: '/'
         });
         errorResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
           maxAge: 5 * 60, // 5 minutes
           path: '/'
         });
@@ -426,3 +433,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

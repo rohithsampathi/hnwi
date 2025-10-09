@@ -98,40 +98,40 @@ export function EliteCitationPanel({
 
   return (
     <>
-      {/* Mobile Overlay Background */}
+      {/* Overlay Background - For both mobile and desktop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="md:hidden fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-black/50 z-40"
         onClick={onClose}
       />
 
-      {/* Desktop Panel - Sidebar in third column */}
+      {/* Desktop Panel - Fixed right sidebar full height */}
       <motion.div
-        initial={{ width: 0, opacity: 0 }}
-        animate={{ width: 320, opacity: 1 }}
-        exit={{ width: 0, opacity: 0 }}
+        initial={{ x: "100%", opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: "100%", opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden md:flex w-[320px] flex-col bg-background border-l border-border h-[calc(100vh-280px)] sticky top-6"
+        className="hidden md:flex fixed right-0 top-0 bottom-0 w-[380px] flex-col bg-background border-l border-border z-50 shadow-xl"
       >
-        {/* Desktop Header */}
-        <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0">
+        {/* Desktop Header with Close Button */}
+        <div className="px-4 py-4 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Source Documents</h3>
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-base">Source Documents</h3>
               <Badge variant="secondary" className="text-xs">
-                {citations.length} cited
+                {citations.length}
               </Badge>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-8 w-8 p-0 hover:text-white"
+              className="h-9 w-9 p-0 hover:bg-muted hover:text-foreground rounded-md"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -209,7 +209,7 @@ export function EliteCitationPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="md:hidden fixed inset-0 w-full z-50 h-full bg-background flex flex-col overflow-hidden"
+        className="md:hidden fixed inset-0 w-full z-50 h-full bg-background flex flex-col overflow-hidden shadow-xl"
       >
         {/* Mobile Header with Close Button */}
         <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
@@ -225,7 +225,7 @@ export function EliteCitationPanel({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-10 w-10 p-0"
+              className="h-10 w-10 p-0 text-muted-foreground hover:text-white hover:bg-white/10"
             >
               <X className="h-5 w-5" />
             </Button>

@@ -31,6 +31,7 @@ import { handleOnboardingComplete, handleUpdateUser, handleLogout } from "@/lib/
 import { useToast } from "@/components/ui/use-toast"
 import { setupLegacyNavigation, useNewNavigation } from "@/lib/unified-navigation"
 import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser, loginUser as authManagerLogin } from "@/lib/auth-manager"
+import { secureApi } from "@/lib/secure-api"
 
 // LoginPage is now consolidated into SplashScreen
 
@@ -319,20 +320,7 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
 
       // Use the NextJS API route which will call the FastAPI backend
       try {
-        const response = await fetch(`/api/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(loginData)
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || errorData.detail || "Invalid credentials");
-        }
-        
-        const data = await response.json();
+        const data = await secureApi.post('/api/auth/login', loginData, false);
         
         // Handle direct API login data format (from the Postman example)
         // Extract user info from the response - could be in data.user or directly in data

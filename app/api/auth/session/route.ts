@@ -1,9 +1,10 @@
 // app/api/auth/session/route.ts
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { handleLogin } from '@/lib/auth-actions'
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
+import { CSRFProtection } from '@/lib/csrf-protection'
 
 // GET handler for retrieving the session
 export async function GET() {
@@ -18,7 +19,7 @@ export async function GET() {
     logger.info('Session check - cookies received', {
       hasAccessToken: !!accessToken,
       hasRefreshToken: !!refreshToken,
-      cookieNames: allCookies.map(c => c.name),
+      cookieCount: allCookies.length,
       accessTokenLength: accessToken?.length || 0
     });
 
@@ -91,7 +92,7 @@ export async function GET() {
 }
 
 // POST handler for login
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     // Parse the request body
     const body = await request.json();
@@ -110,8 +111,9 @@ export async function POST(request: Request) {
     // Set the session cookie on the response
     // Include the token in the response so frontend can store it in localStorage
     const responseData = {
-      ...result,
-      token: result.token // Ensure token is available for frontend localStorage
+      success: result.success,
+      user: result.user ?? null,
+      message: result.message
     };
     const response = NextResponse.json(responseData);
     
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
       response.cookies.set('session_token', result.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility (allows top-level navigation)
         maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day for security
         path: '/'
       });
@@ -138,7 +140,7 @@ export async function POST(request: Request) {
       response.cookies.set('session_user', encryptedUserData, {
         httpOnly: true, // Make httpOnly for security
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility (allows top-level navigation)
         maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day
         path: '/'
       });
@@ -155,3 +157,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

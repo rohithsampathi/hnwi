@@ -54,9 +54,9 @@ export function PageHeader({
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-20 pb-0">
+    <div className="px-4 sm:px-6 lg:px-8 pt-16 pb-0">
       {config.showBackButton && (
-        <div className="mb-3">
+        <div className="mb-2">
           <Button
             variant="outline"
             size="sm"
@@ -68,21 +68,21 @@ export function PageHeader({
           </Button>
         </div>
       )}
-      
+
       <div className="mb-0">
-        <div className="flex items-center gap-3 mb-1">
-          <PageIcon className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+        <div className="flex items-center gap-2 mb-1">
+          <PageIcon className="h-5 w-5 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">
             {config.title}
           </h1>
         </div>
         {config.description && (
-          <p className="text-muted-foreground text-sm ml-9 mb-0">
+          <p className="text-muted-foreground text-sm ml-7 mb-0">
             {config.description}
           </p>
         )}
       </div>
-      <div className="border-b border-border/30 mt-3 mb-6" />
+      <div className="border-b border-border/30 mt-2 mb-4" />
     </div>
   )
 }

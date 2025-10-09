@@ -432,8 +432,11 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
           ref={scrollContainerRef}
           className={cn(
             "flex-1",
-            currentMessages.length > 0 && "overflow-y-auto pb-32"
+            currentMessages.length > 0 && "overflow-y-auto"
           )}
+          style={{
+            paddingBottom: currentMessages.length > 0 ? 'calc(180px + env(safe-area-inset-bottom))' : '0'
+          }}
         >
           <div className="max-w-4xl mx-auto px-6 pt-8 pb-4">
             {isLoading && !isContextLoaded ? (
@@ -575,7 +578,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
 
         {/* Input Area - When there are messages */}
         {currentMessages.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-background z-20">
+          <div className="fixed bottom-0 left-0 right-0 bg-background z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="border-t border-border/50 bg-background/95 backdrop-blur-sm">
               <div className="max-w-4xl mx-auto px-6 py-3">
                 <form
@@ -631,7 +634,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
 
         {/* Footer - When no messages */}
         {currentMessages.length === 0 && (
-          <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-background z-20">
+          <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-background z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="max-w-4xl mx-auto px-6 py-3">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
                 <span className="font-medium">Ask Rohith is a personalised learning engine. It gets better with feedback.</span>

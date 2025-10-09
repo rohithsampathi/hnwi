@@ -15,6 +15,7 @@ import { getMetallicCardStyle } from "@/lib/colors"
 import { secureApi } from "@/lib/secure-api"
 import { DevelopmentStream } from "@/components/development-stream"
 import { GoldenScroll } from "@/components/ui/golden-scroll"
+import { useCitationManager } from "@/hooks/use-citation-manager"
 import {
   TrendingUp,
   TrendingDown,
@@ -268,11 +269,17 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [totalDevelopments, setTotalDevelopments] = useState(0)
 
-  // Citation state
-  const [citations, setCitations] = useState<Citation[]>([])
-  const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null)
-  const [showCitationPanel, setShowCitationPanel] = useState(false)
-  const [globalCitationMap, setGlobalCitationMap] = useState<Map<string, number>>(new Map())
+  // Citation state managed via shared hook
+  const {
+    citations: managedCitations,
+    setCitations: setManagedCitations,
+    citationMap,
+    selectedCitationId,
+    setSelectedCitationId,
+    isPanelOpen,
+    openCitation,
+    closePanel
+  } = useCitationManager()
   
   // Mobile improvements state
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
@@ -283,9 +290,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
   // Handle citation click from development cards
   const handleCitationClick = useCallback((citationId: string) => {
-    setSelectedCitationId(citationId)
-    setShowCitationPanel(true)
-  }, [])
+    openCitation(citationId)
+  }, [openCitation])
 
   // Handle citation selection from panel
   const handleCitationSelect = useCallback((citationId: string) => {
@@ -295,54 +301,36 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   // Handle development expansion and extract citations
   const handleDevelopmentExpanded = useCallback((devId: string, isExpanded: boolean) => {
     if (isExpanded) {
-      // Find the development
-      const dev = developments.find(d => d.id === devId)
-      if (dev && dev.summary) {
-        // Extract citations from the summary
+      const dev = developments.find((d) => d.id === devId)
+      if (dev?.summary) {
         const devIds = extractDevIds(dev.summary)
         if (devIds.length > 0) {
-          // Build global citation map from all expanded developments
-          const globalMap = new Map<string, number>()
-          let citationNumber = 1
-
-          // First, collect all unique dev IDs from all currently expanded developments
-          const allUniqueDevIds = new Set<string>()
-          devIds.forEach(id => allUniqueDevIds.add(id))
-
-          // Assign numbers to unique dev IDs
-          Array.from(allUniqueDevIds).forEach(id => {
-            globalMap.set(id, citationNumber++)
-          })
-
-          // Create citations array with global numbers
-          const newCitations: Citation[] = devIds.map(id => ({
+          const uniqueIds = Array.from(new Set(devIds))
+          const newCitations: Citation[] = uniqueIds.map((id, index) => ({
             id,
-            number: globalMap.get(id)!,
+            number: index + 1,
             originalText: `[Dev ID: ${id}]`
           }))
 
-          setCitations(newCitations)
-          setGlobalCitationMap(globalMap)
+          setManagedCitations(newCitations)
 
-          // Auto-select first citation if panel is open
-          if (newCitations.length > 0 && showCitationPanel) {
-            setSelectedCitationId(newCitations[0].id)
+          if (newCitations.length > 0) {
+            setSelectedCitationId((current) => (current && uniqueIds.includes(current) ? current : newCitations[0].id))
+          } else {
+            setSelectedCitationId(null)
           }
-        } else {
-          // Clear citations if none found
-          setCitations([])
-          setGlobalCitationMap(new Map())
-          setSelectedCitationId(null)
+          return
         }
       }
-    } else {
-      // Clear citations when card is collapsed
-      setCitations([])
-      setGlobalCitationMap(new Map())
+
+      setManagedCitations([])
       setSelectedCitationId(null)
-      setShowCitationPanel(false)
+    } else {
+      setManagedCitations([])
+      setSelectedCitationId(null)
+      closePanel()
     }
-  }, [developments, showCitationPanel])
+  }, [developments, setManagedCitations, setSelectedCitationId, closePanel])
   
   // Screen size detection for mobile/desktop check
   useEffect(() => {
@@ -889,15 +877,13 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         </AnimatePresence>
 
         {/* Mobile Citation Panel */}
-        {showCitationPanel && screenSize === 'mobile' && (
+        {isPanelOpen && screenSize === 'mobile' && (
           <AnimatePresence>
             <EliteCitationPanel
-              citations={citations}
+              citations={managedCitations}
               selectedCitationId={selectedCitationId}
               onClose={() => {
-                setShowCitationPanel(false)
-                setCitations([])
-                setSelectedCitationId(null)
+                closePanel()
               }}
               onCitationSelect={handleCitationSelect}
             />
@@ -913,7 +899,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       {/* Main Dashboard Content - Flex Layout for proper 3-column */}
       <div className="flex flex-col lg:flex-row gap-8 mt-4">
         {/* Left Column - Activity Leaderboard */}
-        <div className={`w-full ${showCitationPanel ? 'lg:w-[30%]' : 'lg:w-[40%]'} h-full flex-shrink-0 transition-all duration-300`}>
+        <div className={`w-full ${isPanelOpen ? 'lg:w-[30%]' : 'lg:w-[40%]'} h-full flex-shrink-0 transition-all duration-300`}>
           <div className="h-full flex flex-col">
             {/* Header Section */}
             <div className="mb-3">
@@ -1168,7 +1154,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   isLoading={isLoading}
                   onCitationClick={handleCitationClick}
                   onDevelopmentExpanded={handleDevelopmentExpanded}
-                  citationMap={globalCitationMap}
+                  citationMap={citationMap}
                 />
               </GoldenScroll>
             </div>
@@ -1176,15 +1162,13 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         </div>
 
         {/* Right Column - Citations Panel (Desktop Only) */}
-        {showCitationPanel && (
+        {isPanelOpen && (
           <div className="hidden lg:block">
             <EliteCitationPanel
-              citations={citations}
+              citations={managedCitations}
               selectedCitationId={selectedCitationId}
               onClose={() => {
-                setShowCitationPanel(false)
-                setCitations([])
-                setSelectedCitationId(null)
+                closePanel()
               }}
               onCitationSelect={handleCitationSelect}
             />

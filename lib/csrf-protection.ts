@@ -21,8 +21,8 @@ function getSecureCSRFCookieName(): string {
     // Use __Host- prefix for maximum security in production
     return `__Host-${CSRF_COOKIE_NAME}`;
   } else {
-    // Use __Secure- prefix for development
-    return `__Secure-${CSRF_COOKIE_NAME}`;
+    // Use plain name in development (no __Secure- prefix since secure flag is false)
+    return CSRF_COOKIE_NAME;
   }
 }
 
@@ -61,7 +61,7 @@ export class CSRFProtection {
     cookieStore.set(secureCookieName, cookieValue, {
       httpOnly: false, // Must be readable by client-side JavaScript
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
       maxAge: CSRF_TOKEN_LIFETIME / 1000,
       path: '/'
     });
@@ -81,10 +81,21 @@ export class CSRFProtection {
         return { valid: true };
       }
 
-      const cookieStore = cookies();
       const secureCookieName = getSecureCSRFCookieName();
+
+      const requestCookies = typeof request.cookies?.get === 'function' ? request.cookies : undefined;
+
       // Try secure cookie first, fallback to legacy for compatibility
-      const csrfCookie = cookieStore.get(secureCookieName)?.value || cookieStore.get(CSRF_COOKIE_NAME)?.value;
+      let csrfCookie = requestCookies?.get(secureCookieName)?.value || requestCookies?.get(CSRF_COOKIE_NAME)?.value;
+
+      if (!csrfCookie) {
+        try {
+          const headerCookieStore = cookies();
+          csrfCookie = headerCookieStore.get(secureCookieName)?.value || headerCookieStore.get(CSRF_COOKIE_NAME)?.value;
+        } catch {
+          // cookies() is unavailable in edge middleware - ignore
+        }
+      }
       const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
       
       if (!csrfCookie) {
@@ -111,16 +122,28 @@ export class CSRFProtection {
 
       // Decode and validate cookie data
       let tokenData: CSRFTokenData;
+      let isLegacyFormat = false;
       try {
         tokenData = JSON.parse(atob(csrfCookie));
       } catch (e) {
-        logger.warn('CSRF validation failed - invalid cookie format');
-        return { valid: false, error: 'Invalid CSRF cookie format' };
+        // Handle legacy format: raw token string (backwards compatibility)
+        try {
+          // Try to use cookie value as raw token
+          isLegacyFormat = true;
+          tokenData = {
+            token: csrfCookie,
+            timestamp: Date.now(), // Assume recent for legacy tokens
+            userAgent: request.headers.get('user-agent') || ''
+          };
+        } catch {
+          logger.warn('CSRF validation failed - invalid cookie format');
+          return { valid: false, error: 'Invalid CSRF cookie format' };
+        }
       }
 
-      // Check token expiry
+      // Check token expiry (skip for legacy format since timestamp is synthetic)
       const now = Date.now();
-      if (now - tokenData.timestamp > CSRF_TOKEN_LIFETIME) {
+      if (!isLegacyFormat && now - tokenData.timestamp > CSRF_TOKEN_LIFETIME) {
         logger.warn('CSRF validation failed - token expired', {
           tokenAge: now - tokenData.timestamp,
           maxAge: CSRF_TOKEN_LIFETIME
@@ -129,8 +152,9 @@ export class CSRFProtection {
       }
 
       // Validate User-Agent hasn't changed (basic anti-hijacking)
+      // Skip for legacy format since we don't have original userAgent
       const currentUserAgent = request.headers.get('user-agent') || '';
-      if (tokenData.userAgent !== currentUserAgent) {
+      if (!isLegacyFormat && tokenData.userAgent !== currentUserAgent) {
         const context = sanitizeLoggingContext({
           endpoint: new URL(request.url).pathname,
           userAgent: currentUserAgent,
@@ -149,7 +173,11 @@ export class CSRFProtection {
         return { valid: false, error: 'CSRF token mismatch' };
       }
 
-      logger.debug('CSRF validation successful');
+      if (isLegacyFormat) {
+        logger.info('CSRF validation successful (legacy format - consider refreshing token)');
+      } else {
+        logger.debug('CSRF validation successful');
+      }
       return { valid: true };
       
     } catch (error) {

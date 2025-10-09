@@ -3,7 +3,7 @@
 
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,20 +22,22 @@ interface OverviewTabProps {
   setActiveTab: (tab: string) => void
   onCitationClick?: (citationId: string) => void
   citations?: Array<{ id: string; number: number; originalText: string }>
+  citationMap?: Map<string, number>
 }
 
-export function OverviewTab({ data, setActiveTab, onCitationClick, citations = [] }: OverviewTabProps) {
+export function OverviewTab({ data, setActiveTab, onCitationClick, citations = [], citationMap: citationMapProp }: OverviewTabProps) {
   const { theme } = useTheme()
   const metallicStyle = getMetallicCardStyle(theme)
 
-  // Create citation map from global citations
-  const citationMap = useMemo(() => {
+  const fallbackCitationMap = useMemo(() => {
     const map = new Map<string, number>()
-    citations.forEach(citation => {
+    citations.forEach((citation) => {
       map.set(citation.id, citation.number)
     })
     return map
   }, [citations])
+
+  const citationMap = citationMapProp ?? fallbackCitationMap
   
   return (
     <div className="space-y-8">
@@ -63,6 +65,7 @@ export function OverviewTab({ data, setActiveTab, onCitationClick, citations = [
                     text={data.executiveSummary}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
+                    options={{ convertMarkdownBold: true, preserveLineBreaks: true, renderLists: true, renderParagraphs: true }}
                   />
                 </div>
               </div>

@@ -30,24 +30,63 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
 
     // Define tier headers - be flexible with formatting
     const tierHeaders = {
-      1: ['TIER 1: $100K OPPORTUNITIES', 'TIER 1:', '$100K OPPORTUNITIES', '100K OPPORTUNITIES', 'Tier 1 Opportunities'],
-      2: ['TIER 2: $500K OPPORTUNITIES', 'TIER 2:', '$500K OPPORTUNITIES', '500K OPPORTUNITIES', 'Tier 2 Opportunities'],
-      3: ['TIER 3: $1M OPPORTUNITIES', 'TIER 3:', '$1M OPPORTUNITIES', '1M OPPORTUNITIES', '$1M+ OPPORTUNITIES', 'Tier 3 Opportunities']
+      1: [
+        'TIER 1: $100K OPPORTUNITIES', 'TIER 1:', 'TIER 1 OPPORTUNITIES',
+        '$100K OPPORTUNITIES', '100K OPPORTUNITIES', 'Tier 1 Opportunities',
+        'TIER 1 -', 'TIER 1–', 'TIER 1—',  // Different dash types
+        'TIER ONE'
+      ],
+      2: [
+        'TIER 2: $500K OPPORTUNITIES', 'TIER 2:', 'TIER 2 OPPORTUNITIES',
+        '$500K OPPORTUNITIES', '500K OPPORTUNITIES', 'Tier 2 Opportunities',
+        'TIER 2 -', 'TIER 2–', 'TIER 2—',
+        'TIER TWO'
+      ],
+      3: [
+        'TIER 3: $1M OPPORTUNITIES', 'TIER 3:', 'TIER 3 OPPORTUNITIES',
+        '$1M OPPORTUNITIES', '1M OPPORTUNITIES', '$1M+ OPPORTUNITIES',
+        'Tier 3 Opportunities', 'TIER 3 -', 'TIER 3–', 'TIER 3—',
+        'TIER THREE'
+      ]
     }
 
-    // Find the tier section
+    // Find the tier section - try multiple strategies
     let tierStart = -1
     let headerFound = ''
+
+    // Strategy 1: Look for exact tier headers
     for (const header of tierHeaders[tier as keyof typeof tierHeaders]) {
-      // Check for exact match
       tierStart = cleanData.indexOf(header)
       if (tierStart === -1) {
-        // Try case-insensitive match
         tierStart = cleanData.toLowerCase().indexOf(header.toLowerCase())
       }
       if (tierStart !== -1) {
         headerFound = header
         break
+      }
+    }
+
+    // Strategy 2: If not found, use regex to find "TIER X" pattern
+    if (tierStart === -1) {
+      const tierRegex = new RegExp(`TIER\\s*${tier}[:\\s\\-–—]`, 'i')
+      const match = cleanData.match(tierRegex)
+      if (match && match.index !== undefined) {
+        tierStart = match.index
+        headerFound = match[0]
+      }
+    }
+
+    // Strategy 3: If still not found, look for the capital amount pattern
+    if (tierStart === -1) {
+      const capitalPatterns = {
+        1: /\$100[,K\s]*OPPORTUNIT/i,
+        2: /\$500[,K\s]*OPPORTUNIT/i,
+        3: /\$1[,M.\s]*OPPORTUNIT/i
+      }
+      const capitalMatch = cleanData.match(capitalPatterns[tier as keyof typeof capitalPatterns])
+      if (capitalMatch && capitalMatch.index !== undefined) {
+        tierStart = capitalMatch.index
+        headerFound = capitalMatch[0]
       }
     }
 
@@ -78,87 +117,116 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
     // Parse opportunities from the content
     const opportunities = []
 
-    // Remove the tier header line
+    // Remove the tier header line (## TIER X: $XXX OPPORTUNITIES)
     const contentWithoutHeader = tierContent.replace(/^.*?TIER.*?OPPORTUNITIES.*?\n+/i, '')
 
-    // Split by double newlines first (paragraphs), then by single newlines (bullets)
-    let items = contentWithoutHeader.split(/\n\n+/).filter(item => item.trim().length > 20)
+    // SIMPLE PARSING: Split by ** markers (each opportunity starts with **Title**)
+    // Next opportunity = next **, Next tier = ##
+    const items = contentWithoutHeader
+      .split(/\n(?=\*\*)/)  // Split on newline followed by **
+      .map(item => {
+        // Remove any ## content (next tier marker) from the end
+        const hashIndex = item.indexOf('\n##')
+        if (hashIndex > -1) {
+          return item.substring(0, hashIndex).trim()
+        }
+        return item.trim()
+      })
+      .filter(item => item.length > 20 && item.startsWith('**'))  // Only blocks starting with **
 
-    // If we don't have enough items, split by single newlines too
-    if (items.length < 3) {
-      items = contentWithoutHeader.split(/\n+/).filter(item => item.trim().length > 30)
+    if (tier === 1) {
+      console.log('=== TIER 1 PARSING ===')
+      console.log('Opportunities found:', items.length)
+      items.forEach((item, i) => {
+        console.log(`Opp ${i}:`, item.split('\n')[0].substring(0, 80))
+      })
     }
-
 
     // Process each item as an opportunity
     items.forEach((item, index) => {
-      // Skip if we already have enough opportunities
-      if (opportunities.length >= 3) return
+      // Skip empty items
+      if (!item || item.trim().length === 0) {
+        return
+      }
 
       const text = item.trim()
 
       // Skip the header line if it somehow got through
       if (text.toUpperCase().includes('TIER') && text.toUpperCase().includes('OPPORTUNITIES')) return
 
-      // PROPER PARSING: Backend sends **Title** on first line, description on subsequent lines
+      // NEW FORMAT PARSING:
+      // **Title**
+      // Entry Investment: $XXX (details)
+      // Risk Profile: XXX - description
+      //
+      // Description paragraph (only this goes in description)
+
       let title = ''
+      let capital = ''
+      let risk = ''
       let description = ''
 
-      // Split by newline to separate title from description
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
+      // Extract title from **Title**
+      const titleMatch = text.match(/^\*\*(.*?)\*\*/)
+      if (titleMatch) {
+        title = titleMatch[1].trim()
+      }
 
-      if (lines.length > 0) {
-        // First line is the title (may have **bold** markers)
-        const firstLine = lines[0]
+      // Extract Entry Investment line (for capital tag only)
+      const investmentMatch = text.match(/Entry Investment:\s*\$?([\d,]+(?:,\d{3})*(?:\.\d+)?[KMB]?)/i)
+      if (investmentMatch) {
+        let amount = investmentMatch[1].replace(/,/g, '')
 
-        // Check if first line has bold markers **Title**
-        const boldMatch = firstLine.match(/^\*\*([^*]+)\*\*/)
-        if (boldMatch) {
-          // Extract title from bold markers
-          title = boldMatch[1].trim()
-          // Description is everything after the first line (preserve newlines for paragraph structure)
-          description = lines.slice(1).join('\n').trim()
-        } else {
-          // No bold markers - check for colon separator
-          const colonIndex = firstLine.indexOf(':')
-          if (colonIndex > 0 && colonIndex < 100) {
-            // Title: Description format
-            title = firstLine.substring(0, colonIndex).trim()
-            const restOfFirstLine = firstLine.substring(colonIndex + 1).trim()
-            const restOfLines = lines.slice(1).join('\n').trim()
-            description = restOfFirstLine + (restOfLines ? '\n' + restOfLines : '')
-          } else {
-            // First line is title, rest is description
-            title = firstLine
-            description = lines.slice(1).join('\n').trim()
+        // If it doesn't already have K/M/B suffix, format it
+        if (!/[KMB]$/i.test(amount)) {
+          const num = parseFloat(amount)
+          if (num >= 1000000000) {
+            amount = (num / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B'
+          } else if (num >= 1000000) {
+            amount = (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+          } else if (num >= 1000) {
+            amount = (num / 1000).toFixed(0) + 'K'
           }
         }
-      } else {
-        // Fallback if no lines (shouldn't happen)
+
+        capital = '$' + amount
+      }
+
+      // Extract Risk Profile (for risk tag only)
+      const riskMatch = text.match(/Risk Profile:\s*([^\-\n]+)/i)
+      if (riskMatch) {
+        risk = riskMatch[1].trim()
+      }
+
+      // Extract ONLY the description paragraph (after blank line following Risk Profile)
+      const descriptionMatch = text.match(/Risk Profile:.*?\n\n(.+)/s)
+      if (descriptionMatch) {
+        description = descriptionMatch[1].trim()
+      }
+
+      // Fallback defaults if parsing failed
+      if (!title) {
         title = `Opportunity ${index + 1}`
+      }
+      if (!capital) {
+        capital = tier === 1 ? '$100K' : tier === 2 ? '$500K' : '$1M'
+      }
+      if (!risk) {
+        risk = tier === 1 ? 'Low-Medium' : tier === 2 ? 'Medium' : 'Medium-High'
+      }
+      if (!description) {
+        // Last resort: use full text but this shouldn't happen
         description = text
       }
 
-      // Clean up title - remove any remaining asterisks or bullets
-      title = title.replace(/\*+/g, '').replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, '').trim()
-
-      // Extract capital amounts
-      const capitalMatches = text.match(/\$(\d+(?:,\d+)*(?:\.\d+)?[KMB]?)(?:\s*-\s*\$?(\d+(?:,\d+)*(?:\.\d+)?[KMB]?))?/gi)
-      let capital = ''
-      if (capitalMatches && capitalMatches.length > 0) {
-        // Use the first capital amount found
-        capital = capitalMatches[0]
-      } else {
-        // Default based on tier
-        capital = tier === 1 ? '$100K-150K' : tier === 2 ? '$500K-750K' : '$1M-2M'
+      if (tier === 1) {
+        console.log('Parsed:', {
+          title: title.substring(0, 40),
+          capital,
+          risk,
+          description: description.substring(0, 80)
+        })
       }
-
-      // Determine risk
-      let risk = tier === 1 ? 'Low-Medium' : tier === 2 ? 'Medium' : 'Managed'
-      if (text.toLowerCase().includes('conservative')) risk = 'Conservative'
-      else if (text.toLowerCase().includes('aggressive')) risk = 'Aggressive'
-      else if (text.toLowerCase().includes('high risk')) risk = 'High'
-      else if (text.toLowerCase().includes('low risk')) risk = 'Low'
 
       // Extract location
       let location = 'Global Markets'
@@ -544,7 +612,7 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
     const realCrownVaultAssets = intelligenceData.realCrownVaultAssets || []
     const realCrownVaultStats = intelligenceData.realCrownVaultStats || {}
 
-    // Helper function to replace MOE v4 with HNWI in text content
+    // Helper function to replace MOE v4 with HNWI in text content AND clean citations
     const replaceMoeV4 = (text: string | null | undefined): string => {
       if (!text || typeof text !== 'string') return text || ''
       return text
@@ -552,6 +620,9 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
         .replace(/MOE v\.4/gi, 'HNWI')
         .replace(/MOE version 4/gi, 'HNWI')
         .replace(/\bMOE\s+v4\b/gi, 'HNWI')
+        // CRITICAL FIX: Remove newlines before citations at the SOURCE
+        .replace(/\n+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+        .replace(/\s{2,}(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
     }
 
     // Handle intelligence data structure
@@ -680,26 +751,32 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
 
       // Structured tier opportunities from intelligence - check multiple sources
       tier1Opportunities: (() => {
-        // Try multiple sources for tier data
+        // Try multiple sources for tier data - prioritize most specific sources first
         const sources = [
           intel.ruscha_analysis,
           intel.intelligence,
           intelligenceData_inner.ruscha_analysis,
           intelligenceData_inner.intelligence,
-          dashboardFormat.executive_summary,
-          dashboardFormat.implementation,
-          dashboardFormat.market_assessment
+          dashboardFormat.implementation, // Implementation often has tier breakdown
+          dashboardFormat.market_assessment,
+          dashboardFormat.executive_summary
         ]
 
         let ruschaData = ''
         for (const source of sources) {
           if (source && typeof source === 'string' && source.length > 100) {
-            // Check if this source has tier data
-            if (source.toUpperCase().includes('TIER') ||
-                source.includes('100K') ||
-                source.includes('$100,000')) {
+            // Check if this source has tier 1 specific data
+            // Look for TIER 1 explicitly first
+            if (source.toUpperCase().includes('TIER 1') ||
+                source.toUpperCase().includes('TIER 1:') ||
+                source.includes('$100K OPPORTUNITIES') ||
+                source.includes('100K OPPORTUNITIES')) {
               ruschaData = source
               break
+            }
+            // Fallback: any source with TIER or 100K
+            if (!ruschaData && (source.toUpperCase().includes('TIER') || source.includes('100K'))) {
+              ruschaData = source
             }
           }
         }
@@ -717,6 +794,7 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
         }
 
         let tier1 = extractRuschaTierOpportunities(ruschaData, 1)
+
         return tier1
       })(),
       tier2Opportunities: (() => {
@@ -826,4 +904,3 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
     refresh
   }
 }
-

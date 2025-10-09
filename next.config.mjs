@@ -85,6 +85,9 @@ const pwaConfig = withPWA({
       options: {
         cacheName: 'next-build-manifest',
         networkTimeoutSeconds: 3,
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
       },
     },
     {
@@ -94,6 +97,9 @@ const pwaConfig = withPWA({
       method: 'GET',
       options: {
         cacheName: 'no-cache',
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
       },
     },
     {
@@ -103,6 +109,9 @@ const pwaConfig = withPWA({
       method: 'POST',
       options: {
         cacheName: 'no-cache',
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
       },
     },
     {
@@ -112,6 +121,9 @@ const pwaConfig = withPWA({
       method: 'PUT',
       options: {
         cacheName: 'no-cache',
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
       },
     },
     {
@@ -121,6 +133,9 @@ const pwaConfig = withPWA({
       method: 'DELETE',
       options: {
         cacheName: 'no-cache',
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
       },
     },
     {
@@ -130,6 +145,9 @@ const pwaConfig = withPWA({
       options: {
         cacheName: 'api-cache',
         networkTimeoutSeconds: 10,
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 5 * 60, // 5 minutes
@@ -148,6 +166,9 @@ const pwaConfig = withPWA({
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'intelligence-cache',
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 15 * 60, // 15 minutes
@@ -197,6 +218,9 @@ const pwaConfig = withPWA({
       options: {
         cacheName: 'external-apis',
         networkTimeoutSeconds: 5,
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
         expiration: {
           maxEntries: 20,
           maxAgeSeconds: 2 * 60, // 2 minutes
@@ -210,6 +234,9 @@ const pwaConfig = withPWA({
       options: {
         cacheName: 'pages',
         networkTimeoutSeconds: 3,
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours

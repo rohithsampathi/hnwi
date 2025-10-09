@@ -9,8 +9,31 @@ import { ApiAuth } from '@/lib/api-auth'
 import { secureApi } from '@/lib/secure-api'
 import { SessionEncryption } from '@/lib/session-encryption'
 import { createSafeErrorResponse, sanitizeLoggingContext } from '@/lib/security/sanitization'
+import { CSRFProtection } from '@/lib/csrf-protection'
 
-export async function POST(request: NextRequest) {
+// Helper to forward backend cookies to client
+function forwardBackendCookies(response: NextResponse, backendCookieHeader: string | null) {
+  if (!backendCookieHeader) return;
+
+  const cookies = backendCookieHeader.split(',').map(c => c.trim());
+  cookies.forEach(cookie => {
+    const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim());
+    const [name, value] = nameValue.split('=');
+
+    response.cookies.set({
+      name,
+      value,
+      httpOnly: cookie.includes('HttpOnly'),
+      secure: cookie.includes('Secure') || process.env.NODE_ENV === 'production',
+      sameSite: cookie.includes('SameSite=Strict') ? 'strict' :
+                cookie.includes('SameSite=Lax') ? 'lax' :
+                cookie.includes('SameSite=None') ? 'none' : 'lax',
+      path: '/',
+    });
+  });
+}
+
+async function handlePost(request: NextRequest) {
   try {
     logger.debug("Login API endpoint called");
 
@@ -50,9 +73,9 @@ export async function POST(request: NextRequest) {
         );
         
         // Add rate limit headers
-        response.headers.set('Retry-After', Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString());
-        return ApiAuth.addSecurityHeaders(response);
-      }
+          response.headers.set('Retry-After', Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString());
+          return ApiAuth.addSecurityHeaders(response);
+        }
     } else {
       // Development mode - relaxed rate limiting for testing
       rateLimitResult = { remainingRequests: 999 };
@@ -89,15 +112,24 @@ export async function POST(request: NextRequest) {
       const { API_BASE_URL } = await import("@/config/api");
       const backendUrl = `${API_BASE_URL}/api/auth/login`;
 
+      // Get cookies from request to forward to backend
+      const cookies = request.cookies.getAll();
+      const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+
       const backendFetchResponse = await fetch(backendUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(cookieHeader && { 'Cookie': cookieHeader }),
         },
+        credentials: 'include',
         body: JSON.stringify(validation.data!),
       });
 
       const backendResponse = await backendFetchResponse.json();
+
+      // Forward Set-Cookie headers from backend
+      const backendCookies = backendFetchResponse.headers.get('set-cookie');
 
       logger.info("Backend login response received", {
         success: !!backendResponse.success,
@@ -127,12 +159,11 @@ export async function POST(request: NextRequest) {
       // Backend may send both error message AND MFA token for security
       // MFA flow - proceed if backend sends MFA token OR explicitly requires MFA
       if ((backendResponse.requires_mfa || backendResponse.mfa_token) && backendResponse.mfa_token) {
-        logger.info("Processing MFA flow from backend", {
-          email: validation.data!.email,
-          hasToken: !!backendResponse.mfa_token,
-          tokenLength: backendResponse.mfa_token ? backendResponse.mfa_token.length : 0,
-          message: backendResponse.message
-        });
+      logger.info("Processing MFA flow from backend", {
+        email: validation.data!.email,
+        challengeAvailable: !!backendResponse.mfa_token,
+        message: backendResponse.message
+      });
         
         // Basic JWT format validation only
         try {
@@ -197,8 +228,7 @@ export async function POST(request: NextRequest) {
         
         logger.info("Created proxy MFA session", {
           email: validation.data!.email,
-          frontendToken: frontendToken.substring(0, 8) + "...",
-          backendToken: backendResponse.mfa_token.substring(0, 8) + "..."
+          challengeStored: true
         });
 
         // Return frontend-friendly response with frontend token
@@ -207,21 +237,24 @@ export async function POST(request: NextRequest) {
           mfa_token: frontendToken, // Frontend gets local token
           message: backendResponse.message || "MFA code sent"
         });
-        
+
+        // Forward backend cookies
+        forwardBackendCookies(response, backendCookies);
+
         // Store encrypted session in HTTP-only cookie for serverless persistence
         response.cookies.set('mfa_session', encryptedSession, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
           maxAge: 5 * 60, // 5 minutes
           path: '/'
         });
-        
+
         // Also store the token mapping in cookie
         response.cookies.set(`mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
+          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
           maxAge: 5 * 60, // 5 minutes
           path: '/'
         });
@@ -248,6 +281,10 @@ export async function POST(request: NextRequest) {
       // Direct login success (no MFA) - check for access token or success indicator
       if (backendResponse.access_token || (backendResponse.success && !backendResponse.requires_mfa)) {
         const response = NextResponse.json(backendResponse);
+
+        // Forward backend cookies
+        forwardBackendCookies(response, backendCookies);
+
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
         return ApiAuth.addSecurityHeaders(response);
       } else {
@@ -314,3 +351,5 @@ export async function POST(request: NextRequest) {
     return ApiAuth.addSecurityHeaders(response);
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

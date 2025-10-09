@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Heading3 } from "@/components/ui/typography"
 import { Globe, PieChart, Clock, TrendingUp, ArrowRightLeft, Target, BarChart3, Zap, DollarSign, ArrowRight, ChevronDown, ChevronUp, Lightbulb } from "lucide-react"
 import { CitationText } from "../citation-text"
-import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { motion } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { getMetallicCardStyle } from "@/lib/colors"
@@ -20,118 +19,127 @@ interface ElitePulseTabProps {
   data: ProcessedIntelligenceData
   onCitationClick?: (citationId: string) => void
   citations?: Array<{ id: string; number: number; originalText: string }>
+  citationMap?: Map<string, number>
 }
 
-// Helper function to convert markdown bold to HTML strong tags
-function convertMarkdownBold(text: string): string {
-  if (!text) return ''
-  // Convert **text** to <strong>text</strong>
-  return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+// Parse Market Intelligence into sections with **Heading** followed by content
+function parseMarketIntelligence(text: string) {
+  if (!text) return []
+
+  const sections: Array<{ heading: string; content: string }> = []
+
+  // Split by **Heading** pattern
+  const parts = text.split(/\n(?=\*\*[^*]+\*\*\n)/)
+
+  for (const part of parts) {
+    const trimmedPart = part.trim()
+    if (!trimmedPart) continue
+
+    // Check if starts with **Heading**
+    const headingMatch = trimmedPart.match(/^\*\*([^*]+)\*\*\n/)
+
+    if (headingMatch) {
+      const heading = headingMatch[1].trim()
+      const content = trimmedPart.substring(headingMatch[0].length).trim()
+      sections.push({ heading, content })
+    } else {
+      // Content without heading (intro text)
+      sections.push({ heading: '', content: trimmedPart })
+    }
+  }
+
+  return sections
 }
 
-// Parse Implementation Roadmap into structured sections with headings and bullet points
+// Parse Timing Catalyst into sections with **Heading** followed by bullet points
+function parseTimingCatalyst(text: string) {
+  if (!text) return []
+
+  const sections: Array<{ heading: string; bullets: string[] }> = []
+
+  // Split by **Heading** pattern
+  const parts = text.split(/\n(?=\*\*[^*]+\*\*\n)/)
+
+  for (const part of parts) {
+    const trimmedPart = part.trim()
+    if (!trimmedPart) continue
+
+    // Check if starts with **Heading**
+    const headingMatch = trimmedPart.match(/^\*\*([^*]+)\*\*\n/)
+
+    if (headingMatch) {
+      const heading = headingMatch[1].trim()
+      const content = trimmedPart.substring(headingMatch[0].length).trim()
+
+      // Split by newlines to get bullets (each line is a bullet)
+      const bullets = content
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+
+      sections.push({ heading, bullets })
+    } else {
+      // Content without heading
+      const bullets = trimmedPart
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+
+      sections.push({ heading: '', bullets })
+    }
+  }
+
+  return sections
+}
+
+// Parse Implementation Roadmap into sections with flexible heading detection
 function parseImplementationRoadmap(text: string) {
   if (!text) return []
 
-  const sections = []
+  const sections: Array<{ heading: string; bulletPoints: string[] }> = []
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0)
 
-  let currentSection = null
+  let currentSection: { heading: string; bulletPoints: string[] } | null = null
 
   for (const line of lines) {
-    // More comprehensive heading detection:
-    // 1. **Text** or **Text:** (bold markdown)
-    // 2. Text: (any text ending with colon)
-    // 3. **Text (without closing **)
-    // 4. Lines that are ALL CAPS and seem like headings
-
     let headingText = null
 
-    // Pattern 1: Bold markdown headings **Text** or **Text:**
-    const boldMatch = line.match(/^\*\*(.*?)\*\*:?$/)
+    // Pattern 1: **Text** or **Text:**
+    const boldMatch = line.match(/^\*\*([^*]+)\*\*:?$/)
     if (boldMatch) {
       headingText = boldMatch[1].trim()
     }
 
-    // Pattern 2: Any text ending with colon (but not if it's clearly a sentence)
+    // Pattern 2: Text: (text ending with colon)
     const colonMatch = line.match(/^([^:]{3,50}):$/)
     if (colonMatch && !boldMatch) {
       const potentialHeading = colonMatch[1].trim()
-      // Only treat as heading if it doesn't look like a sentence (no lowercase words after first word)
-      if (!/\b[a-z]+\s+[a-z]/.test(potentialHeading) || /^(immediate|q1|q2|q3|q4|platform|access|phase|step|stage|tier)/i.test(potentialHeading)) {
+      // Only treat as heading if short and doesn't look like a sentence
+      if (!/\b[a-z]+\s+[a-z]/.test(potentialHeading)) {
         headingText = potentialHeading
       }
     }
 
-    // Pattern 3: Malformed markdown patterns like *Text**: or **Text*: or *Text*:
-    const malformedMatch = line.match(/^\*+([^*]+)\*+:?\s*$/)
-    if (malformedMatch && !boldMatch && !colonMatch) {
-      headingText = malformedMatch[1].trim()
-    }
-
-    // Pattern 4: ALL CAPS short lines that look like section headers
+    // Pattern 3: ALL CAPS headers
     if (!headingText && line.length < 50 && line === line.toUpperCase() && /^[A-Z\s\d:.-]+$/.test(line)) {
       headingText = line.replace(/:$/, '').trim()
     }
 
     if (headingText) {
-      // Save previous section if exists
+      // Save previous section
       if (currentSection && currentSection.bulletPoints.length > 0) {
         sections.push(currentSection)
       }
-
       // Start new section
-      currentSection = {
-        heading: headingText,
-        bulletPoints: []
+      currentSection = { heading: headingText, bulletPoints: [] }
+    } else if (currentSection) {
+      // Add to current section - each line is a bullet
+      if (line.length > 0) {
+        currentSection.bulletPoints.push(line)
       }
-    } else if (currentSection && line.length > 0) {
-      // Check if this line might actually be a heading we missed in the first pass
-      let potentialHeadingText = null
-
-      // Check for malformed markdown patterns that should be headings
-      const malformedHeadingMatch = line.match(/^\*+([^*]+)\*+:?\s*$/)
-      if (malformedHeadingMatch) {
-        potentialHeadingText = malformedHeadingMatch[1].trim()
-      }
-
-      // Check for colon endings that should be headings
-      const colonHeadingMatch = line.match(/^([^:]{3,50}):$/)
-      if (colonHeadingMatch && !malformedHeadingMatch) {
-        const potentialHeading = colonHeadingMatch[1].trim()
-        if (!/\b[a-z]+\s+[a-z]/.test(potentialHeading) || /^(immediate|q1|q2|q3|q4|platform|access|phase|step|stage|tier)/i.test(potentialHeading)) {
-          potentialHeadingText = potentialHeading
-        }
-      }
-
-      if (potentialHeadingText) {
-        // This line is actually a heading, create new section
-        if (currentSection.bulletPoints.length > 0) {
-          sections.push(currentSection)
-        }
-        currentSection = {
-          heading: potentialHeadingText,
-          bulletPoints: []
-        }
-      } else {
-        // Add content to current section
-        // Remove bullet point markers if present
-        let cleanLine = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').trim()
-
-        if (cleanLine.length > 0) {
-          currentSection.bulletPoints.push(cleanLine)
-        }
-      }
-    } else if (!currentSection && line.length > 0) {
-      // If we haven't found a heading yet, create a section without the "Implementation Overview" heading
-      const cleanLine = line.replace(/^[-•*]\s*/, '').replace(/^\d+\.\s*/, '').replace(/^\*\*(.*?)\*\*/, '$1').trim()
-      if (cleanLine.length > 0) {
-        // Create a section but without a default heading
-        currentSection = {
-          heading: '', // Empty heading instead of "Implementation Overview"
-          bulletPoints: [cleanLine]
-        }
-      }
+    } else {
+      // No section yet, create one without heading
+      currentSection = { heading: '', bulletPoints: [line] }
     }
   }
 
@@ -143,17 +151,19 @@ function parseImplementationRoadmap(text: string) {
   return sections
 }
 
-export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePulseTabProps) {
+export function ElitePulseTab({ data, onCitationClick, citations = [], citationMap: citationMapProp }: ElitePulseTabProps) {
   const elitePulseData = data?.elitePulseData
 
   // Create citation map from global citations
-  const citationMap = useMemo(() => {
+  const fallbackCitationMap = useMemo(() => {
     const map = new Map<string, number>()
     citations.forEach(citation => {
       map.set(citation.id, citation.number)
     })
     return map
   }, [citations])
+
+  const citationMap = citationMapProp ?? fallbackCitationMap
 
   // Use the data extracted from Ruscha intelligence sections
   const hasElitePulseData = !!elitePulseData && (elitePulseData?.marketIntelligence || elitePulseData?.timingCatalyst || elitePulseData?.implementationRoadmap)
@@ -174,48 +184,24 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
         <div className="space-y-8">
           {/* Market Insights */}
           {elitePulseData?.marketIntelligence && (
-            <div className="space-y-4">
-              {/* Content without citations */}
-              <div
-                className="text-sm text-foreground leading-relaxed whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{
-                  __html: (() => {
-                    // Remove citation markers from the text
-                    const cleanText = elitePulseData.marketIntelligence
-                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                      .trim()
-                    // Convert markdown bold to HTML
-                    return convertMarkdownBold(cleanText)
-                  })()
-                }}
-              />
-
-              {/* Citations at the end */}
-              {(() => {
-                const { citations: textCitations } = parseDevCitations(elitePulseData.marketIntelligence)
-                if (textCitations.length > 0) {
-                  return (
-                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
-                      <span className="text-xs text-muted-foreground mr-1">Sources:</span>
-                      {textCitations.map((citation, idx) => {
-                        const displayNumber = citationMap?.get(citation.id) ?? citation.number
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => onCitationClick?.(citation.id)}
-                            className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
-                            aria-label={`Citation ${displayNumber}`}
-                          >
-                            [{displayNumber}]
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )
-                }
-                return null
-              })()}
+            <div className="space-y-6">
+              {parseMarketIntelligence(elitePulseData.marketIntelligence).map((section, index) => (
+                <div key={index}>
+                  {section.heading && (
+                    <h3 className="text-base font-semibold text-foreground mb-2">
+                      {section.heading}
+                    </h3>
+                  )}
+                  <CitationText
+                    text={section.content}
+                    onCitationClick={onCitationClick}
+                    citationMap={citationMap}
+                    className="text-sm text-foreground/90 leading-snug"
+                    options={{ stripMarkdownBold: true, preserveLineBreaks: true, trim: true }}
+                    citationDisplay="inline"
+                  />
+                </div>
+              ))}
             </div>
           )}
 
@@ -338,56 +324,31 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
                     <p className="text-sm text-muted-foreground">Market timing and catalytic events</p>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  {/* Content without citations */}
-                  <div className="space-y-2 ml-4">
-                    {(() => {
-                      // Remove citation markers from the text
-                      const cleanText = elitePulseData.timingCatalyst
-                        .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                        .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                        .trim()
-
-                      return cleanText
-                        .split(/(?<=[.!?])\s+/)
-                        .filter((sentence: string) => sentence.trim().length > 0)
-                        .map((sentence: string, index: number) => (
-                          <div key={index} className="flex items-start">
+                <div className="space-y-6">
+                  {parseTimingCatalyst(elitePulseData.timingCatalyst).map((section, index) => (
+                    <div key={index}>
+                      {section.heading && (
+                        <h3 className="text-base font-semibold text-foreground mb-2">
+                          {section.heading}
+                        </h3>
+                      )}
+                      <div className="space-y-2 ml-4">
+                        {section.bullets.map((bullet, bulletIndex) => (
+                          <div key={bulletIndex} className="flex items-start">
                             <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                            <span
-                              className="text-sm text-foreground leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: convertMarkdownBold(sentence.trim()) }}
+                            <CitationText
+                              text={bullet}
+                              onCitationClick={onCitationClick}
+                              citationMap={citationMap}
+                              className="text-sm text-foreground/90 leading-snug"
+                              options={{ stripMarkdownBold: true, preserveLineBreaks: true, trim: true }}
+                              citationDisplay="inline"
                             />
                           </div>
-                        ))
-                    })()}
-                  </div>
-
-                  {/* Citations at the end */}
-                  {(() => {
-                    const { citations: textCitations } = parseDevCitations(elitePulseData.timingCatalyst)
-                    if (textCitations.length > 0) {
-                      return (
-                        <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
-                          <span className="text-xs text-muted-foreground mr-1">Sources:</span>
-                          {textCitations.map((citation, idx) => {
-                            const displayNumber = citationMap?.get(citation.id) ?? citation.number
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => onCitationClick?.(citation.id)}
-                                className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
-                                aria-label={`Citation ${displayNumber}`}
-                              >
-                                [{displayNumber}]
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -405,67 +366,30 @@ export function ElitePulseTab({ data, onCitationClick, citations = [] }: ElitePu
                   </div>
                 </div>
                 <div className="space-y-6">
-                  {/* Content sections without citations */}
-                  {(() => {
-                    // Remove citation markers from the entire text
-                    const cleanRoadmap = elitePulseData.implementationRoadmap
-                      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                      .trim()
-
-                    return parseImplementationRoadmap(cleanRoadmap).map((section, index) => (
-                      <div key={index} className="space-y-3">
-                        {section.heading && section.heading !== '' && (
-                          <h4
-                            className="font-semibold text-foreground text-base border-b border-border pb-2"
-                            dangerouslySetInnerHTML={{ __html: convertMarkdownBold(section.heading) }}
-                          />
-                        )}
-                        <div className="space-y-2 ml-4">
-                          {section.bulletPoints.map((point, pointIndex) => {
-                            // Convert markdown bold to HTML for all bullet points
-                            const htmlPoint = convertMarkdownBold(point)
-
-                            return (
-                              <div key={pointIndex} className="flex items-start">
-                                <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
-                                <span
-                                  className="text-sm text-foreground leading-relaxed"
-                                  dangerouslySetInnerHTML={{ __html: htmlPoint }}
-                                />
-                              </div>
-                            )
-                          })}
-                        </div>
+                  {parseImplementationRoadmap(elitePulseData.implementationRoadmap || "").map((section, index) => (
+                    <div key={index}>
+                      {section.heading && (
+                        <h3 className="text-base font-semibold text-foreground mb-2">
+                          {section.heading}
+                        </h3>
+                      )}
+                      <div className="space-y-2 ml-4">
+                        {section.bulletPoints.map((point, pointIndex) => (
+                          <div key={pointIndex} className="flex items-start">
+                            <Lightbulb className="h-4 w-4 mr-2 flex-shrink-0 mt-1 text-primary" />
+                            <CitationText
+                              text={point}
+                              onCitationClick={onCitationClick}
+                              citationMap={citationMap}
+                              className="text-sm text-foreground/90 leading-snug"
+                              options={{ stripMarkdownBold: true, preserveLineBreaks: true, trim: true }}
+                              citationDisplay="inline"
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))
-                  })()}
-
-                  {/* Citations at the end */}
-                  {(() => {
-                    const { citations: textCitations } = parseDevCitations(elitePulseData.implementationRoadmap)
-                    if (textCitations.length > 0) {
-                      return (
-                        <div className="flex flex-wrap gap-1 pt-2 border-t border-border/50">
-                          <span className="text-xs text-muted-foreground mr-1">Sources:</span>
-                          {textCitations.map((citation, idx) => {
-                            const displayNumber = citationMap?.get(citation.id) ?? citation.number
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => onCitationClick?.(citation.id)}
-                                className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1.5 py-0.5 rounded transition-colors"
-                                aria-label={`Citation ${displayNumber}`}
-                              >
-                                [{displayNumber}]
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )
-                    }
-                    return null
-                  })()}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -511,15 +435,7 @@ const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citati
   const { theme } = useTheme()
   const metallicStyle = getMetallicCardStyle(theme)
 
-  // Determine impact level based on risk rating or other factors
-  const getImpactLevel = () => {
-    const risk = opportunity.riskRating?.toLowerCase()
-    if (risk?.includes('high') || opportunity.impact === 'high') return 'HIGH'
-    if (risk?.includes('medium') || opportunity.impact === 'medium') return 'MEDIUM'
-    return 'LOW'
-  }
-
-  const impactLevel = getImpactLevel()
+  const descriptionText = opportunity.description || opportunity.analysis || opportunity.summary || ''
 
   return (
     <motion.div
@@ -535,15 +451,14 @@ const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citati
             {/* Header */}
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h5 className="font-semibold text-sm text-primary mb-2" dangerouslySetInnerHTML={{ __html: convertMarkdownBold(opportunity.title) }} />
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {/* Impact Badge */}
-                  <Badge
-                    variant={impactLevel === 'HIGH' ? 'destructive' : impactLevel === 'MEDIUM' ? 'secondary' : 'outline'}
-                    className="text-xs"
-                  >
-                    {impactLevel} IMPACT
-                  </Badge>
+                <CitationText
+                  text={opportunity.title}
+                  onCitationClick={onCitationClick}
+                  citationMap={citationMap}
+                  className="font-semibold text-sm text-primary mb-6"
+                  options={{ stripMarkdownBold: true, trim: true }}
+                />
+                <div className="flex flex-wrap gap-2 mb-1">
                   <Badge variant="outline" className="text-xs">
                     {opportunity.totalCapitalRequired}
                   </Badge>
@@ -565,51 +480,16 @@ const TierOpportunityCard = ({ opportunity, index, tier, onCitationClick, citati
             </div>
 
             {/* Always visible analysis */}
-            {opportunity.description && (
-              <div className="pt-3 border-t border-border space-y-3">
-                {/* Full content without citations - increased font size and better formatting */}
-                <div
-                  className="text-sm text-foreground/80 leading-relaxed break-words max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                  dangerouslySetInnerHTML={{
-                    __html: (() => {
-                      // Remove citation markers from the text
-                      const cleanText = opportunity.description
-                        .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-                        .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-                        .trim()
-                      // Ensure proper formatting - preserve paragraphs but remove excessive whitespace
-                      const formattedText = cleanText.split('\n').map(line => line.trim()).filter(line => line).join('\n\n')
-                      // Convert markdown bold to HTML
-                      return convertMarkdownBold(formattedText)
-                    })()
-                  }}
+            {descriptionText && (
+              <div className="pt-0.5 border-t border-border space-y-0.5">
+                <CitationText
+                  text={descriptionText}
+                  onCitationClick={onCitationClick}
+                  citationMap={citationMap}
+                  className="text-sm text-foreground/80 leading-[1.15] break-words max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent font-normal"
+                  options={{ stripMarkdownBold: true, preserveLineBreaks: true, trim: true }}
+                  citationDisplay="block"
                 />
-
-                {/* Citations at the end */}
-                {(() => {
-                  const { citations: textCitations } = parseDevCitations(opportunity.description)
-                  if (textCitations.length > 0) {
-                    return (
-                      <div className="flex flex-wrap gap-1">
-                        <span className="text-xs text-muted-foreground mr-1">Sources:</span>
-                        {textCitations.map((citation, idx) => {
-                          const displayNumber = citationMap?.get(citation.id) ?? citation.number
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => onCitationClick?.(citation.id)}
-                              className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 py-0.5 rounded transition-colors"
-                              aria-label={`Citation ${displayNumber}`}
-                            >
-                              [{displayNumber}]
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )
-                  }
-                  return null
-                })()}
 
                 {/* Additional fields if available */}
                 {opportunity.minimumNetWorth && (

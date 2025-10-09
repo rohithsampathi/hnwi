@@ -4,6 +4,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { API_BASE_URL } from '@/config/api'
 
+// Configure route to allow longer execution for large datasets
+export const maxDuration = 120 // 120 seconds for development endpoints
+export const dynamic = 'force-dynamic'
+
 // Helper to forward cookies
 function getForwardedCookies(request: NextRequest): string {
   const cookies = request.cookies.getAll()
@@ -28,14 +32,27 @@ function getForwardedHeaders(request: NextRequest): HeadersInit {
 }
 
 async function handler(request: NextRequest) {
+  let backendUrl = ''
+  let pathSegments: string[] = []
+
   try {
     // Extract the path from the URL
     const url = new URL(request.url)
-    const pathSegments = url.pathname.split('/').filter(Boolean)
+    pathSegments = url.pathname.split('/').filter(Boolean)
+
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Proxy] Incoming request: ${url.pathname}${url.search}`)
+      console.log(`[Proxy] Path segments before shift:`, pathSegments)
+    }
 
     // Remove 'api' from the beginning if it exists (it should)
     if (pathSegments[0] === 'api') {
       pathSegments.shift()
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Proxy] Path segments after shift:`, pathSegments)
     }
 
     // Skip if it's an auth route (those have dedicated handlers)
@@ -48,7 +65,7 @@ async function handler(request: NextRequest) {
 
     // Reconstruct the backend path
     const backendPath = '/api/' + pathSegments.join('/')
-    const backendUrl = `${API_BASE_URL}${backendPath}${url.search}`
+    backendUrl = `${API_BASE_URL}${backendPath}${url.search}`
 
     // Prepare the request options
     const options: RequestInit = {
@@ -69,19 +86,64 @@ async function handler(request: NextRequest) {
     }
 
     // Make the request to the backend with timeout and error handling
+    // Use longer timeout for development endpoints that might process large datasets
+    const timeframe = url.searchParams.get('timeframe')
+    const isDevelopments = pathSegments.includes('developments')
+
+    // Determine timeout based on timeframe - larger timeframes need more time
+    let timeoutDuration = 120000 // Default: 120 seconds for general endpoints
+    if (isDevelopments && timeframe) {
+      const tf = timeframe.toUpperCase()
+      if (tf === '6M') {
+        timeoutDuration = 420000 // 7 minutes for 6M
+      } else if (tf === '3M') {
+        timeoutDuration = 240000 // 4 minutes for 3M
+      } else if (tf === '1M') {
+        timeoutDuration = 120000 // 2 minutes for 1M
+      } else if (tf === '21D') {
+        timeoutDuration = 90000 // 90 seconds for 21D
+      }
+    }
+
+    if (process.env.NODE_ENV === 'development' && isDevelopments) {
+      console.log(`[Proxy] ${backendPath} - timeframe: ${timeframe}, timeout: ${timeoutDuration}ms`)
+    }
+
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    const timeoutId = setTimeout(() => {
+      console.error(`[Proxy] Request timeout after ${timeoutDuration}ms for ${backendUrl}`)
+      controller.abort()
+    }, timeoutDuration + 5000)
+
+    const requestStartTime = Date.now()
 
     const backendResponse = await fetch(backendUrl, {
       ...options,
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeoutId))
+      signal: controller.signal,
+      // Prevent Node.js fetch default timeouts
+      keepalive: true,
+      // @ts-ignore - Node.js fetch specific options
+      timeout: timeoutDuration + 5000,
+    }).finally(() => {
+      clearTimeout(timeoutId)
+      const requestDuration = Date.now() - requestStartTime
+      if (process.env.NODE_ENV === 'development' && isDevelopments) {
+        console.log(`[Proxy] Request completed in ${requestDuration}ms`)
+      }
+    })
 
     // Get the response body
     let responseBody
     const contentType = backendResponse.headers.get('content-type')
     if (contentType?.includes('application/json')) {
       responseBody = await backendResponse.json()
+
+      // Debug logging for Rohith responses
+      if (process.env.NODE_ENV === 'development' && pathSegments.includes('rohith') && pathSegments.includes('message')) {
+        console.log('[Proxy] Rohith Response Status:', backendResponse.status)
+        console.log('[Proxy] Rohith Response Keys:', Object.keys(responseBody))
+        console.log('[Proxy] Rohith Response Sample:', JSON.stringify(responseBody).substring(0, 500))
+      }
     } else {
       responseBody = await backendResponse.text()
     }

@@ -7,6 +7,7 @@ import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
+import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
 import { AuthSyncProvider } from "@/components/auth-sync-provider"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import './globals.css'
@@ -80,6 +81,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#000000",
+  viewportFit: "cover", // Enable safe area support for iOS notches
 }
 
 export default function RootLayout({
@@ -116,11 +118,13 @@ export default function RootLayout({
               <ThemeProvider>
                 <BusinessModeProvider>
                   <AuthPopupProvider>
-                    {children}
-                    <PWAInstallPrompt />
-                    <div id="toast-container" className="fixed top-0 right-0 z-50">
-                      {/* Toast container for notifications */}
-                    </div>
+                    <StepUpMfaProvider>
+                      {children}
+                      <PWAInstallPrompt />
+                      <div id="toast-container" className="fixed top-0 right-0 z-50">
+                        {/* Toast container for notifications */}
+                      </div>
+                    </StepUpMfaProvider>
                   </AuthPopupProvider>
                 </BusinessModeProvider>
               </ThemeProvider>

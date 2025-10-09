@@ -5,8 +5,9 @@ import { logger } from '@/lib/secure-logger'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
 import { secureApi } from '@/lib/secure-api'
+import { CSRFProtection } from '@/lib/csrf-protection'
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     logger.debug("Forgot password API endpoint called");
 
@@ -124,3 +125,5 @@ export async function POST(request: NextRequest) {
     return ApiAuth.addSecurityHeaders(response);
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

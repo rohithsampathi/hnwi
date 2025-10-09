@@ -544,7 +544,10 @@ export function SidebarNavigation({
                 key={item.route}
                 variant="ghost"
                 size="sm"
-                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative"
+                className={cn(
+                  "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative group",
+                  theme === 'dark' && "hover:text-white"
+                )}
                 onClick={() => handleNavigate(item.route)}
               >
                 {item.isNew && (
@@ -552,8 +555,16 @@ export function SidebarNavigation({
                     NEW
                   </span>
                 )}
-                <item.icon className={`h-6 w-6 mb-1 flex-shrink-0 ${isActive ? 'text-primary' : ''}`} />
-                <span className={`text-[10px] font-medium leading-tight text-center ${isActive ? 'text-primary' : ''}`}>
+                <item.icon className={cn(
+                  "h-6 w-6 mb-1 flex-shrink-0",
+                  isActive && 'text-primary',
+                  theme === 'dark' && !isActive && "group-hover:text-white"
+                )} />
+                <span className={cn(
+                  "text-[10px] font-medium leading-tight text-center",
+                  isActive && 'text-primary',
+                  theme === 'dark' && !isActive && "group-hover:text-white"
+                )}>
                   {item.name === "Ask Rohith" ? "Rohith" : item.name === "HNWI World" ? "HNWI" : item.name}
                 </span>
               </Button>
@@ -566,10 +577,19 @@ export function SidebarNavigation({
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl"
+                className={cn(
+                  "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl group",
+                  theme === 'dark' && "hover:text-white"
+                )}
               >
-                <MoreHorizontal className="h-6 w-6 mb-1 flex-shrink-0" />
-                <span className="text-[10px] font-medium leading-tight text-center">
+                <MoreHorizontal className={cn(
+                  "h-6 w-6 mb-1 flex-shrink-0",
+                  theme === 'dark' && "group-hover:text-white"
+                )} />
+                <span className={cn(
+                  "text-[10px] font-medium leading-tight text-center",
+                  theme === 'dark' && "group-hover:text-white"
+                )}>
                   More
                 </span>
               </Button>
@@ -581,10 +601,18 @@ export function SidebarNavigation({
                   <DropdownMenuItem
                     key={item.route}
                     onClick={() => handleNavigate(item.route)}
-                    className="flex items-center space-x-3 py-3"
+                    className="flex items-center space-x-3 py-3 group"
                   >
-                    <item.icon className={`h-5 w-5 ${isActive ? 'text-primary' : ''}`} />
-                    <span className={`font-medium ${isActive ? 'text-primary' : ''}`}>{item.name}</span>
+                    <item.icon className={cn(
+                      "h-5 w-5",
+                      isActive && 'text-primary',
+                      theme === 'light' && "group-hover:text-white"
+                    )} />
+                    <span className={cn(
+                      "font-medium",
+                      isActive && 'text-primary',
+                      theme === 'light' && "group-hover:text-white"
+                    )}>{item.name}</span>
                   </DropdownMenuItem>
                 )
               })}

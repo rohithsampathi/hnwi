@@ -4,8 +4,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { API_BASE_URL } from '@/config/api'
 import { cookies } from 'next/headers'
+import { CSRFProtection } from '@/lib/csrf-protection'
 
-export async function POST(
+async function handlePost(
   request: NextRequest,
   { params }: { params: { conversationId: string } }
 ) {
@@ -76,3 +77,5 @@ export async function POST(
     })
   }
 }
+
+export const POST = CSRFProtection.withCSRFProtection(handlePost);

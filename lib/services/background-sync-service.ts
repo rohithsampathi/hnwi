@@ -1,6 +1,8 @@
 // lib/services/background-sync-service.ts
 // Background sync service for offline form submissions and data synchronization
 
+import { ensureClientCsrfToken, getClientCsrfToken } from "@/lib/secure-api"
+
 export interface SyncData {
   id: string
   type: 'form_submission' | 'message_send' | 'data_update' | 'feedback_submit'
@@ -17,6 +19,24 @@ export class BackgroundSyncService {
   private static readonly SYNC_STORE_NAME = 'sync-store'
   private static readonly SYNC_TAG = 'background-sync'
   private static readonly MAX_RETRIES = 3
+
+  private static async buildHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(extra || {})
+    }
+
+    try {
+      const token = getClientCsrfToken() || await ensureClientCsrfToken()
+      if (token) {
+        headers['X-CSRF-Token'] = token
+      }
+    } catch {
+      // If we fail to get a CSRF token, proceed without it – request will still be validated server-side
+    }
+
+    return headers
+  }
 
   // Check if Background Sync is supported
   static isSupported(): boolean {
@@ -330,32 +350,37 @@ export class BackgroundSyncService {
 
   // Queue form submission for background sync
   static async queueFormSubmission(endpoint: string, formData: any, headers?: Record<string, string>): Promise<string> {
+    const finalHeaders = await this.buildHeaders(headers)
     return this.queueForSync({
       type: 'form_submission',
       endpoint,
       method: 'POST',
       data: formData,
-      headers
+      headers: finalHeaders
     })
   }
 
   // Queue message send for background sync
   static async queueMessageSend(endpoint: string, messageData: any): Promise<string> {
+    const headers = await this.buildHeaders()
     return this.queueForSync({
       type: 'message_send',
       endpoint,
       method: 'POST',
-      data: messageData
+      data: messageData,
+      headers
     })
   }
 
   // Queue feedback submission for background sync
   static async queueFeedbackSubmit(endpoint: string, feedbackData: any): Promise<string> {
+    const headers = await this.buildHeaders()
     return this.queueForSync({
       type: 'feedback_submit',
       endpoint,
       method: 'POST',
-      data: feedbackData
+      data: feedbackData,
+      headers
     })
   }
 }
