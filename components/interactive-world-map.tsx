@@ -5,12 +5,14 @@
 "use client"
 
 import React, { useState } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from "react-leaflet"
 import { useTheme } from "@/contexts/theme-context"
-import { MapPin, Building2, Crown, Globe, Linkedin } from "lucide-react"
+import { MapPin, Building2, Crown, Globe, Linkedin, Gem, TrendingUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
+import { CitationText } from "@/components/elite/citation-text"
 import chroma from "chroma-js"
 
 export interface City {
@@ -21,6 +23,8 @@ export interface City {
   population?: string
   type?: string
   // Opportunity data
+  _id?: string  // MongoDB ID for deep linking
+  id?: string   // Alternative ID field
   title?: string
   tier?: string
   value?: string
@@ -54,19 +58,34 @@ interface InteractiveWorldMapProps {
   showControls?: boolean
   cities?: City[]
   onCitationClick?: (citationId: string) => void
+  citationMap?: Map<string, number>  // Global citation numbering map
+  onNavigate?: (route: string) => void  // Navigation handler for deep linking
+  // Filter controls
+  showCrownAssets?: boolean
+  showPriveOpportunities?: boolean
+  showHNWIPatterns?: boolean
+  onToggleCrownAssets?: () => void
+  onTogglePriveOpportunities?: () => void
+  onToggleHNWIPatterns?: () => void
 }
 
 // Component to fly to city
-function FlyToCity({ city, zoomLevel = 12 }: { city: City | null; zoomLevel?: number }) {
+function FlyToCity({ city, zoomLevel = 8 }: { city: City | null; zoomLevel?: number }) {
   const map = useMap()
 
   React.useEffect(() => {
     if (city) {
-      // Smooth, progressive zoom animation
-      map.flyTo([city.latitude, city.longitude], zoomLevel, {
-        duration: 2.5,           // Smooth duration
-        easeLinearity: 0.15,     // Gradual easing
-        animate: true
+      // Get current zoom level - don't zoom out if already zoomed in
+      const currentZoom = map.getZoom()
+      const targetZoom = Math.max(currentZoom, zoomLevel)  // Use higher of current or target zoom
+
+      // Fly to city with offset so marker appears in upper area with popup below
+      map.flyTo([city.latitude, city.longitude], targetZoom, {
+        duration: 2.5,
+        easeLinearity: 0.15,
+        animate: true,
+        // Offset to position marker in upper third of screen
+        offset: [0, -150]  // Negative Y moves view DOWN, making marker appear HIGHER
       })
     }
   }, [city, map, zoomLevel])
@@ -133,7 +152,15 @@ export function InteractiveWorldMap({
   height = "100%",
   showControls = true,
   cities = [],
-  onCitationClick
+  onCitationClick,
+  citationMap,
+  onNavigate,
+  showCrownAssets = true,
+  showPriveOpportunities = true,
+  showHNWIPatterns = true,
+  onToggleCrownAssets,
+  onTogglePriveOpportunities,
+  onToggleHNWIPatterns
 }: InteractiveWorldMapProps) {
   const { theme } = useTheme()
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
@@ -323,13 +350,6 @@ export function InteractiveWorldMap({
     if (category || industry || product) {
       const backendData = (category + ' ' + industry + ' ' + product).toLowerCase()
 
-      console.log(`🎨 Icon selection for "${city.title}":`, {
-        category: city.category,
-        industry: city.industry,
-        product: city.product,
-        backendData
-      })
-
       // WATCHES & TIMEPIECES
       if (backendData.includes('watch') || backendData.includes('timepiece') ||
           backendData.includes('rolex') || backendData.includes('omega') ||
@@ -478,11 +498,39 @@ export function InteractiveWorldMap({
         className: 'custom-marker',
         iconSize: [36, 36],
         iconAnchor: [18, 18],
-        popupAnchor: [0, -18]
+        popupAnchor: [0, 25]  // Push popup down below the 36px icon
       })
     }
 
     // Default: always show semi-transparent colored dot (90% opacity)
+    // Add icon based on source: Crown for Crown Vault, Gem for Privé Exchange/Victor, Globe for others
+    const isCrownVault = city.source?.toLowerCase().includes('crown vault')
+    const isVictor = !!city.victor_score
+
+    // Choose icon SVG based on source (using exact Lucide icon paths)
+    let iconSvg = ''
+    if (isCrownVault) {
+      // Crown icon for Crown Vault (Lucide Crown) - White for visibility
+      iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/>
+        <path d="M5 21h14"/>
+      </svg>`
+    } else if (isVictor) {
+      // Gem icon for Privé Exchange (Lucide Gem) - White for visibility
+      iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <path d="M6 3h12l4 6-10 13L2 9Z"/>
+        <path d="M11 3 8 9l4 13 4-13-3-6"/>
+        <path d="M2 9h20"/>
+      </svg>`
+    } else {
+      // Globe icon for all other opportunities - HNWI World (Lucide Globe) - White for visibility
+      iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+        <path d="M2 12h20"/>
+      </svg>`
+    }
+
     const iconHtml = `
       <div style="
         width: 16px;
@@ -492,7 +540,13 @@ export function InteractiveWorldMap({
         border: 1px solid ${color};
         border-radius: 50%;
         box-shadow: 0 0 8px ${color};
-      "></div>
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      ">
+        ${iconSvg}
+      </div>
     `
 
     return L.divIcon({
@@ -500,7 +554,7 @@ export function InteractiveWorldMap({
       className: 'custom-marker',
       iconSize: [16, 16],
       iconAnchor: [8, 8],
-      popupAnchor: [0, -8]
+      popupAnchor: [0, 15]  // Push popup down below the 16px dot
     })
   }, [theme, getColorFromValue, openPopupIndex])
 
@@ -536,7 +590,7 @@ export function InteractiveWorldMap({
       className: 'cluster-marker',
       iconSize: [32, 32],
       iconAnchor: [16, 16],
-      popupAnchor: [0, -16]
+      popupAnchor: [0, 22]  // Push popup down below the 32px cluster
     })
   }
 
@@ -566,7 +620,7 @@ export function InteractiveWorldMap({
 
   // Effect to auto-expand details after zoom completes
   React.useEffect(() => {
-    if (cityToExpand && currentZoom >= 10) {
+    if (cityToExpand && currentZoom >= 7) {
       // Small delay to ensure map has finished rendering and markers are placed
       const timer = setTimeout(() => {
         // Find the cluster index for this city
@@ -639,6 +693,22 @@ export function InteractiveWorldMap({
       setForceRender(prev => prev + 1)
     }, 10)
   }, [])
+
+  // Format text labels: First Letter Of Every Word Capital, remove underscores, no all caps
+  const formatLabel = (text: string | undefined) => {
+    if (!text) return text
+
+    // Replace underscores with spaces
+    let formatted = text.replace(/_/g, ' ')
+
+    // Convert from all caps or mixed case to Title Case
+    formatted = formatted.toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+
+    return formatted
+  }
 
   // Format value to ensure K/M suffix
   const formatValue = (value: string | undefined) => {
@@ -747,43 +817,6 @@ export function InteractiveWorldMap({
     return undefined
   }
 
-  // Set up global citation click handler at component level
-  React.useEffect(() => {
-    const handleCitationClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-
-      // Check if click is on a citation element
-      if (target.tagName === 'CITATION' || target.tagName === 'citation') {
-        const citationId = target.getAttribute('data-id')
-
-        if (citationId && onCitationClick) {
-          e.preventDefault()
-          e.stopPropagation()
-          onCitationClick(citationId)
-        }
-      }
-    }
-
-    // Add event listener to document for event delegation
-    document.addEventListener('click', handleCitationClick)
-    return () => document.removeEventListener('click', handleCitationClick)
-  }, [onCitationClick])
-
-  // Render text with clickable citations (pure function, no hooks)
-  const renderTextWithCitations = (text: string, uniqueKey: string) => {
-    if (!text) return null
-
-    const { formattedText, citations } = parseDevCitations(text)
-
-    // Convert HTML string to React elements with data attribute for targeting
-    return (
-      <div
-        className="citation-content"
-        data-citation-container={uniqueKey}
-        dangerouslySetInnerHTML={{ __html: formattedText }}
-      />
-    )
-  }
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -793,7 +826,7 @@ export function InteractiveWorldMap({
         minZoom={2}
         maxZoom={18}
         style={{ width: "100%", height: "100%", position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        zoomControl={true}
+        zoomControl={false}
         scrollWheelZoom={true}
         attributionControl={false}
         onZoomEnd={(e) => setCurrentZoom(e.target.getZoom())}
@@ -801,6 +834,9 @@ export function InteractiveWorldMap({
         <TileLayer
           url={tileUrl}
         />
+
+        {/* Zoom controls at bottom right */}
+        <ZoomControl position="bottomright" />
 
         {/* Clustered City Markers */}
         {clusterCities.map((cluster, clusterIndex) => {
@@ -841,6 +877,8 @@ export function InteractiveWorldMap({
             >
               <Popup
                 maxWidth={isCluster ? 500 : 400}
+                autoPan={false}
+                keepInView={false}
                 onOpen={() => {
                   // Track which popup is open to show icon
                   setOpenPopupIndex(clusterIndex)
@@ -939,7 +977,10 @@ export function InteractiveWorldMap({
 
                 {/* Location Info - Always visible */}
                 <div className="mb-2 pb-2 border-b border-border">
-                  <p className="text-xs text-muted-foreground">{center.country}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {center.country}
+                  </p>
                 </div>
 
                 {/* Fixed Data - Always visible */}
@@ -954,7 +995,7 @@ export function InteractiveWorldMap({
                   {center.risk && (
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-muted-foreground">Risk Profile:</span>
-                      <span className="text-xs font-medium">{center.risk}</span>
+                      <span className="text-xs font-medium">{formatLabel(center.risk)}</span>
                     </div>
                   )}
 
@@ -962,6 +1003,13 @@ export function InteractiveWorldMap({
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-muted-foreground">Source:</span>
                       <span className="text-xs font-medium">{formatSource(center.source)}</span>
+                    </div>
+                  )}
+
+                  {center.victor_score && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">Opportunity Demand:</span>
+                      <span className="text-xs font-medium">{formatLabel(center.victor_score)}</span>
                     </div>
                   )}
                 </div>
@@ -977,20 +1025,18 @@ export function InteractiveWorldMap({
                 {/* Expanded Details */}
                 {expandedPopupIndex === clusterIndex && (
                   <div className="mt-3 pt-3 border-t border-border space-y-3 expanded-details">
-                    {/* Additional Metrics */}
-                    {center.victor_score && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Opportunity Demand:</span>
-                        <span className="text-xs font-medium">{center.victor_score}</span>
-                      </div>
-                    )}
 
                     {/* Analysis */}
                     {center.analysis && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
                         <div className="text-xs leading-relaxed">
-                          {center.hasCitations ? renderTextWithCitations(cleanAnalysisText(center.analysis), `analysis-${clusterIndex}`) : <p>{cleanAnalysisText(center.analysis)}</p>}
+                          <CitationText
+                            text={cleanAnalysisText(center.analysis)}
+                            onCitationClick={onCitationClick}
+                            citationMap={citationMap}
+                            className="text-xs"
+                          />
                         </div>
                       </div>
                     )}
@@ -1000,7 +1046,12 @@ export function InteractiveWorldMap({
                       <div>
                         <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
                         <div className="text-xs leading-relaxed">
-                          {center.hasCitations ? renderTextWithCitations(cleanAnalysisText(center.elite_pulse_analysis), `elite-pulse-${clusterIndex}`) : <p>{cleanAnalysisText(center.elite_pulse_analysis)}</p>}
+                          <CitationText
+                            text={cleanAnalysisText(center.elite_pulse_analysis)}
+                            onCitationClick={onCitationClick}
+                            citationMap={citationMap}
+                            className="text-xs"
+                          />
                         </div>
                       </div>
                     )}
@@ -1064,6 +1115,192 @@ export function InteractiveWorldMap({
                         </div>
                       </div>
                     )}
+
+                    {/* Action Button - At the bottom of expanded details */}
+                    {onNavigate && (
+                      <div className="pt-3 mt-3 border-t border-border">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+
+                            // Route based on source
+                            if (center.source?.toLowerCase().includes('crown vault')) {
+                              // Crown Vault asset - go to Crown Vault page
+                              onNavigate('crown-vault')
+                            } else if (center.victor_score) {
+                              // Privé Exchange opportunity with Victor analysis - go to Privé Exchange with ID
+                              const opportunityParam = center._id || center.id || encodeURIComponent(center.title || center.name || '')
+                              onNavigate(`prive-exchange?opportunity=${opportunityParam}`)
+                            } else {
+                              // All other opportunities (MOEv4, etc.) - go to Executors page with filters
+
+                              // Map opportunity industry/category to executor category and subcategory
+                              const mapToExecutorFilters = (opp: typeof center) => {
+                                const industry = (opp.industry || '').toLowerCase()
+                                const category = (opp.category || '').toLowerCase()
+                                const product = (opp.product || '').toLowerCase()
+                                const title = (opp.title || '').toLowerCase()
+                                const combined = `${industry} ${category} ${product} ${title}`
+
+                                // Real Estate → Alternative Assets > Real Estate
+                                if (combined.includes('real estate') || combined.includes('property') ||
+                                    combined.includes('apartment') || combined.includes('villa') ||
+                                    combined.includes('residential') || combined.includes('commercial')) {
+                                  return { category: 'alternative_assets', subcategory: 'real_estate' }
+                                }
+
+                                // Art → Alternative Assets > Art & Collectibles
+                                if (combined.includes('art') || combined.includes('painting') ||
+                                    combined.includes('sculpture') || combined.includes('collectible')) {
+                                  return { category: 'alternative_assets', subcategory: 'art_collectibles' }
+                                }
+
+                                // Precious Metals → Alternative Assets > Precious Metals
+                                if (combined.includes('gold') || combined.includes('silver') ||
+                                    combined.includes('precious metal') || combined.includes('bullion')) {
+                                  return { category: 'alternative_assets', subcategory: 'precious_metals' }
+                                }
+
+                                // Crypto/Digital Assets → Alternative Assets > Cryptocurrency
+                                if (combined.includes('crypto') || combined.includes('cryptocurrency') ||
+                                    combined.includes('bitcoin') || combined.includes('blockchain')) {
+                                  return { category: 'alternative_assets', subcategory: 'crypto' }
+                                }
+
+                                // Private Equity → Alternative Assets > Private Equity
+                                if (combined.includes('private equity') || combined.includes('venture capital') ||
+                                    combined.includes('startup') || combined.includes('pre-ipo')) {
+                                  return { category: 'alternative_assets', subcategory: 'private_equity' }
+                                }
+
+                                // Watches, Jewelry, Luxury Goods → Alternative Assets (no specific subcategory)
+                                if (combined.includes('watch') || combined.includes('jewelry') ||
+                                    combined.includes('luxury goods') || combined.includes('collectibles')) {
+                                  return { category: 'alternative_assets', subcategory: null }
+                                }
+
+                                // Tax → Tax Optimization
+                                if (combined.includes('tax') || combined.includes('taxation')) {
+                                  // International Tax
+                                  if (combined.includes('international') || combined.includes('cross-border')) {
+                                    return { category: 'tax_optimization', subcategory: 'international_tax' }
+                                  }
+                                  // Offshore Structures
+                                  if (combined.includes('offshore') || combined.includes('structure')) {
+                                    return { category: 'tax_optimization', subcategory: 'offshore_structures' }
+                                  }
+                                  // Residency Planning
+                                  if (combined.includes('residency') || combined.includes('relocation')) {
+                                    return { category: 'tax_optimization', subcategory: 'residency_planning' }
+                                  }
+                                  // Tax Compliance
+                                  if (combined.includes('compliance') || combined.includes('filing')) {
+                                    return { category: 'tax_optimization', subcategory: 'compliance' }
+                                  }
+                                  return { category: 'tax_optimization', subcategory: null }
+                                }
+
+                                // Immigration & Visa → Legal Services > Immigration
+                                if (combined.includes('visa') || combined.includes('immigration') ||
+                                    combined.includes('citizenship') || combined.includes('residency')) {
+                                  return { category: 'legal_services', subcategory: 'immigration' }
+                                }
+
+                                // Trust → Legal Services > Trust Formation or Wealth Planning > Estate Planning
+                                if (combined.includes('trust')) {
+                                  if (combined.includes('formation') || combined.includes('setup')) {
+                                    return { category: 'legal_services', subcategory: 'trust_formation' }
+                                  }
+                                  return { category: 'wealth_planning', subcategory: 'estate_planning' }
+                                }
+
+                                // Estate Planning → Wealth Planning > Estate Planning
+                                if (combined.includes('estate planning') || combined.includes('inheritance') ||
+                                    combined.includes('succession')) {
+                                  return { category: 'wealth_planning', subcategory: 'estate_planning' }
+                                }
+
+                                // Retirement → Wealth Planning > Retirement Planning
+                                if (combined.includes('retirement') || combined.includes('pension')) {
+                                  return { category: 'wealth_planning', subcategory: 'retirement_planning' }
+                                }
+
+                                // Philanthropy → Wealth Planning > Philanthropy
+                                if (combined.includes('philanthropy') || combined.includes('charity') ||
+                                    combined.includes('giving') || combined.includes('foundation')) {
+                                  return { category: 'wealth_planning', subcategory: 'philanthropy' }
+                                }
+
+                                // Insurance → Wealth Planning > Insurance
+                                if (combined.includes('insurance') || combined.includes('risk management')) {
+                                  return { category: 'wealth_planning', subcategory: 'insurance' }
+                                }
+
+                                // Corporate Law → Legal Services > Corporate Law
+                                if (combined.includes('corporate') || combined.includes('company formation') ||
+                                    combined.includes('business structure')) {
+                                  return { category: 'legal_services', subcategory: 'corporate_law' }
+                                }
+
+                                // Legal/Compliance → Legal Services
+                                if (combined.includes('legal') || combined.includes('law') ||
+                                    combined.includes('compliance') || combined.includes('regulation')) {
+                                  return { category: 'legal_services', subcategory: null }
+                                }
+
+                                // Family Office → Family Office
+                                if (combined.includes('family office')) {
+                                  // Setup
+                                  if (combined.includes('setup') || combined.includes('establish')) {
+                                    return { category: 'family_office', subcategory: 'setup' }
+                                  }
+                                  // Governance
+                                  if (combined.includes('governance') || combined.includes('succession')) {
+                                    return { category: 'family_office', subcategory: 'governance' }
+                                  }
+                                  // Concierge
+                                  if (combined.includes('concierge') || combined.includes('lifestyle')) {
+                                    return { category: 'family_office', subcategory: 'concierge' }
+                                  }
+                                  // Education
+                                  if (combined.includes('education') || combined.includes('next-gen')) {
+                                    return { category: 'family_office', subcategory: 'education' }
+                                  }
+                                  return { category: 'family_office', subcategory: null }
+                                }
+
+                                // Portfolio Management → Family Office
+                                if (combined.includes('portfolio management') || combined.includes('wealth management')) {
+                                  return { category: 'family_office', subcategory: null }
+                                }
+
+                                // Default: no filters
+                                return { category: null, subcategory: null }
+                              }
+
+                              const filters = mapToExecutorFilters(center)
+                              let route = 'trusted-network'
+
+                              // Build URL with filters
+                              const params = new URLSearchParams()
+                              if (filters.category) params.append('category', filters.category)
+                              if (filters.subcategory) params.append('subcategory', filters.subcategory)
+
+                              if (params.toString()) {
+                                route = `trusted-network?${params.toString()}`
+                              }
+
+                              onNavigate(route)
+                            }
+                          }}
+                          className="w-full px-3 py-2 text-xs font-medium rounded transition-colors bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center gap-1"
+                        >
+                          {center.source?.toLowerCase().includes('crown vault') || center.victor_score
+                            ? 'Know More →'
+                            : 'Execute →'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1100,73 +1337,140 @@ export function InteractiveWorldMap({
         <MapClickHandler onMapClick={handleMapClick} />
       </MapContainer>
 
-      {/* Zoom Level Indicator */}
-      <div className="absolute top-4 left-4 px-4 py-2 bg-background/90 backdrop-blur-sm rounded-lg border border-border shadow-sm z-[1000]">
-        <p className="text-sm font-medium text-foreground">
-          {currentZoom <= 2 ? "🌍 Earth View" :
-           currentZoom <= 5 ? "🌏 Continental View" :
-           currentZoom <= 9 ? "🗺️ Country View" :
-           "🏙️ City View"}
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Zoom: {currentZoom.toFixed(1)}
-        </p>
-      </div>
-
-      {/* Mobile Global View - Same styling as desktop button */}
+      {/* Mobile World View - Matching desktop styling */}
       <button
         onClick={handleReset}
-        className="lg:hidden fixed bottom-[120px] left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-auto px-2.5 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity whitespace-nowrap font-medium"
-        aria-label="Global View"
+        className="no-hover-transform lg:hidden fixed bottom-[120px] md:bottom-[60px] left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-auto text-xs h-7 px-2.5 flex items-center gap-1 transition-colors rounded-3xl group text-muted-foreground hover:bg-black whitespace-nowrap select-none focus:outline-none"
+        aria-label="World View"
+        style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
       >
-        🌍 Global View
+        <span className={theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white'}>🌍 World View</span>
       </button>
 
-      {/* Desktop Navigation - Full bar with Jump to */}
-      <div className="hidden lg:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-auto">
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg px-4 py-2">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Jump to:</span>
-
-            {/* Global View */}
+      {/* Mobile Filter Controls - Icon only, horizontal layout */}
+      <div className="lg:hidden fixed bottom-[170px] md:bottom-[110px] left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-auto">
+        <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-full px-3 py-2 shadow-lg">
+          {onToggleCrownAssets && (
             <button
-              onClick={handleReset}
-              className="px-2.5 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity whitespace-nowrap font-medium"
+              onClick={onToggleCrownAssets}
+              className={`no-hover-transform w-8 h-8 flex items-center justify-center transition-colors rounded-full group ${
+                showCrownAssets
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-black text-white'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+              aria-label="Toggle Crown Assets"
             >
-              🌍 Global View
+              <Crown className={`h-4 w-4 ${!showCrownAssets ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
             </button>
+          )}
 
-            {/* City buttons */}
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {(() => {
-                // Get unique cities by name
-                const uniqueCities = cities.filter((city, index, self) =>
-                  index === self.findIndex((c) => c.name === city.name)
-                ).slice(0, 5)
+          {onTogglePriveOpportunities && (
+            <button
+              onClick={onTogglePriveOpportunities}
+              className={`no-hover-transform w-8 h-8 flex items-center justify-center transition-colors rounded-full group ${
+                showPriveOpportunities
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-black text-white'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+              aria-label="Toggle Privé Opportunities"
+            >
+              <TrendingUp className={`h-4 w-4 ${!showPriveOpportunities ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
+            </button>
+          )}
 
-                return uniqueCities.map((city, index) => {
-                  // Find the cluster index for this city
-                  const cityClusterIndex = clusterCities.findIndex(c =>
-                    c.cities.some(ct => ct.title === city.title || ct.name === city.name)
-                  )
-                  return (
-                    <button
-                      key={`footer-${city.name}-${index}`}
-                      onClick={() => handleCityClick(city, cityClusterIndex >= 0 ? cityClusterIndex : index)}
-                      className="px-2.5 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
-                    >
-                      {city.name}
-                    </button>
-                  )
-                })
-              })()}
-            </div>
-          </div>
+          {onToggleHNWIPatterns && (
+            <button
+              onClick={onToggleHNWIPatterns}
+              className={`no-hover-transform w-8 h-8 flex items-center justify-center transition-colors rounded-full group ${
+                showHNWIPatterns
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-black text-white'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+              aria-label="Toggle HNWI Patterns"
+            >
+              <Globe className={`h-4 w-4 ${!showHNWIPatterns ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Navigation - Filters and Jump To Section */}
+      <div className="hidden lg:block fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-auto">
+        <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 shadow-lg">
+          {/* Filter Buttons */}
+          {onToggleCrownAssets && (
+            <button
+              onClick={onToggleCrownAssets}
+              className={`no-hover-transform text-xs h-7 px-2.5 flex items-center gap-1 transition-colors rounded-3xl group ${
+                showCrownAssets
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'bg-black text-white font-medium'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+            >
+              <Crown className={`h-3.5 w-3.5 ${!showCrownAssets ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
+              <span className={!showCrownAssets ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}>Crown Assets</span>
+            </button>
+          )}
+
+          {onTogglePriveOpportunities && (
+            <button
+              onClick={onTogglePriveOpportunities}
+              className={`no-hover-transform text-xs h-7 px-2.5 flex items-center gap-1 transition-colors rounded-3xl group ${
+                showPriveOpportunities
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'bg-black text-white font-medium'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+            >
+              <TrendingUp className={`h-3.5 w-3.5 ${!showPriveOpportunities ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
+              <span className={!showPriveOpportunities ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}>Privé Opportunities</span>
+            </button>
+          )}
+
+          {onToggleHNWIPatterns && (
+            <button
+              onClick={onToggleHNWIPatterns}
+              className={`no-hover-transform text-xs h-7 px-2.5 flex items-center gap-1 transition-colors rounded-3xl group ${
+                showHNWIPatterns
+                  ? theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'bg-black text-white font-medium'
+                  : 'text-muted-foreground hover:bg-black'
+              }`}
+            >
+              <Globe className={`h-3.5 w-3.5 ${!showHNWIPatterns ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}`} />
+              <span className={!showHNWIPatterns ? (theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white') : ''}>HNWI Patterns</span>
+            </button>
+          )}
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          <span className="text-xs font-medium text-muted-foreground mr-1">Jump to:</span>
+
+          <button
+            onClick={handleReset}
+            className="no-hover-transform text-xs h-7 px-2.5 flex items-center gap-1 transition-colors rounded-3xl group text-muted-foreground hover:bg-black"
+          >
+            <span className={theme === 'dark' ? 'group-hover:text-primary' : 'group-hover:text-white'}>🌍 World View</span>
+          </button>
         </div>
       </div>
 
       {/* Custom marker styles */}
       <style jsx global>{`
+        /* Force Leaflet popup pane to high z-index to appear above Live Data button */
+        .leaflet-popup-pane {
+          z-index: 700 !important;
+        }
         .custom-marker {
           background: transparent;
           border: none;
@@ -1175,12 +1479,19 @@ export function InteractiveWorldMap({
           background: transparent;
           border: none;
         }
+        /* Position popup below marker */
+        .leaflet-popup {
+          bottom: auto !important;
+          top: 0 !important;
+        }
         .leaflet-popup-content-wrapper {
           background: ${theme === "dark" ? "#1a1a1a" : "#fff"} !important;
           color: ${theme === "dark" ? "#fff" : "#000"} !important;
           border-radius: 8px !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, ${theme === "dark" ? "0.5" : "0.15"}) !important;
           border: 1px solid ${theme === "dark" ? "#444" : "transparent"} !important;
+          max-height: 500px !important;
+          overflow-y: auto !important;
         }
         .leaflet-popup-tip {
           background: ${theme === "dark" ? "#1a1a1a" : "#fff"} !important;
@@ -1190,6 +1501,7 @@ export function InteractiveWorldMap({
           margin: 0 !important;
           width: auto !important;
           min-width: 300px !important;
+          max-width: 400px !important;
         }
         .border-border {
           border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
@@ -1229,18 +1541,19 @@ export function InteractiveWorldMap({
         .leaflet-popup-content button:hover {
           opacity: 0.8;
         }
-        /* Smooth expand/collapse animation */
+        /* Smooth expand/collapse animation - grow downward */
         .expanded-details {
           animation: slideDown 0.2s ease-out;
+          transform-origin: top;
         }
         @keyframes slideDown {
           from {
             opacity: 0;
-            transform: translateY(-10px);
+            transform: scaleY(0.8);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: scaleY(1);
           }
         }
       `}</style>

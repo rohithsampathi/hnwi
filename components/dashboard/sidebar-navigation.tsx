@@ -128,7 +128,7 @@ export function SidebarNavigation({
       businessOnly: false
     },
     {
-      name: "Trusted Network",
+      name: "Executor Directory",
       icon: Network,
       route: "trusted-network",
       description: "Vetted executors for intelligence-driven action",
@@ -160,12 +160,12 @@ export function SidebarNavigation({
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
   ]
 
-  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Trusted Network, Profile
+  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Executor Directory, Profile
   const moreMenuItems = [
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
-    { name: "Trusted Network", icon: Network, route: "trusted-network" },
+    { name: "Executor Directory", icon: Network, route: "trusted-network" },
     { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
   ]
 

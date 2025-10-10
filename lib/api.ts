@@ -211,6 +211,21 @@ export async function getOpportunityById(id: string): Promise<Opportunity | null
 }
 
 // Crown Vault API Functions
+export interface PriceHistoryEntry {
+  timestamp: string;
+  price: number;
+  source: 'manual' | 'katherine_analysis' | 'system';
+  confidence_score?: number;
+  notes?: string;
+}
+
+export interface AppreciationMetrics {
+  percentage: number;
+  absolute: number;
+  annualized: number;
+  time_held_days: number;
+}
+
 export interface CrownVaultAsset {
   asset_id: string;
   asset_data: {
@@ -223,15 +238,24 @@ export interface CrownVaultAsset {
     decryption_error?: boolean;
     unit_count?: number;
     cost_per_unit?: number;
+    entry_price?: number;  // Original purchase price per unit
+    current_price?: number; // Alias for cost_per_unit
+    tags?: string[];
+    access_level?: 'owner' | 'heir' | 'shared';
   };
   heir_ids: string[];
   heir_names: string[];
   created_at: string;
   error?: string;
+  // Price tracking
+  price_history?: PriceHistoryEntry[];
+  appreciation?: AppreciationMetrics;
+  last_price_update?: string;
   // Elite Pulse Intelligence Enhancement from Backend
   elite_pulse_impact?: {
     risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
     timestamp?: string;
+    summary?: string;
     ui_display?: {
       badge_text: string;
       tooltip_title: string;
@@ -682,6 +706,7 @@ export async function updateCrownVaultAsset(
     asset_type?: string;
     unit_count?: number;
     cost_per_unit?: number;
+    entry_price?: number;
     value?: number; // Keep for backward compatibility
     currency?: string;
     location?: string;
@@ -691,6 +716,7 @@ export async function updateCrownVaultAsset(
       asset_type?: string;
       unit_count?: number;
       cost_per_unit?: number;
+      entry_price?: number;
       currency?: string;
       location?: string;
       notes?: string;
@@ -710,6 +736,7 @@ export async function updateCrownVaultAsset(
       asset_type: updateData.asset_type,
       unit_count: updateData.unit_count,
       cost_per_unit: updateData.cost_per_unit,
+      entry_price: updateData.entry_price,
       currency: updateData.currency,
       location: updateData.location,
       notes: updateData.notes
@@ -730,24 +757,74 @@ export async function updateCrownVaultAsset(
 // Delete Crown Vault Asset
 export async function deleteCrownVaultAsset(assetId: string): Promise<{ message: string }> {
   try {
-    
-    
     const userId = getCurrentUserId();
-    
-    
+
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
 
     const deleteUrl = `/api/crown-vault/assets/${assetId}`;
-    
-    
-    
     const result = await secureApi.delete(deleteUrl, true);
-    
-    
+
     return {
       message: result.message || 'Asset deleted successfully'
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+// Automatic Price Refresh - Katherine AI Service
+export interface PriceRefreshResponse {
+  success: boolean;
+  asset_id: string;
+  old_price: number;
+  new_price: number;
+  price_source: 'katherine_analysis' | 'manual';
+  confidence_score?: number;
+  appreciation: {
+    percentage: number;
+    absolute: number;
+    annualized: number;
+  };
+  message: string;
+  price_history_updated: boolean;
+}
+
+export async function refreshAssetPrice(
+  assetId: string,
+  manualPrice?: number
+): Promise<PriceRefreshResponse> {
+  try {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated. Please log in to access Crown Vault.');
+    }
+
+    const payload = manualPrice !== undefined
+      ? { new_price: manualPrice }
+      : { new_price: null }; // null triggers Katherine auto-fetch
+
+    const result = await secureApi.post(
+      `/api/crown-vault/assets/${assetId}/update-price`,
+      payload,
+      true
+    );
+
+    return {
+      success: result.success || true,
+      asset_id: result.asset_id || assetId,
+      old_price: result.old_price || 0,
+      new_price: result.new_price || 0,
+      price_source: result.price_source || (manualPrice ? 'manual' : 'katherine_analysis'),
+      confidence_score: result.confidence_score,
+      appreciation: result.appreciation || {
+        percentage: 0,
+        absolute: 0,
+        annualized: 0
+      },
+      message: result.message || 'Price updated successfully',
+      price_history_updated: result.price_history_updated || true
     };
   } catch (error) {
     throw error;

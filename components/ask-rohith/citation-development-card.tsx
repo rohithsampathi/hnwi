@@ -9,6 +9,8 @@ import { PremiumBadge } from "@/components/ui/premium-badge"
 import { useTheme } from "@/contexts/theme-context"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { cn } from "@/lib/utils"
+import { CitationText } from "@/components/elite/citation-text"
+import { formatAnalysis, type FormattedAnalysis, type AnalysisSection } from "@/lib/format-text"
 import {
   Brain,
   TrendingUp,
@@ -35,161 +37,16 @@ interface Development {
   }>
 }
 
-interface AnalysisSection {
-  title: string
-  content: Array<{
-    text: string
-    isBullet: boolean
-  }>
-}
-
-interface FormattedAnalysis {
-  summary: string
-  sections: AnalysisSection[]
-  winners?: AnalysisSection
-  losers?: AnalysisSection
-  potentialMoves?: AnalysisSection
-}
-
-const toTitleCase = (str: string) => {
-  const cleanStr = str.replace(/\*\*/g, '');
-  return cleanStr
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
-
-const formatAnalysis = (summary: string): FormattedAnalysis => {
-  // Clean up the summary - remove duplicate headers and format properly
-  let cleanedSummary = summary
-    .replace(/^HByte Summary\s*\n?/i, '') // Remove HByte Summary header if it exists
-    .replace(/^#\s*HNWI WORLD UPDATE\s*\n?/gim, '') // Remove HNWI WORLD UPDATE headers
-    .replace(/^#\s*Hnwi World Update\s*\n?/gim, '') // Remove case variations
-    .trim()
-
-  const lines = cleanedSummary.split("\n")
-  let currentSection = { title: "", content: [] as Array<{text: string, isBullet: boolean}> }
-  const sections = [] as Array<{title: string, content: Array<{text: string, isBullet: boolean}>}>
-  const summaryContent = [] as string[]
-  let winners: AnalysisSection | undefined
-  let losers: AnalysisSection | undefined
-  let potentialMoves: AnalysisSection | undefined
-
-  lines.forEach((line) => {
-    const trimmedLine = line.trim()
-    if (trimmedLine === "") return
-
-    // Skip lines that are just headers we want to ignore
-    if (trimmedLine.match(/^#\s*(HNWI WORLD UPDATE|Hnwi World Update)/i)) {
-      return
-    }
-
-    if ((trimmedLine.startsWith("##") || (trimmedLine.toUpperCase() === trimmedLine && trimmedLine.length > 3)) && trimmedLine !== "") {
-      if (currentSection.title) {
-        const lowerTitle = currentSection.title.toLowerCase()
-
-        if (lowerTitle.includes("winner")) {
-          winners = { ...currentSection }
-        } else if (lowerTitle.includes("loser")) {
-          losers = { ...currentSection }
-        } else if (lowerTitle.includes("potential") && lowerTitle.includes("move")) {
-          potentialMoves = { ...currentSection }
-        } else {
-          sections.push(currentSection)
-        }
-
-        currentSection = { title: "", content: [] }
-      }
-      const titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
-      currentSection.title = toTitleCase(titleText)
-    } else if (currentSection.title) {
-      const explicitBulletPoint = trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || /^\d+\.\s/.test(trimmedLine)
-
-      const bulletSections = [
-        "key moves",
-        "long term",
-        "long-term",
-        "wealth impact",
-        "sentiment tracker",
-        "market impact",
-        "investment implications",
-        "impact",
-        "implications",
-        "tracker",
-        "moves"
-      ]
-      const shouldTreatAsBullet = bulletSections.some(section =>
-        currentSection.title.toLowerCase().includes(section)
-      )
-
-      let formattedText = trimmedLine.replace(/^[-•]\s*|^\d+\.\s*/, "")
-      formattedText = formattedText.replace(
-        /(Opportunities:|Risks:|Recommendations & Future Paths:|Winners:|Losers:|Entry Point:|Potential Moves:|Entry Points:|Potential Move:)/g,
-        "<strong>$1</strong>",
-      )
-
-      if (shouldTreatAsBullet && !explicitBulletPoint) {
-        const parts = formattedText.split(/\.\s+(?=[A-Z])/).filter(part => part.trim().length > 0)
-
-        parts.forEach((part, index) => {
-          let cleanPart = part.trim()
-          if (index < parts.length - 1 && !cleanPart.endsWith('.')) {
-            cleanPart += '.'
-          }
-
-          if (cleanPart.length > 0) {
-            currentSection.content.push({
-              text: cleanPart,
-              isBullet: true,
-            })
-          }
-        })
-      } else {
-        currentSection.content.push({
-          text: formattedText,
-          isBullet: explicitBulletPoint || shouldTreatAsBullet,
-        })
-      }
-    } else if (!currentSection.title) {
-      summaryContent.push(trimmedLine)
-    }
-  })
-
-  if (currentSection.title) {
-    const lowerTitle = currentSection.title.toLowerCase()
-    if (lowerTitle.includes("winner")) {
-      winners = { ...currentSection }
-    } else if (lowerTitle.includes("loser")) {
-      losers = { ...currentSection }
-    } else if (lowerTitle.includes("potential") && lowerTitle.includes("move")) {
-      potentialMoves = { ...currentSection }
-    } else {
-      sections.push(currentSection)
-    }
-  }
-
-  // If no sections were created and summary is empty, use the cleaned summary as is
-  const finalSummary = summaryContent.length > 0
-    ? summaryContent.join(" ").trim()
-    : (sections.length === 0 && !winners && !losers && !potentialMoves
-      ? cleanedSummary
-      : (lines[0] || ""))
-
-  return {
-    summary: finalSummary,
-    sections,
-    winners,
-    losers,
-    potentialMoves
-  }
-}
+// Removed: formatAnalysis and related types now imported from @/lib/format-text
 
 interface CitationDevelopmentCardProps {
   development: Development
   citationNumber?: number
+  onCitationClick?: (citationId: string) => void
+  citationMap?: Map<string, number>
 }
 
-export function CitationDevelopmentCard({ development, citationNumber }: CitationDevelopmentCardProps) {
+export function CitationDevelopmentCard({ development, citationNumber, onCitationClick, citationMap }: CitationDevelopmentCardProps) {
   const { theme } = useTheme()
   const analysis = formatAnalysis(development.summary)
 
@@ -263,124 +120,24 @@ export function CitationDevelopmentCard({ development, citationNumber }: Citatio
                 <h4 className="text-xl font-bold">HByte Summary</h4>
               </div>
               <div className="text-sm leading-relaxed pl-2">
-                <p className="font-medium">{analysis.summary}</p>
+                <p className="font-medium">
+                  <CitationText
+                    text={analysis.summary}
+                    onCitationClick={onCitationClick}
+                    citationMap={citationMap}
+                  />
+                </p>
               </div>
             </div>
 
-            {/* Winners and Losers */}
-            {(analysis.winners || analysis.losers) && (
-              <div className="space-y-6 mb-6">
-                {analysis.winners && (
-                  <div className="pb-2">
-                    <div className="flex items-center mb-4">
-                      <TrendingUp className="h-4 w-4 text-green-500 mr-3" />
-                      <h5 className="font-bold text-lg text-green-600 dark:text-green-400">Winners</h5>
-                    </div>
-
-                    <div className="space-y-0 pl-2 mb-6">
-                      {analysis.winners.content.map((item, pIndex) => (
-                        <div key={`winner-${pIndex}`} className="text-sm">
-                          {item.isBullet ? (
-                            <div className="flex items-start py-0.5">
-                              <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-green-500"></div>
-                              <span
-                                className="leading-relaxed font-medium"
-                                dangerouslySetInnerHTML={{
-                                  __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <p
-                              className="leading-relaxed font-medium"
-                              dangerouslySetInnerHTML={{
-                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              }}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {analysis.losers && (
-                  <div className="pb-2">
-                    <div className="flex items-center mb-4">
-                      <AlertCircle className="h-4 w-4 text-red-500 mr-3" />
-                      <h5 className="font-bold text-lg text-red-600 dark:text-red-400">Losers</h5>
-                    </div>
-
-                    <div className="space-y-0 pl-2 mb-6">
-                      {analysis.losers.content.map((item, pIndex) => (
-                        <div key={`loser-${pIndex}`} className="text-sm">
-                          {item.isBullet ? (
-                            <div className="flex items-start py-0.5">
-                              <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-red-500"></div>
-                              <span
-                                className="leading-relaxed font-medium"
-                                dangerouslySetInnerHTML={{
-                                  __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <p
-                              className="leading-relaxed font-medium"
-                              dangerouslySetInnerHTML={{
-                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              }}
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Potential Moves */}
-            {analysis.potentialMoves && (
-              <div className="mb-6 pb-2">
-                <div className="flex items-center mb-4">
-                  <Target className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-3" />
-                  <h5 className="font-bold text-lg text-yellow-700 dark:text-yellow-300">Potential Moves</h5>
-                </div>
-
-                <div className="space-y-0 pl-2 mb-6">
-                  {analysis.potentialMoves.content.map((item, pIndex) => (
-                    <div key={`move-${pIndex}`} className="text-sm">
-                      {item.isBullet ? (
-                        <div className="flex items-start py-0.5">
-                          <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 border border-yellow-500"></div>
-                          <span
-                            className="leading-relaxed font-medium"
-                            dangerouslySetInnerHTML={{
-                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <p
-                          className="leading-relaxed font-medium"
-                          dangerouslySetInnerHTML={{
-                            __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          }}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Other Sections */}
+            {/* Other Sections - "Why This Matters" will appear first due to sorting */}
             {analysis.sections.map((section, index) => {
               const sectionIcon = section.title.toLowerCase().includes("insight") ? Lightbulb :
                                section.title.toLowerCase().includes("implication") ? Target :
                                section.title.toLowerCase().includes("risk") ? AlertCircle :
                                BarChart3;
+
+              const isWhyThisMatters = section.title.toLowerCase().includes('why') && section.title.toLowerCase().includes('matter')
 
               return (
                 <div key={index} className="mb-6 pb-2">
@@ -401,24 +158,117 @@ export function CitationDevelopmentCard({ development, citationNumber }: Citatio
                             <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${
                               theme === "dark" ? "bg-primary/60" : "bg-black/60"
                             }`}></div>
-                            <span
-                              className="leading-relaxed font-medium"
-                              dangerouslySetInnerHTML={{
-                                __html: item.text.replace(/\*\*(.*?)\*\*/g, '$1')
-                              }}
-                            />
+                            <span className="leading-relaxed font-medium">
+                              <CitationText
+                                text={item.text}
+                                onCitationClick={onCitationClick}
+                                citationMap={citationMap}
+                                options={{ stripMarkdownBold: true }}
+                              />
+                            </span>
                           </div>
                         ) : (
-                          <p
-                            className="leading-relaxed font-medium"
-                            dangerouslySetInnerHTML={{
-                              __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            }}
-                          />
+                          <p className="leading-relaxed font-medium">
+                            <CitationText
+                              text={item.text}
+                              onCitationClick={onCitationClick}
+                              citationMap={citationMap}
+                              options={{ convertMarkdownBold: true }}
+                            />
+                          </p>
                         )}
                       </div>
                     ))}
                   </div>
+
+                  {/* Nested Winners/Losers/Potential Moves under "Why This Matters" */}
+                  {isWhyThisMatters && (
+                    <div className="mt-6 pl-4 space-y-6">
+                      {/* Winners nested sub-section */}
+                      {analysis.winners && (
+                        <div className="pb-2">
+                          <div className="flex items-center mb-4">
+                            <TrendingUp className="h-4 w-4 text-green-500 mr-3" />
+                            <h6 className="font-bold text-base text-green-600 dark:text-green-400">Winners</h6>
+                          </div>
+
+                          <div className="space-y-0 pl-2">
+                            {analysis.winners.content.map((item, pIndex) => (
+                              <div key={`winner-${pIndex}`} className="text-sm">
+                                <div className="flex items-start py-0.5">
+                                  <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-green-500"></div>
+                                  <span className="leading-relaxed font-medium">
+                                    <CitationText
+                                      text={item.text}
+                                      onCitationClick={onCitationClick}
+                                      citationMap={citationMap}
+                                      options={{ convertMarkdownBold: true }}
+                                    />
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Losers nested sub-section */}
+                      {analysis.losers && (
+                        <div className="pb-2">
+                          <div className="flex items-center mb-4">
+                            <AlertCircle className="h-4 w-4 text-red-500 mr-3" />
+                            <h6 className="font-bold text-base text-red-600 dark:text-red-400">Losers</h6>
+                          </div>
+
+                          <div className="space-y-0 pl-2">
+                            {analysis.losers.content.map((item, pIndex) => (
+                              <div key={`loser-${pIndex}`} className="text-sm">
+                                <div className="flex items-start py-0.5">
+                                  <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-red-500"></div>
+                                  <span className="leading-relaxed font-medium">
+                                    <CitationText
+                                      text={item.text}
+                                      onCitationClick={onCitationClick}
+                                      citationMap={citationMap}
+                                      options={{ convertMarkdownBold: true }}
+                                    />
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Potential Moves nested sub-section */}
+                      {analysis.potentialMoves && (
+                        <div className="pb-2">
+                          <div className="flex items-center mb-4">
+                            <Target className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-3" />
+                            <h6 className="font-bold text-base text-yellow-700 dark:text-yellow-300">Potential Moves</h6>
+                          </div>
+
+                          <div className="space-y-0 pl-2">
+                            {analysis.potentialMoves.content.map((item, pIndex) => (
+                              <div key={`move-${pIndex}`} className="text-sm">
+                                <div className="flex items-start py-0.5">
+                                  <div className="w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 bg-yellow-500"></div>
+                                  <span className="leading-relaxed font-medium">
+                                    <CitationText
+                                      text={item.text}
+                                      onCitationClick={onCitationClick}
+                                      citationMap={citationMap}
+                                      options={{ convertMarkdownBold: true }}
+                                    />
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

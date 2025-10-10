@@ -9,10 +9,12 @@ import type { HomeDashboardEliteProps } from "@/types/dashboard"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { secureApi } from "@/lib/secure-api"
 import type { City } from "@/components/interactive-world-map"
-import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { useCitationManager } from "@/hooks/use-citation-manager"
+import { Brain, Crown, TrendingUp, Target } from "lucide-react"
+import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
+import { AnimatePresence } from "framer-motion"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -21,13 +23,15 @@ const InteractiveWorldMap = dynamic(
     ssr: false,
     loading: () => (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <CrownLoader size="lg" text="Loading Global Intelligence" />
+        <CrownLoader size="lg" text="Loading Elite Pulse" />
       </div>
     )
   }
 )
 
 interface Opportunity {
+  _id?: string  // MongoDB ID
+  id?: string   // Alternative ID field
   title: string
   tier: string
   location: string
@@ -62,7 +66,17 @@ export function HomeDashboardElite({
 }: HomeDashboardEliteProps) {
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState(false)
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [showGreeting, setShowGreeting] = useState(true)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
+
+  // Opportunity filter toggles
+  const [showCrownAssets, setShowCrownAssets] = useState(true)
+  const [showPriveOpportunities, setShowPriveOpportunities] = useState(true)
+  const [showHNWIPatterns, setShowHNWIPatterns] = useState(true)
 
   // Citation management
   const {
@@ -76,34 +90,45 @@ export function HomeDashboardElite({
     closePanel
   } = useCitationManager()
 
-  // Debug: Log when isPanelOpen changes
+  // Screen size detection for mobile/desktop (matching HNWI World)
   useEffect(() => {
-    console.log('🔔 isPanelOpen changed to:', isPanelOpen)
-    console.log('🔔 managedCitations count:', managedCitations.length)
-    if (isPanelOpen) {
-      console.log('🎉 CITATION PANEL SHOULD NOW BE VISIBLE!')
+    const checkScreenSize = () => {
+      const width = window.innerWidth
+      setScreenSize(width < 768 ? 'mobile' : 'desktop')
+      setIsDesktop(width >= 768)
     }
-  }, [isPanelOpen, managedCitations])
 
-  // Debug: Log when selectedCitationId changes
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize)
+    }
+  }, [])
+
+  // Auto-hide greeting after 10 seconds on mobile only
   useEffect(() => {
-    console.log('🔔 selectedCitationId changed to:', selectedCitationId)
-  }, [selectedCitationId])
+    // Set timer to hide greeting on mobile only
+    let timer: NodeJS.Timeout | null = null
+    if (window.innerWidth < 768) {
+      timer = setTimeout(() => {
+        setShowGreeting(false)
+      }, 10000) // 10 seconds
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [])
 
   // Handle citation click from map popup
   const handleCitationClick = useCallback((citationId: string) => {
-    console.log('🎯 handleCitationClick called with ID:', citationId)
-    console.log('📚 Available citations:', managedCitations)
-    console.log('🗺️ Citation map:', citationMap)
-    console.log('📖 Opening citation...')
     openCitation(citationId)
-    console.log('✅ Citation opened. Panel should be visible. isPanelOpen:', isPanelOpen)
-  }, [openCitation, managedCitations, citationMap, isPanelOpen])
+  }, [openCitation])
 
   useEffect(() => {
     const fetchOpportunities = async () => {
       try {
-        console.log(`🔍 Fetching opportunities from API (timeframe: ${timeframe})...`)
         const apiUrl = timeframe === 'live'
           ? '/api/command-centre/opportunities?include_crown_vault=true&include_executors=true'
           : `/api/command-centre/opportunities?timeframe=${timeframe}&include_crown_vault=true&include_executors=true`
@@ -113,43 +138,7 @@ export function HomeDashboardElite({
           cacheDuration: 600000 // 10 minutes
         })
 
-        console.log('📊 API Response:', response)
-        console.log('✅ Success:', response.success)
-        console.log('📈 Total opportunities:', response.opportunities?.length || 0)
-
         if (response.success && response.opportunities) {
-          console.log('🗺️ First 5 opportunities:', response.opportunities.slice(0, 5))
-
-          // Debug: Check Four Seasons Alpina value
-          const fourSeasonsOpp = response.opportunities.find((opp: Opportunity) =>
-            opp.title?.toLowerCase().includes('four seasons') && opp.title?.toLowerCase().includes('alpina')
-          )
-          if (fourSeasonsOpp) {
-            console.log('🏔️ Four Seasons Alpina - Backend value:', fourSeasonsOpp.value)
-            console.log('🏔️ Four Seasons Alpina - Full data:', fourSeasonsOpp)
-          }
-
-          // Debug: Check if executors are in the response
-          const oppsWithExecutors = response.opportunities.filter((opp: Opportunity) => opp.executors && opp.executors.length > 0)
-          console.log(`👥 Opportunities with executors: ${oppsWithExecutors.length} out of ${response.opportunities.length}`)
-          if (oppsWithExecutors.length > 0) {
-            console.log('👥 First opportunity with executors:', oppsWithExecutors[0])
-          }
-
-          // Debug: Check if backend is sending category/industry/product
-          const oppsWithCategory = response.opportunities.filter((opp: Opportunity) => opp.category || opp.industry || opp.product)
-          console.log(`🏷️ Opportunities with category/industry/product: ${oppsWithCategory.length} out of ${response.opportunities.length}`)
-          if (oppsWithCategory.length > 0) {
-            console.log('🏷️ First opportunity with metadata:', {
-              title: oppsWithCategory[0].title,
-              category: oppsWithCategory[0].category,
-              industry: oppsWithCategory[0].industry,
-              product: oppsWithCategory[0].product
-            })
-          } else {
-            console.warn('⚠️ Backend is NOT sending category/industry/product fields - using text matching for icons')
-          }
-
           // Transform opportunities to city format for the map
           const cityData: City[] = response.opportunities
             .map((opp: Opportunity, index: number) => {
@@ -158,30 +147,23 @@ export function HomeDashboardElite({
               let lng = opp.longitude
               let displayName = opp.location || opp.country || opp.title || 'Opportunity'
 
-              // Log what we received from backend
-              console.log(`📍 Using backend coordinates for "${opp.title}":`, {
-                latitude: lat,
-                longitude: lng,
-                location: opp.location,
-                country: opp.country
-              })
-
               // Validate coordinates are within valid range
               if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-                console.warn(`⚠️ Invalid coordinates for "${opp.title}": lat=${lat}, lng=${lng}`)
                 // Skip this opportunity if coordinates are invalid
                 return null
               }
 
-              // Warn if coordinates are (0, 0) - likely missing data
+              // Skip if coordinates are (0, 0) - likely missing data
               if (lat === 0 && lng === 0) {
-                console.warn(`⚠️ Missing coordinates (0,0) for "${opp.title}" - skipping`)
                 return null
               }
 
-              // Extract citations from analysis text
-              const analysisText = opp.analysis || opp.elite_pulse_analysis || ''
-              const devIds = extractDevIds(analysisText)
+              // Extract citations from BOTH analysis and elite_pulse_analysis
+              const devIdsFromAnalysis = extractDevIds(opp.analysis || '')
+              const devIdsFromElitePulse = extractDevIds(opp.elite_pulse_analysis || '')
+              // Combine and deduplicate
+              const allDevIds = Array.from(new Set([...devIdsFromAnalysis, ...devIdsFromElitePulse]))
+              const devIds = allDevIds
 
               return {
                 name: displayName,
@@ -191,6 +173,8 @@ export function HomeDashboardElite({
                 population: opp.value,
                 type: opp.source === "MOEv4" ? "finance" : "luxury",
                 // Include full opportunity data
+                _id: opp._id,  // MongoDB ID for deep linking
+                id: opp.id,    // Alternative ID field
                 title: opp.title,
                 tier: opp.tier,
                 value: opp.value,
@@ -213,18 +197,6 @@ export function HomeDashboardElite({
             })
             .filter((city): city is City => city !== null) // Remove null entries
 
-          console.log('🌍 Transformed cities:', cityData)
-
-          // Debug: Check if executors made it to city data
-          const citiesWithExecutors = cityData.filter(city => city.executors && city.executors.length > 0)
-          console.log(`👥 Cities with executors: ${citiesWithExecutors.length} out of ${cityData.length}`)
-          if (citiesWithExecutors.length > 0) {
-            console.log('👥 First city with executors:', {
-              title: citiesWithExecutors[0].title,
-              executors: citiesWithExecutors[0].executors
-            })
-          }
-
           // Extract all citations across all opportunities
           const allCitations: Citation[] = []
           const seenIds = new Set<string>()
@@ -245,17 +217,23 @@ export function HomeDashboardElite({
             }
           })
 
-          if (allCitations.length > 0) {
-            console.log(`📚 Found ${allCitations.length} total citations across opportunities`)
-            setManagedCitations(allCitations)
-          }
-
+          setManagedCitations(allCitations)
           setCities(cityData)
-        } else {
-          console.warn('⚠️ No opportunities in response')
         }
-      } catch (error) {
-        console.error('❌ Error fetching opportunities:', error)
+      } catch (error: any) {
+
+        // Check if this is an authentication error
+        if (error?.message?.includes('Authentication') ||
+            error?.message?.includes('authentication') ||
+            error?.status === 401 ||
+            error?.status === 403) {
+          // Set auth error state - don't render the component
+          setAuthError(true)
+          // Let the secureApi's auth popup mechanism handle it
+          return
+        }
+
+        // For non-auth errors, just log and continue with empty data
       } finally {
         setLoading(false)
       }
@@ -267,68 +245,196 @@ export function HomeDashboardElite({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <CrownLoader size="lg" text="Loading Global Intelligence" />
+        <CrownLoader size="lg" text="Loading Elite Pulse" />
       </div>
     )
   }
 
-  return (
-    <div className="fixed inset-0 overflow-hidden" style={{ marginTop: '40px' }}>
-      <InteractiveWorldMap
-        width="100%"
-        height="100%"
-        showControls={true}
-        cities={cities}
-        onCitationClick={handleCitationClick}
-      />
+  // Don't render if authentication failed - let auth popup/redirect handle it
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <CrownLoader size="lg" text="Verifying Authentication" />
+      </div>
+    )
+  }
 
-      {/* Date Range Selector - Top Right */}
-      <div className="absolute top-4 right-4 z-[1000]">
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg">
-          <select
-            value={timeframe}
-            onChange={(e) => {
-              setTimeframe(e.target.value)
-              setLoading(true)
-            }}
-            className="px-4 py-2 bg-transparent text-sm font-medium text-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-lg"
-          >
-            <option value="live">🔴 Live Data</option>
-            <option value="7D">📅 Last 7 Days</option>
-            <option value="14D">📅 Last 14 Days</option>
-            <option value="21D">📅 Last 21 Days</option>
-            <option value="1M">📅 Last Month</option>
-            <option value="3M">📅 Last 3 Months</option>
-            <option value="6M">📅 Last 6 Months</option>
-          </select>
+  // Generate greeting text
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    const firstName = userData?.firstName || userData?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
+
+    if (hour < 6) return `Midnight Wealth Watchlist, ${firstName}`
+    if (hour < 12) return `Morning Intelligence Brief, ${firstName}`
+    if (hour < 17) return `Midday Market Synthesis, ${firstName}`
+    if (hour < 22) return `Evening Capital Insights, ${firstName}`
+    return `Night Watch: Global Capital Flow, ${firstName}`
+  }
+
+  // Filter cities based on opportunity type toggles
+  const filteredCities = cities.filter(city => {
+    // Crown Assets: opportunities from crown vault or asset-related
+    const isCrownAsset = city.source?.toLowerCase().includes('crown') ||
+                         city.category?.toLowerCase().includes('asset') ||
+                         city.category?.toLowerCase().includes('vault')
+
+    // Privé Opportunities: Victor-scored opportunities from Privé Exchange
+    const isPriveOpportunity = city.victor_score !== undefined ||
+                               city.source?.toLowerCase().includes('privé') ||
+                               city.source?.toLowerCase().includes('prive')
+
+    // HNWI Pattern Opportunities: MOEv4 market intelligence and patterns
+    const isHNWIPattern = city.source === 'MOEv4' ||
+                          city.source?.toLowerCase().includes('pattern') ||
+                          city.category?.toLowerCase().includes('intelligence') ||
+                          city.category?.toLowerCase().includes('trend') ||
+                          (!isCrownAsset && !isPriveOpportunity) // Default category
+
+    // Show city if its category toggle is enabled
+    if (isCrownAsset && showCrownAssets) return true
+    if (isPriveOpportunity && showPriveOpportunities) return true
+    if (isHNWIPattern && showHNWIPatterns) return true
+
+    return false
+  })
+
+  return (
+    <>
+      <div className="fixed inset-0 overflow-hidden" style={{ marginTop: '40px' }}>
+        <InteractiveWorldMap
+          width="100%"
+          height="100%"
+          showControls={true}
+          cities={filteredCities}
+          onCitationClick={handleCitationClick}
+          citationMap={citationMap}
+          onNavigate={onNavigate}
+          showCrownAssets={showCrownAssets}
+          showPriveOpportunities={showPriveOpportunities}
+          showHNWIPatterns={showHNWIPatterns}
+          onToggleCrownAssets={() => setShowCrownAssets(!showCrownAssets)}
+          onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
+          onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
+        />
+
+        {/* Greeting Overlay - Positioned to match PageHeader layout */}
+        <div className="absolute top-12 md:top-16 left-4 md:left-[80px] z-[400] px-0 sm:px-2 lg:px-4 pointer-events-none">
+          {/* Greeting and subtext - hidden after 10s on mobile, always visible on desktop */}
+          {(showGreeting || isDesktop) && (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <Brain className="h-4 md:h-5 w-4 md:w-5 text-primary" />
+                <h1 className="text-base md:text-xl lg:text-2xl font-bold text-foreground">
+                  {getGreeting()}
+                </h1>
+              </div>
+              <p className="text-muted-foreground text-xs md:text-sm ml-6 md:ml-7 mb-2 md:mb-3">
+                World HNWI transactional opportunities on your Command Centre
+              </p>
+            </>
+          )}
+
+          {/* Date Range Selector - Custom dropdown below description text - always visible */}
+          <div className={`relative inline-block pointer-events-auto ${(showGreeting || isDesktop) ? 'ml-6 md:ml-7' : 'ml-0'}`}>
+            {/* Custom Dropdown Button */}
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className={`py-1.5 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center gap-2 ${timeframe === 'live' ? 'pl-6 pr-8 font-bold' : 'pl-3 pr-8'}`}
+            >
+              {/* Blinking dot - only visible when Live Data is selected */}
+              {timeframe === 'live' && (
+                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                  </span>
+                </span>
+              )}
+              <span>{timeframe === 'live' ? 'Live Data' : timeframe}</span>
+              <span className="absolute right-2 top-1/2 transform -translate-y-1/2">▼</span>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <>
+                {/* Backdrop to close dropdown */}
+                <div
+                  className="fixed inset-0 z-[500]"
+                  onClick={() => setIsDropdownOpen(false)}
+                />
+
+                {/* Dropdown Options */}
+                <div className="absolute left-0 top-full mt-1 bg-background border border-border rounded shadow-lg z-[501] min-w-[120px]">
+                  {[
+                    { value: 'live', label: 'Live Data', bold: true },
+                    { value: '7D', label: '7D' },
+                    { value: '14D', label: '14D' },
+                    { value: '21D', label: '21D' },
+                    { value: '1M', label: '1M' },
+                    { value: '3M', label: '3M' },
+                    { value: '6M', label: '6M' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setTimeframe(option.value)
+                        setIsDropdownOpen(false)
+                        setLoading(true)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${
+                        timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'
+                      } ${option.bold ? 'font-bold' : ''}`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Blinking animation styles */}
+          <style jsx>{`
+            @keyframes ping {
+              75%, 100% {
+                transform: scale(2);
+                opacity: 0;
+              }
+            }
+            .animate-ping {
+              animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+            }
+          `}</style>
         </div>
       </div>
 
-      {/* Citation Panel - Desktop: 3rd panel on right side */}
-      {isPanelOpen && (
-        <div className="hidden md:block fixed right-0 top-0 h-full w-96 z-[3000] bg-background shadow-2xl border-l border-border">
+      {/* Citation Panel - Desktop Only (matching HNWI World pattern) */}
+      {isPanelOpen && screenSize === 'desktop' && (
+        <div className="hidden lg:block">
           <EliteCitationPanel
             citations={managedCitations}
             selectedCitationId={selectedCitationId}
             onClose={closePanel}
             onCitationSelect={setSelectedCitationId}
+            citationMap={citationMap}
           />
         </div>
       )}
 
-      {/* Citation Panel - Mobile: Popup modal overlay */}
-      {isPanelOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg max-w-lg w-full max-h-[80vh] overflow-hidden">
-            <EliteCitationPanel
-              citations={managedCitations}
-              selectedCitationId={selectedCitationId}
-              onClose={closePanel}
-              onCitationSelect={setSelectedCitationId}
-            />
-          </div>
-        </div>
+      {/* Mobile Citation Panel - Full screen with AnimatePresence */}
+      {isPanelOpen && screenSize === 'mobile' && (
+        <AnimatePresence>
+          <EliteCitationPanel
+            citations={managedCitations}
+            selectedCitationId={selectedCitationId}
+            onClose={() => {
+              closePanel()
+            }}
+            onCitationSelect={setSelectedCitationId}
+            citationMap={citationMap}
+          />
+        </AnimatePresence>
       )}
-    </div>
+    </>
   )
 }

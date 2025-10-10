@@ -36,9 +36,16 @@ export default function Home() {
       let user = getCurrentUser()
 
       // If no user in memory, try to refresh from cookies (hard refresh case)
+      // Only attempt refresh if there's some indication of a session
       if (!user) {
-        const { refreshUser } = await import("@/lib/auth-manager")
-        user = await refreshUser()
+        const hasSessionData = typeof window !== 'undefined' &&
+          (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
+
+        // Only call refreshUser if we have session data to avoid unnecessary 401 errors
+        if (hasSessionData) {
+          const { refreshUser } = await import("@/lib/auth-manager")
+          user = await refreshUser()
+        }
       }
 
       if (user && (user.id || user.user_id)) {

@@ -549,6 +549,13 @@ a:hover svg[stroke="currentColor"][height][width],
   transform: translateY(-3px);
 }
 
+/* Override for buttons that should not have hover transform */
+button.no-hover-transform,
+button.no-hover-transform:hover,
+button.no-hover-transform:active {
+  transform: none !important;
+}
+
 /* Footer navigation - remove shadows and mobile touch feedback */
 footer nav button, footer nav div {
   box-shadow: none !important;

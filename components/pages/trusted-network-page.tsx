@@ -350,7 +350,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
       <div className="container mx-auto px-4 pb-20">
         {/* Header */}
         <PageHeaderWithBack
-          title="Trusted Network Directory"
+          title="Executor Directory"
           icon={Network}
           description="Vetted executors for intelligence-driven action"
           onBack={() => onNavigate?.("dashboard")}
@@ -462,7 +462,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center py-12">
-          <CrownLoader message="Loading Trusted Network..." />
+          <CrownLoader message="Loading Executors..." />
         </div>
       )}
 

@@ -26,6 +26,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
     asset_type: "",
     unit_count: "1",
     cost_per_unit: "0",
+    entry_price: "0",
     currency: "USD",
     location: "",
     notes: ""
@@ -38,12 +39,14 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
       const unitCount = asset.asset_data?.unit_count || 1;
       const costPerUnit = asset.asset_data?.cost_per_unit ||
         (asset.asset_data?.value ? asset.asset_data.value / unitCount : 0);
+      const entryPrice = asset.asset_data?.entry_price || 0;
 
       setFormData({
         name: asset.asset_data?.name || "",
         asset_type: asset.asset_data?.asset_type || "",
         unit_count: unitCount.toString(),
         cost_per_unit: costPerUnit.toString(),
+        entry_price: entryPrice.toString(),
         currency: asset.asset_data?.currency || "USD",
         location: asset.asset_data?.location || "",
         notes: asset.asset_data?.notes || ""
@@ -63,6 +66,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
         asset_type: formData.asset_type,
         unit_count: parseFloat(formData.unit_count) || 1,
         cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
+        entry_price: parseFloat(formData.entry_price) || 0,
         currency: formData.currency,
         location: formData.location,
         notes: formData.notes
@@ -83,6 +87,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
             asset_type: formData.asset_type,
             unit_count: parseFloat(formData.unit_count) || 1,
             cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
+            entry_price: parseFloat(formData.entry_price) || 0,
             value: (parseFloat(formData.unit_count) || 1) * (parseFloat(formData.cost_per_unit) || 0),
             currency: formData.currency,
             location: formData.location,
@@ -195,6 +200,21 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            {/* Entry Price */}
+            <div className="space-y-2">
+              <Label htmlFor="entry_price">Entry Price (Original Purchase Price)</Label>
+              <Input
+                id="entry_price"
+                type="number"
+                value={formData.entry_price}
+                onChange={(e) => setFormData(prev => ({ ...prev, entry_price: e.target.value }))}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                disabled={isLoading}
+              />
             </div>
 
             {/* Total Value Display */}

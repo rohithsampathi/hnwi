@@ -13,7 +13,7 @@ export const PAGE_HEADERS: Record<string, PageHeaderConfig> = {
   // Main sections that need headers
   'dashboard': {
     title: '', // Will be dynamically set with greeting
-    description: 'Your personalized wealth intelligence command center', 
+    description: 'Your personalized wealth intelligence command center',
     showBackButton: false,
   },
   'crown-vault': {
@@ -94,6 +94,7 @@ export const NO_HEADER_ROUTES = [
   '/login',
   '/register',
   '/onboarding',
+  '/dashboard',
 ]
 
 // Generate personalized greeting for dashboard

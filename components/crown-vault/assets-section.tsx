@@ -13,16 +13,17 @@ import {
   Plus, Shield, Users, Building, Car, Gem, Palette, DollarSign,
   Search, Loader2, Vault, MapPin, FileText, AlertTriangle, Zap, Clock,
   Info, MoreVertical, Edit, Trash2, ChevronUp, BarChart3, ChevronDown,
-  Brain, Target, TrendingUp
+  Brain, Target, TrendingUp, RefreshCw, TrendingDown, Eye
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsset, deleteCrownVaultAsset } from "@/lib/api";
+import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsset, deleteCrownVaultAsset, refreshAssetPrice } from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
 import { EditAssetModal } from "./edit-asset-modal";
 import { getCategoryGroup, getCategoryDisplayName } from "@/lib/category-utils";
 import { CitationText } from "@/components/elite/citation-text";
+import { PriceHistoryTimeline } from "./price-history-timeline";
 
 interface AssetsSectionProps {
   assets: CrownVaultAsset[];
@@ -515,21 +516,23 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   const [heirUpdateLoading, setHeirUpdateLoading] = useState<Set<string>>(new Set());
   const [newlyAddedAssets, setNewlyAddedAssets] = useState<Set<string>>(new Set());
   const [deletingAssets, setDeletingAssets] = useState<Set<string>>(new Set());
+  const [refreshingPrices, setRefreshingPrices] = useState<Set<string>>(new Set());
+  const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set());
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<CrownVaultAsset | null>(null);
-  
+
   const { toast } = useToast();
 
   const handleHeirReassignment = async (assetId: string, newHeirIds: string[]) => {
     try {
       setHeirUpdateLoading(prev => new Set([...prev, assetId]));
-      
+
       const result = await updateAssetHeirs(assetId, newHeirIds);
-      
+
       // Update the asset in state
-      setAssets(prevAssets => 
-        prevAssets.map(asset => 
-          asset.asset_id === assetId 
+      setAssets(prevAssets =>
+        prevAssets.map(asset =>
+          asset.asset_id === assetId
             ? { ...asset, heir_ids: newHeirIds, heir_names: result.heir_names }
             : asset
         )
@@ -552,6 +555,65 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
         return newSet;
       });
     }
+  };
+
+  // Handle automatic price refresh via Katherine AI
+  const handleRefreshPrice = async (asset: CrownVaultAsset) => {
+    try {
+      setRefreshingPrices(prev => new Set([...prev, asset.asset_id]));
+
+      const result = await refreshAssetPrice(asset.asset_id);
+
+      // Update the asset in state with new price and appreciation
+      setAssets(prevAssets =>
+        prevAssets.map(a =>
+          a.asset_id === asset.asset_id
+            ? {
+                ...a,
+                asset_data: {
+                  ...a.asset_data,
+                  cost_per_unit: result.new_price,
+                  current_price: result.new_price,
+                  value: (a.asset_data.unit_count || 1) * result.new_price
+                },
+                appreciation: result.appreciation,
+                last_price_update: new Date().toISOString()
+              }
+            : a
+        )
+      );
+
+      toast({
+        title: "Price Updated Successfully",
+        description: `${asset.asset_data.name}: ${result.appreciation.percentage > 0 ? '+' : ''}${result.appreciation.percentage.toFixed(1)}% (${result.appreciation.annualized.toFixed(2)}% annualized)`,
+        variant: "default"
+      });
+    } catch (error) {
+      toast({
+        title: "Price Refresh Failed",
+        description: error instanceof Error ? error.message : "Katherine AI price fetch failed. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setRefreshingPrices(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(asset.asset_id);
+        return newSet;
+      });
+    }
+  };
+
+  // Toggle expanded state for asset details
+  const toggleAssetExpanded = (assetId: string) => {
+    setExpandedAssets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(assetId)) {
+        newSet.delete(assetId);
+      } else {
+        newSet.add(assetId);
+      }
+      return newSet;
+    });
   };
 
   // Handle asset deletion

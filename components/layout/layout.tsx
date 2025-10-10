@@ -159,15 +159,53 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         ref={headerRef}
         className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300`}
         style={{
-          left: isDesktop 
+          left: isDesktop
             ? (sidebarState ? '64px' : '256px') : '0',
           right: '0'
         }}
       >
-        <div 
-          className="w-full flex justify-between items-center pl-0 pr-2 py-1"
+        <div
+          className="w-full flex justify-between items-center pl-2 md:pl-0 pr-2 py-1"
         >
-          <div className="flex items-center">
+          {/* Logo for mobile view only */}
+          <div className="flex md:hidden items-center gap-2 cursor-pointer" onClick={handleLogoClick}>
+            <motion.div
+              animate={{
+                rotate: 360,
+                scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
+              }}
+              transition={{
+                rotate: {
+                  duration: 10,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: "linear"
+                },
+                scale: showHeartbeat ? {
+                  duration: 1,
+                  times: [0, 0.3, 0.5, 0.8, 1],
+                  ease: "easeInOut"
+                } : {
+                  duration: 0
+                }
+              }}
+            >
+              <Image
+                src="/logo.png"
+                alt="HNWI Chronicles Globe"
+                width={28}
+                height={28}
+                className="w-7 h-7"
+                priority
+              />
+            </motion.div>
+            <h1 className="text-xs font-bold font-heading leading-tight">
+              <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
+              <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
+            </h1>
+          </div>
+
+          {/* Empty div for desktop to maintain layout */}
+          <div className="hidden md:flex items-center">
           </div>
 
           <div className="flex items-center space-x-1 md:space-x-2">
@@ -193,9 +231,11 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       {(() => {
         const pageHeaderConfig = getPageHeader(pathname, user)
         if (pageHeaderConfig) {
+          // Remove banner styling for dashboard - just show text
+          const isDashboard = pathname === '/dashboard' || pathname.includes('/dashboard')
           return (
             <div
-              className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border"
+              className={isDashboard ? "" : "sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border"}
               style={{
                 marginLeft: isDesktop
                   ? (sidebarState ? '64px' : '256px') : '0'

@@ -23,7 +23,23 @@ interface CitationTextProps {
 }
 
 const convertMarkdownBold = (value: string): string => {
-  return value.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+  // Convert markdown bold (**text**) to HTML bold
+  let formatted = value.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+
+  // Also bold formatting for specific side headings with colons (same as formatAnalysis)
+  formatted = formatted.replace(
+    /(Winners:|Losers:|Potential Moves:|Opportunities:|Risks:|Recommendations & Future Paths:|Entry Point:|Entry Points:|Potential Move:)/g,
+    "<strong>$1</strong>",
+  )
+
+  // Bold any text before a colon at the start of a line (sub-sub-headings)
+  // This catches patterns like "Key Strategy:", "Important Note:", etc.
+  // Only if not already wrapped in <strong> tags
+  if (!formatted.includes('<strong>') && formatted.match(/^[A-Z][^:]+:/)) {
+    formatted = formatted.replace(/^([^:]+:)/, '<strong>$1</strong>')
+  }
+
+  return formatted
 }
 
 const convertLineBreaks = (value: string): string => {

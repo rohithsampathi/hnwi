@@ -12,6 +12,7 @@ import { CrownLoader } from "@/components/ui/crown-loader"
 import { CitationDevelopmentCard } from "@/components/ask-rohith/citation-development-card"
 import { X, FileText } from "lucide-react"
 import type { Citation } from "@/lib/parse-dev-citations"
+import { extractDevIds } from "@/lib/parse-dev-citations"
 import { cn } from "@/lib/utils"
 
 interface Development {
@@ -36,65 +37,190 @@ interface EliteCitationPanelProps {
   selectedCitationId: string | null
   onClose: () => void
   onCitationSelect: (citationId: string) => void
+  citationMap?: Map<string, number>
 }
 
 export function EliteCitationPanel({
   citations,
   selectedCitationId,
   onClose,
-  onCitationSelect
+  onCitationSelect,
+  citationMap
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
+  const [allCitations, setAllCitations] = useState<Citation[]>(citations)
+  const [localCitationMap, setLocalCitationMap] = useState<Map<string, number>>(citationMap || new Map())
 
-  // Fetch development data when citations change
+  // Initialize local state when props change
+  useEffect(() => {
+    setAllCitations(citations)
+    setLocalCitationMap(citationMap || new Map())
+  }, [citations, citationMap])
+
+  // Fetch only the PRIMARY citations upfront (the initial ones from opportunities)
   useEffect(() => {
     if (citations.length === 0) return
 
-    const fetchDevelopments = async () => {
+    const fetchPrimaryCitations = async () => {
       setLoading(true)
       try {
-        const citationIds = citations.map(c => c.id)
-        const newDevs = new Map<string, Development>()
+        const newDevs = new Map<string, Development>(developments)
 
-        // Fetch each development individually from public endpoint
-        for (const citationId of citationIds) {
+        // Accumulate citations across all primary fetches
+        const accumulatedCitations: Citation[] = [...allCitations]
+        const accumulatedCitationMap = new Map(localCitationMap)
+        let nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
+
+        // Fetch only the primary citations
+        for (const citation of citations) {
+          // Skip if already fetched
+          if (newDevs.has(citation.id)) continue
+
           try {
-            const response = await fetch(`/api/developments/public/${citationId}`, {
+            const response = await fetch(`/api/developments/public/${citation.id}`, {
               credentials: 'include'
             })
 
             if (response.ok) {
               const dev = await response.json()
-              const developmentId = dev._id || dev.id || citationId
+              const developmentId = dev._id || dev.id || citation.id
+              const summary = dev.summary || dev.analysis || ""
 
-              newDevs.set(citationId, {
+              newDevs.set(citation.id, {
                 id: developmentId,
                 title: dev.title || dev.name || `Development ${developmentId}`,
-                description: dev.description || dev.summary?.substring(0, 200) || "Development details",
+                description: dev.description || summary?.substring(0, 200) || "Development details",
                 industry: dev.industry || "Market Intelligence",
                 product: dev.product,
                 date: dev.date || dev.created_at,
-                summary: dev.summary || dev.analysis || "",
+                summary: summary,
                 url: dev.url,
                 numerical_data: dev.numerical_data || []
               })
+
+              // Extract DEV IDs from summary but DON'T fetch them yet (lazy loading)
+              const devIdsInSummary = extractDevIds(summary)
+
+              // Add them to accumulated citations
+              devIdsInSummary.forEach(devId => {
+                if (!accumulatedCitationMap.has(devId)) {
+                  accumulatedCitationMap.set(devId, nextNumber)
+                  accumulatedCitations.push({
+                    id: devId,
+                    number: nextNumber,
+                    originalText: `[Dev ID: ${devId}]`
+                  })
+                  nextNumber++
+                }
+              })
             }
           } catch (err) {
-            continue
+            console.error(`Failed to fetch citation ${citation.id}:`, err)
           }
         }
 
+        // Update state ONCE after all fetches complete
         setDevelopments(newDevs)
+        setAllCitations(accumulatedCitations)
+        setLocalCitationMap(accumulatedCitationMap)
       } catch (error) {
-        // Silently handle fetch errors
+        console.error('Error fetching primary citations:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchDevelopments()
-  }, [citations])
+    fetchPrimaryCitations()
+  }, [citations.length])
+
+  // Handle citation click - fetch development lazily when clicked
+  const handleCitationClick = async (citationId: string) => {
+    console.log('🔗 Citation clicked:', citationId)
+
+    // Check if citation already exists
+    const existingCitation = allCitations.find(c => c.id === citationId)
+
+    if (!existingCitation) {
+      console.log('➕ Adding new citation:', citationId)
+
+      // Get next citation number
+      const nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
+
+      // Add to local citations list
+      const newCitation: Citation = {
+        id: citationId,
+        number: nextNumber,
+        originalText: `[Dev ID: ${citationId}]`
+      }
+
+      setAllCitations(prev => [...prev, newCitation])
+      setLocalCitationMap(prev => new Map(prev).set(citationId, nextNumber))
+    }
+
+    // LAZY LOAD: Fetch development only when clicked (if not already fetched)
+    if (!developments.has(citationId)) {
+      console.log('📥 Lazy loading development:', citationId)
+      setLoading(true)
+
+      try {
+        const response = await fetch(`/api/developments/public/${citationId}`, {
+          credentials: 'include'
+        })
+
+        if (response.ok) {
+          const dev = await response.json()
+          const developmentId = dev._id || dev.id || citationId
+          const summary = dev.summary || dev.analysis || ""
+
+          const newDev: Development = {
+            id: developmentId,
+            title: dev.title || dev.name || `Development ${developmentId}`,
+            description: dev.description || summary?.substring(0, 200) || "Development details",
+            industry: dev.industry || "Market Intelligence",
+            product: dev.product,
+            date: dev.date || dev.created_at,
+            summary: summary,
+            url: dev.url,
+            numerical_data: dev.numerical_data || []
+          }
+
+          setDevelopments(prev => new Map(prev).set(citationId, newDev))
+
+          // Extract DEV IDs from this development but don't fetch them
+          const devIdsInSummary = extractDevIds(summary)
+
+          if (devIdsInSummary.length > 0) {
+            const newCitations = [...allCitations]
+            const newCitationMap = new Map(localCitationMap)
+            let nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
+
+            devIdsInSummary.forEach(devId => {
+              if (!newCitationMap.has(devId)) {
+                newCitationMap.set(devId, nextNumber)
+                newCitations.push({
+                  id: devId,
+                  number: nextNumber,
+                  originalText: `[Dev ID: ${devId}]`
+                })
+                nextNumber++
+              }
+            })
+
+            setAllCitations(newCitations)
+            setLocalCitationMap(newCitationMap)
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to lazy load citation ${citationId}:`, err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Select the citation
+    onCitationSelect(citationId)
+  }
 
   return (
     <>
@@ -122,7 +248,7 @@ export function EliteCitationPanel({
               <FileText className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-base">Source Documents</h3>
               <Badge variant="secondary" className="text-xs">
-                {citations.length}
+                {allCitations.length}
               </Badge>
             </div>
             <Button
@@ -140,7 +266,7 @@ export function EliteCitationPanel({
         <div className="px-3 py-3 border-b border-border bg-muted/30 flex-shrink-0">
           <div className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
-              {citations.map((citation) => (
+              {allCitations.map((citation) => (
                 <Button
                   key={citation.id}
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
@@ -192,6 +318,8 @@ export function EliteCitationPanel({
                         <CitationDevelopmentCard
                           development={dev}
                           citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
+                          onCitationClick={onCitationSelect}
+                          citationMap={citationMap}
                         />
                       )
                     })()}
@@ -218,7 +346,7 @@ export function EliteCitationPanel({
               <FileText className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-sm">Source Documents</h3>
               <Badge variant="secondary" className="text-xs">
-                {citations.length} cited
+                {allCitations.length} cited
               </Badge>
             </div>
             <Button
@@ -236,7 +364,7 @@ export function EliteCitationPanel({
         <div className="px-3 py-3 border-b border-border bg-muted/30">
           <div className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
-              {citations.map((citation) => (
+              {allCitations.map((citation) => (
                 <Button
                   key={citation.id}
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
@@ -287,7 +415,9 @@ export function EliteCitationPanel({
                       return (
                         <CitationDevelopmentCard
                           development={dev}
-                          citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
+                          citationNumber={allCitations.find(c => c.id === selectedCitationId)?.number}
+                          onCitationClick={handleCitationClick}
+                          citationMap={localCitationMap}
                         />
                       )
                     })()}

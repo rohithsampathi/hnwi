@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils"
 import type { RohithChatProps } from "@/types/rohith"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { shareConversation } from "@/lib/rohith-api"
+import { secureApi } from "@/lib/secure-api"
 
 const QUICK_PROMPTS = [
   {
@@ -198,25 +199,12 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
         messages: messagesWithDates
       }
 
-      // Call the API to store and get share URL
-      const response = await fetch('/api/conversations/share', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // CRITICAL: Send cookies with request
-        body: JSON.stringify({
-          conversationId,
-          userId: userContext?.userId || 'anonymous',
-          conversationData
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to share: ${response.statusText}`)
-      }
-
-      const data = await response.json()
+      // Use secureApi.post() which automatically handles CSRF token
+      const data = await secureApi.post('/api/conversations/share', {
+        conversationId,
+        userId: userContext?.userId || 'anonymous',
+        conversationData
+      }, true)
 
       if (!data.shareUrl) {
         throw new Error("Invalid share response")

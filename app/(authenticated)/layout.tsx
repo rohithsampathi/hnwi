@@ -125,10 +125,17 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           authUser = getCurrentUser()
 
           // If still no user, try one more time with the auth manager refresh
+          // Only attempt refresh if there's some indication of a session (sessionStorage has data)
           if (!userId || !authUser) {
-            const { refreshUser } = await import("@/lib/auth-manager")
-            authUser = await refreshUser()
-            userId = authUser?.id || authUser?.user_id
+            const hasSessionData = typeof window !== 'undefined' &&
+              (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
+
+            // Only call refreshUser if we have session data, otherwise redirect immediately
+            if (hasSessionData) {
+              const { refreshUser } = await import("@/lib/auth-manager")
+              authUser = await refreshUser()
+              userId = authUser?.id || authUser?.user_id
+            }
           }
         }
 
