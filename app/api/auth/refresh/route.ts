@@ -5,6 +5,27 @@ import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
 
+// Helper to get cookie domain for PWA cross-subdomain support
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') return undefined;
+
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
+  if (!productionUrl) return undefined;
+
+  try {
+    const url = new URL(productionUrl);
+    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
+    const hostParts = url.hostname.split('.');
+    if (hostParts.length >= 2) {
+      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
+    }
+  } catch (e) {
+    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
+  }
+
+  return undefined;
+}
+
 // POST handler for token refresh
 async function handlePost(request: NextRequest) {
   try {
@@ -73,45 +94,73 @@ async function handlePost(request: NextRequest) {
         message: 'Token refreshed successfully'
       });
 
-      // Forward backend cookies if any
+      // Forward backend cookies with PWA-compatible settings
+      const isProd = process.env.NODE_ENV === 'production';
+      const cookieDomain = getCookieDomain();
+
       if (backendCookies) {
         const cookies = backendCookies.split(',').map(c => c.trim());
         cookies.forEach(cookie => {
           const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim());
           const [name, value] = nameValue.split('=');
 
-          response.cookies.set({
+          const cookieOptions: any = {
             name,
             value,
             httpOnly: cookie.includes('HttpOnly'),
-            secure: cookie.includes('Secure') || process.env.NODE_ENV === 'production',
-            sameSite: cookie.includes('SameSite=Strict') ? 'strict' :
-                      cookie.includes('SameSite=Lax') ? 'lax' :
-                      cookie.includes('SameSite=None') ? 'none' : 'lax',
+            secure: isProd || cookie.includes('Secure'),
+            // Use 'none' in production for PWA cross-context support
+            sameSite: isProd ? 'none' : (
+              cookie.includes('SameSite=Strict') ? 'strict' :
+              cookie.includes('SameSite=Lax') ? 'lax' :
+              cookie.includes('SameSite=None') ? 'none' : 'lax'
+            ),
             path: '/',
-          });
+            maxAge: 7 * 24 * 60 * 60, // 7 days (before iOS Safari auto-clear)
+          };
+
+          // Add domain for cross-subdomain support (only in production)
+          if (cookieDomain) {
+            cookieOptions.domain = cookieDomain;
+          }
+
+          // Add partitioned attribute for Chrome's cookie partitioning
+          if (isProd) {
+            cookieOptions.partitioned = true;
+          }
+
+          response.cookies.set(cookieOptions);
         });
       }
 
-      // Set new access token cookie with appropriate lifespan based on remember me preference
-      const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
-      response.cookies.set('access_token', tokenData.access_token, {
+      // Set new access token cookie with PWA-compatible configuration
+      // Always use 7 days to avoid iOS Safari auto-clear (7 days if remember me, 1 hour otherwise would cause issues)
+      const accessTokenAge = 7 * 24 * 60 * 60; // 7 days
+      const accessTokenOptions: any = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Changed from 'strict' to 'lax' to allow cookies on navigation/retry requests
+        secure: isProd,
+        sameSite: isProd ? 'none' as const : 'lax' as const, // 'none' for PWA in production
         path: '/',
         maxAge: accessTokenAge
-      });
+      };
+      if (cookieDomain) accessTokenOptions.domain = cookieDomain;
+      if (isProd) accessTokenOptions.partitioned = true;
+
+      response.cookies.set('access_token', tokenData.access_token, accessTokenOptions);
 
       // Update refresh token if provided
       if (tokenData.refresh_token) {
-        response.cookies.set('refresh_token', tokenData.refresh_token, {
+        const refreshTokenOptions: any = {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          secure: isProd,
+          sameSite: isProd ? 'none' as const : 'lax' as const,
           path: '/',
           maxAge: 7 * 24 * 60 * 60 // 7 days
-        });
+        };
+        if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
+        if (isProd) refreshTokenOptions.partitioned = true;
+
+        response.cookies.set('refresh_token', tokenData.refresh_token, refreshTokenOptions);
       }
 
       logger.info('Token refresh successful', {

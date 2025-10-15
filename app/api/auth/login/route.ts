@@ -11,25 +11,69 @@ import { SessionEncryption } from '@/lib/session-encryption'
 import { createSafeErrorResponse, sanitizeLoggingContext } from '@/lib/security/sanitization'
 import { CSRFProtection } from '@/lib/csrf-protection'
 
-// Helper to forward backend cookies to client
+// Helper to get cookie domain for PWA cross-subdomain support
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') return undefined;
+
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
+  if (!productionUrl) return undefined;
+
+  try {
+    const url = new URL(productionUrl);
+    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
+    const hostParts = url.hostname.split('.');
+    if (hostParts.length >= 2) {
+      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
+    }
+  } catch (e) {
+    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
+  }
+
+  return undefined;
+}
+
+// Helper to forward backend cookies to client with PWA-compatible settings
 function forwardBackendCookies(response: NextResponse, backendCookieHeader: string | null) {
   if (!backendCookieHeader) return;
 
+  const cookieDomain = getCookieDomain();
   const cookies = backendCookieHeader.split(',').map(c => c.trim());
   cookies.forEach(cookie => {
     const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim());
     const [name, value] = nameValue.split('=');
 
-    response.cookies.set({
+    // PWA-compatible cookie configuration
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieOptions: any = {
       name,
       value,
       httpOnly: cookie.includes('HttpOnly'),
-      secure: cookie.includes('Secure') || process.env.NODE_ENV === 'production',
-      sameSite: cookie.includes('SameSite=Strict') ? 'strict' :
-                cookie.includes('SameSite=Lax') ? 'lax' :
-                cookie.includes('SameSite=None') ? 'none' : 'lax',
+      // Always secure in production for PWA
+      secure: isProd || cookie.includes('Secure'),
+      // Use 'none' in production for PWA cross-context support
+      // Requires secure: true
+      sameSite: isProd ? 'none' : (
+        cookie.includes('SameSite=Strict') ? 'strict' :
+        cookie.includes('SameSite=Lax') ? 'lax' :
+        cookie.includes('SameSite=None') ? 'none' : 'lax'
+      ),
       path: '/',
-    });
+      // Set to 7 days (before iOS Safari auto-clear)
+      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    };
+
+    // Add domain for cross-subdomain support (only in production)
+    if (cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    // Add partitioned attribute for Chrome's cookie partitioning
+    // This helps with cross-context scenarios
+    if (isProd) {
+      cookieOptions.partitioned = true;
+    }
+
+    response.cookies.set(cookieOptions);
   });
 }
 
@@ -242,22 +286,23 @@ async function handlePost(request: NextRequest) {
         forwardBackendCookies(response, backendCookies);
 
         // Store encrypted session in HTTP-only cookie for serverless persistence
-        response.cookies.set('mfa_session', encryptedSession, {
+        // PWA-compatible configuration
+        const isProd = process.env.NODE_ENV === 'production';
+        const cookieDomain = getCookieDomain();
+        const mfaCookieOptions = {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
+          secure: isProd,
+          sameSite: isProd ? ('none' as const) : ('lax' as const), // 'none' for PWA in production
           maxAge: 5 * 60, // 5 minutes
-          path: '/'
-        });
+          path: '/',
+          ...(cookieDomain ? { domain: cookieDomain } : {}),
+          ...(isProd ? { partitioned: true } : {})
+        };
+
+        response.cookies.set('mfa_session', encryptedSession, mfaCookieOptions);
 
         // Also store the token mapping in cookie
-        response.cookies.set(`mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-          maxAge: 5 * 60, // 5 minutes
-          path: '/'
-        });
+        response.cookies.set(`mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, mfaCookieOptions);
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
         return ApiAuth.addSecurityHeaders(response);

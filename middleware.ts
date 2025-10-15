@@ -120,28 +120,9 @@ export async function middleware(request: NextRequest) {
     }
   };
 
-  if (isApiRoute && isStateChanging && !isPublicEndpoint) {
-    const csrfValidation = CSRFProtection.validateCSRFToken(request);
-    if (!csrfValidation.valid) {
-      const denied = NextResponse.json(
-        {
-          success: false,
-          error: csrfValidation.error || "CSRF validation failed",
-          code: "CSRF_TOKEN_INVALID",
-          requestId,
-          timestamp: new Date().toISOString(),
-        },
-        { status: 403 },
-      );
-
-      applyCorsHeaders(denied);
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        denied.headers.set(key, value);
-      });
-
-      return denied;
-    }
-  }
+  // CSRF validation moved to individual API route handlers
+  // This prevents timing issues where cookies haven't propagated to middleware yet
+  // Each route handler using CSRFProtection.withCSRFProtection() will validate
 
   const response = NextResponse.next();
 

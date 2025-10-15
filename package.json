@@ -80,6 +80,7 @@
     "react-leaflet": "^4.2.1",
     "react-map-gl": "^8.1.0",
     "react-particles": "latest",
+    "react-range-slider-input": "^3.2.1",
     "react-resizable-panels": "^2.1.7",
     "react-simple-maps": "^1.0.0",
     "recharts": "latest",

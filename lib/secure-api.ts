@@ -6,6 +6,7 @@
 import { EnhancedCacheService } from './services/enhanced-cache-service'
 import { CachePolicyService } from './services/cache-policy-service'
 import { authManager } from './auth-manager'
+import { pwaStorage } from './storage/pwa-storage'
 
 export interface StepUpDeliveryInfo {
   method?: string;
@@ -101,7 +102,27 @@ const ensureCsrfToken = async (): Promise<string | null> => {
         }
 
         const data = await parseJsonSafely(response);
-        return (data && typeof data === 'object' && data.csrfToken) ? data.csrfToken as string : readCsrfToken();
+        const tokenFromResponse = (data && typeof data === 'object' && data.csrfToken) ? data.csrfToken as string : null;
+
+        // CRITICAL FIX: Browser cookie storage is asynchronous
+        // Wait 200ms for Set-Cookie header to be processed by browser
+        // Then retry reading with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Retry reading cookie up to 3 times with increasing delays
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const token = readCsrfToken();
+          if (token) {
+            return token;
+          }
+          // Exponential backoff: 100ms, 200ms, 400ms
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+          }
+        }
+
+        // Fallback: return token from response if cookie still not accessible
+        return tokenFromResponse;
       } catch {
         return null;
       } finally {
@@ -506,7 +527,7 @@ export const secureApiCall = async (
 
         // Clear user session data
         if (typeof window !== 'undefined') {
-          sessionStorage.clear();
+          pwaStorage.clear();
 
           // If no auth popup showed, redirect to login
           if (!authPopupCallback) {
@@ -584,7 +605,7 @@ export const secureApiCall = async (
 
       // Clear user session data
       if (typeof window !== 'undefined') {
-        sessionStorage.clear();
+        pwaStorage.clear();
       }
 
       // Show auth popup if available, otherwise redirect
@@ -902,11 +923,11 @@ export const checkSession = async (): Promise<any> => {
 };
 
 export const loginUser = (userData: any): void => {
-  // Store only non-sensitive user data in memory/sessionStorage
+  // Store only non-sensitive user data in PWA-compatible storage
   if (typeof window !== 'undefined') {
-    sessionStorage.setItem('userEmail', userData.email || '');
-    sessionStorage.setItem('userId', userData.id || userData.user_id || '');
-    sessionStorage.setItem('userObject', JSON.stringify(userData));
+    pwaStorage.setItemSync('userEmail', userData.email || '');
+    pwaStorage.setItemSync('userId', userData.id || userData.user_id || '');
+    pwaStorage.setItemSync('userObject', JSON.stringify(userData));
 
     // Emit login event
     window.dispatchEvent(new CustomEvent('auth:login', {
@@ -930,7 +951,7 @@ export const logoutUser = async (): Promise<void> => {
   setAuthState(false);
 
   if (typeof window !== 'undefined') {
-    sessionStorage.clear();
+    pwaStorage.clear();
 
     // Clear legacy localStorage (migration cleanup)
     // Cookies handle auth - no token removal needed
@@ -945,7 +966,7 @@ export const logoutUser = async (): Promise<void> => {
 export const getCurrentUser = (): any | null => {
   if (typeof window === 'undefined') return null;
 
-  const userObject = sessionStorage.getItem('userObject');
+  const userObject = pwaStorage.getItemSync('userObject');
   if (userObject) {
     try {
       return JSON.parse(userObject);
@@ -958,7 +979,7 @@ export const getCurrentUser = (): any | null => {
 
 export const getCurrentUserId = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('userId');
+  return pwaStorage.getItemSync('userId');
 };
 
 // Refresh token function

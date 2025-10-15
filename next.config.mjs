@@ -140,11 +140,12 @@ const pwaConfig = withPWA({
     },
     {
       // Non-auth API routes - Network first with background sync
+      // CRITICAL FIX: Increased timeout from 10s → 30s for backend cold starts
       urlPattern: /\/api\/(?!auth)/,
       handler: 'NetworkFirst',
       options: {
         cacheName: 'api-cache',
-        networkTimeoutSeconds: 10,
+        networkTimeoutSeconds: 30, // Increased for cold starts
         fetchOptions: {
           credentials: 'include', // Include cookies for authentication
         },
@@ -162,7 +163,8 @@ const pwaConfig = withPWA({
     },
     {
       // Intelligence data - Stale while revalidate
-      urlPattern: /\/api\/(intelligence|rohith|crown-vault|opportunities)/,
+      // CRITICAL FIX: Added command-centre pattern
+      urlPattern: /\/api\/(intelligence|rohith|crown-vault|opportunities|command-centre)/,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'intelligence-cache',

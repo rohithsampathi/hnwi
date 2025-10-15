@@ -562,38 +562,37 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                         </div>
                       </div>
 
-                      {/* Links (Website & LinkedIn) - Verified Partners Only */}
-                      {executor.tier === "trusted_partner" && executor.website_url && (
-                        <div className="text-left mb-4">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Globe className={`h-4 w-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`} />
-                            <a
-                              href={executor.website_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className={`text-sm font-medium hover:underline ${theme === 'dark' ? 'text-primary' : 'text-primary'}`}
+                      {/* Links - Only for Verified Partners */}
+                      {executor.tier === "trusted_partner" && (executor.linkedin_url || executor.website_url) && (
+                        <div className="flex gap-2 mb-4">
+                          {executor.linkedin_url && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(executor.linkedin_url, "_blank");
+                              }}
                             >
-                              {new URL(executor.website_url).hostname.replace('www.', '')}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {executor.tier === "trusted_partner" && executor.linkedin_url && (
-                        <div className="text-left mb-4">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Linkedin className={`h-4 w-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`} />
-                            <a
-                              href={executor.linkedin_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className={`text-sm font-medium hover:underline ${theme === 'dark' ? 'text-primary' : 'text-primary'}`}
-                            >
+                              <Linkedin className="h-3 w-3 mr-1" />
                               LinkedIn
-                            </a>
-                          </div>
+                            </Button>
+                          )}
+                          {executor.website_url && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(executor.website_url, "_blank");
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Website
+                            </Button>
+                          )}
                         </div>
                       )}
 
@@ -773,38 +772,6 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                                 )}
                               </div>
                             )}
-
-                            {/* Links */}
-                            <div className="flex gap-2">
-                              {executor.linkedin_url && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(executor.linkedin_url, "_blank");
-                                  }}
-                                >
-                                  <Linkedin className="h-3 w-3 mr-1" />
-                                  LinkedIn
-                                </Button>
-                              )}
-                              {executor.website_url && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(executor.website_url, "_blank");
-                                  }}
-                                >
-                                  <ExternalLink className="h-3 w-3 mr-1" />
-                                  Website
-                                </Button>
-                              )}
-                            </div>
 
                             {/* Request Introduction Button */}
                             <Button

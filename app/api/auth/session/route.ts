@@ -6,6 +6,27 @@ import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
 
+// Helper to get cookie domain for PWA cross-subdomain support
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') return undefined;
+
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
+  if (!productionUrl) return undefined;
+
+  try {
+    const url = new URL(productionUrl);
+    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
+    const hostParts = url.hostname.split('.');
+    if (hostParts.length >= 2) {
+      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
+    }
+  } catch (e) {
+    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
+  }
+
+  return undefined;
+}
+
 // GET handler for retrieving the session
 export async function GET() {
   try {
@@ -116,17 +137,24 @@ async function handlePost(request: NextRequest) {
       message: result.message
     };
     const response = NextResponse.json(responseData);
-    
-    // Store token in cookie for session management
+
+    // Store token in cookie for session management with PWA-compatible configuration
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieDomain = getCookieDomain();
+
     if (result.token) {
-      response.cookies.set('session_token', result.token, {
+      const sessionTokenOptions: any = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility (allows top-level navigation)
-        maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day for security
+        secure: isProd,
+        sameSite: isProd ? 'none' as const : 'lax' as const, // 'none' for PWA in production
+        maxAge: 7 * 24 * 60 * 60, // 7 days (before iOS Safari auto-clear)
         path: '/'
-      });
-      
+      };
+      if (cookieDomain) sessionTokenOptions.domain = cookieDomain;
+      if (isProd) sessionTokenOptions.partitioned = true;
+
+      response.cookies.set('session_token', result.token, sessionTokenOptions);
+
       // Encrypt user data before storing in cookie
       const encryptedUserData = JSON.stringify({
         id: result.user?.id || result.user?.user_id,
@@ -136,14 +164,18 @@ async function handlePost(request: NextRequest) {
         role: result.user?.role || 'user',
         timestamp: Date.now() // Add timestamp for validation
       });
-      
-      response.cookies.set('session_user', encryptedUserData, {
-        httpOnly: true, // Make httpOnly for security
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility (allows top-level navigation)
-        maxAge: 60 * 60 * 24 * 1, // Reduced to 1 day
+
+      const sessionUserOptions: any = {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'none' as const : 'lax' as const, // 'none' for PWA in production
+        maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/'
-      });
+      };
+      if (cookieDomain) sessionUserOptions.domain = cookieDomain;
+      if (isProd) sessionUserOptions.partitioned = true;
+
+      response.cookies.set('session_user', encryptedUserData, sessionUserOptions);
     }
     
     return response;
