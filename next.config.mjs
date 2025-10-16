@@ -90,54 +90,10 @@ const pwaConfig = withPWA({
         },
       },
     },
-    {
-      // Auth endpoints - NEVER cache authentication (all methods)
-      urlPattern: /\/api\/auth\//,
-      handler: 'NetworkOnly',
-      method: 'GET',
-      options: {
-        cacheName: 'no-cache',
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-      },
-    },
-    {
-      // Auth endpoints POST - NEVER cache authentication
-      urlPattern: /\/api\/auth\//,
-      handler: 'NetworkOnly',
-      method: 'POST',
-      options: {
-        cacheName: 'no-cache',
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-      },
-    },
-    {
-      // Auth endpoints PUT - NEVER cache authentication
-      urlPattern: /\/api\/auth\//,
-      handler: 'NetworkOnly',
-      method: 'PUT',
-      options: {
-        cacheName: 'no-cache',
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-      },
-    },
-    {
-      // Auth endpoints DELETE - NEVER cache authentication
-      urlPattern: /\/api\/auth\//,
-      handler: 'NetworkOnly',
-      method: 'DELETE',
-      options: {
-        cacheName: 'no-cache',
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-      },
-    },
+    // REMOVED: Auth endpoints are now bypassed by service worker entirely
+    // Service worker intercepting auth requests was stripping X-CSRF-Token header
+    // causing 403 Forbidden errors in production
+    // Since auth uses NetworkOnly (no caching), there's no benefit to interception
     {
       // Non-auth API routes - Network first with background sync
       // CRITICAL FIX: Increased timeout from 10s → 30s for backend cold starts
