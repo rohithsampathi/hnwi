@@ -15,23 +15,34 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString()
     const endpoint = `${backendUrl}/api/command-centre/opportunities${queryString ? '?' + queryString : ''}`
 
-    // Forward cookies (same as proxy route pattern)
+    // Forward cookies and headers (EXACT same pattern as proxy route)
     const cookies = request.cookies.getAll()
     const cookieHeader = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
+
+    // Build headers exactly like proxy route
+    const headers: Record<string, string> = {
+      'Content-Type': request.headers.get('content-type') || 'application/json',
+      'Cookie': cookieHeader,
+    }
+
+    // Forward critical headers that backend needs (same as proxy route)
+    const forwardHeaders = ['authorization', 'x-csrf-token', 'user-agent', 'referer']
+    forwardHeaders.forEach(header => {
+      const value = request.headers.get(header)
+      if (value) headers[header] = value
+    })
 
     logger.info('Calling backend Command Centre endpoint', {
       endpoint,
       queryParams: queryString,
-      hasCookies: !!cookieHeader
+      hasCookies: !!cookieHeader,
+      hasCsrfToken: !!headers['x-csrf-token']
     })
 
-    // Call backend with forwarded cookies (matching proxy route pattern)
+    // Call backend with forwarded cookies and headers (matching proxy route pattern)
     const response = await fetch(endpoint, {
       method: 'GET',
-      headers: {
-        'Cookie': cookieHeader,
-        'Content-Type': 'application/json'
-      }
+      headers
     })
 
     logger.info('Backend response received', {
