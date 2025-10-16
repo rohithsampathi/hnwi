@@ -41,6 +41,7 @@ export function SidebarNavigation({
   })
   const [isTabletSize, setIsTabletSize] = useState(false)
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
+  const [isLandscape, setIsLandscape] = useState(false)
 
   // Detect tablet size - md and up but below large desktop
   useEffect(() => {
@@ -49,11 +50,34 @@ export function SidebarNavigation({
       // Tablet: md and up but below desktop large breakpoint (768px - 1280px)
       setIsTabletSize(width >= 768 && width < 1280)
     }
-    
+
     checkTabletSize()
     window.addEventListener('resize', checkTabletSize)
     return () => window.removeEventListener('resize', checkTabletSize)
   }, [])
+
+  // Detect landscape mode for auto-collapse on orientation change only
+  useEffect(() => {
+    const checkLandscape = () => {
+      const isLandscapeMode = window.innerHeight < 500 && window.innerWidth > window.innerHeight
+      const wasLandscape = isLandscape
+      setIsLandscape(isLandscapeMode)
+
+      // Only auto-collapse when entering landscape mode (not already in it)
+      // This allows manual expansion in landscape
+      if (isLandscapeMode && !wasLandscape && !isCollapsed) {
+        setIsCollapsed(true)
+        onSidebarToggle?.(true)
+      }
+    }
+
+    checkLandscape()
+    window.addEventListener('orientationchange', checkLandscape)
+
+    return () => {
+      window.removeEventListener('orientationchange', checkLandscape)
+    }
+  }, [isLandscape, isCollapsed, onSidebarToggle])
 
   // Fetch member analytics (skip on Ask Rohith page)
   useEffect(() => {
@@ -220,9 +244,10 @@ export function SidebarNavigation({
           isCollapsed ? "w-16" : "w-64"
         )}
         style={{
-          height: isCollapsed ? '100vh' : 'auto',
+          height: '100vh',
           minHeight: '100vh',
-          overflow: 'visible',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           zIndex: 9999
         }}
       >
@@ -271,7 +296,7 @@ export function SidebarNavigation({
 
 
         {/* Main content area - fills remaining space */}
-        <div className="flex flex-col flex-1" style={{ overflow: 'visible' }}>
+        <div className="flex flex-col flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
           {/* Toggle button when collapsed */}
           {isCollapsed && (
             <div className="p-3 flex-shrink-0">
@@ -301,7 +326,7 @@ export function SidebarNavigation({
           )}
           
           {/* Navigation items */}
-          <nav className="p-3 pt-0 flex-1" style={{ overflow: 'visible' }}>
+          <nav className="p-3 pt-0 flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
             <div className="space-y-2">
               <TooltipProvider>
                 {/* Main navigation items */}

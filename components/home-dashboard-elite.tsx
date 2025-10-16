@@ -126,8 +126,17 @@ export function HomeDashboardElite({
   useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth
-      setScreenSize(width < 768 ? 'mobile' : 'desktop')
-      setIsDesktop(width >= 768)
+      const height = window.innerHeight
+
+      // Consider as mobile if:
+      // 1. Width < 1024px (includes landscape mobile)
+      // 2. OR it's a touch device with small height (landscape detection)
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      const isLandscapeMobile = isTouchDevice && height < 500
+      const isMobile = width < 1024 || isLandscapeMobile
+
+      setScreenSize(isMobile ? 'mobile' : 'desktop')
+      setIsDesktop(!isMobile)
     }
 
     checkScreenSize()
@@ -142,7 +151,9 @@ export function HomeDashboardElite({
   useEffect(() => {
     // Set timer to hide greeting on mobile only
     let timer: NodeJS.Timeout | null = null
-    if (window.innerWidth < 768) {
+
+    // Only set timer if we're on mobile (use screenSize state for consistency)
+    if (screenSize === 'mobile') {
       timer = setTimeout(() => {
         setShowGreeting(false)
       }, 10000) // 10 seconds
@@ -151,7 +162,7 @@ export function HomeDashboardElite({
     return () => {
       if (timer) clearTimeout(timer)
     }
-  }, [])
+  }, [screenSize]) // Re-run if screen size changes
 
   // Handle citation click from map popup
   const handleCitationClick = useCallback((citationId: string) => {

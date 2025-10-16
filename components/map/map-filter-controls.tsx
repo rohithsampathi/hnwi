@@ -32,8 +32,31 @@ function formatCurrency(value: number): string {
 
 // Mobile variant - ultra minimal
 export function MapFilterControlsMobile(props: MapFilterControlsProps) {
+  // Detect landscape mode for better positioning
+  const [isLandscape, setIsLandscape] = React.useState(false)
+
+  React.useEffect(() => {
+    const checkOrientation = () => {
+      const isLandscapeMode = window.innerHeight < 500 && window.innerWidth > window.innerHeight
+      setIsLandscape(isLandscapeMode)
+    }
+
+    checkOrientation()
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
+
   return (
-    <div className="lg:hidden fixed bottom-[120px] md:bottom-[60px] left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto">
+    <div
+      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
+        isLandscape ? 'bottom-[20px]' : 'bottom-[120px] md:bottom-[60px]'
+      }`}
+    >
       <div className="flex flex-col items-center gap-1.5">
         {/* Ultra-lean slider */}
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1 shadow-lg min-w-[260px] flex flex-col items-center">
@@ -82,61 +105,66 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
           `}</style>
         </div>
 
-        {/* Filter icons */}
-        <div className="flex items-center gap-1.5 bg-background/95 backdrop-blur-sm border border-border rounded-full px-2.5 py-1.5 shadow-lg">
-          <button
-            onClick={() => props.onToggleCrownAssets()}
-            className={`text-xs px-2 py-1 rounded-full transition-colors flex items-center gap-1 ${
-              props.showCrownAssets
-                ? props.theme === 'dark'
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'bg-black text-white font-medium'
-                : 'text-muted-foreground'
-            }`}
-            aria-label="Crown Assets"
-          >
-            <Crown className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Crown</span>
-          </button>
+        {/* Filter icons and World View on same line */}
+        <div className="flex items-center justify-center gap-3">
+          {/* Filter icons with container - Reordered: Globe, Diamond, Crown */}
+          <div className="flex items-center gap-1.5 bg-background/95 backdrop-blur-sm border border-border rounded-full px-2.5 py-1.5 shadow-lg">
+            <button
+              onClick={() => props.onToggleHNWIPatterns()}
+              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                props.showHNWIPatterns
+                  ? props.theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium shadow-md'
+                    : 'bg-black text-white font-medium shadow-md'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+              aria-label="HNWI Patterns"
+            >
+              <Globe className="h-4 w-4" />
+            </button>
 
-          <button
-            onClick={() => props.onTogglePriveOpportunities()}
-            className={`text-xs px-2 py-1 rounded-full transition-colors flex items-center gap-1 ${
-              props.showPriveOpportunities
-                ? props.theme === 'dark'
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'bg-black text-white font-medium'
-                : 'text-muted-foreground'
-            }`}
-            aria-label="Privé Opportunities"
-          >
-            <Gem className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Privé</span>
-          </button>
+            <button
+              onClick={() => props.onTogglePriveOpportunities()}
+              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                props.showPriveOpportunities
+                  ? props.theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium shadow-md'
+                    : 'bg-black text-white font-medium shadow-md'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+              aria-label="Privé Opportunities"
+            >
+              <Gem className="h-4 w-4" />
+            </button>
 
+            <button
+              onClick={() => props.onToggleCrownAssets()}
+              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                props.showCrownAssets
+                  ? props.theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium shadow-md'
+                    : 'bg-black text-white font-medium shadow-md'
+                  : 'text-muted-foreground hover:bg-muted/50'
+              }`}
+              aria-label="Crown Assets"
+            >
+              <Crown className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* World View - same line as filters, adjusted left and down */}
           <button
-            onClick={() => props.onToggleHNWIPatterns()}
-            className={`text-xs px-2 py-1 rounded-full transition-colors flex items-center gap-1 ${
-              props.showHNWIPatterns
-                ? props.theme === 'dark'
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'bg-black text-white font-medium'
-                : 'text-muted-foreground'
-            }`}
-            aria-label="HNWI Patterns"
+            onClick={props.onReset}
+            className="text-xs px-1.5 py-0 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-1.5 mt-1.5 -ml-3"
+            aria-label="World View"
           >
-            <Globe className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">HNWI</span>
+            <span className="text-2xl leading-none">🌍</span>
+            <span className="flex flex-col leading-none">
+              <span className="text-[9px] font-extrabold">World</span>
+              <span className="text-[9px] font-extrabold">View</span>
+            </span>
           </button>
         </div>
-
-        {/* Reset */}
-        <button
-          onClick={props.onReset}
-          className="text-xs px-2.5 py-1 text-muted-foreground hover:text-primary transition-colors"
-        >
-          🌍 World View
-        </button>
       </div>
     </div>
   )
