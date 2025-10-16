@@ -6,20 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/secure-logger'
 
 export async function GET(request: NextRequest) {
-  let accessToken: string | undefined;
-
   try {
-    // Get access token from httpOnly cookie (using request.cookies like the proxy route)
-    accessToken = request.cookies.get('access_token')?.value
-
-    if (!accessToken) {
-      logger.warn('Command Centre: No access token found')
-      return NextResponse.json(
-        { success: false, error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
     // Get backend URL from environment
     const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000'
 
@@ -28,17 +15,21 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString()
     const endpoint = `${backendUrl}/api/command-centre/opportunities${queryString ? '?' + queryString : ''}`
 
+    // Forward cookies (same as proxy route pattern)
+    const cookies = request.cookies.getAll()
+    const cookieHeader = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
+
     logger.info('Calling backend Command Centre endpoint', {
       endpoint,
       queryParams: queryString,
-      hasToken: !!accessToken
+      hasCookies: !!cookieHeader
     })
 
-    // Call backend with Authorization header
+    // Call backend with forwarded cookies (matching proxy route pattern)
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Cookie': cookieHeader,
         'Content-Type': 'application/json'
       }
     })
@@ -95,8 +86,7 @@ export async function GET(request: NextRequest) {
     logger.error('Error fetching Command Centre opportunities', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      backendUrl: process.env.API_BASE_URL || 'NOT SET (defaulting to localhost:8000)',
-      hasAccessToken: !!accessToken
+      backendUrl: process.env.API_BASE_URL || 'NOT SET (defaulting to localhost:8000)'
     })
 
     // Return detailed error for debugging (in production, you may want to hide details)
