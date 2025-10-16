@@ -173,7 +173,7 @@ export function HomeDashboardElite({
       }
 
       // No valid cache - show loading and fetch data
-      setLoading(true);
+      setLoading(true)
 
       try {
         const apiUrl = timeframe === 'live'
@@ -293,11 +293,9 @@ export function HomeDashboardElite({
           }, 300000);
         }
       } catch (error: any) {
-        // Don't catch auth errors - let secureApi's automatic auth popup handle them
-        // Auth errors will be caught by secureApiCall and show the popup automatically
-
-        // For any other errors, just log silently and continue with empty data
-        // (The error has already been handled by secureApi)
+        // Let secureApi handle auth errors automatically
+        // Just log for debugging - proxy will provide proper error responses
+        console.error('Home Dashboard fetch error:', error);
       } finally {
         setLoading(false)
       }

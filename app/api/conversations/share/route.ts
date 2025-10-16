@@ -7,6 +7,10 @@ import { CSRFProtection } from '@/lib/csrf-protection'
 import { storeSharedConversation, getSharedConversation } from '@/lib/mongodb-shared-conversations'
 import crypto from 'crypto'
 
+// Force dynamic runtime - don't pre-render during build
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // GET - Retrieve a shared conversation
 export async function GET(request: NextRequest) {
   try {
