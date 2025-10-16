@@ -41,8 +41,19 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      logger.error('Backend error', {
+
+      // Log detailed error information
+      logger.error('Backend error from command-centre', {
         status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        endpoint: endpoint
+      })
+
+      // Also console.log for immediate visibility
+      console.error('❌ Command Centre Backend Error:', {
+        status: response.status,
+        endpoint: endpoint,
         error: errorText
       })
 
@@ -50,6 +61,7 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: `Backend error: ${response.status}`,
+          detail: errorText,
           opportunities: [],
           total_count: 0
         },

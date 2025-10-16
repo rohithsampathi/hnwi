@@ -185,9 +185,12 @@ export function HomeDashboardElite({
           cacheDuration: 600000 // 10 minutes
         })
 
-        if (response.success && response.opportunities) {
+        // Handle both wrapped and direct array responses
+        const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
+
+        if (opportunities && opportunities.length > 0) {
           // Transform opportunities to city format for the map
-          const cityData: City[] = response.opportunities
+          const cityData: City[] = opportunities
             .map((opp: Opportunity, index: number) => {
               // Use backend coordinates directly - no overrides
               let lat = opp.latitude

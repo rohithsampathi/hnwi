@@ -118,9 +118,24 @@ const pwaConfig = withPWA({
       },
     },
     {
+      // Command Centre - NetworkFirst to avoid stale data issues
+      urlPattern: /\/api\/command-centre/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'command-centre-cache',
+        networkTimeoutSeconds: 30,
+        fetchOptions: {
+          credentials: 'include', // Include cookies for authentication
+        },
+        expiration: {
+          maxEntries: 10,
+          maxAgeSeconds: 5 * 60, // 5 minutes
+        },
+      },
+    },
+    {
       // Intelligence data - Stale while revalidate
-      // CRITICAL FIX: Added command-centre pattern
-      urlPattern: /\/api\/(intelligence|rohith|crown-vault|opportunities|command-centre)/,
+      urlPattern: /\/api\/(intelligence|rohith|crown-vault|opportunities)/,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'intelligence-cache',
