@@ -99,7 +99,6 @@ export function HomeDashboardElite({
 
   const [cities, setCities] = useState<City[]>(cachedData?.cities || [])
   const [loading, setLoading] = useState(!hasValidCache)
-  const [authError, setAuthError] = useState(false)
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
@@ -185,23 +184,6 @@ export function HomeDashboardElite({
           enableCache: true,
           cacheDuration: 600000 // 10 minutes
         })
-
-        // Debug: Log a Crown Vault asset to verify backend data
-        const crownAsset = response.opportunities?.find((o: any) => o.source?.toLowerCase().includes('crown'));
-        if (crownAsset) {
-          console.log('🔍 Crown Vault Asset Debug:', {
-            title: crownAsset.title,
-            has_appreciation: !!crownAsset.appreciation,
-            appreciation: crownAsset.appreciation,
-            has_price_history: !!crownAsset.price_history,
-            price_history: crownAsset.price_history,
-            has_cost_per_unit: !!crownAsset.cost_per_unit,
-            cost_per_unit: crownAsset.cost_per_unit,
-            unit_count: crownAsset.unit_count,
-            katherine_analysis: crownAsset.katherine_analysis,
-            all_fields: Object.keys(crownAsset)
-          });
-        }
 
         if (response.success && response.opportunities) {
           // Transform opportunities to city format for the map
@@ -308,19 +290,11 @@ export function HomeDashboardElite({
           }, 300000);
         }
       } catch (error: any) {
+        // Don't catch auth errors - let secureApi's automatic auth popup handle them
+        // Auth errors will be caught by secureApiCall and show the popup automatically
 
-        // Check if this is an authentication error
-        if (error?.message?.includes('Authentication') ||
-            error?.message?.includes('authentication') ||
-            error?.status === 401 ||
-            error?.status === 403) {
-          // Set auth error state - don't render the component
-          setAuthError(true)
-          // Let the secureApi's auth popup mechanism handle it
-          return
-        }
-
-        // For non-auth errors, just log and continue with empty data
+        // For any other errors, just log silently and continue with empty data
+        // (The error has already been handled by secureApi)
       } finally {
         setLoading(false)
       }
@@ -333,15 +307,6 @@ export function HomeDashboardElite({
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <CrownLoader size="lg" text="Loading Elite Pulse" />
-      </div>
-    )
-  }
-
-  // Don't render if authentication failed - let auth popup/redirect handle it
-  if (authError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <CrownLoader size="lg" text="Verifying Authentication" />
       </div>
     )
   }

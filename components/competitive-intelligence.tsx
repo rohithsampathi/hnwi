@@ -7,7 +7,6 @@ import { DevelopmentStream } from "@/components/development-stream"
 import { getIndustryColor } from "@/utils/color-utils"
 import { useToast } from "@/components/ui/use-toast"
 import { secureApi } from "@/lib/secure-api"
-import { isAuthenticated } from "@/lib/auth-utils"
 import { CheckmateLoader } from "@/components/ui/checkmate-loader"
 
 interface CompetitiveIntelligenceProps {
@@ -24,13 +23,6 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
   const { toast } = useToast()
 
   const fetchDevelopments = useCallback(async () => {
-    // Check authentication before making API call
-    if (!isAuthenticated()) {
-      setDevelopments([]);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true)
     try {
       const data = await secureApi.post('/api/developments', {
@@ -44,14 +36,10 @@ export function CompetitiveIntelligence({ industry }: CompetitiveIntelligencePro
       const allDevelopments = data.developments || []
       setDevelopments(allDevelopments)
     } catch (error: any) {
-      
-      // Check if it's an authentication error
-      if (error.message?.includes('Authentication required') || error.status === 401) {
-        setDevelopments([]);
-        setError(null); // Don't show error to user for auth issues
-        return;
-      }
-      
+      // Don't catch auth errors - let secureApi's automatic auth popup handle them
+      // Auth errors will be caught by secureApiCall and show the popup automatically
+
+      // For any other errors, show error message
       const errorMessage = error instanceof Error ? error.message : String(error)
       setError(errorMessage)
       toast({

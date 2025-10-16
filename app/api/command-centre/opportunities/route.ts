@@ -3,14 +3,14 @@
 // Forwards authenticated requests to FastAPI backend
 
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 
 export async function GET(request: NextRequest) {
+  let accessToken: string | undefined;
+
   try {
-    // Get access token from httpOnly cookie
-    const cookieStore = cookies()
-    const accessToken = cookieStore.get('access_token')?.value
+    // Get access token from httpOnly cookie (using request.cookies like the proxy route)
+    accessToken = request.cookies.get('access_token')?.value
 
     if (!accessToken) {
       logger.warn('Command Centre: No access token found')
@@ -93,13 +93,23 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     logger.error('Error fetching Command Centre opportunities', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      backendUrl: process.env.API_BASE_URL || 'NOT SET (defaulting to localhost:8000)',
+      hasAccessToken: !!accessToken
     })
 
+    // Return detailed error for debugging (in production, you may want to hide details)
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch opportunities',
+        debug: {
+          message: error instanceof Error ? error.message : String(error),
+          backendConfigured: !!process.env.API_BASE_URL,
+          backendUrl: process.env.API_BASE_URL || 'NOT SET',
+          environment: process.env.NODE_ENV
+        },
         opportunities: [],
         total_count: 0
       },

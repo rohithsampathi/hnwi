@@ -58,82 +58,6 @@ export function EliteCitationPanel({
     setLocalCitationMap(citationMap || new Map())
   }, [citations, citationMap])
 
-  // Fetch only the PRIMARY citations upfront (the initial ones from opportunities)
-  useEffect(() => {
-    if (citations.length === 0) return
-
-    const fetchPrimaryCitations = async () => {
-      setLoading(true)
-      try {
-        const newDevs = new Map<string, Development>(developments)
-
-        // Accumulate citations across all primary fetches
-        const accumulatedCitations: Citation[] = [...allCitations]
-        const accumulatedCitationMap = new Map(localCitationMap)
-        let nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
-
-        // Fetch only the primary citations
-        for (const citation of citations) {
-          // Skip if already fetched
-          if (newDevs.has(citation.id)) continue
-
-          try {
-            const response = await fetch(`/api/developments/public/${citation.id}`, {
-              credentials: 'include'
-            })
-
-            if (response.ok) {
-              const dev = await response.json()
-              const developmentId = dev._id || dev.id || citation.id
-              const summary = dev.summary || dev.analysis || ""
-
-              newDevs.set(citation.id, {
-                id: developmentId,
-                title: dev.title || dev.name || `Development ${developmentId}`,
-                description: dev.description || summary?.substring(0, 200) || "Development details",
-                industry: dev.industry || "Market Intelligence",
-                product: dev.product,
-                date: dev.date || dev.created_at,
-                summary: summary,
-                url: dev.url,
-                numerical_data: dev.numerical_data || []
-              })
-
-              // Extract DEV IDs from summary but DON'T fetch them yet (lazy loading)
-              const devIdsInSummary = extractDevIds(summary)
-
-              // Add them to accumulated citations
-              devIdsInSummary.forEach(devId => {
-                if (!accumulatedCitationMap.has(devId)) {
-                  accumulatedCitationMap.set(devId, nextNumber)
-                  accumulatedCitations.push({
-                    id: devId,
-                    number: nextNumber,
-                    originalText: `[Dev ID: ${devId}]`
-                  })
-                  nextNumber++
-                }
-              })
-            }
-          } catch (err) {
-            console.error(`Failed to fetch citation ${citation.id}:`, err)
-          }
-        }
-
-        // Update state ONCE after all fetches complete
-        setDevelopments(newDevs)
-        setAllCitations(accumulatedCitations)
-        setLocalCitationMap(accumulatedCitationMap)
-      } catch (error) {
-        console.error('Error fetching primary citations:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchPrimaryCitations()
-  }, [citations.length])
-
   // Handle citation click - fetch development lazily when clicked
   const handleCitationClick = async (citationId: string) => {
     console.log('🔗 Citation clicked:', citationId)
@@ -221,6 +145,17 @@ export function EliteCitationPanel({
     // Select the citation
     onCitationSelect(citationId)
   }
+
+  // Auto-load the selected citation when panel opens (if one is selected)
+  useEffect(() => {
+    if (citations.length === 0) return
+
+    // If a citation is already selected, load it automatically
+    if (selectedCitationId && !developments.has(selectedCitationId)) {
+      handleCitationClick(selectedCitationId)
+    }
+    // Otherwise, user must click a citation to load it (lazy loading)
+  }, [selectedCitationId]) // Only run when selectedCitationId changes
 
   return (
     <>

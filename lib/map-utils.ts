@@ -76,17 +76,35 @@ export function formatValue(value: string | undefined): string | undefined {
 
 /**
  * Clean analysis text by removing redundant prefix
+ * SOTA solution: Find "Risk Profile:" then parse everything after the next " - "
  */
 export function cleanAnalysisText(analysis: string | undefined): string | undefined {
   if (!analysis) return analysis
 
-  // Remove pattern: "Entry Investment: $XXX (...) Risk Profile: XXX - "
-  let cleanedText = analysis.replace(/^Entry Investment:\s*\$?[\d,]+[KMB]?\s*\([^)]*\)\s*Risk Profile:\s*[^\-]+\s*-\s*/i, '')
+  // Check if text contains "Risk Profile:"
+  const riskProfileIndex = analysis.indexOf('Risk Profile:')
 
-  // Remove any leading colons, dashes, or whitespace that might be left over
-  cleanedText = cleanedText.replace(/^[\s::\-–—]+/, '')
+  if (riskProfileIndex !== -1) {
+    // Find the first " - " after "Risk Profile:"
+    const dashIndex = analysis.indexOf(' - ', riskProfileIndex)
 
-  return cleanedText.trim()
+    if (dashIndex !== -1) {
+      // Return everything after " - "
+      return analysis.substring(dashIndex + 3).trim() // +3 to skip " - "
+    }
+  }
+
+  // Fallback: If no "Risk Profile:" found, check for "Entry Investment:" at the start
+  if (analysis.startsWith('Entry Investment:')) {
+    // Find first " - " and take everything after it
+    const dashIndex = analysis.indexOf(' - ')
+    if (dashIndex !== -1) {
+      return analysis.substring(dashIndex + 3).trim()
+    }
+  }
+
+  // Return original if no patterns matched
+  return analysis.trim()
 }
 
 /**

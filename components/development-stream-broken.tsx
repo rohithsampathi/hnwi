@@ -55,7 +55,6 @@ interface DevelopmentStreamProps {
 }
 
 import { secureApi } from "@/lib/secure-api"
-import { isAuthenticated } from "@/lib/auth-utils"
 
 // Custom AccordionTrigger without the default chevron
 const CustomAccordionTrigger = React.forwardRef<
@@ -152,13 +151,6 @@ export function DevelopmentStream({
   const { theme } = useTheme()
 
   const fetchDevelopments = useCallback(async () => {
-    // Check authentication before making API call
-    if (!isAuthenticated()) {
-      setDevelopments([]);
-      setIsLoading(false);
-      return [];
-    }
-
     setIsLoading(true)
     setError(null)
     try {
@@ -191,13 +183,10 @@ export function DevelopmentStream({
         throw new Error("Invalid response format: developments array not found")
       }
     } catch (error: any) {
-      // Check if it's an authentication error
-      if (error.message?.includes('Authentication required') || error.status === 401) {
-        setDevelopments([]);
-        setError(null); // Don't show error to user for auth issues
-        return [];
-      }
-      
+      // Don't catch auth errors - let secureApi's automatic auth popup handle them
+      // Auth errors will be caught by secureApiCall and show the popup automatically
+
+      // For any other errors, show error message
       let errorMessage = error.message || "An unknown error occurred"
       if (error.message.includes("datetime_from_date_parsing")) {
         errorMessage =
