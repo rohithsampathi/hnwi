@@ -195,17 +195,57 @@ export class RohithAPI {
           content = content.initial_message || content.message || "Message"
         }
 
+        // Ensure content is a string and preserve formatting
+        if (typeof content !== 'string') {
+          content = String(content)
+        }
+
+        // Parse timestamp - handle various formats
+        let timestamp: Date
+        try {
+          timestamp = new Date(msg.timestamp || msg.created_at)
+          // Validate the date
+          if (isNaN(timestamp.getTime())) {
+            timestamp = new Date()
+          }
+        } catch {
+          timestamp = new Date()
+        }
+
         return {
           id: msg.message_id || crypto.randomUUID(),
-          role: msg.role,
+          role: msg.role === "assistant" ? "assistant" : "user", // Ensure valid role
           content: content,
-          timestamp: new Date(msg.timestamp),
+          timestamp: timestamp,
           messageId: msg.message_id, // Include backend message ID for feedback
           context: msg.role === "assistant" ? {
             hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["rohith_api"],
             responseTime: msg.context?.response_time || 3000
           } : msg.context
         }
+      })
+
+      // Sort messages by timestamp to ensure correct chronological order
+      // Secondary sort: if timestamps are equal or very close (within 1 second),
+      // ensure user messages come before assistant messages
+      messages.sort((a, b) => {
+        const timeDiff = a.timestamp.getTime() - b.timestamp.getTime()
+
+        // If timestamps differ by more than 1 second, use timestamp order
+        if (Math.abs(timeDiff) > 1000) {
+          return timeDiff
+        }
+
+        // If timestamps are very close or equal, user message should come first
+        if (a.role === 'user' && b.role === 'assistant') {
+          return -1
+        }
+        if (a.role === 'assistant' && b.role === 'user') {
+          return 1
+        }
+
+        // If both are same role, maintain original order
+        return timeDiff
       })
 
       // Get the first conversation from the list to get title and other metadata

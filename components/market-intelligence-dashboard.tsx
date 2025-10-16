@@ -16,6 +16,7 @@ import { secureApi } from "@/lib/secure-api"
 import { DevelopmentStream } from "@/components/development-stream"
 import { GoldenScroll } from "@/components/ui/golden-scroll"
 import { useCitationManager } from "@/hooks/use-citation-manager"
+import { usePageDataCache } from "@/contexts/page-data-cache-context"
 import {
   TrendingUp,
   TrendingDown,
@@ -255,19 +256,25 @@ interface MarketIntelligenceDashboardProps {
 }
 
 export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDashboardProps) {
-  
+
   const { theme } = useTheme()
   const { toast } = useToast()
-  
-  // State management - Unified data approach
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
+
+  // Check for cached data with default timeframe and industry
+  const cacheKey = 'hnwi-world-7d-All'
+  const cachedData = getCachedData(cacheKey)
+  const hasValidCache = isCacheValid(cacheKey)
+
+  // State management - Unified data approach - Initialize with cached data if available
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
-  const [developments, setDevelopments] = useState<any[]>([]) // Raw developments data
-  const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [developments, setDevelopments] = useState<any[]>(cachedData?.developments || []) // Raw developments data
+  const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(cachedData?.industryTrends || [])
+  const [isLoading, setIsLoading] = useState(!hasValidCache)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [totalDevelopments, setTotalDevelopments] = useState(0)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(cachedData?.lastUpdated || null)
+  const [totalDevelopments, setTotalDevelopments] = useState(cachedData?.totalDevelopments || 0)
 
   // Citation state managed via shared hook
   const {
@@ -387,16 +394,35 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   
   // Unified data fetching - single API call for both components - Mobile Safe
   const fetchDevelopments = useCallback(async (forceRefresh = false) => {
-    
+
     try {
+      // Create dynamic cache key based on current filters
+      const dynamicCacheKey = `hnwi-world-${selectedTimeRange}-${selectedIndustry}`
+
+      // Check if we have valid cached data (skip API call entirely)
+      if (!forceRefresh) {
+        const cached = getCachedData(dynamicCacheKey)
+        const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 300000))
+
+        // If cache is valid, skip API calls entirely
+        if (cacheIsValid && cached.developments?.length >= 0) {
+          setDevelopments(cached.developments)
+          setIndustryTrends(cached.industryTrends || [])
+          setTotalDevelopments(cached.totalDevelopments || 0)
+          setLastUpdated(cached.lastUpdated || null)
+          setIsLoading(false)
+          return
+        }
+      }
+
       // Prevent multiple simultaneous requests - but allow initial load
       if (isLoading && !forceRefresh && developments.length > 0) {
         return;
       }
-      
+
       setIsLoading(true);
       setIsRefreshing(forceRefresh);
-      
+
       // Convert timeframe for the new endpoint - Fixed 1m/3m handling
       let timeframe = selectedTimeRange;
       
@@ -450,18 +476,19 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         setTotalDevelopments(data.total_count || data.developments.length);
         
         // Use the rich category data from the new endpoint
+        let processedTrends: IndustryTrend[] = []
         if (data.categories && data.categories.industries_with_counts) {
           // Convert to the format expected by the UI
-          const processedData = data.categories.industries_with_counts.map((item: any) => ({
+          processedTrends = data.categories.industries_with_counts.map((item: any) => ({
             industry: item.name,
             total_count: item.count
           }));
-          
-          setIndustryTrends(processedData);
+
+          setIndustryTrends(processedTrends);
         } else {
           // Fallback to manual processing if categories not available
           const industriesMap = new Map<string, number>();
-          
+
           data.developments.forEach((dev: any) => {
             if (dev && dev.industry) {
               const industry = dev.industry.trim();
@@ -469,19 +496,31 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               industriesMap.set(industry, count + 1);
             }
           });
-          
-          const processedData = Array.from(industriesMap.entries())
+
+          processedTrends = Array.from(industriesMap.entries())
             .map(([industry, total_count]) => ({
               industry: industry.trim(),
               total_count
             }))
             .filter(item => item.total_count > 0)
             .sort((a, b) => b.total_count - a.total_count);
-          
-          setIndustryTrends(processedData);
+
+          setIndustryTrends(processedTrends);
         }
-        
-        setLastUpdated(new Date());
+
+        const updatedDate = new Date()
+        setLastUpdated(updatedDate);
+
+        // Cache the data (5-minute TTL) with timestamp
+        const dynamicCacheKey = `hnwi-world-${selectedTimeRange}-${selectedIndustry}`
+        setCachedData(dynamicCacheKey, {
+          developments: data.developments,
+          industryTrends: processedTrends,
+          totalDevelopments: data.total_count || data.developments.length,
+          lastUpdated: updatedDate,
+          timestamp: Date.now(),
+          ttl: 300000
+        }, 300000);
       } else {
         // No data found - don't show error, just empty state
         setDevelopments([]);
@@ -508,7 +547,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [selectedTimeRange, selectedIndustry])
+  }, [selectedTimeRange, selectedIndustry, getCachedData, setCachedData, toast])
   
   // Initial load and when duration changes - Debounced to prevent loops
   useEffect(() => {

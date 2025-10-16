@@ -14,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuthPopup } from "@/contexts/auth-popup-context";
+import { usePageDataCache } from "@/contexts/page-data-cache-context";
 import { Heading2 } from "@/components/ui/typography";
 import { PageHeaderWithBack } from "@/components/ui/back-button";
 import { PageWrapper } from "@/components/ui/page-wrapper";
-import { 
-  Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText, 
+import {
+  Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText,
   Edit, X, Save, Building, DollarSign
 } from "lucide-react";
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors";
@@ -74,13 +75,18 @@ const SkeletonCard = () => (
 export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const { theme } = useTheme();
   const { showAuthPopup } = useAuthPopup();
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
   const searchParams = useSearchParams();
 
-  // Core state
-  const [loading, setLoading] = useState(true);
-  const [assets, setAssets] = useState<CrownVaultAsset[]>([]);
-  const [heirs, setHeirs] = useState<CrownVaultHeir[]>([]);
-  const [stats, setStats] = useState<CrownVaultStats | null>(null);
+  // Check for cached data before initializing state
+  const cachedData = getCachedData('crown-vault');
+  const hasValidCache = isCacheValid('crown-vault');
+
+  // Core state - Initialize with cached data if available
+  const [loading, setLoading] = useState(!hasValidCache);
+  const [assets, setAssets] = useState<CrownVaultAsset[]>(cachedData?.assets || []);
+  const [heirs, setHeirs] = useState<CrownVaultHeir[]>(cachedData?.heirs || []);
+  const [stats, setStats] = useState<CrownVaultStats | null>(cachedData?.stats || null);
   const [activeTab, setActiveTab] = useState<"summary" | "assets" | "heirs" | "activity">("summary");
 
   // Modal states
@@ -175,7 +181,23 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     if (isLoadingData.current) return;
     isLoadingData.current = true;
 
+    // Check if we have valid cached data
+    const cached = getCachedData('crown-vault');
+    const isCacheValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 600000));
+
+    // If cache is valid, skip API calls entirely
+    if (isCacheValid && cached.assets) {
+      setAssets(cached.assets);
+      setHeirs(cached.heirs || []);
+      setStats(cached.stats || null);
+      setLoading(false);
+      isLoadingData.current = false;
+      return;
+    }
+
+    // No valid cache - show loading and fetch data
     setLoading(true);
+
       try {
         const [assetsData, statsData, heirsData] = await Promise.allSettled([
           getCrownVaultAssets(),
@@ -215,8 +237,13 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         }
         
         // Handle successful data loading
+        let newAssets = assets;
+        let newHeirs = heirs;
+        let newStats = stats;
+
         if (assetsData.status === 'fulfilled') {
-          setAssets(assetsData.value);
+          newAssets = assetsData.value;
+          setAssets(newAssets);
         }
 
         let loadedStats = null;
@@ -226,19 +253,31 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
         if (heirsData.status === 'fulfilled') {
           const heirsArray = heirsData.value;
-          setHeirs(heirsArray);
+          newHeirs = heirsArray;
+          setHeirs(newHeirs);
 
           // Update stats with actual heirs count if stats were loaded
           if (loadedStats) {
-            setStats({
+            newStats = {
               ...loadedStats,
               total_heirs: heirsArray.length  // Use actual heirs count
-            });
+            };
+            setStats(newStats);
           }
         } else if (loadedStats) {
           // If heirs failed but stats succeeded, still set stats
-          setStats(loadedStats);
+          newStats = loadedStats;
+          setStats(newStats);
         }
+
+        // Cache the loaded data (10-minute TTL) with timestamp
+        setCachedData('crown-vault', {
+          assets: newAssets,
+          heirs: newHeirs,
+          stats: newStats,
+          timestamp: Date.now(),
+          ttl: 600000
+        }, 600000);
 
         // Handle non-auth errors (if any)
         const nonAuthErrors = failedResults.filter(result => !isAuthenticationError(result.reason));

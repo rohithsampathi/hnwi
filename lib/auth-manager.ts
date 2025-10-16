@@ -61,6 +61,21 @@ export class AuthenticationManager {
     sessionStorage.setItem('userId', userData.id || userData.user_id || '');
     sessionStorage.setItem('userObject', JSON.stringify(userData));
 
+    // CRITICAL FIX: Also sync to pwaStorage for lib/api.ts compatibility
+    // lib/api.ts reads from pwaStorage via secure-api's getCurrentUserId()
+    if (typeof window !== 'undefined') {
+      try {
+        // Dynamic import to avoid circular dependency
+        import('./storage/pwa-storage').then(({ pwaStorage }) => {
+          pwaStorage.setItemSync('userEmail', userData.email || '');
+          pwaStorage.setItemSync('userId', userData.id || userData.user_id || '');
+          pwaStorage.setItemSync('userObject', JSON.stringify(userData));
+        });
+      } catch (error) {
+        // pwaStorage not available - sessionStorage will be used as fallback
+      }
+    }
+
     // Emit login event
     window.dispatchEvent(new CustomEvent('auth:login', {
       detail: { user: userData }
@@ -84,6 +99,18 @@ export class AuthenticationManager {
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
     localStorage.removeItem('userObject');
+
+    // CRITICAL FIX: Also clear pwaStorage to stay in sync
+    if (typeof window !== 'undefined') {
+      try {
+        // Dynamic import to avoid circular dependency
+        import('./storage/pwa-storage').then(({ pwaStorage }) => {
+          pwaStorage.clear();
+        });
+      } catch (error) {
+        // pwaStorage not available
+      }
+    }
 
     // Emit logout event
     window.dispatchEvent(new CustomEvent('auth:logout'));

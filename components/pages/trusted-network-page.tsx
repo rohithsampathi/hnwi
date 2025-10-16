@@ -72,6 +72,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { PremiumBadge } from "@/components/ui/premium-badge";
 import { PageWrapper } from "@/components/ui/page-wrapper";
 import { PageHeaderWithBack } from "@/components/ui/back-button";
+import { usePageDataCache } from "@/contexts/page-data-cache-context";
 import {
   getExecutors,
   getExecutor,
@@ -94,10 +95,16 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const metallicStyle = getMetallicCardStyle(theme);
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
 
-  // State
-  const [executors, setExecutors] = useState<Executor[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check for cached data with default filters
+  const defaultCacheKey = 'trusted-network-all-all-all-all--all';
+  const cachedData = getCachedData(defaultCacheKey);
+  const hasValidCache = isCacheValid(defaultCacheKey);
+
+  // State - Initialize with cached data if available
+  const [executors, setExecutors] = useState<Executor[]>(cachedData?.executors || []);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
   const [expandedExecutorId, setExpandedExecutorId] = useState<string | null>(null);
   const [showIntroModal, setShowIntroModal] = useState(false);
@@ -131,10 +138,25 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   // Load executors
   useEffect(() => {
     loadExecutors();
-  }, [categoryFilter, subcategoryFilter, jurisdictionFilter, languageFilter, searchQuery, tierFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryFilter, subcategoryFilter, jurisdictionFilter, languageFilter, searchQuery, tierFilter, getCachedData, setCachedData]);
 
   const loadExecutors = async () => {
     try {
+      // Create dynamic cache key based on all filters
+      const cacheKey = `trusted-network-${categoryFilter}-${subcategoryFilter}-${jurisdictionFilter}-${languageFilter}-${searchQuery}-${tierFilter}`;
+
+      // Check if we have valid cached data (skip API call entirely)
+      const cached = getCachedData(cacheKey);
+      const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 600000));
+
+      // If cache is valid, skip API calls entirely
+      if (cacheIsValid && cached.executors) {
+        setExecutors(cached.executors);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -160,6 +182,13 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
       });
 
       setExecutors(sortedExecutors);
+
+      // Cache the data (10-minute TTL) with timestamp
+      setCachedData(cacheKey, {
+        executors: sortedExecutors,
+        timestamp: Date.now(),
+        ttl: 600000
+      }, 600000);
     } catch (err: any) {
       setError(err.message || "Failed to load executors");
     } finally {

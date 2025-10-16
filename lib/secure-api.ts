@@ -966,20 +966,60 @@ export const logoutUser = async (): Promise<void> => {
 export const getCurrentUser = (): any | null => {
   if (typeof window === 'undefined') return null;
 
+  // Try pwaStorage first
   const userObject = pwaStorage.getItemSync('userObject');
   if (userObject) {
     try {
       return JSON.parse(userObject);
     } catch (error) {
-      return null;
+      // Fall through to authManager fallback
     }
   }
+
+  // CRITICAL FIX: Fallback to authManager if pwaStorage is empty
+  // This handles cases where authManager.login() hasn't synced to pwaStorage yet
+  const authManagerUser = authManager.getCurrentUser();
+  if (authManagerUser) {
+    // Sync to pwaStorage for future calls
+    try {
+      pwaStorage.setItemSync('userObject', JSON.stringify(authManagerUser));
+      pwaStorage.setItemSync('userId', authManagerUser.id || authManagerUser.user_id || '');
+      pwaStorage.setItemSync('userEmail', authManagerUser.email || '');
+    } catch (error) {
+      // Sync failed but we still have the user
+    }
+    return authManagerUser;
+  }
+
   return null;
 };
 
 export const getCurrentUserId = (): string | null => {
   if (typeof window === 'undefined') return null;
-  return pwaStorage.getItemSync('userId');
+
+  // Try pwaStorage first
+  const userId = pwaStorage.getItemSync('userId');
+  if (userId) return userId;
+
+  // CRITICAL FIX: Fallback to authManager if pwaStorage is empty
+  // This handles cases where authManager.login() hasn't synced to pwaStorage yet
+  const authManagerUserId = authManager.getUserId();
+  if (authManagerUserId) {
+    // Sync to pwaStorage for future calls
+    try {
+      pwaStorage.setItemSync('userId', authManagerUserId);
+      const authManagerUser = authManager.getCurrentUser();
+      if (authManagerUser) {
+        pwaStorage.setItemSync('userObject', JSON.stringify(authManagerUser));
+        pwaStorage.setItemSync('userEmail', authManagerUser.email || '');
+      }
+    } catch (error) {
+      // Sync failed but we still have the userId
+    }
+    return authManagerUserId;
+  }
+
+  return null;
 };
 
 // Refresh token function

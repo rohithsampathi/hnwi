@@ -232,7 +232,20 @@ export function RohithProvider({ children }: RohithProviderProps) {
         const conversationData = await getConversationHistory(conversationId)
 
         if (conversationData) {
-          dispatch({ type: "SET_CURRENT_MESSAGES", payload: conversationData.messages })
+          // Messages are already sorted by getConversationHistory, but ensure chronological order
+          const sortedMessages = [...conversationData.messages].sort((a, b) => {
+            const timeDiff = a.timestamp.getTime() - b.timestamp.getTime()
+
+            // If timestamps are very close (within 1 second), user messages should come first
+            if (Math.abs(timeDiff) < 1000) {
+              if (a.role === 'user' && b.role === 'assistant') return -1
+              if (a.role === 'assistant' && b.role === 'user') return 1
+            }
+
+            return timeDiff
+          })
+
+          dispatch({ type: "SET_CURRENT_MESSAGES", payload: sortedMessages })
         }
       } catch (error) {
         dispatch({ type: "SET_ERROR", payload: "Failed to load conversation" })

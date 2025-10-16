@@ -506,14 +506,15 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       }
 
       // Batch 2: Analysis data (sequential with delays)
-      if (shouldLoadKatherineAnalysis || shouldLoadVictorAnalysis) {
-        if (shouldLoadKatherineAnalysis) {
-          crownVaultData = await fetchWithDelay('/api/hnwi/katherine/analysis/latest', 300000, 300)
-        }
+      if (shouldLoadKatherineAnalysis) {
+        crownVaultData = await fetchWithDelay('/api/hnwi/katherine/analysis/latest', 300000, 300)
+      }
 
-        if (shouldLoadVictorAnalysis) {
-          opportunitiesData = await fetchWithDelay('/api/hnwi/victor/analysis/latest', 300000, 300)
-        }
+      // Victor analysis endpoint removed - was returning 404
+      // Opportunities are fetched from /api/opportunities instead
+      if (shouldLoadVictorAnalysis) {
+        // Skip - victor analysis integrated into opportunities data
+        opportunitiesData = null
       }
 
       // Batch 3: MongoDB data (sequential - no parallel to avoid rate limits)

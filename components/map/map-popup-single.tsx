@@ -4,7 +4,7 @@
 "use client"
 
 import React from "react"
-import { MapPin, Crown, Globe, Linkedin } from "lucide-react"
+import { MapPin, Crown, Globe, Linkedin, Brain } from "lucide-react"
 import type { City } from "@/components/interactive-world-map"
 import { CitationText } from "@/components/elite/citation-text"
 import {
@@ -82,6 +82,31 @@ export function MapPopupSingle({
           </div>
         )}
 
+        {/* Show unit price if available (for crown vault assets) */}
+        {(city as any).cost_per_unit && (city as any).unit_count && (
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Unit Price:</span>
+            <span className="text-xs font-medium">
+              {(city as any).unit_count}x @ {formatValue(String((city as any).cost_per_unit))}
+            </span>
+          </div>
+        )}
+
+        {/* Show appreciation if available */}
+        {(city as any).appreciation && (city as any).appreciation.percentage !== undefined && (
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Appreciation:</span>
+            <span className={`text-xs font-medium ${(city as any).appreciation.percentage >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {(city as any).appreciation.percentage >= 0 ? '+' : ''}{(city as any).appreciation.percentage.toFixed(1)}%
+              {(city as any).appreciation.annualized && (
+                <span className="text-[10px] ml-1">
+                  ({(city as any).appreciation.annualized.toFixed(1)}% p.a.)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
         {city.risk && (
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">Risk Profile:</span>
@@ -115,8 +140,103 @@ export function MapPopupSingle({
       {/* Expanded Details */}
       {isExpanded && (
         <div className="mt-3 pt-3 border-t border-border space-y-3 expanded-details">
-          {/* Analysis */}
-          {city.analysis && (
+          {/* Crown Vault Asset - Statistical Details & Katherine Analysis */}
+          {city.source?.toLowerCase().includes('crown') && (
+            <div className="space-y-3">
+              {/* Price Statistics */}
+              {(city.appreciation || city.price_history || city.cost_per_unit) && (
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-2 font-semibold flex items-center gap-1">
+                    <Crown className="h-3 w-3 text-amber-500" />
+                    Crown Vault Asset Statistics
+                  </p>
+                  <div className="space-y-2">
+                    {/* Current Price & Units */}
+                    {city.cost_per_unit && city.unit_count && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-muted-foreground">Current Price:</span>
+                        <span className="text-xs font-bold">{city.unit_count} units @ ${city.cost_per_unit.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {/* Appreciation Metrics */}
+                    {city.appreciation && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Total Gain:</span>
+                          <span className={`text-xs font-bold ${city.appreciation.percentage >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {city.appreciation.percentage >= 0 ? '+' : ''}{city.appreciation.percentage.toFixed(2)}%
+                            <span className="text-[10px] ml-1">
+                              (${city.appreciation.absolute.toLocaleString()})
+                            </span>
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Annualized Return:</span>
+                          <span className={`text-xs font-bold ${city.appreciation.annualized >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {city.appreciation.annualized >= 0 ? '+' : ''}{city.appreciation.annualized.toFixed(2)}% p.a.
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Holding Period:</span>
+                          <span className="text-xs font-medium">{city.appreciation.time_held_days} days</span>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Price History Summary */}
+                    {city.price_history && city.price_history.length > 1 && (
+                      <div className="pt-2 border-t border-border/50">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs text-muted-foreground">Price Updates:</span>
+                          <span className="text-xs font-medium">{city.price_history.length} total</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {city.price_history.slice(-3).map((entry, idx) => (
+                            <div key={idx} className="text-[10px] px-2 py-0.5 bg-primary/10 rounded" title={new Date(entry.timestamp).toLocaleString()}>
+                              ${entry.price.toLocaleString()}
+                              {entry.confidence_score && (
+                                <span className="ml-1 opacity-60">({(entry.confidence_score * 100).toFixed(0)}%)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Last Update */}
+                    {city.last_price_update && (
+                      <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-1 border-t border-border/50">
+                        <span>Last Updated:</span>
+                        <span>{new Date(city.last_price_update).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Elite Pulse Analysis */}
+              {(city as any).katherine_analysis && (
+                <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                  <p className="text-xs text-primary mb-2 font-semibold flex items-center gap-1">
+                    <Brain className="h-3 w-3" />
+                    Elite Pulse
+                  </p>
+                  <div className="text-xs leading-relaxed text-foreground">
+                    <CitationText
+                      text={cleanAnalysisText((city as any).katherine_analysis)}
+                      onCitationClick={onCitationClick}
+                      citationMap={citationMap}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Regular Analysis (non-Crown Vault) */}
+          {!city.source?.toLowerCase().includes('crown') && city.analysis && (
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
               <div className="text-xs leading-relaxed">
@@ -130,8 +250,8 @@ export function MapPopupSingle({
             </div>
           )}
 
-          {/* Elite Pulse Analysis */}
-          {city.elite_pulse_analysis && (
+          {/* Elite Pulse Analysis (only for non-Crown Vault assets) */}
+          {!city.source?.toLowerCase().includes('crown') && city.elite_pulse_analysis && (
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
               <div className="text-xs leading-relaxed">

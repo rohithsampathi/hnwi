@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Gem } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
+import { usePageDataCache } from "@/contexts/page-data-cache-context";
 import { CrownLoader } from "@/components/ui/crown-loader";
 import { getOpportunities, Opportunity } from "@/lib/api";
 import { Heading2 } from "@/components/ui/typography";
@@ -21,11 +22,17 @@ interface PriveExchangePageProps {
 
 export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const { theme } = useTheme();
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
   const searchParams = useSearchParams();
+
+  // Check for cached data
+  const cachedData = getCachedData('prive-exchange');
+  const hasValidCache = isCacheValid('prive-exchange');
+
   const [selectedCategory, setSelectedCategory] = useState<AssetCategoryData | null>(null);
-  const [assetCategories, setAssetCategories] = useState<AssetCategoryData[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [assetCategories, setAssetCategories] = useState<AssetCategoryData[]>(cachedData?.assetCategories || []);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(cachedData?.opportunities || []);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
   const [targetOpportunityId, setTargetOpportunityId] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -80,6 +87,19 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   useEffect(() => {
     async function loadOpportunities() {
       try {
+        // Check if we have valid cached data
+        const cached = getCachedData('prive-exchange');
+        const isCacheValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 600000));
+
+        // If cache is valid, skip API calls entirely
+        if (isCacheValid && cached.opportunities?.length > 0) {
+          setOpportunities(cached.opportunities);
+          setAssetCategories(cached.assetCategories || []);
+          setLoading(false);
+          return;
+        }
+
+        // No valid cache - show loading and fetch data
         setLoading(true);
         const basicOpportunities = await getOpportunities();
 
@@ -144,6 +164,14 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         const categories = generateAssetCategoriesFromOpportunities(enrichedOpportunities);
         setAssetCategories(categories);
 
+        // Cache the data (10-minute TTL) with timestamp
+        setCachedData('prive-exchange', {
+          opportunities: enrichedOpportunities,
+          assetCategories: categories,
+          timestamp: Date.now(),
+          ttl: 600000
+        }, 600000);
+
         setError(null);
       } catch (err) {
         setError("Failed to load investment opportunities");
@@ -156,7 +184,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     if (userData && (!intelligenceLoading || intelligenceData)) {
       loadOpportunities();
     }
-  }, [userData, intelligenceData, intelligenceLoading]);
+  }, [userData, intelligenceData, intelligenceLoading, getCachedData, setCachedData]);
 
   const handleCategorySelect = (category: AssetCategoryData | null) => {
     setSelectedCategory(category);

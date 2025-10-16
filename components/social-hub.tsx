@@ -20,6 +20,7 @@ import { SocialEvent, getEvents } from "@/lib/api"
 import { getCategoryColorClass, getCategoryDarkColorClass } from "@/utils/color-utils"
 import { getMetallicCardStyle, getCardColors } from "@/lib/colors"
 import { useAuth } from "@/components/auth-provider"
+import { usePageDataCache } from "@/contexts/page-data-cache-context"
 import {
   Dialog,
   DialogContent,
@@ -59,9 +60,15 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
   const { theme } = useTheme()
   const { toast } = useToast()
   const { user } = useAuth()
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
+
+  // Check for cached data
+  const cachedData = getCachedData('social-hub')
+  const hasValidCache = isCacheValid('social-hub')
+
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
-  const [events, setEvents] = useState<SocialEvent[]>([])
-  const [loading, setLoading] = useState(true)
+  const [events, setEvents] = useState<SocialEvent[]>(cachedData?.events || [])
+  const [loading, setLoading] = useState(!hasValidCache)
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
@@ -81,6 +88,18 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
     }
 
     async function loadEvents() {
+      // Check if we have valid cached data (skip API call entirely)
+      const cached = getCachedData('social-hub')
+      const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 1800000))
+
+      // If cache is valid, skip API calls entirely
+      if (cacheIsValid && cached.events) {
+        setEvents(cached.events)
+        setLoading(false)
+        hasFetchedRef.current = true
+        return
+      }
+
       isFetchingRef.current = true
       try {
         setLoading(true)
@@ -88,6 +107,13 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
         setEvents(fetchedEvents)
         setError(null)
         hasFetchedRef.current = true
+
+        // Cache the data (30-minute TTL) with timestamp
+        setCachedData('social-hub', {
+          events: fetchedEvents,
+          timestamp: Date.now(),
+          ttl: 1800000
+        }, 1800000)
       } catch (err: any) {
         // Handle tier requirement
         if (err?.status === 403 && err?.detail) {
@@ -102,7 +128,7 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
     }
 
     loadEvents()
-  }, [user])
+  }, [user, getCachedData, setCachedData])
 
   const handleTalkToConcierge = async (event: SocialEvent) => {
     setIsProcessing(true)

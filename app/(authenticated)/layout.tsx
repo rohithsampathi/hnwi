@@ -14,6 +14,7 @@ import { AppDataProvider } from "@/contexts/app-data-context"
 import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
 import { NotificationProvider } from "@/contexts/notification-context"
 import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
+import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
@@ -198,35 +199,37 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           <StepUpMfaProvider>
             <OnboardingProvider>
               <AppDataProvider>
-                <ElitePulseErrorBoundary>
-                  <ElitePulseProvider>
-                    <NotificationProvider
-                      enablePolling={false}
-                      pollInterval={30000}
-                      enableSounds={true}
-                      enableBrowserNotifications={true}
-                    >
-                      <IntelligenceNotificationProvider
-                        position="top-right"
-                        maxNotifications={5}
-                        enableAutoNotifications={true}
+                <PageDataCacheProvider>
+                  <ElitePulseErrorBoundary>
+                    <ElitePulseProvider>
+                      <NotificationProvider
+                        enablePolling={false}
+                        pollInterval={30000}
+                        enableSounds={true}
+                        enableBrowserNotifications={true}
                       >
-                        <Layout
-                          title={pageConfig.title}
-                          onNavigate={handleNavigation}
-                          currentPage={pageConfig.currentPage}
-                          showBackButton={pageConfig.showBackButton}
-                          user={user}
+                        <IntelligenceNotificationProvider
+                          position="top-right"
+                          maxNotifications={5}
+                          enableAutoNotifications={true}
                         >
-                          <TokenRefreshManager refreshIntervalHours={20} />
-                          <BackgroundSyncInitializer />
-                          {children}
-                          <Toaster />
-                        </Layout>
-                      </IntelligenceNotificationProvider>
-                    </NotificationProvider>
-                  </ElitePulseProvider>
-                </ElitePulseErrorBoundary>
+                          <Layout
+                            title={pageConfig.title}
+                            onNavigate={handleNavigation}
+                            currentPage={pageConfig.currentPage}
+                            showBackButton={pageConfig.showBackButton}
+                            user={user}
+                          >
+                            <TokenRefreshManager refreshIntervalHours={20} />
+                            <BackgroundSyncInitializer />
+                            {children}
+                            <Toaster />
+                          </Layout>
+                        </IntelligenceNotificationProvider>
+                      </NotificationProvider>
+                    </ElitePulseProvider>
+                  </ElitePulseErrorBoundary>
+                </PageDataCacheProvider>
               </AppDataProvider>
             </OnboardingProvider>
           </StepUpMfaProvider>

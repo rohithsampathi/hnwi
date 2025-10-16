@@ -922,9 +922,21 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                         </h3>
                         {/* Value with unit details */}
                         <div className="mt-2">
-                          <p className={`text-2xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
-                            ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
-                          </p>
+                          <div className="flex items-baseline gap-2">
+                            <p className={`text-2xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                              ${formatValue(asset.asset_data.value || 0, asset.asset_data.currency)}
+                            </p>
+                            {/* Appreciation Badge */}
+                            {asset.appreciation && asset.appreciation.percentage !== undefined && (
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                asset.appreciation.percentage >= 0
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {asset.appreciation.percentage >= 0 ? '+' : ''}{asset.appreciation.percentage.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-1">
                             {asset.asset_data.unit_count && asset.asset_data.cost_per_unit ? (
                               <>
@@ -937,7 +949,19 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                                 {asset.asset_data.currency || 'USD'} Secured
                               </p>
                             )}
+                            {/* Price refresh indicator */}
+                            {asset.last_price_update && (
+                              <p className={`text-xs ${theme === 'dark' ? 'text-white/40' : 'text-gray-500'}`}>
+                                • Updated {new Date(asset.last_price_update).toLocaleDateString()}
+                              </p>
+                            )}
                           </div>
+                          {/* Annualized appreciation if available */}
+                          {asset.appreciation && asset.appreciation.annualized && (
+                            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
+                              {asset.appreciation.annualized.toFixed(2)}% annualized over {asset.appreciation.time_held_days} days
+                            </p>
+                          )}
                         </div>
                       </div>
                       
@@ -1025,6 +1049,85 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                           <p className={`text-sm ${theme === 'dark' ? 'text-white/70' : 'text-gray-700'} line-clamp-2`}>
                             {asset.asset_data.notes}
                           </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Price Summary Section */}
+                    {(asset.appreciation || (asset.price_history && asset.price_history.length > 0)) && (
+                      <div className="text-left mb-4">
+                        <div className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className={`h-4 w-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`} />
+                            <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-white/70' : 'text-gray-700'}`}>
+                              Price Summary
+                            </p>
+                          </div>
+
+                          {/* Appreciation Metrics */}
+                          {asset.appreciation && (
+                            <div className="space-y-2 mb-3">
+                              <div className="flex justify-between items-center">
+                                <span className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>Total Gain:</span>
+                                <span className={`text-xs font-bold ${
+                                  asset.appreciation.percentage >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {asset.appreciation.percentage >= 0 ? '+' : ''}{asset.appreciation.percentage.toFixed(2)}%
+                                  <span className="text-[10px] ml-1">
+                                    (${asset.appreciation.absolute.toLocaleString()})
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>Annualized:</span>
+                                <span className={`text-xs font-bold ${
+                                  asset.appreciation.annualized >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {asset.appreciation.annualized >= 0 ? '+' : ''}{asset.appreciation.annualized.toFixed(2)}% p.a.
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>Holding Period:</span>
+                                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-white/80' : 'text-gray-700'}`}>
+                                  {asset.appreciation.time_held_days} days
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Price History */}
+                          {asset.price_history && asset.price_history.length > 1 && (
+                            <div className={`pt-3 ${asset.appreciation ? 'border-t border-border/30' : ''}`}>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
+                                  Price Updates:
+                                </span>
+                                <span className={`text-xs font-medium ${theme === 'dark' ? 'text-white/80' : 'text-gray-700'}`}>
+                                  {asset.price_history.length} total
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {asset.price_history.slice(-5).map((entry, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`text-[10px] px-2 py-1 rounded ${theme === 'dark' ? 'bg-white/10' : 'bg-white'}`}
+                                    title={`${entry.source} - ${new Date(entry.timestamp).toLocaleDateString()}`}
+                                  >
+                                    ${formatValue(entry.price, asset.asset_data.currency)}
+                                    {entry.confidence_score && (
+                                      <span className="ml-1 opacity-60">
+                                        ({(entry.confidence_score * 100).toFixed(0)}%)
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

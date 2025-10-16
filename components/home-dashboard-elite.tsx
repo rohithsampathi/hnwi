@@ -8,6 +8,7 @@ import dynamic from "next/dynamic"
 import type { HomeDashboardEliteProps } from "@/types/dashboard"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { secureApi } from "@/lib/secure-api"
+import { usePageDataCache } from "@/contexts/page-data-cache-context"
 import type { City } from "@/components/interactive-world-map"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
@@ -57,6 +58,32 @@ interface Opportunity {
     website?: string
     linkedin?: string
   }>
+  // Price tracking fields from backend
+  cost_per_unit?: number
+  unit_count?: number
+  current_price?: number
+  entry_price?: number
+  appreciation?: {
+    percentage: number
+    absolute: number
+    annualized: number
+    time_held_days: number
+  }
+  price_history?: Array<{
+    timestamp: string
+    price: number
+    source: 'manual' | 'katherine_analysis' | 'system'
+    confidence_score?: number
+    notes?: string
+  }>
+  last_price_update?: string
+  katherine_analysis?: string
+  elite_pulse_impact?: {
+    katherine_analysis?: string
+    katherine_ai_analysis?: {
+      strategic_assessment?: string
+    }
+  }
 }
 
 export function HomeDashboardElite({
@@ -64,8 +91,14 @@ export function HomeDashboardElite({
   onNavigate,
   userData
 }: HomeDashboardEliteProps) {
-  const [cities, setCities] = useState<City[]>([])
-  const [loading, setLoading] = useState(true)
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
+
+  // Check for cached data
+  const cachedData = getCachedData('dashboard');
+  const hasValidCache = isCacheValid('dashboard');
+
+  const [cities, setCities] = useState<City[]>(cachedData?.cities || [])
+  const [loading, setLoading] = useState(!hasValidCache)
   const [authError, setAuthError] = useState(false)
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -128,6 +161,21 @@ export function HomeDashboardElite({
 
   useEffect(() => {
     const fetchOpportunities = async () => {
+      // Check if we have valid cached data
+      const cached = getCachedData('dashboard');
+      const isCacheValid = cached && (Date.now() - cached.timestamp < cached.ttl);
+
+      // If cache is valid and we have the same timeframe, skip API call entirely
+      if (isCacheValid && cached.timeframe === timeframe && cached.cities?.length > 0) {
+        setCities(cached.cities);
+        setManagedCitations(cached.citations || []);
+        setLoading(false);
+        return;
+      }
+
+      // No valid cache - show loading and fetch data
+      setLoading(true);
+
       try {
         const apiUrl = timeframe === 'live'
           ? '/api/command-centre/opportunities?include_crown_vault=true&include_executors=true'
@@ -137,6 +185,23 @@ export function HomeDashboardElite({
           enableCache: true,
           cacheDuration: 600000 // 10 minutes
         })
+
+        // Debug: Log a Crown Vault asset to verify backend data
+        const crownAsset = response.opportunities?.find((o: any) => o.source?.toLowerCase().includes('crown'));
+        if (crownAsset) {
+          console.log('🔍 Crown Vault Asset Debug:', {
+            title: crownAsset.title,
+            has_appreciation: !!crownAsset.appreciation,
+            appreciation: crownAsset.appreciation,
+            has_price_history: !!crownAsset.price_history,
+            price_history: crownAsset.price_history,
+            has_cost_per_unit: !!crownAsset.cost_per_unit,
+            cost_per_unit: crownAsset.cost_per_unit,
+            unit_count: crownAsset.unit_count,
+            katherine_analysis: crownAsset.katherine_analysis,
+            all_fields: Object.keys(crownAsset)
+          });
+        }
 
         if (response.success && response.opportunities) {
           // Transform opportunities to city format for the map
@@ -192,7 +257,20 @@ export function HomeDashboardElite({
                 devIds: devIds,
                 hasCitations: devIds.length > 0,
                 // Executor data
-                executors: opp.executors
+                executors: opp.executors,
+                // Price data from command centre (for Crown Vault assets)
+                cost_per_unit: opp.cost_per_unit,
+                unit_count: opp.unit_count,
+                current_price: opp.current_price,
+                entry_price: opp.entry_price,
+                appreciation: opp.appreciation,
+                price_history: opp.price_history,
+                last_price_update: opp.last_price_update,
+                // Katherine AI analysis (check for non-empty strings)
+                katherine_analysis: (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
+                                   (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
+                                   (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment && opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
+                                   null
               }
             })
             .filter((city): city is City => city !== null) // Remove null entries
@@ -219,6 +297,15 @@ export function HomeDashboardElite({
 
           setManagedCitations(allCitations)
           setCities(cityData)
+
+          // Cache the data (5-minute TTL for dashboard) with timeframe
+          setCachedData('dashboard', {
+            cities: cityData,
+            citations: allCitations,
+            timeframe: timeframe,
+            timestamp: Date.now(),
+            ttl: 300000
+          }, 300000);
         }
       } catch (error: any) {
 

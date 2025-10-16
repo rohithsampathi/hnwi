@@ -332,13 +332,14 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     const assets = data.assets || data || [];
 
     // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
-    return assets.filter((asset: any) => 
-      asset && 
+    return assets.filter((asset: any) =>
+      asset &&
       (asset._id || asset.asset_id || asset.id) // Accept MongoDB _id or other formats
     ).map((asset: any) => ({
       ...asset,
       // Normalize ID field
       id: asset._id || asset.asset_id || asset.id,
+      asset_id: asset._id || asset.asset_id || asset.id,
       // Create asset_data from MongoDB fields or existing asset_data
       asset_data: asset.asset_data ? {
         name: asset.asset_data.name || 'Unnamed Asset',
@@ -364,7 +365,11 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       elite_pulse_impact: asset.elite_pulse_impact || null,
       heir_ids: asset.heir_ids || [],
       heir_names: asset.heir_names || [],
-      created_at: asset.created_at || new Date().toISOString()
+      created_at: asset.created_at || new Date().toISOString(),
+      // Preserve price tracking fields from backend
+      price_history: asset.price_history || [],
+      appreciation: asset.appreciation || null,
+      last_price_update: asset.last_price_update || null
     }));
   } catch (error) {
     // Only log non-authentication errors to avoid console spam

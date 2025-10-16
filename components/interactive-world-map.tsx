@@ -61,6 +61,27 @@ export interface City {
     website?: string
     linkedin?: string
   }>
+  // Price data (from command centre for Crown Vault assets)
+  cost_per_unit?: number
+  unit_count?: number
+  current_price?: number
+  entry_price?: number
+  appreciation?: {
+    percentage: number
+    absolute: number
+    annualized: number
+    time_held_days: number
+  }
+  price_history?: Array<{
+    timestamp: string
+    price: number
+    source: 'manual' | 'katherine_analysis' | 'system'
+    confidence_score?: number
+    notes?: string
+  }>
+  last_price_update?: string
+  // Katherine AI analysis text
+  katherine_analysis?: string
 }
 
 interface InteractiveWorldMapProps {

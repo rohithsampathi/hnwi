@@ -63,6 +63,7 @@ import { BillingHistory } from "@/components/subscription/billing-history"
 import { PlanUpgradeModal } from "@/components/subscription/plan-upgrade-modal"
 import { BillingManagementModal } from "@/components/billing/billing-management-modal"
 import type { SubscriptionTier } from "@/types/user"
+import { usePageDataCache } from "@/contexts/page-data-cache-context"
 
 const formatLinkedInUrl = (url: string): string => {
   if (!url) return ""
@@ -86,6 +87,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   const searchParams = useSearchParams()
   const [isEditing, setIsEditing] = useState(false)
   const { showOnboardingWizard, setShowOnboardingWizard } = useOnboarding()
+  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
 
   // Guard clause: Return loading state if user is not defined
   if (!user) {
@@ -245,15 +247,31 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
 
   const fetchVaultStats = useCallback(async (userIdParam?: string) => {
     try {
-      setVaultLoading(true)
       // Get the user ID from parameter or state
       const authUser = getCurrentUser()
       const userIdToUse = userIdParam || userId || authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
-      
+
       if (!userIdToUse) {
         return
       }
-      
+
+      // Create cache key based on userId
+      const cacheKey = `profile-vault-${userIdToUse}`
+
+      // Check if we have valid cached data (skip API call entirely)
+      const cached = getCachedData(cacheKey)
+      const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 600000))
+
+      // If cache is valid, skip API calls entirely
+      if (cacheIsValid && cached.stats) {
+        setVaultStats(cached.stats)
+        setVaultAssets(cached.assets || [])
+        setVaultLoading(false)
+        return
+      }
+
+      setVaultLoading(true)
+
       // Fetch stats, assets, and heirs like Crown Vault page does, passing the userId
       const [stats, assets, heirs] = await Promise.all([
         getCrownVaultStats(userIdToUse),
@@ -269,12 +287,20 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
 
       setVaultStats(updatedStats)
       setVaultAssets(assets)
+
+      // Cache the data (10-minute TTL) with timestamp
+      setCachedData(cacheKey, {
+        stats: updatedStats,
+        assets,
+        timestamp: Date.now(),
+        ttl: 600000
+      }, 600000)
     } catch (error) {
       // Don't set fallback data - leave states as null/empty to indicate failure
     } finally {
       setVaultLoading(false)
     }
-  }, [userId])
+  }, [userId, getCachedData, setCachedData])
 
   // Function to load vault data on demand
   const loadVaultDataOnDemand = useCallback(async () => {
