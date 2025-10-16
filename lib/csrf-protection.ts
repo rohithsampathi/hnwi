@@ -103,7 +103,10 @@ export class CSRFProtection {
           endpoint: new URL(request.url).pathname,
           method: request.method,
           userAgent: request.headers.get('user-agent'),
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+          secureCookieName,
+          legacyCookieName: CSRF_COOKIE_NAME,
+          allCookieNames: requestCookies ? Array.from(requestCookies.getAll().map(c => c.name)).join(', ') : 'none'
         });
         logger.warn('CSRF validation failed - no cookie found', context);
         return { valid: false, error: 'CSRF cookie missing' };
