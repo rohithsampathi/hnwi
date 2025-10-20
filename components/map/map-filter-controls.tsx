@@ -4,7 +4,7 @@
 "use client"
 
 import React from "react"
-import { Crown, Gem, Globe } from "lucide-react"
+import { Crown, Gem, Globe, ZoomOut } from "lucide-react"
 import RangeSlider from "react-range-slider-input"
 import "react-range-slider-input/dist/style.css"
 
@@ -19,6 +19,7 @@ interface MapFilterControlsProps {
   onToggleHNWIPatterns: () => void
   onReset: () => void
   theme: string
+  currentZoom: number
 }
 
 const MIN = 0
@@ -105,7 +106,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
           `}</style>
         </div>
 
-        {/* Filter icons and World View on same line */}
+        {/* Filter icons and Zoom out on same line */}
         <div className="flex items-center justify-center gap-3">
           {/* Filter icons with container - Reordered: Globe, Diamond, Crown */}
           <div className="flex items-center gap-1.5 bg-background/95 backdrop-blur-sm border border-border rounded-full px-2.5 py-1.5 shadow-lg">
@@ -152,18 +153,17 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
             </button>
           </div>
 
-          {/* World View - same line as filters, adjusted left and down */}
-          <button
-            onClick={props.onReset}
-            className="text-xs px-1.5 py-0 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-1.5 mt-1.5 -ml-3"
-            aria-label="World View"
-          >
-            <span className="text-2xl leading-none">🌍</span>
-            <span className="flex flex-col leading-none">
-              <span className="text-[9px] font-extrabold">World</span>
-              <span className="text-[9px] font-extrabold">View</span>
-            </span>
-          </button>
+          {/* Zoom out - only show when zoomed in (zoom > 2) */}
+          {props.currentZoom > 2 && (
+            <button
+              onClick={props.onReset}
+              className="text-xs px-2 py-1.5 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-1 bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-lg"
+              aria-label="Zoom out"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-semibold">Zoom out</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -266,14 +266,20 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
             <span>HNWI Patterns</span>
           </button>
 
-          <div className="h-4 w-px bg-border mx-1" />
+          {/* Only show divider and zoom out button when zoomed in */}
+          {props.currentZoom > 2 && (
+            <>
+              <div className="h-4 w-px bg-border mx-1" />
 
-          <button
-            onClick={props.onReset}
-            className="text-xs px-2.5 py-1 text-muted-foreground hover:text-primary transition-colors"
-          >
-            🌍 World View
-          </button>
+              <button
+                onClick={props.onReset}
+                className="text-xs px-2.5 py-1 text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+                <span>Zoom out</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

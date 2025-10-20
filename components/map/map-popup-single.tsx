@@ -62,6 +62,16 @@ export function MapPopupSingle({
             <Crown className="h-4 w-4 text-amber-500" />
           )}
           {cleanTitle(city.title, city.source)}
+          {/* NEW Badge with Blinking Dot */}
+          {city.is_new && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary rounded border border-primary/30">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+              </span>
+              NEW
+            </span>
+          )}
         </h3>
       )}
 

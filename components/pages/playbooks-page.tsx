@@ -284,7 +284,7 @@ export function PlayBooksPage({
       if (userId && token) {
         try {
           // First fetch user data to get purchased reports
-          const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for user data
+          const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true);
             
           // Filter active purchased reports
           const activeReports = userDataResponse.purchased_reports.filter(report => report.is_active);
@@ -293,7 +293,7 @@ export function PlayBooksPage({
           if (activeReports.length > 0) {
             const playbookPromises = activeReports.map(async (report) => {
               try {
-                const reportData: ReportData = await secureApi.get(`/api/reports/${report.report_id}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for report data
+                const reportData: ReportData = await secureApi.get(`/api/reports/${report.report_id}`, true);
                     
                 return {
                   id: report.report_id,

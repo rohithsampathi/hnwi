@@ -8,7 +8,6 @@ import dynamic from "next/dynamic"
 import type { HomeDashboardEliteProps } from "@/types/dashboard"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { secureApi } from "@/lib/secure-api"
-import { usePageDataCache } from "@/contexts/page-data-cache-context"
 import type { City } from "@/components/interactive-world-map"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
@@ -49,6 +48,7 @@ interface Opportunity {
   industry?: string  // Industry classification from backend
   product?: string   // Product type from backend
   start_date?: string  // Publish/start date
+  is_new?: boolean     // New opportunity indicator from backend
   executors?: Array<{
     name: string
     email?: string
@@ -91,14 +91,8 @@ export function HomeDashboardElite({
   onNavigate,
   userData
 }: HomeDashboardEliteProps) {
-  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
-
-  // Check for cached data
-  const cachedData = getCachedData('dashboard');
-  const hasValidCache = isCacheValid('dashboard');
-
-  const [cities, setCities] = useState<City[]>(cachedData?.cities || [])
-  const [loading, setLoading] = useState(!hasValidCache)
+  const [cities, setCities] = useState<City[]>([])
+  const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
@@ -171,30 +165,15 @@ export function HomeDashboardElite({
 
   useEffect(() => {
     const fetchOpportunities = async () => {
-      // Check if we have valid cached data
-      const cached = getCachedData('dashboard');
-      const isCacheValid = cached && (Date.now() - cached.timestamp < cached.ttl);
-
-      // If cache is valid and we have the same timeframe, skip API call entirely
-      if (isCacheValid && cached.timeframe === timeframe && cached.cities?.length > 0) {
-        setCities(cached.cities);
-        setManagedCitations(cached.citations || []);
-        setLoading(false);
-        return;
-      }
-
-      // No valid cache - show loading and fetch data
       setLoading(true)
 
       try {
+        // SOTA: Service Worker handles caching with StaleWhileRevalidate
         const apiUrl = timeframe === 'live'
-          ? '/api/command-centre/opportunities?include_crown_vault=true&include_executors=true'
+          ? `/api/command-centre/opportunities?include_crown_vault=true&include_executors=true`
           : `/api/command-centre/opportunities?timeframe=${timeframe}&include_crown_vault=true&include_executors=true`
 
-        const response = await secureApi.get(apiUrl, true, {
-          enableCache: true,
-          cacheDuration: 600000 // 10 minutes
-        })
+        const response = await secureApi.get(apiUrl, true)
 
         // Handle both wrapped and direct array responses
         const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
@@ -249,6 +228,8 @@ export function HomeDashboardElite({
                 industry: opp.industry,
                 product: opp.product,
                 start_date: opp.start_date,
+                // Use backend's is_new flag (no frontend date calculation)
+                is_new: opp.is_new,
                 // Citation data
                 devIds: devIds,
                 hasCitations: devIds.length > 0,
@@ -293,20 +274,9 @@ export function HomeDashboardElite({
 
           setManagedCitations(allCitations)
           setCities(cityData)
-
-          // Cache the data (5-minute TTL for dashboard) with timeframe
-          setCachedData('dashboard', {
-            cities: cityData,
-            citations: allCitations,
-            timeframe: timeframe,
-            timestamp: Date.now(),
-            ttl: 300000
-          }, 300000);
         }
       } catch (error: any) {
         // Let secureApi handle auth errors automatically
-        // Just log for debugging - proxy will provide proper error responses
-        console.error('Home Dashboard fetch error:', error);
       } finally {
         setLoading(false)
       }

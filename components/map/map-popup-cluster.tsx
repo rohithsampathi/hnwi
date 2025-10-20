@@ -56,6 +56,16 @@ export function MapPopupCluster({
                 <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
               )}
               {cleanTitle(city.title, city.source) || city.name}
+              {/* NEW Badge with Blinking Dot */}
+              {city.is_new && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary rounded border border-primary/30 flex-shrink-0 ml-1">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                  </span>
+                  NEW
+                </span>
+              )}
             </p>
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{city.value ? formatValue(city.value) : ''}</span>

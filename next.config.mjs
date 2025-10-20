@@ -76,84 +76,53 @@ const pwaConfig = withPWA({
   fallbacks: {
     document: '/offline',
   },
-  // Advanced runtime caching strategies
+  // SOTA Runtime Caching - Let HTTP headers control caching, SW just enforces
   runtimeCaching: [
     {
-      // Next.js build manifest - always fresh
-      urlPattern: /\/_next\/app-build-manifest\.json$/,
-      handler: 'NetworkFirst',
+      // Auth endpoints - NEVER cache (network only)
+      urlPattern: /\/api\/auth/,
+      handler: 'NetworkOnly',
       options: {
-        cacheName: 'next-build-manifest',
-        networkTimeoutSeconds: 3,
         fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-      },
-    },
-    // REMOVED: Auth endpoints are now bypassed by service worker entirely
-    // Service worker intercepting auth requests was stripping X-CSRF-Token header
-    // causing 403 Forbidden errors in production
-    // Since auth uses NetworkOnly (no caching), there's no benefit to interception
-    {
-      // Non-auth API routes - Network first with background sync
-      // CRITICAL FIX: Increased timeout from 10s → 30s for backend cold starts
-      urlPattern: /\/api\/(?!auth)/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        networkTimeoutSeconds: 30, // Increased for cold starts
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 5 * 60, // 5 minutes
-        },
-        backgroundSync: {
-          name: 'api-queue',
-          options: {
-            maxRetentionTime: 24 * 60, // 24 hours
-          },
+          credentials: 'include',
         },
       },
     },
     {
-      // Command Centre - NetworkFirst to avoid stale data issues
-      urlPattern: /\/api\/command-centre/,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'command-centre-cache',
-        networkTimeoutSeconds: 30,
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-        expiration: {
-          maxEntries: 10,
-          maxAgeSeconds: 5 * 60, // 5 minutes
-        },
-      },
-    },
-    {
-      // Intelligence data - Stale while revalidate
-      urlPattern: /\/api\/(intelligence|rohith|crown-vault|opportunities)/,
+      // All API endpoints - StaleWhileRevalidate with error filtering
+      // CRITICAL: Serves cached data immediately, updates in background
+      // CRITICAL: Don't cache errors (401/403/500) - fixes reauth loop bug
+      urlPattern: /\/api\//,
       handler: 'StaleWhileRevalidate',
       options: {
-        cacheName: 'intelligence-cache',
+        cacheName: 'api',
         fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
+          credentials: 'include',
         },
+        plugins: [
+          {
+            // SOTA: Don't cache error responses (critical for auth flow)
+            cacheWillUpdate: async ({ response }) => {
+              // Only cache successful responses
+              if (response && response.status < 400) {
+                return response;
+              }
+              return null;
+            },
+          },
+        ],
         expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 15 * 60, // 15 minutes
+          maxEntries: 100,
+          maxAgeSeconds: 5 * 60, // 5 minutes - cache is auto-refreshed in background
         },
       },
     },
     {
-      // Static assets - Cache first with long expiration
+      // Static assets - aggressive caching
       urlPattern: /\/_next\/static\//,
       handler: 'CacheFirst',
       options: {
-        cacheName: 'next-static',
+        cacheName: 'static',
         expiration: {
           maxEntries: 200,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
@@ -161,7 +130,7 @@ const pwaConfig = withPWA({
       },
     },
     {
-      // Images and media - Cache first with size limit
+      // Images - cache first
       urlPattern: /\.(png|jpg|jpeg|gif|webp|svg|ico)$/,
       handler: 'CacheFirst',
       options: {
@@ -173,7 +142,7 @@ const pwaConfig = withPWA({
       },
     },
     {
-      // Fonts - Cache first with long expiration
+      // Fonts - cache first
       urlPattern: /\.(woff|woff2|eot|ttf|otf)$/,
       handler: 'CacheFirst',
       options: {
@@ -185,30 +154,14 @@ const pwaConfig = withPWA({
       },
     },
     {
-      // External APIs - Network first with short cache
-      urlPattern: /^https:\/\/external-api\./,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'external-apis',
-        networkTimeoutSeconds: 5,
-        fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
-        },
-        expiration: {
-          maxEntries: 20,
-          maxAgeSeconds: 2 * 60, // 2 minutes
-        },
-      },
-    },
-    {
-      // Documents and pages - Network first
+      // Pages - network first
       urlPattern: ({ request }) => request.mode === 'navigate',
       handler: 'NetworkFirst',
       options: {
         cacheName: 'pages',
         networkTimeoutSeconds: 3,
         fetchOptions: {
-          credentials: 'include', // Include cookies for authentication
+          credentials: 'include',
         },
         expiration: {
           maxEntries: 50,

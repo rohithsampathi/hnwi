@@ -10,7 +10,7 @@ import { useTheme } from "@/contexts/theme-context"
 import "leaflet/dist/leaflet.css"
 
 // Components
-import { FlyToCity, ResetView, MapClickHandler } from "@/components/map/map-helpers"
+import { FlyToCity, ResetView, MapClickHandler, ZoomTracker } from "@/components/map/map-helpers"
 import { MapFilterControlsMobile, MapFilterControlsDesktop } from "@/components/map/map-filter-controls"
 import { MapPopupCluster } from "@/components/map/map-popup-cluster"
 import { MapPopupSingle } from "@/components/map/map-popup-single"
@@ -48,6 +48,7 @@ export interface City {
   industry?: string
   product?: string
   start_date?: string
+  is_new?: boolean
   // Citation data
   devIds?: string[]
   hasCitations?: boolean
@@ -263,7 +264,6 @@ export function InteractiveWorldMap({
         scrollWheelZoom={true}
         attributionControl={false}
         worldCopyJump={true}
-        onZoomEnd={(e) => setCurrentZoom(e.target.getZoom())}
       >
         <TileLayer url={tileUrl} noWrap={false} />
         <ZoomControl position="bottomright" />
@@ -366,6 +366,7 @@ export function InteractiveWorldMap({
         <FlyToCity city={flyToCity} />
         <ResetView shouldReset={resetView} onReset={() => setResetView(false)} />
         <MapClickHandler onMapClick={handleMapClick} />
+        <ZoomTracker onZoomChange={setCurrentZoom} />
       </MapContainer>
 
       {/* Filter Controls - Mobile */}
@@ -381,6 +382,7 @@ export function InteractiveWorldMap({
           onToggleHNWIPatterns={onToggleHNWIPatterns}
           onReset={handleReset}
           theme={theme}
+          currentZoom={currentZoom}
         />
       )}
 
@@ -397,6 +399,7 @@ export function InteractiveWorldMap({
           onToggleHNWIPatterns={onToggleHNWIPatterns}
           onReset={handleReset}
           theme={theme}
+          currentZoom={currentZoom}
         />
       )}
 

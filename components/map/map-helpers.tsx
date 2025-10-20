@@ -4,7 +4,7 @@
 "use client"
 
 import React from "react"
-import { useMap } from "react-leaflet"
+import { useMap, useMapEvents } from "react-leaflet"
 import type { City } from "@/components/interactive-world-map"
 import type L from "leaflet"
 
@@ -88,6 +88,22 @@ export function MapClickHandler({
       map.off('click', handleMapClick)
     }
   }, [map, onMapClick])
+
+  return null
+}
+
+/**
+ * Component to track zoom level changes
+ * Uses useMapEvents for reliable event handling in react-leaflet
+ */
+export function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMapEvents({
+    zoomend: () => {
+      const newZoom = map.getZoom()
+      console.log(`[ZOOM TRACKER] Zoom level changed to: ${newZoom}`)
+      onZoomChange(newZoom)
+    },
+  })
 
   return null
 }

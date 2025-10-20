@@ -35,7 +35,7 @@ export function DebugAuth() {
         page_size: 10,
         sort_by: "date",
         sort_order: "desc"
-      }, true, { enableCache: false })
+      }, true)
       
       const count = data.developments?.length || 0
       const sample = count > 0 ? data.developments[0] : null
@@ -53,7 +53,7 @@ export function DebugAuth() {
         page_size: 5,
         sort_by: "date",
         sort_order: "desc"
-      }, true, { enableCache: false })
+      }, true)
       
       setWealthRadarTest(`Success: ${data.developments?.length || 0} wealth radar items found`)
     } catch (error: any) {
@@ -76,7 +76,7 @@ export function DebugAuth() {
       setEndpointTests(prev => ({ ...prev, [endpoint.name]: 'Testing...' }))
       
       try {
-        const data = await secureApi.post('/api/developments', endpoint.body, true, { enableCache: false })
+        const data = await secureApi.post('/api/developments', endpoint.body, true)
         
         const count = data.developments?.length || 0
         const sample = count > 0 ? data.developments[0] : null
@@ -103,7 +103,7 @@ export function DebugAuth() {
         page_size: 10,
         sort_by: "date",
         sort_order: "desc"
-      }, true, { enableCache: false })
+      }, true)
       
       const count = data.developments?.length || 0
       const industries = [...new Set(data.developments?.map((d: any) => d.industry) || [])]
@@ -129,7 +129,7 @@ export function DebugAuth() {
         sort_by: "date",
         sort_order: "desc",
         time_range: "1w"
-      }, true, { enableCache: false })
+      }, true)
       
       const count = data.developments?.length || 0
       const withSummary = data.developments?.filter((d: any) => d.summary && d.summary.length > 0) || []
@@ -173,7 +173,7 @@ export function DebugAuth() {
         const devData = await secureApi.post('/api/developments', {
           page: 1,
           page_size: 3
-        }, true, { enableCache: false })
+        }, true)
         results.push(`✅ Developments with auth: ${devData.developments?.length || 0} items`)
       } catch (error: any) {
         results.push(`❌ Developments with auth: ${error.message}`)
@@ -223,7 +223,7 @@ export function DebugAuth() {
       const testResult = await secureApi.post('/api/developments', {
         page: 1,
         page_size: 1
-      }, true, { enableCache: false })
+      }, true)
 
       if (testResult.developments && testResult.developments.length > 0) {
         setImplementationResults(prev => [...prev, '✅ API working - data available'])

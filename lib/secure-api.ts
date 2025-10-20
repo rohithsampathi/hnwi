@@ -2,9 +2,8 @@
 // Cookie-Based Secure API Handler - SOTA httpOnly Cookie Authentication
 // No tokens in JavaScript = XSS-proof authentication
 // All requests go through Next.js API routes - backend URL never exposed to client
+// SOTA Caching: Service Worker handles ALL caching via HTTP headers
 
-import { EnhancedCacheService } from './services/enhanced-cache-service'
-import { CachePolicyService } from './services/cache-policy-service'
 import { authManager } from './auth-manager'
 import { pwaStorage } from './storage/pwa-storage'
 
@@ -514,6 +513,10 @@ export const secureApiCall = async (
       const authRestored = await handleAuthError();
 
       if (authRestored) {
+        // Refresh CSRF token after successful auth restoration
+        // This ensures CSRF-protected endpoints work correctly after reauth
+        await ensureCsrfToken();
+
         // Wait for cookies to propagate after refresh (critical for Crown Vault endpoints)
         // The browser needs time to process Set-Cookie headers from the refresh response
         // Especially important with httpOnly cookies that can't be accessed by JavaScript
@@ -589,6 +592,10 @@ export const secureApiCall = async (
         const authRestored = await handleAuthError();
 
         if (authRestored) {
+          // Refresh CSRF token after successful auth restoration
+          // This is critical for CSRF-protected endpoints like /api/conversations/share
+          await ensureCsrfToken();
+
           // Wait for cookies and CSRF token to propagate
           await new Promise(resolve => setTimeout(resolve, 750));
           // Retry with retryCount=1 to prevent infinite loops
@@ -656,104 +663,22 @@ export const secureApiCall = async (
   }
 };
 
-// Simple in-memory cache for GET requests
-const apiCache = new Map<string, { data: any; timestamp: number; duration: number }>();
-
-// Request deduplication to prevent multiple parallel requests
+// SOTA: Request deduplication only (no manual caching)
+// Service Worker handles ALL caching via HTTP headers with error filtering
 const pendingRequests = new Map<string, Promise<any>>();
 
-// Clear expired cache entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of apiCache) {
-    if (now - entry.timestamp > entry.duration) {
-      apiCache.delete(key);
-    }
-  }
-}, 60000); // Clean every minute
-
-// Determine cache type based on endpoint
-function getCacheType(endpoint: string): keyof typeof CachePolicyService.POLICIES | null {
-  if (endpoint.includes('/intelligence') || endpoint.includes('/hnwi') || endpoint.includes('/developments')) {
-    return 'INTELLIGENCE_BRIEF'
-  }
-  if (endpoint.includes('/crown-vault')) {
-    return 'CROWN_VAULT'
-  }
-  if (endpoint.includes('/opportunities')) {
-    return 'OPPORTUNITIES'
-  }
-  if (endpoint.includes('/rohith')) {
-    return 'ROHITH_MESSAGES'
-  }
-  if (endpoint.includes('/social') || endpoint.includes('/events')) {
-    return 'SOCIAL_EVENTS'
-  }
-  if (endpoint.includes('/profile') || endpoint.includes('/preferences')) {
-    return 'USER_PREFERENCES'
-  }
-  return null
-}
-
-// Simplified secure API methods
+// SOTA: Simplified secure API methods (caching handled by Service Worker)
 export const secureApi = {
-  async get(endpoint: string, requireAuth: boolean = true, options?: {
-    enableCache?: boolean;
-    cacheDuration?: number;
-    intelligentCache?: boolean;
-  }): Promise<any> {
-    const { enableCache = false, cacheDuration = 300000, intelligentCache = true } = options || {};
-
+  async get(endpoint: string, requireAuth: boolean = true): Promise<any> {
     // Request deduplication - prevent multiple parallel requests to the same endpoint
     const requestKey = `GET:${endpoint}`;
     if (pendingRequests.has(requestKey)) {
       return pendingRequests.get(requestKey);
     }
 
-    // Use intelligent caching if enabled - but go through secureApiCall for auth handling
-    if (intelligentCache) {
-      const cacheType = getCacheType(endpoint)
-      if (cacheType) {
-        try {
-          // Use secureApiCall to ensure proper auth handling
-          const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth)
-
-          if (!response.ok) {
-            // Extract error details from response body before throwing
-            let errorDetail;
-            try {
-              errorDetail = await response.json();
-            } catch {
-              errorDetail = { error: `Request failed with status ${response.status}` };
-            }
-
-            // Throw error with full details from backend
-            const error = new Error(`Request failed with status ${response.status}`);
-            (error as any).status = response.status;
-            (error as any).detail = errorDetail;
-            (error as any).response = { status: response.status, data: errorDetail };
-            throw error;
-          }
-
-          return await response.json()
-        } catch (error) {
-          // Fallback to standard API call
-        }
-      }
-    }
-
     // Create and store the request promise
     const requestPromise = (async () => {
       try {
-        // Fallback to original caching logic
-        if (enableCache) {
-          const cacheKey = `${endpoint}`;
-          const cached = apiCache.get(cacheKey);
-          if (cached && (Date.now() - cached.timestamp) < cached.duration) {
-            return cached.data;
-          }
-        }
-
         const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
 
         if (!response.ok) {
@@ -773,19 +698,7 @@ export const secureApi = {
           throw error;
         }
 
-        const data = await response.json();
-
-        // Store in cache if enabled
-        if (enableCache) {
-          const cacheKey = `${endpoint}`;
-          apiCache.set(cacheKey, {
-            data,
-            timestamp: Date.now(),
-            duration: cacheDuration
-          });
-        }
-
-        return data;
+        return await response.json();
       } finally {
         // Clean up pending request
         pendingRequests.delete(requestKey);
@@ -796,8 +709,7 @@ export const secureApi = {
     return requestPromise;
   },
 
-  async post(endpoint: string, data: any, requireAuth: boolean = true, options?: { enableCache?: boolean }): Promise<any> {
-    // POST methods typically don't use cache, but support it for compatibility
+  async post(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
     const response = await secureApiCall(
       endpoint,
       {
@@ -845,8 +757,7 @@ export const secureApi = {
     return await response.json();
   },
 
-  async put(endpoint: string, data: any, requireAuth: boolean = true, options?: { enableCache?: boolean }): Promise<any> {
-    // PUT methods typically don't use cache, but support it for compatibility
+  async put(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
     const response = await secureApiCall(
       endpoint,
       {
@@ -876,8 +787,7 @@ export const secureApi = {
     return await response.json();
   },
 
-  async delete(endpoint: string, requireAuth: boolean = true, options?: { enableCache?: boolean }): Promise<any> {
-    // DELETE methods typically don't use cache, but support it for compatibility
+  async delete(endpoint: string, requireAuth: boolean = true): Promise<any> {
     const response = await secureApiCall(endpoint, { method: 'DELETE' }, requireAuth);
 
     if (!response.ok) {

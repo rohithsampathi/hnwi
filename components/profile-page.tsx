@@ -151,10 +151,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   const fetchBillingHistory = useCallback(async () => {
     setLoadingHistory(true)
     try {
-      const response = await secureApi.get('/api/subscriptions/payment-history', true, { 
-        enableCache: true, 
-        cacheDuration: 300000 // 5 minutes cache
-      })
+      const response = await secureApi.get('/api/subscriptions/payment-history', true)
       
       if (response && response.success) {
         // Convert backend format to frontend format
@@ -334,7 +331,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       // Fetching user data
       isRefreshingRef.current = true
       try {
-        const userData = await secureApi.get(`/api/users/${userId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for user data
+        const userData = await secureApi.get(`/api/users/${userId}`, true);
         // User data fetched successfully
         
         // Enhance user data with company info handling

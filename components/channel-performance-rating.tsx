@@ -367,7 +367,7 @@ const ChannelPerformanceRating: React.FC = () => {
       setIsRefreshing(true)
       setIsLoading(true)
       try {
-        const data = await secureApi.get('/api/ratings/aggregated', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for ratings
+        const data = await secureApi.get('/api/ratings/aggregated', true);
 
         if (data.status === "success" && Array.isArray(data.data)) {
           setLocalCategories((prevCategories) => {

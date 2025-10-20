@@ -62,7 +62,7 @@ export interface CryptoResponse {
 
 export async function fetchCryptoData(timeRange: string): Promise<CryptoResponse> {
   try {
-    const data: CryptoResponse = await secureApi.get(`/api/financial/crypto?time_range=${timeRange}`, true, { enableCache: true, cacheDuration: 180000 })
+    const data: CryptoResponse = await secureApi.get(`/api/financial/crypto?time_range=${timeRange}`, true)
     return data
   } catch (error) {
     throw error
@@ -93,8 +93,8 @@ export interface SocialEvent {
 
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
-    // Call new secure Family Office endpoint with 30-minute caching
-    const data = await secureApi.get('/api/developments/social-events', true, { enableCache: true, cacheDuration: 1800000 }); // 30 minutes for luxury events
+    // Call new secure Family Office endpoint
+    const data = await secureApi.get('/api/developments/social-events', true);
     
     // Handle new response format: {events: [...], total_count, user_tier, etc.}
     if (data.events && Array.isArray(data.events)) {
@@ -186,7 +186,7 @@ export interface Opportunity {
 
 export async function getOpportunities(): Promise<Opportunity[]> {
   try {
-    const data = await secureApi.get('/api/opportunities', true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for investment opportunities
+    const data = await secureApi.get('/api/opportunities', true);
     return data as Opportunity[];
   } catch (error) {
     throw new Error('Unable to load investment opportunities. Please try again later.');
@@ -326,9 +326,9 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     if (!userId) {
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
-    // Call backend API directly for assets using authenticated client with 10-minute caching
+    // Call backend API directly for assets using authenticated client
     // Pass owner_id as query parameter as required by the API endpoint
-    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
+    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true);
     const assets = data.assets || data || [];
 
     // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
@@ -390,8 +390,7 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     // The Crown Vault page already calls getCrownVaultAssets and getCrownVaultHeirs separately
     const statsData = await secureApi.get(
       `/api/crown-vault/stats?owner_id=${userId}`,
-      true,
-      { enableCache: true, cacheDuration: 600000 }
+      true
     ).catch(() => null);
 
     if (!statsData) {
@@ -453,9 +452,9 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
       throw new Error('User not authenticated. Please log in to access Crown Vault.');
     }
     
-    // Call backend API directly using authenticated client with 10-minute caching
+    // Call backend API directly using authenticated client
     // Backend expects owner_id parameter
-    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true, { enableCache: true, cacheDuration: 600000 });
+    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true);
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);
@@ -848,10 +847,7 @@ export interface MemberAnalytics {
 
 export async function getMemberAnalytics(): Promise<MemberAnalytics> {
   try {
-    const data = await secureApi.get('/api/analytics/members', true, { 
-      enableCache: true, 
-      cacheDuration: 60000 // 1-minute cache for real-time feel
-    });
+    const data = await secureApi.get('/api/analytics/members', true);
     
     return {
       total_members: data.total_members || 0,
@@ -879,10 +875,7 @@ export interface ActivityStats {
 
 export async function getPageActivity(page: string): Promise<ActivityStats> {
   try {
-    const data = await secureApi.get(`/api/analytics/activity/${page}`, true, {
-      enableCache: true,
-      cacheDuration: 30000 // 30-second cache for activity data
-    });
+    const data = await secureApi.get(`/api/analytics/activity/${page}`, true);
 
     return {
       page_viewers: data.page_viewers || 0,
@@ -939,10 +932,7 @@ export async function getExecutors(filters?: ExecutorFilters): Promise<ExecutorL
     const queryString = params.toString();
     const endpoint = `/api/executors${queryString ? `?${queryString}` : ""}`;
 
-    const data = await secureApi.get(endpoint, true, {
-      enableCache: true,
-      cacheDuration: 600000 // 10-minute cache for executor list
-    });
+    const data = await secureApi.get(endpoint, true);
 
     return {
       executors: data.executors || [],
@@ -957,10 +947,7 @@ export async function getExecutors(filters?: ExecutorFilters): Promise<ExecutorL
 
 export async function getExecutor(executorId: string): Promise<Executor> {
   try {
-    const data = await secureApi.get(`/api/executors/${executorId}`, true, {
-      enableCache: true,
-      cacheDuration: 600000 // 10-minute cache for executor details
-    });
+    const data = await secureApi.get(`/api/executors/${executorId}`, true);
 
     return data as Executor;
   } catch (error: any) {
@@ -1012,9 +999,7 @@ export async function getUserIntroductions(userId?: string): Promise<UserIntrodu
       throw new Error("User not authenticated. Please log in to view introductions.");
     }
 
-    const data = await secureApi.get(`/api/users/${currentUserId}/introductions`, true, {
-      enableCache: false // No cache for user's introduction history (real-time)
-    });
+    const data = await secureApi.get(`/api/users/${currentUserId}/introductions`, true);
 
     return {
       introductions: data.introductions || [],

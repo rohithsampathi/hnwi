@@ -163,20 +163,20 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       setLoading(true)
       
       // Fetch brief counts in parallel with Elite Pulse data - direct backend call
-      const countsPromise = secureApi.get('/api/developments/counts', true, { enableCache: true, cacheDuration: 300000 });
+      const countsPromise = secureApi.get('/api/developments/counts', true);
       
       // Try user-specific first if authenticated, otherwise fallback to global
       let data = null
       if (isAuthenticated()) {
         try {
-          data = await secureApi.get('/api/elite-pulse/latest', true, { enableCache: true, cacheDuration: 300000 }); // direct backend call
+          data = await secureApi.get('/api/elite-pulse/latest', true);
         } catch (userError) {
         }
       }
       
       // Fallback to global if user-specific fails or user not authenticated
       if (!data || !data.success) {
-        data = await secureApi.get('/api/elite-pulse/latest-global', true, { enableCache: true, cacheDuration: 300000 }); // direct backend call
+        data = await secureApi.get('/api/elite-pulse/latest-global', true);
       }
       
       // Fetch counts data

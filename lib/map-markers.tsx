@@ -77,21 +77,47 @@ export function createCustomIcon(
     </svg>`
   }
 
+  // Make the marker blink (opacity change) if opportunity is new
+  // STRICT CHECK: Only blink if is_new === true (not just truthy)
+  const shouldBlink = city.is_new === true;
+  const blinkAnimation = shouldBlink ? `
+    <style>
+      @keyframes blink-marker {
+        0%, 100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.3;
+          transform: scale(0.95);
+        }
+      }
+    </style>
+  ` : ''
+
   const iconHtml = `
+    ${blinkAnimation}
     <div style="
+      position: relative;
       width: 16px;
       height: 16px;
-      background: ${color};
-      opacity: 1;
-      border: 1px solid ${color};
-      border-radius: 50%;
-      box-shadow: 0 0 8px ${color};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
     ">
-      ${iconSvg}
+      <div style="
+        width: 16px;
+        height: 16px;
+        background: ${color};
+        opacity: 1;
+        border: 1px solid ${color};
+        border-radius: 50%;
+        box-shadow: 0 0 8px ${color};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        ${shouldBlink ? `animation: blink-marker 1s ease-in-out infinite;` : ''}
+      ">
+        ${iconSvg}
+      </div>
     </div>
   `
 

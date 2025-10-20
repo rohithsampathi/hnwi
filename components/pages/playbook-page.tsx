@@ -58,7 +58,7 @@ export function PlaybookPage({
     setIsLoading(true)
     try {
       // Use secure API which handles authentication via cookies
-      const data = await secureApi.get(`/api/reports/${playbookId}`, true, { enableCache: true, cacheDuration: 600000 }); // 10 minutes for individual reports
+      const data = await secureApi.get(`/api/reports/${playbookId}`, true);
       
       setReport({
         metadata: {

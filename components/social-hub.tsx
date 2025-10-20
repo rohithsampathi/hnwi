@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { getCurrentUser, getCurrentUserId } from "@/lib/auth-manager"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,6 @@ import { SocialEvent, getEvents } from "@/lib/api"
 import { getCategoryColorClass, getCategoryDarkColorClass } from "@/utils/color-utils"
 import { getMetallicCardStyle, getCardColors } from "@/lib/colors"
 import { useAuth } from "@/components/auth-provider"
-import { usePageDataCache } from "@/contexts/page-data-cache-context"
 import {
   Dialog,
   DialogContent,
@@ -60,60 +59,23 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
   const { theme } = useTheme()
   const { toast } = useToast()
   const { user } = useAuth()
-  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
-
-  // Check for cached data
-  const cachedData = getCachedData('social-hub')
-  const hasValidCache = isCacheValid('social-hub')
 
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
-  const [events, setEvents] = useState<SocialEvent[]>(cachedData?.events || [])
-  const [loading, setLoading] = useState(!hasValidCache)
+  const [events, setEvents] = useState<SocialEvent[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<SocialEvent | null>(null)
-  const hasFetchedRef = useRef(false)
-  const isFetchingRef = useRef(false)
 
   useEffect(() => {
-    // Wait for user authentication to be established before fetching
-    if (!user) {
-      return
-    }
+    const loadEvents = async () => {
+      setLoading(true)
 
-    // Prevent duplicate fetches
-    if (hasFetchedRef.current || isFetchingRef.current) {
-      return
-    }
-
-    async function loadEvents() {
-      // Check if we have valid cached data (skip API call entirely)
-      const cached = getCachedData('social-hub')
-      const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 1800000))
-
-      // If cache is valid, skip API calls entirely
-      if (cacheIsValid && cached.events) {
-        setEvents(cached.events)
-        setLoading(false)
-        hasFetchedRef.current = true
-        return
-      }
-
-      isFetchingRef.current = true
       try {
-        setLoading(true)
         const fetchedEvents = await getEvents()
         setEvents(fetchedEvents)
         setError(null)
-        hasFetchedRef.current = true
-
-        // Cache the data (30-minute TTL) with timestamp
-        setCachedData('social-hub', {
-          events: fetchedEvents,
-          timestamp: Date.now(),
-          ttl: 1800000
-        }, 1800000)
       } catch (err: any) {
         // Handle tier requirement
         if (err?.status === 403 && err?.detail) {
@@ -123,12 +85,11 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
         }
       } finally {
         setLoading(false)
-        isFetchingRef.current = false
       }
     }
 
     loadEvents()
-  }, [user, getCachedData, setCachedData])
+  }, [])
 
   const handleTalkToConcierge = async (event: SocialEvent) => {
     setIsProcessing(true)

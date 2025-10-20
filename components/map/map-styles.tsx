@@ -99,6 +99,30 @@ export function MapStyles({ theme }: MapStylesProps) {
           transform: scaleY(1);
         }
       }
+      /* Pulsing ring animation for new opportunities */
+      @keyframes pulse-ring {
+        0% {
+          transform: translate(-50%, -50%) scale(0.8);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1.5);
+          opacity: 0;
+        }
+      }
+      .pulse-ring {
+        animation: pulse-ring 1.5s ease-out infinite;
+      }
+      /* Blinking dot animation for NEW badges */
+      @keyframes ping {
+        75%, 100% {
+          transform: scale(2);
+          opacity: 0;
+        }
+      }
+      .animate-ping {
+        animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+      }
     `}</style>
   )
 }

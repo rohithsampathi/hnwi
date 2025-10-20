@@ -344,32 +344,22 @@ class UnifiedAuthManager {
     // 3. Clear stored MFA email
     this.mfaEmail = null
 
-    // 4. PWA Fix: Clear service worker caches to prevent stale authenticated data
-    // This is critical security measure to prevent User A's cached data showing to User B
+    // 4. Clear Service Worker caches (prevents data leakage on shared devices)
     if (typeof window !== 'undefined' && 'caches' in window) {
       try {
         const cacheNames = await caches.keys()
         await Promise.all(
           cacheNames
-            // Clear API and intelligence caches that may contain user-specific data
             .filter(name =>
-              name.includes('api-cache') ||
-              name.includes('intelligence-cache') ||
               name.includes('api') ||
+              name.includes('pages') ||
               name.includes('intelligence')
             )
             .map(name => caches.delete(name))
         )
-
-        // Notify service worker to immediately clear its caches
-        if (navigator.serviceWorker?.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'AUTH_LOGOUT',
-            timestamp: Date.now()
-          })
-        }
       } catch (error) {
         // Silent fail - cache clearing is enhancement, not critical for logout
+        console.error('[Auth] Failed to clear caches on logout:', error)
       }
     }
 
