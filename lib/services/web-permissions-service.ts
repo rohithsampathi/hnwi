@@ -48,6 +48,16 @@ export class WebPermissionsService {
       }
     }
 
+    // Camera and microphone are blocked by Permissions-Policy, so return denied immediately
+    // to prevent browser console warnings
+    if (permission === 'camera' || permission === 'microphone') {
+      return {
+        name: permission,
+        state: 'denied',
+        supported: true
+      }
+    }
+
     let state: 'granted' | 'denied' | 'prompt' | 'unsupported' = 'prompt'
 
     try {
@@ -66,17 +76,11 @@ export class WebPermissionsService {
           break
 
         case 'camera':
-          if ('permissions' in navigator) {
-            const result = await navigator.permissions.query({ name: 'camera' as any })
-            state = result.state as any
-          }
+          // Blocked by Permissions-Policy - handled above
           break
 
         case 'microphone':
-          if ('permissions' in navigator) {
-            const result = await navigator.permissions.query({ name: 'microphone' as any })
-            state = result.state as any
-          }
+          // Blocked by Permissions-Policy - handled above
           break
 
         case 'persistent-storage':
@@ -266,11 +270,13 @@ export class WebPermissionsService {
 
   // Get all permission statuses
   static async getAllPermissions(): Promise<PermissionStatus[]> {
+    // Exclude camera and microphone as they are blocked by Permissions-Policy
+    // to prevent browser warnings
     const permissions: PermissionName[] = [
       'notifications',
       'geolocation',
-      'camera',
-      'microphone',
+      // 'camera', // Blocked by Permissions-Policy
+      // 'microphone', // Blocked by Permissions-Policy
       'background-sync',
       'persistent-storage'
     ]

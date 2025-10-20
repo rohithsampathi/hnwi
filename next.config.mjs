@@ -174,7 +174,8 @@ const pwaConfig = withPWA({
   skipWaiting: true,
   clientsClaim: true,
   // Background sync for failed network requests
-  navigationPreload: true,
+  // Disabled navigationPreload to prevent "preloadResponse cancelled" warnings on hard refresh
+  navigationPreload: false,
   cleanupOutdatedCaches: true,
 })
 
