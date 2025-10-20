@@ -84,8 +84,19 @@ async function handlePost(request: NextRequest) {
       sharedBy: userId || 'anonymous'
     })
 
-    // Generate the shareable URL
-    const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/share/rohith/${shareId}`
+    // Generate the shareable URL - use environment variable or dynamically detect from request headers
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+    const protocol = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https')
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_PRODUCTION_URL || (host ? `${protocol}://${host}` : '')
+
+    if (!baseUrl) {
+      return NextResponse.json(
+        { error: 'Unable to generate share URL. Please configure NEXT_PUBLIC_BASE_URL.' },
+        { status: 500 }
+      )
+    }
+
+    const shareUrl = `${baseUrl}/share/rohith/${shareId}`
 
     return NextResponse.json({
       success: true,
