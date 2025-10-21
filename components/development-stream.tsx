@@ -574,8 +574,22 @@ export function DevelopmentStream({
                         );
                       })()}
                         
-                        {/* Collapse arrow at bottom of frame */}
-                        <div className="flex justify-center mt-6 pb-2">
+                        {/* Collapse arrow and source link at bottom of frame */}
+                        <div className="flex justify-center items-center gap-4 mt-6 pb-2">
+                          {dev.url && (
+                            <a
+                              href={dev.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className={`p-2 rounded-full transition-colors duration-200 hover:bg-muted ${
+                                theme === "dark" ? "text-primary hover:text-primary/80" : "text-black hover:text-black/80"
+                              }`}
+                              title="View source"
+                            >
+                              <ExternalLink className="h-5 w-5" />
+                            </a>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

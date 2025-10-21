@@ -18,7 +18,8 @@ import {
   Target,
   Lightbulb,
   BarChart3,
-  Calendar
+  Calendar,
+  ExternalLink
 } from "lucide-react"
 
 interface Development {
@@ -28,6 +29,7 @@ interface Development {
   industry: string
   product?: string
   date?: string
+  url?: string
   summary: string
   numerical_data?: Array<{
     number: string
@@ -298,6 +300,23 @@ export function CitationDevelopmentCard({ development, citationNumber, onCitatio
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Source link at bottom */}
+            {development.url && (
+              <div className="flex justify-center mt-6 pb-2">
+                <a
+                  href={development.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-2 rounded-full transition-colors duration-200 hover:bg-muted ${
+                    theme === "dark" ? "text-primary hover:text-primary/80" : "text-black hover:text-black/80"
+                  }`}
+                  title="View source"
+                >
+                  <ExternalLink className="h-5 w-5" />
+                </a>
               </div>
             )}
           </div>
