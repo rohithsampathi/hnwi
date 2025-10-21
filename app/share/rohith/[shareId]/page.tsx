@@ -6,13 +6,26 @@ import { notFound } from "next/navigation"
 import SharedConversationClient from "./shared-conversation-client"
 import type { ConversationWithMessages } from "@/types/rohith"
 
+// Force dynamic rendering for metadata generation
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Server-side function to fetch shared conversation
 async function getSharedConversation(shareId: string): Promise<ConversationWithMessages | null> {
   try {
-    // Use the backend API URL for server-side fetches
-    const apiBaseUrl = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app'
+    // Determine the correct base URL based on environment
+    const isProduction = process.env.NODE_ENV === 'production'
 
-    // First try the MongoDB-backed endpoint
+    // In development: use localhost Next.js server (which has the API routes)
+    // In production: use the production URL
+    const apiBaseUrl = isProduction
+      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
+      : 'http://localhost:3000'  // Use Next.js dev server, not backend
+
+    console.log(`[Share Page] Environment: ${process.env.NODE_ENV}`)
+    console.log(`[Share Page] Fetching conversation ${shareId} from ${apiBaseUrl}`)
+
+    // Call the Next.js API route (works in both dev and production)
     const response = await fetch(`${apiBaseUrl}/api/conversations/share?shareId=${shareId}`, {
       cache: 'no-store', // Always get fresh data for social crawlers
       headers: {
@@ -23,28 +36,24 @@ async function getSharedConversation(shareId: string): Promise<ConversationWithM
     if (response.ok) {
       const data = await response.json()
       if (data.success && data.conversation) {
+        console.log(`[Share Page] Successfully fetched conversation ${shareId}`)
         return data.conversation as ConversationWithMessages
       }
     }
 
-    // Fallback to the original endpoint
-    const fallbackResponse = await fetch(`${apiBaseUrl}/api/rohith/share?shareId=${shareId}`, {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
+    console.error(`[Share Page] Failed to fetch conversation: ${response.status} ${response.statusText}`)
 
-    if (fallbackResponse.ok) {
-      const fallbackData = await fallbackResponse.json()
-      if (fallbackData.success && fallbackData.conversation) {
-        return fallbackData.conversation
-      }
+    // Try to get error details
+    try {
+      const errorData = await response.json()
+      console.error(`[Share Page] Error details:`, errorData)
+    } catch (e) {
+      // Ignore JSON parse errors
     }
 
     return null
   } catch (error) {
-    console.error('Error fetching shared conversation:', error)
+    console.error('[Share Page] Error fetching shared conversation:', error)
     return null
   }
 }
@@ -55,49 +64,17 @@ export async function generateMetadata({
 }: {
   params: { shareId: string }
 }): Promise<Metadata> {
-  const conversation = await getSharedConversation(params.shareId)
+  // Use production URL for metadata (crawlers can't access localhost)
+  const baseUrl = 'https://app.hnwichronicles.com'
+  const shareUrl = `${baseUrl}/share/rohith/${params.shareId}`
+  const imageUrl = `${baseUrl}/logo.png`
 
-  if (!conversation) {
-    return {
-      title: 'Conversation Not Found | HNWI Chronicles',
-      description: 'This shared conversation could not be found or has expired.'
-    }
-  }
-
-  // Extract first question and response for meta tags
-  const firstUserMessage = conversation.messages.find(msg => msg.role === "user")
-  const firstAssistantMessage = conversation.messages.find(msg => msg.role === "assistant")
-
-  // Create title from first question (max 60 chars for SEO)
-  const question = firstUserMessage?.content || conversation.title
-  const metaTitle = question.length > 60
-    ? `${question.substring(0, 57)}...`
-    : question
-
-  // Create description from first response (max 160 chars for SEO)
-  const response = firstAssistantMessage?.content || "View this exclusive conversation with Rohith, your private intelligence ally for HNWI investment insights."
-
-  // Remove markdown formatting and citations for cleaner meta description
-  const cleanResponse = response
-    .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
-    .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
-    .replace(/[*_~`#]/g, '')
-    .replace(/\n+/g, ' ')
-    .trim()
-
-  const metaDescription = cleanResponse.length > 160
-    ? `${cleanResponse.substring(0, 157)}...`
-    : cleanResponse
-
-  const shareUrl = `https://app.hnwichronicles.com/share/rohith/${params.shareId}`
-  const imageUrl = "https://app.hnwichronicles.com/images/ask-rohith-og.png"
-
-  return {
-    title: `${metaTitle} | Ask Rohith - HNWI Chronicles`,
-    description: metaDescription,
+  const defaultMetadata: Metadata = {
+    title: 'Ask Rohith - HNWI Chronicles',
+    description: 'View this exclusive conversation with Rohith, your private intelligence ally for HNWI investment insights and wealth strategies.',
     openGraph: {
-      title: `${metaTitle} | Ask Rohith`,
-      description: metaDescription,
+      title: 'Ask Rohith - HNWI Chronicles',
+      description: 'View this exclusive conversation with Rohith, your private intelligence ally for HNWI investment insights and wealth strategies.',
       url: shareUrl,
       siteName: 'HNWI Chronicles',
       images: [
@@ -106,21 +83,92 @@ export async function generateMetadata({
           width: 1200,
           height: 630,
           alt: 'Ask Rohith - HNWI Chronicles',
-          type: 'image/png',
         }
       ],
       locale: 'en_US',
       type: 'website',
     },
     twitter: {
-      card: 'summary_large_image',
-      title: `${metaTitle} | Ask Rohith`,
-      description: metaDescription,
+      card: 'summary_large_image' as const,
+      title: 'Ask Rohith - HNWI Chronicles',
+      description: 'View this exclusive conversation with Rohith, your private intelligence ally for HNWI investment insights and wealth strategies.',
       images: [imageUrl],
     },
     alternates: {
       canonical: shareUrl
     }
+  }
+
+  try {
+    const conversation = await getSharedConversation(params.shareId)
+
+    if (!conversation) {
+      console.log(`[Share Page] No conversation found for ${params.shareId}, using default metadata`)
+      return defaultMetadata
+    }
+
+    // Extract first question and response for meta tags
+    const firstUserMessage = conversation.messages.find(msg => msg.role === "user")
+    const firstAssistantMessage = conversation.messages.find(msg => msg.role === "assistant")
+
+    // Create title from first question (max 60 chars for SEO)
+    const question = firstUserMessage?.content || conversation.title || "Ask Rohith Conversation"
+    const metaTitle = question.length > 60
+      ? `${question.substring(0, 57)}...`
+      : question
+
+    // Create description from first response (max 160 chars for SEO)
+    const response = firstAssistantMessage?.content || "View this exclusive conversation with Rohith, your private intelligence ally for HNWI investment insights."
+
+    // Remove markdown formatting and citations for cleaner meta description
+    const cleanResponse = response
+      .replace(/\[Dev ID:\s*[^\]]+\]/g, '')
+      .replace(/\[DEVID\s*-\s*[^\]]+\]/g, '')
+      .replace(/[*_~`#]/g, '')
+      .replace(/\n+/g, ' ')
+      .trim()
+
+    const metaDescription = cleanResponse.length > 160
+      ? `${cleanResponse.substring(0, 157)}...`
+      : cleanResponse
+
+    console.log(`[Share Page] Generated metadata for ${params.shareId}:`, {
+      title: metaTitle,
+      description: metaDescription.substring(0, 50) + '...'
+    })
+
+    return {
+      title: `${metaTitle} | Ask Rohith - HNWI Chronicles`,
+      description: metaDescription,
+      openGraph: {
+        title: `${metaTitle} | Ask Rohith`,
+        description: metaDescription,
+        url: shareUrl,
+        siteName: 'HNWI Chronicles',
+        images: [
+          {
+            url: imageUrl,
+            width: 1200,
+            height: 630,
+            alt: 'Ask Rohith - HNWI Chronicles',
+          }
+        ],
+        locale: 'en_US',
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${metaTitle} | Ask Rohith`,
+        description: metaDescription,
+        images: [imageUrl],
+      },
+      alternates: {
+        canonical: shareUrl
+      }
+    }
+  } catch (error) {
+    console.error('[Share Page] Error generating metadata:', error)
+    return defaultMetadata
   }
 }
 

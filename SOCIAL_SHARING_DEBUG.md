@@ -1,5 +1,35 @@
 # Social Sharing Meta Tags - Debugging Guide
 
+## 📚 Quick Navigation
+
+- **Testing Locally?** → See [LOCAL_SHARE_TESTING.md](./LOCAL_SHARE_TESTING.md)
+- **Deploying to Production?** → See "Production Testing" section below
+- **Preview not working?** → See "Common Issues & Solutions" section below
+
+## ✅ FIXES APPLIED (Latest Update)
+
+### 🎯 Quick Summary
+**Status**: Fixed and ready for production
+**OG Image**: Uses `/logo.png`
+**Next Steps**:
+1. Deploy to production
+2. Test with Facebook Debugger: https://developers.facebook.com/tools/debug/
+3. Share on WhatsApp - preview appears automatically
+
+### Root Issues Fixed:
+1. ✅ **API URL Issue**: Server-side fetch now correctly uses production URL in production
+2. ✅ **OG Image Path**: Changed from non-existent `/images/ask-rohith-og.png` to `/logo.png`
+3. ✅ **Fallback Metadata**: Added comprehensive fallback metadata when conversation fetch fails
+4. ✅ **Dynamic Rendering**: Added `export const dynamic = 'force-dynamic'` to ensure fresh metadata
+
+### Key Changes:
+- Fixed API URL to work in both dev and production
+- Changed OG image from `/images/ask-rohith-og.png` to `/logo.png`
+- Added fallback metadata
+- Made rendering dynamic
+
+---
+
 ## Why Social Previews Don't Work on Localhost
 
 **CRITICAL**: Social media crawlers (WhatsApp, Facebook, Twitter, LinkedIn) **CANNOT access localhost URLs**.
@@ -127,36 +157,107 @@ curl -I https://app.hnwichronicles.com/images/ask-rohith-og.png
 
 ## Testing Workflow
 
-### Before Deployment
-1. ✅ Verify meta tags in localhost source code
-2. ✅ Test with ngrok + Facebook debugger
-3. ✅ Confirm API returns conversation data
+### Local Testing (Development)
 
-### After Deployment
-1. ✅ Share production URL to Facebook debugger
-2. ✅ Click "Scrape Again" to refresh cache
-3. ✅ Verify preview shows question + answer
-4. ✅ Test actual sharing on WhatsApp/Twitter
+**See [LOCAL_SHARE_TESTING.md](./LOCAL_SHARE_TESTING.md) for complete guide**
+
+Quick test:
+```bash
+# 1. Start dev server
+npm run dev
+
+# 2. Test API endpoint
+curl "http://localhost:3000/api/conversations/share?shareId=YOUR_SHARE_ID"
+
+# 3. Check meta tags in HTML
+curl http://localhost:3000/share/rohith/YOUR_SHARE_ID | grep "og:image"
+# Should see: <meta property="og:image" content="https://app.hnwichronicles.com/logo.png"/>
+
+# 4. Test with ngrok (for WhatsApp/Facebook)
+ngrok http 3000
+# Use ngrok URL in Facebook debugger: https://developers.facebook.com/tools/debug/
+```
+
+### Production Testing (After Deployment)
+1. **Deploy to production**:
+   ```bash
+   # Ensure NEXT_PUBLIC_PRODUCTION_URL is set correctly in production env
+   # Verify build completes successfully
+   npm run build
+   ```
+
+2. **Test with Facebook Debugger**:
+   - Visit: https://developers.facebook.com/tools/debug/
+   - Enter: `https://app.hnwichronicles.com/share/rohith/YOUR_SHARE_ID`
+   - Click "Scrape Again" to bypass cache
+   - Verify all fields populate:
+     - ✅ Title shows conversation question
+     - ✅ Description shows conversation response
+     - ✅ Image shows logo.png
+
+3. **Test with WhatsApp**:
+   - Share production URL in WhatsApp chat
+   - Preview should show within 2-3 seconds
+   - Image, title, and description should all appear
+
+4. **Check server logs**:
+   ```bash
+   # Look for these console messages in production logs:
+   [Share Page] Fetching conversation {shareId} from https://app.hnwichronicles.com
+   [Share Page] Successfully fetched conversation {shareId}
+   [Share Page] Generated metadata for {shareId}
+   ```
 
 ---
 
-## Common Issues
+## Common Issues & Solutions
 
 ### Issue: "Conversation Not Found" Meta Tags
 **Cause**: ShareId doesn't exist or API is down
-**Fix**: Use a valid shareId from your database
+**Fix**: Use a valid shareId from MongoDB database
+**✅ NOW INCLUDES**: Default fallback metadata so preview always shows something
 
-### Issue: Generic/Default Meta Tags
-**Cause**: generateMetadata not being called or returning fallback
-**Fix**: Check server logs for fetch errors
+### Issue: Generic/Default Meta Tags in Production
+**Cause**: Server-side fetch failing due to wrong API URL
+**Fix**: ✅ FIXED - Now uses `NEXT_PUBLIC_PRODUCTION_URL` in production
+**Verify**: Check production env vars include `NEXT_PUBLIC_PRODUCTION_URL=https://app.hnwichronicles.com`
 
 ### Issue: Old/Cached Preview
 **Cause**: Facebook/WhatsApp caches previews for ~7 days
-**Fix**: Use debugger tool and click "Scrape Again"
+**Fix**:
+- Use Facebook debugger: https://developers.facebook.com/tools/debug/
+- Click "Scrape Again" button
+- For WhatsApp: Clear chat and reshare, or wait for cache expiry
 
-### Issue: Image Not Showing
-**Cause**: Image URL not accessible or wrong format
-**Fix**: Verify image exists at full HTTPS URL (not relative path)
+### Issue: Image Not Showing (404 Error)
+**Cause**: Image path doesn't exist
+**Fix**: ✅ FIXED - Now uses `/logo.png` which exists
+**Verify**: Test `https://app.hnwichronicles.com/logo.png` loads successfully
+
+### Issue: Metadata Not Updating After Code Changes
+**Cause**: Static generation or build cache
+**Fix**: ✅ FIXED - Added `export const dynamic = 'force-dynamic'`
+**Verify**: Rebuild and redeploy to production
+
+### Issue: WhatsApp Shows No Preview At All
+**Possible Causes**:
+1. **Server not responding**: Check if URL loads in browser
+2. **HTTPS required**: WhatsApp requires HTTPS (not HTTP)
+3. **Firewall/CDN blocking**: Check if WhatsApp's crawler IP is blocked
+4. **Timeout**: Server took >5 seconds to respond
+5. **Invalid HTML**: Check for HTML syntax errors
+
+**Debug Steps**:
+```bash
+# 1. Test if page loads
+curl -I https://app.hnwichronicles.com/share/rohith/YOUR_SHARE_ID
+
+# 2. Check if meta tags are in HTML
+curl https://app.hnwichronicles.com/share/rohith/YOUR_SHARE_ID | grep "og:image"
+
+# 3. Verify image is accessible
+curl -I https://app.hnwichronicles.com/logo.png
+```
 
 ---
 

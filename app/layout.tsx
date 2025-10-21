@@ -46,7 +46,6 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "HNWI Chronicles - What the world's top 1% realise before others know",
-        type: "image/png",
       },
     ],
   },
