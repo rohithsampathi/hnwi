@@ -121,16 +121,8 @@ export function clusterCities(
       const count = citiesAtLocation.length
       const gridSize = Math.ceil(Math.sqrt(count))
 
-      // Zoom-dependent spacing - dots should be very close together
-      const getGridSpacing = (zoom: number) => {
-        if (zoom <= 3) return 0.010
-        if (zoom <= 5) return 0.005
-        if (zoom <= 7) return 0.003
-        if (zoom <= 9) return 0.0015
-        return 0.00008
-      }
-
-      const spacing = getGridSpacing(currentZoom)
+      // Fixed spacing - dots maintain same geographic distance at all zoom levels
+      const spacing = 0.04
 
       citiesAtLocation.forEach((city, index) => {
         // Calculate grid position (row, col)
