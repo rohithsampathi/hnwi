@@ -21,7 +21,8 @@ import {
   Sparkles,
   MessageSquare,
   Share2,
-  Check
+  Check,
+  Plus
 } from "lucide-react"
 import ConversationSidebar from "./conversation-sidebar"
 import MessageBubble from "./message-bubble"
@@ -365,6 +366,22 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
           <div className="max-w-4xl mx-auto px-6 py-4">
             <div className="flex items-center justify-end">
               <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNewConversation}
+                  className={cn(
+                    "h-9 px-4 font-medium transition-all duration-200",
+                    theme === "dark"
+                      ? "border-border/50 text-muted-foreground hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+                      : "border-border/50 hover:border-primary/50 hover:bg-primary hover:text-white"
+                  )}
+                  disabled={isTyping || isLoading}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Conversation</span>
+                  <span className="sm:hidden">New</span>
+                </Button>
                 {activeConversationId && currentMessages.length > 0 && (
                   <Button
                     variant="outline"

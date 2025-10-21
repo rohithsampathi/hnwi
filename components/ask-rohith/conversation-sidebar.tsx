@@ -75,7 +75,6 @@ export function ConversationSidebar({
   const [conversationToDelete, setConversationToDelete] = useState<{id: string, title: string} | null>(null)
   const [editingConversationId, setEditingConversationId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState("")
-  const [isReloading, setIsReloading] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
 
   // Filter conversations based on search query
@@ -112,18 +111,7 @@ export function ConversationSidebar({
       })
       // Close the dialog after successful deletion
       setConversationToDelete(null)
-
-      // Reload conversations after deletion
-      if (onReloadConversations) {
-        setIsReloading(true)
-        try {
-          await onReloadConversations()
-        } catch (reloadError) {
-          // Failed to reload conversations after deletion
-        } finally {
-          setIsReloading(false)
-        }
-      }
+      // Note: deleteConversation in context already reloads conversations
     } catch (error) {
       toast({
         title: "Error",
@@ -149,18 +137,7 @@ export function ConversationSidebar({
           title: "Success",
           description: "Conversation title updated",
         })
-
-        // Reload conversations after title update
-        if (onReloadConversations) {
-          setIsReloading(true)
-          try {
-            await onReloadConversations()
-          } catch (reloadError) {
-            // Failed to reload conversations after title update
-          } finally {
-            setIsReloading(false)
-          }
-        }
+        // Note: updateConversationTitle in context already reloads conversations
       } catch (error) {
         toast({
           title: "Error",
@@ -218,9 +195,9 @@ export function ConversationSidebar({
       {/* Conversations List - Scrollable Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden sidebar-scroll min-h-0 max-h-full">
         <div className="p-2 space-y-2">
-          {isReloading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <CrownLoader size="sm" text="Updating conversations..." />
+              <CrownLoader size="sm" text="Loading conversations..." />
             </div>
           ) : (
             <AnimatePresence>

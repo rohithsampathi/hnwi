@@ -416,9 +416,7 @@ export function RohithProvider({ children }: RohithProviderProps) {
         const success = await apiDeleteConversation(conversationId)
         if (success) {
           // Clear the view immediately if we're viewing the deleted conversation
-          const wasViewingDeleted = state.currentConversationId === conversationId
-          if (wasViewingDeleted) {
-            dispatch({ type: "SET_CURRENT_CONVERSATION", payload: null })
+          if (state.activeConversationId === conversationId) {
             dispatch({ type: "SET_CURRENT_MESSAGES", payload: [] })
             dispatch({ type: "SET_ACTIVE_CONVERSATION", payload: null })
           }
@@ -426,12 +424,6 @@ export function RohithProvider({ children }: RohithProviderProps) {
           // Reload conversations from the backend to ensure fresh data
           const freshConversations = await getConversations()
           dispatch({ type: "SET_CONVERSATIONS", payload: freshConversations })
-
-          // Also clear the active conversation if it was deleted
-          if (state.activeConversationId === conversationId) {
-            dispatch({ type: "SET_ACTIVE_CONVERSATION", payload: null })
-          }
-
 
           return true // Return success
         }
