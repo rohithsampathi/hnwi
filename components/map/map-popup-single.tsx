@@ -7,6 +7,7 @@ import React from "react"
 import { MapPin, Crown, Globe, Linkedin, Brain } from "lucide-react"
 import type { City } from "@/components/interactive-world-map"
 import { CitationText } from "@/components/elite/citation-text"
+import { FormattedAnalysis } from "@/components/elite/formatted-analysis"
 import {
   formatValue,
   formatLabel,
@@ -233,8 +234,8 @@ export function MapPopupSingle({
                     Elite Pulse
                   </p>
                   <div className="text-xs leading-relaxed text-foreground">
-                    <CitationText
-                      text={cleanAnalysisText((city as any).katherine_analysis)}
+                    <FormattedAnalysis
+                      text={(city as any).katherine_analysis}
                       onCitationClick={onCitationClick}
                       citationMap={citationMap}
                       className="text-xs"
@@ -250,8 +251,8 @@ export function MapPopupSingle({
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
               <div className="text-xs leading-relaxed">
-                <CitationText
-                  text={cleanAnalysisText(city.analysis)}
+                <FormattedAnalysis
+                  text={city.analysis}
                   onCitationClick={onCitationClick}
                   citationMap={citationMap}
                   className="text-xs"
@@ -265,8 +266,8 @@ export function MapPopupSingle({
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
               <div className="text-xs leading-relaxed">
-                <CitationText
-                  text={cleanAnalysisText(city.elite_pulse_analysis)}
+                <FormattedAnalysis
+                  text={city.elite_pulse_analysis}
                   onCitationClick={onCitationClick}
                   citationMap={citationMap}
                   className="text-xs"

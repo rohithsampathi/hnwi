@@ -123,7 +123,7 @@ export function InteractiveWorldMap({
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [flyToCity, setFlyToCity] = useState<City | null>(null)
   const [resetView, setResetView] = useState(false)
-  const [currentZoom, setCurrentZoom] = useState(2)
+  const [currentZoom, setCurrentZoom] = useState(2.8)
   const [expandedPopupIndex, setExpandedPopupIndex] = useState<number | null>(null)
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openPopupIndex, setOpenPopupIndex] = useState<number | null>(null)
@@ -256,8 +256,8 @@ export function InteractiveWorldMap({
     <div className="relative w-full h-full overflow-hidden">
       <MapContainer
         center={[20, 0]}
-        zoom={2}
-        minZoom={2}
+        zoom={2.8}
+        minZoom={2.8}
         maxZoom={18}
         style={{ width: "100%", height: "100%", position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         zoomControl={false}

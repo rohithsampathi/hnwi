@@ -43,7 +43,7 @@ export function ResetView({ shouldReset, onReset }: { shouldReset: boolean; onRe
   React.useEffect(() => {
     if (shouldReset) {
       // Smooth, progressive zoom out animation (3.5 seconds)
-      map.flyTo([20, 0], 2, {
+      map.flyTo([20, 0], 2.8, {
         duration: 3.5,
         easeLinearity: 0.15,
         animate: true
