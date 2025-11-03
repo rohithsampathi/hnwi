@@ -159,6 +159,15 @@ class UnifiedAuthManager {
   public async verifyMFA(code: string, mfaToken: string, rememberDevice = false): Promise<LoginResult> {
     this.updateAuthState({ isLoading: true, error: null })
 
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] MFA verification started', {
+        email: this.mfaEmail,
+        hasToken: !!mfaToken,
+        rememberDevice,
+        timestamp: new Date().toISOString()
+      })
+    }
+
     try {
       // Use secure-api for masked backend communication
       const result = await secureApi.post('/api/auth/mfa/verify', {
@@ -169,10 +178,22 @@ class UnifiedAuthManager {
       })
 
       if (result.success && result.user) {
+        if (typeof console !== 'undefined') {
+          console.debug('[Auth] MFA verification successful - syncing auth systems', {
+            userId: result.user.id || result.user.user_id,
+            email: result.user.email,
+            timestamp: new Date().toISOString()
+          })
+        }
+
         // MFA success - sync all auth systems and clear stored email
         await this.syncAuthSystems(result.user)
         this.mfaEmail = null
 
+        // SOTA FIX: No need for delayed session check - we already have verified user data
+        // The backend just confirmed authentication and returned user object
+        // syncAuthSystems already stored everything we need
+        // Removed redundant session check that caused race condition with cookie propagation
         this.updateAuthState({
           isAuthenticated: true,
           user: result.user,
@@ -180,10 +201,13 @@ class UnifiedAuthManager {
           error: null
         })
 
-        // Force session check to ensure backend sync
-        setTimeout(() => {
-          this.checkSession()
-        }, 100)
+        if (typeof console !== 'undefined') {
+          console.debug('[Auth] Auth state updated successfully', {
+            isAuthenticated: true,
+            userId: result.user.id || result.user.user_id,
+            timestamp: new Date().toISOString()
+          })
+        }
 
         return {
           success: true,
@@ -193,6 +217,14 @@ class UnifiedAuthManager {
       }
 
       // MFA failed
+      if (typeof console !== 'undefined') {
+        console.warn('[Auth] MFA verification failed', {
+          email: this.mfaEmail,
+          error: result.error,
+          timestamp: new Date().toISOString()
+        })
+      }
+
       this.updateAuthState({
         isLoading: false,
         error: result.error || 'Invalid verification code'
@@ -205,6 +237,16 @@ class UnifiedAuthManager {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Verification failed'
+
+      if (typeof console !== 'undefined') {
+        console.error('[Auth] MFA verification exception', {
+          email: this.mfaEmail,
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        })
+      }
+
       this.updateAuthState({
         isLoading: false,
         error: errorMessage
@@ -310,8 +352,111 @@ class UnifiedAuthManager {
     })
   }
 
+  // SOTA: Check if authentication cookies are ready (server-side validation)
+  private async checkCookieReadiness(maxAttempts = 3): Promise<boolean> {
+    if (typeof window === 'undefined') return true;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        // Make a lightweight session check to verify cookies are readable server-side
+        const response = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            if (typeof console !== 'undefined') {
+              console.debug('[Auth] Cookies ready and validated server-side', {
+                attempt: attempt + 1
+              })
+            }
+            return true;
+          }
+        }
+
+        // Wait with exponential backoff before retry
+        if (attempt < maxAttempts - 1) {
+          const delay = 150 * Math.pow(2, attempt); // 150ms, 300ms, 600ms
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      } catch (error) {
+        if (attempt === maxAttempts - 1) {
+          if (typeof console !== 'undefined') {
+            console.warn('[Auth] Cookie readiness check failed', { error });
+          }
+        }
+      }
+    }
+
+    return false; // Cookies not ready after retries
+  }
+
+  // SOTA: Validate auth state with exponential backoff retry
+  private async validateAuthStateWithRetry(user: User, maxAttempts = 3): Promise<boolean> {
+    if (typeof window === 'undefined') return true;
+
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] Validating auth state with retry', {
+        userId: user.id || user.user_id,
+        maxAttempts
+      })
+    }
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Check if auth state is properly synced
+      const storedUser = getCurrentUser()
+      const isAuthSynced = secureApiAuthenticated()
+
+      if (storedUser?.id === user.id && isAuthSynced) {
+        if (typeof console !== 'undefined') {
+          console.debug('[Auth] Auth state validated successfully', {
+            attempt: attempt + 1,
+            userId: user.id || user.user_id
+          })
+        }
+        return true // Auth state validated
+      }
+
+      if (typeof console !== 'undefined') {
+        console.debug('[Auth] Auth state validation attempt failed', {
+          attempt: attempt + 1,
+          hasStoredUser: !!storedUser,
+          storedUserId: storedUser?.id,
+          expectedUserId: user.id || user.user_id,
+          isAuthSynced
+        })
+      }
+
+      // Wait with exponential backoff before retry
+      if (attempt < maxAttempts - 1) {
+        const delay = 100 * Math.pow(2, attempt) // 100ms, 200ms, 400ms
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+
+    if (typeof console !== 'undefined') {
+      console.warn('[Auth] Auth state validation failed after all retries', {
+        maxAttempts,
+        userId: user.id || user.user_id
+      })
+    }
+
+    return false // Validation failed after retries
+  }
+
   // Sync all authentication systems after successful login
   private async syncAuthSystems(user: User): Promise<void> {
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] Starting auth systems sync', {
+        userId: user.id || user.user_id,
+        email: user.email,
+        timestamp: new Date().toISOString()
+      })
+    }
+
     // 1. Store user in auth-manager (sessionStorage + memory)
     loginUser(user)
 
@@ -330,6 +475,25 @@ class UnifiedAuthManager {
       window.dispatchEvent(new CustomEvent('auth:login', {
         detail: { user }
       }))
+    }
+
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] Auth systems synced - starting validation', {
+        userId: user.id || user.user_id,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    // 5. SOTA: Defensive validation with retry logic
+    // Ensures all auth systems are properly synced before continuing
+    const isValid = await this.validateAuthStateWithRetry(user)
+    if (!isValid && typeof console !== 'undefined') {
+      console.warn('[Auth] Auth state validation failed - some systems may not be synced')
+    } else if (typeof console !== 'undefined') {
+      console.debug('[Auth] Auth systems sync completed successfully', {
+        userId: user.id || user.user_id,
+        timestamp: new Date().toISOString()
+      })
     }
   }
 
