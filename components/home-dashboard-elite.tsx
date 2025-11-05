@@ -15,6 +15,7 @@ import { useCitationManager } from "@/hooks/use-citation-manager"
 import { Brain, Crown, TrendingUp, Target } from "lucide-react"
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { AnimatePresence } from "framer-motion"
+import { useTheme } from "@/contexts/theme-context"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -104,6 +105,11 @@ export function HomeDashboardElite({
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true)
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true)
 
+  // Category filter state
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+  const [availableCategories, setAvailableCategories] = useState<string[]>([])
+
   // Citation management
   const {
     citations: managedCitations,
@@ -115,6 +121,29 @@ export function HomeDashboardElite({
     openCitation,
     closePanel
   } = useCitationManager()
+
+  // Theme context for checkbox styling
+  const { theme } = useTheme()
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+
+      // Close timeframe dropdown if clicking outside
+      if (isDropdownOpen && !target.closest('.timeframe-dropdown')) {
+        setIsDropdownOpen(false)
+      }
+
+      // Close category dropdown if clicking outside
+      if (isCategoryDropdownOpen && !target.closest('.category-dropdown')) {
+        setIsCategoryDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isDropdownOpen, isCategoryDropdownOpen])
 
   // Screen size detection for mobile/desktop (matching HNWI World)
   useEffect(() => {
@@ -177,6 +206,16 @@ export function HomeDashboardElite({
 
         // Handle both wrapped and direct array responses
         const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
+
+        // Backend should provide available categories
+        const categoriesFromBackend = response?.categories || []
+        if (categoriesFromBackend && categoriesFromBackend.length > 0) {
+          setAvailableCategories(categoriesFromBackend)
+          // Initialize selectedCategories to all categories if empty
+          if (selectedCategories.length === 0) {
+            setSelectedCategories(categoriesFromBackend)
+          }
+        }
 
         if (opportunities && opportunities.length > 0) {
           // Transform opportunities to city format for the map
@@ -305,20 +344,29 @@ export function HomeDashboardElite({
     return `Night Watch: Global Capital Flow, ${firstName}`
   }
 
-  // Filter cities based on opportunity type toggles
+  // Filter cities based on opportunity type toggles and selected categories
   const filteredCities = cities.filter(city => {
-    // Crown Assets: opportunities from crown vault or asset-related
-    const isCrownAsset = city.source?.toLowerCase().includes('crown') ||
-                         city.category?.toLowerCase().includes('asset') ||
-                         city.category?.toLowerCase().includes('vault')
+    // First, filter by category if any categories are selected
+    if (selectedCategories.length > 0 && city.category) {
+      if (!selectedCategories.includes(city.category)) {
+        return false
+      }
+    }
+
+    // Crown Assets: ONLY from actual Crown Vault source (user's personal assets)
+    // Must explicitly be from "Crown Vault" source, not just mention "asset" in category
+    const isCrownAsset = city.source?.toLowerCase().includes('crown vault') ||
+                         city.source?.toLowerCase() === 'crown vault'
 
     // Privé Opportunities: Victor-scored opportunities from Privé Exchange
     const isPriveOpportunity = city.victor_score !== undefined ||
                                city.source?.toLowerCase().includes('privé') ||
                                city.source?.toLowerCase().includes('prive')
 
-    // HNWI Pattern Opportunities: MOEv4 market intelligence and patterns
+    // HNWI Pattern Opportunities: MOEv4 market intelligence, Live HNWI Data, and other patterns
+    // This is the default category for everything that's not Crown Vault or Privé
     const isHNWIPattern = city.source === 'MOEv4' ||
+                          city.source?.toLowerCase().includes('live hnwi data') ||
                           city.source?.toLowerCase().includes('pattern') ||
                           city.category?.toLowerCase().includes('intelligence') ||
                           city.category?.toLowerCase().includes('trend') ||
@@ -369,61 +417,126 @@ export function HomeDashboardElite({
           )}
 
           {/* Date Range Selector - Custom dropdown below description text - always visible */}
-          <div className={`relative inline-block pointer-events-auto ${(showGreeting || isDesktop) ? 'ml-6 md:ml-7' : 'ml-0'}`}>
-            {/* Custom Dropdown Button */}
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`py-1.5 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center gap-2 ${timeframe === 'live' ? 'pl-6 pr-8 font-bold' : 'pl-3 pr-8'}`}
-            >
-              {/* Blinking dot - only visible when Live Data is selected */}
-              {timeframe === 'live' && (
-                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+          <div className={`flex gap-2 items-center ${(showGreeting || isDesktop) ? 'ml-6 md:ml-7' : 'ml-0'}`}>
+            {/* Timeframe Dropdown */}
+            <div className="relative inline-block pointer-events-auto timeframe-dropdown">
+              {/* Custom Dropdown Button */}
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={`py-1.5 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center gap-2 ${timeframe === 'live' ? 'pl-6 pr-8 font-bold' : 'pl-3 pr-8'}`}
+              >
+                {/* Blinking dot - only visible when Live Data is selected */}
+                {timeframe === 'live' && (
+                  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+                    </span>
                   </span>
-                </span>
-              )}
-              <span>{timeframe === 'live' ? 'Live Data' : timeframe}</span>
-              <span className="absolute right-2 top-1/2 transform -translate-y-1/2">▼</span>
-            </button>
+                )}
+                <span>{timeframe === 'live' ? 'Live Data' : timeframe}</span>
+                <span className="absolute right-2 top-1/2 transform -translate-y-1/2">▼</span>
+              </button>
 
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <>
-                {/* Backdrop to close dropdown */}
-                <div
-                  className="fixed inset-0 z-[500]"
-                  onClick={() => setIsDropdownOpen(false)}
-                />
-
-                {/* Dropdown Options */}
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
                 <div className="absolute left-0 top-full mt-1 bg-background border border-border rounded shadow-lg z-[501] min-w-[120px]">
-                  {[
-                    { value: 'live', label: 'Live Data', bold: true },
-                    { value: '7D', label: '7D' },
-                    { value: '14D', label: '14D' },
-                    { value: '21D', label: '21D' },
-                    { value: '1M', label: '1M' },
-                    { value: '3M', label: '3M' },
-                    { value: '6M', label: '6M' }
-                  ].map(option => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setTimeframe(option.value)
-                        setIsDropdownOpen(false)
-                        setLoading(true)
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${
-                        timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'
-                      } ${option.bold ? 'font-bold' : ''}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                    {[
+                      { value: 'live', label: 'Live Data', bold: true },
+                      { value: '7D', label: '7D' },
+                      { value: '14D', label: '14D' },
+                      { value: '21D', label: '21D' },
+                      { value: '1M', label: '1M' },
+                      { value: '3M', label: '3M' },
+                      { value: '6M', label: '6M' }
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setTimeframe(option.value)
+                          setIsDropdownOpen(false)
+                          setLoading(true)
+                        }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${
+                          timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'
+                        } ${option.bold ? 'font-bold' : ''}`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                 </div>
-              </>
+              )}
+            </div>
+
+            {/* Category Multi-Select Dropdown */}
+            {availableCategories.length > 0 && (
+              <div className="relative inline-block pointer-events-auto category-dropdown">
+                {/* Custom Dropdown Button */}
+                <button
+                  onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                  className="py-1.5 px-3 pr-8 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center gap-2"
+                >
+                  <span>
+                    Categories ({selectedCategories.length}/{availableCategories.length})
+                  </span>
+                  <span className="absolute right-2 top-1/2 transform -translate-y-1/2">▼</span>
+                </button>
+
+                {/* Dropdown Menu */}
+                {isCategoryDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1 bg-background/95 backdrop-blur-sm border border-border rounded shadow-lg z-[501] min-w-[200px] max-h-[400px] overflow-y-auto">
+                      {/* Select All / Deselect All */}
+                      <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+                        <button
+                          onClick={() => {
+                            if (selectedCategories.length === availableCategories.length) {
+                              setSelectedCategories([])
+                            } else {
+                              setSelectedCategories([...availableCategories])
+                            }
+                          }}
+                          className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                        >
+                          {selectedCategories.length === availableCategories.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+
+                      {/* Category Options */}
+                      {availableCategories.map(category => {
+                        const isSelected = selectedCategories.includes(category)
+                        return (
+                          <label
+                            key={category}
+                            className={`flex items-center gap-2.5 px-3 py-2.5 text-xs cursor-pointer transition-colors border-b border-border/30 last:border-b-0 ${
+                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            <div className="relative flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCategories([...selectedCategories, category])
+                                  } else {
+                                    setSelectedCategories(selectedCategories.filter(c => c !== category))
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-2 border-border/50 checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0 cursor-pointer accent-primary"
+                                style={{
+                                  colorScheme: theme === 'dark' ? 'dark' : 'light'
+                                }}
+                              />
+                            </div>
+                            <span className={`flex-1 font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                              {category}
+                            </span>
+                          </label>
+                        )
+                      })}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

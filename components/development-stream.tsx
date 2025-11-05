@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, ExternalLink, Lightbulb, ArrowRight, TrendingUp, Target, Brain, AlertCircle, BarChart3, PieChart, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, ExternalLink, Lightbulb, ArrowRight, TrendingUp, Target, Brain, AlertCircle, BarChart3, PieChart, ChevronDown, ChevronUp, Share2 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
@@ -152,6 +152,36 @@ export function DevelopmentStream({
         });
       }
     }, 100);
+  };
+
+  // Handle share - copy link to clipboard
+  const handleShare = async (devId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const shareUrl = `${window.location.origin}/share/development/${devId}`
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      toast({
+        title: "Link Copied!",
+        description: "Share this development with others",
+        duration: 2000,
+      })
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea")
+      textArea.value = shareUrl
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textArea)
+
+      toast({
+        title: "Link Copied!",
+        description: "Share this development with others",
+        duration: 2000,
+      })
+    }
   };
 
 
@@ -574,7 +604,7 @@ export function DevelopmentStream({
                         );
                       })()}
                         
-                        {/* Collapse arrow and source link at bottom of frame */}
+                        {/* Collapse arrow, share, and source link at bottom of frame */}
                         <div className="flex justify-center items-center gap-4 mt-6 pb-2">
                           {dev.url && (
                             <a
@@ -590,6 +620,15 @@ export function DevelopmentStream({
                               <ExternalLink className="h-5 w-5" />
                             </a>
                           )}
+                          <button
+                            onClick={(e) => handleShare(dev.id, e)}
+                            className={`p-2 rounded-full transition-colors duration-200 hover:bg-muted ${
+                              theme === "dark" ? "text-primary hover:text-primary/80" : "text-black hover:text-black/80"
+                            }`}
+                            title="Share development"
+                          >
+                            <Share2 className="h-5 w-5" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

@@ -28,20 +28,23 @@ interface ParsedSection {
 function parseAnalysis(text: string): ParsedSection[] {
   const sections: ParsedSection[] = []
 
-  // Step 1: Simple slice - find "Risk Profile:" and start after it
+  // Step 1: Remove metadata lines (Location, Entry Investment, Risk Profile)
   let cleanedText = text
 
-  const riskProfileIndex = text.toLowerCase().indexOf('risk profile:')
-  if (riskProfileIndex !== -1) {
-    // Find the end of that line (next newline after "Risk Profile:")
-    const afterRiskProfile = text.substring(riskProfileIndex)
-    const nextNewline = afterRiskProfile.indexOf('\n')
+  // Remove lines that match metadata patterns
+  const metadataPatterns = [
+    /^Location:.*$/m,
+    /^Entry Investment:.*$/m,
+    /^Risk Profile:.*$/m,
+    /^Source:.*$/m
+  ]
 
-    if (nextNewline !== -1) {
-      // Start content after the newline
-      cleanedText = text.substring(riskProfileIndex + nextNewline + 1).trim()
-    }
+  for (const pattern of metadataPatterns) {
+    cleanedText = cleanedText.replace(pattern, '')
   }
+
+  // Clean up any extra blank lines at the start
+  cleanedText = cleanedText.trim()
 
   // Step 2: Parse headings and content from cleaned text
   const contentLines = cleanedText.split(/\r?\n/)

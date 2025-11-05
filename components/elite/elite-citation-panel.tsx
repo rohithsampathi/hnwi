@@ -157,6 +157,23 @@ export function EliteCitationPanel({
     // Otherwise, user must click a citation to load it (lazy loading)
   }, [selectedCitationId]) // Only run when selectedCitationId changes
 
+  // Auto-scroll to selected citation tab when panel opens or citation changes
+  useEffect(() => {
+    if (!selectedCitationId) return
+
+    // Wait a bit for the DOM to render
+    setTimeout(() => {
+      const selectedButton = document.querySelector(`button[data-citation-id="${selectedCitationId}"]`)
+      if (selectedButton) {
+        selectedButton.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        })
+      }
+    }, 100)
+  }, [selectedCitationId])
+
   return (
     <>
       {/* Overlay Background - For both mobile and desktop */}
@@ -207,6 +224,7 @@ export function EliteCitationPanel({
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => onCitationSelect(citation.id)}
+                  data-citation-id={citation.id}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
                     selectedCitationId === citation.id
@@ -305,6 +323,7 @@ export function EliteCitationPanel({
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => onCitationSelect(citation.id)}
+                  data-citation-id={citation.id}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
                     selectedCitationId === citation.id

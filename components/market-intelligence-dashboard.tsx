@@ -2,8 +2,9 @@
 
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import Fuse from "fuse.js"
 import { useTheme } from "@/contexts/theme-context"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -42,7 +43,9 @@ import {
   Car,
   Zap,
   Truck,
-  ShieldCheck
+  ShieldCheck,
+  Search,
+  X
 } from "lucide-react"
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { extractDevIds } from "@/lib/parse-dev-citations"
@@ -261,15 +264,15 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const { toast } = useToast()
   const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
 
-  // Check for cached data with default timeframe and industry
-  const cacheKey = 'hnwi-world-7d-All'
+  // Check for cached data with default timeframe (no industry filter in cache key)
+  const cacheKey = 'hnwi-world-7d' // Default cache key
   const cachedData = getCachedData(cacheKey)
   const hasValidCache = isCacheValid(cacheKey)
 
   // State management - Unified data approach - Initialize with cached data if available
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
-  const [developments, setDevelopments] = useState<any[]>(cachedData?.developments || []) // Raw developments data
+  const [allDevelopments, setAllDevelopments] = useState<any[]>(cachedData?.developments || []) // ALL developments (no industry filter)
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(cachedData?.industryTrends || [])
   const [isLoading, setIsLoading] = useState(!hasValidCache)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -292,6 +295,9 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop')
   const [showStickySectors, setShowStickySectors] = useState(false)
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+
   const sectorsRef = useRef<HTMLDivElement>(null)
   const insiderBriefsRef = useRef<HTMLDivElement>(null)
 
@@ -305,10 +311,18 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
     setSelectedCitationId(citationId)
   }, [])
 
+  // Client-side filter developments by selected industry (instant - no API call)
+  const developments = useMemo(() => {
+    if (selectedIndustry === 'All') {
+      return allDevelopments
+    }
+    return allDevelopments.filter(dev => dev.industry === selectedIndustry)
+  }, [allDevelopments, selectedIndustry])
+
   // Handle development expansion and extract citations
   const handleDevelopmentExpanded = useCallback((devId: string, isExpanded: boolean) => {
     if (isExpanded) {
-      const dev = developments.find((d) => d.id === devId)
+      const dev = allDevelopments.find((d) => d.id === devId)
       if (dev?.summary) {
         const devIds = extractDevIds(dev.summary)
         if (devIds.length > 0) {
@@ -337,7 +351,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setSelectedCitationId(null)
       closePanel()
     }
-  }, [developments, setManagedCitations, setSelectedCitationId, closePanel])
+  }, [allDevelopments, setManagedCitations, setSelectedCitationId, closePanel])
   
   // Screen size detection for mobile/desktop check
   useEffect(() => {
@@ -393,11 +407,12 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   }, [screenSize]);
   
   // Unified data fetching - single API call for both components - Mobile Safe
+  // IMPORTANT: Only fetches when timeRange changes, NOT when industry changes (client-side filter)
   const fetchDevelopments = useCallback(async (forceRefresh = false) => {
 
     try {
-      // Create dynamic cache key based on current filters
-      const dynamicCacheKey = `hnwi-world-${selectedTimeRange}-${selectedIndustry}`
+      // Create cache key based ONLY on timeRange (not industry - we filter client-side)
+      const dynamicCacheKey = `hnwi-world-${selectedTimeRange}`
 
       // Check if we have valid cached data (skip API call entirely)
       if (!forceRefresh) {
@@ -406,7 +421,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
         // If cache is valid, skip API calls entirely
         if (cacheIsValid && cached.developments?.length >= 0) {
-          setDevelopments(cached.developments)
+          setAllDevelopments(cached.developments)
           setIndustryTrends(cached.industryTrends || [])
           setTotalDevelopments(cached.totalDevelopments || 0)
           setLastUpdated(cached.lastUpdated || null)
@@ -416,7 +431,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       }
 
       // Prevent multiple simultaneous requests - but allow initial load
-      if (isLoading && !forceRefresh && developments.length > 0) {
+      if (isLoading && !forceRefresh && allDevelopments.length > 0) {
         return;
       }
 
@@ -425,13 +440,13 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
       // Convert timeframe for the new endpoint - Fixed 1m/3m handling
       let timeframe = selectedTimeRange;
-      
+
       // Map UI values to API values
       switch (selectedTimeRange) {
         case '1m':
           timeframe = '1m';
           break;
-        case '3m': 
+        case '3m':
           timeframe = '3m';
           break;
         case '30d':
@@ -446,35 +461,30 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         default:
           timeframe = selectedTimeRange;
       }
-      
-      // Create query parameters for GET request
+
+      // Create query parameters for GET request - NO industry filter (fetch all)
       const params = new URLSearchParams({
         timeframe: timeframe.toUpperCase()
       });
-      
-      // Add industry filter if not 'All'
-      if (selectedIndustry !== 'All') {
-        params.append('industry', selectedIndustry);
-      }
-      
-      // Create stable cache key
-      const cacheKey = `developments:${selectedTimeRange}:${selectedIndustry}:page-1:size-100`;
-      
+
+      // Create stable cache key (no industry in key)
+      const cacheKey = `developments:${selectedTimeRange}:all:page-1:size-100`;
+
       // Use direct backend API call like Crown Vault and Home Dashboard
       const endpoint = `/api/developments?${params.toString()}`;
-      
+
       // Use secureApi.get with authentication - direct backend call (mobile optimized)
-      const data = await secureApi.get(endpoint, true, { 
-        enableCache: true, 
+      const data = await secureApi.get(endpoint, true, {
+        enableCache: true,
         cacheDuration: 300000 // 5 minutes cache
       });
-      
+
       if (data.developments && Array.isArray(data.developments)) {
-        
-        // Store raw developments data for DevelopmentStream
-        setDevelopments(data.developments);
+
+        // Store ALL developments (no industry filter)
+        setAllDevelopments(data.developments);
         setTotalDevelopments(data.total_count || data.developments.length);
-        
+
         // Use the rich category data from the new endpoint
         let processedTrends: IndustryTrend[] = []
         if (data.categories && data.categories.industries_with_counts) {
@@ -511,8 +521,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         const updatedDate = new Date()
         setLastUpdated(updatedDate);
 
-        // Cache the data (5-minute TTL) with timestamp
-        const dynamicCacheKey = `hnwi-world-${selectedTimeRange}-${selectedIndustry}`
+        // Cache the data (5-minute TTL) with timestamp (no industry in cache key)
+        const dynamicCacheKey = `hnwi-world-${selectedTimeRange}`
         setCachedData(dynamicCacheKey, {
           developments: data.developments,
           industryTrends: processedTrends,
@@ -523,11 +533,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         }, 300000);
       } else {
         // No data found - don't show error, just empty state
-        setDevelopments([]);
+        setAllDevelopments([]);
         setIndustryTrends([]);
         setTotalDevelopments(0);
       }
-      
+
     } catch (error) {
       // Only show toast error if it's not a timeout/abort
       if (error.name !== 'AbortError' && error.name !== 'TimeoutError') {
@@ -538,25 +548,25 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           duration: 3000,
         });
       }
-      
+
       // Don't reset data on error - keep previous state for better UX
-      // setDevelopments([])
+      // setAllDevelopments([])
       // setIndustryTrends([])
       // setTotalDevelopments(0)
     } finally {
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [selectedTimeRange, selectedIndustry, getCachedData, setCachedData, toast])
-  
-  // Initial load and when duration changes - Debounced to prevent loops
+  }, [selectedTimeRange, getCachedData, setCachedData, toast])
+
+  // Initial load and when duration changes ONLY - NOT when industry changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchDevelopments();
     }, 100); // Small debounce to prevent rapid firing
-    
+
     return () => clearTimeout(timeoutId);
-  }, [selectedTimeRange, selectedIndustry, fetchDevelopments])
+  }, [selectedTimeRange, fetchDevelopments])
 
   // Handle scroll to Insider Brief section from home dashboard
   useEffect(() => {
@@ -595,7 +605,78 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       label: trend.industry
     }))
   ]
-  
+
+  // Filter developments based on search query with fuzzy search
+  const filteredDevelopments = useMemo(() => {
+    if (!searchQuery.trim()) return developments
+
+    const query = searchQuery.trim().toLowerCase()
+
+    // Smart prioritized search: title matches get highest priority
+    const titleMatches = developments.filter(dev =>
+      dev.title?.toLowerCase().includes(query)
+    )
+
+    // If we have title matches, those are likely the most relevant
+    if (titleMatches.length > 0) {
+      return titleMatches
+    }
+
+    // Next, try description matches (more focused than summary)
+    const descriptionMatches = developments.filter(dev =>
+      dev.description?.toLowerCase().includes(query)
+    )
+
+    if (descriptionMatches.length > 0) {
+      return descriptionMatches
+    }
+
+    // For product field, use exact match
+    const productMatches = developments.filter(dev =>
+      dev.product?.toLowerCase().includes(query)
+    )
+
+    if (productMatches.length > 0) {
+      return productMatches
+    }
+
+    // Finally, check summary but be cautious - summaries often mention other cities for comparison
+    // Only return summary matches if the query appears multiple times or near the beginning
+    const summaryMatches = developments.filter(dev => {
+      const summary = dev.summary?.toLowerCase() || ''
+      if (!summary.includes(query)) return false
+
+      // Check if query appears in first 200 characters (likely the main subject)
+      const firstPart = summary.substring(0, 200)
+      return firstPart.includes(query)
+    })
+
+    if (summaryMatches.length > 0) {
+      return summaryMatches
+    }
+
+    // If no exact matches found, fall back to fuzzy search for typos
+    const fuse = new Fuse(developments, {
+      keys: [
+        { name: 'title', weight: 3.0 },        // Highest priority
+        { name: 'description', weight: 1.5 },  // Medium priority
+        { name: 'product', weight: 1.0 }       // Lower priority (skip summary to avoid false positives)
+      ],
+      threshold: 0.4,           // Balanced: allows some fuzziness
+      distance: 100,            // Reasonable character distance
+      minMatchCharLength: 2,    // Match shorter terms
+      ignoreLocation: false,    // Prefer matches at beginning
+      useExtendedSearch: false, // Better performance
+      includeScore: true,       // Include match scores
+      findAllMatches: false     // Performance optimization
+    })
+
+    const results = fuse.search(query)
+
+    // Return matched items sorted by relevance
+    return results.map(result => result.item)
+  }, [developments, searchQuery])
+
   // Loading state - show single crown loader only for main data
   if (isLoading) {
     return (
@@ -819,7 +900,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               }`}>
                 {selectedIndustry === 'All' ? 'All Insider Briefs' : `${selectedIndustry} Insider Brief`}
               </h3>
-              
+
               {/* Embedded Industry Filter */}
               <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
                 <SelectTrigger className="w-[150px]">
@@ -835,6 +916,27 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Search Box */}
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search developments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             <p className="text-sm text-muted-foreground">
               {selectedIndustry !== 'All' && (
                 <>
@@ -847,6 +949,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   •{' '}
                 </>
               )}
+              {searchQuery ? (
+                <>
+                  {filteredDevelopments.length} results found •{' '}
+                </>
+              ) : null}
               Development stream • {selectedTimeRange} timeframe
             </p>
           </div>
@@ -862,7 +969,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
               onLoadingChange={(loading) => {
                 // No longer needed since parent handles loading
               }}
-              developments={developments}
+              developments={filteredDevelopments}
               isLoading={isLoading}
               onCitationClick={handleCitationClick}
               onDevelopmentExpanded={handleDevelopmentExpanded}
@@ -1146,7 +1253,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                 }`}>
                   {selectedIndustry === 'All' ? 'All Insider Briefs' : `${selectedIndustry} Insider Brief`}
                 </h3>
-                
+
                 {/* Embedded Industry Filter */}
                 <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
                   <SelectTrigger className="w-[150px]">
@@ -1162,6 +1269,27 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Search Box */}
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search developments..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
               <p className="text-sm text-muted-foreground">
                 {selectedIndustry !== 'All' && (
                   <>
@@ -1174,13 +1302,18 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                     •{' '}
                   </>
                 )}
+                {searchQuery ? (
+                  <>
+                    {filteredDevelopments.length} results found •{' '}
+                  </>
+                ) : null}
                 Development stream • {selectedTimeRange} timeframe
               </p>
             </div>
             
             <div className="mt-4 px-3">
               <GoldenScroll maxHeight="485px" className="pt-2">
-                <DevelopmentStream 
+                <DevelopmentStream
                   selectedIndustry={selectedIndustry}
                   duration={selectedTimeRange}
                   getIndustryColor={getIndustryColor}
@@ -1189,7 +1322,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
                   onLoadingChange={(loading) => {
                     // No longer needed since parent handles loading
                   }}
-                  developments={developments}
+                  developments={filteredDevelopments}
                   isLoading={isLoading}
                   onCitationClick={handleCitationClick}
                   onDevelopmentExpanded={handleDevelopmentExpanded}

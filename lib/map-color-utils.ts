@@ -95,10 +95,20 @@ export function clusterCities(
   // Filter cities by price range first
   const filteredByPrice = cities.filter(matchesPriceRange)
 
+  // Filter out cities with invalid coordinates
+  const validCities = filteredByPrice.filter(city => {
+    return city.latitude !== undefined &&
+           city.longitude !== undefined &&
+           typeof city.latitude === 'number' &&
+           typeof city.longitude === 'number' &&
+           !isNaN(city.latitude) &&
+           !isNaN(city.longitude)
+  })
+
   // Group cities by exact location
   const locationGroups = new Map<string, City[]>()
 
-  filteredByPrice.forEach(city => {
+  validCities.forEach(city => {
     const key = `${city.latitude.toFixed(6)},${city.longitude.toFixed(6)}`
     if (!locationGroups.has(key)) {
       locationGroups.set(key, [])
