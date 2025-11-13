@@ -52,17 +52,19 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
   // If no JUICY/MODERATE opportunities, show any available opportunities
   const opportunitiesWithScore = allOpportunities
     .filter((opp: any) => {
-      // Check victor_score - handle case variations
-      const score = opp.victor_score?.toUpperCase()
-      const includesJuicy = score === 'JUICY' || opp.score === 'JUICY'
-      const includesModerate = score === 'MODERATE' || opp.score === 'MODERATE'
+      // Check victor_rating (new) or victor_score (legacy) - handle case variations
+      const rating = (opp.victor_rating || opp.victor_score)?.toUpperCase()
+      const includesJuicy = rating === 'JUICY' || opp.score === 'JUICY'
+      const includesModerate = rating === 'MODERATE' || opp.score === 'MODERATE'
       return includesJuicy || includesModerate
     })
     .sort((a: any, b: any) => {
       // Prioritize JUICY over MODERATE
       const scoreOrder = { 'JUICY': 0, 'MODERATE': 1 }
-      const aScore = scoreOrder[a.victor_score?.toUpperCase() as keyof typeof scoreOrder] ?? 2
-      const bScore = scoreOrder[b.victor_score?.toUpperCase() as keyof typeof scoreOrder] ?? 2
+      const aRating = (a.victor_rating || a.victor_score)?.toUpperCase()
+      const bRating = (b.victor_rating || b.victor_score)?.toUpperCase()
+      const aScore = scoreOrder[aRating as keyof typeof scoreOrder] ?? 2
+      const bScore = scoreOrder[bRating as keyof typeof scoreOrder] ?? 2
       return aScore - bScore
     })
 
@@ -150,36 +152,34 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {/* Elite Score Badge with metallic colors */}
-                    {opp.victor_score && (
+                    {/* Elite Score Badge with metallic colors - Use victor_rating (new) or victor_score (legacy) */}
+                    {(opp.victor_rating || opp.victor_score) && (
                       <div
                         className="px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg group"
                         style={{
-                          background: opp.victor_score === 'JUICY'
+                          background: (opp.victor_rating || opp.victor_score) === 'JUICY'
                             ? "linear-gradient(135deg, #DC143C 0%, #FF1744 25%, #B71C1C 50%, #FF1744 75%, #DC143C 100%)" // Metallic ruby
-                            : opp.victor_score === 'MODERATE'
+                            : (opp.victor_rating || opp.victor_score) === 'MODERATE'
                             ? "linear-gradient(135deg, #FFB300 0%, #FFC107 25%, #FF8F00 50%, #FFC107 75%, #FFB300 100%)" // Metallic topaz
-                            : "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)", // Metallic emerald for FAR_FETCHED
-                          border: opp.victor_score === 'JUICY'
+                            : "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)", // Metallic emerald for FAR-FETCHED
+                          border: (opp.victor_rating || opp.victor_score) === 'JUICY'
                             ? "2px solid rgba(220, 20, 60, 0.5)"
-                            : opp.victor_score === 'MODERATE'
+                            : (opp.victor_rating || opp.victor_score) === 'MODERATE'
                             ? "2px solid rgba(255, 193, 7, 0.5)"
                             : "2px solid rgba(16, 185, 129, 0.5)",
-                          boxShadow: opp.victor_score === 'JUICY'
+                          boxShadow: (opp.victor_rating || opp.victor_score) === 'JUICY'
                             ? "0 2px 8px rgba(220, 20, 60, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
-                            : opp.victor_score === 'MODERATE'
+                            : (opp.victor_rating || opp.victor_score) === 'MODERATE'
                             ? "0 2px 8px rgba(255, 193, 7, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
                             : "0 2px 8px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
                           color: "#ffffff",
                           textShadow: "0 1px 2px rgba(0, 0, 0, 0.4)"
                         }}
                       >
-                        {opp.victor_score === 'JUICY' ? 'JUICY' :
-                         opp.victor_score === 'MODERATE' ? 'MODERATE' :
-                         'FAR FETCHED'}
+                        {opp.victor_rating || opp.victor_score}
                       </div>
                     )}
-                    {!opp.victor_score && (opp.is_active || opp.region) && (
+                    {!(opp.victor_rating || opp.victor_score) && (opp.is_active || opp.region) && (
                       <Badge variant="outline" className="text-xs border-primary/50 text-primary">
                         {opp.is_active ? 'ACTIVE' : opp.region || 'OPPORTUNITY'}
                       </Badge>
@@ -190,7 +190,9 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                 <div className="grid grid-cols-2 gap-4 text-xs mb-3">
                   <div>
                     <span className="font-medium text-foreground">Value: </span>
-                    <span className="text-muted-foreground">{opp.value || opp.investment_amount || 'TBD'}</span>
+                    <span className="text-muted-foreground">
+                      {opp.minimum_investment_display || opp.value || opp.investment_amount || 'TBD'}
+                    </span>
                   </div>
                   <div>
                     <span className="font-medium text-foreground">Horizon: </span>
@@ -199,16 +201,21 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                   <div>
                     <span className="font-medium text-foreground">Risk: </span>
                     <Badge variant="outline" className={`text-xs ml-1 ${
-                      (opp.riskLevel || opp.risk_level) === 'Low' ? 'border-primary/30 text-primary' :
-                      (opp.riskLevel || opp.risk_level) === 'Medium' ? 'border-primary/50 text-primary' :
+                      (opp.risk_level || opp.riskLevel) === 'Low' ? 'border-primary/30 text-primary' :
+                      (opp.risk_level || opp.riskLevel) === 'Medium' ? 'border-primary/50 text-primary' :
                       'border-primary/70 text-primary'
                     }`}>
-                      {opp.riskLevel || opp.risk_level || 'Medium'}
+                      {opp.risk_level || opp.riskLevel || 'Medium'}
                     </Badge>
                   </div>
                   <div>
                     <span className="font-medium text-foreground">Return: </span>
-                    <span className="text-muted-foreground">{opp.expectedReturn || opp.expected_return || 'Market Rate'}</span>
+                    <span className="text-muted-foreground">
+                      {opp.expected_return_annual_low && opp.expected_return_annual_high
+                        ? `${opp.expected_return_annual_low}-${opp.expected_return_annual_high}%`
+                        : opp.expectedReturn || opp.expected_return || 'Market Rate'
+                      }
+                    </span>
                   </div>
                 </div>
 

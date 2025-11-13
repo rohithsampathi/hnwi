@@ -170,11 +170,10 @@ function OpportunityCard({
     <motion.div
       id={`opportunity-card-${opportunity.id}`}
       whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
       className="transition-all duration-300"
       style={{
-        outline: isExpanded 
-          ? `0.2px solid ${theme === "dark" ? "#DAA520" : "#C0C0C0"}` 
+        outline: isExpanded
+          ? `0.2px solid ${theme === "dark" ? "#DAA520" : "#C0C0C0"}`
           : "none"
       }}
     >
@@ -206,34 +205,60 @@ function OpportunityCard({
           </div>
           
           <p className={`text-xs line-clamp-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-            {opportunity.description}
+            {opportunity.subtitle || opportunity.description || 'Investment opportunity'}
           </p>
           
           <div className="flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
-              {opportunity.value && (
+              {/* Use new SOTA fields with legacy fallback */}
+              {(opportunity.minimum_investment_display || opportunity.value) && (
                 <span className={`font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
-                  {opportunity.value}
+                  {opportunity.minimum_investment_display || opportunity.value}
                 </span>
               )}
-              {opportunity.expectedReturn && (
+              {(opportunity.expected_return_annual_low || opportunity.expectedReturn) && (
                 <span className="font-medium" style={{ color: '#DAA520' }}>
-                  {opportunity.expectedReturn.replace(/annually?/i, 'Annual Returns')}
+                  {opportunity.expected_return_annual_low && opportunity.expected_return_annual_high
+                    ? `${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% Annual`
+                    : opportunity.expectedReturn?.replace(/annually?/i, 'Annual Returns')
+                  }
                 </span>
               )}
             </div>
-            
-            {opportunity.riskLevel && (
-              <Badge 
-                variant={
-                  opportunity.riskLevel === "Low" ? "default" :
-                  opportunity.riskLevel === "Medium" ? "secondary" : "destructive"
-                }
-                className="text-xs"
-              >
-                {opportunity.riskLevel} Risk
-              </Badge>
-            )}
+
+            <div className="flex items-center gap-2">
+              {/* Victor Rating Badge (JUICY/MODERATE/FAR-FETCHED) */}
+              {opportunity.victor_rating && (
+                <Badge
+                  variant="outline"
+                  className="text-xs font-bold"
+                  style={{
+                    background: opportunity.victor_rating === 'JUICY'
+                      ? "linear-gradient(135deg, #DC143C 0%, #FF1744 50%, #DC143C 100%)"
+                      : opportunity.victor_rating === 'MODERATE'
+                      ? "linear-gradient(135deg, #FFB300 0%, #FFC107 50%, #FFB300 100%)"
+                      : "linear-gradient(135deg, #6B7280 0%, #9CA3AF 50%, #6B7280 100%)",
+                    color: "#ffffff",
+                    borderColor: "transparent"
+                  }}
+                >
+                  {opportunity.victor_rating}
+                </Badge>
+              )}
+
+              {/* Risk Level Badge */}
+              {(opportunity.risk_level || opportunity.riskLevel) && (
+                <Badge
+                  variant={
+                    (opportunity.risk_level || opportunity.riskLevel) === "Low" ? "default" :
+                    (opportunity.risk_level || opportunity.riskLevel) === "Medium" ? "secondary" : "destructive"
+                  }
+                  className="text-xs"
+                >
+                  {opportunity.risk_level || opportunity.riskLevel} Risk
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -247,55 +272,107 @@ function OpportunityCard({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
             className="mt-4"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 space-y-4">
               {/* Investment Executive Summary */}
               <div className="space-y-6">
-                
-                {/* Primary Investment Metrics - Clean Cards Layout */}
+
+                {/* TIER 0: Quick Snapshot - Primary Investment Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Investment Size Card */}
-                  {opportunity.value && (
+                  {(opportunity.minimum_investment_display || opportunity.value) && (
                     <div className="p-4 rounded-lg bg-muted/20 border border-muted">
                       <div className="text-center">
                         <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          INVESTMENT SIZE
+                          MINIMUM INVESTMENT
                         </h6>
                         <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                          {opportunity.value}
+                          {opportunity.minimum_investment_display || opportunity.value}
                         </p>
+                        {opportunity.tier && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {opportunity.tier.replace('tier_', '').toUpperCase()} Tier
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Expected Returns Card */}
-                  {opportunity.expectedReturn && (
+                  {(opportunity.expected_return_annual_low || opportunity.expectedReturn) && (
                     <div className="p-4 rounded-lg bg-muted/20 border border-muted">
                       <div className="text-center">
                         <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                           EXPECTED RETURNS
                         </h6>
                         <p className="text-lg font-bold" style={{ color: '#DAA520' }}>
-                          {opportunity.expectedReturn}
+                          {opportunity.expected_return_annual_low && opportunity.expected_return_annual_high
+                            ? `${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}%`
+                            : opportunity.expectedReturn
+                          }
                         </p>
+                        {opportunity.risk_free_multiple && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {opportunity.risk_free_multiple}x risk-free rate
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
-                  
-                  {/* Investment Horizon Card */}
-                  {opportunity.investmentHorizon && (
+
+                  {/* Victor Score Card */}
+                  {(opportunity.victor_score || opportunity.investmentHorizon) && (
                     <div className="p-4 rounded-lg bg-muted/20 border border-muted">
                       <div className="text-center">
                         <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          TIME HORIZON
+                          {opportunity.victor_score ? 'VICTOR SCORE' : 'TIME HORIZON'}
                         </h6>
-                        <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                          {opportunity.investmentHorizon}
-                        </p>
+                        {opportunity.victor_score ? (
+                          <>
+                            <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.victor_score}/10
+                            </p>
+                            {opportunity.victor_rating && (
+                              <p className="text-xs font-bold mt-1" style={{
+                                color: opportunity.victor_rating === 'JUICY' ? '#DC143C' :
+                                       opportunity.victor_rating === 'MODERATE' ? '#FFB300' : '#6B7280'
+                              }}>
+                                {opportunity.victor_rating}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                            {opportunity.investmentHorizon}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Additional TIER 0 Metrics */}
+                {(opportunity.liquidity_level || opportunity.asset_category) && (
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {opportunity.liquidity_level && (
+                      <div className="p-3 rounded-lg bg-muted/10 border border-muted">
+                        <span className="font-medium text-muted-foreground">Liquidity</span>
+                        <p className={`font-semibold mt-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                          {opportunity.liquidity_level}
+                        </p>
+                      </div>
+                    )}
+                    {opportunity.asset_category && (
+                      <div className="p-3 rounded-lg bg-muted/10 border border-muted">
+                        <span className="font-medium text-muted-foreground">Asset Class</span>
+                        <p className={`font-semibold mt-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                          {opportunity.asset_category}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Risk Assessment with Progress Bar */}
                 {opportunity.riskLevel && (
@@ -474,8 +551,68 @@ function OpportunityCard({
                   </div>
                 )}
 
-                {/* Investment Thesis */}
-                {opportunity.description && (
+                {/* TIER 1: Investment Thesis */}
+                {opportunity.investment_thesis && (
+                  <div className="p-4 rounded-lg border border-border bg-card/50">
+                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      INVESTMENT THESIS
+                    </h6>
+
+                    {/* What You're Buying */}
+                    {opportunity.investment_thesis.what_youre_buying && (
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">What You're Buying</p>
+                        <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {opportunity.investment_thesis.what_youre_buying}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Why This Makes Money */}
+                    {opportunity.investment_thesis.why_this_makes_money && opportunity.investment_thesis.why_this_makes_money.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2">Why This Makes Money</p>
+                        <div className="space-y-2">
+                          {opportunity.investment_thesis.why_this_makes_money.map((item, idx) => (
+                            <div key={idx} className="p-2 rounded bg-muted/20">
+                              <p className="text-xs font-semibold text-primary">{item.driver}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{item.mechanism}</p>
+                              {item.evidence && (
+                                <p className="text-xs text-muted-foreground italic mt-1">Evidence: {item.evidence}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* The Catch */}
+                    {opportunity.investment_thesis.the_catch && opportunity.investment_thesis.the_catch.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">The Catch</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          {opportunity.investment_thesis.the_catch.map((item, idx) => (
+                            <li key={idx} className="text-xs text-muted-foreground">{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Victor's Verdict */}
+                    {opportunity.investment_thesis.victor_verdict_one_line && (
+                      <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <p className="text-xs font-semibold text-primary mb-1">Victor's Verdict</p>
+                        <p className={`text-sm italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          "{opportunity.investment_thesis.victor_verdict_one_line}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Fallback to legacy description */}
+                {!opportunity.investment_thesis && opportunity.description && (
                   <div>
                     <h6 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
                       INVESTMENT THESIS
@@ -483,6 +620,218 @@ function OpportunityCard({
                     <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                       {opportunity.description}
                     </p>
+                  </div>
+                )}
+
+                {/* TIER 2: Financial Structure */}
+                {(opportunity.pricing || opportunity.return_analysis) && (
+                  <div className="p-4 rounded-lg border border-border bg-card/50">
+                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      FINANCIAL STRUCTURE
+                    </h6>
+
+                    {/* Pricing Details */}
+                    {opportunity.pricing && (
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        {opportunity.pricing.base_price_usd && (
+                          <div className="p-2 rounded bg-muted/20">
+                            <p className="text-xs text-muted-foreground">Base Price</p>
+                            <p className="text-sm font-semibold">${opportunity.pricing.base_price_usd.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {opportunity.pricing.price_per_sqft && (
+                          <div className="p-2 rounded bg-muted/20">
+                            <p className="text-xs text-muted-foreground">Price per SqFt</p>
+                            <p className="text-sm font-semibold">${opportunity.pricing.price_per_sqft}</p>
+                          </div>
+                        )}
+                        {opportunity.pricing.discount_percentage && (
+                          <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+                            <p className="text-xs text-green-600 dark:text-green-400">Discount</p>
+                            <p className="text-sm font-semibold text-green-600 dark:text-green-400">
+                              {opportunity.pricing.discount_percentage}%
+                            </p>
+                          </div>
+                        )}
+                        {opportunity.pricing.total_investment_required && (
+                          <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                            <p className="text-xs text-primary">Total Required</p>
+                            <p className="text-sm font-semibold text-primary">
+                              ${opportunity.pricing.total_investment_required.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Payment Plan */}
+                    {opportunity.payment_plan?.payment_type && (
+                      <div className="p-3 rounded bg-muted/10 border border-muted">
+                        <p className="text-xs font-semibold mb-1">Payment Plan</p>
+                        <p className="text-sm">{opportunity.payment_plan.payment_type}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TIER 3: Exit Strategy */}
+                {opportunity.exit_strategy && (
+                  <div className="space-y-3">
+                    <h6 className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                      Exit Strategy
+                    </h6>
+                    <div className="space-y-3 text-xs">
+                      {/* Primary Exit */}
+                      {opportunity.exit_strategy.primary_exit && typeof opportunity.exit_strategy.primary_exit === 'object' && (
+                        <div className="space-y-1">
+                          {opportunity.exit_strategy.primary_exit.name && (
+                            <p className="font-medium text-foreground">{opportunity.exit_strategy.primary_exit.name}</p>
+                          )}
+                          {opportunity.exit_strategy.primary_exit.timeline_display && (
+                            <p className="text-muted-foreground">{opportunity.exit_strategy.primary_exit.timeline_display}</p>
+                          )}
+                          {opportunity.exit_strategy.primary_exit.method && (
+                            <p className="text-muted-foreground">{opportunity.exit_strategy.primary_exit.method}</p>
+                          )}
+                          {opportunity.exit_strategy.primary_exit.expected_recovery_percentage && (
+                            <p className="text-foreground">Expected Recovery: {opportunity.exit_strategy.primary_exit.expected_recovery_percentage}%</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Secondary Exit */}
+                      {opportunity.exit_strategy.secondary_exit && typeof opportunity.exit_strategy.secondary_exit === 'object' && (
+                        <div className="space-y-1 pt-2 border-t border-border/50">
+                          <p className="text-muted-foreground font-medium">Alternative: {opportunity.exit_strategy.secondary_exit.name}</p>
+                          {opportunity.exit_strategy.secondary_exit.rental_yield?.annual_lease_income_display && (
+                            <p className="text-muted-foreground">
+                              {opportunity.exit_strategy.secondary_exit.rental_yield.annual_lease_income_display}
+                              {opportunity.exit_strategy.secondary_exit.rental_yield.net_yield_percentage &&
+                                ` (${opportunity.exit_strategy.secondary_exit.rental_yield.net_yield_percentage}% yield)`
+                              }
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TIER 4: Risk Analysis */}
+                {opportunity.risk_analysis && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h6 className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                        Risk Analysis
+                      </h6>
+                      {opportunity.risk_analysis.overall_risk_score && (
+                        <span className="text-xs text-muted-foreground">{opportunity.risk_analysis.overall_risk_score}/10</span>
+                      )}
+                    </div>
+
+                    {/* Risk Score Indicator */}
+                    {opportunity.risk_analysis.overall_risk_score && (
+                      <div className="w-full bg-border/40 h-1.5 rounded-full">
+                        <div
+                          className="h-1.5 bg-foreground transition-all duration-300 rounded-full"
+                          style={{ width: `${(opportunity.risk_analysis.overall_risk_score / 10) * 100}%` }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Risk Factors */}
+                    {opportunity.risk_analysis.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 && (
+                      <div className="space-y-2 text-xs">
+                        {opportunity.risk_analysis.risk_factors.slice(0, 3).map((factor: any, idx: number) => (
+                          <div key={idx} className="space-y-1">
+                            {typeof factor === 'object' ? (
+                              <>
+                                <p className="font-medium text-foreground">
+                                  {factor.factor_name || 'Risk Factor'}
+                                  {factor.probability_percentage && (
+                                    <span className="text-muted-foreground ml-1">({factor.probability_percentage}%)</span>
+                                  )}
+                                </p>
+                                {factor.mitigation && (
+                                  <p className="text-muted-foreground">{factor.mitigation}</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-muted-foreground">{String(factor)}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TIER 5: Asset Details */}
+                {opportunity.asset_details && (
+                  <div className="p-4 rounded-lg border border-border bg-card/50">
+                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                      ASSET DETAILS
+                    </h6>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {opportunity.asset_details.property_type && (
+                        <div>
+                          <p className="text-muted-foreground">Property Type</p>
+                          <p className="font-semibold">{opportunity.asset_details.property_type}</p>
+                        </div>
+                      )}
+                      {opportunity.asset_details.bedrooms && (
+                        <div>
+                          <p className="text-muted-foreground">Bedrooms</p>
+                          <p className="font-semibold">{opportunity.asset_details.bedrooms}</p>
+                        </div>
+                      )}
+                      {opportunity.asset_details.total_area_sqft && (
+                        <div>
+                          <p className="text-muted-foreground">Total Area</p>
+                          <p className="font-semibold">{opportunity.asset_details.total_area_sqft} sqft</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {opportunity.asset_details.location && (
+                      <div className="mt-3 p-2 rounded bg-muted/20">
+                        <p className="text-xs font-semibold mb-1">Location</p>
+                        {opportunity.asset_details.location.full_address && (
+                          <p className="text-xs text-muted-foreground">{opportunity.asset_details.location.full_address}</p>
+                        )}
+                        {opportunity.asset_details.location.nearby_landmarks && opportunity.asset_details.location.nearby_landmarks.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Near: {opportunity.asset_details.location.nearby_landmarks.slice(0, 2).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {opportunity.asset_details.developer && (
+                      <div className="mt-3 p-2 rounded bg-muted/10">
+                        <p className="text-xs font-semibold mb-1">Developer</p>
+                        <p className="text-xs">{opportunity.asset_details.developer.name}</p>
+                        {opportunity.asset_details.developer.established && (
+                          <p className="text-xs text-muted-foreground">Est. {opportunity.asset_details.developer.established}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {opportunity.asset_details.amenities && opportunity.asset_details.amenities.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-semibold mb-1">Amenities</p>
+                        <div className="flex flex-wrap gap-1">
+                          {opportunity.asset_details.amenities.slice(0, 6).map((amenity, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {amenity}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -832,7 +1181,14 @@ export function OpportunityAtlasNew({
       let foundCategory: AssetCategoryData | null = null;
       let bestMatch: { opportunity: Opportunity; category: AssetCategoryData; score: number } | null = null;
 
-      const searchTerm = decodeURIComponent(targetOpportunityId).toLowerCase();
+      // Safely decode the URI component, fallback to original string if malformed
+      let searchTerm: string;
+      try {
+        searchTerm = decodeURIComponent(targetOpportunityId).toLowerCase();
+      } catch (error) {
+        // If decoding fails (malformed URI), use the original string
+        searchTerm = targetOpportunityId.toLowerCase();
+      }
 
       for (const category of categories) {
         // Check for ID match first (in case we have a real MongoDB ID)
@@ -913,7 +1269,7 @@ export function OpportunityAtlasNew({
         setTimeout(() => {
           const element = document.getElementById(`opportunity-card-${foundOpportunity.id}`);
           if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
           }
         }, 800); // Slightly longer delay to ensure DOM is ready
       } else {
@@ -956,26 +1312,29 @@ export function OpportunityAtlasNew({
     if (!opportunity?.id) {
       return;
     }
-    
+
     if (expandedOpportunityId === opportunity.id) {
+      // Collapsing the card
       setExpandedOpportunityId(null);
     } else {
+      // Expanding the card
       setExpandedOpportunityId(opportunity.id);
       // Store opportunity info for reference
       sessionStorage.setItem('currentOpportunityId', opportunity.id);
+
+      // Scroll to the beginning of the card after animation completes
+      // Wait for framer-motion animation (300ms) + small buffer
+      setTimeout(() => {
+        const cardElement = document.getElementById(`opportunity-card-${opportunity.id}`);
+        if (cardElement) {
+          cardElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+          });
+        }
+      }, 400);
     }
-    
-    // Scroll to the beginning of the card after a short delay
-    setTimeout(() => {
-      const cardElement = document.getElementById(`opportunity-card-${opportunity.id}`);
-      if (cardElement) {
-        cardElement.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        });
-      }
-    }, 100);
   };
 
   // Handle share functionality with clipboard - copy URL

@@ -150,18 +150,127 @@ export async function getEvents(): Promise<SocialEvent[]> {
   }
 }
 
-// Investment Opportunities
+// Investment Opportunities - SOTA Structure
 export interface Opportunity {
-  id: string;
+  // MongoDB/API identifiers (id is normalized from _id or opportunity_id)
+  _id?: string;
+  id: string; // Always populated by normalization layer
+  opportunity_id?: string;
+  reference_number?: string;
+
+  // TIER 0: Quick Snapshot (10 seconds)
   title: string;
+  subtitle?: string;
+  asset_category?: string;
+  asset_subcategory?: string;
+  asset_class?: string;
+  minimum_investment_usd?: number;
+  minimum_investment_display?: string;
+  tier?: 'tier_100k' | 'tier_500k' | 'tier_1m' | 'tier_10m';
+  expected_return_annual_low?: number;
+  expected_return_annual_high?: number;
+  risk_free_multiple?: number;
+  victor_score?: number; // Out of 10
+  victor_rating?: 'JUICY' | 'MODERATE' | 'FAR-FETCHED';
+  liquidity_level?: string;
+  risk_level?: 'Low' | 'Medium' | 'High';
+  verified?: boolean;
+  is_active: boolean;
+  is_featured?: boolean;
+  is_new?: boolean;
+
+  // TIER 1: Investment Thesis (30 seconds)
+  investment_thesis?: {
+    what_youre_buying?: string;
+    why_this_makes_money?: Array<{
+      driver: string;
+      mechanism: string;
+      value_creation?: string | null;
+      evidence?: string;
+    }>;
+    the_catch?: string[];
+    victor_verdict_one_line?: string;
+  };
+
+  // TIER 2: Financial Structure
+  pricing?: {
+    base_price_usd?: number;
+    price_per_sqft?: number;
+    market_rate_per_sqft?: number;
+    discount_percentage?: number;
+    transaction_costs?: any;
+    total_investment_required?: number;
+  };
+  payment_plan?: {
+    payment_type?: string;
+    schedule?: any[];
+  };
+  return_analysis?: {
+    scenarios?: {
+      conservative?: any;
+      base_case?: any;
+      optimistic?: any;
+    };
+    risk_free_comparison?: any;
+  };
+
+  // TIER 3: Exit Strategy
+  exit_strategy?: {
+    primary_exit?: any;
+    secondary_exit?: any;
+    tertiary_exit?: any;
+    emergency_exit?: any;
+    holding_costs?: any;
+  };
+
+  // TIER 4: Risk Analysis
+  risk_analysis?: {
+    overall_risk_level?: string;
+    overall_risk_score?: number;
+    risk_factors?: any[];
+    downside_scenarios?: any[];
+    red_flags?: any[];
+  };
+
+  // TIER 5: Asset Details
+  asset_details?: {
+    property_type?: string;
+    bedrooms?: number;
+    total_area_sqft?: number;
+    location?: {
+      full_address?: string;
+      coordinates?: { latitude: number; longitude: number };
+      nearby_landmarks?: string[];
+    };
+    developer?: {
+      name?: string;
+      established?: number;
+      assets_under_management?: string;
+    };
+    timeline?: any;
+    amenities?: string[];
+  };
+
+  // TIER 6: Legal Structure
+  legal_structure?: any;
+
+  // TIER 7: Tax Analysis
+  tax_analysis?: any;
+
+  // TIER 8: Comparables
+  comparable_opportunities?: any[];
+
+  // TIER 9: Citations
+  citations_and_sources?: any[];
+
+  // Legacy Compatibility Fields
   description?: string;
   start_date: string;
   end_date: string;
-  industry?: string;
-  product?: string;
-  is_active: boolean;
   region: string;
   country: string;
+  industry?: string;
+  product?: string;
   type?: string;
   value?: string;
   riskLevel?: string;
@@ -170,7 +279,8 @@ export interface Opportunity {
   pros?: string[];
   cons?: string[];
   fullAnalysis?: string;
-  // Victor analysis fields
+
+  // Victor analysis fields (legacy)
   victor_reasoning?: string;
   strategic_insights?: string;
   opportunity_window?: string;
@@ -180,14 +290,20 @@ export interface Opportunity {
   implementation?: string;
   victor_action?: string;
   confidence_level?: number;
-  victor_score?: string;
   hnwi_alignment?: string;
 }
 
 export async function getOpportunities(): Promise<Opportunity[]> {
   try {
     const data = await secureApi.get('/api/opportunities', true);
-    return data as Opportunity[];
+
+    // Normalize MongoDB _id to id field for consistent access
+    const normalized = Array.isArray(data) ? data.map((opp: any) => ({
+      ...opp,
+      id: opp.id || opp._id || opp.opportunity_id || String(Math.random()) // Ensure every opportunity has an id
+    })) : [];
+
+    return normalized as Opportunity[];
   } catch (error) {
     throw new Error('Unable to load investment opportunities. Please try again later.');
   }
