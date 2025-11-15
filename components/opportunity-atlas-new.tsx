@@ -271,789 +271,431 @@ function OpportunityCard({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="mt-4"
+            className="border-t border-border/30"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 space-y-4">
-              {/* Investment Executive Summary */}
-              <div className="space-y-6">
-
-                {/* TIER 0: Quick Snapshot - Primary Investment Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Investment Size Card */}
+            <div className="p-6 space-y-6">
+              {/* Deal Capsule - Premium metrics container */}
+              <div className="relative p-6 rounded-2xl border border-border/30 bg-muted/20">
+                {/* Top bar - Essential metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-border/30">
+                  {/* Minimum Ticket */}
                   {(opportunity.minimum_investment_display || opportunity.value) && (
-                    <div className="p-4 rounded-lg bg-muted/20 border border-muted">
-                      <div className="text-center">
-                        <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          MINIMUM INVESTMENT
-                        </h6>
-                        <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                          {opportunity.minimum_investment_display || opportunity.value}
-                        </p>
-                        {opportunity.tier && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {opportunity.tier.replace('tier_', '').toUpperCase()} Tier
-                          </p>
-                        )}
+                    <div className="text-center">
+                      <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
+                        Minimum Ticket
                       </div>
+                      <div className="text-2xl md:text-3xl font-bold" style={{ color: '#DAA520' }}>
+                        {opportunity.minimum_investment_display || opportunity.value}
+                      </div>
+                      {opportunity.tier && (
+                        <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wide">
+                          {opportunity.tier.replace('tier_', '')} Access
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Expected Returns Card */}
+                  {/* Expected Yield */}
                   {(opportunity.expected_return_annual_low || opportunity.expectedReturn) && (
-                    <div className="p-4 rounded-lg bg-muted/20 border border-muted">
-                      <div className="text-center">
-                        <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          EXPECTED RETURNS
-                        </h6>
-                        <p className="text-lg font-bold" style={{ color: '#DAA520' }}>
-                          {opportunity.expected_return_annual_low && opportunity.expected_return_annual_high
-                            ? `${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}%`
-                            : opportunity.expectedReturn
-                          }
-                        </p>
-                        {opportunity.risk_free_multiple && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {opportunity.risk_free_multiple}x risk-free rate
-                          </p>
-                        )}
+                    <div className="text-center">
+                      <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
+                        Projected Yield
                       </div>
+                      <div className={`text-2xl md:text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                        {opportunity.expected_return_annual_low && opportunity.expected_return_annual_high
+                          ? `${opportunity.expected_return_annual_low}–${opportunity.expected_return_annual_high}%`
+                          : opportunity.expectedReturn
+                        }
+                      </div>
+                      {opportunity.risk_free_multiple && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {opportunity.risk_free_multiple}× Risk-Free Rate
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* Victor Score Card */}
-                  {(opportunity.victor_score || opportunity.investmentHorizon) && (
-                    <div className="p-4 rounded-lg bg-muted/20 border border-muted">
-                      <div className="text-center">
-                        <h6 className={`text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {opportunity.victor_score ? 'VICTOR SCORE' : 'TIME HORIZON'}
-                        </h6>
-                        {opportunity.victor_score ? (
-                          <>
-                            <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                              {opportunity.victor_score}/10
-                            </p>
-                            {opportunity.victor_rating && (
-                              <p className="text-xs font-bold mt-1" style={{
-                                color: opportunity.victor_rating === 'JUICY' ? '#DC143C' :
-                                       opportunity.victor_rating === 'MODERATE' ? '#FFB300' : '#6B7280'
-                              }}>
-                                {opportunity.victor_rating}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                            {opportunity.investmentHorizon}
-                          </p>
-                        )}
-                      </div>
+                  {/* Time Horizon / Risk */}
+                  <div className="text-center">
+                    <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
+                      {opportunity.investmentHorizon ? 'Time Horizon' : 'Risk Profile'}
                     </div>
-                  )}
-                </div>
-
-                {/* Additional TIER 0 Metrics */}
-                {(opportunity.liquidity_level || opportunity.asset_category) && (
-                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className={`text-2xl md:text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                      {opportunity.investmentHorizon || opportunity.riskLevel}
+                    </div>
                     {opportunity.liquidity_level && (
-                      <div className="p-3 rounded-lg bg-muted/10 border border-muted">
-                        <span className="font-medium text-muted-foreground">Liquidity</span>
-                        <p className={`font-semibold mt-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                          {opportunity.liquidity_level}
-                        </p>
-                      </div>
-                    )}
-                    {opportunity.asset_category && (
-                      <div className="p-3 rounded-lg bg-muted/10 border border-muted">
-                        <span className="font-medium text-muted-foreground">Asset Class</span>
-                        <p className={`font-semibold mt-1 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                          {opportunity.asset_category}
-                        </p>
+                      <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wide">
+                        {opportunity.liquidity_level} Liquidity
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Risk Assessment with Progress Bar */}
-                {opportunity.riskLevel && (
-                  <div className="p-4 rounded-lg bg-muted/10 border border-muted">
-                    <h6 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      RISK ASSESSMENT
-                    </h6>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">Risk Level</span>
-                      <span className="text-sm font-bold" style={{ 
-                        color: theme === "dark" 
-                          ? getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
-                          : (() => {
-                              switch (opportunity.riskLevel) {
-                                case "Low": return "#047857"; // darker green
-                                case "Medium": return "#D97706"; // darker amber  
-                                case "High": return "#DC2626"; // darker red
-                                default: return "#374151"; // darker gray
-                              }
-                            })()
-                      }}>
-                        {opportunity.riskLevel.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="h-2 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: opportunity.riskLevel === 'Low' ? '85%' : 
-                                 opportunity.riskLevel === 'Medium' ? '60%' : '25%',
-                          backgroundColor: getRiskColor(opportunity.riskLevel as "Low" | "Medium" | "High")
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Conservative</span>
-                      <span>Moderate</span>
-                      <span>Aggressive</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Geographic & Sector Information */}
-                <div className="grid grid-cols-2 gap-4">
-                  {(opportunity.region || opportunity.country) && (
-                    <div>
-                      <h6 className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        GEOGRAPHIC FOCUS
-                      </h6>
-                      <div className="space-y-1">
-                        {opportunity.region && (
-                          <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                            {opportunity.region}
-                          </p>
-                        )}
-                        {opportunity.country && (
-                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {opportunity.country}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {(opportunity.industry || opportunity.type) && (
-                    <div>
-                      <h6 className={`text-xs font-medium mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                        SECTOR CLASSIFICATION
-                      </h6>
-                      <div className="space-y-1">
-                        {opportunity.industry && (
-                          <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                            {opportunity.industry}
-                          </p>
-                        )}
-                        {opportunity.type && (
-                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {opportunity.type}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* Viktor Rajesh-Volkov Intelligence Analysis */}
-                {scoring && (
-                  <div className="p-4 rounded-lg" style={{
-                    backgroundColor: getConvictionStyle(scoring.conviction).backgroundColor,
-                    border: `1px solid ${getConvictionStyle(scoring.conviction).borderColor}30`
-                  }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div 
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: getConvictionStyle(scoring.conviction).color }}
-                      />
-                      <h6 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                        VIKTOR RAJESH-VOLKOV ANALYSIS
-                      </h6>
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs"
-                        style={{
-                          ...getConvictionStyle(scoring.conviction),
-                          borderWidth: '1px'
-                        }}
-                      >
-                        {scoring.conviction.toUpperCase()} CONVICTION
-                      </Badge>
-                    </div>
-                    <div className="space-y-3">
-                      {/* Alignment Score Progress */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-medium text-muted-foreground">Portfolio Alignment Score</span>
-                          <span className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
-                            {Math.round(scoring.score)}/100
-                          </span>
+                {/* Bottom bar - Geographic + Sector */}
+                {(opportunity.region || opportunity.industry) && (
+                  <div className="grid grid-cols-2 gap-6 text-center">
+                    {opportunity.region && (
+                      <div>
+                        <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-1">
+                          Geography
                         </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="h-2 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${scoring.score}%`,
-                              backgroundColor: getConvictionStyle(scoring.conviction).color
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Investment Thesis */}
-                      <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/20' : 'bg-white/50'}`}>
-                        <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                          <span className="font-semibold text-primary">Viktor's Thesis:</span><br />
-                          {scoring.thesis}
-                        </p>
-                      </div>
-                      
-                      {/* Detailed Analysis */}
-                      {scoring.reasoning && (
-                        <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/10' : 'bg-gray-50/80'}`}>
-                          <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            <span className="font-semibold">Strategic Analysis:</span><br />
-                            {scoring.reasoning}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {/* Entry Window Timing */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
-                          <p className="text-xs text-muted-foreground mb-1">Entry Window</p>
-                          <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
-                            {scoring.conviction === 'high' ? 'Immediate' : 
-                             scoring.conviction === 'medium' ? 'Q1-Q2 2024' :
-                             scoring.conviction === 'watch' ? 'Monitor' : 'Avoid'}
-                          </p>
-                        </div>
-                        <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
-                          <p className="text-xs text-muted-foreground mb-1">Peer Signals</p>
-                          <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
-                            {scoring.conviction === 'high' ? 'Strong Buy' :
-                             scoring.conviction === 'medium' ? 'Accumulate' : 
-                             scoring.conviction === 'watch' ? 'Hold' : 'Sell'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Elite Pulse Intelligence Attribution */}
-                      <div className="border-t border-muted-foreground/20 pt-2">
-                        <p className="text-xs text-muted-foreground italic">
-                          Analysis powered by Elite Pulse Intelligence System
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* TIER 1: Investment Thesis */}
-                {opportunity.investment_thesis && (
-                  <div className="p-4 rounded-lg border border-border bg-card/50">
-                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      INVESTMENT THESIS
-                    </h6>
-
-                    {/* What You're Buying */}
-                    {opportunity.investment_thesis.what_youre_buying && (
-                      <div className="mb-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">What You're Buying</p>
-                        <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                          {opportunity.investment_thesis.what_youre_buying}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Why This Makes Money */}
-                    {opportunity.investment_thesis.why_this_makes_money && opportunity.investment_thesis.why_this_makes_money.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-xs font-semibold text-muted-foreground mb-2">Why This Makes Money</p>
-                        <div className="space-y-2">
-                          {opportunity.investment_thesis.why_this_makes_money.map((item, idx) => (
-                            <div key={idx} className="p-2 rounded bg-muted/20">
-                              <p className="text-xs font-semibold text-primary">{item.driver}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{item.mechanism}</p>
-                              {item.evidence && (
-                                <p className="text-xs text-muted-foreground italic mt-1">Evidence: {item.evidence}</p>
-                              )}
-                            </div>
-                          ))}
+                        <div className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.region}
+                          {opportunity.country && <span className="text-muted-foreground"> · {opportunity.country}</span>}
                         </div>
                       </div>
                     )}
-
-                    {/* The Catch */}
-                    {opportunity.investment_thesis.the_catch && opportunity.investment_thesis.the_catch.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">The Catch</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          {opportunity.investment_thesis.the_catch.map((item, idx) => (
-                            <li key={idx} className="text-xs text-muted-foreground">{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Victor's Verdict */}
-                    {opportunity.investment_thesis.victor_verdict_one_line && (
-                      <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-xs font-semibold text-primary mb-1">Victor's Verdict</p>
-                        <p className={`text-sm italic ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                          "{opportunity.investment_thesis.victor_verdict_one_line}"
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Fallback to legacy description */}
-                {!opportunity.investment_thesis && opportunity.description && (
-                  <div>
-                    <h6 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      INVESTMENT THESIS
-                    </h6>
-                    <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                      {opportunity.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* TIER 2: Financial Structure */}
-                {(opportunity.pricing || opportunity.return_analysis) && (
-                  <div className="p-4 rounded-lg border border-border bg-card/50">
-                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      FINANCIAL STRUCTURE
-                    </h6>
-
-                    {/* Pricing Details */}
-                    {opportunity.pricing && (
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        {opportunity.pricing.base_price_usd && (
-                          <div className="p-2 rounded bg-muted/20">
-                            <p className="text-xs text-muted-foreground">Base Price</p>
-                            <p className="text-sm font-semibold">${opportunity.pricing.base_price_usd.toLocaleString()}</p>
-                          </div>
-                        )}
-                        {opportunity.pricing.price_per_sqft && (
-                          <div className="p-2 rounded bg-muted/20">
-                            <p className="text-xs text-muted-foreground">Price per SqFt</p>
-                            <p className="text-sm font-semibold">${opportunity.pricing.price_per_sqft}</p>
-                          </div>
-                        )}
-                        {opportunity.pricing.discount_percentage && (
-                          <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
-                            <p className="text-xs text-green-600 dark:text-green-400">Discount</p>
-                            <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                              {opportunity.pricing.discount_percentage}%
-                            </p>
-                          </div>
-                        )}
-                        {opportunity.pricing.total_investment_required && (
-                          <div className="p-2 rounded bg-primary/10 border border-primary/20">
-                            <p className="text-xs text-primary">Total Required</p>
-                            <p className="text-sm font-semibold text-primary">
-                              ${opportunity.pricing.total_investment_required.toLocaleString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Payment Plan */}
-                    {opportunity.payment_plan?.payment_type && (
-                      <div className="p-3 rounded bg-muted/10 border border-muted">
-                        <p className="text-xs font-semibold mb-1">Payment Plan</p>
-                        <p className="text-sm">{opportunity.payment_plan.payment_type}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TIER 3: Exit Strategy */}
-                {opportunity.exit_strategy && (
-                  <div className="space-y-3">
-                    <h6 className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      Exit Strategy
-                    </h6>
-                    <div className="space-y-3 text-xs">
-                      {/* Primary Exit */}
-                      {opportunity.exit_strategy.primary_exit && typeof opportunity.exit_strategy.primary_exit === 'object' && (
-                        <div className="space-y-1">
-                          {opportunity.exit_strategy.primary_exit.name && (
-                            <p className="font-medium text-foreground">{opportunity.exit_strategy.primary_exit.name}</p>
-                          )}
-                          {opportunity.exit_strategy.primary_exit.timeline_display && (
-                            <p className="text-muted-foreground">{opportunity.exit_strategy.primary_exit.timeline_display}</p>
-                          )}
-                          {opportunity.exit_strategy.primary_exit.method && (
-                            <p className="text-muted-foreground">{opportunity.exit_strategy.primary_exit.method}</p>
-                          )}
-                          {opportunity.exit_strategy.primary_exit.expected_recovery_percentage && (
-                            <p className="text-foreground">Expected Recovery: {opportunity.exit_strategy.primary_exit.expected_recovery_percentage}%</p>
-                          )}
+                    {opportunity.industry && (
+                      <div>
+                        <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-1">
+                          Sector
                         </div>
-                      )}
-
-                      {/* Secondary Exit */}
-                      {opportunity.exit_strategy.secondary_exit && typeof opportunity.exit_strategy.secondary_exit === 'object' && (
-                        <div className="space-y-1 pt-2 border-t border-border/50">
-                          <p className="text-muted-foreground font-medium">Alternative: {opportunity.exit_strategy.secondary_exit.name}</p>
-                          {opportunity.exit_strategy.secondary_exit.rental_yield?.annual_lease_income_display && (
-                            <p className="text-muted-foreground">
-                              {opportunity.exit_strategy.secondary_exit.rental_yield.annual_lease_income_display}
-                              {opportunity.exit_strategy.secondary_exit.rental_yield.net_yield_percentage &&
-                                ` (${opportunity.exit_strategy.secondary_exit.rental_yield.net_yield_percentage}% yield)`
-                              }
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* TIER 4: Risk Analysis */}
-                {opportunity.risk_analysis && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h6 className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                        Risk Analysis
-                      </h6>
-                      {opportunity.risk_analysis.overall_risk_score && (
-                        <span className="text-xs text-muted-foreground">{opportunity.risk_analysis.overall_risk_score}/10</span>
-                      )}
-                    </div>
-
-                    {/* Risk Score Indicator */}
-                    {opportunity.risk_analysis.overall_risk_score && (
-                      <div className="w-full bg-border/40 h-1.5 rounded-full">
-                        <div
-                          className="h-1.5 bg-foreground transition-all duration-300 rounded-full"
-                          style={{ width: `${(opportunity.risk_analysis.overall_risk_score / 10) * 100}%` }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Risk Factors */}
-                    {opportunity.risk_analysis.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 && (
-                      <div className="space-y-2 text-xs">
-                        {opportunity.risk_analysis.risk_factors.slice(0, 3).map((factor: any, idx: number) => (
-                          <div key={idx} className="space-y-1">
-                            {typeof factor === 'object' ? (
-                              <>
-                                <p className="font-medium text-foreground">
-                                  {factor.factor_name || 'Risk Factor'}
-                                  {factor.probability_percentage && (
-                                    <span className="text-muted-foreground ml-1">({factor.probability_percentage}%)</span>
-                                  )}
-                                </p>
-                                {factor.mitigation && (
-                                  <p className="text-muted-foreground">{factor.mitigation}</p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-muted-foreground">{String(factor)}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* TIER 5: Asset Details */}
-                {opportunity.asset_details && (
-                  <div className="p-4 rounded-lg border border-border bg-card/50">
-                    <h6 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                      <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                      ASSET DETAILS
-                    </h6>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      {opportunity.asset_details.property_type && (
-                        <div>
-                          <p className="text-muted-foreground">Property Type</p>
-                          <p className="font-semibold">{opportunity.asset_details.property_type}</p>
-                        </div>
-                      )}
-                      {opportunity.asset_details.bedrooms && (
-                        <div>
-                          <p className="text-muted-foreground">Bedrooms</p>
-                          <p className="font-semibold">{opportunity.asset_details.bedrooms}</p>
-                        </div>
-                      )}
-                      {opportunity.asset_details.total_area_sqft && (
-                        <div>
-                          <p className="text-muted-foreground">Total Area</p>
-                          <p className="font-semibold">{opportunity.asset_details.total_area_sqft} sqft</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {opportunity.asset_details.location && (
-                      <div className="mt-3 p-2 rounded bg-muted/20">
-                        <p className="text-xs font-semibold mb-1">Location</p>
-                        {opportunity.asset_details.location.full_address && (
-                          <p className="text-xs text-muted-foreground">{opportunity.asset_details.location.full_address}</p>
-                        )}
-                        {opportunity.asset_details.location.nearby_landmarks && opportunity.asset_details.location.nearby_landmarks.length > 0 && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Near: {opportunity.asset_details.location.nearby_landmarks.slice(0, 2).join(', ')}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {opportunity.asset_details.developer && (
-                      <div className="mt-3 p-2 rounded bg-muted/10">
-                        <p className="text-xs font-semibold mb-1">Developer</p>
-                        <p className="text-xs">{opportunity.asset_details.developer.name}</p>
-                        {opportunity.asset_details.developer.established && (
-                          <p className="text-xs text-muted-foreground">Est. {opportunity.asset_details.developer.established}</p>
-                        )}
-                      </div>
-                    )}
-
-                    {opportunity.asset_details.amenities && opportunity.asset_details.amenities.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-semibold mb-1">Amenities</p>
-                        <div className="flex flex-wrap gap-1">
-                          {opportunity.asset_details.amenities.slice(0, 6).map((amenity, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {amenity}
-                            </Badge>
-                          ))}
+                        <div className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.industry}
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Key Highlights - Only if both pros and cons exist */}
-                {(opportunity.pros?.length && opportunity.cons?.length) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h6 className={`text-sm font-semibold mb-3 text-green-600 dark:text-green-400`}>
-                        KEY STRENGTHS
-                      </h6>
-                      <ul className="space-y-2">
-                        {opportunity.pros.slice(0, 3).map((pro, index) => (
-                          <li key={index} className="flex items-start text-sm">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 mr-3 flex-shrink-0"></div>
-                            <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
-                              {pro}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h6 className={`text-sm font-semibold mb-3 text-amber-600 dark:text-amber-400`}>
-                        KEY CONSIDERATIONS
-                      </h6>
-                      <ul className="space-y-2">
-                        {opportunity.cons.slice(0, 3).map((con, index) => (
-                          <li key={index} className="flex items-start text-sm">
-                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 mr-3 flex-shrink-0"></div>
-                            <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
-                              {con}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   </div>
                 )}
               </div>
 
+              {/* Main Content Card */}
+              <Card className="border border-border/30 bg-card">
+                <CardContent className="space-y-8 pt-8">
 
-              {/* Victor Analysis Section - Only show if we have actual Victor data, not just basic opportunity fields */}
-              {(opportunity.victor_reasoning || opportunity.strategic_insights || opportunity.risk_assessment || opportunity.victor_action || opportunity.confidence_level || opportunity.opportunity_window || opportunity.victor_score) && (
-                <div className="mt-6 p-4 rounded-lg border border-border bg-card">
-
-                  <div className="space-y-3">
-
-                    {/* Elite Pulse Analysis - Only show if we have actual Victor analysis */}
-                    {(opportunity.victor_reasoning || opportunity.reasoning || opportunity.analysis) && (
-                      <div className="text-xs">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-semibold text-foreground">Elite Pulse Analysis</span>
-                          {/* Victor Score Badge */}
-                          {opportunity.victor_score && (
+                  {/* Viktor Rajesh-Volkov Intelligence Analysis */}
+                  {scoring && (
+                    <div className="p-4 rounded-lg" style={{
+                      backgroundColor: getConvictionStyle(scoring.conviction).backgroundColor,
+                      border: `1px solid ${getConvictionStyle(scoring.conviction).borderColor}30`
+                    }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: getConvictionStyle(scoring.conviction).color }}
+                        />
+                        <h6 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                          VIKTOR RAJESH-VOLKOV ANALYSIS
+                        </h6>
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                          style={{
+                            ...getConvictionStyle(scoring.conviction),
+                            borderWidth: '1px'
+                          }}
+                        >
+                          {scoring.conviction.toUpperCase()} CONVICTION
+                        </Badge>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Alignment Score Progress */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-medium text-muted-foreground">Portfolio Alignment Score</span>
+                            <span className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                              {Math.round(scoring.score)}/100
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted rounded-full h-2">
                             <div
-                              className="px-2 py-0.5 rounded-full text-xs font-bold transition-all duration-300 hover:scale-105 hover:shadow-lg group flex-shrink-0"
+                              className="h-2 rounded-full transition-all duration-300"
                               style={{
-                                background: opportunity.victor_score === 'JUICY'
-                                  ? "linear-gradient(135deg, #DC143C 0%, #FF1744 25%, #B71C1C 50%, #FF1744 75%, #DC143C 100%)" // Metallic ruby
-                                  : opportunity.victor_score === 'MODERATE'
-                                  ? "linear-gradient(135deg, #FFB300 0%, #FFC107 25%, #FF8F00 50%, #FFC107 75%, #FFB300 100%)" // Metallic topaz
-                                  : "linear-gradient(135deg, #10B981 0%, #34D399 25%, #059669 50%, #34D399 75%, #10B981 100%)", // Metallic emerald for FAR_FETCHED
-                                border: opportunity.victor_score === 'JUICY'
-                                  ? "2px solid rgba(220, 20, 60, 0.5)"
-                                  : opportunity.victor_score === 'MODERATE'
-                                  ? "2px solid rgba(255, 193, 7, 0.5)"
-                                  : "2px solid rgba(16, 185, 129, 0.5)",
-                                boxShadow: opportunity.victor_score === 'JUICY'
-                                  ? "0 2px 8px rgba(220, 20, 60, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
-                                  : opportunity.victor_score === 'MODERATE'
-                                  ? "0 2px 8px rgba(255, 193, 7, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)"
-                                  : "0 2px 8px rgba(16, 185, 129, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
-                                color: "#ffffff",
-                                textShadow: "0 1px 2px rgba(0, 0, 0, 0.4)"
+                                width: `${scoring.score}%`,
+                                backgroundColor: getConvictionStyle(scoring.conviction).color
                               }}
-                            >
-                              {opportunity.victor_score}
-                            </div>
-                          )}
+                            />
+                          </div>
                         </div>
-                        <div className="text-muted-foreground leading-relaxed">
-                          <CitationText
-                            text={opportunity.victor_reasoning || opportunity.reasoning || opportunity.analysis}
-                            className="text-xs"
-                          />
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Strategic Insights */}
-                    {opportunity.strategic_insights && (
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground block mb-1">Strategic Insights</span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          <CitationText
-                            text={opportunity.strategic_insights}
-                            className="text-xs"
-                          />
+                        {/* Investment Thesis */}
+                        <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/20' : 'bg-white/50'}`}>
+                          <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <span className="font-semibold text-primary">Viktor's Thesis:</span><br />
+                            {scoring.thesis}
+                          </p>
                         </div>
-                      </div>
-                    )}
 
-                    {/* Opportunity Window */}
-                    {opportunity.opportunity_window && (
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground block mb-1">Timing Window</span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          {opportunity.opportunity_window}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Pros and Cons */}
-                    {(opportunity.pros || opportunity.cons) && (
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {opportunity.pros && opportunity.pros.length > 0 && (
-                          <div>
-                            <span className="font-semibold text-primary block mb-1">Pros</span>
-                            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                              {opportunity.pros.slice(0, 3).map((pro: string, idx: number) => (
-                                <li key={idx} className="text-[10px]">{pro}</li>
-                              ))}
-                            </ul>
+                        {/* Detailed Analysis */}
+                        {scoring.reasoning && (
+                          <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-black/10' : 'bg-gray-50/80'}`}>
+                            <p className={`text-xs leading-relaxed ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <span className="font-semibold">Strategic Analysis:</span><br />
+                              {scoring.reasoning}
+                            </p>
                           </div>
                         )}
-                        {opportunity.cons && opportunity.cons.length > 0 && (
-                          <div>
-                            <span className="font-semibold text-primary opacity-80 block mb-1">Cons</span>
-                            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                              {opportunity.cons.slice(0, 3).map((con: string, idx: number) => (
-                                <li key={idx} className="text-[10px]">{con}</li>
-                              ))}
-                            </ul>
+
+                        {/* Entry Window Timing */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
+                            <p className="text-xs text-muted-foreground mb-1">Entry Window</p>
+                            <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                              {scoring.conviction === 'high' ? 'Immediate' :
+                               scoring.conviction === 'medium' ? 'Q1-Q2 2024' :
+                               scoring.conviction === 'watch' ? 'Monitor' : 'Avoid'}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Risk Assessment - Highlighted */}
-                    {(opportunity.risk_assessment || opportunity.hnwi_alignment) && (
-                      <div className="text-xs p-3 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-                        <span className="font-semibold text-primary block mb-2 flex items-center gap-2">
-                          <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                          Risk Assessment
-                        </span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          {opportunity.risk_assessment || opportunity.hnwi_alignment || 'Standard market risk applies. Monitor position regularly.'}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Market Pulse Alignment */}
-                    {opportunity.elite_pulse_alignment && (
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground block mb-1">Market Pulse</span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          {opportunity.elite_pulse_alignment}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Legacy fields */}
-                    {opportunity.key_factors && (
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground block mb-1">Key Factors</span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          {opportunity.key_factors}
-                        </div>
-                      </div>
-                    )}
-
-                    {opportunity.implementation && (
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground block mb-1">Implementation</span>
-                        <div className="text-muted-foreground leading-relaxed">
-                          {opportunity.implementation}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action and Confidence Section */}
-                    <div className="mt-3 pt-3 border-t border-border/50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {opportunity.victor_action && (
-                            <Badge
-                              variant={opportunity.victor_action === 'BUY' ? 'default' :
-                                      opportunity.victor_action === 'SELL' ? 'destructive' :
-                                      'secondary'}
-                              className="text-xs font-bold"
-                            >
-                              {opportunity.victor_action}
-                            </Badge>
-                          )}
-                        </div>
-                        {opportunity.confidence_level && (
-                          <div className="flex items-center space-x-2 text-xs">
-                            <span className="text-muted-foreground">Confidence:</span>
-                            <span className="font-medium text-foreground">{Math.round(opportunity.confidence_level * 100)}%</span>
+                          <div className={`p-2 rounded text-center ${theme === 'dark' ? 'bg-black/20' : 'bg-white/40'}`}>
+                            <p className="text-xs text-muted-foreground mb-1">Peer Signals</p>
+                            <p className="text-xs font-bold" style={{ color: getConvictionStyle(scoring.conviction).color }}>
+                              {scoring.conviction === 'high' ? 'Strong Buy' :
+                               scoring.conviction === 'medium' ? 'Accumulate' :
+                               scoring.conviction === 'watch' ? 'Hold' : 'Sell'}
+                            </p>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Elite Pulse Intelligence Attribution */}
+                        <div className="border-t border-muted-foreground/20 pt-2">
+                          <p className="text-xs text-muted-foreground italic">
+                            Analysis powered by Elite Pulse Intelligence System
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Collapse Arrow - Centered */}
-                  <div className="flex justify-center mt-2 pt-2 border-t border-border/50">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClick(); // This toggles the expanded state
-                      }}
-                      className="p-1 rounded-full hover:bg-muted transition-colors group"
-                      aria-label="Collapse"
-                    >
-                      <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    </button>
-                  </div>
+                  {/* Investment Thesis */}
+                  {(opportunity.investment_thesis || opportunity.description) && (
+                    <div className="space-y-6">
+                      <div className="border-l-2 border-primary pl-6">
+                        <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                          Investment Thesis
+                        </h2>
 
-                </div>
-              )}
+                        {opportunity.investment_thesis ? (
+                          <div className="space-y-5">
+                            {/* What You're Buying */}
+                            {opportunity.investment_thesis.what_youre_buying && (
+                              <div>
+                                <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                  {opportunity.investment_thesis.what_youre_buying}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Value Drivers */}
+                            {opportunity.investment_thesis.why_this_makes_money && opportunity.investment_thesis.why_this_makes_money.length > 0 && (
+                              <div className="space-y-2">
+                                {opportunity.investment_thesis.why_this_makes_money.map((item, idx) => (
+                                  <div key={idx} className="flex items-start gap-3">
+                                    <div className="w-1 h-1 rounded-full bg-primary mt-2 flex-shrink-0"></div>
+                                    <div>
+                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                        {item.driver}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {item.mechanism}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Key Considerations */}
+                            {opportunity.investment_thesis.the_catch && opportunity.investment_thesis.the_catch.length > 0 && (
+                              <div className="pt-4 border-t border-border/30">
+                                <p className={`text-xs font-bold tracking-widest uppercase text-amber-600 dark:text-amber-400 mb-2`}>
+                                  Key Considerations
+                                </p>
+                                <div className="space-y-1">
+                                  {opportunity.investment_thesis.the_catch.slice(0, 3).map((item, idx) => (
+                                    <p key={idx} className="text-sm text-muted-foreground">
+                                      · {item}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                            {opportunity.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Victor's Assessment */}
+                      {opportunity.investment_thesis?.victor_verdict_one_line && (
+                        <div
+                          className="relative p-6 rounded-xl border-l-4"
+                          style={{
+                            borderLeftColor: '#DAA520',
+                            background: theme === "dark"
+                              ? "rgba(218, 165, 32, 0.05)"
+                              : "rgba(218, 165, 32, 0.08)"
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-xs font-bold text-primary">V</span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className={`text-sm italic ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                "{opportunity.investment_thesis.victor_verdict_one_line}"
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">— Intelligence Assessment</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Financial Structure */}
+                  {(opportunity.pricing || opportunity.exit_strategy) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Pricing */}
+                      {opportunity.pricing && (
+                        <div className="border-l-2 border-primary pl-6">
+                          <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                            Structure
+                          </h2>
+                          <div className="space-y-3">
+                            {opportunity.pricing.base_price_usd && (
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-sm text-muted-foreground">Base</span>
+                                <span className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                  ${opportunity.pricing.base_price_usd.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            {opportunity.pricing.discount_percentage && (
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-sm text-muted-foreground">Discount</span>
+                                <span className="text-base font-semibold text-primary">
+                                  {opportunity.pricing.discount_percentage}%
+                                </span>
+                              </div>
+                            )}
+                            {opportunity.payment_plan?.payment_type && (
+                              <div className="pt-2 border-t border-border/30">
+                                <p className="text-sm text-muted-foreground">
+                                  {opportunity.payment_plan.payment_type}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Exit */}
+                      {opportunity.exit_strategy && (
+                        <div className="border-l-2 border-primary pl-6">
+                          <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                            Exit Path
+                          </h2>
+                          <div className="space-y-3">
+                            {opportunity.exit_strategy.primary_exit && typeof opportunity.exit_strategy.primary_exit === 'object' && (
+                              <div>
+                                {opportunity.exit_strategy.primary_exit.name && (
+                                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                    {opportunity.exit_strategy.primary_exit.name}
+                                  </p>
+                                )}
+                                {opportunity.exit_strategy.primary_exit.timeline_display && (
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {opportunity.exit_strategy.primary_exit.timeline_display}
+                                  </p>
+                                )}
+                                {opportunity.exit_strategy.primary_exit.expected_recovery_percentage && (
+                                  <p className="text-sm text-primary mt-1">
+                                    {opportunity.exit_strategy.primary_exit.expected_recovery_percentage}% recovery
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            {opportunity.exit_strategy.secondary_exit && typeof opportunity.exit_strategy.secondary_exit === 'object' && (
+                              <div className="pt-2 border-t border-border/30">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Alternative</p>
+                                <p className="text-sm font-medium">
+                                  {opportunity.exit_strategy.secondary_exit.name}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Asset Specifics */}
+                  {opportunity.asset_details && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        Asset Specifics
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+                        {opportunity.asset_details.property_type && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Type</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.property_type}
+                            </p>
+                          </div>
+                        )}
+                        {opportunity.asset_details.total_area_sqft && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Area</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.total_area_sqft.toLocaleString()} sqft
+                            </p>
+                          </div>
+                        )}
+                        {opportunity.asset_details.bedrooms && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Config</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.bedrooms} BR
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      {opportunity.asset_details.location?.full_address && (
+                        <div className="mt-4 pt-4 border-t border-border/30">
+                          <p className="text-sm text-muted-foreground">
+                            {opportunity.asset_details.location.full_address}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Risk Factors */}
+                  {(opportunity.risk_analysis || opportunity.cons) && (
+                    <div className="border-l-2 border-amber-600 dark:border-amber-400 pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-amber-600 dark:text-amber-400 mb-4`}>
+                        Key Considerations
+                      </h2>
+                      <div className="space-y-2">
+                        {opportunity.risk_analysis?.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 ? (
+                          opportunity.risk_analysis.risk_factors.slice(0, 3).map((factor: any, idx: number) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <span className="text-amber-600 dark:text-amber-400 mt-1">·</span>
+                              <p className="text-sm text-muted-foreground">
+                                {typeof factor === 'object' ? factor.factor_name || String(factor) : String(factor)}
+                              </p>
+                            </div>
+                          ))
+                        ) : opportunity.cons ? (
+                          opportunity.cons.slice(0, 3).map((con, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                              <span className="text-amber-600 dark:text-amber-400 mt-1">·</span>
+                              <p className="text-sm text-muted-foreground">{con}</p>
+                            </div>
+                          ))
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+
+                </CardContent>
+              </Card>
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-2 pt-2">
