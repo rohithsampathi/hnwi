@@ -12,6 +12,8 @@ import { MfaCodeInput } from "@/components/mfa-code-input"
 import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCurrentDevice, shouldSkip2FA } from "@/lib/auth-utils"
 import { ShieldLoader } from "@/components/ui/shield-loader"
 import { unifiedAuthManager } from "@/lib/unified-auth-manager"
+import { setAuthState, ensureClientCsrfToken } from "@/lib/secure-api"
+import { pwaStorage } from "@/lib/storage/pwa-storage"
 
 const getClientCsrfToken = (): string | null => {
   if (typeof document === "undefined") {
@@ -147,7 +149,7 @@ export function AuthPopup({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // In reauth mode, we might only need password if email is pre-filled
     if (isReauthMode && storedEmail && !password) {
       setError("Please enter your password to continue")
@@ -166,6 +168,29 @@ export function AuthPopup({
     setError(null)
 
     try {
+      // CRITICAL: Clear old auth state before re-login attempt
+      // This prevents stale cookies/tokens from interfering with fresh login
+      setAuthState(false)
+
+      // Clear old session data from storage (but preserve email for reauth)
+      if (typeof window !== 'undefined') {
+        // Clear PWA storage auth data
+        pwaStorage.removeItemSync('userId')
+        pwaStorage.removeItemSync('userObject')
+        // Keep userEmail for reauth convenience
+
+        // Clear session storage auth data
+        sessionStorage.removeItem('userId')
+        sessionStorage.removeItem('userObject')
+      }
+
+      // Get fresh CSRF token before login attempt
+      // This is critical after session expiration as old token may be invalid
+      await ensureClientCsrfToken()
+
+      // Small delay to ensure CSRF token cookie is set in browser
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       // Use unified auth manager (leverages secure-api with URL masking)
       const loginEmail = isReauthMode && storedEmail ? storedEmail : email;
 

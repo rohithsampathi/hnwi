@@ -330,24 +330,42 @@ export const ensureClientCsrfToken = async (): Promise<string | null> => ensureC
 // Try to refresh token before showing auth error
 const tryRefreshToken = async (): Promise<boolean> => {
   try {
+    // Get CSRF token for refresh request (if available)
+    const csrfToken = readCsrfToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch('/api/auth/refresh', {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     });
 
     if (response.ok) {
       const data = await response.json();
       if (data.success) {
         setAuthState(true);
+        // Small delay to allow cookies to propagate
+        await new Promise(resolve => setTimeout(resolve, 100));
         return true;
       }
     }
 
+    // If refresh failed with 401/403, the refresh token itself is expired
+    // Clear old auth state to prepare for fresh login
+    if (response.status === 401 || response.status === 403) {
+      console.warn('[API] Refresh token expired or invalid');
+      setAuthState(false);
+    }
+
     return false;
   } catch (error) {
+    console.error('[API] Token refresh network error:', error);
     return false;
   }
 };
@@ -373,6 +391,22 @@ const handleAuthError = async (): Promise<boolean> => {
 
   // Token refresh failed, now show auth popup
   isAuthenticatedCache = false;
+
+  // CRITICAL: Clear old auth state to prevent conflicts during re-login
+  // This ensures the popup login starts fresh without stale cookies interfering
+  if (typeof window !== 'undefined') {
+    // Clear PWA storage (but session storage email preserved for convenience)
+    pwaStorage.removeItemSync('userId');
+    pwaStorage.removeItemSync('userObject');
+
+    // Clear session storage auth data
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('userObject');
+  }
+
+  // Get fresh CSRF token before showing popup
+  // Old CSRF token is likely invalid after session expiration
+  await ensureCsrfToken();
 
   // Show auth popup if registered
   if (authPopupCallback) {

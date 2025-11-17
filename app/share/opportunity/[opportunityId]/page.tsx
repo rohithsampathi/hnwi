@@ -13,8 +13,10 @@ import { PremiumBadge } from "@/components/ui/premium-badge"
 import { Paragraph } from "@/components/ui/typography"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { MetaTags } from "@/components/meta-tags"
-import { PageHeaderWithBack } from "@/components/ui/back-button"
+import { Header } from "@/components/layout/header"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { useTheme } from "@/contexts/theme-context"
+import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import {
   Lock,
@@ -78,12 +80,14 @@ export default function SharedOpportunityPage() {
   const params = useParams()
   const router = useRouter()
   const { theme } = useTheme()
+  const { toast } = useToast()
   const opportunityId = params.opportunityId as string
 
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAccessGate, setShowAccessGate] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {
     loadOpportunity()
@@ -123,6 +127,8 @@ export default function SharedOpportunityPage() {
     const url = window.location.href
     try {
       await navigator.clipboard.writeText(url)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 3000) // Reset after 3 seconds
     } catch (err) {
       const textArea = document.createElement("textarea")
       textArea.value = url
@@ -130,6 +136,8 @@ export default function SharedOpportunityPage() {
       textArea.select()
       document.execCommand("copy")
       document.body.removeChild(textArea)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 3000) // Reset after 3 seconds
     }
   }
 
@@ -185,34 +193,52 @@ export default function SharedOpportunityPage() {
           )}
         </AnimatePresence>
 
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-background border-b border-border">
-          <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
-            <div className="flex items-center justify-between">
-              <PageHeaderWithBack onBack={handleBack} />
-
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleShare}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
+        {/* Header - Same as main app */}
+        <div className="sticky top-0 z-50">
+          <Header
+            showBackButton={false}
+            onNavigate={(route) => {
+              if (route === "dashboard") {
+                window.location.href = "https://www.hnwichronicles.com"
+              }
+            }}
+          >
+            <ThemeToggle />
+            <Button
+              onClick={handleShare}
+              variant={isCopied ? "default" : "outline"}
+              size="sm"
+              className={`gap-2 hidden sm:flex transition-all ${
+                isCopied
+                  ? theme === "light"
+                    ? "bg-black text-white border-black"
+                    : "bg-primary text-primary-foreground"
+                  : theme === "light"
+                    ? "hover:bg-black hover:text-white hover:border-black"
+                    : ""
+              }`}
+            >
+              {isCopied ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Link Copied
+                </>
+              ) : (
+                <>
                   <Share2 className="h-3 w-3" />
                   Share
-                </Button>
-
-                <Button
-                  onClick={handleGetAccess}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Lock className="h-3 w-3" />
-                  Get Access
-                </Button>
-              </div>
-            </div>
-          </div>
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleGetAccess}
+              size="sm"
+              className="gap-2"
+            >
+              <Lock className="h-3 w-3" />
+              Get Access
+            </Button>
+          </Header>
         </div>
 
         {/* Main Content - Premium Intelligence Briefing */}
@@ -222,7 +248,7 @@ export default function SharedOpportunityPage() {
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
               <span className="text-xs font-semibold tracking-widest uppercase text-primary">
-                Intelligence Briefing
+                Privé Exchange Opportunity
               </span>
             </div>
           </div>
