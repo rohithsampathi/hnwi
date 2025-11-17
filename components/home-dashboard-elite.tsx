@@ -207,13 +207,22 @@ export function HomeDashboardElite({
         // Handle both wrapped and direct array responses
         const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
 
-        // Backend should provide available categories
-        const categoriesFromBackend = response?.categories || []
-        if (categoriesFromBackend && categoriesFromBackend.length > 0) {
-          setAvailableCategories(categoriesFromBackend)
-          // Initialize selectedCategories to all categories if empty
-          if (selectedCategories.length === 0) {
-            setSelectedCategories(categoriesFromBackend)
+        if (opportunities && opportunities.length > 0) {
+          // Extract categories that actually have opportunities (not empty categories)
+          const categoriesWithOpportunities = new Set<string>()
+          opportunities.forEach((opp: Opportunity) => {
+            if (opp.category) {
+              categoriesWithOpportunities.add(opp.category)
+            }
+          })
+          const filteredCategories = Array.from(categoriesWithOpportunities).sort()
+
+          if (filteredCategories.length > 0) {
+            setAvailableCategories(filteredCategories)
+            // Initialize selectedCategories to all categories if empty
+            if (selectedCategories.length === 0) {
+              setSelectedCategories(filteredCategories)
+            }
           }
         }
 

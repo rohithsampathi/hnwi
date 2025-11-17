@@ -197,6 +197,14 @@ export function getCategoryIcon(city: City, iconColor: string): string {
   if (category || industry || product) {
     const backendData = (category + ' ' + industry + ' ' + product).toLowerCase()
 
+    // COMMERCIAL REAL ESTATE & BUILDINGS (CHECK FIRST!)
+    // Must check before VILLAS because "Real Estate" contains "estate"
+    if (backendData.includes('real estate') || backendData.includes('commercial') ||
+        backendData.includes('office') || backendData.includes('building') ||
+        backendData.includes('property')) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>`
+    }
+
     // WATCHES & TIMEPIECES
     if (backendData.includes('watch') || backendData.includes('timepiece') ||
         backendData.includes('rolex') || backendData.includes('omega') ||
@@ -210,16 +218,10 @@ export function getCategoryIcon(city: City, iconColor: string): string {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><rect x="6" y="3" width="12" height="18" rx="1"/><line x1="6" y1="7" x2="18" y2="7"/><line x1="6" y1="11" x2="18" y2="11"/><line x1="6" y1="15" x2="18" y2="15"/><line x1="10" y1="3" x2="10" y2="21"/><line x1="14" y1="3" x2="14" y2="21"/></svg>`
     }
 
-    // VILLAS & LUXURY HOMES
+    // VILLAS & LUXURY HOMES (after real estate check)
     if (backendData.includes('villa') || backendData.includes('mansion') ||
         backendData.includes('luxury home') || backendData.includes('estate')) {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
-    }
-
-    // COMMERCIAL REAL ESTATE & BUILDINGS
-    if (backendData.includes('commercial') || backendData.includes('office') ||
-        backendData.includes('building') || backendData.includes('property')) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V10l-5-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>`
     }
 
     // VEHICLES & AUTOMOBILES
@@ -277,7 +279,7 @@ export function getCategoryIcon(city: City, iconColor: string): string {
   // Real Estate
   if (combined.includes('real estate') || combined.includes('property') ||
       combined.includes('commercial property') || combined.includes('real-estate')) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V10l-5-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>`
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>`
   }
 
   // Vehicles / Cars

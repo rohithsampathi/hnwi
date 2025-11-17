@@ -4,7 +4,7 @@
 "use client"
 
 import React from "react"
-import { Crown, Gem, Globe, ZoomOut } from "lucide-react"
+import { Crown, Gem, TrendingUp, ZoomOut } from "lucide-react"
 import RangeSlider from "react-range-slider-input"
 import "react-range-slider-input/dist/style.css"
 
@@ -121,7 +121,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
               }`}
               aria-label="HNWI Patterns"
             >
-              <Globe className="h-4 w-4" />
+              <TrendingUp className="h-4 w-4" />
             </button>
 
             <button
@@ -262,7 +262,7 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
                 : 'text-muted-foreground hover:text-primary'
             }`}
           >
-            <Globe className="h-3.5 w-3.5" />
+            <TrendingUp className="h-3.5 w-3.5" />
             <span>HNWI Patterns</span>
           </button>
 

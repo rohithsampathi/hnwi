@@ -76,6 +76,8 @@ const pwaConfig = withPWA({
   fallbacks: {
     document: '/offline',
   },
+  // Import custom auth handler for cache clearing on login/logout
+  importScripts: ['/sw-auth-handler.js'],
   // SOTA Runtime Caching - Let HTTP headers control caching, SW just enforces
   runtimeCaching: [
     {

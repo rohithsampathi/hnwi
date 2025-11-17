@@ -457,6 +457,11 @@ class UnifiedAuthManager {
       })
     }
 
+    // 0. CRITICAL: Clear Service Worker caches FIRST before syncing auth state
+    // This prevents stale cached API responses from interfering with fresh login
+    // Must happen before any auth state is set to avoid race conditions
+    await this.clearServiceWorkerCachesOnLogin()
+
     // 1. Store user in auth-manager (sessionStorage + memory)
     loginUser(user)
 
@@ -494,6 +499,62 @@ class UnifiedAuthManager {
         userId: user.id || user.user_id,
         timestamp: new Date().toISOString()
       })
+    }
+  }
+
+  // Clear Service Worker caches on login to prevent stale data issues
+  // This is critical for browsers where user previously logged in
+  private async clearServiceWorkerCachesOnLogin(): Promise<void> {
+    if (typeof window === 'undefined') return
+
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] Clearing service worker caches on login')
+    }
+
+    try {
+      // 1. Clear caches directly from main thread
+      if ('caches' in window) {
+        const cacheNames = await caches.keys()
+        const cachesToClear = cacheNames.filter(name =>
+          name.includes('api') ||
+          name.includes('pages') ||
+          name.includes('intelligence') ||
+          name.includes('crown-vault') ||
+          name.includes('rohith') ||
+          name.includes('opportunities')
+        )
+
+        await Promise.all(
+          cachesToClear.map(name => {
+            if (typeof console !== 'undefined') {
+              console.debug('[Auth] Clearing cache:', name)
+            }
+            return caches.delete(name)
+          })
+        )
+
+        if (typeof console !== 'undefined') {
+          console.debug('[Auth] Cleared', cachesToClear.length, 'caches on login')
+        }
+      }
+
+      // 2. Also notify service worker to clear its caches
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'AUTH_LOGIN',
+          timestamp: Date.now(),
+          clearCaches: true // Signal to clear caches
+        })
+      }
+
+      // 3. Brief wait to ensure caches are cleared before making new requests
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+    } catch (error) {
+      if (typeof console !== 'undefined') {
+        console.error('[Auth] Failed to clear caches on login:', error)
+      }
+      // Continue with login even if cache clearing fails
     }
   }
 
