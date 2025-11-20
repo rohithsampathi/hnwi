@@ -254,7 +254,7 @@ export function getCategoryIcon(city: City, iconColor: string): string {
     // ART & LUXURY GOODS
     if (backendData.includes('art') || backendData.includes('painting') ||
         backendData.includes('sculpture') || backendData.includes('luxury')) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M3 16l5-5 5 5 5-5 3 3"/></svg>`
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="13.5" cy="6.5" r=".5" fill="${iconColor}"/><circle cx="17.5" cy="10.5" r=".5" fill="${iconColor}"/><circle cx="8.5" cy="7.5" r=".5" fill="${iconColor}"/><circle cx="6.5" cy="12.5" r=".5" fill="${iconColor}"/><path d="M13.73 4a2 2 0 0 0-3.46 0l-3 5A2 2 0 0 0 8 11h8a2 2 0 0 0 .73-2Z"/><path d="M9.06 12c-.51.5-2.01 3.48-2.06 6-.06 3.5 2.5 6 6.5 6s6.56-2.5 6.5-6c-.05-2.52-1.55-5.5-2.06-6"/></svg>`
     }
   }
 

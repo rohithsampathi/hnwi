@@ -192,6 +192,25 @@ export function HomeDashboardElite({
     openCitation(citationId)
   }, [openCitation])
 
+  // Clean category names by removing status/completion indicators
+  const cleanCategoryName = (category: string): string => {
+    if (!category) return category
+
+    // Remove content in brackets/parentheses and common suffixes/status words
+    const cleanedCategory = category
+      // Remove content in parentheses like (Build-ready)
+      .replace(/\s*\([^)]*\)/g, '')
+      // Remove content in square brackets like [Build-ready]
+      .replace(/\s*\[[^\]]*\]/g, '')
+      // Remove common suffixes with dashes
+      .replace(/\s*-\s*(completed|under construction|ongoing|in progress|pending|active|inactive|sold|available)/gi, '')
+      // Remove common suffixes without dashes
+      .replace(/\s+(completed|under construction|ongoing|in progress|pending|active|inactive|sold|available)/gi, '')
+      .trim()
+
+    return cleanedCategory
+  }
+
   useEffect(() => {
     const fetchOpportunities = async () => {
       setLoading(true)
@@ -209,10 +228,14 @@ export function HomeDashboardElite({
 
         if (opportunities && opportunities.length > 0) {
           // Extract categories that actually have opportunities (not empty categories)
+          // Clean category names by removing status indicators
           const categoriesWithOpportunities = new Set<string>()
           opportunities.forEach((opp: Opportunity) => {
             if (opp.category) {
-              categoriesWithOpportunities.add(opp.category)
+              const cleanedCategory = cleanCategoryName(opp.category)
+              if (cleanedCategory) {
+                categoriesWithOpportunities.add(cleanedCategory)
+              }
             }
           })
           const filteredCategories = Array.from(categoriesWithOpportunities).sort()
@@ -271,8 +294,8 @@ export function HomeDashboardElite({
                 source: opp.source,
                 victor_score: opp.victor_score,
                 elite_pulse_analysis: opp.elite_pulse_analysis,
-                // Category/Industry/Product from backend
-                category: opp.category,
+                // Category/Industry/Product from backend (cleaned)
+                category: opp.category ? cleanCategoryName(opp.category) : opp.category,
                 industry: opp.industry,
                 product: opp.product,
                 start_date: opp.start_date,
