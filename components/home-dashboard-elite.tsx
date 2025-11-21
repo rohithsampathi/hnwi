@@ -276,6 +276,38 @@ export function HomeDashboardElite({
               const allDevIds = Array.from(new Set([...devIdsFromAnalysis, ...devIdsFromElitePulse]))
               const devIds = allDevIds
 
+              // Smart category override: Fix miscategorized opportunities
+              // If backend marks automotive-branded real estate as "automotive", override to "Real Estate"
+              let correctedCategory = opp.category ? cleanCategoryName(opp.category) : opp.category
+              const titleLower = (opp.title || '').toLowerCase()
+              const analysisLower = (opp.analysis || '').toLowerCase()
+              const combined = titleLower + ' ' + analysisLower
+              const categoryLower = (correctedCategory || '').toLowerCase()
+
+              // Check if this is actually real estate (residential/building) despite being marked as automotive/vehicle
+              if (categoryLower.includes('automotive') ||
+                  categoryLower.includes('vehicle') ||
+                  categoryLower === 'luxury vehicles' ||
+                  categoryLower === 'luxury vehicle') {
+                const isRealEstate = combined.includes('residential') ||
+                                    combined.includes('building') ||
+                                    combined.includes('architecture') ||
+                                    combined.includes('apartment') ||
+                                    combined.includes('condo') ||
+                                    combined.includes('real estate') ||
+                                    combined.includes('property investment') ||
+                                    combined.includes('branded residence') ||
+                                    (titleLower.includes('investment') && (
+                                      combined.includes('miami') ||
+                                      combined.includes('tower') ||
+                                      combined.includes('residence')
+                                    ))
+
+                if (isRealEstate) {
+                  correctedCategory = 'Real Estate'
+                }
+              }
+
               return {
                 name: displayName,
                 country: opp.country || 'Unknown',
@@ -294,8 +326,8 @@ export function HomeDashboardElite({
                 source: opp.source,
                 victor_score: opp.victor_score,
                 elite_pulse_analysis: opp.elite_pulse_analysis,
-                // Category/Industry/Product from backend (cleaned)
-                category: opp.category ? cleanCategoryName(opp.category) : opp.category,
+                // Category/Industry/Product from backend (with smart override)
+                category: correctedCategory,
                 industry: opp.industry,
                 product: opp.product,
                 start_date: opp.start_date,

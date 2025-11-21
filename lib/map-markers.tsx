@@ -43,7 +43,34 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
   if (category || industry || product) {
     const backendData = (category + ' ' + industry + ' ' + product).toLowerCase()
 
-    // COMMERCIAL REAL ESTATE & BUILDINGS (CHECK FIRST!)
+    // WATCHES & TIMEPIECES (CHECK BEFORE REAL ESTATE!)
+    // Important: Check before real estate to avoid false matches with generic "property" keyword
+    if (backendData.includes('watch') || backendData.includes('timepiece') ||
+        backendData.includes('rolex') || backendData.includes('omega') ||
+        backendData.includes('patek') || backendData.includes('cartier') ||
+        backendData.includes('dubuis') || backendData.includes('roger dubuis') ||
+        backendData.includes('hublot') || backendData.includes('audemars')) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <circle cx="12" cy="12" r="6"/>
+        <polyline points="12 10 12 12 13 13"/>
+        <path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/>
+        <path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>
+      </svg>`
+    }
+
+    // YACHTS & BOATS (CHECK BEFORE REAL ESTATE!)
+    // Important: Check before real estate to avoid false matches
+    if (backendData.includes('yacht') || backendData.includes('boat') ||
+        backendData.includes('vessel') || backendData.includes('sailboat') ||
+        backendData.includes('ship') || backendData.includes('marine')) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+        <circle cx="12" cy="5" r="3"/>
+        <path d="M12 22V8"/>
+        <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+      </svg>`
+    }
+
+    // COMMERCIAL REAL ESTATE & BUILDINGS
     // Must check before VILLAS because "Real Estate" contains "estate"
     if (backendData.includes('real estate') || backendData.includes('commercial') ||
         backendData.includes('office') || backendData.includes('building') ||
@@ -56,18 +83,6 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
         <rect x="14" y="11" width="3" height="3"/>
         <rect x="7" y="17" width="3" height="3"/>
         <rect x="14" y="17" width="3" height="3"/>
-      </svg>`
-    }
-
-    // WATCHES & TIMEPIECES
-    if (backendData.includes('watch') || backendData.includes('timepiece') ||
-        backendData.includes('rolex') || backendData.includes('omega') ||
-        backendData.includes('patek') || backendData.includes('cartier')) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-        <circle cx="12" cy="12" r="6"/>
-        <polyline points="12 10 12 12 13 13"/>
-        <path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/>
-        <path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>
       </svg>`
     }
 
@@ -181,12 +196,25 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
   if (combined.includes('watch') || combined.includes('rolex') ||
       combined.includes('timepiece') || title.includes('tissot') ||
       title.includes('seiko') || title.includes('patek') ||
-      combined.includes('omega') || combined.includes('cartier')) {
+      combined.includes('omega') || combined.includes('cartier') ||
+      combined.includes('dubuis') || combined.includes('hublot') ||
+      combined.includes('audemars')) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
       <circle cx="12" cy="12" r="6"/>
       <polyline points="12 10 12 12 13 13"/>
       <path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/>
       <path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/>
+    </svg>`
+  }
+
+  // Yachts / Boats
+  if (combined.includes('yacht') || combined.includes('boat') ||
+      combined.includes('vessel') || combined.includes('sailboat') ||
+      combined.includes('ship') || combined.includes('marine')) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+      <circle cx="12" cy="5" r="3"/>
+      <path d="M12 22V8"/>
+      <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
     </svg>`
   }
 

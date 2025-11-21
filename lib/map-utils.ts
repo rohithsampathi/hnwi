@@ -197,19 +197,30 @@ export function getCategoryIcon(city: City, iconColor: string): string {
   if (category || industry || product) {
     const backendData = (category + ' ' + industry + ' ' + product).toLowerCase()
 
-    // COMMERCIAL REAL ESTATE & BUILDINGS (CHECK FIRST!)
+    // WATCHES & TIMEPIECES (CHECK BEFORE REAL ESTATE!)
+    // Important: Check before real estate to avoid false matches with generic "property" keyword
+    if (backendData.includes('watch') || backendData.includes('timepiece') ||
+        backendData.includes('rolex') || backendData.includes('omega') ||
+        backendData.includes('patek') || backendData.includes('cartier') ||
+        backendData.includes('dubuis') || backendData.includes('roger dubuis') ||
+        backendData.includes('hublot') || backendData.includes('audemars')) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="12" cy="12" r="6"/><polyline points="12 10 12 12 13 13"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/><path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/></svg>`
+    }
+
+    // YACHTS & BOATS (CHECK BEFORE REAL ESTATE!)
+    // Important: Check before real estate to avoid false matches
+    if (backendData.includes('yacht') || backendData.includes('boat') ||
+        backendData.includes('vessel') || backendData.includes('sailboat') ||
+        backendData.includes('ship') || backendData.includes('marine')) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="12" cy="5" r="3"/><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>`
+    }
+
+    // COMMERCIAL REAL ESTATE & BUILDINGS
     // Must check before VILLAS because "Real Estate" contains "estate"
     if (backendData.includes('real estate') || backendData.includes('commercial') ||
         backendData.includes('office') || backendData.includes('building') ||
         backendData.includes('property')) {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>`
-    }
-
-    // WATCHES & TIMEPIECES
-    if (backendData.includes('watch') || backendData.includes('timepiece') ||
-        backendData.includes('rolex') || backendData.includes('omega') ||
-        backendData.includes('patek') || backendData.includes('cartier')) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="12" cy="12" r="6"/><polyline points="12 10 12 12 13 13"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/><path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/></svg>`
     }
 
     // APARTMENTS & RESIDENTIAL
@@ -272,8 +283,17 @@ export function getCategoryIcon(city: City, iconColor: string): string {
   if (combined.includes('watch') || combined.includes('rolex') ||
       combined.includes('timepiece') || title.includes('tissot') ||
       title.includes('seiko') || title.includes('patek') ||
-      combined.includes('omega') || combined.includes('cartier')) {
+      combined.includes('omega') || combined.includes('cartier') ||
+      combined.includes('dubuis') || combined.includes('hublot') ||
+      combined.includes('audemars')) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="12" cy="12" r="6"/><polyline points="12 10 12 12 13 13"/><path d="m16.13 7.66-.81-4.05a2 2 0 0 0-2-1.61h-2.68a2 2 0 0 0-2 1.61l-.78 4.05"/><path d="m7.88 16.36.8 4a2 2 0 0 0 2 1.61h2.72a2 2 0 0 0 2-1.61l.81-4.05"/></svg>`
+  }
+
+  // Yachts / Boats
+  if (combined.includes('yacht') || combined.includes('boat') ||
+      combined.includes('vessel') || combined.includes('sailboat') ||
+      combined.includes('ship') || combined.includes('marine')) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${iconColor}" stroke="${iconColor}" stroke-width="1.5"><circle cx="12" cy="5" r="3"/><path d="M12 22V8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg>`
   }
 
   // Real Estate
