@@ -173,12 +173,50 @@ export default function SharedOpportunityPage() {
     )
   }
 
+  // Create dynamic OG description from opportunity data
+  const createDynamicDescription = () => {
+    const parts = []
+
+    // Use investment thesis or description (prioritize investment thesis)
+    if (opportunity.investment_thesis?.what_youre_buying) {
+      parts.push(opportunity.investment_thesis.what_youre_buying)
+    } else if (opportunity.description) {
+      parts.push(opportunity.description)
+    } else {
+      // If no thesis or description, use title with type
+      parts.push(`${opportunity.title}${opportunity.type ? ` - ${opportunity.type}` : ''}`)
+    }
+
+    // Add key metrics
+    const metrics = []
+    if (opportunity.minimum_investment_display || opportunity.value) {
+      metrics.push(`Min: ${opportunity.minimum_investment_display || opportunity.value}`)
+    }
+    if (opportunity.expected_return_annual_low && opportunity.expected_return_annual_high) {
+      metrics.push(`${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% annual return`)
+    } else if (opportunity.expectedReturn) {
+      metrics.push(`${opportunity.expectedReturn} return`)
+    }
+    if (opportunity.region) {
+      metrics.push(opportunity.region)
+    }
+
+    if (metrics.length > 0) {
+      parts.push(metrics.join(' · '))
+    }
+
+    return parts.join(' | ')
+  }
+
+  // Create dynamic title
+  const dynamicTitle = `${opportunity.title}${opportunity.type ? ` - ${opportunity.type}` : ''} | HNWI Chronicles`
+
   return (
     <>
       <MetaTags
-        title={`${opportunity.title} - Investment Opportunity | HNWI Chronicles`}
-        description={opportunity.description || "Exclusive investment opportunity available on Privé Exchange"}
-        image="https://app.hnwichronicles.com/images/prive-exchange-og.png"
+        title={dynamicTitle}
+        description={createDynamicDescription()}
+        image="https://app.hnwichronicles.com/logo.png"
         url={`https://app.hnwichronicles.com/share/opportunity/${opportunityId}`}
       />
 
