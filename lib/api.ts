@@ -328,15 +328,6 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
     const errorType = errorDetail?.type || 'unknown';
     const backendUrl = errorDetail?.backendUrl || '';
 
-    console.error('[getOpportunities] Error loading opportunities:', {
-      message: errorMessage,
-      detail: errorDetail,
-      details: errorDetails,
-      type: errorType,
-      backendUrl: backendUrl,
-      status: error?.status
-    });
-
     // Throw more specific error message based on error type
     if (errorType === 'timeout') {
       throw new Error('Request timed out. The backend server may be slow or unavailable. Please try again.');

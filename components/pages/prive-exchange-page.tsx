@@ -99,11 +99,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         let enrichedOpportunities = basicOpportunities.map((opp: any) => {
           if (opp.victor_analysis) {
             const va = opp.victor_analysis;
-            console.log('✅ Flattening Victor data for:', {
-              opportunityTitle: opp.title,
-              victorRating: va.rating,
-              victorScore: va.score
-            });
             return {
               ...opp,
               // Map nested Victor fields to flat fields expected by UI
@@ -121,11 +116,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             };
           }
           return opp;
-        });
-
-        console.log('Victor Analysis Flattening:', {
-          totalOpportunities: basicOpportunities.length,
-          opportunitiesWithVictor: enrichedOpportunities.filter((o: any) => o.victor_score !== undefined).length
         });
 
         // Legacy: Merge with Victor analysis data from intelligence endpoint if available
@@ -149,12 +139,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             }
           });
 
-          console.log('Victor Analysis Matching:', {
-            totalVictor: intelligenceData.victorOpportunities.length,
-            victorById: victorMapById.size,
-            victorByTitle: victorMapByTitle.size,
-            totalOpportunities: basicOpportunities.length
-          });
 
           // Match opportunities with Victor analysis from intelligence endpoint (legacy fallback)
           // This merges additional Victor data if available from intelligence endpoint
@@ -170,13 +154,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             }
 
             if (victorMatch) {
-              console.log('✅ Victor Match Found:', {
-                opportunityTitle: opp.title,
-                matchMethod: oppId && victorMapById.get(oppId) ? 'ID' : 'Title',
-                victorScore: victorMatch.victor_score || victorMatch.score,
-                victorRating: victorMatch.victor_score || victorMatch.score
-              });
-
               // Helper function to replace MOE v4 with HNWI
               const replaceMoeV4 = (text: string | null | undefined): string => {
                 if (!text || typeof text !== 'string') return text || ''
@@ -205,11 +182,6 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                 cons: victorMatch.cons,
                 hnwi_alignment: replaceMoeV4(victorMatch.hnwi_alignment || victorMatch.moe_v4_alignment)
               };
-            } else {
-              console.log('❌ No Victor Match:', {
-                opportunityTitle: opp.title,
-                oppId: oppId
-              });
             }
             return opp;
           });

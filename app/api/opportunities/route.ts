@@ -13,29 +13,37 @@ export async function GET(request: NextRequest) {
     // Get backend API URL from environment
     const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
 
-    console.log('[Opportunities API] Fetching from:', `${backendApiUrl}/api/opportunities`)
-
-    // Fetch from backend API with cache busting and timeout
+    // GET /api/opportunities - requires authentication
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+    // Forward authentication headers from the client request
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    }
+
+    // Forward cookies for authentication
+    const cookies = request.headers.get('cookie')
+    if (cookies) {
+      headers['Cookie'] = cookies
+    }
+
+    // Forward API secret key for server-to-server auth
+    const apiSecretKey = process.env.API_SECRET_KEY
+    if (apiSecretKey) {
+      headers['X-API-Key'] = apiSecretKey
+    }
 
     const response = await fetch(`${backendApiUrl}/api/opportunities`, {
       cache: 'no-store',
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
+      headers
     }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
-      console.error('[Opportunities API] Backend returned error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText.substring(0, 500)
-      })
       return NextResponse.json(
         {
           error: 'Failed to fetch opportunities from backend',
@@ -70,14 +78,6 @@ export async function GET(request: NextRequest) {
     const errorMessage = error?.message || 'Unknown error'
     const isTimeout = error?.name === 'AbortError'
     const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED')
-
-    console.error('[Opportunities API] Error fetching opportunities:', {
-      error: errorMessage,
-      type: error?.name,
-      isTimeout,
-      isNetworkError,
-      stack: error?.stack?.substring(0, 500)
-    })
 
     // Return user-friendly error message
     return NextResponse.json(
