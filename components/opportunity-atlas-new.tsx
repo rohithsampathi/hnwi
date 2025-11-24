@@ -104,11 +104,11 @@ function OpportunityCard({
   scoring,
   onOpportunityView
 }: { 
-  opportunity: Opportunity; 
+  opportunity: Opportunity;
   onClick: () => void;
   isExpanded: boolean;
   onShare: (opportunity: Opportunity) => void;
-  shareState: { [key: string]: boolean };
+  shareState: { [key: string]: boolean | 'loading' };
   onTalkToConcierge: (opportunity: Opportunity) => void;
   conciergeState: { [key: string]: boolean };
   scoring?: {
@@ -981,8 +981,9 @@ function OpportunityCard({
                     e.stopPropagation();
                     onShare(opportunity);
                   }}
+                  disabled={opportunity?.id ? shareState?.[opportunity.id] === 'loading' : false}
                   className={`flex items-center gap-1 transition-all text-xs px-3 py-1.5 h-7 font-medium ${
-                    opportunity?.id && shareState?.[opportunity.id]
+                    opportunity?.id && shareState?.[opportunity.id] === true
                       ? theme === 'dark'
                         ? 'bg-green-900/20 border-green-500 text-green-400 hover:bg-primary hover:text-white hover:border-primary'
                         : 'bg-green-50 border-green-500 text-green-700 hover:bg-primary hover:text-white hover:border-primary'
@@ -991,12 +992,18 @@ function OpportunityCard({
                         : 'text-black hover:bg-primary hover:text-white hover:border-primary'
                   }`}
                 >
-                  {opportunity?.id && shareState?.[opportunity.id] ? (
+                  {opportunity?.id && shareState?.[opportunity.id] === 'loading' ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : opportunity?.id && shareState?.[opportunity.id] === true ? (
                     <Check className="w-3 h-3" />
                   ) : (
                     <Share2 className="w-3 h-3" />
                   )}
-                  {opportunity?.id && shareState?.[opportunity.id] ? 'Copied!' : 'Share'}
+                  {opportunity?.id && shareState?.[opportunity.id] === 'loading'
+                    ? 'Creating...'
+                    : opportunity?.id && shareState?.[opportunity.id] === true
+                      ? 'Copied!'
+                      : 'Share'}
                 </Button>
                 
                 <Button
@@ -1043,7 +1050,7 @@ export function OpportunityAtlasNew({
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
   const [showStickyCategories, setShowStickyCategories] = useState(false);
   const [expandedOpportunityId, setExpandedOpportunityId] = useState<string | null>(null);
-  const [shareState, setShareState] = useState<{ [key: string]: boolean }>({});
+  const [shareState, setShareState] = useState<{ [key: string]: boolean | 'loading' }>({});
   const [conciergeState, setConciergeState] = useState<{ [key: string]: boolean }>({});
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
@@ -1254,7 +1261,7 @@ export function OpportunityAtlasNew({
     }
   };
 
-  // Handle share functionality with clipboard - copy URL
+  // Handle share functionality - creates UUID-based share link
   const handleShare = async (opportunity: Opportunity) => {
     if (!opportunity?.id) {
       toast({
@@ -1266,63 +1273,74 @@ export function OpportunityAtlasNew({
       return;
     }
 
+    // Show loading state
+    if (opportunity?.id) {
+      setShareState(prev => ({ ...(prev || {}), [opportunity.id]: 'loading' }));
+    }
+
     try {
-      // Build the opportunity URL using the public share route
-      const baseUrl = window.location.origin;
-      const opportunityUrl = `${baseUrl}/share/opportunity/${opportunity.id}`;
-      
-      await navigator.clipboard.writeText(opportunityUrl);
-      
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token');
+      const { csrfToken } = await csrfResponse.json();
+
+      // Call POST endpoint to create UUID-based share
+      const response = await fetch('/api/opportunities/share', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+          userId: localStorage.getItem('userId') || 'anonymous',
+          opportunityData: opportunity
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to create share link: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.shareUrl) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Copy the UUID-based share URL to clipboard
+      await navigator.clipboard.writeText(data.shareUrl);
+
       // Show success toast
       toast({
-        title: "URL Copied",
-        description: `Opportunity link copied to clipboard`,
+        title: "Share Link Created",
+        description: `Link copied to clipboard`,
         duration: 2000,
       });
-      
+
       // Show success state
       if (opportunity?.id) {
         setShareState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
-        
+
         // Reset success state after 2 seconds
         setTimeout(() => {
           setShareState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
         }, 2000);
       }
-      
+
     } catch (error) {
-      // Fallback: try to use the older method with URL
-      const baseUrl = window.location.origin;
-      const opportunityUrl = `${baseUrl}/prive-exchange/${opportunity.region}/${opportunity.id}`;
-      
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = opportunityUrl;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        // Show success toast
-        toast({
-          title: "URL Copied",
-          description: `Opportunity link copied to clipboard`,
-          duration: 2000,
-        });
-        
-        if (opportunity?.id) {
-          setShareState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
-          setTimeout(() => {
-            setShareState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
-          }, 2000);
-        }
-      } catch (fallbackError) {
-        toast({
-          title: "Copy Failed",
-          description: "Unable to copy opportunity URL. Please try again.",
-          variant: "destructive",
-          duration: 3000,
-        });
+      console.error('Share error:', error);
+
+      // Fallback for clipboard copy errors
+      toast({
+        title: "Share Failed",
+        description: "Unable to create share link. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+
+      // Reset state on error
+      if (opportunity?.id) {
+        setShareState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
       }
     }
   };
