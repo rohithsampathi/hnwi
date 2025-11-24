@@ -10,52 +10,38 @@ import type { Opportunity } from "@/lib/api"
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Server-side function to fetch opportunity
+// Server-side function to fetch opportunity directly from backend
+// This avoids self-referencing HTTP calls during metadata generation
 async function getOpportunity(opportunityId: string): Promise<Opportunity | null> {
   try {
-    // Determine the correct base URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production'
+    const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
+    const apiKey = process.env.API_SECRET_KEY
 
-    // In development: use localhost Next.js server (which has the API routes)
-    // In production: use the production URL
-    const apiBaseUrl = isProduction
-      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000'  // Use Next.js dev server, not backend
+    if (!apiKey) {
+      return null
+    }
 
-    console.log(`[Share Opportunity] Environment: ${process.env.NODE_ENV}`)
-    console.log(`[Share Opportunity] Fetching opportunity ${opportunityId} from ${apiBaseUrl}`)
-
-    // Call the Next.js API route (works in both dev and production)
-    const response = await fetch(`${apiBaseUrl}/api/opportunities`, {
-      cache: 'no-store', // Always get fresh data for social crawlers
+    // Fetch directly from backend using server-side API key
+    // This works during metadata generation without self-referencing issues
+    const response = await fetch(`${backendApiUrl}/api/opportunities`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey
+      },
+      cache: 'no-store'
     })
 
     if (response.ok) {
       const opportunities = await response.json()
-      const opportunity = opportunities.find((o: Opportunity) => o.id === opportunityId)
-
-      if (opportunity) {
-        console.log(`[Share Opportunity] Successfully fetched opportunity ${opportunityId}`)
-        return opportunity
-      }
-    }
-
-    console.error(`[Share Opportunity] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
-
-    // Try to get error details
-    try {
-      const errorData = await response.json()
-      console.error(`[Share Opportunity] Error details:`, errorData)
-    } catch (e) {
-      // Ignore JSON parse errors
+      const opportunity = opportunities.find((opp: any) =>
+        opp.id === opportunityId || opp._id === opportunityId
+      )
+      return opportunity || null
     }
 
     return null
   } catch (error) {
-    console.error('[Share Opportunity] Error fetching opportunity:', error)
     return null
   }
 }
@@ -71,6 +57,7 @@ export async function generateMetadata({
   const imageUrl = `${baseUrl}/logo.png`
 
   const defaultMetadata: Metadata = {
+    metadataBase: new URL(baseUrl),
     title: 'Exclusive Investment Opportunity | HNWI Chronicles',
     description: 'Exclusive investment opportunity for the world\'s top 1%',
     openGraph: {
@@ -81,8 +68,8 @@ export async function generateMetadata({
       images: [
         {
           url: imageUrl,
-          width: 1200,
-          height: 630,
+          width: 241,
+          height: 251,
           alt: 'HNWI Chronicles',
         }
       ],
@@ -90,7 +77,7 @@ export async function generateMetadata({
       type: 'website',
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title: 'Exclusive Investment Opportunity | HNWI Chronicles',
       description: 'Exclusive investment opportunity for the world\'s top 1%',
       images: [imageUrl],
@@ -104,7 +91,6 @@ export async function generateMetadata({
     const opportunity = await getOpportunity(params.opportunityId)
 
     if (!opportunity) {
-      console.log(`[Share Opportunity] No opportunity found for ${params.opportunityId}, using default metadata`)
       return defaultMetadata
     }
 
@@ -147,12 +133,8 @@ export async function generateMetadata({
       ? `${cleanDescription.substring(0, 157)}...`
       : cleanDescription
 
-    console.log(`[Share Opportunity] Generated metadata for ${params.opportunityId}:`, {
-      title: metaTitle,
-      description: metaDescription.substring(0, 80) + '...'
-    })
-
     return {
+      metadataBase: new URL(baseUrl),
       title: `${metaTitle} | HNWI Chronicles`,
       description: metaDescription,
       openGraph: {
@@ -163,8 +145,8 @@ export async function generateMetadata({
         images: [
           {
             url: imageUrl,
-            width: 1200,
-            height: 630,
+            width: 241,
+            height: 251,
             alt: `${metaTitle} - HNWI Chronicles`,
           }
         ],
@@ -172,7 +154,7 @@ export async function generateMetadata({
         type: 'website',
       },
       twitter: {
-        card: 'summary_large_image',
+        card: 'summary',
         title: `${metaTitle} | HNWI Chronicles`,
         description: metaDescription,
         images: [imageUrl],
@@ -182,7 +164,6 @@ export async function generateMetadata({
       }
     }
   } catch (error) {
-    console.error('[Share Opportunity] Error generating metadata:', error)
     return defaultMetadata
   }
 }
