@@ -15,7 +15,7 @@ export const revalidate = 0
 
 // Server-side function to fetch shared opportunity directly from MongoDB
 // Following Next.js best practices: Server Components should NOT fetch their own API routes
-async function getSharedOpportunity(shareId: string): Promise<Opportunity | null> {
+async function getSharedOpportunity(shareId: string): Promise<string | null> {
   try {
     // Validate UUID format before database access
     const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
@@ -36,7 +36,13 @@ async function getSharedOpportunity(shareId: string): Promise<Opportunity | null
     }
 
     console.log(`[Opportunity Share] Successfully fetched opportunity`)
-    return sharedOpp.opportunityData as Opportunity
+
+    // CRITICAL: Stringify the opportunity data HERE in the async function
+    // This ensures the object never enters the component scope
+    // JSON.stringify automatically strips functions, undefined, and other non-serializable values
+    const opportunityString = JSON.stringify(sharedOpp.opportunityData)
+
+    return opportunityString
 
   } catch (error) {
     console.error('[Opportunity Share] MongoDB error:', error)
@@ -87,15 +93,29 @@ export async function generateMetadata({
   }
 
   try {
-    const opportunity = await getSharedOpportunity(params.opportunityId)
+    const opportunityString = await getSharedOpportunity(params.opportunityId)
 
-    if (!opportunity) {
+    if (!opportunityString) {
       console.log(`[Share Page] No opportunity found for ${params.opportunityId}, using default metadata`)
       return defaultMetadata
     }
 
+    // Parse the string back to object for metadata generation
+    // CRITICAL: Extract ONLY the values we need as primitives, then discard the object
+    // This prevents Next.js from serializing the full object in the function closure
+    const parsed = JSON.parse(opportunityString) as Opportunity
+    const title = parsed.title || ''
+    const description = parsed.description || ''
+    const subtitle = parsed.subtitle || ''
+    const type = parsed.type || ''
+    const region = parsed.region || ''
+    const minInvestment = parsed.minimum_investment_display || ''
+    const returnLow = parsed.expected_return_annual_low || 0
+    const returnHigh = parsed.expected_return_annual_high || 0
+    const investmentThesisText = parsed.investment_thesis?.what_youre_buying || ''
+
     // Create title from opportunity title (max 60 chars for SEO) - following Rohith pattern
-    const rawTitle = opportunity.title || 'Exclusive Investment Opportunity'
+    const rawTitle = title || 'Exclusive Investment Opportunity'
     const metaTitle = rawTitle.length > 60
       ? `${rawTitle.substring(0, 57)}...`
       : rawTitle
@@ -104,20 +124,20 @@ export async function generateMetadata({
     let rawDescription = ''
 
     // Use investment thesis (what you're buying) as primary description
-    if (opportunity.investment_thesis?.what_youre_buying) {
-      rawDescription = opportunity.investment_thesis.what_youre_buying
-    } else if (opportunity.description) {
-      rawDescription = opportunity.description
-    } else if (opportunity.subtitle) {
-      rawDescription = opportunity.subtitle
+    if (investmentThesisText) {
+      rawDescription = investmentThesisText
+    } else if (description) {
+      rawDescription = description
+    } else if (subtitle) {
+      rawDescription = subtitle
     } else {
       // Fallback: Create description from key details
       const details = []
-      if (opportunity.type) details.push(opportunity.type)
-      if (opportunity.region) details.push(opportunity.region)
-      if (opportunity.minimum_investment_display) details.push(`Min: ${opportunity.minimum_investment_display}`)
-      if (opportunity.expected_return_annual_low && opportunity.expected_return_annual_high) {
-        details.push(`${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% annual return`)
+      if (type) details.push(type)
+      if (region) details.push(region)
+      if (minInvestment) details.push(`Min: ${minInvestment}`)
+      if (returnLow && returnHigh) {
+        details.push(`${returnLow}-${returnHigh}% annual return`)
       }
       rawDescription = details.join(' · ') || 'Exclusive investment opportunity for the world\'s top 1%'
     }
@@ -179,15 +199,13 @@ export default async function SharedOpportunityPage({
 }: {
   params: { opportunityId: string }
 }) {
-  const opportunity = await getSharedOpportunity(params.opportunityId)
+  // Fetch opportunity - returns PRE-STRINGIFIED data to avoid serialization issues
+  // The async function stringifies the object internally, so only the string enters this scope
+  const opportunityString = await getSharedOpportunity(params.opportunityId)
 
-  if (!opportunity) {
+  if (!opportunityString) {
     notFound()
   }
-
-  // NUCLEAR OPTION: Pass as string to completely bypass Next.js serialization issues
-  // The client component will parse it back to object
-  const opportunityString = JSON.stringify(opportunity)
 
   return <SharedOpportunityClient opportunityString={opportunityString} opportunityId={params.opportunityId} />
 }
