@@ -5,38 +5,55 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import SharedOpportunityClient from "./shared-opportunity-client"
 import type { Opportunity } from "@/lib/api"
-import { getSharedOpportunity as getSharedOpportunityFromDB } from "@/lib/mongodb-shared-opportunities"
 
 // Force dynamic rendering for metadata generation
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Server-side function to fetch shared opportunity directly from MongoDB
+// Server-side function to fetch shared opportunity (via API route like Ask Rohith)
 async function getSharedOpportunity(shareId: string): Promise<Opportunity | null> {
   try {
-    // Validate UUID format (8-4-4-4-12 hexadecimal with dashes)
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
+    // Determine the correct base URL based on environment
+    const isProduction = process.env.NODE_ENV === 'production'
 
-    if (!isValidUUID) {
-      console.log(`[Share Page] Invalid UUID format: ${shareId}`)
-      return null
+    // In development: use localhost Next.js server (which has the API routes)
+    // In production: use the production URL
+    const apiBaseUrl = isProduction
+      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
+      : 'http://localhost:3000'  // Use Next.js dev server
+
+    console.log(`[Opportunity Share Page] Environment: ${process.env.NODE_ENV}`)
+    console.log(`[Opportunity Share Page] Fetching opportunity ${shareId} from ${apiBaseUrl}`)
+
+    // Call the Next.js API route (proven Ask Rohith pattern)
+    const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${shareId}`, {
+      cache: 'no-store', // Always get fresh data for social crawlers
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      if (data.success && data.opportunity) {
+        console.log(`[Opportunity Share Page] Successfully fetched opportunity ${shareId}`)
+        return data.opportunity as Opportunity
+      }
     }
 
-    console.log(`[Share Page] Fetching opportunity ${shareId} directly from MongoDB`)
+    console.error(`[Opportunity Share Page] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
 
-    // Call MongoDB directly (no HTTP request, no network overhead)
-    const sharedOpp = await getSharedOpportunityFromDB(shareId)
-
-    if (!sharedOpp || !sharedOpp.opportunityData) {
-      console.log(`[Share Page] Opportunity not found or expired: ${shareId}`)
-      return null
+    // Try to get error details
+    try {
+      const errorData = await response.json()
+      console.error(`[Opportunity Share Page] Error details:`, errorData)
+    } catch (e) {
+      // Ignore JSON parse errors
     }
 
-    console.log(`[Share Page] Successfully fetched opportunity from MongoDB`)
-    return sharedOpp.opportunityData as Opportunity
-
+    return null
   } catch (error) {
-    console.error('[Share Page] Error fetching shared opportunity:', error)
+    console.error('[Opportunity Share Page] Error fetching shared opportunity:', error)
     return null
   }
 }
