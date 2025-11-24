@@ -25,16 +25,22 @@ The opportunity share feature allows users to share investment opportunities via
   - Backend metadata
 - Only public-facing opportunity data is shared
 
-### 3. MongoDB-Only Architecture (Matches Ask Rohith Pattern)
-**Problem**: Production environment needs fast, reliable data access.
+### 3. MongoDB-Direct Architecture
+**Problem**: Production server-to-self HTTP fetches can timeout or fail under load.
 
 **Solution**:
+- Server components call MongoDB directly (zero HTTP overhead)
 - Single data source: MongoDB (shared_opportunities collection)
-- Server components fetch via API routes (proven Ask Rohith pattern)
-- No backend dependencies
+- No backend dependencies or network round-trips
 - 90-day automatic expiration via TTL index
 - Fast retrieval with indexed shareId lookups
-- Consistent architecture across all share features
+- More reliable than HTTP fetch pattern in production
+
+**Note**: This differs from Ask Rohith (which uses HTTP fetch) because:
+- Opportunities contain complex nested data structures
+- Direct MongoDB access is faster and more reliable
+- Eliminates potential network/timeout issues in production
+- API route still exists for client-side access if needed
 
 ### 4. Open Graph Preview Protection
 **Problem**: Metadata generation errors could crash pages or expose errors.
@@ -105,9 +111,9 @@ User/Crawler visits /share/opportunity/{uuid}
     ↓
 Server Component (page.tsx)
     ↓
-Fetch from /api/opportunities/public/{uuid}
+Validate UUID format (reject if invalid)
     ↓
-API validates UUID format (reject if invalid)
+Call getSharedOpportunity() directly from MongoDB lib
     ↓
 Query MongoDB shared_opportunities by shareId
     ↓
@@ -115,12 +121,14 @@ Check if expired (expiresAt > now)
     ↓
 Increment viewCount
     ↓
-Return opportunity data to server component
+Return opportunity data
     ↓
 Generate Open Graph metadata (server-side)
     ↓
 Render opportunity with OpportunityExpandedContent
 ```
+
+**No HTTP requests during page rendering - Direct MongoDB access only**
 
 ## Environment Variables
 
