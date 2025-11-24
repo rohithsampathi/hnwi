@@ -14,6 +14,7 @@ import { useOpportunityScoring, useIntelligenceActions } from "@/lib/hooks/use-i
 import { PageWrapper } from "@/components/ui/page-wrapper";
 import { useIntelligenceData } from "@/hooks/use-intelligence-data";
 import { getCurrentUser } from "@/lib/auth-manager";
+import { EnhancedCacheService } from "@/lib/services/enhanced-cache-service";
 
 interface PriveExchangePageProps {
   onNavigate?: (route: string) => void;
@@ -82,29 +83,63 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     async function loadOpportunities() {
       try {
         setLoading(true);
-        const basicOpportunities = await getOpportunities();
+
+        // CRITICAL FIX: Clear stale opportunities cache to force fresh data
+        // This ensures users see the latest data (e.g., updated Yavatmal)
+        // Service Worker caches /api/opportunities for 5 minutes
+        await EnhancedCacheService.clearOpportunitiesCache();
+
+        // Bust cache by adding timestamp parameter to force fresh fetch
+        const basicOpportunities = await getOpportunities(true);
 
         // Merge with Victor analysis data if available
         let enrichedOpportunities = basicOpportunities;
 
         if (intelligenceData && intelligenceData.victorOpportunities) {
-          // Create a map of Victor opportunities by opportunity_id for O(1) lookup
-          const victorMap = new Map();
+          // Create TWO maps: one for ID matching, one for title matching
+          const victorMapById = new Map();
+          const victorMapByTitle = new Map();
+
           intelligenceData.victorOpportunities.forEach((victor: any) => {
-            // Victor analysis should have opportunity_id field from backend
-            if (victor.opportunity_id) {
-              victorMap.set(victor.opportunity_id, victor);
+            // Map by ID (opportunity_id, id, or _id)
+            const victorId = victor.opportunity_id || victor.id || victor._id;
+            if (victorId) {
+              victorMapById.set(victorId, victor);
+            }
+
+            // Map by normalized title for fallback matching
+            const victorTitle = (victor.title || victor.opportunity_title || victor.name || '').toLowerCase().trim();
+            if (victorTitle) {
+              victorMapByTitle.set(victorTitle, victor);
             }
           });
 
+          console.log('Victor Analysis Matching:', {
+            totalVictor: intelligenceData.victorOpportunities.length,
+            victorById: victorMapById.size,
+            victorByTitle: victorMapByTitle.size,
+            totalOpportunities: basicOpportunities.length
+          });
 
-          // Match opportunities with Victor analysis using direct ID matching
+          // Match opportunities with Victor analysis using ID first, then title fallback
           enrichedOpportunities = basicOpportunities.map((opp: any) => {
-            // Try both 'id' and '_id' fields for MongoDB compatibility
-            const oppId = opp.id || opp._id;
-            const victorMatch = oppId ? victorMap.get(oppId) : null;
+            // Strategy 1: Try ID matching first (most reliable)
+            const oppId = opp.id || opp._id || opp.opportunity_id;
+            let victorMatch = oppId ? victorMapById.get(oppId) : null;
+
+            // Strategy 2: Fallback to title matching if ID match failed
+            if (!victorMatch) {
+              const oppTitle = (opp.title || opp.name || '').toLowerCase().trim();
+              victorMatch = oppTitle ? victorMapByTitle.get(oppTitle) : null;
+            }
 
             if (victorMatch) {
+              console.log('✅ Victor Match Found:', {
+                opportunityTitle: opp.title,
+                matchMethod: oppId && victorMapById.get(oppId) ? 'ID' : 'Title',
+                victorScore: victorMatch.victor_score || victorMatch.score,
+                victorRating: victorMatch.victor_score || victorMatch.score
+              });
 
               // Helper function to replace MOE v4 with HNWI
               const replaceMoeV4 = (text: string | null | undefined): string => {
@@ -129,11 +164,16 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
                 victor_action: victorMatch.victor_action,
                 confidence_level: victorMatch.confidence_level,
                 victor_score: victorMatch.victor_score || victorMatch.score,
+                victor_rating: victorMatch.victor_score || victorMatch.score, // Map victor_score to victor_rating for UI badge
                 pros: victorMatch.pros,
                 cons: victorMatch.cons,
                 hnwi_alignment: replaceMoeV4(victorMatch.hnwi_alignment || victorMatch.moe_v4_alignment)
               };
             } else {
+              console.log('❌ No Victor Match:', {
+                opportunityTitle: opp.title,
+                oppId: oppId
+              });
             }
             return opp;
           });

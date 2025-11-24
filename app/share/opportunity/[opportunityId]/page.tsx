@@ -15,12 +15,17 @@ async function getOpportunity(opportunityId: string): Promise<Opportunity | null
   try {
     // Determine the correct base URL based on environment
     const isProduction = process.env.NODE_ENV === 'production'
+
+    // In development: use localhost Next.js server (which has the API routes)
+    // In production: use the production URL
     const apiBaseUrl = isProduction
       ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000'
+      : 'http://localhost:3000'  // Use Next.js dev server, not backend
 
+    console.log(`[Share Opportunity] Environment: ${process.env.NODE_ENV}`)
     console.log(`[Share Opportunity] Fetching opportunity ${opportunityId} from ${apiBaseUrl}`)
 
+    // Call the Next.js API route (works in both dev and production)
     const response = await fetch(`${apiBaseUrl}/api/opportunities`, {
       cache: 'no-store', // Always get fresh data for social crawlers
       headers: {
@@ -38,7 +43,16 @@ async function getOpportunity(opportunityId: string): Promise<Opportunity | null
       }
     }
 
-    console.error(`[Share Opportunity] Opportunity not found: ${opportunityId}`)
+    console.error(`[Share Opportunity] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
+
+    // Try to get error details
+    try {
+      const errorData = await response.json()
+      console.error(`[Share Opportunity] Error details:`, errorData)
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
+
     return null
   } catch (error) {
     console.error('[Share Opportunity] Error fetching opportunity:', error)
@@ -94,52 +108,55 @@ export async function generateMetadata({
       return defaultMetadata
     }
 
-    // Create dynamic description from opportunity data
-    const descriptionParts = []
+    // Create title from opportunity title (max 60 chars for SEO) - following Rohith pattern
+    const rawTitle = opportunity.title || 'Exclusive Investment Opportunity'
+    const metaTitle = rawTitle.length > 60
+      ? `${rawTitle.substring(0, 57)}...`
+      : rawTitle
 
-    // Use investment thesis or description (prioritize investment thesis)
+    // Create description from investment thesis or description (max 160 chars for SEO) - following Rohith pattern
+    let rawDescription = ''
+
+    // Use investment thesis (what you're buying) as primary description
     if (opportunity.investment_thesis?.what_youre_buying) {
-      descriptionParts.push(opportunity.investment_thesis.what_youre_buying)
+      rawDescription = opportunity.investment_thesis.what_youre_buying
     } else if (opportunity.description) {
-      descriptionParts.push(opportunity.description)
+      rawDescription = opportunity.description
+    } else if (opportunity.subtitle) {
+      rawDescription = opportunity.subtitle
     } else {
-      // If no thesis or description, use title with type
-      descriptionParts.push(`${opportunity.title}${opportunity.type ? ` - ${opportunity.type}` : ''}`)
+      // Fallback: Create description from key details
+      const details = []
+      if (opportunity.type) details.push(opportunity.type)
+      if (opportunity.region) details.push(opportunity.region)
+      if (opportunity.minimum_investment_display) details.push(`Min: ${opportunity.minimum_investment_display}`)
+      if (opportunity.expected_return_annual_low && opportunity.expected_return_annual_high) {
+        details.push(`${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% annual return`)
+      }
+      rawDescription = details.join(' · ') || 'Exclusive investment opportunity for the world\'s top 1%'
     }
 
-    // Add key metrics
-    const metrics = []
-    if (opportunity.minimum_investment_display || opportunity.value) {
-      metrics.push(`Min: ${opportunity.minimum_investment_display || opportunity.value}`)
-    }
-    if (opportunity.expected_return_annual_low && opportunity.expected_return_annual_high) {
-      metrics.push(`${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% annual return`)
-    } else if (opportunity.expectedReturn) {
-      metrics.push(`${opportunity.expectedReturn} return`)
-    }
-    if (opportunity.region) {
-      metrics.push(opportunity.region)
-    }
+    // Clean markdown formatting and special characters (following Rohith pattern)
+    const cleanDescription = rawDescription
+      .replace(/[*_~`#]/g, '')  // Remove markdown
+      .replace(/\n+/g, ' ')      // Replace newlines with spaces
+      .trim()
 
-    if (metrics.length > 0) {
-      descriptionParts.push(metrics.join(' · '))
-    }
-
-    const metaDescription = descriptionParts.join(' | ')
-
-    // Create dynamic title
-    const metaTitle = `${opportunity.title}${opportunity.type ? ` - ${opportunity.type}` : ''}`
+    // Truncate to SEO-friendly length (160 chars)
+    const metaDescription = cleanDescription.length > 160
+      ? `${cleanDescription.substring(0, 157)}...`
+      : cleanDescription
 
     console.log(`[Share Opportunity] Generated metadata for ${params.opportunityId}:`, {
       title: metaTitle,
-      description: metaDescription.substring(0, 100) + '...'
+      description: metaDescription.substring(0, 80) + '...'
     })
 
     return {
       title: `${metaTitle} | HNWI Chronicles`,
       description: metaDescription,
       openGraph: {
-        title: metaTitle,
+        title: `${metaTitle} | HNWI Chronicles`,
         description: metaDescription,
         url: shareUrl,
         siteName: 'HNWI Chronicles',
@@ -148,7 +165,7 @@ export async function generateMetadata({
             url: imageUrl,
             width: 1200,
             height: 630,
-            alt: `${opportunity.title} - HNWI Chronicles`,
+            alt: `${metaTitle} - HNWI Chronicles`,
           }
         ],
         locale: 'en_US',
@@ -156,7 +173,7 @@ export async function generateMetadata({
       },
       twitter: {
         card: 'summary_large_image',
-        title: metaTitle,
+        title: `${metaTitle} | HNWI Chronicles`,
         description: metaDescription,
         images: [imageUrl],
       },

@@ -703,17 +703,28 @@ const pendingRequests = new Map<string, Promise<any>>();
 
 // SOTA: Simplified secure API methods (caching handled by Service Worker)
 export const secureApi = {
-  async get(endpoint: string, requireAuth: boolean = true): Promise<any> {
+  async get(endpoint: string, requireAuth: boolean = true, bustCache: boolean = false): Promise<any> {
     // Request deduplication - prevent multiple parallel requests to the same endpoint
+    // Skip deduplication if cache busting is requested
     const requestKey = `GET:${endpoint}`;
-    if (pendingRequests.has(requestKey)) {
+    if (!bustCache && pendingRequests.has(requestKey)) {
       return pendingRequests.get(requestKey);
     }
 
     // Create and store the request promise
     const requestPromise = (async () => {
       try {
-        const response = await secureApiCall(endpoint, { method: 'GET' }, requireAuth);
+        // Add cache-busting headers if requested
+        const headers = bustCache ? {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        } : {};
+
+        const response = await secureApiCall(endpoint, {
+          method: 'GET',
+          headers
+        }, requireAuth);
 
         if (!response.ok) {
           // Extract error details from response body before throwing

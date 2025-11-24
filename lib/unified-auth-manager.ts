@@ -92,6 +92,28 @@ class UnifiedAuthManager {
   public async login(email: string, password: string, rememberDevice = false): Promise<LoginResult> {
     this.updateAuthState({ isLoading: true, error: null })
 
+    // CRITICAL FIX: Clear any existing session data BEFORE starting new login
+    // This prevents conflicts when user tries to login again without logging out first
+    // Old cookies/tokens from previous session can interfere with new login
+    if (typeof console !== 'undefined') {
+      console.debug('[Auth] Clearing existing session data before login', {
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    // Clear backend session cookies by calling logout endpoint
+    try {
+      await secureApi.post('/api/auth/logout')
+    } catch (error) {
+      // Silent fail - old session might already be invalid
+      if (typeof console !== 'undefined') {
+        console.debug('[Auth] Logout before login failed (expected if no valid session)', { error })
+      }
+    }
+
+    // Clear client-side auth state
+    await this.clearAuthSystems()
+
     try {
       // Use secure-api for masked backend communication
       const result = await secureApi.post('/api/auth/login', {

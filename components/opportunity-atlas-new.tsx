@@ -478,28 +478,53 @@ function OpportunityCard({
 
                             {/* Value Drivers */}
                             {opportunity.investment_thesis.why_this_makes_money && opportunity.investment_thesis.why_this_makes_money.length > 0 && (
-                              <div className="space-y-2">
+                              <div className="space-y-4">
                                 {opportunity.investment_thesis.why_this_makes_money.map((item, idx) => (
-                                  <div key={idx} className="flex items-start gap-3">
-                                    <div className="w-1 h-1 rounded-full bg-primary mt-2 flex-shrink-0"></div>
-                                    <div>
-                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                                        {item.driver}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground mt-1">
-                                        {item.mechanism}
-                                      </p>
+                                  <div key={idx} className={`p-4 rounded-lg border ${
+                                    theme === 'dark' ? 'bg-gray-800/20 border-gray-700/30' : 'bg-gray-50 border-gray-200'
+                                  }`}>
+                                    <div className="space-y-2">
+                                      <div className="flex items-start gap-3">
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0 ${
+                                          theme === 'dark' ? 'bg-primary/20' : 'bg-black/10'
+                                        }`}>
+                                          <span className={`text-sm font-bold ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                                            {idx + 1}
+                                          </span>
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                          <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                            <span className="text-muted-foreground text-sm">Driver: </span>
+                                            {item.driver}
+                                          </p>
+                                          <p className="text-sm text-muted-foreground">
+                                            <span className="font-medium text-foreground">Mechanism: </span>
+                                            {item.mechanism}
+                                          </p>
+                                          {(item.value_creation || item.value_creation_display) && (
+                                            <p className="text-sm text-foreground">
+                                              <span className="text-muted-foreground">Value Creation: </span>
+                                              {item.value_creation_display || item.value_creation}
+                                            </p>
+                                          )}
+                                          {item.evidence && (
+                                            <p className="text-sm text-muted-foreground italic">
+                                              Evidence: {item.evidence}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
                               </div>
                             )}
 
-                            {/* Key Considerations */}
+                            {/* Investment Considerations (using dynamic label from API) */}
                             {opportunity.investment_thesis.the_catch && opportunity.investment_thesis.the_catch.length > 0 && (
                               <div className="pt-4 border-t border-border/30">
                                 <p className={`text-xs font-bold tracking-widest uppercase text-amber-600 dark:text-amber-400 mb-2`}>
-                                  Key Considerations
+                                  {opportunity.investment_thesis.the_catch_label || "Investment Considerations"}
                                 </p>
                                 <div className="space-y-1">
                                   {opportunity.investment_thesis.the_catch.slice(0, 3).map((item, idx) => (
@@ -565,12 +590,51 @@ function OpportunityCard({
                                 </span>
                               </div>
                             )}
+                            {opportunity.pricing.total_investment_required && (
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-sm text-muted-foreground">Total Required</span>
+                                <span className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                  ${opportunity.pricing.total_investment_required.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
                             {opportunity.pricing.discount_percentage && (
                               <div className="flex justify-between items-baseline">
                                 <span className="text-sm text-muted-foreground">Discount</span>
                                 <span className="text-base font-semibold text-primary">
                                   {opportunity.pricing.discount_percentage}%
                                 </span>
+                              </div>
+                            )}
+                            {opportunity.pricing.price_breakdown?.per_acre_inr && (
+                              <div className="pt-2 border-t border-border/30">
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-xs text-muted-foreground">Per Acre</span>
+                                  <span className="text-sm font-medium text-foreground">
+                                    ₹{opportunity.pricing.price_breakdown.per_acre_inr.toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {opportunity.pricing.transaction_costs && (
+                              <div className="pt-2 border-t border-border/30">
+                                <p className="text-xs text-muted-foreground mb-2">Transaction Costs</p>
+                                {opportunity.pricing.transaction_costs.stamp_duty && (
+                                  <div className="flex justify-between items-baseline mb-1">
+                                    <span className="text-xs text-muted-foreground">Stamp Duty ({opportunity.pricing.transaction_costs.stamp_duty_percentage}%)</span>
+                                    <span className="text-sm font-medium text-foreground">
+                                      ${opportunity.pricing.transaction_costs.stamp_duty.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {opportunity.pricing.transaction_costs.registration_fee && (
+                                  <div className="flex justify-between items-baseline">
+                                    <span className="text-xs text-muted-foreground">Registration Fee ({opportunity.pricing.transaction_costs.registration_fee_percentage}%)</span>
+                                    <span className="text-sm font-medium text-foreground">
+                                      ${opportunity.pricing.transaction_costs.registration_fee.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             )}
                             {opportunity.payment_plan?.payment_type && (
@@ -607,6 +671,27 @@ function OpportunityCard({
                                   <p className="text-sm text-primary mt-1">
                                     {opportunity.exit_strategy.primary_exit.expected_recovery_percentage}% recovery
                                   </p>
+                                )}
+                              </div>
+                            )}
+                            {opportunity.exit_strategy.holding_costs && (
+                              <div className="pt-2 border-t border-border/30">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Holding Costs</p>
+                                {opportunity.exit_strategy.holding_costs.monthly_total && (
+                                  <div className="flex justify-between items-baseline mb-1">
+                                    <span className="text-xs text-muted-foreground">Monthly</span>
+                                    <span className="text-sm font-medium text-foreground">
+                                      ${opportunity.exit_strategy.holding_costs.monthly_total.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {opportunity.exit_strategy.holding_costs.annual_total && (
+                                  <div className="flex justify-between items-baseline">
+                                    <span className="text-xs text-muted-foreground">Annual</span>
+                                    <span className="text-sm font-medium text-foreground">
+                                      ${opportunity.exit_strategy.holding_costs.annual_total.toLocaleString()}
+                                    </span>
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -666,30 +751,216 @@ function OpportunityCard({
                     </div>
                   )}
 
-                  {/* Risk Factors */}
+                  {/* Return Analysis Scenarios */}
+                  {opportunity.return_analysis?.scenarios && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        Return Scenarios
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {opportunity.return_analysis.scenarios.conservative && (
+                          <div className={`p-4 rounded-lg border ${
+                            theme === 'dark' ? 'bg-muted/20 border-border/30' : 'bg-muted/50 border-border/40'
+                          }`}>
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Conservative</p>
+                            {opportunity.return_analysis.scenarios.conservative.annualized_return && (
+                              <p className="text-2xl font-bold text-foreground mb-1">
+                                {opportunity.return_analysis.scenarios.conservative.annualized_return}%
+                              </p>
+                            )}
+                            {opportunity.return_analysis.scenarios.conservative.assumptions && (
+                              <p className="text-xs text-muted-foreground mt-2 italic">
+                                {opportunity.return_analysis.scenarios.conservative.assumptions}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {opportunity.return_analysis.scenarios.base_case && (
+                          <div className={`p-4 rounded-lg border-2 ${
+                            theme === 'dark' ? 'bg-primary/10 border-primary/30' : 'bg-primary/5 border-primary/40'
+                          }`}>
+                            <p className={`text-xs font-bold uppercase mb-2 ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                              Base Case ✨
+                            </p>
+                            {opportunity.return_analysis.scenarios.base_case.annualized_return && (
+                              <p className={`text-2xl font-bold mb-1 ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                                {opportunity.return_analysis.scenarios.base_case.annualized_return}%
+                              </p>
+                            )}
+                            {opportunity.return_analysis.scenarios.base_case.assumptions && (
+                              <p className="text-xs text-muted-foreground mt-2 italic">
+                                {opportunity.return_analysis.scenarios.base_case.assumptions}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {opportunity.return_analysis.scenarios.optimistic && (
+                          <div className={`p-4 rounded-lg border ${
+                            theme === 'dark' ? 'bg-muted/20 border-border/30' : 'bg-muted/50 border-border/40'
+                          }`}>
+                            <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Optimistic</p>
+                            {opportunity.return_analysis.scenarios.optimistic.annualized_return && (
+                              <p className="text-2xl font-bold text-foreground mb-1">
+                                {opportunity.return_analysis.scenarios.optimistic.annualized_return}%
+                              </p>
+                            )}
+                            {opportunity.return_analysis.scenarios.optimistic.assumptions && (
+                              <p className="text-xs text-muted-foreground mt-2 italic">
+                                {opportunity.return_analysis.scenarios.optimistic.assumptions}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Asset-Specific Details (Soil, Water, Climate for Agricultural) */}
+                  {opportunity.asset_details?.soil_climate && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        Land & Climate Details
+                      </h2>
+                      <div className="space-y-3">
+                        {opportunity.asset_details.soil_climate.soil_type && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Soil Type</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.soil_climate.soil_type}
+                            </p>
+                            {opportunity.asset_details.soil_climate.soil_note && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
+                                {opportunity.asset_details.soil_climate.soil_note}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {opportunity.asset_details.soil_climate.climate && (
+                          <div className="pt-2 border-t border-border/30">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Climate</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.soil_climate.climate}
+                            </p>
+                          </div>
+                        )}
+                        {opportunity.asset_details.soil_climate.annual_rainfall && (
+                          <div className="pt-2 border-t border-border/30">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Annual Rainfall</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.soil_climate.annual_rainfall}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Water Resources (Critical for Agricultural) */}
+                  {opportunity.asset_details?.water_resources && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase mb-4 text-muted-foreground`}>
+                        Water Resources
+                      </h2>
+                      <div className="space-y-2">
+                        {opportunity.asset_details.water_resources.primary_source && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">Primary Source</p>
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                              {opportunity.asset_details.water_resources.primary_source}
+                            </p>
+                          </div>
+                        )}
+                        {opportunity.asset_details.water_resources.note && (
+                          <p className="text-xs text-muted-foreground italic">
+                            {opportunity.asset_details.water_resources.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Red Flags (using dynamic label from API) */}
+                  {opportunity.risk_analysis?.red_flags && opportunity.risk_analysis.red_flags.length > 0 && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        {opportunity.risk_analysis?.red_flags_label || "Risk Warnings"}
+                      </h2>
+                      <div className="space-y-2">
+                        {opportunity.risk_analysis.red_flags.map((flag: string, idx: number) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="text-muted-foreground mt-1">·</span>
+                            <p className="text-sm text-muted-foreground">{flag.replace(/⚠️/g, '').trim()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Risk Factors (using dynamic label from API) */}
                   {(opportunity.risk_analysis || opportunity.cons) && (
-                    <div className="border-l-2 border-amber-600 dark:border-amber-400 pl-6">
-                      <h2 className={`text-xs font-bold tracking-widest uppercase text-amber-600 dark:text-amber-400 mb-4`}>
-                        Key Considerations
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        {opportunity.risk_analysis?.risk_factors_label || "Key Risks"}
                       </h2>
                       <div className="space-y-2">
                         {opportunity.risk_analysis?.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 ? (
-                          opportunity.risk_analysis.risk_factors.slice(0, 3).map((factor: any, idx: number) => (
+                          opportunity.risk_analysis.risk_factors.map((factor: any, idx: number) => (
                             <div key={idx} className="flex items-start gap-2">
-                              <span className="text-amber-600 dark:text-amber-400 mt-1">·</span>
+                              <span className="text-muted-foreground mt-1">·</span>
                               <p className="text-sm text-muted-foreground">
                                 {typeof factor === 'object' ? factor.factor_name || String(factor) : String(factor)}
                               </p>
                             </div>
                           ))
                         ) : opportunity.cons ? (
-                          opportunity.cons.slice(0, 3).map((con, idx) => (
+                          opportunity.cons.map((con, idx) => (
                             <div key={idx} className="flex items-start gap-2">
-                              <span className="text-amber-600 dark:text-amber-400 mt-1">·</span>
+                              <span className="text-muted-foreground mt-1">·</span>
                               <p className="text-sm text-muted-foreground">{con}</p>
                             </div>
                           ))
                         ) : null}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Next Steps / Due Diligence Process */}
+                  {opportunity.next_steps && opportunity.next_steps.length > 0 && (
+                    <div className="border-l-2 border-primary pl-6">
+                      <h2 className={`text-xs font-bold tracking-widest uppercase text-muted-foreground mb-4`}>
+                        Next Steps
+                      </h2>
+                      <div className="space-y-3">
+                        {opportunity.next_steps.map((step: any, idx: number) => (
+                          <div key={idx} className={`p-3 rounded-lg border ${
+                            theme === 'dark' ? 'bg-gray-800/10 border-gray-700/30' : 'bg-gray-50 border-gray-200'
+                          }`}>
+                            <div className="flex items-start gap-3">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                theme === 'dark' ? 'bg-primary/20' : 'bg-black/10'
+                              }`}>
+                                <span className={`text-xs font-bold ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
+                                  {step.step || idx + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                                  {step.action}
+                                </p>
+                                {step.details && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {step.details}
+                                  </p>
+                                )}
+                                {step.estimated_time && (
+                                  <p className="text-xs text-primary">
+                                    ⏱️ {step.estimated_time}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

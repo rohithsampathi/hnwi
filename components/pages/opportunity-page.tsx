@@ -18,7 +18,9 @@ import { useTheme } from "@/contexts/theme-context"
 import { getMetallicCardStyle } from "@/lib/colors"
 import {
   Check, X, Loader2, DollarSign, Building2,
-  PiggyBank, ThumbsUp, Phone
+  PiggyBank, ThumbsUp, Phone, TrendingUp, AlertTriangle,
+  FileText, MapPin, Home, Calendar, Shield, DollarSign as DollarSignIcon,
+  Target, ChevronDown, ChevronUp
 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { getOpportunities, Opportunity } from "@/lib/api"  // removed any placeholders
@@ -67,13 +69,31 @@ export function OpportunityPage({
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
+  // Expandable sections state
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+    thesis: false,
+    financials: false,
+    exitStrategy: false,
+    riskAnalysis: false,
+    assetDetails: false,
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }))
+  }
+
   // Fetch all opportunities to find the specific one
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true)
-        const opportunities = await getOpportunities()
-        
+
+        // CRITICAL: Always bust cache to get fresh opportunity data
+        const opportunities = await getOpportunities(true)
+
         const foundOpportunity = opportunities.find(o => o.id === opportunityId)
         if (foundOpportunity) {
           setOpportunity(foundOpportunity)
@@ -592,12 +612,800 @@ export function OpportunityPage({
                 </div>
               </div>
             )}
-            
-            {/* 6. Express Interest CTA */}
+
+            {/* 6. DEEP DIVE SECTIONS - Full 2,000-word analysis */}
+
+            {/* 6.1 Investment Thesis - WHY THIS MAKES MONEY */}
+            {opportunity.investment_thesis && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => toggleSection('thesis')}
+                  className={`w-full flex items-center justify-between p-6 rounded-xl border-2 transition-all duration-200 ${
+                    theme === "dark"
+                      ? "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                      : "bg-gray-100/50 border-gray-300/50 hover:bg-gray-100/80"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <TrendingUp className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <div className="text-left">
+                      <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                        Investment Thesis
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Why this makes money · Value creation mechanisms</p>
+                    </div>
+                  </div>
+                  {expandedSections.thesis ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                {expandedSections.thesis && (
+                  <div className="space-y-6 p-6 rounded-xl border border-border/30 bg-card/50">
+                    {/* What You're Buying */}
+                    {opportunity.investment_thesis.what_youre_buying && (
+                      <div className="space-y-3">
+                        <h4 className={`text-lg font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                          What You're Buying
+                        </h4>
+                        <p className="text-base leading-relaxed text-foreground">
+                          {opportunity.investment_thesis.what_youre_buying}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Why This Makes Money */}
+                    {opportunity.investment_thesis.why_this_makes_money && opportunity.investment_thesis.why_this_makes_money.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className={`text-lg font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                          Why This Makes Money
+                        </h4>
+                        {opportunity.investment_thesis.why_this_makes_money.map((driver, index) => (
+                          <div key={index} className={`p-4 rounded-lg border ${
+                            theme === "dark"
+                              ? "bg-gray-800/20 border-gray-700/30"
+                              : "bg-gray-50 border-gray-200"
+                          }`}>
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-1 ${
+                                  theme === "dark" ? "bg-primary/20" : "bg-black/10"
+                                }`}>
+                                  <span className={`text-sm font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                  <p className="font-semibold text-foreground">
+                                    <span className="text-muted-foreground text-sm">Driver: </span>
+                                    {driver.driver}
+                                  </p>
+                                  <p className="text-sm text-foreground">
+                                    <span className="text-muted-foreground">Mechanism: </span>
+                                    {driver.mechanism}
+                                  </p>
+                                  {(driver.value_creation || driver.value_creation_display) && (
+                                    <p className="text-sm text-foreground">
+                                      <span className="text-muted-foreground">Value Creation: </span>
+                                      {driver.value_creation_display || driver.value_creation}
+                                    </p>
+                                  )}
+                                  {driver.evidence && (
+                                    <p className="text-sm text-muted-foreground italic">
+                                      Evidence: {driver.evidence}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* The Catch */}
+                    {opportunity.investment_thesis.the_catch && opportunity.investment_thesis.the_catch.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          The Catch
+                        </h4>
+                        <div className="space-y-2">
+                          {opportunity.investment_thesis.the_catch.map((item, index) => (
+                            <div key={index} className="flex items-start gap-3">
+                              <AlertTriangle className="w-4 h-4 text-yellow-500 mt-1 shrink-0" />
+                              <p className="text-sm text-foreground">{item}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Privé/Victor Verdict - supports both new and legacy formats */}
+                    {(opportunity.investment_thesis.prive_verdict || opportunity.investment_thesis.victor_verdict_one_line) && (
+                      <div className={`p-4 rounded-lg border-2 ${
+                        theme === "dark"
+                          ? "bg-primary/10 border-primary/30"
+                          : "bg-black/5 border-black/20"
+                      }`}>
+                        <p className={`text-base font-semibold italic ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                          "{opportunity.investment_thesis.prive_verdict || opportunity.investment_thesis.victor_verdict_one_line}"
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          — {opportunity.investment_thesis.prive_verdict ? 'Privé Intelligence' : 'Intelligence Assessment'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6.2 Financial Structure */}
+            {(opportunity.pricing || opportunity.payment_plan || opportunity.return_analysis) && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => toggleSection('financials')}
+                  className={`w-full flex items-center justify-between p-6 rounded-xl border-2 transition-all duration-200 ${
+                    theme === "dark"
+                      ? "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                      : "bg-gray-100/50 border-gray-300/50 hover:bg-gray-100/80"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <DollarSignIcon className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <div className="text-left">
+                      <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                        Financial Structure
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Pricing · Payment plan · Return scenarios</p>
+                    </div>
+                  </div>
+                  {expandedSections.financials ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                {expandedSections.financials && (
+                  <div className="space-y-6 p-6 rounded-xl border border-border/30 bg-card/50">
+                    {/* Pricing Breakdown */}
+                    {opportunity.pricing && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {opportunity.pricing.base_price_usd && (
+                            <div className="p-4 rounded-lg bg-muted/30">
+                              <p className="text-sm text-muted-foreground">Base Price</p>
+                              <p className={`text-xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                ${opportunity.pricing.base_price_usd.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                          {opportunity.pricing.discount_percentage && (
+                            <div className="p-4 rounded-lg bg-muted/30">
+                              <p className="text-sm text-muted-foreground">Discount</p>
+                              <p className="text-xl font-bold text-primary">
+                                {opportunity.pricing.discount_percentage}% off
+                              </p>
+                            </div>
+                          )}
+                          {opportunity.pricing.total_investment_required && (
+                            <div className="p-4 rounded-lg bg-muted/30">
+                              <p className="text-sm text-muted-foreground">Total Investment Required</p>
+                              <p className={`text-xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                ${opportunity.pricing.total_investment_required.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                          {opportunity.pricing.per_acre && (
+                            <div className="p-4 rounded-lg bg-muted/30">
+                              <p className="text-sm text-muted-foreground">Per Acre</p>
+                              <p className={`text-xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                ${opportunity.pricing.per_acre.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Transaction Costs */}
+                        {opportunity.pricing.transaction_costs && (
+                          <div className="p-4 rounded-lg bg-muted/20 border border-border/30">
+                            <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Transaction Costs</h5>
+                            <div className="space-y-2">
+                              {opportunity.pricing.transaction_costs.stamp_duty && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-sm text-muted-foreground">
+                                    Stamp Duty ({opportunity.pricing.transaction_costs.stamp_duty_percentage}%)
+                                  </span>
+                                  <span className="text-base font-semibold text-foreground">
+                                    ${opportunity.pricing.transaction_costs.stamp_duty.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {opportunity.pricing.transaction_costs.registration_fees && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-sm text-muted-foreground">
+                                    Registration Fees ({opportunity.pricing.transaction_costs.registration_percentage}%)
+                                  </span>
+                                  <span className="text-base font-semibold text-foreground">
+                                    ${opportunity.pricing.transaction_costs.registration_fees.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {opportunity.pricing.transaction_costs.legal_fees && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-sm text-muted-foreground">Legal Fees</span>
+                                  <span className="text-base font-semibold text-foreground">
+                                    ${opportunity.pricing.transaction_costs.legal_fees.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {opportunity.pricing.transaction_costs.total_transaction_costs && (
+                                <div className="flex justify-between items-baseline pt-2 border-t border-border/30">
+                                  <span className="text-sm font-semibold text-foreground">Total Transaction Costs</span>
+                                  <span className="text-base font-bold text-primary">
+                                    ${opportunity.pricing.transaction_costs.total_transaction_costs.toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Return Scenarios */}
+                    {opportunity.return_analysis?.scenarios && (
+                      <div className="space-y-4">
+                        <h4 className={`text-lg font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                          Return Scenarios (5-Year Projections)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {opportunity.return_analysis.scenarios.conservative && (
+                            <div className={`p-5 rounded-lg border space-y-3 ${
+                              theme === "dark" ? "bg-gray-800/20 border-gray-700/30" : "bg-gray-100/50 border-gray-300/40"
+                            }`}>
+                              <p className={`text-sm font-bold uppercase tracking-wider ${theme === "dark" ? "text-muted-foreground" : "text-gray-700"}`}>
+                                Conservative
+                              </p>
+                              <div className="space-y-2">
+                                {opportunity.return_analysis.scenarios.conservative.annualized_return && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Annual Return</p>
+                                    <p className="text-2xl font-bold text-foreground">
+                                      {opportunity.return_analysis.scenarios.conservative.annualized_return}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.conservative.total_return_5yr && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Total Return (5yr)</p>
+                                    <p className="text-lg font-semibold text-foreground">
+                                      {opportunity.return_analysis.scenarios.conservative.total_return_5yr}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.conservative.assumptions && (
+                                  <div className="pt-2 border-t border-border/30">
+                                    <p className="text-xs text-muted-foreground italic">
+                                      {opportunity.return_analysis.scenarios.conservative.assumptions}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {opportunity.return_analysis.scenarios.base_case && (
+                            <div className={`p-5 rounded-lg border-2 space-y-3 relative ${
+                              theme === "dark" ? "bg-primary/10 border-primary/30" : "bg-primary/5 border-primary/40"
+                            }`}>
+                              <Badge className={`absolute -top-2 -right-2 ${theme === "dark" ? "bg-primary" : "bg-black"}`}>
+                                Expected ✨
+                              </Badge>
+                              <p className={`text-sm font-bold uppercase tracking-wider ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                Base Case
+                              </p>
+                              <div className="space-y-2">
+                                {opportunity.return_analysis.scenarios.base_case.annualized_return && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Annual Return</p>
+                                    <p className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                                      {opportunity.return_analysis.scenarios.base_case.annualized_return}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.base_case.total_return_5yr && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Total Return (5yr)</p>
+                                    <p className="text-lg font-semibold text-foreground">
+                                      {opportunity.return_analysis.scenarios.base_case.total_return_5yr}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.base_case.assumptions && (
+                                  <div className="pt-2 border-t border-primary/20">
+                                    <p className="text-xs text-muted-foreground italic">
+                                      {opportunity.return_analysis.scenarios.base_case.assumptions}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {opportunity.return_analysis.scenarios.optimistic && (
+                            <div className={`p-5 rounded-lg border space-y-3 ${
+                              theme === "dark" ? "bg-gray-800/20 border-gray-700/30" : "bg-gray-100/50 border-gray-300/40"
+                            }`}>
+                              <p className={`text-sm font-bold uppercase tracking-wider ${theme === "dark" ? "text-muted-foreground" : "text-gray-700"}`}>
+                                Optimistic
+                              </p>
+                              <div className="space-y-2">
+                                {opportunity.return_analysis.scenarios.optimistic.annualized_return && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Annual Return</p>
+                                    <p className="text-2xl font-bold text-foreground">
+                                      {opportunity.return_analysis.scenarios.optimistic.annualized_return}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.optimistic.total_return_5yr && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Total Return (5yr)</p>
+                                    <p className="text-lg font-semibold text-foreground">
+                                      {opportunity.return_analysis.scenarios.optimistic.total_return_5yr}%
+                                    </p>
+                                  </div>
+                                )}
+                                {opportunity.return_analysis.scenarios.optimistic.assumptions && (
+                                  <div className="pt-2 border-t border-border/30">
+                                    <p className="text-xs text-muted-foreground italic">
+                                      {opportunity.return_analysis.scenarios.optimistic.assumptions}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6.3 Exit Strategy */}
+            {opportunity.exit_strategy && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => toggleSection('exitStrategy')}
+                  className={`w-full flex items-center justify-between p-6 rounded-xl border-2 transition-all duration-200 ${
+                    theme === "dark"
+                      ? "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                      : "bg-gray-100/50 border-gray-300/50 hover:bg-gray-100/80"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Target className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <div className="text-left">
+                      <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                        Exit Strategy
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Multiple exit paths · Holding costs</p>
+                    </div>
+                  </div>
+                  {expandedSections.exitStrategy ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                {expandedSections.exitStrategy && (
+                  <div className="space-y-6 p-6 rounded-xl border border-border/30 bg-card/50">
+                    {/* Exit Paths */}
+                    <div className="space-y-4">
+                      {opportunity.exit_strategy.primary_exit && (
+                        <div className={`p-4 rounded-lg border ${
+                          theme === "dark" ? "bg-gray-800/20 border-gray-700/30" : "bg-gray-100/50 border-gray-300/40"
+                        }`}>
+                          <h5 className={`font-semibold mb-2 ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                            Primary Exit
+                          </h5>
+                          <p className="text-sm text-foreground">
+                            {typeof opportunity.exit_strategy.primary_exit === 'string'
+                              ? opportunity.exit_strategy.primary_exit
+                              : opportunity.exit_strategy.primary_exit.strategy || JSON.stringify(opportunity.exit_strategy.primary_exit)}
+                          </p>
+                          {typeof opportunity.exit_strategy.primary_exit === 'object' && opportunity.exit_strategy.primary_exit.timeframe && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Timeframe: {opportunity.exit_strategy.primary_exit.timeframe}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {opportunity.exit_strategy.secondary_exit && (
+                        <div className={`p-4 rounded-lg border ${
+                          theme === "dark" ? "bg-gray-800/20 border-gray-700/30" : "bg-gray-100/50 border-gray-300/40"
+                        }`}>
+                          <h5 className={`font-semibold mb-2 ${theme === "dark" ? "text-muted-foreground" : "text-gray-700"}`}>
+                            Secondary Exit
+                          </h5>
+                          <p className="text-sm text-foreground">
+                            {typeof opportunity.exit_strategy.secondary_exit === 'string'
+                              ? opportunity.exit_strategy.secondary_exit
+                              : opportunity.exit_strategy.secondary_exit.strategy || JSON.stringify(opportunity.exit_strategy.secondary_exit)}
+                          </p>
+                          {typeof opportunity.exit_strategy.secondary_exit === 'object' && opportunity.exit_strategy.secondary_exit.timeframe && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Timeframe: {opportunity.exit_strategy.secondary_exit.timeframe}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {opportunity.exit_strategy.emergency_exit && (
+                        <div className={`p-4 rounded-lg border ${
+                          theme === "dark" ? "bg-gray-800/20 border-gray-700/30" : "bg-gray-100/50 border-gray-300/40"
+                        }`}>
+                          <h5 className={`font-semibold mb-2 text-muted-foreground`}>
+                            Emergency Exit
+                          </h5>
+                          <p className="text-sm text-foreground">
+                            {typeof opportunity.exit_strategy.emergency_exit === 'string'
+                              ? opportunity.exit_strategy.emergency_exit
+                              : opportunity.exit_strategy.emergency_exit.strategy || JSON.stringify(opportunity.exit_strategy.emergency_exit)}
+                          </p>
+                          {typeof opportunity.exit_strategy.emergency_exit === 'object' && opportunity.exit_strategy.emergency_exit.timeframe && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Timeframe: {opportunity.exit_strategy.emergency_exit.timeframe}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Holding Costs */}
+                    {opportunity.exit_strategy.holding_costs && (
+                      <div className="p-4 rounded-lg bg-muted/20 border border-border/30">
+                        <h5 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                          Holding Costs
+                        </h5>
+                        <div className="space-y-2">
+                          {opportunity.exit_strategy.holding_costs.monthly_total && (
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-sm text-muted-foreground">Monthly Total</span>
+                              <span className="text-base font-semibold text-foreground">
+                                ${opportunity.exit_strategy.holding_costs.monthly_total.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                          {opportunity.exit_strategy.holding_costs.annual_total && (
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-sm text-muted-foreground">Annual Total</span>
+                              <span className="text-base font-bold text-primary">
+                                ${opportunity.exit_strategy.holding_costs.annual_total.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                          {opportunity.exit_strategy.holding_costs.breakdown && (
+                            <div className="pt-2 border-t border-border/30 space-y-1">
+                              {Object.entries(opportunity.exit_strategy.holding_costs.breakdown).map(([key, value]) => (
+                                <div key={key} className="flex justify-between items-baseline">
+                                  <span className="text-xs text-muted-foreground capitalize">
+                                    {key.replace(/_/g, ' ')}
+                                  </span>
+                                  <span className="text-sm text-foreground">
+                                    ${typeof value === 'number' ? value.toLocaleString() : value}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6.4 Detailed Risk Analysis */}
+            {opportunity.risk_analysis && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => toggleSection('riskAnalysis')}
+                  className={`w-full flex items-center justify-between p-6 rounded-xl border-2 transition-all duration-200 ${
+                    theme === "dark"
+                      ? "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                      : "bg-gray-100/50 border-gray-300/50 hover:bg-gray-100/80"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Shield className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <div className="text-left">
+                      <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                        Detailed Risk Analysis
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Risk factors · Downside scenarios · Red flags</p>
+                    </div>
+                  </div>
+                  {expandedSections.riskAnalysis ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                {expandedSections.riskAnalysis && (
+                  <div className="space-y-6 p-6 rounded-xl border border-border/30 bg-card/50">
+                    {/* Risk Score */}
+                    {opportunity.risk_analysis.overall_risk_score !== undefined && (
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="text-sm text-muted-foreground">Overall Risk Score</p>
+                        <p className="text-3xl font-bold text-foreground">{opportunity.risk_analysis.overall_risk_score}/10</p>
+                      </div>
+                    )}
+
+                    {/* Risk Factors */}
+                    {opportunity.risk_analysis.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 && (
+                      <div className="space-y-3">
+                        <h5 className={`font-semibold ${theme === "dark" ? "text-muted-foreground" : "text-gray-700"}`}>
+                          Key Considerations
+                        </h5>
+                        {opportunity.risk_analysis.risk_factors.map((factor: any, index: number) => (
+                          <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/20">
+                            <span className="text-muted-foreground mt-1">·</span>
+                            <p className="text-sm text-muted-foreground">
+                              {typeof factor === 'object'
+                                ? (factor.factor_name || factor.description || JSON.stringify(factor))
+                                : String(factor)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Red Flags - Subtle */}
+                    {opportunity.risk_analysis.red_flags && opportunity.risk_analysis.red_flags.length > 0 && (
+                      <div className="space-y-3">
+                        <h5 className="font-semibold text-muted-foreground">Verification Required</h5>
+                        {opportunity.risk_analysis.red_flags.map((flag: string, index: number) => (
+                          <div key={index} className="flex items-start gap-3">
+                            <span className="text-muted-foreground mt-1">·</span>
+                            <p className="text-sm text-muted-foreground">
+                              {String(flag).replace(/⚠️/g, '').trim()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6.5 Asset Details (for Real Estate) */}
+            {opportunity.asset_details && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => toggleSection('assetDetails')}
+                  className={`w-full flex items-center justify-between p-6 rounded-xl border-2 transition-all duration-200 ${
+                    theme === "dark"
+                      ? "bg-gray-800/30 border-gray-700/50 hover:bg-gray-800/50"
+                      : "bg-gray-100/50 border-gray-300/50 hover:bg-gray-100/80"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Home className={`w-6 h-6 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <div className="text-left">
+                      <h3 className={`text-2xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                        Asset Details
+                      </h3>
+                      <p className="text-sm text-muted-foreground">Property specs · Location · Developer · Timeline</p>
+                    </div>
+                  </div>
+                  {expandedSections.assetDetails ? (
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </button>
+
+                {expandedSections.assetDetails && (
+                  <div className="space-y-6 p-6 rounded-xl border border-border/30 bg-card/50">
+                    {/* Property Specs */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {opportunity.asset_details.property_type && (
+                        <div className="p-3 rounded-lg bg-muted/30">
+                          <p className="text-xs text-muted-foreground">Type</p>
+                          <p className="font-semibold text-foreground">{opportunity.asset_details.property_type}</p>
+                        </div>
+                      )}
+                      {opportunity.asset_details.bedrooms && (
+                        <div className="p-3 rounded-lg bg-muted/30">
+                          <p className="text-xs text-muted-foreground">Bedrooms</p>
+                          <p className="font-semibold text-foreground">{opportunity.asset_details.bedrooms}</p>
+                        </div>
+                      )}
+                      {opportunity.asset_details.total_area_sqft && (
+                        <div className="p-3 rounded-lg bg-muted/30">
+                          <p className="text-xs text-muted-foreground">Area</p>
+                          <p className="font-semibold text-foreground">{opportunity.asset_details.total_area_sqft} sqft</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Location */}
+                    {opportunity.asset_details.location && (
+                      <div className="space-y-3">
+                        <h5 className="font-semibold text-foreground flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          Location
+                        </h5>
+                        {opportunity.asset_details.location.full_address && (
+                          <p className="text-sm text-foreground">{opportunity.asset_details.location.full_address}</p>
+                        )}
+                        {opportunity.asset_details.location.nearby_landmarks && opportunity.asset_details.location.nearby_landmarks.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {opportunity.asset_details.location.nearby_landmarks.map((landmark, index) => (
+                              <Badge key={index} variant="outline">{landmark}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Developer Info */}
+                    {opportunity.asset_details.developer && (
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <h5 className="font-semibold text-foreground mb-2">Developer</h5>
+                        <div className="space-y-1 text-sm">
+                          {opportunity.asset_details.developer.name && <p><span className="text-muted-foreground">Name:</span> {opportunity.asset_details.developer.name}</p>}
+                          {opportunity.asset_details.developer.established && <p><span className="text-muted-foreground">Established:</span> {opportunity.asset_details.developer.established}</p>}
+                          {opportunity.asset_details.developer.assets_under_management && <p><span className="text-muted-foreground">AUM:</span> {opportunity.asset_details.developer.assets_under_management}</p>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Amenities */}
+                    {opportunity.asset_details.amenities && opportunity.asset_details.amenities.length > 0 && (
+                      <div className="space-y-3">
+                        <h5 className="font-semibold text-foreground">Amenities</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {opportunity.asset_details.amenities.map((amenity, index) => (
+                            <Badge key={index} variant="secondary">{amenity}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 6.6 Land & Climate Details (for Agricultural Properties) */}
+            {opportunity.asset_details?.soil_climate && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-xl border ${
+                  theme === "dark" ? "bg-gray-800/30 border-gray-700/50" : "bg-gray-100/50 border-gray-300/50"
+                }`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <MapPin className={`w-5 h-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                    <h3 className={`text-lg font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                      Land & Climate Details
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {opportunity.asset_details.soil_climate.soil_type && (
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Soil Type</p>
+                        <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.asset_details.soil_climate.soil_type}
+                        </p>
+                      </div>
+                    )}
+                    {opportunity.asset_details.soil_climate.climate && (
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Climate</p>
+                        <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.asset_details.soil_climate.climate}
+                        </p>
+                      </div>
+                    )}
+                    {opportunity.asset_details.soil_climate.rainfall_mm && (
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Annual Rainfall</p>
+                        <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.asset_details.soil_climate.rainfall_mm} mm
+                        </p>
+                      </div>
+                    )}
+                    {opportunity.asset_details.soil_climate.water_table_depth && (
+                      <div className="p-3 rounded-lg bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Water Table Depth</p>
+                        <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                          {opportunity.asset_details.soil_climate.water_table_depth}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 6.7 Water Resources */}
+            {opportunity.asset_details?.water_resources && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-xl border ${
+                  theme === "dark" ? "bg-gray-800/30 border-gray-700/50" : "bg-gray-100/50 border-gray-300/50"
+                }`}>
+                  <h3 className={`text-lg font-bold mb-3 ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                    Water Resources
+                  </h3>
+                  <div className="space-y-2">
+                    {opportunity.asset_details.water_resources.source && (
+                      <p className="text-sm text-foreground">
+                        <span className="text-muted-foreground">Source: </span>
+                        {opportunity.asset_details.water_resources.source}
+                      </p>
+                    )}
+                    {opportunity.asset_details.water_resources.note && (
+                      <p className="text-xs text-muted-foreground italic">
+                        {opportunity.asset_details.water_resources.note}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 6.8 Next Steps / Due Diligence */}
+            {opportunity.next_steps && opportunity.next_steps.length > 0 && (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-xl border ${
+                  theme === "dark" ? "bg-gray-800/30 border-gray-700/50" : "bg-gray-100/50 border-gray-300/50"
+                }`}>
+                  <h3 className={`text-lg font-bold mb-4 ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                    Next Steps
+                  </h3>
+                  <div className="space-y-3">
+                    {opportunity.next_steps.map((step: any, idx: number) => (
+                      <div key={idx} className={`p-3 rounded-lg border ${
+                        theme === "dark" ? "bg-gray-800/10 border-gray-700/30" : "bg-gray-50 border-gray-200"
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            theme === "dark" ? "bg-primary/20" : "bg-black/10"
+                          }`}>
+                            <span className={`text-xs font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
+                              {step.step || idx + 1}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
+                              {step.action}
+                            </p>
+                            {step.estimated_time && (
+                              <p className="text-xs text-primary">
+                                {step.estimated_time}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 7. Express Interest CTA */}
             <div className="flex justify-center">
-              <Button 
-                onClick={handleTalkToConcierge} 
-                className="px-12 py-6 text-lg font-semibold shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70" 
+              <Button
+                onClick={handleTalkToConcierge}
+                className="px-12 py-6 text-lg font-semibold shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                 disabled={isProcessing}
               >
                 {isProcessing ? (

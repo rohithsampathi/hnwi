@@ -170,8 +170,12 @@ export interface Opportunity {
   expected_return_annual_low?: number;
   expected_return_annual_high?: number;
   risk_free_multiple?: number;
-  victor_score?: number; // Out of 10
-  victor_rating?: 'JUICY' | 'MODERATE' | 'FAR-FETCHED';
+  victor_score?: number; // Out of 10 (legacy)
+  victor_rating?: 'JUICY' | 'MODERATE' | 'FAR-FETCHED'; // Legacy
+  prive_score?: number; // New Privé scoring (out of 10)
+  prive_rating?: 'JUICY' | 'MODERATE' | 'FAR-FETCHED'; // New Privé rating
+  prive_rating_composite?: string; // Combined rating display
+  prive_rating_rationale?: string; // Explanation of the rating
   liquidity_level?: string;
   risk_level?: 'Low' | 'Medium' | 'High';
   verified?: boolean;
@@ -185,11 +189,14 @@ export interface Opportunity {
     why_this_makes_money?: Array<{
       driver: string;
       mechanism: string;
-      value_creation?: string | null;
+      value_creation?: string | number | null;
+      value_creation_display?: string; // Human-readable value creation
       evidence?: string;
     }>;
     the_catch?: string[];
-    victor_verdict_one_line?: string;
+    the_catch_label?: string; // Dynamic label from API (e.g., "Investment Considerations")
+    victor_verdict_one_line?: string; // Legacy field
+    prive_verdict?: string; // New Privé branding
   };
 
   // TIER 2: Financial Structure
@@ -228,8 +235,10 @@ export interface Opportunity {
     overall_risk_level?: string;
     overall_risk_score?: number;
     risk_factors?: any[];
+    risk_factors_label?: string; // Dynamic label from API (e.g., "Key Risks")
     downside_scenarios?: any[];
     red_flags?: any[];
+    red_flags_label?: string; // Dynamic label from API (e.g., "Risk Warnings")
   };
 
   // TIER 5: Asset Details
@@ -293,9 +302,15 @@ export interface Opportunity {
   hnwi_alignment?: string;
 }
 
-export async function getOpportunities(): Promise<Opportunity[]> {
+export async function getOpportunities(bustCache: boolean = false): Promise<Opportunity[]> {
   try {
-    const data = await secureApi.get('/api/opportunities', true);
+    // Add timestamp parameter to bust cache when needed
+    const endpoint = bustCache
+      ? `/api/opportunities?_t=${Date.now()}`
+      : '/api/opportunities';
+
+    // Pass bustCache flag to secureApi to add cache-busting headers
+    const data = await secureApi.get(endpoint, true, bustCache);
 
     // Normalize MongoDB _id to id field for consistent access
     const normalized = Array.isArray(data) ? data.map((opp: any) => ({

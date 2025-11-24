@@ -275,4 +275,54 @@ export class EnhancedCacheService {
       return { totalSize: 0, entryCount: 0, hitRate: 0 }
     }
   }
+
+  // Clear specific cache by data type
+  static async clearCache(dataType: keyof typeof CachePolicyService.POLICIES): Promise<void> {
+    try {
+      const cacheName = this.getCacheName(dataType)
+      await caches.delete(cacheName)
+
+      console.log(`[Cache] Cleared cache for ${dataType}`)
+    } catch (error) {
+      console.error(`[Cache] Failed to clear cache for ${dataType}:`, error)
+    }
+  }
+
+  // Clear all Service Worker caches (including 'api' cache used by Workbox)
+  static async clearAllServiceWorkerCaches(): Promise<void> {
+    try {
+      const cacheNames = await caches.keys()
+
+      // Clear all caches that match opportunities endpoint
+      for (const cacheName of cacheNames) {
+        if (cacheName === 'api' || cacheName.includes('opportunities')) {
+          await caches.delete(cacheName)
+          console.log(`[Cache] Cleared Service Worker cache: ${cacheName}`)
+        }
+      }
+    } catch (error) {
+      console.error('[Cache] Failed to clear Service Worker caches:', error)
+    }
+  }
+
+  // Clear opportunities cache specifically
+  static async clearOpportunitiesCache(): Promise<void> {
+    try {
+      // Clear our custom cache
+      await this.clearCache('OPPORTUNITIES')
+
+      // Also clear the Service Worker 'api' cache which holds /api/opportunities
+      const apiCache = await caches.open('api')
+      const requests = await apiCache.keys()
+
+      for (const request of requests) {
+        if (request.url.includes('/api/opportunities')) {
+          await apiCache.delete(request)
+          console.log(`[Cache] Cleared cached opportunity data from Service Worker`)
+        }
+      }
+    } catch (error) {
+      console.error('[Cache] Failed to clear opportunities cache:', error)
+    }
+  }
 }
