@@ -58,8 +58,30 @@ async function connectToDatabase() {
 
 // Helper function to deep sanitize data recursively
 function deepSanitize(obj: any): any {
+  // Handle null/undefined
   if (obj === null || obj === undefined) {
     return obj
+  }
+
+  // Handle primitives (string, number, boolean)
+  const primitiveType = typeof obj
+  if (primitiveType === 'string' || primitiveType === 'number' || primitiveType === 'boolean') {
+    return obj
+  }
+
+  // Remove functions (including methods)
+  if (primitiveType === 'function') {
+    return undefined
+  }
+
+  // Remove Symbols
+  if (primitiveType === 'symbol') {
+    return undefined
+  }
+
+  // Handle BigInt (convert to string)
+  if (primitiveType === 'bigint') {
+    return obj.toString()
   }
 
   // Convert Date objects to ISO strings
@@ -67,13 +89,21 @@ function deepSanitize(obj: any): any {
     return obj.toISOString()
   }
 
-  // Remove functions
-  if (typeof obj === 'function') {
+  // Remove React elements (check for $$typeof Symbol)
+  if (obj && typeof obj === 'object' && obj.$$typeof) {
     return undefined
   }
 
-  // Remove React elements
-  if (obj && typeof obj === 'object' && obj.$$typeof) {
+  // Remove Map/Set (convert to plain objects/arrays)
+  if (obj instanceof Map) {
+    return undefined
+  }
+  if (obj instanceof Set) {
+    return undefined
+  }
+
+  // Remove RegExp, Error, and other non-serializable built-ins
+  if (obj instanceof RegExp || obj instanceof Error) {
     return undefined
   }
 
@@ -82,13 +112,14 @@ function deepSanitize(obj: any): any {
     return obj.map(item => deepSanitize(item)).filter(item => item !== undefined)
   }
 
-  // Handle plain objects
-  if (typeof obj === 'object') {
+  // Handle plain objects (must be last check)
+  if (typeof obj === 'object' && obj.constructor === Object) {
     const sanitized: any = {}
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
         const value = deepSanitize(obj[key])
-        if (value !== undefined) {
+        // Only include if value is not undefined and key is not a Symbol
+        if (value !== undefined && typeof key !== 'symbol') {
           sanitized[key] = value
         }
       }
@@ -96,8 +127,8 @@ function deepSanitize(obj: any): any {
     return sanitized
   }
 
-  // Return primitives as-is
-  return obj
+  // If we get here, it's some other object type we don't recognize - remove it
+  return undefined
 }
 
 // Helper function to sanitize opportunity data before sharing

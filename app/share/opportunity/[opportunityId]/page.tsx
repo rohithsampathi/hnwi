@@ -185,9 +185,9 @@ export default async function SharedOpportunityPage({
     notFound()
   }
 
-  // Serialize opportunity data to remove non-serializable values (Date objects, functions, etc.)
-  // This is required when passing data from Server Component to Client Component
-  const serializedOpportunity = JSON.parse(JSON.stringify(opportunity))
+  // NUCLEAR OPTION: Pass as string to completely bypass Next.js serialization issues
+  // The client component will parse it back to object
+  const opportunityString = JSON.stringify(opportunity)
 
-  return <SharedOpportunityClient opportunity={serializedOpportunity} opportunityId={params.opportunityId} />
+  return <SharedOpportunityClient opportunityString={opportunityString} opportunityId={params.opportunityId} />
 }

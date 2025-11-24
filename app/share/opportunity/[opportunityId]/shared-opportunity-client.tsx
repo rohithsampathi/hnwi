@@ -71,14 +71,19 @@ function AccessGate({ onGetAccess, onClose }: { onGetAccess: () => void; onClose
 }
 
 interface SharedOpportunityClientProps {
-  opportunity: Opportunity
+  opportunityString: string
   opportunityId: string
 }
 
-export default function SharedOpportunityClient({ opportunity, opportunityId }: SharedOpportunityClientProps) {
+export default function SharedOpportunityClient({ opportunityString, opportunityId }: SharedOpportunityClientProps) {
   const { theme } = useTheme()
   const [showAccessGate, setShowAccessGate] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+
+  // Parse opportunity from string (passed to bypass Next.js serialization issues)
+  const opportunity: Opportunity = React.useMemo(() => {
+    return JSON.parse(opportunityString)
+  }, [opportunityString])
 
   // Enrich opportunity with Victor analysis data if needed
   // Backend returns: { victor_analysis: { score, rating, verdict, pros, cons, ... } }
