@@ -221,13 +221,20 @@ export default async function SharedOpportunityPage({
 }: {
   params: { opportunityId: string }
 }) {
-  // Fetch opportunity - returns PRE-STRINGIFIED data to avoid serialization issues
-  // The async function stringifies the object internally, so only the string enters this scope
-  const opportunityString = await getSharedOpportunity(params.opportunityId)
+  // TESTING: Use hardcoded data instead of MongoDB
+  const testOpportunity = {
+    id: params.opportunityId,
+    title: "Test Investment Opportunity",
+    description: "This is a test opportunity to verify the share page works",
+    type: "Real Estate",
+    region: "North America",
+    minimum_investment_display: "$100,000",
+    expected_return_annual_low: 15,
+    expected_return_annual_high: 25,
+    risk_level: "Medium"
+  };
 
-  if (!opportunityString) {
-    notFound()
-  }
+  const opportunityString = JSON.stringify(testOpportunity);
 
   return <SharedOpportunityClient opportunityString={opportunityString} opportunityId={params.opportunityId} />
 }
