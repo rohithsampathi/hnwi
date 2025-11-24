@@ -1,17 +1,16 @@
 // app/share/opportunity/[opportunityId]/shared-opportunity-client.tsx
 // Client component for shared investment opportunities
-// Fetches data same as Privé Exchange and uses shared expanded content component
+// Receives opportunity data from server component and uses shared expanded content component
 
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { PremiumBadge } from "@/components/ui/premium-badge"
 import { Header } from "@/components/layout/header"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useTheme } from "@/contexts/theme-context"
-import { CrownLoader } from "@/components/ui/crown-loader"
 import { OpportunityExpandedContent } from "@/components/opportunity-expanded-content"
 import {
   Lock,
@@ -21,7 +20,6 @@ import {
   X
 } from "lucide-react"
 import type { Opportunity } from "@/lib/api"
-import { getOpportunities } from "@/lib/api"
 
 // Access gate component for non-authenticated users
 function AccessGate({ onGetAccess, onClose }: { onGetAccess: () => void; onClose: () => void }) {
@@ -73,72 +71,39 @@ function AccessGate({ onGetAccess, onClose }: { onGetAccess: () => void; onClose
 }
 
 interface SharedOpportunityClientProps {
+  opportunity: Opportunity
   opportunityId: string
 }
 
-export default function SharedOpportunityClient({ opportunityId }: SharedOpportunityClientProps) {
+export default function SharedOpportunityClient({ opportunity, opportunityId }: SharedOpportunityClientProps) {
   const { theme } = useTheme()
   const [showAccessGate, setShowAccessGate] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
-  const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  // Fetch opportunity data same way as Privé Exchange
-  useEffect(() => {
-    async function loadOpportunity() {
-      try {
-        setLoading(true)
-
-        // Fetch all opportunities (same as Privé Exchange)
-        const allOpportunities = await getOpportunities(true)
-
-        // Flatten Victor analysis data from nested victor_analysis object
-        // Backend returns: { victor_analysis: { score, rating, verdict, pros, cons, ... } }
-        // Frontend expects: { victor_score, victor_rating, victor_reasoning, pros, cons, ... }
-        const enrichedOpportunities = allOpportunities.map((opp: any) => {
-          if (opp.victor_analysis) {
-            const va = opp.victor_analysis
-            return {
-              ...opp,
-              // Map nested Victor fields to flat fields expected by UI
-              victor_score: va.score || va.victor_score,
-              victor_rating: va.rating || va.victor_rating,
-              victor_reasoning: va.verdict || va.one_line_thesis || va.hnwi_thesis_alignment || va.reasoning,
-              victor_action: va.verdict || va.one_line_thesis,
-              confidence_level: va.confidence || va.confidence_level,
-              pros: va.pros,
-              cons: va.cons,
-              risk_assessment: va.risk_assessment,
-              opportunity_window: va.opportunity_window,
-              strategic_insights: va.pattern_match || va.hnwi_thesis_alignment,
-              hnwi_alignment: va.hnwi_thesis_alignment || va.pattern_match
-            }
-          }
-          return opp
-        })
-
-        // Find the specific opportunity by ID
-        const foundOpportunity = enrichedOpportunities.find((opp: any) =>
-          opp.id === opportunityId || opp._id === opportunityId
-        )
-
-        if (!foundOpportunity) {
-          setError("Opportunity not found")
-          return
-        }
-
-        setOpportunity(foundOpportunity)
-        setError(null)
-      } catch (err) {
-        setError("Failed to load opportunity")
-      } finally {
-        setLoading(false)
+  // Enrich opportunity with Victor analysis data if needed
+  // Backend returns: { victor_analysis: { score, rating, verdict, pros, cons, ... } }
+  // Frontend expects: { victor_score, victor_rating, victor_reasoning, pros, cons, ... }
+  const enrichedOpportunity = React.useMemo(() => {
+    if ((opportunity as any).victor_analysis) {
+      const va = (opportunity as any).victor_analysis
+      return {
+        ...opportunity,
+        // Map nested Victor fields to flat fields expected by UI
+        victor_score: va.score || va.victor_score,
+        victor_rating: va.rating || va.victor_rating,
+        victor_reasoning: va.verdict || va.one_line_thesis || va.hnwi_thesis_alignment || va.reasoning,
+        victor_action: va.verdict || va.one_line_thesis,
+        confidence_level: va.confidence || va.confidence_level,
+        pros: va.pros,
+        cons: va.cons,
+        risk_assessment: va.risk_assessment,
+        opportunity_window: va.opportunity_window,
+        strategic_insights: va.pattern_match || va.hnwi_thesis_alignment,
+        hnwi_alignment: va.hnwi_thesis_alignment || va.pattern_match
       }
     }
-
-    loadOpportunity()
-  }, [opportunityId])
+    return opportunity
+  }, [opportunity])
 
   const handleGetAccess = () => {
     window.open("https://www.hnwichronicles.com/pricing", "_blank")
@@ -168,41 +133,6 @@ export default function SharedOpportunityClient({ opportunityId }: SharedOpportu
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 3000)
     }
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <CrownLoader size="lg" text="Loading opportunity..." />
-      </div>
-    )
-  }
-
-  // Error state
-  if (error || !opportunity) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-50">
-          <Header
-            showBackButton={false}
-            onNavigate={(route) => {
-              if (route === "dashboard") {
-                window.location.href = "https://www.hnwichronicles.com"
-              }
-            }}
-          >
-            <ThemeToggle />
-          </Header>
-        </div>
-        <div className="flex flex-col items-center justify-center min-h-[500px] px-4">
-          <p className="text-red-500 mb-4">{error || "Opportunity not found"}</p>
-          <Button onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -285,19 +215,19 @@ export default function SharedOpportunityClient({ opportunityId }: SharedOpportu
           {/* Title Section */}
           <div className="text-center space-y-3">
             <h1 className={`text-3xl md:text-4xl font-bold tracking-tight leading-tight ${theme === "dark" ? "text-white" : "text-black"}`}>
-              {opportunity.title}
+              {enrichedOpportunity.title}
             </h1>
-            {opportunity.type && (
+            {enrichedOpportunity.type && (
               <div className="flex justify-center">
                 <PremiumBadge className="font-semibold px-4 py-1.5 text-xs tracking-wider">
-                  {opportunity.type}
+                  {enrichedOpportunity.type}
                 </PremiumBadge>
               </div>
             )}
           </div>
 
           {/* Use shared expanded content component (same as Privé Exchange) */}
-          <OpportunityExpandedContent opportunity={opportunity} scoring={null} />
+          <OpportunityExpandedContent opportunity={enrichedOpportunity} scoring={null} />
           {/* Final Section: Express Interest */}
           <div className="space-y-8 pt-4">
             {/* Divider */}
