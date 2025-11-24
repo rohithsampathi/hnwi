@@ -5,14 +5,14 @@ The opportunity share feature allows users to share investment opportunities via
 
 ## Security Measures
 
-### 1. Backend URL Protection
-**Problem**: Exposing backend API URLs in error messages or logs could reveal infrastructure details.
+### 1. UUID-Only ShareId System
+**Problem**: Using predictable opportunityIds (MongoDB ObjectIds) allows enumeration attacks.
 
 **Solution**:
-- All error messages return generic text like "Service temporarily unavailable"
-- Backend URLs are never logged to client-accessible logs
-- API routes only use server-side environment variables
-- No `console.log` statements expose infrastructure details
+- Only UUID format shareIds accepted (8-4-4-4-12 hexadecimal with dashes)
+- ShareIds generated via crypto.randomUUID() when sharing
+- MongoDB ObjectIds rejected at API level
+- Prevents URL guessing and enumeration
 
 ### 2. Data Sanitization
 **Problem**: Opportunity data may contain internal fields or user-specific information.
@@ -25,37 +25,38 @@ The opportunity share feature allows users to share investment opportunities via
   - Backend metadata
 - Only public-facing opportunity data is shared
 
-### 3. MongoDB-First Architecture
-**Problem**: Production environment may not have backend API access.
+### 3. MongoDB-Only Architecture
+**Problem**: Production environment needs fast, reliable data access.
 
 **Solution**:
-- Primary data source: MongoDB cache (no backend dependency)
-- Fallback: Backend API (if configured)
-- Auto-caching: Backend responses cached in MongoDB
-- Works completely offline from backend once cached
+- Single data source: MongoDB (shared_opportunities collection)
+- No backend dependencies
+- 90-day automatic expiration via TTL index
+- Fast retrieval with indexed shareId lookups
 
 ### 4. Open Graph Preview Protection
 **Problem**: Metadata generation errors could crash pages or expose errors.
 
 **Solution**:
-- Metadata generation has 5-second timeout
+- Metadata generation follows Rohith pattern (proven working)
 - Always returns valid metadata (uses defaults if needed)
-- Never throws errors that could block page rendering
+- Console logs for debugging (production only shows server-side)
 - Social crawlers always get proper meta tags
 
 ### 5. Error Handling
-**Problem**: Detailed error messages could leak infrastructure information.
+**Problem**: Invalid shareIds or expired links could expose system behavior.
 
 **Solution**:
 ```typescript
-// ❌ BAD: Exposes backend details
-error: `Backend at ${backendUrl} returned 500`
+// UUID validation before database lookup
+const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
 
-// ✅ GOOD: Generic error
-error: 'Service temporarily unavailable'
+if (!isValidUUID) {
+  return { error: 'Invalid share ID format', status: 400 }
+}
 ```
 
-All errors return generic messages to clients while logging details server-side only.
+All errors return appropriate HTTP status codes with generic messages.
 
 ### 6. Rate Limiting (Recommended)
 **Status**: Not yet implemented
@@ -83,28 +84,38 @@ if (!success) {
 ```
 User clicks "Share" in UI
     ↓
-POST /api/opportunities/share
+POST /api/opportunities/share (CSRF protected)
     ↓
-Sanitize opportunity data
+Validate authentication (access_token cookie)
     ↓
-Store in MongoDB with random UUID
+Generate random UUID via crypto.randomUUID()
     ↓
-Return shareable URL
+Sanitize opportunity data (remove sensitive fields)
+    ↓
+Store in MongoDB shared_opportunities collection
+    ↓
+Return shareable URL: /share/opportunity/{uuid}
 ```
 
 ### Share Access
 ```
-User/Crawler visits /share/opportunity/{id}
+User/Crawler visits /share/opportunity/{uuid}
     ↓
-Check MongoDB cache (fast)
-    ↓ (if not found)
-Try backend API with timeout
-    ↓ (if successful)
-Cache in MongoDB for next time
+GET /api/opportunities/public/{uuid}
     ↓
-Generate Open Graph metadata
+Validate UUID format (reject if invalid)
     ↓
-Render page with opportunity data
+Query MongoDB shared_opportunities by shareId
+    ↓
+Check if expired (expiresAt > now)
+    ↓
+Increment viewCount
+    ↓
+Return opportunity data
+    ↓
+Page generates Open Graph metadata
+    ↓
+Render opportunity with OpportunityExpandedContent
 ```
 
 ## Environment Variables
@@ -112,23 +123,21 @@ Render page with opportunity data
 ### Required
 - `MONGODB_URI` - MongoDB connection string (required for all operations)
 
-### Optional (for backend fallback)
-- `API_BASE_URL` - Backend API URL (optional, enables backend fallback)
-- `API_SECRET_KEY` - Backend API key (optional, for authentication)
-
-### Optional (for URL generation)
-- `NEXT_PUBLIC_PRODUCTION_URL` - Production URL (used for meta tags)
+### Optional
+- `NEXT_PUBLIC_PRODUCTION_URL` - Production URL (used for meta tags and share URLs)
 
 ## Security Checklist
 
-- [x] Backend URLs never exposed to client
-- [x] Error messages are generic
+- [x] UUID-only shareIds (prevents enumeration)
 - [x] Data sanitization removes sensitive fields
-- [x] Metadata generation never crashes
-- [x] MongoDB-first architecture (no backend dependency)
+- [x] Metadata generation follows proven pattern
+- [x] MongoDB-only architecture (simple, fast)
 - [x] Server-side environment variables only
-- [x] Timeout protection on all external calls
-- [x] Graceful error handling throughout
+- [x] UUID format validation before lookup
+- [x] 90-day automatic expiration
+- [x] View count tracking
+- [x] CSRF protection on share creation
+- [x] Authentication required to create shares
 - [ ] Rate limiting (recommended for production)
 - [ ] Access control per opportunity (if needed)
 - [ ] Audit logging of shares (optional)
@@ -136,18 +145,22 @@ Render page with opportunity data
 ## Testing Checklist
 
 ### Local Environment
-- [x] Page loads with MongoDB data
-- [x] Page loads with backend data
-- [x] Page shows 404 when opportunity not found
-- [x] Metadata generation works
-- [x] No backend URLs in browser console
+- [ ] Share creation generates valid UUID
+- [ ] Share retrieval works with valid UUID
+- [ ] Invalid UUID format returns 400 error
+- [ ] MongoDB ObjectId rejected
+- [ ] Page shows 404 when shareId not found
+- [ ] Metadata generation works
+- [ ] Console logs visible for debugging
 
 ### Production Environment
-- [ ] Page loads from MongoDB cache
-- [ ] Open Graph preview works (test with Twitter/LinkedIn)
-- [ ] 404 page shows gracefully
-- [ ] No 500 errors when backend offline
-- [ ] Error messages don't expose infrastructure
+- [ ] Share creation requires authentication
+- [ ] CSRF protection works
+- [ ] Page loads from MongoDB
+- [ ] Open Graph preview works (test with Twitter/LinkedIn/Discord)
+- [ ] 404 page shows gracefully for invalid/expired shares
+- [ ] UUID validation prevents enumeration
+- [ ] Expired shares automatically deleted
 
 ## Recommendations
 
