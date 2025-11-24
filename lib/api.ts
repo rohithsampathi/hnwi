@@ -150,6 +150,17 @@ export async function getEvents(): Promise<SocialEvent[]> {
   }
 }
 
+// Time Horizon Display Structure (from backend)
+export interface TimeHorizonDisplay {
+  minimum_ticket: string;        // e.g., "$1,300,000 USD"
+  access_tier: string;            // e.g., "1m Access" or "500k Access"
+  projected_yield: string;        // e.g., "12–18% annually"
+  time_horizon: string;           // e.g., "5-7 years (optimal appreciation cycle)"
+  liquidity: string;              // e.g., "Low · 6-12 month exit window"
+  holding_period: string;         // e.g., "Medium to Long-term (5-7 years...)"
+  exit_timeline: string;          // e.g., "6-12 months via luxury broker..."
+}
+
 // Investment Opportunities - SOTA Structure
 export interface Opportunity {
   // MongoDB/API identifiers (id is normalized from _id or opportunity_id)
@@ -157,6 +168,9 @@ export interface Opportunity {
   id: string; // Always populated by normalization layer
   opportunity_id?: string;
   reference_number?: string;
+
+  // Time Horizon Display (NEW - from backend)
+  time_horizon_display?: TimeHorizonDisplay;
 
   // TIER 0: Quick Snapshot (10 seconds)
   title: string;

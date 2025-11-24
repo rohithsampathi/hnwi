@@ -316,17 +316,21 @@ function OpportunityCard({
                     </div>
                   )}
 
-                  {/* Time Horizon / Risk */}
+                  {/* Time Horizon - Using backend time_horizon_display structure */}
                   <div className="text-center">
                     <div className="text-xs font-medium tracking-widest uppercase text-muted-foreground mb-2">
-                      {opportunity.investmentHorizon ? 'Time Horizon' : 'Risk Profile'}
+                      Time Horizon
                     </div>
                     <div className={`text-2xl md:text-3xl font-bold ${theme === "dark" ? "text-white" : "text-black"}`}>
-                      {opportunity.investmentHorizon || opportunity.riskLevel}
+                      {(opportunity as any).time_horizon_display?.time_horizon ||
+                       opportunity.investmentHorizon ||
+                       opportunity.riskLevel ||
+                       'Medium-term'}
                     </div>
-                    {opportunity.liquidity_level && (
+                    {((opportunity as any).time_horizon_display?.liquidity || opportunity.liquidity_level) && (
                       <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wide">
-                        {opportunity.liquidity_level} Liquidity
+                        {(opportunity as any).time_horizon_display?.liquidity ||
+                         `${opportunity.liquidity_level} Liquidity`}
                       </div>
                     )}
                   </div>

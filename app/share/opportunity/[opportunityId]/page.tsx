@@ -11,60 +11,70 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Server-side function to fetch shared opportunity
+// This function should NEVER throw errors - always return null on failure
 async function getSharedOpportunity(opportunityId: string): Promise<Opportunity | null> {
   try {
     // Determine the correct base URL based on environment
     const isProduction = process.env.NODE_ENV === 'production'
 
     // In development: use localhost Next.js server (which has the API routes)
-    // In production: use the production URL
+    // In production: use internal API call (same server)
     const apiBaseUrl = isProduction
       ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
       : 'http://localhost:3000'  // Use Next.js dev server, not backend
 
-    console.log(`[Share Page] Environment: ${process.env.NODE_ENV}`)
-    console.log(`[Share Page] Fetching opportunity ${opportunityId} from ${apiBaseUrl}`)
+    // SECURITY: Only log opportunityId, never URLs or infrastructure details
+    // This prevents exposing backend configuration in logs
+
+    // Create an AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 second timeout
 
     // Call the Next.js API route (works in both dev and production)
     const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${opportunityId}`, {
       cache: 'no-store', // Always get fresh data for social crawlers
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      signal: controller.signal
+    }).catch((fetchError) => {
+      // Handle fetch errors gracefully
+      // DO NOT log error details to avoid exposing infrastructure
+      return null
     })
 
+    clearTimeout(timeoutId)
+
+    if (!response) {
+      // No response - return null without logging details
+      return null
+    }
+
     if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.opportunity) {
-        console.log(`[Share Page] Successfully fetched opportunity ${opportunityId}`)
+      const data = await response.json().catch(() => null)
+      if (data && data.success && data.opportunity) {
+        // Success - return opportunity data
         return data.opportunity as Opportunity
       }
     }
 
-    console.error(`[Share Page] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
-
-    // Try to get error details
-    try {
-      const errorData = await response.json()
-      console.error(`[Share Page] Error details:`, errorData)
-    } catch (e) {
-      // Ignore JSON parse errors
-    }
-
+    // Failed to fetch - return null without exposing details
     return null
   } catch (error) {
-    console.error('[Share Page] Error fetching shared opportunity:', error)
+    // Catch all errors and return null to prevent page crashes
+    // DO NOT log error details to avoid exposing infrastructure
     return null
   }
 }
 
 // Generate dynamic metadata for social sharing
+// IMPORTANT: This function MUST NEVER throw errors - it should always return valid metadata
 export async function generateMetadata({
   params
 }: {
   params: { opportunityId: string }
 }): Promise<Metadata> {
-  const baseUrl = 'https://app.hnwichronicles.com'
+  const baseUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com'
   const shareUrl = `${baseUrl}/share/opportunity/${params.opportunityId}`
   const imageUrl = `${baseUrl}/logo.png`
 
@@ -99,10 +109,16 @@ export async function generateMetadata({
   }
 
   try {
-    const opportunity = await getSharedOpportunity(params.opportunityId)
+    // Add a timeout to prevent hanging
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 5000) // 5 second timeout
+    })
+
+    const opportunityPromise = getSharedOpportunity(params.opportunityId)
+    const opportunity = await Promise.race([opportunityPromise, timeoutPromise])
 
     if (!opportunity) {
-      console.log(`[Share Page] No opportunity found for ${params.opportunityId}, using default metadata`)
+      // No opportunity found - use default metadata for preview
       return defaultMetadata
     }
 
@@ -145,11 +161,7 @@ export async function generateMetadata({
       ? `${cleanDescription.substring(0, 157)}...`
       : cleanDescription
 
-    console.log(`[Share Page] Generated metadata for ${params.opportunityId}:`, {
-      title: metaTitle,
-      description: metaDescription.substring(0, 50) + '...'
-    })
-
+    // Successfully generated custom metadata with opportunity data
     return {
       title: `${metaTitle} | HNWI Chronicles`,
       description: metaDescription,
@@ -186,16 +198,24 @@ export async function generateMetadata({
 }
 
 // Server component
+// This component should render even if opportunity fetch fails
 export default async function SharedOpportunityPage({
   params
 }: {
   params: { opportunityId: string }
 }) {
-  const opportunity = await getSharedOpportunity(params.opportunityId)
+  try {
+    const opportunity = await getSharedOpportunity(params.opportunityId)
 
-  if (!opportunity) {
+    if (!opportunity) {
+      // Opportunity not found - show 404 page
+      notFound()
+    }
+
+    return <SharedOpportunityClient opportunity={opportunity} opportunityId={params.opportunityId} />
+  } catch (error) {
+    // If anything goes wrong, show not found page instead of crashing
+    // DO NOT log error details to avoid exposing infrastructure
     notFound()
   }
-
-  return <SharedOpportunityClient opportunity={opportunity} opportunityId={params.opportunityId} />
 }
