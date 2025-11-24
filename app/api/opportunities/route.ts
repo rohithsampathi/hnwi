@@ -13,20 +13,35 @@ export async function GET(request: NextRequest) {
     // Get backend API URL from environment
     const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
 
-    // Fetch from backend API with cache busting
+    console.log('[Opportunities API] Fetching from:', `${backendApiUrl}/api/opportunities`)
+
+    // Fetch from backend API with cache busting and timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
     const response = await fetch(`${backendApiUrl}/api/opportunities`, {
       cache: 'no-store',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache'
       }
-    })
+    }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
-      console.error('[Opportunities API] Backend returned error:', response.status)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error('[Opportunities API] Backend returned error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText.substring(0, 500)
+      })
       return NextResponse.json(
-        { error: 'Failed to fetch opportunities from backend' },
+        {
+          error: 'Failed to fetch opportunities from backend',
+          details: `Backend returned ${response.status}: ${response.statusText}`,
+          backendUrl: backendApiUrl
+        },
         { status: response.status }
       )
     }
@@ -50,10 +65,31 @@ export async function GET(request: NextRequest) {
       }
     })
 
-  } catch (error) {
-    console.error('[Opportunities API] Error fetching opportunities:', error)
+  } catch (error: any) {
+    // Handle different error types
+    const errorMessage = error?.message || 'Unknown error'
+    const isTimeout = error?.name === 'AbortError'
+    const isNetworkError = errorMessage.includes('fetch failed') || errorMessage.includes('ECONNREFUSED')
+
+    console.error('[Opportunities API] Error fetching opportunities:', {
+      error: errorMessage,
+      type: error?.name,
+      isTimeout,
+      isNetworkError,
+      stack: error?.stack?.substring(0, 500)
+    })
+
+    // Return user-friendly error message
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Failed to load opportunities',
+        details: isTimeout
+          ? 'Request timed out - backend may be slow or unavailable'
+          : isNetworkError
+          ? 'Cannot connect to backend API - check network or API_BASE_URL'
+          : `Internal error: ${errorMessage}`,
+        type: isTimeout ? 'timeout' : isNetworkError ? 'network' : 'internal'
+      },
       { status: 500 }
     )
   }

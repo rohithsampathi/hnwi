@@ -319,8 +319,28 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
     })) : [];
 
     return normalized as Opportunity[];
-  } catch (error) {
-    throw new Error('Unable to load investment opportunities. Please try again later.');
+  } catch (error: any) {
+    // Enhanced error handling with details from API route
+    const errorMessage = error?.message || 'Unknown error';
+    const errorDetails = error?.details || error?.error || '';
+    const errorType = error?.type || 'unknown';
+
+    console.error('[getOpportunities] Error loading opportunities:', {
+      message: errorMessage,
+      details: errorDetails,
+      type: errorType
+    });
+
+    // Throw more specific error message
+    if (errorType === 'timeout') {
+      throw new Error('Request timed out. The backend server may be slow or unavailable. Please try again.');
+    } else if (errorType === 'network') {
+      throw new Error('Cannot connect to backend API. Please check your internet connection and try again.');
+    } else if (errorMessage.includes('500')) {
+      throw new Error(`Backend error: ${errorDetails || 'Internal server error'}`);
+    } else {
+      throw new Error('Unable to load investment opportunities. Please try again later.');
+    }
   }
 }
 

@@ -36,7 +36,8 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   const opportunityScoring = useOpportunityScoring();
   const { trackOpportunityView } = useIntelligenceActions();
 
-  // Get intelligence data with Victor analysis only for Prive Exchange
+  // Victor analysis now comes directly with opportunities from /api/opportunities
+  // No need to load intelligence data separately
   const {
     data: intelligenceData,
     loading: intelligenceLoading,
@@ -44,7 +45,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
   } = useIntelligenceData(userData, {
     loadCrownVaultMongoDB: false,     // No MongoDB Crown Vault data needed
     loadKatherineAnalysis: false,      // No Katherine analysis needed
-    loadVictorAnalysis: true           // Victor analysis needed for opportunity scoring
+    loadVictorAnalysis: false          // Victor analysis comes with opportunities directly
   });
 
   // Load user data
@@ -92,9 +93,43 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         // Bust cache by adding timestamp parameter to force fresh fetch
         const basicOpportunities = await getOpportunities(true);
 
-        // Merge with Victor analysis data if available
-        let enrichedOpportunities = basicOpportunities;
+        // Flatten Victor analysis data from nested victor_analysis object
+        // Backend returns: { victor_analysis: { score, rating, verdict, pros, cons, ... } }
+        // Frontend expects: { victor_score, victor_rating, victor_reasoning, pros, cons, ... }
+        let enrichedOpportunities = basicOpportunities.map((opp: any) => {
+          if (opp.victor_analysis) {
+            const va = opp.victor_analysis;
+            console.log('✅ Flattening Victor data for:', {
+              opportunityTitle: opp.title,
+              victorRating: va.rating,
+              victorScore: va.score
+            });
+            return {
+              ...opp,
+              // Map nested Victor fields to flat fields expected by UI
+              victor_score: va.score || va.victor_score,
+              victor_rating: va.rating || va.victor_rating,
+              victor_reasoning: va.verdict || va.one_line_thesis || va.hnwi_thesis_alignment || va.reasoning,
+              victor_action: va.verdict || va.one_line_thesis,
+              confidence_level: va.confidence || va.confidence_level,
+              pros: va.pros,
+              cons: va.cons,
+              risk_assessment: va.risk_assessment,
+              opportunity_window: va.opportunity_window,
+              strategic_insights: va.pattern_match || va.hnwi_thesis_alignment,
+              hnwi_alignment: va.hnwi_thesis_alignment || va.pattern_match
+            };
+          }
+          return opp;
+        });
 
+        console.log('Victor Analysis Flattening:', {
+          totalOpportunities: basicOpportunities.length,
+          opportunitiesWithVictor: enrichedOpportunities.filter((o: any) => o.victor_score !== undefined).length
+        });
+
+        // Legacy: Merge with Victor analysis data from intelligence endpoint if available
+        // This is now deprecated since Victor data comes directly with opportunities
         if (intelligenceData && intelligenceData.victorOpportunities) {
           // Create TWO maps: one for ID matching, one for title matching
           const victorMapById = new Map();
@@ -121,8 +156,9 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
             totalOpportunities: basicOpportunities.length
           });
 
-          // Match opportunities with Victor analysis using ID first, then title fallback
-          enrichedOpportunities = basicOpportunities.map((opp: any) => {
+          // Match opportunities with Victor analysis from intelligence endpoint (legacy fallback)
+          // This merges additional Victor data if available from intelligence endpoint
+          enrichedOpportunities = enrichedOpportunities.map((opp: any) => {
             // Strategy 1: Try ID matching first (most reliable)
             const oppId = opp.id || opp._id || opp.opportunity_id;
             let victorMatch = oppId ? victorMapById.get(oppId) : null;
@@ -193,11 +229,12 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
       }
     }
 
-    // Only load when we have both userData and intelligence data (or intelligence loading is complete)
-    if (userData && (!intelligenceLoading || intelligenceData)) {
+    // Load opportunities once user data is available
+    // Victor analysis comes directly with opportunities, no need to wait for intelligence data
+    if (userData) {
       loadOpportunities();
     }
-  }, [userData, intelligenceData, intelligenceLoading]);
+  }, [userData]);
 
   const handleCategorySelect = (category: AssetCategoryData | null) => {
     setSelectedCategory(category);
@@ -211,9 +248,9 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
 
   return (
     <>
-        {(loading || intelligenceLoading) ? (
+        {loading ? (
           <div className="flex flex-col items-center justify-center min-h-[500px]">
-            <CrownLoader size="lg" text="Loading intelligence data..." />
+            <CrownLoader size="lg" text="Loading opportunities..." />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center min-h-[500px]">
