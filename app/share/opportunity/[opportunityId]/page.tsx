@@ -10,36 +10,56 @@ import type { Opportunity } from "@/lib/api"
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Server-side function to fetch opportunity
-// EXACTLY matches the pattern from Rohith share page that works on WhatsApp
+// Server-side function to fetch opportunity directly from backend
+// Uses server-side API key - only runs during SSR, never exposed to client
 async function getOpportunity(opportunityId: string): Promise<Opportunity | null> {
   try {
-    // Determine the correct base URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production'
+    const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
+    const apiKey = process.env.API_SECRET_KEY
 
-    // In development: use localhost Next.js server (which has the API routes)
-    // In production: use the production URL
-    const apiBaseUrl = isProduction
-      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000'  // Use Next.js dev server, not backend
-
-    // Call the Next.js API route (works in both dev and production)
-    const response = await fetch(`${apiBaseUrl}/api/opportunities/share?id=${opportunityId}`, {
-      cache: 'no-store', // Always get fresh data for social crawlers
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.opportunity) {
-        return data.opportunity as Opportunity
-      }
+    if (!apiKey) {
+      console.error('[Share] API_SECRET_KEY not configured')
+      return null
     }
 
-    return null
+    // Add timeout to prevent hanging during SSR
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+    try {
+      // Fetch directly from backend using server-side API key
+      // This runs server-to-server during page generation
+      const response = await fetch(`${backendApiUrl}/api/opportunities`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        cache: 'no-store',
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (response.ok) {
+        const opportunities = await response.json()
+        const opportunity = opportunities.find((opp: any) =>
+          opp.id === opportunityId || opp._id === opportunityId
+        )
+        return opportunity || null
+      }
+
+      console.error(`[Share] Backend returned ${response.status} for opportunities`)
+      return null
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError instanceof Error) {
+        console.error(`[Share] Failed to fetch opportunity: ${fetchError.message}`)
+      }
+      return null
+    }
   } catch (error) {
+    console.error('[Share] Error in getOpportunity:', error)
     return null
   }
 }
@@ -170,11 +190,7 @@ export default async function SharedOpportunityPage({
 }: {
   params: { opportunityId: string }
 }) {
-  const opportunity = await getOpportunity(params.opportunityId)
-
-  if (!opportunity) {
-    notFound()
-  }
-
-  return <SharedOpportunityClient opportunity={opportunity} opportunityId={params.opportunityId} />
+  // Client component will fetch opportunity data same way as Privé Exchange
+  // We still generate metadata on server for SEO
+  return <SharedOpportunityClient opportunityId={params.opportunityId} />
 }
