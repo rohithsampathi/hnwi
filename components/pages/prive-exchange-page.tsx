@@ -90,7 +90,8 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
         // Service Worker caches /api/opportunities for 5 minutes
         await EnhancedCacheService.clearOpportunitiesCache();
 
-        // Bust cache by adding timestamp parameter to force fresh fetch
+        // Fetch opportunities through proxy (same as Home Dashboard)
+        // This ensures proper authentication cookie forwarding
         const basicOpportunities = await getOpportunities(true);
 
         // Flatten Victor analysis data from nested victor_analysis object
