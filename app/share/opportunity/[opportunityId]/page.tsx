@@ -37,12 +37,31 @@ async function getSharedOpportunity(shareId: string): Promise<string | null> {
 
     console.log(`[Opportunity Share] Successfully fetched opportunity`)
 
-    // CRITICAL: Stringify the opportunity data HERE in the async function
-    // This ensures the object never enters the component scope
-    // JSON.stringify automatically strips functions, undefined, and other non-serializable values
-    const opportunityString = JSON.stringify(sharedOpp.opportunityData)
+    // NUCLEAR SANITIZATION: Stringify/parse the ENTIRE object to strip ALL non-serializable values
+    // This includes Dates, functions, Symbols, React elements, EVERYTHING
+    // Then extract only the opportunityData as a string
+    try {
+      console.log('[Opportunity Share] Starting stringification...')
 
-    return opportunityString
+      // Step 1: Stringify the entire SharedOpportunity object
+      // This converts Dates to ISO strings, removes functions, etc.
+      const fullString = JSON.stringify(sharedOpp)
+      console.log('[Opportunity Share] Full stringify succeeded, length:', fullString.length)
+
+      // Step 2: Parse it back to get a clean object
+      const cleaned = JSON.parse(fullString)
+      console.log('[Opportunity Share] Parse succeeded')
+
+      // Step 3: Stringify ONLY the opportunityData
+      const opportunityString = JSON.stringify(cleaned.opportunityData)
+      console.log('[Opportunity Share] OpportunityData stringify succeeded, length:', opportunityString.length)
+
+      return opportunityString
+    } catch (stringifyError) {
+      console.error('[Opportunity Share] Stringification failed:', stringifyError)
+      console.error('[Opportunity Share] Error stack:', (stringifyError as Error).stack)
+      return null
+    }
 
   } catch (error) {
     console.error('[Opportunity Share] MongoDB error:', error)

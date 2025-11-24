@@ -1285,7 +1285,9 @@ export function OpportunityAtlasNew({
 
       // CRITICAL: Clean the opportunity data before sending to API
       // JSON.parse(JSON.stringify()) removes functions, undefined, and non-serializable values
+      console.log('[Share] Before sanitization, checking for functions:', typeof opportunity);
       const cleanOpportunity = JSON.parse(JSON.stringify(opportunity));
+      console.log('[Share] After sanitization, data length:', JSON.stringify(cleanOpportunity).length);
 
       // Call POST endpoint to create UUID-based share
       const response = await fetch('/api/opportunities/share', {
