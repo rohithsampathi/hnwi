@@ -71,6 +71,8 @@ async function getSharedOpportunity(shareId: string): Promise<string | null> {
 }
 
 // Generate dynamic metadata for social sharing
+// TEMPORARILY DISABLED FOR TESTING
+/*
 export async function generateMetadata({
   params
 }: {
@@ -211,6 +213,7 @@ export async function generateMetadata({
     return defaultMetadata
   }
 }
+*/
 
 // Server component
 export default async function SharedOpportunityPage({
