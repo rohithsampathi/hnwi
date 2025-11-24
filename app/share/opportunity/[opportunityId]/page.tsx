@@ -185,5 +185,9 @@ export default async function SharedOpportunityPage({
     notFound()
   }
 
-  return <SharedOpportunityClient opportunity={opportunity} opportunityId={params.opportunityId} />
+  // Serialize opportunity data to remove non-serializable values (Date objects, functions, etc.)
+  // This is required when passing data from Server Component to Client Component
+  const serializedOpportunity = JSON.parse(JSON.stringify(opportunity))
+
+  return <SharedOpportunityClient opportunity={serializedOpportunity} opportunityId={params.opportunityId} />
 }

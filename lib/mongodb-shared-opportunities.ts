@@ -56,6 +56,50 @@ async function connectToDatabase() {
   }
 }
 
+// Helper function to deep sanitize data recursively
+function deepSanitize(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj
+  }
+
+  // Convert Date objects to ISO strings
+  if (obj instanceof Date) {
+    return obj.toISOString()
+  }
+
+  // Remove functions
+  if (typeof obj === 'function') {
+    return undefined
+  }
+
+  // Remove React elements
+  if (obj && typeof obj === 'object' && obj.$$typeof) {
+    return undefined
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => deepSanitize(item)).filter(item => item !== undefined)
+  }
+
+  // Handle plain objects
+  if (typeof obj === 'object') {
+    const sanitized: any = {}
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = deepSanitize(obj[key])
+        if (value !== undefined) {
+          sanitized[key] = value
+        }
+      }
+    }
+    return sanitized
+  }
+
+  // Return primitives as-is
+  return obj
+}
+
 // Helper function to sanitize opportunity data before sharing
 function sanitizeOpportunityData(opportunity: Opportunity): Opportunity {
   // Create a clean copy without sensitive internal fields
@@ -76,10 +120,14 @@ function sanitizeOpportunityData(opportunity: Opportunity): Opportunity {
   delete (sanitized as any).user_viewed
   delete (sanitized as any).user_shared
 
+  // Deep sanitize to remove functions, Date objects, React elements recursively
+  // This prevents "Event handlers cannot be passed to Client Component" errors
+  const deepSanitized = deepSanitize(sanitized)
+
   // Keep all public opportunity data (title, description, pricing, etc.)
   // These are meant to be shareable as part of the Privé Exchange offering
 
-  return sanitized
+  return deepSanitized
 }
 
 export async function storeSharedOpportunity(data: {
