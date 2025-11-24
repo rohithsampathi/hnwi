@@ -2,6 +2,7 @@
 // Server component for shared investment opportunities
 
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import SharedOpportunityClient from "./shared-opportunity-client"
 import type { Opportunity } from "@/lib/api"
 
@@ -57,8 +58,50 @@ async function getSharedOpportunity(opportunityId: string): Promise<Opportunity 
   }
 }
 
-// Metadata disabled - was causing 500 error
-// Will add back after page works
+// Generate dynamic metadata for social sharing
+export async function generateMetadata({
+  params
+}: {
+  params: { id: string }
+}): Promise<Metadata> {
+  const opportunity = await getSharedOpportunity(params.id)
+
+  if (!opportunity) {
+    return {
+      title: "Opportunity Not Found | HNWI Chronicles",
+      description: "This investment opportunity is no longer available."
+    }
+  }
+
+  const title = `${opportunity.title} | HNWI Chronicles Privé Exchange`
+  const description = opportunity.description || `Exclusive ${opportunity.type || 'investment'} opportunity available to HNWI Chronicles members.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `https://app.hnwichronicles.com/share/opportunity/${params.id}`,
+      siteName: "HNWI Chronicles",
+      images: [
+        {
+          url: "/logo.png",
+          width: 1200,
+          height: 630,
+          alt: title
+        }
+      ]
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/logo.png"]
+    }
+  }
+}
 
 // Server component
 export default async function SharedOpportunityPage({
