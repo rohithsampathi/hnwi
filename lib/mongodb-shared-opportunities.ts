@@ -182,6 +182,12 @@ export async function getSharedOpportunity(shareId: string): Promise<SharedOppor
     { $inc: { viewCount: 1 } }
   )
 
+  // CRITICAL: Sanitize opportunity data during retrieval
+  // This handles shares created before the sanitization fix was deployed
+  if (opportunity.opportunityData) {
+    opportunity.opportunityData = sanitizeOpportunityData(opportunity.opportunityData as Opportunity)
+  }
+
   return opportunity as SharedOpportunity
 }
 
@@ -203,6 +209,12 @@ export async function getSharedOpportunityByOpportunityId(opportunityId: string)
     { shareId: opportunity.shareId } as any,
     { $inc: { viewCount: 1 } }
   )
+
+  // CRITICAL: Sanitize opportunity data during retrieval
+  // This handles shares created before the sanitization fix was deployed
+  if (opportunity.opportunityData) {
+    opportunity.opportunityData = sanitizeOpportunityData(opportunity.opportunityData as Opportunity)
+  }
 
   return opportunity as SharedOpportunity
 }
