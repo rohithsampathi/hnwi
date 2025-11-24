@@ -112,8 +112,17 @@ function deepSanitize(obj: any): any {
     return obj.map(item => deepSanitize(item)).filter(item => item !== undefined)
   }
 
-  // Handle plain objects (must be last check)
-  if (typeof obj === 'object' && obj.constructor === Object) {
+  // Handle plain objects and MongoDB objects (must be last check)
+  // Accept objects unless they're special built-in types we already handled above
+  if (typeof obj === 'object') {
+    // Double-check it's not a special type we missed
+    const constructor = obj.constructor
+    // Reject Buffer, Promise, and other Node.js/special types
+    if (constructor && constructor.name &&
+        ['Buffer', 'Promise', 'WeakMap', 'WeakSet', 'ArrayBuffer'].includes(constructor.name)) {
+      return undefined
+    }
+
     const sanitized: any = {}
     for (const key in obj) {
       if (obj.hasOwnProperty(key)) {
@@ -127,7 +136,7 @@ function deepSanitize(obj: any): any {
     return sanitized
   }
 
-  // If we get here, it's some other object type we don't recognize - remove it
+  // If we get here, return undefined (shouldn't reach here)
   return undefined
 }
 
