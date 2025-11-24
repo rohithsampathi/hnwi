@@ -19,24 +19,41 @@ let cachedClient: MongoClient | null = null
 let cachedDb: Db | null = null
 
 async function connectToDatabase() {
+  // Return cached connection if available
   if (cachedClient && cachedDb) {
     return { client: cachedClient, db: cachedDb }
   }
 
   const uri = process.env.MONGODB_URI
   if (!uri) {
-    throw new Error('MONGODB_URI is not defined')
+    throw new Error('MONGODB_URI environment variable is not defined')
   }
 
-  const client = new MongoClient(uri)
-  await client.connect()
+  try {
+    // Create MongoDB client with options optimized for Vercel serverless
+    const client = new MongoClient(uri, {
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 60000,
+      serverSelectionTimeoutMS: 5000, // 5 second timeout
+      socketTimeoutMS: 45000,
+    })
 
-  const db = client.db('mis') // Using the 'mis' database from your connection string
+    console.log('[MongoDB] Connecting to database...')
+    await client.connect()
+    console.log('[MongoDB] Successfully connected')
 
-  cachedClient = client
-  cachedDb = db
+    const db = client.db('mis') // Using the 'mis' database
 
-  return { client, db }
+    // Cache the connection for reuse in serverless environment
+    cachedClient = client
+    cachedDb = db
+
+    return { client, db }
+  } catch (error) {
+    console.error('[MongoDB] Connection failed:', error)
+    throw error
+  }
 }
 
 // Helper function to sanitize opportunity data before sharing

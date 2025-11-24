@@ -5,55 +5,42 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import SharedOpportunityClient from "./shared-opportunity-client"
 import type { Opportunity } from "@/lib/api"
+import { getSharedOpportunity as getSharedOpportunityFromDB } from "@/lib/mongodb-shared-opportunities"
 
 // Force dynamic rendering for metadata generation
+// CRITICAL: This ensures the page is rendered at request time, not build time
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs' // Ensure Node.js runtime for MongoDB
 export const revalidate = 0
 
-// Server-side function to fetch shared opportunity (via API route like Ask Rohith)
+// Server-side function to fetch shared opportunity directly from MongoDB
+// Following Next.js best practices: Server Components should NOT fetch their own API routes
 async function getSharedOpportunity(shareId: string): Promise<Opportunity | null> {
   try {
-    // Determine the correct base URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production'
+    // Validate UUID format before database access
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
 
-    // In development: use localhost Next.js server (which has the API routes)
-    // In production: use the production URL
-    const apiBaseUrl = isProduction
-      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000'  // Use Next.js dev server
-
-    console.log(`[Opportunity Share Page] Environment: ${process.env.NODE_ENV}`)
-    console.log(`[Opportunity Share Page] Fetching opportunity ${shareId} from ${apiBaseUrl}`)
-
-    // Call the Next.js API route (proven Ask Rohith pattern)
-    const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${shareId}`, {
-      cache: 'no-store', // Always get fresh data for social crawlers
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.opportunity) {
-        console.log(`[Opportunity Share Page] Successfully fetched opportunity ${shareId}`)
-        return data.opportunity as Opportunity
-      }
+    if (!isValidUUID) {
+      console.log(`[Opportunity Share] Invalid UUID format: ${shareId}`)
+      return null
     }
 
-    console.error(`[Opportunity Share Page] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
+    console.log(`[Opportunity Share] Fetching ${shareId} directly from MongoDB`)
 
-    // Try to get error details
-    try {
-      const errorData = await response.json()
-      console.error(`[Opportunity Share Page] Error details:`, errorData)
-    } catch (e) {
-      // Ignore JSON parse errors
+    // Direct MongoDB access (proper Next.js server component pattern)
+    const sharedOpp = await getSharedOpportunityFromDB(shareId)
+
+    if (!sharedOpp || !sharedOpp.opportunityData) {
+      console.log(`[Opportunity Share] Not found or expired: ${shareId}`)
+      return null
     }
 
-    return null
+    console.log(`[Opportunity Share] Successfully fetched opportunity`)
+    return sharedOpp.opportunityData as Opportunity
+
   } catch (error) {
-    console.error('[Opportunity Share Page] Error fetching shared opportunity:', error)
+    console.error('[Opportunity Share] MongoDB error:', error)
+    // Return null instead of throwing to show 404 page gracefully
     return null
   }
 }

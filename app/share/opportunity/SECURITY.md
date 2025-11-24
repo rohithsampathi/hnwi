@@ -25,23 +25,33 @@ The opportunity share feature allows users to share investment opportunities via
   - Backend metadata
 - Only public-facing opportunity data is shared
 
-### 3. MongoDB-via-API Architecture (Matches Ask Rohith)
-**Problem**: MongoDB direct connections from Server Components can fail in Vercel serverless environment.
+### 3. MongoDB-Direct Architecture (Next.js Best Practice)
+**Problem**: Fetching own API routes from Server Components is an anti-pattern.
 
 **Solution**:
-- Server components fetch via API routes (proven Ask Rohith pattern)
-- API routes handle MongoDB connection pooling
+- Server Components call MongoDB directly (proper Next.js pattern)
 - Single data source: MongoDB (shared_opportunities collection)
-- No backend dependencies (only internal Next.js API)
+- No HTTP overhead or unnecessary network requests
 - 90-day automatic expiration via TTL index
 - Fast retrieval with indexed shareId lookups
-- Proven reliable in production (same as Ask Rohith)
+- Optimized connection pooling for Vercel serverless
 
-**Why HTTP fetch instead of MongoDB-direct:**
-- Vercel serverless functions have better MongoDB connection handling
-- Avoids cold start connection timeouts during SSR
-- API routes properly cache MongoDB connections
-- Proven pattern: Ask Rohith uses this successfully
+**Why MongoDB-direct instead of HTTP fetch:**
+- Next.js documentation: "Do not call Route Handlers from Server Components"
+- Server Components already run on the server
+- Eliminates unnecessary HTTP request layer
+- Better performance and reliability
+- Proper separation: API routes for client, MongoDB for server components
+
+**Vercel Serverless Optimizations:**
+```typescript
+new MongoClient(uri, {
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000
+})
+```
 
 ### 4. Open Graph Preview Protection
 **Problem**: Metadata generation errors could crash pages or expose errors.
@@ -110,26 +120,29 @@ Return shareable URL: /share/opportunity/{uuid}
 ```
 User/Crawler visits /share/opportunity/{uuid}
     ↓
-Server Component (page.tsx)
+Server Component (page.tsx) - rendered at request time
     ↓
-Fetch from /api/opportunities/public/{uuid}
+Validate UUID format (reject if invalid)
     ↓
-API route validates UUID format (reject if invalid)
+Call getSharedOpportunity() from MongoDB lib (direct access)
     ↓
-Query MongoDB shared_opportunities by shareId
+Connect to MongoDB (cached connection in serverless function)
+    ↓
+Query shared_opportunities collection by shareId
     ↓
 Check if expired (expiresAt > now)
     ↓
 Increment viewCount
     ↓
-Return opportunity data to server component
+Return opportunity data
     ↓
 Generate Open Graph metadata (server-side)
     ↓
 Render opportunity with OpportunityExpandedContent
 ```
 
-**Architecture: Server Component → API Route → MongoDB (same as Ask Rohith)**
+**Architecture: Server Component → MongoDB (Direct - Next.js Best Practice)**
+**NO HTTP requests** - Server Components access database directly
 
 ## Environment Variables
 
