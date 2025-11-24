@@ -1283,6 +1283,10 @@ export function OpportunityAtlasNew({
       const csrfResponse = await fetch('/api/auth/csrf-token');
       const { csrfToken } = await csrfResponse.json();
 
+      // CRITICAL: Clean the opportunity data before sending to API
+      // JSON.parse(JSON.stringify()) removes functions, undefined, and non-serializable values
+      const cleanOpportunity = JSON.parse(JSON.stringify(opportunity));
+
       // Call POST endpoint to create UUID-based share
       const response = await fetch('/api/opportunities/share', {
         method: 'POST',
@@ -1293,7 +1297,7 @@ export function OpportunityAtlasNew({
         body: JSON.stringify({
           opportunityId: opportunity.id,
           userId: localStorage.getItem('userId') || 'anonymous',
-          opportunityData: opportunity
+          opportunityData: cleanOpportunity
         })
       });
 
