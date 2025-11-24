@@ -244,7 +244,18 @@ export function AuthPopup({
         setError(result.error || "Login failed")
       }
     } catch (error) {
-      setError("An unexpected error occurred. Please try again.")
+      // Provide more specific error messages based on error type
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+
+      if (errorMessage.includes('Network request failed') || errorMessage.includes('after retries')) {
+        setError("Unable to reach authentication server. Please check your internet connection and try again.")
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        setError("Authentication request timed out. Please try again.")
+      } else if (errorMessage.includes('fetch')) {
+        setError("Connection error. Please check your internet and try again.")
+      } else {
+        setError(errorMessage || "An unexpected error occurred. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }

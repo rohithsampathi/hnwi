@@ -160,15 +160,43 @@ async function handlePost(request: NextRequest) {
       const cookies = request.cookies.getAll();
       const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-      const backendFetchResponse = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(cookieHeader && { 'Cookie': cookieHeader }),
-        },
-        credentials: 'include',
-        body: JSON.stringify(validation.data!),
-      });
+      // Add timeout to prevent hanging on slow/unreachable backend
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      let backendFetchResponse;
+      try {
+        backendFetchResponse = await fetch(backendUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(cookieHeader && { 'Cookie': cookieHeader }),
+          },
+          credentials: 'include',
+          body: JSON.stringify(validation.data!),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+
+        // Check if it's a timeout error
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          logger.warn("Backend login request timed out", {
+            email: validation.data!.email,
+            backendUrl
+          });
+
+          const response = NextResponse.json(
+            createSafeErrorResponse('Authentication service is taking too long to respond. Please try again.'),
+            { status: 504 }
+          );
+          return ApiAuth.addSecurityHeaders(response);
+        }
+
+        // Other fetch errors
+        throw fetchError;
+      }
 
       const backendResponse = await backendFetchResponse.json();
 
