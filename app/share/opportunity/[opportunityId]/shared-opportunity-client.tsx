@@ -152,52 +152,11 @@ export default function SharedOpportunityClient({ opportunityString, opportunity
         )}
       </AnimatePresence>
 
-      {/* Header - Same as main app */}
-      <div className="sticky top-0 z-50">
-        <Header
-          showBackButton={false}
-          onNavigate={(route) => {
-            if (route === "dashboard") {
-              window.location.href = "https://www.hnwichronicles.com"
-            }
-          }}
-        >
-          <ThemeToggle />
-          <Button
-            onClick={handleShare}
-            variant={isCopied ? "default" : "outline"}
-            size="sm"
-            className={`gap-2 hidden sm:flex transition-all ${
-              isCopied
-                ? theme === "light"
-                  ? "bg-black text-white border-black"
-                  : "bg-primary text-primary-foreground"
-                : theme === "light"
-                  ? "hover:bg-black hover:text-white hover:border-black"
-                  : ""
-            }`}
-          >
-            {isCopied ? (
-              <>
-                <Check className="h-3 w-3" />
-                Link Copied
-              </>
-            ) : (
-              <>
-                <Share2 className="h-3 w-3" />
-                Share
-              </>
-            )}
-          </Button>
-          <Button
-            onClick={handleGetAccess}
-            size="sm"
-            className="gap-2"
-          >
-            <Lock className="h-3 w-3" />
-            Get Access
-          </Button>
-        </Header>
+      {/* TESTING: Simplified header without complex components */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border p-4">
+        <div className="text-center">
+          <h1 className="text-xl font-bold">HNWI Chronicles</h1>
+        </div>
       </div>
 
       {/* Main Content - Premium Intelligence Briefing */}
@@ -231,8 +190,12 @@ export default function SharedOpportunityClient({ opportunityString, opportunity
             )}
           </div>
 
-          {/* Use shared expanded content component (same as Privé Exchange) */}
-          <OpportunityExpandedContent opportunity={enrichedOpportunity} scoring={null} />
+          {/* TESTING: Removed OpportunityExpandedContent to isolate issue */}
+          <div className="p-8 bg-card rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              {enrichedOpportunity.description || "Investment opportunity details"}
+            </p>
+          </div>
           {/* Final Section: Express Interest */}
           <div className="space-y-8 pt-4">
             {/* Divider */}
