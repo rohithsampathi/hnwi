@@ -1280,7 +1280,7 @@ export function OpportunityAtlasNew({
 
     try {
       // Get CSRF token
-      const csrfResponse = await fetch('/api/csrf-token');
+      const csrfResponse = await fetch('/api/auth/csrf-token');
       const { csrfToken } = await csrfResponse.json();
 
       // Call POST endpoint to create UUID-based share
@@ -1288,7 +1288,7 @@ export function OpportunityAtlasNew({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
+          'x-csrf-token': csrfToken
         },
         body: JSON.stringify({
           opportunityId: opportunity.id,
