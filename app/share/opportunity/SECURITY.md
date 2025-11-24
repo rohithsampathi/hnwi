@@ -25,16 +25,16 @@ The opportunity share feature allows users to share investment opportunities via
   - Backend metadata
 - Only public-facing opportunity data is shared
 
-### 3. MongoDB-Direct Architecture
-**Problem**: Production environment needs fast, reliable data access without HTTP overhead.
+### 3. MongoDB-Only Architecture (Matches Ask Rohith Pattern)
+**Problem**: Production environment needs fast, reliable data access.
 
 **Solution**:
-- Server components call MongoDB directly (no HTTP requests)
 - Single data source: MongoDB (shared_opportunities collection)
-- No backend dependencies or network round-trips
+- Server components fetch via API routes (proven Ask Rohith pattern)
+- No backend dependencies
 - 90-day automatic expiration via TTL index
 - Fast retrieval with indexed shareId lookups
-- Eliminates server-to-self fetch issues in production
+- Consistent architecture across all share features
 
 ### 4. Open Graph Preview Protection
 **Problem**: Metadata generation errors could crash pages or expose errors.
@@ -105,9 +105,9 @@ User/Crawler visits /share/opportunity/{uuid}
     ↓
 Server Component (page.tsx)
     ↓
-Validate UUID format (reject if invalid)
+Fetch from /api/opportunities/public/{uuid}
     ↓
-Call getSharedOpportunity() directly from MongoDB lib
+API validates UUID format (reject if invalid)
     ↓
 Query MongoDB shared_opportunities by shareId
     ↓
