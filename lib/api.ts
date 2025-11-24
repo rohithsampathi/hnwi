@@ -321,23 +321,31 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
     return normalized as Opportunity[];
   } catch (error: any) {
     // Enhanced error handling with details from API route
+    // Note: secureApi throws errors with .detail (singular), not .details (plural)
     const errorMessage = error?.message || 'Unknown error';
-    const errorDetails = error?.details || error?.error || '';
-    const errorType = error?.type || 'unknown';
+    const errorDetail = error?.detail || error?.response?.data || {};
+    const errorDetails = errorDetail?.details || errorDetail?.error || '';
+    const errorType = errorDetail?.type || 'unknown';
+    const backendUrl = errorDetail?.backendUrl || '';
 
     console.error('[getOpportunities] Error loading opportunities:', {
       message: errorMessage,
+      detail: errorDetail,
       details: errorDetails,
-      type: errorType
+      type: errorType,
+      backendUrl: backendUrl,
+      status: error?.status
     });
 
-    // Throw more specific error message
+    // Throw more specific error message based on error type
     if (errorType === 'timeout') {
       throw new Error('Request timed out. The backend server may be slow or unavailable. Please try again.');
     } else if (errorType === 'network') {
-      throw new Error('Cannot connect to backend API. Please check your internet connection and try again.');
-    } else if (errorMessage.includes('500')) {
-      throw new Error(`Backend error: ${errorDetails || 'Internal server error'}`);
+      throw new Error(`Cannot connect to backend API (${backendUrl}). Please check your internet connection and try again.`);
+    } else if (error?.status === 500 || errorMessage.includes('500')) {
+      // Extract specific backend error if available
+      const specificError = errorDetails || errorDetail?.message || 'Internal server error';
+      throw new Error(`Backend error: ${specificError}`);
     } else {
       throw new Error('Unable to load investment opportunities. Please try again later.');
     }
