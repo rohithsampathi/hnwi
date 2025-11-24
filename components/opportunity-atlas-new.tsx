@@ -1283,7 +1283,7 @@ export function OpportunityAtlasNew({
       const csrfResponse = await fetch('/api/auth/csrf-token');
       const { csrfToken } = await csrfResponse.json();
 
-      // Simple sanitization: JSON round-trip
+      // Clean the opportunity data before sending to API
       const cleanOpportunity = JSON.parse(JSON.stringify(opportunity));
 
       // Call POST endpoint to create UUID-based share

@@ -5,80 +5,71 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import SharedOpportunityClient from "./shared-opportunity-client"
 import type { Opportunity } from "@/lib/api"
-import { getSharedOpportunity as getSharedOpportunityFromDB } from "@/lib/mongodb-shared-opportunities"
 
 // Force dynamic rendering for metadata generation
-// CRITICAL: This ensures the page is rendered at request time, not build time
 export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs' // Ensure Node.js runtime for MongoDB
 export const revalidate = 0
 
-// Server-side function to fetch shared opportunity directly from MongoDB
-// Following Next.js best practices: Server Components should NOT fetch their own API routes
-async function getSharedOpportunity(shareId: string): Promise<string | null> {
+// Server-side function to fetch opportunity directly from backend
+// Uses server-side API key - only runs during SSR, never exposed to client
+async function getOpportunity(opportunityId: string): Promise<Opportunity | null> {
   try {
-    // Validate UUID format before database access
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
+    const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
+    const apiKey = process.env.API_SECRET_KEY
 
-    if (!isValidUUID) {
-      console.log(`[Opportunity Share] Invalid UUID format: ${shareId}`)
+    if (!apiKey) {
+      console.error('[Share] API_SECRET_KEY not configured')
       return null
     }
 
-    console.log(`[Opportunity Share] Fetching ${shareId} directly from MongoDB`)
+    // Add timeout to prevent hanging during SSR
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
 
-    // Direct MongoDB access (proper Next.js server component pattern)
-    const sharedOpp = await getSharedOpportunityFromDB(shareId)
-
-    if (!sharedOpp || !sharedOpp.opportunityData) {
-      console.log(`[Opportunity Share] Not found or expired: ${shareId}`)
-      return null
-    }
-
-    console.log(`[Opportunity Share] Successfully fetched opportunity`)
-
-    // NUCLEAR SANITIZATION: Stringify/parse the ENTIRE object to strip ALL non-serializable values
-    // This includes Dates, functions, Symbols, React elements, EVERYTHING
-    // Then extract only the opportunityData as a string
     try {
-      console.log('[Opportunity Share] Starting stringification...')
+      // Fetch directly from backend using server-side API key
+      // This runs server-to-server during page generation
+      const response = await fetch(`${backendApiUrl}/api/opportunities`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey
+        },
+        cache: 'no-store',
+        signal: controller.signal
+      })
 
-      // Step 1: Stringify the entire SharedOpportunity object
-      // This converts Dates to ISO strings, removes functions, etc.
-      const fullString = JSON.stringify(sharedOpp)
-      console.log('[Opportunity Share] Full stringify succeeded, length:', fullString.length)
+      clearTimeout(timeoutId)
 
-      // Step 2: Parse it back to get a clean object
-      const cleaned = JSON.parse(fullString)
-      console.log('[Opportunity Share] Parse succeeded')
+      if (response.ok) {
+        const opportunities = await response.json()
+        const opportunity = opportunities.find((opp: any) =>
+          opp.id === opportunityId || opp._id === opportunityId
+        )
+        return opportunity || null
+      }
 
-      // Step 3: Stringify ONLY the opportunityData
-      const opportunityString = JSON.stringify(cleaned.opportunityData)
-      console.log('[Opportunity Share] OpportunityData stringify succeeded, length:', opportunityString.length)
-
-      return opportunityString
-    } catch (stringifyError) {
-      console.error('[Opportunity Share] Stringification failed:', stringifyError)
-      console.error('[Opportunity Share] Error stack:', (stringifyError as Error).stack)
+      console.error(`[Share] Backend returned ${response.status} for opportunities`)
+      return null
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError instanceof Error) {
+        console.error(`[Share] Failed to fetch opportunity: ${fetchError.message}`)
+      }
       return null
     }
-
   } catch (error) {
-    console.error('[Opportunity Share] MongoDB error:', error)
-    // Return null instead of throwing to show 404 page gracefully
+    console.error('[Share] Error in getOpportunity:', error)
     return null
   }
 }
 
 // Generate dynamic metadata for social sharing
-// TEMPORARILY DISABLED FOR TESTING
-/*
 export async function generateMetadata({
   params
 }: {
   params: { opportunityId: string }
 }): Promise<Metadata> {
-  // Use production URL for metadata (crawlers can't access localhost)
   const baseUrl = 'https://app.hnwichronicles.com'
   const shareUrl = `${baseUrl}/share/opportunity/${params.opportunityId}`
   const imageUrl = `${baseUrl}/logo.png`
@@ -114,29 +105,14 @@ export async function generateMetadata({
   }
 
   try {
-    const opportunityString = await getSharedOpportunity(params.opportunityId)
+    const opportunity = await getOpportunity(params.opportunityId)
 
-    if (!opportunityString) {
-      console.log(`[Share Page] No opportunity found for ${params.opportunityId}, using default metadata`)
+    if (!opportunity) {
       return defaultMetadata
     }
 
-    // Parse the string back to object for metadata generation
-    // CRITICAL: Extract ONLY the values we need as primitives, then discard the object
-    // This prevents Next.js from serializing the full object in the function closure
-    const parsed = JSON.parse(opportunityString) as Opportunity
-    const title = parsed.title || ''
-    const description = parsed.description || ''
-    const subtitle = parsed.subtitle || ''
-    const type = parsed.type || ''
-    const region = parsed.region || ''
-    const minInvestment = parsed.minimum_investment_display || ''
-    const returnLow = parsed.expected_return_annual_low || 0
-    const returnHigh = parsed.expected_return_annual_high || 0
-    const investmentThesisText = parsed.investment_thesis?.what_youre_buying || ''
-
     // Create title from opportunity title (max 60 chars for SEO) - following Rohith pattern
-    const rawTitle = title || 'Exclusive Investment Opportunity'
+    const rawTitle = opportunity.title || 'Exclusive Investment Opportunity'
     const metaTitle = rawTitle.length > 60
       ? `${rawTitle.substring(0, 57)}...`
       : rawTitle
@@ -145,20 +121,20 @@ export async function generateMetadata({
     let rawDescription = ''
 
     // Use investment thesis (what you're buying) as primary description
-    if (investmentThesisText) {
-      rawDescription = investmentThesisText
-    } else if (description) {
-      rawDescription = description
-    } else if (subtitle) {
-      rawDescription = subtitle
+    if (opportunity.investment_thesis?.what_youre_buying) {
+      rawDescription = opportunity.investment_thesis.what_youre_buying
+    } else if (opportunity.description) {
+      rawDescription = opportunity.description
+    } else if (opportunity.subtitle) {
+      rawDescription = opportunity.subtitle
     } else {
       // Fallback: Create description from key details
       const details = []
-      if (type) details.push(type)
-      if (region) details.push(region)
-      if (minInvestment) details.push(`Min: ${minInvestment}`)
-      if (returnLow && returnHigh) {
-        details.push(`${returnLow}-${returnHigh}% annual return`)
+      if (opportunity.type) details.push(opportunity.type)
+      if (opportunity.region) details.push(opportunity.region)
+      if (opportunity.minimum_investment_display) details.push(`Min: ${opportunity.minimum_investment_display}`)
+      if (opportunity.expected_return_annual_low && opportunity.expected_return_annual_high) {
+        details.push(`${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}% annual return`)
       }
       rawDescription = details.join(' · ') || 'Exclusive investment opportunity for the world\'s top 1%'
     }
@@ -173,11 +149,6 @@ export async function generateMetadata({
     const metaDescription = cleanDescription.length > 160
       ? `${cleanDescription.substring(0, 157)}...`
       : cleanDescription
-
-    console.log(`[Share Page] Generated metadata for ${params.opportunityId}:`, {
-      title: metaTitle,
-      description: metaDescription.substring(0, 50) + '...'
-    })
 
     return {
       title: `${metaTitle} | HNWI Chronicles`,
@@ -209,11 +180,9 @@ export async function generateMetadata({
       }
     }
   } catch (error) {
-    console.error('[Share Page] Error generating metadata:', error)
     return defaultMetadata
   }
 }
-*/
 
 // Server component
 export default async function SharedOpportunityPage({
@@ -221,20 +190,7 @@ export default async function SharedOpportunityPage({
 }: {
   params: { opportunityId: string }
 }) {
-  // TESTING: Use hardcoded data instead of MongoDB
-  const testOpportunity = {
-    id: params.opportunityId,
-    title: "Test Investment Opportunity",
-    description: "This is a test opportunity to verify the share page works",
-    type: "Real Estate",
-    region: "North America",
-    minimum_investment_display: "$100,000",
-    expected_return_annual_low: 15,
-    expected_return_annual_high: 25,
-    risk_level: "Medium"
-  };
-
-  const opportunityString = JSON.stringify(testOpportunity);
-
-  return <SharedOpportunityClient opportunityString={opportunityString} opportunityId={params.opportunityId} />
+  // Client component will fetch opportunity data same way as Privé Exchange
+  // We still generate metadata on server for SEO
+  return <SharedOpportunityClient opportunityId={params.opportunityId} />
 }
