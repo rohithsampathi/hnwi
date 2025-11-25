@@ -73,8 +73,8 @@ export async function generateMetadata({
     }
   }
 
-  const title = `${opportunity.title} | HNWI Chronicles Privé Exchange`
-  const description = opportunity.description || `Exclusive ${opportunity.type || 'investment'} opportunity available to HNWI Chronicles members.`
+  const title = `${opportunity.title} | Privé Exchange Off Market`
+  const description = opportunity.description || `Exclusive ${opportunity.type || 'investment'} opportunity available through Privé Exchange.`
 
   return {
     title,
