@@ -45,7 +45,6 @@ export function StepUpMfaProvider({ children }: { children: React.ReactNode }) {
 
   const resetState = useCallback(() => {
     setState(INITIAL_STATE)
-    latestPayload.current = null
   }, [])
 
   const resolveAndReset = useCallback((result: StepUpHandlerResult) => {

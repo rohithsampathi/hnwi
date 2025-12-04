@@ -9,13 +9,17 @@ export interface Citation {
 
 const DEV_ID_CAPTURE = /\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*([^\]\r\n]+)\]/gi
 
-export function parseDevCitations(text: string): {
+export function parseDevCitations(
+  text: string,
+  globalCitationMap?: Map<string, number>,
+  startingNumber: number = 1
+): {
   formattedText: string
   citations: Citation[]
 } {
   const citations: Citation[] = []
   const seenIds = new Set<string>()
-  let citationNumber = 1
+  let citationNumber = startingNumber
 
   if (!text) {
     return { formattedText: '', citations }
@@ -28,9 +32,11 @@ export function parseDevCitations(text: string): {
     const devId = match[1]?.trim()
     if (devId && !seenIds.has(devId)) {
       seenIds.add(devId)
+      // Use global map number if available, otherwise use local counter
+      const displayNumber = globalCitationMap?.get(devId) ?? citationNumber++
       citations.push({
         id: devId,
-        number: citationNumber++,
+        number: displayNumber,
         originalText: match[0]
       })
     }

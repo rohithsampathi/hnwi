@@ -100,6 +100,8 @@ interface InteractiveWorldMapProps {
   onToggleCrownAssets?: () => void
   onTogglePriveOpportunities?: () => void
   onToggleHNWIPatterns?: () => void
+  hideCrownAssetsToggle?: boolean // Hide Crown Assets toggle (for assessment)
+  useAbsolutePositioning?: boolean // Use absolute positioning for controls (assessment mode)
 }
 
 export function InteractiveWorldMap({
@@ -115,7 +117,9 @@ export function InteractiveWorldMap({
   showHNWIPatterns = true,
   onToggleCrownAssets,
   onTogglePriveOpportunities,
-  onToggleHNWIPatterns
+  onToggleHNWIPatterns,
+  hideCrownAssetsToggle = false,
+  useAbsolutePositioning = false
 }: InteractiveWorldMapProps) {
   const { theme } = useTheme()
 
@@ -123,13 +127,26 @@ export function InteractiveWorldMap({
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [flyToCity, setFlyToCity] = useState<City | null>(null)
   const [resetView, setResetView] = useState(false)
-  const [currentZoom, setCurrentZoom] = useState(2.8)
-  const [expandedPopupIndex, setExpandedPopupIndex] = useState<number | null>(null)
+  const [currentZoom, setCurrentZoom] = useState(1.8)
+  const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
-  const [openPopupIndex, setOpenPopupIndex] = useState<number | null>(null)
+  const [openClusterId, setOpenClusterId] = useState<string | null>(null)
   const [forceRender, setForceRender] = useState(0)
   const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 10000000 })
   const markerRefs = React.useRef<Map<string, any>>(new Map())
+
+  // ROOT FIX: Store scroll positions at MAP level, keyed by clusterId
+  // This survives all re-renders caused by city updates during calibration
+  const [clusterScrollPositions, setClusterScrollPositions] = useState<Map<string, number>>(new Map())
+
+  // Callback to update scroll position for a cluster
+  const updateScrollPosition = useCallback((clusterId: string, position: number) => {
+    setClusterScrollPositions(prev => {
+      const next = new Map(prev)
+      next.set(clusterId, position)
+      return next
+    })
+  }, [])
 
   // Tile layer URL based on theme
   const tileUrl = theme === "dark"
@@ -163,11 +180,16 @@ export function InteractiveWorldMap({
     [valueRankMap, colorScale]
   )
 
+  // Generate stable cluster ID from coordinates
+  const getClusterId = useCallback((city: City) => {
+    return `${city.latitude.toFixed(6)}-${city.longitude.toFixed(6)}`
+  }, [])
+
   // Handle city click
-  const handleCityClick = useCallback((city: City, clusterIndex: number, expandDetails: boolean = false) => {
+  const handleCityClick = useCallback((city: City, clusterId: string, expandDetails: boolean = false) => {
     setSelectedCity(city)
     setFlyToCity(city)
-    setOpenPopupIndex(clusterIndex)
+    setOpenClusterId(clusterId)
 
     if (expandDetails) {
       setCityToExpand(city)
@@ -189,40 +211,31 @@ export function InteractiveWorldMap({
   React.useEffect(() => {
     if (cityToExpand && currentZoom >= 7) {
       const timer = setTimeout(() => {
-        const clusterIdx = clusterCities.findIndex(cluster =>
-          cluster.cities.some(c =>
-            c.latitude === cityToExpand.latitude &&
-            c.longitude === cityToExpand.longitude &&
-            c.title === cityToExpand.title
-          )
-        )
+        const clusterId = getClusterId(cityToExpand)
+        setExpandedClusterId(clusterId)
 
-        if (clusterIdx !== -1) {
-          setExpandedPopupIndex(clusterIdx)
+        const markerKey = `${cityToExpand.latitude}-${cityToExpand.longitude}-${cityToExpand.title}`
+        const markerRef = markerRefs.current.get(markerKey)
 
-          const markerKey = `${cityToExpand.latitude}-${cityToExpand.longitude}-${cityToExpand.title}`
-          const markerRef = markerRefs.current.get(markerKey)
-
-          if (markerRef) {
-            setTimeout(() => {
-              markerRef.openPopup()
-            }, 200)
-          }
-
-          setCityToExpand(null)
+        if (markerRef) {
+          setTimeout(() => {
+            markerRef.openPopup()
+          }, 200)
         }
+
+        setCityToExpand(null)
       }, 2600)
 
       return () => clearTimeout(timer)
     }
-  }, [cityToExpand, currentZoom, clusterCities])
+  }, [cityToExpand, currentZoom, getClusterId])
 
   // Handle map reset
   const handleReset = useCallback(() => {
     setFlyToCity(null)
     setSelectedCity(null)
-    setOpenPopupIndex(null)
-    setExpandedPopupIndex(null)
+    setOpenClusterId(null)
+    setExpandedClusterId(null)
     setResetView(true)
     setForceRender(prev => prev + 1)
 
@@ -235,8 +248,8 @@ export function InteractiveWorldMap({
 
   // Handle map clicks
   const handleMapClick = useCallback(() => {
-    setOpenPopupIndex(null)
-    setExpandedPopupIndex(null)
+    setOpenClusterId(null)
+    setExpandedClusterId(null)
     setSelectedCity(null)
     setFlyToCity(null)
     setCityToExpand(null)
@@ -256,8 +269,8 @@ export function InteractiveWorldMap({
     <div className="relative w-full h-full overflow-hidden">
       <MapContainer
         center={[20, 0]}
-        zoom={2.8}
-        minZoom={2.8}
+        zoom={1.8}
+        minZoom={1.8}
         maxZoom={18}
         style={{ width: "100%", height: "100%", position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         zoomControl={false}
@@ -272,6 +285,7 @@ export function InteractiveWorldMap({
         {clusterCities.map((cluster, clusterIndex) => {
           const isCluster = cluster.cities.length > 1
           const center = cluster.center
+          const clusterId = getClusterId(center)
 
           // Determine primary type for cluster
           let primaryType = "pin"
@@ -286,14 +300,15 @@ export function InteractiveWorldMap({
           }
 
           const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
+          const isOpen = openClusterId === clusterId
 
           return (
             <Marker
-              key={`cluster-${clusterIndex}-${center.latitude}-${center.longitude}-${valueRankMap.size}-${currentZoom}-${openPopupIndex}-${forceRender}`}
+              key={`marker-${center._id || center.id || ''}-${center.latitude.toFixed(6)}-${center.longitude.toFixed(6)}-${center.title || ''}`}
               position={[center.latitude, center.longitude]}
               icon={isCluster
                 ? createClusterIcon(cluster.cities.length, primaryType, theme)
-                : createCustomIcon(center, clusterIndex, theme, getColor, openPopupIndex)
+                : createCustomIcon(center, clusterIndex, theme, getColor, isOpen ? clusterIndex : null)
               }
               ref={(ref) => {
                 if (ref && !isCluster) {
@@ -303,25 +318,26 @@ export function InteractiveWorldMap({
               eventHandlers={{
                 click: () => {
                   if (!isCluster) {
-                    handleCityClick(center, clusterIndex)
+                    handleCityClick(center, clusterId)
                   }
                 }
               }}
             >
               <Popup
+                key={`popup-${center._id || center.id || ''}-${center.latitude}-${center.longitude}`}
                 maxWidth={isCluster ? 500 : 400}
                 autoPan={false}
                 keepInView={false}
                 onOpen={() => {
-                  setOpenPopupIndex(clusterIndex)
+                  setOpenClusterId(clusterId)
                   if (!cityToExpand) {
-                    setExpandedPopupIndex(null)
+                    setExpandedClusterId(null)
                   }
                 }}
                 onClose={() => {
                   setTimeout(() => {
-                    setOpenPopupIndex(null)
-                    setExpandedPopupIndex(null)
+                    setOpenClusterId(null)
+                    setExpandedClusterId(null)
                     setSelectedCity(null)
                     setFlyToCity(null)
                     setCityToExpand(null)
@@ -337,10 +353,8 @@ export function InteractiveWorldMap({
                     cities={cluster.cities}
                     theme={theme}
                     onCityClick={(city) => {
-                      const targetClusterIndex = clusterCities.findIndex(c =>
-                        c.cities.some(ct => ct.title === city.title)
-                      )
-                      handleCityClick(city, targetClusterIndex >= 0 ? targetClusterIndex : clusterIndex, true)
+                      const targetClusterId = getClusterId(city)
+                      handleCityClick(city, targetClusterId, true)
                     }}
                     clusterCities={clusterCities}
                     clusterIndex={clusterIndex}
@@ -349,12 +363,14 @@ export function InteractiveWorldMap({
                   <MapPopupSingle
                     city={center}
                     theme={theme}
-                    expandedPopupIndex={expandedPopupIndex}
-                    clusterIndex={clusterIndex}
-                    onExpand={() => setExpandedPopupIndex(expandedPopupIndex === clusterIndex ? null : clusterIndex)}
+                    expandedClusterId={expandedClusterId}
+                    clusterId={clusterId}
+                    onExpand={() => setExpandedClusterId(expandedClusterId === clusterId ? null : clusterId)}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
                     onNavigate={onNavigate}
+                    scrollPosition={clusterScrollPositions.get(clusterId) || 0}
+                    onScrollPositionChange={updateScrollPosition}
                   />
                 )}
               </Popup>
@@ -383,6 +399,8 @@ export function InteractiveWorldMap({
           onReset={handleReset}
           theme={theme}
           currentZoom={currentZoom}
+          hideCrownAssetsToggle={hideCrownAssetsToggle}
+          useAbsolutePositioning={useAbsolutePositioning}
         />
       )}
 
@@ -400,6 +418,8 @@ export function InteractiveWorldMap({
           onReset={handleReset}
           theme={theme}
           currentZoom={currentZoom}
+          hideCrownAssetsToggle={hideCrownAssetsToggle}
+          useAbsolutePositioning={useAbsolutePositioning}
         />
       )}
 

@@ -154,7 +154,8 @@ export function CitationText({
     .replace(/(<\/p>)[\s]*(<p>)?[\s]*(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, '$1 $3')
 
   // Parse citations and get formatted text
-  const { formattedText, citations } = parseDevCitations(processedText)
+  // Pass the global citation map so sub-citations use correct numbers
+  const { formattedText, citations } = parseDevCitations(processedText, citationMap)
 
   // FINAL AGGRESSIVE CLEANUP after citation parsing
   let cleanedFormattedText = formattedText

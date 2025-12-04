@@ -100,7 +100,6 @@ export function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => 
   const map = useMapEvents({
     zoomend: () => {
       const newZoom = map.getZoom()
-      console.log(`[ZOOM TRACKER] Zoom level changed to: ${newZoom}`)
       onZoomChange(newZoom)
     },
   })

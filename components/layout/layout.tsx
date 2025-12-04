@@ -29,9 +29,10 @@ interface LayoutProps {
   sidebarCollapsed?: boolean
   currentPage?: string
   user?: any
+  isUserAuthenticated?: boolean
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "", user: propUser }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "", user: propUser, isUserAuthenticated = false }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
@@ -147,12 +148,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       className="min-h-screen flex flex-col font-sans bg-background text-foreground p-0 m-0"
     >
       {/* Sidebar for all devices - mobile only shows bottom nav */}
-      <SidebarNavigation 
-        onNavigate={onNavigate} 
-        headerHeight={headerHeight} 
+      <SidebarNavigation
+        onNavigate={onNavigate}
+        headerHeight={headerHeight}
         onSidebarToggle={setSidebarState}
         showBackButton={showBackButton}
         currentPage={currentPage}
+        isUserAuthenticated={isUserAuthenticated}
       />
       
       <header
@@ -251,11 +253,12 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         return null
       })()}
 
-      <main 
+      <main
         className={`flex-grow overflow-y-auto scrollbar-hide pb-12 md:pb-1 transition-all duration-300`}
-        style={{ 
-          marginLeft: isDesktop 
+        style={{
+          marginLeft: isDesktop
             ? (sidebarState ? '64px' : '256px') : '0',
+          paddingTop: `${headerHeight}px`,
           filter: isDesktop && !sidebarState ? 'blur(2px)' : 'none',
           opacity: isDesktop && !sidebarState ? 0.6 : 1,
           transition: 'all 0.3s ease'

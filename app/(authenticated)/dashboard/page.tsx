@@ -11,6 +11,9 @@ import { getCurrentUser } from "@/lib/auth-manager"
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const [isCheckingAccess, setIsCheckingAccess] = useState(true)
+  const [hasAssessment, setHasAssessment] = useState(false)
+  const [hasCheckedAccess, setHasCheckedAccess] = useState(false) // Prevent multiple checks
 
   // Load user data from centralized auth and listen for updates
   useEffect(() => {
@@ -33,6 +36,61 @@ export default function DashboardPage() {
       window.removeEventListener('auth:login', handleAuthUpdate)
     }
   }, [])
+
+  // Check if user has completed assessment - REQUIRED for dashboard access
+  useEffect(() => {
+    // CRITICAL: Prevent multiple rapid API calls that cause 429 errors
+    if (hasCheckedAccess) {
+      return // Already checked, skip
+    }
+
+    const checkAssessmentStatus = async () => {
+      if (!user?.id && !user?.user_id) {
+        setIsCheckingAccess(false)
+        return
+      }
+
+      // Mark as checked IMMEDIATELY to prevent duplicate calls
+      setHasCheckedAccess(true)
+
+      try {
+        const userId = user.id || user.user_id
+        console.log('[Dashboard] Checking assessment status for user:', userId)
+
+        const response = await fetch(`/api/assessment/history/${userId}`)
+
+        if (response.ok) {
+          const data = await response.json()
+          const assessments = data?.assessments || data || []
+
+          if (assessments.length > 0) {
+            console.log('[Dashboard] User has completed assessment - granting access')
+            setHasAssessment(true)
+          } else {
+            console.log('[Dashboard] User has NOT completed assessment - redirecting to assessment')
+            // New user without assessment - redirect to assessment
+            router.push('/assessment')
+            return
+          }
+        } else {
+          console.log('[Dashboard] Failed to check assessment status:', response.status)
+          if (response.status === 429) {
+            console.error('[Dashboard] Rate limited! Please wait before retrying.')
+          }
+          // On API error, allow access (fail open to prevent blocking legitimate users)
+          setHasAssessment(true)
+        }
+      } catch (error) {
+        console.error('[Dashboard] Error checking assessment:', error)
+        // On error, allow access (fail open)
+        setHasAssessment(true)
+      } finally {
+        setIsCheckingAccess(false)
+      }
+    }
+
+    checkAssessmentStatus()
+  }, [user, hasCheckedAccess, router])
 
   const handleNavigation = (route: string) => {
     // Map internal routes to Next.js routes
@@ -59,6 +117,31 @@ export default function DashboardPage() {
       // For other routes, try direct navigation
       router.push(`/${route}`)
     }
+  }
+
+  // Show loading while checking access
+  if (isCheckingAccess) {
+    return (
+      <>
+        <MetaTags
+          title="HNWI Chronicles Dashboard - Loading"
+          description="Loading your personalized wealth intelligence dashboard."
+          image="https://app.hnwichronicles.com/images/dashboard-og.png"
+          url="https://app.hnwichronicles.com/dashboard"
+        />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Only render dashboard if user has completed assessment
+  if (!hasAssessment) {
+    return null // Will redirect to assessment
   }
 
   return (

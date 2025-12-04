@@ -15,15 +15,15 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
 
   useEffect(() => {
     if (!formRef.current) return
-    
+
     // Only update if the form is empty or button ID changed
     const existingScript = formRef.current.querySelector('script[data-payment_button_id]');
     const currentButtonId = existingScript?.getAttribute('data-payment_button_id');
-    
+
     if (currentButtonId === paymentButtonId) {
       return; // Skip if it's already the correct button ID
     }
-    
+
     // Clear any existing content
     formRef.current.innerHTML = ""
 
@@ -35,7 +35,7 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
 
     // Add error handling for script loading
     script.onerror = () => {
-      
+
       // Create a fallback button in case script loading fails
       if (formRef.current) {
         formRef.current.innerHTML = "";

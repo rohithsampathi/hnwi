@@ -20,6 +20,8 @@ interface MapFilterControlsProps {
   onReset: () => void
   theme: string
   currentZoom: number
+  hideCrownAssetsToggle?: boolean // Hide Crown Assets toggle (for assessment)
+  useAbsolutePositioning?: boolean // Use absolute positioning for assessment (inside map frame)
 }
 
 const MIN = 0
@@ -54,8 +56,10 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
 
   return (
     <div
-      className={`lg:hidden fixed left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
-        isLandscape ? 'bottom-[20px]' : 'bottom-[120px] md:bottom-[60px]'
+      className={`lg:hidden ${props.useAbsolutePositioning ? 'absolute' : 'fixed'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
+        props.useAbsolutePositioning
+          ? 'bottom-4'
+          : isLandscape ? 'bottom-[20px]' : 'bottom-[120px] md:bottom-[60px]'
       }`}
     >
       <div className="flex flex-col items-center gap-1.5">
@@ -138,19 +142,21 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
               <Gem className="h-4 w-4" />
             </button>
 
-            <button
-              onClick={() => props.onToggleCrownAssets()}
-              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
-                props.showCrownAssets
-                  ? props.theme === 'dark'
-                    ? 'bg-primary/10 text-primary font-medium shadow-md'
-                    : 'bg-black text-white font-medium shadow-md'
-                  : 'text-muted-foreground hover:bg-muted/50'
-              }`}
-              aria-label="Crown Assets"
-            >
-              <Crown className="h-4 w-4" />
-            </button>
+            {!props.hideCrownAssetsToggle && (
+              <button
+                onClick={() => props.onToggleCrownAssets()}
+                className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                  props.showCrownAssets
+                    ? props.theme === 'dark'
+                      ? 'bg-primary/10 text-primary font-medium shadow-md'
+                      : 'bg-black text-white font-medium shadow-md'
+                    : 'text-muted-foreground hover:bg-muted/50'
+                }`}
+                aria-label="Crown Assets"
+              >
+                <Crown className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {/* Zoom out - only show when zoomed in (zoom > 2) */}
@@ -173,7 +179,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
 // Desktop variant - ultra minimal
 export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
   return (
-    <div className="hidden lg:block fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto">
+    <div className={`hidden lg:block ${props.useAbsolutePositioning ? 'absolute bottom-4' : 'fixed bottom-8'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto`}>
       <div className="flex flex-col items-center gap-3">
         {/* Ultra-lean slider */}
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-1 shadow-lg min-w-[300px] flex flex-col items-center">
@@ -224,19 +230,21 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
 
         {/* Filters */}
         <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-2 shadow-lg">
-          <button
-            onClick={props.onToggleCrownAssets}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 ${
-              props.showCrownAssets
-                ? props.theme === 'dark'
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'bg-black text-white font-medium'
-                : 'text-muted-foreground hover:text-primary'
-            }`}
-          >
-            <Crown className="h-3.5 w-3.5" />
-            <span>Crown Assets</span>
-          </button>
+          {!props.hideCrownAssetsToggle && (
+            <button
+              onClick={props.onToggleCrownAssets}
+              className={`text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 ${
+                props.showCrownAssets
+                  ? props.theme === 'dark'
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'bg-black text-white font-medium'
+                  : 'text-muted-foreground hover:text-primary'
+              }`}
+            >
+              <Crown className="h-3.5 w-3.5" />
+              <span>Crown Assets</span>
+            </button>
+          )}
 
           <button
             onClick={props.onTogglePriveOpportunities}

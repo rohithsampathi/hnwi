@@ -927,14 +927,14 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
               <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
             </Heading1>
 
-            <Lead className="mb-8 text-muted-foreground">Built for HNWI to build their legacy and chronicles</Lead>
+            <Lead className="mb-8 text-muted-foreground">Being made for HNWI to build their legacy and chronicles</Lead>
 
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center items-center px-4">
-              {/* Login button */}
+              {/* Login button - Primary CTA */}
               <Button
                 onClick={handleLoginClick}
                 className={`w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  theme === "dark" 
+                  theme === "dark"
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-black text-white hover:bg-black/90"
                 }`}
@@ -942,16 +942,16 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                 Log In
               </Button>
 
-              {/* Join HNWI button */}
+              {/* Take Assessment button - Secondary */}
               <Button
-                onClick={() => window.open('https://www.hnwichronicles.com/hnwi-world#pricing', '_blank')}
+                onClick={() => window.location.href = '/assessment'}
                 className={`w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  theme === "dark" 
+                  theme === "dark"
                     ? "bg-[hsl(43_74%_49%_/_0.2)] text-[hsl(43_74%_49%)] border border-[hsl(43_74%_49%_/_0.3)] hover:bg-[hsl(43_74%_49%_/_0.3)] hover:border-[hsl(43_74%_49%_/_0.5)]"
                     : "bg-[hsl(0_0%_10%_/_0.1)] text-[hsl(0_0%_20%)] border border-[hsl(0_0%_10%_/_0.2)] hover:bg-[hsl(0_0%_10%_/_0.15)] hover:text-[hsl(0_0%_10%)] hover:border-[hsl(0_0%_10%_/_0.3)]"
                 }`}
               >
-                Join HNWI
+                Take Assessment
               </Button>
             </div>
 

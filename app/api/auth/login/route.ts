@@ -44,19 +44,27 @@ function forwardBackendCookies(response: NextResponse, backendCookieHeader: stri
 
     // PWA-compatible cookie configuration
     const isProd = process.env.NODE_ENV === 'production';
+
+    // Parse sameSite attribute from backend cookie
+    let sameSiteValue: 'strict' | 'lax' | 'none' = isProd ? 'none' : 'lax';
+    if (!isProd) {
+      if (cookie.includes('SameSite=Strict')) sameSiteValue = 'strict';
+      else if (cookie.includes('SameSite=Lax')) sameSiteValue = 'lax';
+      else if (cookie.includes('SameSite=None')) sameSiteValue = 'none';
+    }
+
+    // CRITICAL FIX: If sameSite is 'none', secure MUST be true (browser requirement)
+    // This is especially important for incognito mode
+    const requiresSecure = sameSiteValue === 'none' || isProd || cookie.includes('Secure');
+
     const cookieOptions: any = {
       name,
       value,
       httpOnly: cookie.includes('HttpOnly'),
-      // Always secure in production for PWA
-      secure: isProd || cookie.includes('Secure'),
+      // Always secure in production for PWA or when sameSite is 'none'
+      secure: requiresSecure,
       // Use 'none' in production for PWA cross-context support
-      // Requires secure: true
-      sameSite: isProd ? 'none' : (
-        cookie.includes('SameSite=Strict') ? 'strict' :
-        cookie.includes('SameSite=Lax') ? 'lax' :
-        cookie.includes('SameSite=None') ? 'none' : 'lax'
-      ),
+      sameSite: sameSiteValue,
       path: '/',
       // Set to 7 days (before iOS Safari auto-clear)
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds

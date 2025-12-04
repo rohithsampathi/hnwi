@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, ReactNode } from "react"
+import { useState, useEffect, ReactNode, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
@@ -40,6 +40,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
     if (pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-rohith', showBackButton: true }
+    if (pathname.includes('/assessment')) return { title: '', currentPage: 'assessment', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }
     if (pathname.includes('/prive-exchange')) return { title: '', currentPage: 'prive-exchange', showBackButton: true }
     if (pathname.includes('/crown-vault')) return { title: '', currentPage: 'crown-vault', showBackButton: true }
@@ -54,6 +55,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const pageConfig = getPageConfig(pathname)
   const [mounted, setMounted] = useState(false)
 
+  // Use ref to track current pathname for async operations
+  // CRITICAL: Update ref synchronously, not in useEffect, to avoid race conditions
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname // Update synchronously on every render
+
+  // Track if an auth check should be aborted
+  const authCheckAbortRef = useRef(false)
+
   // Update current page based on pathname
   useEffect(() => {
     setCurrentPage(pageConfig.currentPage)
@@ -67,6 +76,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       router.push("/dashboard")
     } else if (route === "ask-rohith") {
       router.push("/ask-rohith")
+    } else if (route === "assessment") {
+      router.push("/assessment")
     } else if (route === "strategy-vault") {
       router.push("/hnwi-world")
     } else if (route === "strategy-engine") {
@@ -105,9 +116,50 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [])
 
   useEffect(() => {
-    if (!mounted || isCheckingAuth || isAuthenticated !== null) return
+    // CRITICAL: Wait for pathname to be available before any auth checks
+    // This prevents premature redirects on first page load
+    if (!mounted || !pathname) return
+
+    // CRITICAL SAFEGUARD: Check pathname ref as well to catch any timing issues
+    const currentPathname = pathnameRef.current || pathname
+
+    // Allow assessment pages for both authenticated and unauthenticated users
+    // This check must happen FIRST and ALWAYS run when on assessment pages
+    // CRITICAL: This must be checked BEFORE the early return for isAuthenticated !== null
+    if (currentPathname.includes('/assessment')) {
+      // Abort any ongoing auth checks
+      authCheckAbortRef.current = true
+
+      // Check if user is actually authenticated
+      const authUserId = getCurrentUserId()
+      const authUser = getCurrentUser()
+      const isUserAuthenticated = !!(authUserId && authUser)
+
+      // Only update state if needed to prevent infinite loops
+      if (isAuthenticated !== true) {
+        setIsAuthenticated(true)
+        setIsInitialLoad(false)
+      }
+
+      // If user is authenticated, keep their user data so they have full menu access
+      // If not authenticated, set user to null (public assessment)
+      if (isUserAuthenticated && user === null) {
+        setUser(authUser) // Keep authenticated user data
+      } else if (!isUserAuthenticated && user !== null) {
+        setUser(null) // Clear user for public assessment
+      }
+
+      return
+    }
+
+    // For non-assessment pages, only check auth if not already checked
+    // This comes AFTER assessment check to ensure assessment pages always bypass auth
+    if (isCheckingAuth || isAuthenticated !== null) return
 
     const checkAuthStatus = async () => {
+      // Store the pathname at the start of this async operation
+      const checkStartPathname = pathname
+      authCheckAbortRef.current = false // Reset abort flag
       setIsCheckingAuth(true)
 
       try {
@@ -121,6 +173,13 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           // Wait for auth data to be available (from MFA completion)
           await new Promise(resolve => setTimeout(resolve, 500))
 
+          // CRITICAL: Check if we navigated away during the delay using ref (not closure)
+          if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
+            console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
+            setIsCheckingAuth(false)
+            return // Abort this auth check
+          }
+
           // Check again after delay
           userId = getCurrentUserId()
           authUser = getCurrentUser()
@@ -131,21 +190,111 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             const hasSessionData = typeof window !== 'undefined' &&
               (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
 
-            // Only call refreshUser if we have session data, otherwise redirect immediately
-            if (hasSessionData) {
+            // CRITICAL FIX: Check if we just logged in (within last 15 seconds)
+            // If so, skip refresh to avoid session expiry popup in incognito mode
+            // Cookies need time to propagate, especially in incognito mode
+            const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
+            const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 15000 // 15 seconds
+
+            // Only call refreshUser if we have session data AND didn't just login
+            if (hasSessionData && !justLoggedIn) {
               const { refreshUser } = await import("@/lib/auth-manager")
               authUser = await refreshUser()
               userId = authUser?.id || authUser?.user_id
+            } else if (hasSessionData && justLoggedIn) {
+              // Just logged in - trust sessionStorage without making API call
+              // This prevents "Session Expired" popup in incognito mode
+              // where cookies may not be accessible immediately
+              console.debug('[Auth] Just logged in - trusting sessionStorage data without refresh')
+
+              // Reconstruct user from sessionStorage
+              try {
+                const userObj = sessionStorage.getItem('userObject')
+                const userEmail = sessionStorage.getItem('userEmail')
+                const userIdFromStorage = sessionStorage.getItem('userId')
+
+                if (userObj) {
+                  authUser = JSON.parse(userObj)
+                  userId = authUser?.id || authUser?.user_id || userIdFromStorage
+                } else if (userEmail && userIdFromStorage) {
+                  // Minimal user object from sessionStorage
+                  authUser = {
+                    id: userIdFromStorage,
+                    user_id: userIdFromStorage,
+                    email: userEmail
+                  }
+                  userId = userIdFromStorage
+                }
+              } catch (e) {
+                console.debug('[Auth] Failed to parse sessionStorage user data')
+              }
             }
           }
         }
 
+        // CRITICAL: Before doing anything with the auth result, verify we're still on the same page using ref
+        if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
+          console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
+          setIsCheckingAuth(false)
+          return // Abort - user navigated away
+        }
+
         // With cookie-based auth, we check for user data, not tokens
         if (!userId || !authUser) {
-          setIsAuthenticated(false)
-          setIsInitialLoad(false)
-          router.push("/")
-          return
+          // CRITICAL FIX: If we just logged in but still don't have user data,
+          // wait a bit longer for sessionStorage to sync (especially in incognito mode)
+          const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
+          const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 15000
+
+          if (justLoggedIn) {
+            // Give it one more chance - wait 1.5 seconds and check again
+            await new Promise(resolve => setTimeout(resolve, 1500))
+
+            // CRITICAL: Check again if we're still on the same page using ref
+            if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
+              console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
+              setIsCheckingAuth(false)
+              return // Abort
+            }
+
+            userId = getCurrentUserId()
+            authUser = getCurrentUser()
+          }
+
+          // FINAL CHECK: Only redirect if we're still on the page where the check started
+          // AND it's not an assessment page (assessment pages are public)
+          // AND the check hasn't been aborted
+          if (!userId || !authUser) {
+            const currentPath = pathnameRef.current
+            const isAborted = authCheckAbortRef.current
+
+            if (isAborted) {
+              console.debug('[Auth] Auth check aborted - not redirecting')
+              setIsCheckingAuth(false)
+              return
+            }
+
+            // CRITICAL: Triple-check we're not on assessment page before redirecting
+            const finalPathCheck = pathnameRef.current
+            if (finalPathCheck.includes('/assessment')) {
+              console.debug('[Auth] Final check: on assessment page, aborting redirect')
+              setIsCheckingAuth(false)
+              return
+            }
+
+            if (currentPath === checkStartPathname && !currentPath.includes('/assessment')) {
+              console.debug('[Auth] No user found, redirecting from', currentPath, 'to /')
+              setIsAuthenticated(false)
+              setIsInitialLoad(false)
+              router.push("/")
+            } else if (currentPath !== checkStartPathname) {
+              console.debug('[Auth] Aborting redirect - navigated from', checkStartPathname, 'to', currentPath)
+            } else if (currentPath.includes('/assessment')) {
+              console.debug('[Auth] Aborting redirect - on assessment page')
+            }
+            setIsCheckingAuth(false)
+            return
+          }
         }
 
         // Set user from auth manager
@@ -168,7 +317,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
     // Execute auth check
     checkAuthStatus()
-  }, [mounted, isCheckingAuth, isAuthenticated]) // Only check when mounted and not already checking
+  }, [mounted, pathname]) // Only re-run when mounted state or pathname changes, NOT when isAuthenticated changes
 
   // Listen for auth updates to refresh user data
   useEffect(() => {
@@ -219,6 +368,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                             currentPage={pageConfig.currentPage}
                             showBackButton={pageConfig.showBackButton}
                             user={user}
+                            isUserAuthenticated={!!user}
                           >
                             <TokenRefreshManager refreshIntervalHours={20} />
                             <BackgroundSyncInitializer />

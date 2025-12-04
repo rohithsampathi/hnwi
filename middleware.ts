@@ -24,7 +24,6 @@ export async function middleware(request: NextRequest) {
 
   const scriptSources = [
     "'self'",
-    `'nonce-${nonce}'`,
     "https://cdn.jsdelivr.net",
     "https://unpkg.com",
     "https://checkout.razorpay.com",
@@ -32,9 +31,11 @@ export async function middleware(request: NextRequest) {
   ];
 
   if (isDev) {
+    // In dev: use unsafe-inline/eval for flexibility (NO nonce, as nonces override unsafe-inline)
     scriptSources.push("'unsafe-inline'", "'unsafe-eval'");
   } else {
-    scriptSources.push("'strict-dynamic'");
+    // In prod: use nonce for security with strict-dynamic
+    scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'");
   }
 
   const styleSources = ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"];
@@ -42,6 +43,7 @@ export async function middleware(request: NextRequest) {
   const connectSources = [
     "'self'",
     "https://api.razorpay.com",
+    "https://lumberjack.razorpay.com",
     "https://*.vercel.app",
     "wss://*.vercel.app",
     "https://api-js.mixpanel.com",
@@ -81,13 +83,14 @@ export async function middleware(request: NextRequest) {
     "X-Content-Type-Options": "nosniff",
     "X-XSS-Protection": "1; mode=block",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    "Permissions-Policy": "microphone=(), geolocation=(), interest-cohort=()",
     "Content-Security-Policy": cspDirectives.join("; "),
-    "X-CSP-Nonce": nonce,
     "X-Request-ID": requestId,
   };
 
+  // Only add nonce header in production (where nonces are used)
   if (!isDev) {
+    securityHeaders["X-CSP-Nonce"] = nonce;
     securityHeaders["Strict-Transport-Security"] =
       "max-age=31536000; includeSubDomains; preload";
   }
@@ -134,6 +137,21 @@ export async function middleware(request: NextRequest) {
 
   if (isApiRoute && !isPublicEndpoint) {
     await handleAPIRequest(request, requestId);
+  }
+
+  // Force manifest.json to never cache - prevents stale manifest errors
+  if (url.pathname === '/manifest.json') {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+  }
+
+  // Force service worker to never cache
+  if (url.pathname === '/sw.js' || url.pathname === '/sw-auth-handler.js') {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    response.headers.set('Service-Worker-Allowed', '/');
   }
 
   return response;

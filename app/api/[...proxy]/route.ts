@@ -2,23 +2,27 @@
 // This ensures all API calls go through Next.js server, avoiding CORS issues
 
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { API_BASE_URL } from '@/config/api'
 
 // Configure route to allow longer execution for large datasets
 export const maxDuration = 120 // 120 seconds for development endpoints
 export const dynamic = 'force-dynamic'
 
-// Helper to forward cookies
-function getForwardedCookies(request: NextRequest): string {
-  const cookies = request.cookies.getAll()
-  return cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
+// Helper to forward cookies - FIXED to use server-side cookies
+async function getForwardedCookies(): Promise<string> {
+  const cookieStore = await cookies()
+  const allCookies = cookieStore.getAll()
+  return allCookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ')
 }
 
 // Helper to forward headers
-function getForwardedHeaders(request: NextRequest): HeadersInit {
+async function getForwardedHeaders(request: NextRequest): Promise<HeadersInit> {
+  const cookieHeader = await getForwardedCookies()
+
   const headers: Record<string, string> = {
     'Content-Type': request.headers.get('content-type') || 'application/json',
-    'Cookie': getForwardedCookies(request),
+    ...(cookieHeader && { 'Cookie': cookieHeader }),
   }
 
   // Forward other important headers
@@ -67,10 +71,11 @@ async function handler(request: NextRequest) {
     const backendPath = '/api/' + pathSegments.join('/')
     backendUrl = `${API_BASE_URL}${backendPath}${url.search}`
 
-    // Prepare the request options
+    // Prepare the request options with server-side cookies
     const options: RequestInit = {
       method: request.method,
-      headers: getForwardedHeaders(request),
+      headers: await getForwardedHeaders(request),
+      credentials: 'include',
     }
 
     // Add body for non-GET requests

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network, ClipboardCheck } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
@@ -21,12 +21,14 @@ export function SidebarNavigation({
   onSidebarToggle,
   showBackButton = false,
   currentPage = "",
+  isUserAuthenticated = false,
 }: {
   onNavigate: (route: string) => void
   headerHeight?: number
   onSidebarToggle?: (collapsed: boolean) => void
   showBackButton?: boolean
   currentPage?: string
+  isUserAuthenticated?: boolean
 }) {
   const router = useRouter()
   const { theme } = useTheme()
@@ -42,6 +44,49 @@ export function SidebarNavigation({
   const [isTabletSize, setIsTabletSize] = useState(false)
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
   const [isLandscape, setIsLandscape] = useState(false)
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean | null>(null)
+  const [isCheckingAssessment, setIsCheckingAssessment] = useState(true)
+
+  // Check if user has completed assessment - controls whether Assessment menu item is shown
+  useEffect(() => {
+    if (!isUserAuthenticated) {
+      setIsCheckingAssessment(false)
+      setHasCompletedAssessment(false)
+      return
+    }
+
+    const checkAssessmentStatus = async () => {
+      try {
+        // Get user ID from auth manager
+        const { getCurrentUserId } = await import('@/lib/auth-manager')
+        const userId = getCurrentUserId()
+
+        if (!userId) {
+          setHasCompletedAssessment(false)
+          setIsCheckingAssessment(false)
+          return
+        }
+
+        const response = await fetch(`/api/assessment/history/${userId}`)
+
+        if (response.ok) {
+          const data = await response.json()
+          const assessments = data?.assessments || data || []
+          setHasCompletedAssessment(assessments.length > 0)
+        } else {
+          // On error, assume no assessment to be safe
+          setHasCompletedAssessment(false)
+        }
+      } catch (error) {
+        // On error, assume no assessment
+        setHasCompletedAssessment(false)
+      } finally {
+        setIsCheckingAssessment(false)
+      }
+    }
+
+    checkAssessmentStatus()
+  }, [isUserAuthenticated])
 
   // Detect tablet size - md and up but below large desktop
   useEffect(() => {
@@ -110,17 +155,9 @@ export function SidebarNavigation({
     return () => clearInterval(interval)
   }, [])
 
-  // All navigation items with business mode flags - Reordered as requested
+  // All navigation items with business mode flags - Reordered: Ask Rohith below HNWI World, Assessment before Profile
   const allNavItems = [
     { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
-    {
-      name: "Ask Rohith",
-      icon: Bot,
-      route: "ask-rohith",
-      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
-      isNew: true,
-      businessOnly: false
-    },
     {
       name: "Privé Exchange",
       icon: Gem,
@@ -135,6 +172,14 @@ export function SidebarNavigation({
       description: memberAnalytics ?
         `What ${memberAnalytics.active_members_24h} members are discussing privately` :
         "Private intelligence network",
+      businessOnly: false
+    },
+    {
+      name: "Ask Rohith",
+      icon: Bot,
+      route: "ask-rohith",
+      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
+      isNew: true,
       businessOnly: false
     },
     {
@@ -158,6 +203,13 @@ export function SidebarNavigation({
       description: "Vetted executors for intelligence-driven action",
       businessOnly: false
     },
+    {
+      name: "Assessment",
+      icon: ClipboardCheck,
+      route: "assessment",
+      description: "Discover your wealth archetype and get personalized strategic insights tailored to your profile.",
+      businessOnly: false
+    },
     // War Room - Hidden for now
     // {
     //   name: "War Room",
@@ -169,29 +221,41 @@ export function SidebarNavigation({
     { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
   ]
 
-  // Filter nav items based on business mode
-  const filteredNavItems = allNavItems.filter(item => isBusinessMode || !item.businessOnly)
+  // Filter nav items based on business mode AND assessment completion
+  const filteredNavItems = allNavItems.filter(item => {
+    // Filter by business mode
+    if (!isBusinessMode && item.businessOnly) return false
 
+    // Hide Assessment if user completed it
+    if (item.route === 'assessment' && hasCompletedAssessment) return false
+
+    return true
+  })
 
   // Split filtered items into main (first 4) and additional items
   const mainNavItems = filteredNavItems.slice(0, 4)
   const additionalNavItems = filteredNavItems.slice(4)
 
-  // Mobile bottom nav items - Updated order: Home, Ask Rohith, Privé Exchange
+  // Mobile bottom nav items - Updated order: Home, Privé Exchange, HNWI World
+  // Mobile items are always shown but disabled based on auth status
   const mobileNavItems = [
     { name: "Home", icon: Brain, route: "dashboard" },
-    { name: "Ask Rohith", icon: Bot, route: "ask-rohith", isNew: true },
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
+    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
   ]
 
-  // Additional menu items for three dots dropdown - Updated order: HNWI World, Crown Vault, Social Hub, Executor Directory, Profile
+  // Additional menu items for three dots dropdown - Filter out Assessment if completed
   const moreMenuItems = [
-    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
-    { name: "Profile", icon: UserCircle2, route: "profile" }, // Profile moved to last
-  ]
+    { name: "Assessment", icon: ClipboardCheck, route: "assessment" },
+    { name: "Profile", icon: UserCircle2, route: "profile" },
+  ].filter(item => {
+    // Hide Assessment if user completed it
+    if (item.route === 'assessment' && hasCompletedAssessment) return false
+    return true
+  })
 
   const handleNavigate = (route: string) => {
     // Direct Next.js navigation for new route structure
@@ -201,6 +265,8 @@ export function SidebarNavigation({
       router.push("/hnwi-world") // HNWI World maps to hnwi-world
     } else if (route === "ask-rohith") {
       router.push("/ask-rohith")
+    } else if (route === "assessment") {
+      router.push("/assessment")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "prive-exchange") {
@@ -332,6 +398,7 @@ export function SidebarNavigation({
                 {/* Main navigation items */}
                 {mainNavItems.map((item) => {
                   const isActive = currentPage === item.route;
+                  const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
                   return (
                   <div key={item.route} className="relative">
                     <Button
@@ -339,11 +406,13 @@ export function SidebarNavigation({
                       className={cn(
                         "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
                         isCollapsed && "justify-center px-0 gap-0",
-                        isActive 
-                          ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" 
+                        isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                        isActive
+                          ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
-                      onClick={() => handleNavigate(item.route)}
+                      onClick={() => !isItemDisabled && handleNavigate(item.route)}
+                      disabled={isItemDisabled}
                     >
                       <item.icon className={cn(
                         "h-5 w-5 flex-shrink-0",
@@ -401,6 +470,7 @@ export function SidebarNavigation({
                   <div className="space-y-2 mt-2">
                     {additionalNavItems.map((item) => {
                       const isActive = currentPage === item.route;
+                      const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
                       return (
                       <div key={item.route} className="relative">
                         <Button
@@ -408,11 +478,13 @@ export function SidebarNavigation({
                           className={cn(
                             "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
                             isCollapsed && "justify-center px-0 gap-0",
-                            isActive 
-                              ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" 
+                            isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                            isActive
+                              ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
-                          onClick={() => handleNavigate(item.route)}
+                          onClick={() => !isItemDisabled && handleNavigate(item.route)}
+                          disabled={isItemDisabled}
                         >
                           <item.icon className={cn(
                             "h-5 w-5 flex-shrink-0",
@@ -564,6 +636,7 @@ export function SidebarNavigation({
         <div className="flex items-center justify-between px-4 py-3 safe-area-pb">
           {mobileNavItems.map((item) => {
             const isActive = currentPage === item.route;
+            const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
             return (
               <Button
                 key={item.route}
@@ -571,9 +644,11 @@ export function SidebarNavigation({
                 size="sm"
                 className={cn(
                   "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative group",
+                  isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
                   theme === 'dark' && "hover:text-white"
                 )}
-                onClick={() => handleNavigate(item.route)}
+                onClick={() => !isItemDisabled && handleNavigate(item.route)}
+                disabled={isItemDisabled}
               >
                 {item.isNew && (
                   <span className="absolute -top-1 -right-1 text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold z-10">
@@ -622,11 +697,16 @@ export function SidebarNavigation({
             <DropdownMenuContent align="end" className="w-48 mb-2">
               {moreMenuItems.map((item) => {
                 const isActive = currentPage === item.route;
+                const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
                 return (
                   <DropdownMenuItem
                     key={item.route}
-                    onClick={() => handleNavigate(item.route)}
-                    className="flex items-center space-x-3 py-3 group"
+                    onClick={() => !isItemDisabled && handleNavigate(item.route)}
+                    disabled={isItemDisabled}
+                    className={cn(
+                      "flex items-center space-x-3 py-3 group",
+                      isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background"
+                    )}
                   >
                     <item.icon className={cn(
                       "h-5 w-5",

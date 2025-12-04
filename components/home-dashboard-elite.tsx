@@ -16,6 +16,7 @@ import { Brain, Crown, TrendingUp, Target } from "lucide-react"
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
+import { PersonalModeToggle } from "@/components/personal-mode-toggle"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -125,6 +126,11 @@ export function HomeDashboardElite({
   // Theme context for checkbox styling
   const { theme } = useTheme()
 
+  // Personal Mode state
+  const [isPersonalMode, setIsPersonalMode] = useState(false)
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false)
+  const [personalModeLoading, setPersonalModeLoading] = useState(false)
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -187,10 +193,59 @@ export function HomeDashboardElite({
     }
   }, [screenSize]) // Re-run if screen size changes
 
+  // Load Personal Mode preference from localStorage on mount
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('personal_mode_enabled')
+    if (savedPreference === 'true') {
+      setIsPersonalMode(true)
+    }
+  }, [])
+
+  // Check if user has completed C10 Assessment
+  useEffect(() => {
+    const checkAssessmentCompletion = async () => {
+      if (!user?.id && !user?.user_id) return
+
+      try {
+        const userId = user.id || user.user_id
+        const response = await secureApi.get(`/api/assessment/history/${userId}`, true, {
+          enableCache: true,
+          cacheDuration: 300000 // 5 minutes cache
+        })
+
+        // Check if user has any completed assessments
+        const hasCompleted = response?.assessments?.length > 0 ||
+                           response?.length > 0 ||
+                           false
+
+        setHasCompletedAssessment(hasCompleted)
+      } catch (error) {
+        console.error('[Dashboard] Failed to check assessment completion:', error)
+        setHasCompletedAssessment(false)
+      }
+    }
+
+    checkAssessmentCompletion()
+  }, [user])
+
   // Handle citation click from map popup
   const handleCitationClick = useCallback((citationId: string) => {
     openCitation(citationId)
   }, [openCitation])
+
+  // Handle Personal Mode toggle
+  const handlePersonalModeToggle = () => {
+    if (!hasCompletedAssessment) return
+
+    const newMode = !isPersonalMode
+    setIsPersonalMode(newMode)
+
+    // Save preference to localStorage
+    localStorage.setItem('personal_mode_enabled', String(newMode))
+
+    // Trigger data refresh
+    setLoading(true)
+  }
 
   // Clean category names by removing status/completion indicators
   const cleanCategoryName = (category: string): string => {
@@ -217,9 +272,15 @@ export function HomeDashboardElite({
 
       try {
         // SOTA: Service Worker handles caching with StaleWhileRevalidate
-        const apiUrl = timeframe === 'live'
+        // Build API URL with optional personalization
+        let apiUrl = timeframe === 'live'
           ? `/api/command-centre/opportunities?include_crown_vault=true&include_executors=true`
           : `/api/command-centre/opportunities?timeframe=${timeframe}&include_crown_vault=true&include_executors=true`
+
+        // Add view=personalized if Personal Mode is enabled and user has completed assessment
+        if (isPersonalMode && hasCompletedAssessment) {
+          apiUrl += '&view=personalized'
+        }
 
         const response = await secureApi.get(apiUrl, true)
 
@@ -386,7 +447,7 @@ export function HomeDashboardElite({
     }
 
     fetchOpportunities()
-  }, [timeframe]) // Re-fetch when timeframe changes
+  }, [timeframe, isPersonalMode, hasCompletedAssessment]) // Re-fetch when timeframe or personalization changes
 
   if (loading) {
     return (
@@ -446,7 +507,24 @@ export function HomeDashboardElite({
 
   return (
     <>
-      <div className="fixed inset-0 overflow-hidden" style={{ marginTop: '40px' }}>
+      <div
+        className={`fixed inset-0 overflow-hidden transition-all duration-500 ${
+          isPersonalMode && hasCompletedAssessment
+            ? 'personal-mode-active'
+            : ''
+        }`}
+        style={{ marginTop: '40px' }}
+      >
+        {/* Personal Mode Visual Effect - Animated Border */}
+        {isPersonalMode && hasCompletedAssessment && (
+          <>
+            <div className="personal-mode-border-top" />
+            <div className="personal-mode-border-right" />
+            <div className="personal-mode-border-bottom" />
+            <div className="personal-mode-border-left" />
+          </>
+        )}
+
         <InteractiveWorldMap
           width="100%"
           height="100%"
@@ -481,7 +559,7 @@ export function HomeDashboardElite({
           )}
 
           {/* Date Range Selector - Custom dropdown below description text - always visible */}
-          <div className={`flex gap-2 items-center ${(showGreeting || isDesktop) ? 'ml-6 md:ml-7' : 'ml-0'}`}>
+          <div className={`flex gap-2 items-center flex-wrap ${(showGreeting || isDesktop) ? 'ml-6 md:ml-7' : 'ml-0'}`}>
             {/* Timeframe Dropdown */}
             <div className="relative inline-block pointer-events-auto timeframe-dropdown">
               {/* Custom Dropdown Button */}
@@ -602,22 +680,133 @@ export function HomeDashboardElite({
                 )}
               </div>
             )}
+
+            {/* Personal Mode Power Toggle */}
+            <PersonalModeToggle
+              isPersonalMode={isPersonalMode}
+              onToggle={handlePersonalModeToggle}
+              hasCompletedAssessment={hasCompletedAssessment}
+              isLoading={loading}
+            />
           </div>
 
-          {/* Blinking animation styles */}
-          <style jsx>{`
-            @keyframes ping {
-              75%, 100% {
-                transform: scale(2);
-                opacity: 0;
-              }
-            }
-            .animate-ping {
-              animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-            }
-          `}</style>
         </div>
+
+        {/* Personal Mode Badge - Shows personalized opportunity count */}
+        {isPersonalMode && hasCompletedAssessment && (
+          <div className="absolute top-16 md:top-20 right-4 z-[400] pointer-events-none">
+            <div className="bg-primary/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg border border-primary/30">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                <div className="text-xs font-medium">
+                  <div className="font-bold">{filteredCities.length} Personalized</div>
+                  <div className="opacity-80">From Your DNA</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Personal Mode Styles */}
+      <style jsx global>{`
+        @keyframes ping {
+          75%, 100% {
+            transform: scale(2);
+            opacity: 0;
+          }
+        }
+        .animate-ping {
+          animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        /* Personal Mode Animated Borders */
+        .personal-mode-border-top,
+        .personal-mode-border-right,
+        .personal-mode-border-bottom,
+        .personal-mode-border-left {
+          position: absolute;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(218, 165, 32, 0.6),
+            transparent
+          );
+          z-index: 500;
+          pointer-events: none;
+        }
+
+        .personal-mode-border-top {
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          animation: borderSlideHorizontal 3s ease-in-out infinite;
+        }
+
+        .personal-mode-border-bottom {
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          animation: borderSlideHorizontal 3s ease-in-out infinite reverse;
+        }
+
+        .personal-mode-border-left {
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: linear-gradient(
+            180deg,
+            transparent,
+            rgba(218, 165, 32, 0.6),
+            transparent
+          );
+          animation: borderSlideVertical 3s ease-in-out infinite;
+        }
+
+        .personal-mode-border-right {
+          right: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: linear-gradient(
+            180deg,
+            transparent,
+            rgba(218, 165, 32, 0.6),
+            transparent
+          );
+          animation: borderSlideVertical 3s ease-in-out infinite reverse;
+        }
+
+        @keyframes borderSlideHorizontal {
+          0%, 100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes borderSlideVertical {
+          0%, 100% {
+            background-position: 50% 0%;
+          }
+          50% {
+            background-position: 50% 100%;
+          }
+        }
+
+        /* Subtle background glow for personal mode */
+        .personal-mode-active {
+          background: radial-gradient(
+            ellipse at top,
+            rgba(218, 165, 32, 0.05),
+            transparent 50%
+          );
+        }
+      `}</style>
 
       {/* Citation Panel - Desktop Only (matching HNWI World pattern) */}
       {isPanelOpen && screenSize === 'desktop' && (

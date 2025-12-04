@@ -91,7 +91,7 @@ export class AuthenticationManager {
     this.user = null;
     this.authenticated = false;
 
-    // Clear all storage
+    // Clear all storage (including login timestamp)
     sessionStorage.clear();
 
     // Clear legacy localStorage (migration cleanup)

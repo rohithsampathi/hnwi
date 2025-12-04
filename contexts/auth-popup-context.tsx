@@ -39,6 +39,21 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
     if (isOpen) {
       return;
     }
+
+    // CRITICAL FIX: Don't show auth popup if user just logged in
+    // Cookies need time to propagate, especially in incognito mode
+    if (typeof window !== 'undefined') {
+      const loginTimestamp = sessionStorage.getItem('loginTimestamp')
+      const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 20000 // 20 seconds
+
+      if (justLoggedIn) {
+        console.debug('[AuthPopup] Skipping popup - user just logged in', {
+          timeSinceLogin: loginTimestamp ? Date.now() - parseInt(loginTimestamp) : 'unknown'
+        })
+        return
+      }
+    }
+
     setPopupOptions(options)
     setIsOpen(true)
   }, [isOpen])

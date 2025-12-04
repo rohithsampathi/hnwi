@@ -14,6 +14,29 @@ export function MapStyles({ theme }: MapStylesProps) {
       .leaflet-popup-pane {
         z-index: 700 !important;
       }
+      /* CRITICAL: Override Leaflet's default scroll blocking on popup content */
+      .leaflet-popup-content {
+        pointer-events: auto !important;
+        touch-action: auto !important;
+      }
+      .leaflet-popup-content * {
+        pointer-events: auto !important;
+      }
+      /* Allow scrolling in Radix ScrollArea viewport */
+      [data-radix-scroll-area-viewport] {
+        touch-action: pan-y !important;
+        -webkit-overflow-scrolling: touch !important;
+        cursor: auto !important;
+        user-select: auto !important;
+        overscroll-behavior: contain !important;
+      }
+      /* Ensure scroll container events work properly */
+      .leaflet-popup-content [data-radix-scroll-area-viewport] {
+        user-select: auto !important;
+      }
+      .leaflet-popup-content [data-radix-scroll-area-viewport] * {
+        pointer-events: auto !important;
+      }
       .custom-marker {
         background: transparent;
         border: none;
@@ -33,8 +56,9 @@ export function MapStyles({ theme }: MapStylesProps) {
         border-radius: 8px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, ${theme === "dark" ? "0.5" : "0.15"}) !important;
         border: 1px solid ${theme === "dark" ? "#444" : "transparent"} !important;
-        max-height: 500px !important;
-        overflow-y: auto !important;
+        /* CRITICAL: Let Leaflet handle popup sizing naturally */
+        max-height: none !important;
+        overflow: visible !important;
       }
       .leaflet-popup-tip {
         background: ${theme === "dark" ? "#1a1a1a" : "#fff"} !important;
@@ -43,8 +67,8 @@ export function MapStyles({ theme }: MapStylesProps) {
       .leaflet-popup-content {
         margin: 0 !important;
         width: auto !important;
-        min-width: 300px !important;
-        max-width: 400px !important;
+        min-width: 280px !important;
+        max-width: 340px !important;
       }
       .border-border {
         border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
@@ -84,20 +108,19 @@ export function MapStyles({ theme }: MapStylesProps) {
       .leaflet-popup-content button:hover {
         opacity: 0.8;
       }
-      /* Smooth expand/collapse animation - grow downward */
-      .expanded-details {
-        animation: slideDown 0.2s ease-out;
-        transform-origin: top;
+      /* Custom scrollbar for Radix ScrollArea viewport */
+      [data-radix-scroll-area-viewport]::-webkit-scrollbar {
+        width: 6px;
       }
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: scaleY(0.8);
-        }
-        to {
-          opacity: 1;
-          transform: scaleY(1);
-        }
+      [data-radix-scroll-area-viewport]::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb {
+        background: ${theme === "dark" ? "rgba(128, 128, 128, 0.5)" : "rgba(0, 0, 0, 0.2)"};
+        border-radius: 3px;
+      }
+      [data-radix-scroll-area-viewport]::-webkit-scrollbar-thumb:hover {
+        background: ${theme === "dark" ? "rgba(128, 128, 128, 0.7)" : "rgba(0, 0, 0, 0.3)"};
       }
       /* Pulsing ring animation for new opportunities */
       @keyframes pulse-ring {

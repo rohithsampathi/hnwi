@@ -156,7 +156,7 @@ const developmentConfig: SecurityConfig = {
     enabled: true,
     dataRetentionDays: 365,
     consentVersion: "2.0",
-    dpoEmail: "dpo@example.com",
+    dpoEmail: "hnwi@montaigne.co",
     allowDataExport: true,
     allowDataDeletion: true,
     anonymizeOnDeletion: true
@@ -171,7 +171,7 @@ const developmentConfig: SecurityConfig = {
   monitoring: {
     auditLogging: true,
     auditLogRetentionDays: 30,
-    securityAlertEmail: "security@example.com",
+    securityAlertEmail: "hnwi@montaigne.co",
     realTimeAlerts: false
   },
   compliance: {
@@ -259,7 +259,7 @@ const productionConfig: SecurityConfig = {
     enabled: true,
     dataRetentionDays: parseInt(process.env.GDPR_DATA_RETENTION_DAYS || "365"),
     consentVersion: process.env.GDPR_CONSENT_VERSION || "2.0",
-    dpoEmail: process.env.GDPR_DPO_EMAIL || "dpo@company.com",
+    dpoEmail: process.env.GDPR_DPO_EMAIL || "hnwi@montaigne.co",
     allowDataExport: true,
     allowDataDeletion: true,
     anonymizeOnDeletion: true
@@ -274,7 +274,7 @@ const productionConfig: SecurityConfig = {
   monitoring: {
     auditLogging: true,
     auditLogRetentionDays: parseInt(process.env.AUDIT_LOG_RETENTION_DAYS || "90"),
-    securityAlertEmail: process.env.SECURITY_ALERT_EMAIL || "security@company.com",
+    securityAlertEmail: process.env.SECURITY_ALERT_EMAIL || "hnwi@montaigne.co",
     sentryDsn: process.env.SENTRY_DSN,
     realTimeAlerts: true
   },

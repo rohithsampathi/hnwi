@@ -15,6 +15,7 @@ import {
   FileText
 } from "lucide-react"
 import type { Citation } from "@/lib/parse-dev-citations"
+import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { secureApi } from "@/lib/secure-api"
 import { cn } from "@/lib/utils"
 
@@ -50,31 +51,47 @@ export function CitationPanel({
 }: CitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
+  const [globalCitationMap, setGlobalCitationMap] = useState<Map<string, number>>(new Map())
 
-  // Fetch development data when citations change
+  // Recursively fetch ALL citation levels and build complete serial map
   useEffect(() => {
     if (citations.length === 0) return
 
     const fetchDevelopments = async () => {
       setLoading(true)
       try {
-        const citationIds = citations.map(c => c.id)
-        const newDevs = new Map<string, Development>()
+        const allDevs = new Map<string, Development>()
+        const processedIds = new Set<string>()
+        const globalMap = new Map<string, number>()
+        let citationCounter = 1
 
-        // Fetch each development individually from public endpoint
-        for (const citationId of citationIds) {
+        // Queue of citation IDs to fetch (BFS approach)
+        const fetchQueue: string[] = citations.map(c => c.id)
+
+        // Number main citations first
+        citations.forEach(citation => {
+          globalMap.set(citation.id, citationCounter++)
+        })
+
+        // Recursively fetch all levels
+        while (fetchQueue.length > 0) {
+          const currentId = fetchQueue.shift()!
+
+          // Skip if already processed
+          if (processedIds.has(currentId)) continue
+          processedIds.add(currentId)
+
           try {
-            const response = await fetch(`/api/developments/public/${citationId}`, {
-              credentials: 'include' // CRITICAL: Send cookies with request
+            const response = await fetch(`/api/developments/public/${currentId}`, {
+              credentials: 'include'
             })
 
             if (response.ok) {
               const dev = await response.json()
+              const developmentId = dev._id || dev.id || currentId
 
-              // Handle both _id (MongoDB) and id formats
-              const developmentId = dev._id || dev.id || citationId
-
-              newDevs.set(citationId, {  // Use citationId as the key since that's what we lookup with
+              // Store development
+              allDevs.set(currentId, {
                 id: developmentId,
                 title: dev.title || dev.name || `Development ${developmentId}`,
                 description: dev.description || dev.summary?.substring(0, 200) || "Development details",
@@ -85,6 +102,20 @@ export function CitationPanel({
                 url: dev.url,
                 numerical_data: dev.numerical_data || []
               })
+
+              // Parse citations from this development
+              if (dev.summary || dev.analysis) {
+                const text = dev.summary || dev.analysis
+                const { citations: subCitations } = parseDevCitations(text)
+
+                // Add new citations to global map and fetch queue
+                subCitations.forEach(subCitation => {
+                  if (!globalMap.has(subCitation.id)) {
+                    globalMap.set(subCitation.id, citationCounter++)
+                    fetchQueue.push(subCitation.id) // Fetch this citation recursively
+                  }
+                })
+              }
             }
           } catch (err) {
             // Skip individual failures
@@ -92,7 +123,8 @@ export function CitationPanel({
           }
         }
 
-        setDevelopments(newDevs)
+        setDevelopments(allDevs)
+        setGlobalCitationMap(globalMap)
       } catch (error) {
         // Silently handle fetch errors
       } finally {
@@ -197,6 +229,8 @@ export function CitationPanel({
                         <CitationDevelopmentCard
                           development={dev}
                           citationNumber={undefined}
+                          onCitationClick={onCitationSelect}
+                          citationMap={globalCitationMap}
                         />
                       )
                     })()}
@@ -291,6 +325,8 @@ export function CitationPanel({
                         <CitationDevelopmentCard
                           development={dev}
                           citationNumber={undefined}
+                          onCitationClick={onCitationSelect}
+                          citationMap={globalCitationMap}
                         />
                       )
                     })()}

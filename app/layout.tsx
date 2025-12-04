@@ -95,11 +95,42 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Suppress known Razorpay and service worker errors - load first */}
+        <script
+          src="/suppress-errors.js"
+          nonce={nonce || undefined}
+          suppressHydrationWarning={true}
+        />
         <script
           nonce={nonce || undefined}
           suppressHydrationWarning={true}
           dangerouslySetInnerHTML={{
             __html: `
+              // Clear all caches and service workers on localhost to prevent stale manifest errors
+              if (location.hostname.includes('localhost')) {
+                (async function clearAllCaches() {
+                  try {
+                    // Unregister all service workers
+                    if ('serviceWorker' in navigator) {
+                      const registrations = await navigator.serviceWorker.getRegistrations();
+                      for (const registration of registrations) {
+                        await registration.unregister();
+                      }
+                    }
+                    // Clear all caches
+                    if ('caches' in window) {
+                      const cacheNames = await caches.keys();
+                      for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                      }
+                    }
+                  } catch (e) {
+                    // Silent fail
+                  }
+                })();
+              }
+
+              // Register service worker in production only
               if ('serviceWorker' in navigator && !location.hostname.includes('localhost')) {
                 window.addEventListener('load', () => {
                   navigator.serviceWorker.register('/sw.js')

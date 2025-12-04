@@ -127,6 +127,11 @@ class UnifiedAuthManager {
       }
 
       if (result.success && result.user) {
+        // CRITICAL: Set login timestamp IMMEDIATELY on success
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('loginTimestamp', Date.now().toString())
+        }
+
         // Direct login success - sync all auth systems
         await this.syncAuthSystems(result.user)
 
@@ -198,6 +203,11 @@ class UnifiedAuthManager {
             email: result.user.email,
             timestamp: new Date().toISOString()
           })
+        }
+
+        // CRITICAL: Set login timestamp IMMEDIATELY on MFA success
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('loginTimestamp', Date.now().toString())
         }
 
         // MFA success - sync all auth systems and clear stored email
@@ -487,6 +497,11 @@ class UnifiedAuthManager {
       sessionStorage.setItem('userObject', JSON.stringify(user))
       sessionStorage.setItem('userId', user.id || user.user_id || '')
       sessionStorage.setItem('userEmail', user.email || '')
+
+      // CRITICAL FIX: Set login timestamp to prevent immediate session checks
+      // This gives cookies time to propagate before any authenticated API calls
+      // Especially important in incognito mode where cookies may take longer to set
+      sessionStorage.setItem('loginTimestamp', Date.now().toString())
     }
 
     // 4. Emit auth events for other components
