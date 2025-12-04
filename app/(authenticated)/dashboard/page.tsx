@@ -67,10 +67,9 @@ export default function DashboardPage() {
             console.log('[Dashboard] User has completed assessment - granting access')
             setHasAssessment(true)
           } else {
-            console.log('[Dashboard] User has NOT completed assessment - redirecting to assessment')
-            // New user without assessment - redirect to assessment
-            router.push('/assessment')
-            return
+            console.log('[Dashboard] User has NOT completed assessment - showing map with assessment prompt')
+            // Show dashboard anyway - the P toggle will prompt them to take assessment
+            setHasAssessment(false)
           }
         } else {
           console.log('[Dashboard] Failed to check assessment status:', response.status)
@@ -139,11 +138,7 @@ export default function DashboardPage() {
     )
   }
 
-  // Only render dashboard if user has completed assessment
-  if (!hasAssessment) {
-    return null // Will redirect to assessment
-  }
-
+  // Always render dashboard - P toggle will handle assessment prompting
   return (
     <>
       <MetaTags
@@ -152,7 +147,12 @@ export default function DashboardPage() {
         image="https://app.hnwichronicles.com/images/dashboard-og.png"
         url="https://app.hnwichronicles.com/dashboard"
       />
-      <HomeDashboardElite user={user} userData={user} onNavigate={handleNavigation} />
+      <HomeDashboardElite
+        user={user}
+        userData={user}
+        onNavigate={handleNavigation}
+        hasCompletedAssessmentProp={hasAssessment}
+      />
     </>
   )
 }

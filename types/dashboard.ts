@@ -18,6 +18,7 @@ export interface HomeDashboardEliteProps {
   onNavigate: (route: string) => void
   isFromSignupFlow?: boolean
   userData?: any
+  hasCompletedAssessmentProp?: boolean
 }
 
 export interface IntelligenceData {

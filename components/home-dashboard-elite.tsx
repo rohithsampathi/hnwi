@@ -91,7 +91,8 @@ interface Opportunity {
 export function HomeDashboardElite({
   user,
   onNavigate,
-  userData
+  userData,
+  hasCompletedAssessmentProp
 }: HomeDashboardEliteProps) {
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,8 +129,9 @@ export function HomeDashboardElite({
 
   // Personal Mode state
   const [isPersonalMode, setIsPersonalMode] = useState(false)
-  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false)
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(hasCompletedAssessmentProp || false)
   const [personalModeLoading, setPersonalModeLoading] = useState(false)
+  const [showModeBanner, setShowModeBanner] = useState(false)
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -201,6 +203,13 @@ export function HomeDashboardElite({
     }
   }, [])
 
+  // Update hasCompletedAssessment when prop changes
+  useEffect(() => {
+    if (hasCompletedAssessmentProp !== undefined) {
+      setHasCompletedAssessment(hasCompletedAssessmentProp)
+    }
+  }, [hasCompletedAssessmentProp])
+
   // Check if user has completed C10 Assessment
   useEffect(() => {
     const checkAssessmentCompletion = async () => {
@@ -235,6 +244,8 @@ export function HomeDashboardElite({
 
   // Handle Personal Mode toggle
   const handlePersonalModeToggle = () => {
+    // Only toggle if assessment is completed
+    // If not completed, PersonalModeToggle component handles navigation to /assessment
     if (!hasCompletedAssessment) return
 
     const newMode = !isPersonalMode
@@ -243,9 +254,23 @@ export function HomeDashboardElite({
     // Save preference to localStorage
     localStorage.setItem('personal_mode_enabled', String(newMode))
 
+    // Show mode banner
+    setShowModeBanner(true)
+
     // Trigger data refresh
     setLoading(true)
   }
+
+  // Auto-hide mode banner after 7 seconds
+  useEffect(() => {
+    if (showModeBanner) {
+      const timer = setTimeout(() => {
+        setShowModeBanner(false)
+      }, 7000) // 7 seconds
+
+      return () => clearTimeout(timer)
+    }
+  }, [showModeBanner])
 
   // Clean category names by removing status/completion indicators
   const cleanCategoryName = (category: string): string => {
@@ -278,11 +303,17 @@ export function HomeDashboardElite({
           : `/api/command-centre/opportunities?timeframe=${timeframe}&include_crown_vault=true&include_executors=true`
 
         // Add view=personalized if Personal Mode is enabled and user has completed assessment
-        if (isPersonalMode && hasCompletedAssessment) {
-          apiUrl += '&view=personalized'
+        if (isPersonalMode && hasCompletedAssessment && user?.id) {
+          apiUrl += `&view=personalized&user_id=${user.id || user.user_id}`
         }
 
-        const response = await secureApi.get(apiUrl, true)
+        // Enable caching with different keys for personal vs all mode
+        const cacheKey = isPersonalMode ? `${apiUrl}_personal` : apiUrl
+        const response = await secureApi.get(apiUrl, true, {
+          enableCache: true,
+          cacheDuration: 300000, // 5 minutes cache
+          cacheKey: cacheKey
+        })
 
         // Handle both wrapped and direct array responses
         const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
@@ -682,28 +713,55 @@ export function HomeDashboardElite({
             )}
 
             {/* Personal Mode Power Toggle */}
-            <PersonalModeToggle
-              isPersonalMode={isPersonalMode}
-              onToggle={handlePersonalModeToggle}
-              hasCompletedAssessment={hasCompletedAssessment}
-              isLoading={loading}
-            />
+            <div className="pointer-events-auto">
+              <PersonalModeToggle
+                isPersonalMode={isPersonalMode}
+                onToggle={handlePersonalModeToggle}
+                hasCompletedAssessment={hasCompletedAssessment}
+                isLoading={loading}
+              />
+            </div>
           </div>
 
         </div>
 
-        {/* Personal Mode Badge - Shows personalized opportunity count */}
-        {isPersonalMode && hasCompletedAssessment && (
-          <div className="absolute top-16 md:top-20 right-4 z-[400] pointer-events-none">
-            <div className="bg-primary/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg border border-primary/30">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                <div className="text-xs font-medium">
-                  <div className="font-bold">{filteredCities.length} Personalized</div>
-                  <div className="opacity-80">From Your DNA</div>
+        {/* Mode Banner - Top Center (Auto-dismisses after 7 seconds) */}
+        {showModeBanner && hasCompletedAssessment && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[400] pointer-events-none">
+            {isPersonalMode ? (
+              // Personal Mode Banner - Blue
+              <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl border-2 border-blue-400/50 animate-pulse-slow">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Target className="h-5 w-5" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-ping" />
+                  </div>
+                  <div className="text-sm font-bold tracking-wide">
+                    PERSONAL MODE ACTIVATED
+                  </div>
+                  <div className="h-4 w-px bg-white/30" />
+                  <div className="text-xs font-medium">
+                    {filteredCities.length} DNA-Matched Opportunities
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              // All Mode Banner - Gold
+              <div className="bg-gradient-to-r from-[#DAA520] via-[#FFD700] to-[#DAA520] backdrop-blur-sm text-zinc-900 px-6 py-3 rounded-full shadow-2xl border-2 border-[#DAA520]/50 animate-pulse-slow">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Crown className="h-5 w-5" />
+                  </div>
+                  <div className="text-sm font-bold tracking-wide">
+                    ALL MODE
+                  </div>
+                  <div className="h-4 w-px bg-zinc-900/30" />
+                  <div className="text-xs font-medium">
+                    {filteredCities.length} Total Opportunities
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -718,6 +776,18 @@ export function HomeDashboardElite({
         }
         .animate-ping {
           animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        @keyframes pulse-slow {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.85;
+          }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         /* Personal Mode Animated Borders */

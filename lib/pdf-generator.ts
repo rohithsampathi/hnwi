@@ -12,7 +12,7 @@ interface PDFData {
     neural_signature: string;
   };
   tier_classification: {
-    tier: 'architect' | 'operator' | 'observer';
+    tier: 'architect' | 'operator' | 'observer' | 'premium';
     confidence: number;
     reasoning_trace: string;
   };
@@ -48,6 +48,9 @@ interface PDFData {
 // HNWI Chronicles Brand Colors
 const BRAND_COLORS = {
   gold: [218, 165, 32], // #DAA520 - Primary Gold
+  silver: [192, 192, 192], // #C0C0C0 - Silver
+  bronze: [205, 127, 50], // #CD7F32 - Bronze
+  blue: [59, 130, 246], // #3B82F6 - Premium Blue
   black: [0, 0, 0], // Pure Black
   white: [255, 255, 255], // Pure White
   darkGray: [30, 30, 30], // Dark background
@@ -60,17 +63,22 @@ const TIER_CONFIG = {
   architect: {
     icon: '👑',
     label: 'ARCHITECT',
-    color: BRAND_COLORS.gold,
+    color: BRAND_COLORS.gold, // Gold (top tier metal)
   },
   operator: {
     icon: '⚙️',
     label: 'OPERATOR',
-    color: BRAND_COLORS.gold,
+    color: BRAND_COLORS.silver, // Silver (middle tier metal)
   },
   observer: {
     icon: '👁️',
     label: 'OBSERVER',
-    color: [107, 114, 128], // Gray for observer
+    color: BRAND_COLORS.bronze, // Bronze (entry tier metal)
+  },
+  premium: {
+    icon: '💎',
+    label: 'PREMIUM',
+    color: BRAND_COLORS.blue, // Blue (special P tier)
   },
 };
 
@@ -78,17 +86,17 @@ const OUTCOME_CONFIG = {
   SURVIVED: {
     icon: '🎯',
     label: 'SURVIVED',
-    color: [34, 197, 94], // Green
+    color: BRAND_COLORS.gold, // Gold (positive outcome)
   },
   DAMAGED: {
     icon: '⚠️',
     label: 'DAMAGED',
-    color: [234, 179, 8], // Yellow
+    color: BRAND_COLORS.silver, // Silver (neutral outcome)
   },
   DESTROYED: {
-    icon: '🚨',
+    icon: '💔',
     label: 'DESTROYED',
-    color: [239, 68, 68], // Red
+    color: BRAND_COLORS.bronze, // Bronze (challenging outcome)
   },
 };
 

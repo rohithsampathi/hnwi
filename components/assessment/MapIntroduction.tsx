@@ -58,10 +58,11 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
 
     async function fetchGenericOpportunities() {
       try {
-        const response = await fetch('/api/opportunities?include_crown_vault=false&limit=500');
+        // Use the same endpoint as Command Centre to get ALL opportunities (no tier filtering)
+        const response = await fetch('/api/command-centre/opportunities?include_crown_vault=false&include_executors=false');
 
         if (!response.ok) {
-          console.error('[MapIntro] Generic endpoint failed');
+          console.error('[MapIntro] Command Centre endpoint failed');
           setLoadingMap(false);
           return;
         }

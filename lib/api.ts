@@ -326,11 +326,16 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
     // Pass bustCache flag to secureApi to add cache-busting headers
     const data = await secureApi.get(endpoint, true, bustCache);
 
+    // Backend can return either:
+    // 1. Direct array: [opp1, opp2, ...]
+    // 2. Wrapped object: { success: true, opportunities: [...], total_count: 4 }
+    const opportunities = Array.isArray(data) ? data : (data?.opportunities || []);
+
     // Normalize MongoDB _id to id field for consistent access
-    const normalized = Array.isArray(data) ? data.map((opp: any) => ({
+    const normalized = opportunities.map((opp: any) => ({
       ...opp,
       id: opp.id || opp._id || opp.opportunity_id || String(Math.random()) // Ensure every opportunity has an id
-    })) : [];
+    }));
 
     return normalized as Opportunity[];
   } catch (error: any) {

@@ -51,6 +51,7 @@ export async function GET(
     }
 
     const data = await response.json();
+    console.log(`[Assessment History] Backend returned for user ${userId}:`, JSON.stringify(data, null, 2));
     return NextResponse.json(data);
 
   } catch (error) {
