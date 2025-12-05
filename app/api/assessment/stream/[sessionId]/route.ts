@@ -2,6 +2,7 @@
 // Server-Sent Events (SSE) stream for real-time assessment updates
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,8 +39,7 @@ export async function GET(
       });
 
       // Backend SSE URL
-      const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-      const sseUrl = `${backendUrl}/api/assessment/stream/${sessionId}`;
+      const sseUrl = `${API_BASE_URL}/api/assessment/stream/${sessionId}`;
 
       console.log('[SSE] Connecting to backend:', sseUrl);
 

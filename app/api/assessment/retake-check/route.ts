@@ -4,8 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getCurrentUserId } from '@/lib/secure-api';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '@/config/api';
 
 export async function GET(request: NextRequest) {
   try {

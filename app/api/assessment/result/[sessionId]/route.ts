@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 
 interface RouteParams {
   params: {
@@ -25,8 +26,7 @@ export async function GET(
     console.log('[Assessment Result] Cookies being forwarded:', allCookies.map(c => c.name).join(', '));
 
     // Proxy to backend with authentication cookies
-    const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-    const response = await fetch(`${backendUrl}/api/assessment/result/${sessionId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/assessment/result/${sessionId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

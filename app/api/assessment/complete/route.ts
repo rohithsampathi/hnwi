@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,8 +28,7 @@ export async function POST(request: NextRequest) {
     console.log('[Complete API] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     // Proxy to backend
-    const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-    const backendEndpoint = `${backendUrl}/api/assessment/complete`;
+    const backendEndpoint = `${API_BASE_URL}/api/assessment/complete`;
 
     console.log('[Complete API] Proxying to backend:', backendEndpoint);
     console.log('[Complete API] Payload:', { session_id });

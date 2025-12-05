@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic';
@@ -26,8 +27,7 @@ export async function GET(request: NextRequest) {
     console.log('[Can Retake] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     // Proxy to backend
-    const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-    const response = await fetch(`${backendUrl}/api/assessment/can-retake?${params.toString()}`, {
+    const response = await fetch(`${API_BASE_URL}/api/assessment/can-retake?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
