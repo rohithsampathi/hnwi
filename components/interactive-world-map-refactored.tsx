@@ -6,7 +6,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from "react-leaflet"
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import { useTheme } from "@/contexts/theme-context"
 import { MapPin, Crown, Linkedin, Globe } from "lucide-react"
 import L from "leaflet"
@@ -460,7 +460,6 @@ export function InteractiveWorldMap({
         onZoomEnd={(e) => setCurrentZoom(e.target.getZoom())}
       >
         <TileLayer url={tileUrl} />
-        <ZoomControl position="bottomright" />
 
         {/* Clustered City Markers */}
         {clusterCities.map((cluster, clusterIndex) => {

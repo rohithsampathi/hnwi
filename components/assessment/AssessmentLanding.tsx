@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Lock, Zap } from 'lucide-react';
+import { VaultEntrySequence } from './VaultEntrySequence';
 
 interface AssessmentLandingProps {
   onContinue: () => void;
@@ -15,6 +16,9 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const [briefCount, setBriefCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [showVaultEntry, setShowVaultEntry] = useState(true);
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
 
   // Fetch dynamic brief count
   useEffect(() => {
@@ -45,20 +49,88 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
     fetchBriefCount();
   }, []);
 
+  // Fetch opportunities for vault entry background map
+  useEffect(() => {
+    async function fetchOpportunities() {
+      try {
+        const response = await fetch('/api/public/assessment/preview-opportunities');
+        if (response.ok) {
+          const data = await response.json();
+
+          // Handle different API response formats
+          let opps = [];
+          if (Array.isArray(data)) {
+            opps = data;
+          } else if (data.opportunities && Array.isArray(data.opportunities)) {
+            opps = data.opportunities;
+          } else if (data.data && Array.isArray(data.data)) {
+            opps = data.data;
+          }
+
+
+          // Get ALL opportunities that have valid coordinates
+          const validOpps = opps
+            .filter((opp: any) => opp.latitude && opp.longitude);
+
+          setOpportunities(validOpps);
+        } else {
+        }
+      } catch (error) {
+      }
+    }
+
+    fetchOpportunities();
+  }, []);
+
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+    <>
+      {/* Vault Entry Sequence */}
+      {showVaultEntry && (
+        <VaultEntrySequence
+          onComplete={() => {
+            setShowVaultEntry(false);
+            setVaultUnlocked(true);
+          }}
+          briefCount={briefCount || 1900}
+          opportunities={opportunities}
+        />
+      )}
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16 lg:py-20">
+      {/* Main Landing Content */}
+      <div className="min-h-screen bg-background relative overflow-hidden">
+        {/* Vault frame border - persists after entry */}
+        {vaultUnlocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1 }}
+            className="fixed inset-0 pointer-events-none z-50"
+          >
+            {/* Corner accents */}
+            <div className="absolute top-4 left-4 w-12 h-12 border-t-2 border-l-2 border-primary/30" />
+            <div className="absolute top-4 right-4 w-12 h-12 border-t-2 border-r-2 border-primary/30" />
+            <div className="absolute bottom-4 left-4 w-12 h-12 border-b-2 border-l-2 border-primary/30" />
+            <div className="absolute bottom-4 right-4 w-12 h-12 border-b-2 border-r-2 border-primary/30" />
+          </motion.div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
+
+      <motion.div
+        initial={vaultUnlocked ? { opacity: 0, scale: 0.95 } : false}
+        animate={vaultUnlocked ? { opacity: 1, scale: 1 } : {}}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16 lg:py-20"
+      >
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
+          transition={{ duration: 0.7, ease: "easeOut", delay: vaultUnlocked ? 0.3 : 0 }}
           className="text-center mb-12 sm:mb-16 md:mb-20"
         >
           <motion.div
@@ -71,15 +143,32 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             <span className="text-xs sm:text-sm font-semibold text-primary tracking-wide">VERIFIED HNWI ACCESS ONLY</span>
           </motion.div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 sm:mb-8 leading-[1.1] tracking-tight">
+          <motion.h1
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 sm:mb-8 leading-[1.1] tracking-tight"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: vaultUnlocked ? 0.5 : 0 }}
+          >
             Most HNWIs never know
             <br />
-            <span className="text-primary">their strategic DNA.</span>
-          </h1>
+            <motion.span
+              className="text-primary"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: vaultUnlocked ? 1.2 : 0.3 }}
+            >
+              their strategic DNA.
+            </motion.span>
+          </motion.h1>
 
-          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-light mb-8 sm:mb-10">
+          <motion.p
+            className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-light mb-8 sm:mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: vaultUnlocked ? 1.8 : 0.4 }}
+          >
             You're about to. 10 scenarios. 8 minutes. Your exact wealth archetype.
-          </p>
+          </motion.p>
 
           <motion.button
             type="button"
@@ -92,6 +181,9 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
               }
             }}
             disabled={isStarting}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: vaultUnlocked ? 2.4 : 0.5 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={`group inline-flex items-center justify-center gap-3 px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 rounded-2xl font-bold text-base sm:text-lg md:text-xl transition-all shadow-2xl ${
@@ -121,7 +213,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 0.6, delay: vaultUnlocked ? 3.2 : 0.6 }}
           className="bg-card/50 backdrop-blur-xl border border-primary/30 rounded-3xl p-6 sm:p-8 md:p-10 mb-12 sm:mb-16 md:mb-20 shadow-2xl"
         >
           <div className="text-center mb-8 sm:mb-10">
@@ -175,7 +267,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+          transition={{ duration: 0.6, delay: vaultUnlocked ? 3.8 : 0.8 }}
           className="mb-12 sm:mb-16 md:mb-20"
         >
           <div className="text-center mb-8 sm:mb-10 md:mb-12">
@@ -212,7 +304,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                 key={archetype.tier}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.7 + (index * 0.1) }}
+                transition={{ duration: 0.5, delay: (vaultUnlocked ? 4.0 : 0.9) + (index * 0.15) }}
                 className="group relative bg-card/50 backdrop-blur-xl border border-primary/30 rounded-2xl p-6 sm:p-8 hover:border-primary/50 hover:bg-card/70 transition-all duration-300"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${archetype.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none`} />
@@ -242,7 +334,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: vaultUnlocked ? 4.6 : 1.0 }}
           className="bg-card/40 backdrop-blur-2xl border border-primary/30 rounded-3xl p-6 sm:p-8 md:p-10 mb-12 sm:mb-16 shadow-2xl"
         >
           <div className="text-center mb-8 sm:mb-10">
@@ -310,7 +402,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.0 }}
+          transition={{ duration: 0.6, delay: vaultUnlocked ? 5.2 : 1.2 }}
           className="text-center"
         >
           <div className="inline-block p-1 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 mb-6 sm:mb-8">
@@ -361,7 +453,8 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
           </p>
         </motion.div>
 
+      </motion.div>
       </div>
-    </div>
+    </>
   );
 };

@@ -80,7 +80,6 @@ export function AssessmentExistingResults({ latestAssessment }: AssessmentExisti
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to download PDF:', error);
       alert('Failed to download PDF. Please try again.');
     } finally {
       setDownloading(false);
@@ -93,7 +92,6 @@ export function AssessmentExistingResults({ latestAssessment }: AssessmentExisti
       await navigator.clipboard.writeText(shareUrl);
       setTimeout(() => setCopying(false), 2000);
     } catch (error) {
-      console.error('Failed to copy:', error);
       alert('Failed to copy link. Please try again.');
       setCopying(false);
     }

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssessmentLanding } from '@/components/assessment/AssessmentLanding';
 import { MapIntroduction } from '@/components/assessment/MapIntroduction';
@@ -14,6 +14,7 @@ import { useAssessmentState, Question } from '@/lib/hooks/useAssessmentState';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
 import { useAssessmentSSE } from '@/lib/hooks/useAssessmentSSE';
 import { getCurrentUser } from '@/lib/auth-manager';
+import { CrownLoader } from '@/components/ui/crown-loader';
 
 type FlowStage = 'landing' | 'map_intro' | 'retake_locked' | 'assessment' | 'digital_twin';
 
@@ -23,9 +24,6 @@ export default function AuthenticatedAssessmentPage() {
   const [user, setUser] = useState<any>(null);
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
-  const [existingAssessment, setExistingAssessment] = useState<any>(null);
-  const [checkingExisting, setCheckingExisting] = useState(true);
-  const [hasCheckedExisting, setHasCheckedExisting] = useState(false); // Prevent multiple checks
 
   const {
     sessionId,
@@ -83,63 +81,29 @@ export default function AuthenticatedAssessmentPage() {
     }
   }, [flowStage]);
 
-  // Check for existing assessment - ONLY ONCE to prevent 429 rate limiting
+  // Check Command Centre for existing assessment - single source of truth
   useEffect(() => {
-    // CRITICAL: Prevent multiple rapid API calls that cause 429 errors
-    if (hasCheckedExisting) {
-      return; // Already checked, skip
-    }
+    if (!user?.id && !user?.user_id) return;
 
-    const checkExistingAssessment = async () => {
-      if (!user?.id && !user?.user_id) {
-        setCheckingExisting(false);
-        return;
-      }
-
-      // Mark as checked IMMEDIATELY to prevent duplicate calls
-      setHasCheckedExisting(true);
-
+    const checkCommandCentre = async () => {
       try {
-        const userId = user.id || user.user_id;
-        console.log('[Assessment] Checking existing assessment for user:', userId);
-        const response = await fetch(`/api/assessment/history/${userId}`);
+        const response = await fetch('/api/command-centre/opportunities?view=personalized&include_crown_vault=false');
 
         if (response.ok) {
           const data = await response.json();
-          console.log('[Assessment] History API response:', data);
-          const assessments = data?.assessments || data || [];
-          console.log('[Assessment] Parsed assessments:', assessments);
 
-          if (assessments.length > 0) {
-            // Get the most recent assessment
-            const latest = assessments[0];
-            console.log('[Assessment] Latest assessment:', latest);
-
-            // ALWAYS redirect to latest results if user has completed an assessment
-            // They can choose to retake from the results page itself
-            console.log('[Assessment] User has completed assessment - redirecting to results');
-            router.push(`/assessment/results/${latest.session_id}`);
-            return; // Exit early to prevent showing landing page
-          } else {
-            console.log('[Assessment] No assessments found - showing landing page');
-          }
-        } else {
-          console.log('[Assessment] History API failed:', response.status, response.statusText);
-          // On error, reset flag so they can try again
-          if (response.status === 429) {
-            console.error('[Assessment] Rate limited! Please wait before retrying.');
+          // If Command Centre has session_id and tier, user completed assessment
+          if (data.session_id && data.tier) {
+            router.replace(`/assessment/results/${data.session_id}`);
           }
         }
       } catch (error) {
-        console.error('[Assessment] Failed to check existing:', error);
-      } finally {
-        setCheckingExisting(false);
+        // On error, stay on landing page
       }
     };
 
-    checkExistingAssessment();
-  }, [user, hasCheckedExisting, router]);
-
+    checkCommandCentre();
+  }, [user, router]);
 
   // Handle landing -> map intro
   const handleShowMapIntro = () => {
@@ -172,7 +136,6 @@ export default function AuthenticatedAssessmentPage() {
       setStatus('in_progress');
       setFlowStage('assessment');
     } catch (err: any) {
-      console.error('[Assessment] Failed to start:', err);
 
       // Backend will return error if retake not allowed - show message to user
       if (err.message?.includes('retake') || err.message?.includes('30 days') || err.message?.includes('wait')) {
@@ -199,7 +162,6 @@ export default function AuthenticatedAssessmentPage() {
 
     try {
       const response = await submitAnswer(payload);
-      console.log('[Assessment] Answer submitted, response:', response);
 
       // Move to next question index FIRST (before progress update)
       const nextIndex = currentQuestionIndex + 1;
@@ -207,7 +169,6 @@ export default function AuthenticatedAssessmentPage() {
 
       // Update progress - use backend's progress if available, otherwise calculate manually
       if (response.progress) {
-        console.log('[Assessment] Progress update from backend:', response.progress);
 
         // Backend returns answers_submitted (completed count)
         // But we want to show CURRENT question number for display
@@ -222,7 +183,6 @@ export default function AuthenticatedAssessmentPage() {
         });
       } else {
         // Fallback: Manual progress calculation if backend doesn't return it
-        console.log('[Assessment] No progress from backend, calculating manually');
         setProgress({
           current: isLastQuestion ? allQuestions.length : nextIndex + 1,
           total: allQuestions.length,
@@ -272,16 +232,13 @@ export default function AuthenticatedAssessmentPage() {
       const shouldComplete = (response.progress && response.progress.is_complete) || isLastQuestion;
 
       if (shouldComplete) {
-        console.log('[Assessment] Assessment is complete');
         // Trigger completion immediately (backend already saved the answer)
         await handleCompleteAssessment();
       } else {
         // Move to next question
-        console.log(`[Assessment] Moving to next question: ${nextIndex + 1}/${allQuestions.length}`);
         setCurrentQuestionIndex(nextIndex);
       }
     } catch (err) {
-      console.error('[Assessment] Failed to submit answer:', err);
       alert('Failed to submit answer. Please try again.');
     }
   };
@@ -290,7 +247,6 @@ export default function AuthenticatedAssessmentPage() {
   const handleCompleteAssessment = async () => {
     if (!sessionId) return;
 
-    console.log('[Assessment] Starting completion process...');
 
     // Record test completion time
     const completionTime = new Date();
@@ -299,17 +255,14 @@ export default function AuthenticatedAssessmentPage() {
     try {
       await completeAssessment({ session_id: sessionId });
 
-      console.log('[Assessment] Completion API succeeded, switching to digital_twin stage');
 
       // Switch to Digital Twin waiting screen
       setFlowStage('digital_twin');
       setStatus('generating_pdf');
     } catch (err: any) {
-      console.error('[Assessment] Failed to complete:', err);
 
       // On completion error, force switch to digital_twin anyway
       // The DigitalTwinWaiting component will handle retries
-      console.log('[Assessment] Completion failed but forcing digital_twin stage for retry handling');
       setFlowStage('digital_twin');
       setStatus('generating_pdf');
 
@@ -328,32 +281,8 @@ export default function AuthenticatedAssessmentPage() {
     }
   };
 
-  // Landing page or existing results
+  // Landing page - always show, backend will handle restrictions
   if (flowStage === 'landing') {
-    // Show loading while checking for existing assessment
-    if (checkingExisting) {
-      return (
-        <>
-          <MetaTags
-            title="C10 Strategic Assessment - HNWI Chronicles"
-            description="Take the exclusive 10-question assessment to discover your strategic tier and unlock personalized intelligence."
-            image="https://app.hnwichronicles.com/images/assessment-og.png"
-            url="https://app.hnwichronicles.com/assessment"
-          />
-          <div className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading assessment...</p>
-            </div>
-          </div>
-        </>
-      );
-    }
-
-    // Note: existingAssessment check is now handled by direct redirect in useEffect above
-    // If we reach here, user either has no assessment or can retake
-
-    // Show normal landing page
     return (
       <>
         <MetaTags
@@ -435,7 +364,6 @@ export default function AuthenticatedAssessmentPage() {
   // This can happen if all questions are answered but flowStage didn't update
   useEffect(() => {
     if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
-      console.warn('[Assessment] Fallback: All questions completed, forcing digital_twin stage');
 
       // Force transition to digital_twin stage
       setFlowStage('digital_twin');
@@ -454,10 +382,11 @@ export default function AuthenticatedAssessmentPage() {
           url="https://app.hnwichronicles.com/assessment"
         />
         <div className="flex items-center justify-center p-12">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Finalizing assessment...</p>
-          </div>
+          <CrownLoader
+            size="lg"
+            text="Finalizing Assessment"
+            subtext="Preparing your strategic DNA analysis..."
+          />
         </div>
       </>
     );
@@ -485,13 +414,11 @@ export default function AuthenticatedAssessmentPage() {
               </button>
             </>
           ) : (
-            <>
-              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Initializing assessment...</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Debug: Stage={flowStage}, Questions={allQuestions.length}, Index={currentQuestionIndex}, Session={sessionId ? 'Yes' : 'No'}
-              </p>
-            </>
+            <CrownLoader
+              size="lg"
+              text="Initializing Assessment"
+              subtext="Preparing your strategic classification protocol..."
+            />
           )}
         </div>
       </div>

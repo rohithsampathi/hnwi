@@ -96,6 +96,7 @@ export function HomeDashboardElite({
 }: HomeDashboardEliteProps) {
   const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true) // Track initial load separately
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
@@ -229,7 +230,6 @@ export function HomeDashboardElite({
 
         setHasCompletedAssessment(hasCompleted)
       } catch (error) {
-        console.error('[Dashboard] Failed to check assessment completion:', error)
         setHasCompletedAssessment(false)
       }
     }
@@ -257,8 +257,8 @@ export function HomeDashboardElite({
     // Show mode banner
     setShowModeBanner(true)
 
-    // Trigger data refresh
-    setLoading(true)
+    // Data refresh happens automatically via useEffect dependency on isPersonalMode
+    // No need to setLoading(true) - P button shows loading state
   }
 
   // Auto-hide mode banner after 7 seconds
@@ -271,6 +271,18 @@ export function HomeDashboardElite({
       return () => clearTimeout(timer)
     }
   }, [showModeBanner])
+
+  // Reset category filter when mode changes
+  useEffect(() => {
+    // Clear selected categories when switching modes to prevent stale filters
+    setSelectedCategories([])
+
+    // In Personal Mode, always show Crown Assets and Privé Opportunities
+    if (isPersonalMode && hasCompletedAssessment) {
+      setShowCrownAssets(true)
+      setShowPriveOpportunities(true)
+    }
+  }, [isPersonalMode, hasCompletedAssessment])
 
   // Clean category names by removing status/completion indicators
   const cleanCategoryName = (category: string): string => {
@@ -295,27 +307,23 @@ export function HomeDashboardElite({
     const fetchOpportunities = async () => {
       setLoading(true)
 
+      // Clear cities when view mode changes to prevent showing stale data
+      setCities([])
+
       try {
         // SOTA: Service Worker handles caching with StaleWhileRevalidate
-        // Build API URL with optional personalization
-        let apiUrl = timeframe === 'live'
-          ? `/api/command-centre/opportunities?include_crown_vault=true&include_executors=true`
-          : `/api/command-centre/opportunities?timeframe=${timeframe}&include_crown_vault=true&include_executors=true`
+        // Build API URL following backend integration guide
+        const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe
+        const viewParam = (isPersonalMode && hasCompletedAssessment) ? 'personalized' : 'all'
 
-        // Add view=personalized if Personal Mode is enabled and user has completed assessment
-        if (isPersonalMode && hasCompletedAssessment && user?.id) {
-          apiUrl += `&view=personalized&user_id=${user.id || user.user_id}`
-        }
+        let apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=true`
 
-        // Enable caching with different keys for personal vs all mode
-        const cacheKey = isPersonalMode ? `${apiUrl}_personal` : apiUrl
-        const response = await secureApi.get(apiUrl, true, {
-          enableCache: true,
-          cacheDuration: 300000, // 5 minutes cache
-          cacheKey: cacheKey
-        })
+        // Call API with requireAuth=true, bustCache=false (enable caching)
+        // Note: Service Worker handles caching automatically via HTTP headers
+        const response = await secureApi.get(apiUrl, true, false)
 
-        // Handle both wrapped and direct array responses
+        // Handle wrapped response structure from backend
+        // Backend returns: { success: true, view: "personalized"|"all", opportunities: [...], metadata: {...} }
         const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
 
         if (opportunities && opportunities.length > 0) {
@@ -474,13 +482,15 @@ export function HomeDashboardElite({
         // Let secureApi handle auth errors automatically
       } finally {
         setLoading(false)
+        setInitialLoad(false) // Mark initial load as complete
       }
     }
 
     fetchOpportunities()
   }, [timeframe, isPersonalMode, hasCompletedAssessment]) // Re-fetch when timeframe or personalization changes
 
-  if (loading) {
+  // Only show full-screen loader on initial load, not on subsequent data fetches
+  if (initialLoad && loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <CrownLoader size="lg" text="Loading Elite Pulse" />
@@ -628,7 +638,7 @@ export function HomeDashboardElite({
                         onClick={() => {
                           setTimeframe(option.value)
                           setIsDropdownOpen(false)
-                          setLoading(true)
+                          // Data refresh happens automatically via useEffect dependency on timeframe
                         }}
                         className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${
                           timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'

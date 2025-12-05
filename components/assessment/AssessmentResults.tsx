@@ -42,7 +42,6 @@ export const AssessmentResults: React.FC<AssessmentResultsProps> = ({
       await onDownloadPDF();
       setPdfDownloaded(true);
     } catch (error) {
-      console.error('PDF download failed:', error);
     } finally {
       setLoading(false);
     }
@@ -53,7 +52,6 @@ export const AssessmentResults: React.FC<AssessmentResultsProps> = ({
     try {
       await onCreateAccount();
     } catch (error) {
-      console.error('Account creation failed:', error);
       setLoading(false);
     }
   };
@@ -63,7 +61,6 @@ export const AssessmentResults: React.FC<AssessmentResultsProps> = ({
     try {
       await onUpgrade(selectedTier);
     } catch (error) {
-      console.error('Upgrade failed:', error);
       setLoading(false);
     }
   };

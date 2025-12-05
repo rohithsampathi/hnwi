@@ -52,13 +52,11 @@ export function PersonalizedOpportunities({ userId, limit = 50 }: PersonalizedOp
         }
 
         const data = await response.json();
-        console.log('[PersonalizedOpportunities] Loaded:', data);
 
         setOpportunities(data.opportunities || []);
         setScoreDistribution(data.score_distribution);
         setUserTier(data.user_tier);
       } catch (err) {
-        console.error('[PersonalizedOpportunities] Error:', err);
         setError('Failed to load opportunities');
       } finally {
         setLoading(false);

@@ -5,7 +5,7 @@
 "use client"
 
 import React, { useState, useMemo, useCallback } from "react"
-import { MapContainer, TileLayer, Marker, Popup, ZoomControl } from "react-leaflet"
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
 import { useTheme } from "@/contexts/theme-context"
 import "leaflet/dist/leaflet.css"
 
@@ -279,7 +279,6 @@ export function InteractiveWorldMap({
         worldCopyJump={true}
       >
         <TileLayer url={tileUrl} noWrap={false} />
-        <ZoomControl position="bottomright" />
 
         {/* Clustered City Markers */}
         {clusterCities.map((cluster, clusterIndex) => {

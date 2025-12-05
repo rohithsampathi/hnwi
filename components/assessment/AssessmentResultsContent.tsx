@@ -5,10 +5,23 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { InteractiveWorldMap } from '@/components/interactive-world-map';
+import dynamic from 'next/dynamic';
 import { TierPricingComparison } from './TierPricingComparison';
 import { Download } from 'lucide-react';
 import type { City } from '@/components/interactive-world-map';
+
+// Dynamic import to prevent SSR issues with map libraries (react-globe.gl, leaflet)
+const InteractiveWorldMap = dynamic(
+  () => import('@/components/interactive-world-map').then(mod => mod.InteractiveWorldMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[600px] flex items-center justify-center bg-muted/30 rounded-lg">
+        <div className="text-sm text-muted-foreground">Loading map...</div>
+      </div>
+    )
+  }
+);
 
 interface AssessmentResultsContentProps {
   tier: 'architect' | 'operator' | 'observer';

@@ -105,7 +105,6 @@ export function DigitalTwinWaiting({
     // CRITICAL: Wait for resultData (fetched from assessment_completed event)
     // This contains pdf_data for client-side PDF generation
     if (resultData && simulationResult) {
-      console.log('[DigitalTwin] Assessment completed with result data:', resultData);
 
       // Mark all steps as complete
       setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
@@ -118,7 +117,6 @@ export function DigitalTwinWaiting({
     }
     // Fallback: If we get pdfUrl but no resultData (legacy behavior)
     else if (pdfUrl && simulationResult && !resultData) {
-      console.log('[DigitalTwin] Using legacy pdfUrl:', pdfUrl);
 
       setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
 

@@ -16,6 +16,7 @@ import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { AssessmentResultsHeader } from '@/components/assessment/AssessmentResultsHeader';
 import { DigitalTwinSimulation } from '@/components/assessment/DigitalTwinSimulation';
 import { GapAnalysisSection } from '@/components/assessment/GapAnalysisSection';
+import { CrownLoader } from '@/components/ui/crown-loader';
 
 // Dynamic import for InteractiveWorldMap
 const InteractiveWorldMap = dynamic(
@@ -105,6 +106,7 @@ export default function SharedResultsPage() {
 
       try {
         const data = await getResults(sessionId);
+
         hasLoadedRef.current = true;
         setResults(data);
         setLoading(false);
@@ -133,10 +135,11 @@ export default function SharedResultsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading shared results...</p>
-        </div>
+        <CrownLoader
+          size="lg"
+          text="Loading Shared Results"
+          subtext="Retrieving strategic DNA profile..."
+        />
       </div>
     );
   }

@@ -17,11 +17,7 @@ const InteractiveWorldMap = dynamic(
   () => import("@/components/interactive-world-map").then(mod => mod.InteractiveWorldMap),
   {
     ssr: false,
-    loading: () => (
-      <div className="h-full flex items-center justify-center">
-        <CrownLoader size="lg" text="Loading HNWI World" />
-      </div>
-    )
+    loading: () => <div className="h-full" />
   }
 );
 
@@ -51,24 +47,23 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
         // Don't use filtered endpoint as it applies tier-based filtering
         fetchGenericOpportunities();
       } catch (error) {
-        console.error('[MapIntro] Failed to fetch opportunities:', error);
         setLoadingMap(false);
       }
     }
 
     async function fetchGenericOpportunities() {
       try {
-        // Use the same endpoint as Command Centre to get ALL opportunities (no tier filtering)
-        const response = await fetch('/api/command-centre/opportunities?include_crown_vault=false&include_executors=false');
+        // Use assessment preview endpoint for consistent counts
+        const response = await fetch('/api/public/assessment/preview-opportunities');
 
         if (!response.ok) {
-          console.error('[MapIntro] Command Centre endpoint failed');
           setLoadingMap(false);
           return;
         }
 
         const data = await response.json();
-        const opportunities = data?.opportunities || (Array.isArray(data) ? data : []);
+        // Handle different response formats
+        const opportunities = data?.opportunities || (Array.isArray(data) ? data : data?.data || []);
         const total = data?.total_count || opportunities.length;
 
         // Transform to cities
@@ -145,7 +140,6 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
         // Start the message sequence after map loads
         setTimeout(() => setShowMessage1(true), 500);
       } catch (error) {
-        console.error('[MapIntro] Failed to fetch opportunities:', error);
         setLoadingMap(false);
       }
     }
@@ -161,9 +155,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
       {/* Map Background Layer */}
       <div className="absolute inset-0 z-0">
         {loadingMap ? (
-          <div className="h-full flex items-center justify-center">
-            <CrownLoader size="lg" text="Loading HNWI World Reality" />
-          </div>
+          <div className="h-full" />
         ) : (
           <InteractiveWorldMap
             width="100%"
@@ -185,27 +177,37 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
       </div>
 
       {/* Dark Overlay for Better Text Contrast */}
-      <div className="absolute inset-0 bg-black/40 z-10" />
+      <div className="absolute inset-0 bg-black/30 z-10" />
 
       {/* Content Layer - Above Map */}
-      <div className="relative z-20 min-h-screen flex items-center justify-center p-4 sm:p-6">
+      <div className={`relative z-20 min-h-screen flex justify-center p-4 sm:p-6 pb-20 sm:pb-6 ${loadingMap ? 'items-center' : 'items-end sm:items-center'}`}>
         <div className="max-w-4xl w-full">
 
           {/* Message Card - Clean Premium */}
-          <div className="bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-3xl p-8 sm:p-10 md:p-14">
+          <div className="bg-card/20 sm:bg-card/30 backdrop-blur-sm border border-primary/10 rounded-3xl p-6 sm:p-8 md:p-10">
             {/* Icon Header */}
-            <div className="flex items-center justify-center gap-3 mb-10 sm:mb-12">
-              <div className="p-5 bg-card/80 backdrop-blur-md rounded-full border border-primary/40">
-                <Globe className="w-10 h-10 sm:w-12 sm:h-12 text-primary" />
+            <div className="flex flex-col items-center justify-center gap-3 mb-4 sm:mb-5 md:mb-6">
+              <div className="p-3 sm:p-4 bg-card/60 backdrop-blur-sm rounded-full border border-primary/40">
+                <Globe className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-primary" />
               </div>
+              {loadingMap && (
+                <div className="text-sm sm:text-base text-muted-foreground font-medium flex items-center gap-1">
+                  <span>Loading HNWI World</span>
+                  <span className="inline-flex">
+                    <span className="animate-[bounce_1s_ease-in-out_0s_infinite]">.</span>
+                    <span className="animate-[bounce_1s_ease-in-out_0.2s_infinite]">.</span>
+                    <span className="animate-[bounce_1s_ease-in-out_0.4s_infinite]">.</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Progressive Messages */}
-            <div className="space-y-6">
+            {!loadingMap && <div className="space-y-4 sm:space-y-5 md:space-y-6">
               {showMessage1 && (
                 <ProgressiveReveal delay={0.1}>
-                  <div className="text-center">
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 sm:mb-8 leading-tight tracking-tight">
+                  <div className="text-center bg-card/30 backdrop-blur-sm border border-primary/20 rounded-2xl p-4 sm:p-5 md:p-6">
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-foreground mb-0 leading-tight tracking-tight">
                       <TypewriterText
                         text="Welcome to HNWI World"
                         speed={40}
@@ -218,14 +220,14 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
 
               {showMessage2 && (
                 <ProgressiveReveal delay={0.2}>
-                  <div className="bg-card/60 backdrop-blur-xl border border-primary/30 rounded-2xl p-6 sm:p-7 md:p-8">
-                    <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="bg-card/40 backdrop-blur-md border border-primary/30 rounded-2xl p-4 sm:p-5 md:p-6">
+                    <div className="flex items-start gap-3 sm:gap-4">
                       <div className="flex-shrink-0 mt-1">
-                        <div className="p-2.5 bg-primary/10 rounded-lg border border-primary/30">
-                          <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                        <div className="p-2 sm:p-2.5 bg-primary/10 rounded-lg border border-primary/30">
+                          <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
                         </div>
                       </div>
-                      <p className="text-base sm:text-lg md:text-xl text-foreground leading-relaxed font-light">
+                      <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
                           text={`Each dot on this map represents a real peer HNWI buying or selling an alternative asset. These are ${filteredCities.length.toLocaleString()} live opportunities across the globe.`}
                           speed={15}
@@ -239,14 +241,14 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
 
               {showMessage3 && (
                 <ProgressiveReveal delay={0.2}>
-                  <div className="bg-card/60 backdrop-blur-xl border border-primary/30 rounded-2xl p-6 sm:p-7 md:p-8">
-                    <div className="flex items-start gap-4 sm:gap-5">
+                  <div className="bg-card/40 backdrop-blur-md border border-primary/30 rounded-2xl p-4 sm:p-5 md:p-6">
+                    <div className="flex items-start gap-3 sm:gap-4">
                       <div className="flex-shrink-0 mt-1">
-                        <div className="p-2.5 bg-primary/10 rounded-lg border border-primary/30">
-                          <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                        <div className="p-2 sm:p-2.5 bg-primary/10 rounded-lg border border-primary/30">
+                          <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-primary" />
                         </div>
                       </div>
-                      <p className="text-base sm:text-lg md:text-xl text-foreground leading-relaxed font-light">
+                      <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
                           text="This is the reality of HNWI World. Your assessment will reveal which opportunities match your strategic DNA."
                           speed={15}
@@ -257,22 +259,22 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                   </div>
                 </ProgressiveReveal>
               )}
-            </div>
+            </div>}
 
             {/* Continue Button - Clean CTA */}
-            {showButton && (
+            {!loadingMap && showButton && (
               <ProgressiveReveal delay={0.3}>
-                <div className="mt-10 sm:mt-12 text-center">
+                <div className="mt-5 sm:mt-6 md:mt-7 text-center">
                   <motion.button
                     onClick={onContinue}
-                    className="group inline-flex items-center justify-center gap-3 px-10 sm:px-12 md:px-14 py-5 sm:py-6 bg-primary text-primary-foreground font-bold text-lg sm:text-xl rounded-2xl transition-all"
+                    className="group inline-flex items-center justify-center gap-2 sm:gap-3 px-8 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 bg-primary text-primary-foreground font-bold text-base sm:text-lg md:text-xl rounded-2xl transition-all w-full sm:w-auto"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
                     <span>Begin Your Assessment</span>
                     <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
                   </motion.button>
-                  <p className="text-sm sm:text-base text-muted-foreground/70 font-light mt-5 sm:mt-6">
+                  <p className="text-xs sm:text-sm md:text-base text-muted-foreground/70 font-light mt-3 sm:mt-4 leading-relaxed">
                     Discover which opportunities are calibrated to your strategy
                   </p>
                 </div>
@@ -288,11 +290,11 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.5, duration: 0.5 }}
-          className="absolute top-6 left-6 bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-2xl px-6 py-5 z-30"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 bg-card/75 sm:bg-card/85 backdrop-blur-md sm:backdrop-blur-lg border border-primary/30 rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-5 z-30"
         >
-          <div className="text-xs sm:text-sm text-muted-foreground/70 font-medium uppercase tracking-wider mb-2">Live Opportunities</div>
-          <div className="text-4xl sm:text-5xl font-bold text-primary mb-1">{filteredCities.length}</div>
-          <div className="text-xs sm:text-sm text-muted-foreground/60 font-light">across {new Set(filteredCities.map(c => c.country)).size} countries</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground/70 font-medium uppercase tracking-wider mb-1 sm:mb-2">Live Opportunities</div>
+          <div className="text-2xl sm:text-4xl md:text-5xl font-bold text-primary mb-0.5 sm:mb-1">{filteredCities.length}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground/60 font-light">across {new Set(filteredCities.map(c => c.country)).size} countries</div>
         </motion.div>
       )}
     </div>

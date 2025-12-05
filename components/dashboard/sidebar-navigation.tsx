@@ -221,13 +221,11 @@ export function SidebarNavigation({
     { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
   ]
 
-  // Filter nav items based on business mode AND assessment completion
+  // Filter nav items based on business mode only
+  // Assessment is always shown - clicking it redirects to results if completed
   const filteredNavItems = allNavItems.filter(item => {
     // Filter by business mode
     if (!isBusinessMode && item.businessOnly) return false
-
-    // Hide Assessment if user completed it
-    if (item.route === 'assessment' && hasCompletedAssessment) return false
 
     return true
   })
@@ -244,18 +242,15 @@ export function SidebarNavigation({
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
   ]
 
-  // Additional menu items for three dots dropdown - Filter out Assessment if completed
+  // Additional menu items for three dots dropdown
+  // Assessment is always shown - clicking it redirects to results if completed
   const moreMenuItems = [
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
     { name: "Assessment", icon: ClipboardCheck, route: "assessment" },
     { name: "Profile", icon: UserCircle2, route: "profile" },
-  ].filter(item => {
-    // Hide Assessment if user completed it
-    if (item.route === 'assessment' && hasCompletedAssessment) return false
-    return true
-  })
+  ]
 
   const handleNavigate = (route: string) => {
     // Direct Next.js navigation for new route structure

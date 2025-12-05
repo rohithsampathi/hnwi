@@ -620,6 +620,198 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     fullName: 'Gift Transfer',
     definition: 'Transfer of property or assets to another person without receiving full compensation in return. Subject to gift tax, but can use lifetime exemption to transfer wealth tax-free.',
     category: 'tax'
+  },
+  'CIO': {
+    term: 'CIO',
+    fullName: 'Chief Investment Officer',
+    definition: 'A senior executive responsible for managing an organization\'s investment portfolio and strategy. For HNWIs, a CIO oversees asset allocation, risk management, and investment decisions across all holdings.',
+    category: 'financial'
+  },
+  'OECD': {
+    term: 'OECD',
+    fullName: 'Organisation for Economic Co-operation and Development',
+    definition: 'International organization of 38 developed countries that develops global standards on taxation, regulatory compliance, and economic policy. Key architect of tax transparency initiatives including CRS and Pillar Two global minimum tax.',
+    category: 'regulatory'
+  },
+  'NHR': {
+    term: 'NHR',
+    fullName: 'Non-Habitual Resident',
+    definition: 'Tax regime (notably in Portugal) offering favorable tax treatment for new residents, typically exempting foreign-source income for 10 years. Part of fiscal residence optimization strategies for HNWIs seeking legal tax reduction.',
+    category: 'tax'
+  },
+  'PORTUGAL NHR': {
+    term: 'Portugal NHR',
+    fullName: 'Portugal Non-Habitual Resident Regime',
+    definition: 'Portugal\'s tax program offering 10 years of favorable treatment for new residents, exempting most foreign-source income and offering reduced rates on Portuguese income. Requires 183+ days/year residence.',
+    category: 'tax'
+  },
+  'PORTABLE INCOME': {
+    term: 'Portable Income',
+    fullName: 'Portable Income',
+    definition: 'Income that can be earned from anywhere in the world, independent of physical location. Includes investment returns, royalties, consulting fees, and digital business income. Critical for fiscal residence optimization strategies.',
+    category: 'financial'
+  },
+  'MARGINAL RATE': {
+    term: 'Marginal Rate',
+    fullName: 'Marginal Tax Rate',
+    definition: 'The tax rate applied to your last dollar of income. In progressive tax systems, this is your highest tax bracket. For high earners, federal + state marginal rates can exceed 50% (37% federal + 13.3% California = 50.3%).',
+    category: 'tax'
+  },
+  'OECD PILLAR TWO': {
+    term: 'OECD Pillar Two',
+    fullName: 'OECD Pillar Two Global Minimum Tax',
+    definition: '15% global minimum corporate tax framework agreed by 140+ countries, effective 2024. Eliminates pure zero-tax havens by ensuring multinationals pay at least 15% tax globally. Shifts optimization from 0% jurisdictions to low-tax (0-15% personal) residency strategies.',
+    category: 'tax'
+  },
+  'PILLAR TWO': {
+    term: 'Pillar Two',
+    fullName: 'OECD Pillar Two Global Minimum Tax',
+    definition: '15% global minimum corporate tax framework agreed by 140+ countries, effective 2024. Eliminates pure zero-tax havens by ensuring multinationals pay at least 15% tax globally. Shifts optimization from 0% jurisdictions to low-tax (0-15% personal) residency strategies.',
+    category: 'tax'
+  },
+  'FISCAL RESIDENCE': {
+    term: 'Fiscal Residence',
+    fullName: 'Fiscal Residence',
+    definition: 'The country where you are considered a tax resident, typically determined by days of physical presence (183+ days/year) or center of vital interests. Your fiscal residence determines which country has primary right to tax your worldwide income.',
+    category: 'tax'
+  },
+  'FISCAL RESIDENCE OPTIMIZATION': {
+    term: 'Fiscal Residence Optimization',
+    fullName: 'Fiscal Residence Optimization',
+    definition: 'Legal strategy of establishing tax residency in a low-tax jurisdiction to reduce tax burden on portable income. Post-OECD Pillar Two, focuses on 0% personal tax countries (Dubai, Monaco) or special regimes (Switzerland forfait, Portugal NHR).',
+    category: 'tax'
+  },
+  'DUBAI': {
+    term: 'Dubai',
+    fullName: 'Dubai (UAE) Tax Residency',
+    definition: 'UAE emirate offering 0% personal income tax with Golden Visa program for investors, entrepreneurs, and professionals. Requires 183+ days/year presence. Popular post-Pillar Two destination for fiscal residence optimization.',
+    category: 'tax'
+  },
+  'SWITZERLAND FORFAIT': {
+    term: 'Switzerland Forfait',
+    fullName: 'Swiss Lump-Sum Taxation (Forfait)',
+    definition: 'Swiss cantonal tax regime allowing foreign nationals to pay tax based on living expenses rather than worldwide income. Minimum tax typically CHF 150K-400K/year depending on canton. Offers predictability and privacy for HNWIs.',
+    category: 'tax'
+  },
+  'FORFAIT': {
+    term: 'Forfait',
+    fullName: 'Swiss Lump-Sum Taxation',
+    definition: 'Swiss tax regime allowing eligible foreigners to pay fixed lump-sum tax based on living expenses instead of actual income. Minimum annual tax CHF 150K-400K depending on canton. Provides tax certainty and confidentiality.',
+    category: 'tax'
+  },
+  'MONACO': {
+    term: 'Monaco',
+    fullName: 'Monaco Tax Residency',
+    definition: 'Sovereign city-state offering 0% personal income tax for residents (excluding French nationals). Requires purchasing or renting property and demonstrating financial self-sufficiency. High cost of living but ultimate privacy and tax efficiency for portable income.',
+    category: 'tax'
+  },
+  'QSBS': {
+    term: 'QSBS',
+    fullName: 'Qualified Small Business Stock',
+    definition: 'IRS Section 1202 provision allowing up to $10M+ in tax-free capital gains when selling stock in a C-corp held for 5+ years. Requires C-corp structure with <$50M assets at issuance and active business operations. LLC structures do not qualify for QSBS benefits despite operational simplicity.',
+    category: 'tax'
+  },
+  'QSBS STRUCTURE': {
+    term: 'QSBS Structure',
+    fullName: 'QSBS Qualifying Structure',
+    definition: 'C-corporation structure that qualifies for Section 1202 tax benefits, enabling $10M+ in tax-free capital gains on exit. Must maintain C-corp status continuously, stay under $50M assets, and meet active business requirements. Alternative LLC structures offer operational flexibility but sacrifice QSBS eligibility.',
+    category: 'tax'
+  },
+  'SECTION 1202': {
+    term: 'Section 1202',
+    fullName: 'IRC Section 1202',
+    definition: 'Tax code provision allowing exclusion of up to 100% of capital gains (minimum $10M or 10x cost basis) from sale of qualified small business stock held 5+ years. Applies only to original-issue C-corp stock in companies with <$50M gross assets when issued.',
+    category: 'tax'
+  },
+  'DELAWARE': {
+    term: 'Delaware',
+    fullName: 'Delaware Corporation',
+    definition: 'Most popular state for incorporating businesses due to specialized Court of Chancery, extensive case law, flexible corporate governance, and strong director protections. Preferred by VCs and required for many institutional investments.',
+    category: 'legal'
+  },
+  'VESTING': {
+    term: 'Vesting',
+    fullName: 'Equity Vesting',
+    definition: 'Schedule determining when founders and employees earn full ownership of granted equity. Typical structure is 4-year vesting with 1-year cliff, protecting the company if early team members leave before contributing meaningful value.',
+    category: 'legal'
+  },
+  'FOUNDER SHARES': {
+    term: 'Founder Shares',
+    fullName: 'Founder Equity',
+    definition: 'Common stock issued to company founders at formation, typically subject to vesting schedules and buy-back provisions. Critical to structure properly for QSBS eligibility and future fundraising.',
+    category: 'legal'
+  },
+  'OPERATING AGREEMENT': {
+    term: 'Operating Agreement',
+    fullName: 'LLC Operating Agreement',
+    definition: 'Legal document governing ownership, management, and operations of an LLC. Defines member rights, profit distributions, decision-making authority, and transfer restrictions. More flexible than corporate bylaws but precludes QSBS benefits.',
+    category: 'legal'
+  },
+  'BYLAWS': {
+    term: 'Bylaws',
+    fullName: 'Corporate Bylaws',
+    definition: 'Internal rules governing a corporation\'s operations, including board structure, voting procedures, officer roles, and shareholder rights. Less flexible than LLC operating agreements but required for C-corp QSBS eligibility.',
+    category: 'legal'
+  },
+  'ANGEL INVESTOR': {
+    term: 'Angel Investor',
+    fullName: 'Angel Investor',
+    definition: 'High-net-worth individual who provides capital to early-stage startups, typically $25K-$500K in exchange for equity or convertible notes. Often the first outside capital after friends and family.',
+    category: 'investment'
+  },
+  'SEED ROUND': {
+    term: 'Seed Round',
+    fullName: 'Seed Funding Round',
+    definition: 'First significant institutional fundraising round, typically $500K-$3M, used to validate product-market fit. Often led by seed funds or angel syndicates with SAFE or convertible note structures.',
+    category: 'investment'
+  },
+  'SAFE': {
+    term: 'SAFE',
+    fullName: 'Simple Agreement for Future Equity',
+    definition: 'Investment instrument created by Y Combinator that converts to equity in future priced rounds. Simpler and faster than convertible notes, with no interest rate or maturity date. Commonly used in seed-stage fundraising.',
+    category: 'investment'
+  },
+  'CONVERTIBLE NOTE': {
+    term: 'Convertible Note',
+    fullName: 'Convertible Note',
+    definition: 'Short-term debt that converts to equity in a future financing round, typically with valuation cap and discount rate (15-25%). Allows early funding without setting company valuation, but accrues interest unlike SAFEs.',
+    category: 'investment'
+  },
+  'VALUATION CAP': {
+    term: 'Valuation Cap',
+    fullName: 'Valuation Cap',
+    definition: 'Maximum company valuation at which a SAFE or convertible note converts to equity, protecting early investors from dilution if the company\'s value increases significantly. Typical caps are $5M-$15M for seed-stage companies.',
+    category: 'investment'
+  },
+  'CARRIED INTEREST': {
+    term: 'Carried Interest',
+    fullName: 'Carried Interest',
+    definition: 'Share of investment profits (typically 20%) paid to fund managers, taxed as long-term capital gains rather than ordinary income. Subject to ongoing political debate and potential tax reform.',
+    category: 'tax'
+  },
+  'PASS-THROUGH': {
+    term: 'Pass-Through',
+    fullName: 'Pass-Through Taxation',
+    definition: 'Tax treatment where business income passes directly to owners and is taxed at individual rates. LLCs and S-corps use pass-through taxation, avoiding corporate-level tax but disqualifying from QSBS benefits.',
+    category: 'tax'
+  },
+  'DOUBLE TAXATION': {
+    term: 'Double Taxation',
+    fullName: 'Corporate Double Taxation',
+    definition: 'C-corp tax burden where profits are taxed at corporate level (21%) and again at individual level when distributed as dividends (up to 20% + 3.8% NIIT). Trade-off for QSBS eligibility and institutional investment access.',
+    category: 'tax'
+  },
+  '83(B) ELECTION': {
+    term: '83(b) Election',
+    fullName: '83(b) Tax Election',
+    definition: 'IRS filing allowing founders to pay tax on restricted stock at grant date (often $0 value) rather than at vesting. Must file within 30 days of grant. Critical for minimizing tax on founder equity and starting QSBS holding period.',
+    category: 'tax'
+  },
+  'RESTRICTED STOCK': {
+    term: 'Restricted Stock',
+    fullName: 'Restricted Stock',
+    definition: 'Company shares granted with vesting schedule or performance conditions. Typically issued to founders at formation with 4-year vesting. Without 83(b) election, taxable as ordinary income when shares vest.',
+    category: 'legal'
   }
 };
 

@@ -19,6 +19,8 @@ import { DigitalTwinSimulation } from '@/components/assessment/DigitalTwinSimula
 import { GapAnalysisSection } from '@/components/assessment/GapAnalysisSection';
 import { TierPricingModal } from '@/components/assessment/TierPricingModal';
 import { getCurrentUser, isAuthenticated } from '@/lib/auth-manager';
+import { secureApi } from '@/lib/secure-api';
+import { CrownLoader } from '@/components/ui/crown-loader';
 
 // Dynamic import for InteractiveWorldMap to avoid SSR issues with Leaflet
 const InteractiveWorldMap = dynamic(
@@ -126,49 +128,32 @@ export default function ResultsPage() {
   }, []);
 
   useEffect(() => {
-    // Prevent duplicate fetches
-    if (hasLoadedRef.current) {
-      return;
-    }
-
-    const maxRetries = 10;
-    let timeoutId: NodeJS.Timeout;
+    if (hasLoadedRef.current) return;
 
     const fetchResults = async () => {
-      // Double-check in case of race condition
-      if (hasLoadedRef.current) {
-        return;
-      }
+      if (hasLoadedRef.current) return;
 
       try {
         const data = await getResults(sessionId);
 
-        // Mark as loaded FIRST to prevent further retries
         hasLoadedRef.current = true;
-
         setResults(data);
         setLoading(false);
-      } catch (err) {
-        if (retryCountRef.current < maxRetries) {
+      } catch (err: any) {
+        // Retry a few times in case results are still being generated
+        if (retryCountRef.current < 3) {
           retryCountRef.current++;
-          timeoutId = setTimeout(fetchResults, 3000);
+          setTimeout(fetchResults, 2000);
         } else {
-          hasLoadedRef.current = true; // Stop retries
-          setLoading(false);
-          alert('Results not found. The assessment may not have completed properly. Please try taking the assessment again.');
-          router.push('/assessment');
+          // After retries, redirect to assessment landing page
+          hasLoadedRef.current = true;
+          router.replace('/assessment');
         }
       }
     };
 
     fetchResults();
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [sessionId, router]); // Removed getResults from dependencies to prevent re-renders
+  }, [sessionId, router, getResults]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/shared-results/${sessionId}`;
@@ -253,26 +238,24 @@ export default function ResultsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your results...</p>
-        </div>
+        <CrownLoader
+          size="lg"
+          text="Loading Your Results"
+          subtext="Analyzing your strategic DNA profile..."
+        />
       </div>
     );
   }
 
+  // If no results after loading, will redirect to assessment (handled in useEffect above)
   if (!results) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Results not found</p>
-          <button
-            onClick={() => router.push('/assessment')}
-            className="px-6 py-3 bg-primary text-primary-foreground font-bold hover:opacity-90 transition-all"
-          >
-            Start New Assessment
-          </button>
-        </div>
+        <CrownLoader
+          size="lg"
+          text="Redirecting"
+          subtext="Taking you to the assessment..."
+        />
       </div>
     );
   }
@@ -289,7 +272,6 @@ export default function ResultsPage() {
 
   // Handle payment success for Operator/Observer tiers
   const handlePaymentSuccess = (tier: 'operator' | 'observer') => {
-    console.log(`[Payment Success] Tier: ${tier}, Session: ${sessionId}`);
 
     // Show success message
     alert(`Payment successful! Welcome to ${tier.charAt(0).toUpperCase() + tier.slice(1)} tier. You now have lifetime access to HNWI Chronicles intelligence.`);

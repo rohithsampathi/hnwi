@@ -28,10 +28,15 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
   const reportedTermsRef = useRef<Set<string>>(new Set());
   const excludeTermsSet = excludeTerms || EMPTY_SET;
 
+  // For scenario text, we want to always show tooltips (ignore shownTerms)
+  // Check if this is being called from a scenario by seeing if excludeTerms is provided
+  const isScenarioText = excludeTermsSet.size === 0;
+
   const { elements, foundTerms, newTermsToAdd } = useMemo(() => {
     const elements: React.ReactNode[] = [];
     const foundTerms = new Set<string>();
     const newTermsToAdd = new Set<string>(); // Terms to add after render
+    const shownInThisText = new Set<string>(); // Track terms already shown tooltip for in THIS text
 
     // Related terms: when we show the key, also mark values as used
     const relatedTerms: Record<string, string[]> = {
@@ -44,14 +49,15 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
 
     // Multi-word terms to check (longest first to avoid partial matches)
     const multiWordTerms = [
-      'securities-based lending', 'political neutrality', 'property rights',
-      'estate tax', 'gift tax', 'capital gains', 'wealth tax',
+      'fiscal residence optimization', 'securities-based lending', 'political neutrality',
+      'property rights', 'estate tax', 'gift tax', 'capital gains', 'wealth tax',
       'break glass', 'hard assets', 'cold storage', 'gold vault',
       '1031 Exchange', 'Basel III', 'captive finance', 'private credit',
       'credit line', 'credit facility', 'DIP financing', 'credit bidding',
       'hurdle rate', 'investment-grade', 'cap rate', 'core asset',
       'value-add', 'distressed debt', 'Roth IRA', 'Traditional IRA',
-      'step-up', 'Chapter 11'
+      'step-up', 'Chapter 11', 'OECD Pillar Two', 'Pillar Two', 'Portugal NHR',
+      'fiscal residence', 'portable income', 'marginal rate', 'Switzerland forfait'
     ];
 
     let remainingText = text;
@@ -72,8 +78,17 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
             const termKey = term.toUpperCase();
             foundTerms.add(termKey);
 
-            // Show tooltip only if: (1) not excluded from scenario, AND (2) not already shown globally
-            if (!excludeTermsSet.has(termKey) && !shownTerms.has(termKey)) {
+            // Skip "trust" when used as a verb (e.g., "I trust their expertise")
+            const isTrustAsVerb = termKey === 'TRUST' && (
+              // Check if preceded by personal pronouns (I, you, we, they)
+              /\b(I|you|we|they|he|she)\s+$/i.test(text.substring(0, position)) ||
+              // Check if followed by possessive pronouns or "that"
+              /^\s*(their|his|her|your|my|our|that|the)\b/i.test(text.substring(position + match[0].length))
+            );
+
+            // Show tooltip only if: (1) not excluded from scenario, (2) not already shown globally (unless this IS the scenario), (3) not already shown in this text, AND (4) not trust used as verb
+            const shouldShow = !isTrustAsVerb && !excludeTermsSet.has(termKey) && (isScenarioText || !shownTerms.has(termKey)) && !shownInThisText.has(termKey);
+            if (shouldShow) {
               elements.push(
                 <React.Fragment key={`term-${position}`}>
                   <TermTooltip term={term} definition={definition}>
@@ -82,9 +97,13 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
                 </React.Fragment>
               );
               newTermsToAdd.add(termKey); // Queue for state update after render
+              shownInThisText.add(termKey); // Mark as shown in this text
               // Also queue related terms
               if (relatedTerms[termKey]) {
-                relatedTerms[termKey].forEach(related => newTermsToAdd.add(related));
+                relatedTerms[termKey].forEach(related => {
+                  newTermsToAdd.add(related);
+                  shownInThisText.add(related);
+                });
               }
             } else {
               // Term already shown or excluded, just render plain text
@@ -116,8 +135,17 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
           const termKey = word.toUpperCase();
           foundTerms.add(termKey);
 
-          // Show tooltip only if: (1) not excluded from scenario, AND (2) not already shown globally
-          if (!excludeTermsSet.has(termKey) && !shownTerms.has(termKey)) {
+          // Skip "trust" when used as a verb (e.g., "I trust their expertise")
+          const isTrustAsVerb = termKey === 'TRUST' && (
+            // Check if preceded by personal pronouns (I, you, we, they)
+            /\b(I|you|we|they|he|she)\s+$/i.test(text.substring(0, position)) ||
+            // Check if followed by possessive pronouns or "that"
+            /^\s*(their|his|her|your|my|our|that|the)\b/i.test(text.substring(position + word.length))
+          );
+
+          // Show tooltip only if: (1) not excluded from scenario, (2) not already shown globally (unless this IS the scenario), (3) not already shown in this text, AND (4) not trust used as verb
+          const shouldShow = !isTrustAsVerb && !excludeTermsSet.has(termKey) && (isScenarioText || !shownTerms.has(termKey)) && !shownInThisText.has(termKey);
+          if (shouldShow) {
             elements.push(
               <React.Fragment key={`word-${position}`}>
                 {leadingPunct}
@@ -128,9 +156,13 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
               </React.Fragment>
             );
             newTermsToAdd.add(termKey); // Queue for state update after render
+            shownInThisText.add(termKey); // Mark as shown in this text
             // Also queue related terms
             if (relatedTerms[termKey]) {
-              relatedTerms[termKey].forEach(related => newTermsToAdd.add(related));
+              relatedTerms[termKey].forEach(related => {
+                newTermsToAdd.add(related);
+                shownInThisText.add(related);
+              });
             }
           } else {
             // Term already shown or excluded, just render plain text
@@ -163,7 +195,7 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
     }
 
     return { elements, foundTerms, newTermsToAdd };
-  }, [text, excludeTermsSet, shownTerms]); // Removed addShownTerm from dependencies
+  }, [text, excludeTermsSet, shownTerms, isScenarioText]); // Added isScenarioText
 
   // Update shown terms AFTER render (not during)
   useEffect(() => {

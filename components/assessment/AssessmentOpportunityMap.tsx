@@ -30,36 +30,39 @@ interface AssessmentOpportunityMapProps {
 // Fetch real Command Centre opportunities (excluding Crown Vault)
 const fetchCommandCentreOpportunities = async (): Promise<Opportunity[]> => {
   try {
-    const response = await fetch('/api/opportunities');
+    // Use Command Centre endpoint with all view and include Crown Vault assets
+    const response = await fetch('/api/command-centre/opportunities?view=all&timeframe=LIVE&include_crown_vault=true');
 
     if (!response.ok) {
-      console.error('[AssessmentMap] Failed to fetch opportunities:', response.status);
       return [];
     }
 
     const data = await response.json();
 
-    // Filter out Crown Vault opportunities and map to our format
-    return data
+    // Handle wrapped response structure from backend
+    // Backend returns: { success: true, view: "all", opportunities: [...], metadata: {...} }
+    const opportunities = data?.opportunities || (Array.isArray(data) ? data : []);
+
+
+    // Filter and map to our format
+    return opportunities
       .filter((opp: any) => {
-        // Exclude Crown Vault opportunities
-        // Crown Vault ops typically don't have location coordinates or are user-specific
-        return opp.asset_details?.location?.coordinates?.latitude &&
-               opp.asset_details?.location?.coordinates?.longitude &&
-               !opp.title?.toLowerCase().includes('crown vault');
+        // Ensure we have valid coordinates
+        return opp.latitude && opp.longitude &&
+               opp.latitude !== 0 && opp.longitude !== 0 &&
+               Math.abs(opp.latitude) <= 90 && Math.abs(opp.longitude) <= 180;
       })
       .map((opp: any) => ({
-        id: opp.opportunity_id || opp._id,
-        latitude: opp.asset_details?.location?.coordinates?.latitude || 0,
-        longitude: opp.asset_details?.location?.coordinates?.longitude || 0,
+        id: opp._id || opp.id || opp.opportunity_id,
+        latitude: opp.latitude || 0,
+        longitude: opp.longitude || 0,
         title: opp.title || 'Untitled Opportunity',
-        category: opp.asset_category || 'Unknown',
-        dealSize: opp.minimum_investment_usd || 0,
-        location: opp.location || 'Unknown Location',
+        category: opp.category || opp.asset_category || 'Unknown',
+        dealSize: parseFloat(opp.value?.replace(/[^0-9.]/g, '') || '0') || opp.minimum_investment_usd || 0,
+        location: opp.location || opp.country || 'Unknown Location',
         removed: false,
       }));
   } catch (error) {
-    console.error('[AssessmentMap] Error fetching opportunities:', error);
     return [];
   }
 };
@@ -81,7 +84,6 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
     async function loadOpportunities() {
       setLoading(true);
       const commandCentreOpps = await fetchCommandCentreOpportunities();
-      console.log('[AssessmentMap] Loaded opportunities:', commandCentreOpps.length);
       setOpportunities(commandCentreOpps);
       setInitialCount(commandCentreOpps.length);
       setLoading(false);

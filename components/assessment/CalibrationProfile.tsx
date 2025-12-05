@@ -59,10 +59,8 @@ export function CalibrationProfile({ userId, sessionId }: CalibrationProfileProp
         }
 
         const data = await response.json();
-        console.log('[CalibrationProfile] Loaded:', data);
         setCalibration(data.calibration);
       } catch (err) {
-        console.error('[CalibrationProfile] Error:', err);
         setError('Failed to load calibration profile.');
       } finally {
         setLoading(false);

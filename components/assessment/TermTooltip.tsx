@@ -70,7 +70,7 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({ term, definition, chil
             setIsHovered(false);
           }
         }}
-        className="inline-flex items-center gap-1 px-2 py-0.5 bg-card border border-primary/40 rounded-md text-primary hover:bg-primary/10 hover:border-primary transition-all cursor-help font-medium text-sm shadow-sm"
+        className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/20 border-2 border-primary/60 rounded-md text-primary hover:bg-primary/30 hover:border-primary transition-all cursor-help font-semibold text-sm"
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -99,14 +99,14 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({ term, definition, chil
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="fixed z-[9999] w-80 sm:w-96 pointer-events-none"
+              className="fixed z-[9999] w-[90vw] sm:w-96 max-w-md pointer-events-none"
               style={{
                 left: '50%',
-                top: '50%',
+                top: '40%',
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              <div className="bg-card/95 backdrop-blur-xl border-2 border-primary/30 rounded-2xl p-5 shadow-2xl ring-1 ring-primary/20">
+              <div className="bg-card/98 backdrop-blur-2xl border-2 border-primary/50 rounded-2xl p-4 sm:p-5 shadow-2xl ring-2 ring-primary/30">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4 pb-4 border-b-2 border-border">
                   <div className="flex-1">

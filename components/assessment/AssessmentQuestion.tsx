@@ -74,46 +74,14 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
 
-  // Fetch Command Centre opportunities using filtered endpoint
-  // This gives us the total count even before assessment starts
+  // Fetch Command Centre opportunities - show ALL opportunities from the start
+  // This gives us the full opportunity set to display on the map
   useEffect(() => {
     async function fetchOpportunities() {
       setLoadingMap(true);
       try {
-        // Try the new filtered endpoint first
-        const response = await fetch('/api/assessment/opportunities/filtered', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tier: 'observer',
-            answers: {},
-            preferences: {},
-            limit: 200
-          })
-        });
-
-        if (!response.ok) {
-          // Fallback to generic opportunities endpoint
-          return fetchGenericOpportunities();
-        }
-
-        const data = await response.json();
-
-        // If total_command_centre_opportunities is 0 or missing, try fallback
-        if (!data?.total_command_centre_opportunities || data.total_command_centre_opportunities === 0) {
-          return fetchGenericOpportunities();
-        }
-
-        processFilteredOpportunityData(data);
-      } catch (error) {
-        // Try fallback on error
-        fetchGenericOpportunities();
-      }
-    }
-
-    async function fetchGenericOpportunities() {
-      try {
-        const response = await fetch('/api/opportunities?include_crown_vault=false&limit=200');
+        // Use assessment preview endpoint for consistent counts
+        const response = await fetch('/api/public/assessment/preview-opportunities');
 
         if (!response.ok) {
           setLoadingMap(false);
@@ -127,32 +95,19 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
       }
     }
 
-    function processFilteredOpportunityData(data: any) {
-      // Extract the total Command Centre count (this is the key field we need!)
-      const totalCommandCentreCount = data?.total_command_centre_opportunities || 0;
-      const opportunities = data?.opportunities || [];
-
-      const { cities: processedCities, totalCount } = processOpportunitiesToCities(opportunities, totalCommandCentreCount);
-
-      // Store all available cities but don't display any yet (start at 0)
-      setAllCities(processedCities);
-      setInitialCount(totalCount);
-      setCities([]); // Start with 0 visible
-      setLoadingMap(false);
-    }
-
     function processGenericOpportunityData(data: any) {
       // Handle both wrapped and direct array responses
-      const opportunities = data?.opportunities || (Array.isArray(data) ? data : []);
+      const opportunities = data?.opportunities || (Array.isArray(data) ? data : data?.data || []);
       // Use total_count from response, or fall back to the length of opportunities returned
       const totalCount = data?.total_count || opportunities.length;
 
       const { cities: processedCities, totalCount: finalCount } = processOpportunitiesToCities(opportunities, totalCount);
 
       // Store all available cities but don't display any yet (start at 0)
+      // Progressive reveal happens through calibration events
       setAllCities(processedCities);
       setInitialCount(finalCount);
-      setCities([]); // Start with 0 visible
+      setCities([]); // Start with 0 visible - progressive reveal via calibration
       setLoadingMap(false);
     }
 
@@ -310,7 +265,6 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
         const newTotal = prevVisible.length + addedCount;
 
         if (duplicateCount > 0 || invalidCoordCount > 0 || crownVaultCount > 0) {
-          console.log(`[Map] Backend sent ${backendOpportunities.length} opportunities | Added ${addedCount} | Filtered: ${duplicateCount} duplicates, ${invalidCoordCount} invalid coords, ${crownVaultCount} Crown Vault | Total visible: ${newTotal}`);
         }
 
         return [...prevVisible, ...newCities];

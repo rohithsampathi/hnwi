@@ -58,8 +58,8 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
     <div
       className={`lg:hidden ${props.useAbsolutePositioning ? 'absolute' : 'fixed'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
         props.useAbsolutePositioning
-          ? 'bottom-4'
-          : isLandscape ? 'bottom-[20px]' : 'bottom-[120px] md:bottom-[60px]'
+          ? 'bottom-[40px]'
+          : isLandscape ? 'bottom-[20px]' : 'bottom-[160px] md:bottom-[100px]'
       }`}
     >
       <div className="flex flex-col items-center gap-1.5">
@@ -179,7 +179,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
 // Desktop variant - ultra minimal
 export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
   return (
-    <div className={`hidden lg:block ${props.useAbsolutePositioning ? 'absolute bottom-4' : 'fixed bottom-8'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto`}>
+    <div className={`hidden lg:block ${props.useAbsolutePositioning ? 'absolute bottom-[40px]' : 'fixed bottom-24'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto`}>
       <div className="flex flex-col items-center gap-3">
         {/* Ultra-lean slider */}
         <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-1 shadow-lg min-w-[300px] flex flex-col items-center">

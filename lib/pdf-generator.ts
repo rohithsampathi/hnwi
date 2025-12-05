@@ -61,22 +61,22 @@ const BRAND_COLORS = {
 
 const TIER_CONFIG = {
   architect: {
-    icon: '👑',
+    icon: 'A',
     label: 'ARCHITECT',
     color: BRAND_COLORS.gold, // Gold (top tier metal)
   },
   operator: {
-    icon: '⚙️',
+    icon: 'O',
     label: 'OPERATOR',
     color: BRAND_COLORS.silver, // Silver (middle tier metal)
   },
   observer: {
-    icon: '👁️',
+    icon: 'OB',
     label: 'OBSERVER',
     color: BRAND_COLORS.bronze, // Bronze (entry tier metal)
   },
   premium: {
-    icon: '💎',
+    icon: 'P',
     label: 'PREMIUM',
     color: BRAND_COLORS.blue, // Blue (special P tier)
   },
@@ -84,17 +84,17 @@ const TIER_CONFIG = {
 
 const OUTCOME_CONFIG = {
   SURVIVED: {
-    icon: '🎯',
+    icon: '+',
     label: 'SURVIVED',
     color: BRAND_COLORS.gold, // Gold (positive outcome)
   },
   DAMAGED: {
-    icon: '⚠️',
+    icon: '~',
     label: 'DAMAGED',
     color: BRAND_COLORS.silver, // Silver (neutral outcome)
   },
   DESTROYED: {
-    icon: '💔',
+    icon: 'X',
     label: 'DESTROYED',
     color: BRAND_COLORS.bronze, // Bronze (challenging outcome)
   },
@@ -143,6 +143,192 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
       }
       return match; // Keep original if not found
     });
+  };
+
+  // Helper to render text with markdown formatting support
+  interface TextSegment {
+    text: string;
+    bold: boolean;
+    italic: boolean;
+  }
+
+  const parseMarkdown = (text: string): TextSegment[] => {
+    const segments: TextSegment[] = [];
+    let currentPos = 0;
+
+    // Parse **bold** and *italic* or _italic_
+    const markdownRegex = /(\*\*|__)(.*?)\1|(\*|_)(.*?)\3/g;
+    let match;
+
+    while ((match = markdownRegex.exec(text)) !== null) {
+      // Add text before match as normal
+      if (match.index > currentPos) {
+        segments.push({
+          text: text.substring(currentPos, match.index),
+          bold: false,
+          italic: false
+        });
+      }
+
+      // Add matched text with formatting
+      if (match[1] === '**' || match[1] === '__') {
+        // Bold
+        segments.push({
+          text: match[2],
+          bold: true,
+          italic: false
+        });
+      } else if (match[3] === '*' || match[3] === '_') {
+        // Italic
+        segments.push({
+          text: match[4],
+          bold: false,
+          italic: true
+        });
+      }
+
+      currentPos = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (currentPos < text.length) {
+      segments.push({
+        text: text.substring(currentPos),
+        bold: false,
+        italic: false
+      });
+    }
+
+    return segments.length > 0 ? segments : [{ text, bold: false, italic: false }];
+  };
+
+  const renderFormattedText = (text: string, x: number, startY: number, maxWidth: number): number => {
+    let currentY = startY;
+    const lineHeight = 6;
+
+    // Ensure consistent font size
+    const currentFontSize = doc.getFontSize();
+
+    // Split text into paragraphs
+    const paragraphs = text.split('\n\n');
+
+    paragraphs.forEach((paragraph, pIdx) => {
+      if (!paragraph.trim()) return;
+
+      // Parse markdown for this paragraph
+      const segments = parseMarkdown(paragraph.trim());
+
+      // Build complete text with proper spacing for word wrapping
+      let fullText = '';
+      segments.forEach(seg => {
+        fullText += seg.text;
+      });
+
+      // Split into lines respecting max width
+      doc.setFont('helvetica', 'normal');
+      const wrappedLines = doc.splitTextToSize(fullText, maxWidth);
+
+      // Now render each line, applying formatting where needed
+      wrappedLines.forEach((line: string) => {
+        // Check if we need a page break
+        if (currentY + lineHeight > pageHeight - 20) {
+          doc.addPage();
+          addWatermark();
+          currentY = 20;
+        }
+
+        // Find which segments this line contains and render with formatting
+        let linePos = 0;
+        const lineText = line.trim();
+        let searchPos = 0;
+
+        // Check if this line is a sub-heading (ends with colon or is all caps with colon)
+        const isSubHeading = /^[A-Z][^:]*:/.test(lineText) || /^[A-Z\s]+:/.test(lineText);
+
+        // Simple approach: render the whole line, checking for bold patterns
+        let renderedLine = lineText;
+
+        // Check if line contains bold markers
+        const boldMatches = lineText.match(/\*\*(.*?)\*\*/g);
+
+        if (boldMatches && boldMatches.length > 0) {
+          // Has formatting - render character by character with proper styling
+          let xPos = x;
+          let inBold = false;
+          let buffer = '';
+
+          for (let i = 0; i < lineText.length; i++) {
+            const char = lineText[i];
+            const next = lineText[i + 1];
+
+            // Check for ** marker
+            if (char === '*' && next === '*') {
+              // Render buffer first
+              if (buffer) {
+                doc.setFont('helvetica', inBold ? 'bold' : 'normal');
+                // Make bold text darker for side headings
+                if (inBold) {
+                  doc.setTextColor(0, 0, 0); // Pure black for bold
+                } else {
+                  doc.setTextColor(60, 60, 60); // Regular text color
+                }
+                doc.text(buffer, xPos, currentY);
+                xPos += doc.getTextWidth(buffer);
+                buffer = '';
+              }
+              // Toggle bold
+              inBold = !inBold;
+              i++; // Skip next *
+              continue;
+            }
+
+            buffer += char;
+          }
+
+          // Render remaining buffer
+          if (buffer) {
+            doc.setFont('helvetica', inBold ? 'bold' : 'normal');
+            // Make bold text darker for side headings
+            if (inBold) {
+              doc.setTextColor(0, 0, 0); // Pure black for bold
+            } else {
+              doc.setTextColor(60, 60, 60); // Regular text color
+            }
+            doc.text(buffer, xPos, currentY);
+          }
+
+          // Reset color
+          doc.setTextColor(60, 60, 60);
+        } else if (isSubHeading) {
+          // This is a sub-heading - render it bold
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(0, 0, 0); // Pure black for sub-headings
+          doc.text(lineText, x, currentY);
+          // Reset
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(60, 60, 60);
+        } else {
+          // No formatting - render normally
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(60, 60, 60);
+          doc.text(lineText, x, currentY);
+        }
+
+        currentY += lineHeight;
+      });
+
+      // Add paragraph spacing
+      if (pIdx < paragraphs.length - 1) {
+        currentY += 4;
+      }
+    });
+
+    // Reset font and color
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(currentFontSize);
+
+    return currentY;
   };
 
   // Helper to add page breaks
@@ -202,7 +388,7 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
   doc.setFontSize(14);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 180, 180);
-  doc.text('STRATEGIC DNA ASSESSMENT', pageWidth / 2, 72, { align: 'center' });
+  doc.text('STRATEGIC DNA ASSESSMENT REPORT', pageWidth / 2, 72, { align: 'center' });
 
   // Decorative line
   doc.setDrawColor(...BRAND_COLORS.gold);
@@ -261,14 +447,14 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
   doc.text(`${outcomeConfig.icon} ${outcomeConfig.label}`, 20, yPos);
   yPos += 18;
 
-  // Simulation Narrative (with citations replaced)
+  // Simulation Narrative (with citations replaced and markdown formatted)
   doc.setFontSize(11);
   doc.setTextColor(60, 60, 60);
-  doc.setFont('helvetica', 'normal');
   const cleanNarrative = replaceCitations(pdfData.simulation_results.narrative);
-  const narrativeLines = doc.splitTextToSize(cleanNarrative, pageWidth - 40);
-  doc.text(narrativeLines, 20, yPos);
-  yPos += narrativeLines.length * 6 + 10;
+
+  // Render with formatting and proper page breaks
+  yPos = renderFormattedText(cleanNarrative, 20, yPos, pageWidth - 40);
+  yPos += 10;
 
   // === GAP ANALYSIS SECTION ===
   checkPageBreak(60);
@@ -284,66 +470,26 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
 
   doc.setFontSize(11);
   doc.setTextColor(60, 60, 60);
-  doc.setFont('helvetica', 'normal');
   const cleanGapAnalysis = replaceCitations(pdfData.gap_analysis);
-  const gapLines = doc.splitTextToSize(cleanGapAnalysis, pageWidth - 40);
-  doc.text(gapLines, 20, yPos);
-  yPos += gapLines.length * 6 + 10;
 
-  // === REFERENCES SECTION ===
-  if (citationMap.size > 0) {
-    checkPageBreak(60);
+  // Render with formatting and proper page breaks
+  yPos = renderFormattedText(cleanGapAnalysis, 20, yPos, pageWidth - 40);
+  yPos += 10;
 
-    // Section Header
-    doc.setFillColor(...BRAND_COLORS.gold);
-    doc.rect(15, yPos - 5, 3, 12, 'F');
-    doc.setTextColor(...BRAND_COLORS.gold);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('REFERENCES', 22, yPos + 5);
-    yPos += 20;
+  // === HNWI WORLD INTELLIGENCE REFERENCE ===
+  checkPageBreak(30);
 
-    doc.setFontSize(10);
-    doc.setTextColor(80, 80, 80);
-    doc.setFont('helvetica', 'normal');
-    doc.text(
-      `This assessment analysis referenced ${citationMap.size} intelligence developments from HNWI World.`,
-      20,
-      yPos
-    );
-    yPos += 15;
+  doc.setFontSize(10);
+  doc.setTextColor(120, 120, 120);
+  doc.setFont('helvetica', 'italic');
 
-    // Sort citations by number
-    const sortedCitations = Array.from(citationMap.entries())
-      .sort((a, b) => a[1].number - b[1].number);
+  const briefCount = citationMap.size > 0 ? citationMap.size : 1900;
+  const briefText = briefCount >= 1900
+    ? `Analysis powered by 1,900+ intelligence developments from HNWI World.`
+    : `Analysis powered by ${briefCount} intelligence developments from HNWI World.`;
 
-    // Display each citation
-    sortedCitations.forEach(([devId, citation]) => {
-      checkPageBreak(12);
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text(`[${citation.number}]`, 20, yPos);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-
-      // Format: [1] Brief Title - Date (if available)
-      let refText = citation.title;
-      if (citation.date) {
-        const date = new Date(citation.date);
-        const dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-        refText += ` - ${dateStr}`;
-      }
-
-      const refLines = doc.splitTextToSize(refText, pageWidth - 50);
-      doc.text(refLines, 35, yPos);
-      yPos += refLines.length * 5 + 3;
-    });
-
-    yPos += 10;
-  }
+  doc.text(briefText, 20, yPos);
+  yPos += 15;
 
   // === YOUR RESPONSES SECTION ===
   if (pdfData.answers && pdfData.answers.length > 0) {
@@ -391,7 +537,7 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
   doc.setFillColor(...BRAND_COLORS.gold);
   doc.rect(0, 0, pageWidth, 3, 'F');
 
-  yPos = 80;
+  yPos = 60;
 
   // Company Logo/Name
   doc.setFontSize(28);
@@ -404,18 +550,18 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
   doc.setFontSize(13);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 180, 180);
-  doc.text('Private Wealth Intelligence Platform', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 40;
+  doc.text('Alternative Asset Intelligence & HNWI Pattern Recognition', pageWidth / 2, yPos, { align: 'center' });
+  yPos += 30;
 
   // Copyright Notice
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(200, 200, 200);
   doc.text(`© ${new Date().getFullYear()} HNWI Chronicles. All Rights Reserved.`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 25;
+  yPos += 20;
 
-  // Legal text
-  doc.setFontSize(10);
+  // Legal text - more compact
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(160, 160, 160);
 
@@ -425,15 +571,21 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
     'This assessment report is confidential and proprietary to HNWI Chronicles.',
     'Unauthorized distribution, reproduction, or disclosure is strictly prohibited.',
     '',
+    'ABOUT THIS ASSESSMENT',
+    '',
+    'This report analyzes your strategic decision-making patterns using real-world',
+    'scenarios from our intelligence database of 1,562+ HNWI developments.',
+    'The assessment identifies opportunities aligned with your strategic DNA.',
+    '',
     'DISCLAIMER',
     '',
-    'The analysis contained herein is based on your responses and is provided for',
-    'informational purposes only. It does not constitute financial, legal, or tax advice.',
+    'This intelligence analysis is provided for informational purposes only.',
+    'It does not constitute financial, legal, or tax advice.',
     'Consult with qualified professionals before making any investment decisions.',
   ];
 
   legalText.forEach(line => {
-    if (line === 'CONFIDENTIALITY NOTICE' || line === 'DISCLAIMER') {
+    if (line === 'CONFIDENTIALITY NOTICE' || line === 'DISCLAIMER' || line === 'ABOUT THIS ASSESSMENT') {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...BRAND_COLORS.gold);
       doc.text(line, pageWidth / 2, yPos, { align: 'center' });
@@ -442,21 +594,9 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
     } else {
       doc.text(line, pageWidth / 2, yPos, { align: 'center' });
     }
-    yPos += 6;
+    yPos += 5;
   });
 
-  yPos += 30;
-
-  // Report Date
-  doc.setFontSize(10);
-  doc.setTextColor(140, 140, 140);
-  const finalPageDate = new Date(pdfData.report_metadata.generated_at);
-  doc.text(
-    `Report Generated: ${finalPageDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
-    pageWidth / 2,
-    yPos,
-    { align: 'center' }
-  );
   yPos += 20;
 
   // Contact & Website
@@ -464,11 +604,29 @@ export const generateAssessmentPDF = (pdfData: PDFData): jsPDF => {
   doc.setTextColor(...BRAND_COLORS.gold);
   doc.setFont('helvetica', 'bold');
   doc.text('app.hnwichronicles.com', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 8;
+  yPos += 7;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(160, 160, 160);
-  doc.text('Bloomberg meets private banking for the ultra-wealthy', pageWidth / 2, yPos, { align: 'center' });
+  doc.text('Real-time intelligence on alternative assets and wealth preservation strategies', pageWidth / 2, yPos, { align: 'center' });
+
+  // Report Generation Date & Time - positioned above footer with better spacing
+  yPos = pageHeight - 30;
+  doc.setFontSize(9);
+  doc.setTextColor(140, 140, 140);
+  doc.setFont('helvetica', 'normal');
+  const finalPageDate = new Date(pdfData.report_metadata.generated_at);
+  const dateString = finalPageDate.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const timeString = finalPageDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  doc.text(`Report Generated: ${dateString} at ${timeString}`, pageWidth / 2, yPos, { align: 'center' });
 
   // Gold accent bar at bottom
   doc.setFillColor(...BRAND_COLORS.gold);

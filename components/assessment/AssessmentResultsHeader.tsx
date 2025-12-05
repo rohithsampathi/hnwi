@@ -43,25 +43,26 @@ export function AssessmentResultsHeader({
   return (
     <div className="sticky top-0 z-30 bg-card border-b border-border shadow-lg">
       <div className="bg-muted/30">
-        <div className="max-w-5xl mx-auto px-8 py-6">
-          <div className="flex items-start justify-between gap-6">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 md:py-6">
+          {/* Mobile: Stack vertically, Desktop: Side by side */}
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 md:gap-6">
             {/* Left: Tier Classification */}
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", duration: 0.6, delay: 0.2 }}
-                className="p-3 bg-card border border-border rounded-lg shadow-sm"
+                className="p-2 md:p-3 bg-card border border-border rounded-lg shadow-sm flex-shrink-0"
               >
-                <Icon className={`w-10 h-10 ${config.iconColor}`} strokeWidth={1.5} />
+                <Icon className={`w-8 h-8 md:w-10 md:h-10 ${config.iconColor}`} strokeWidth={1.5} />
               </motion.div>
 
-              <div>
+              <div className="flex-1 min-w-0">
                 <motion.h1
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="text-3xl font-bold mb-1"
+                  className="text-xl md:text-3xl font-bold mb-1 leading-tight"
                 >
                   {tierTitle}
                 </motion.h1>
@@ -69,27 +70,27 @@ export function AssessmentResultsHeader({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-sm text-muted-foreground"
+                  className="text-xs md:text-sm text-muted-foreground"
                 >
                   {config.tagline}
                 </motion.p>
               </div>
             </div>
 
-            {/* Right: Score */}
+            {/* Right: Score - Mobile: Right aligned in same row on desktop, Below on mobile */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-right"
+              className="flex items-center md:items-end gap-4 md:flex-col md:text-right flex-shrink-0"
             >
-              <div className="flex items-center gap-2 justify-end mb-1">
+              <div className="flex items-center gap-2 md:justify-end">
                 <Shield className="w-4 h-4 text-primary" />
-                <span className="text-xs font-medium text-muted-foreground">Comprehensive Score</span>
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Comprehensive Score</span>
               </div>
-              <div className="text-4xl font-bold">
+              <div className="text-3xl md:text-4xl font-bold leading-none">
                 {comprehensiveScore.toFixed(1)}
-                <span className="text-lg text-muted-foreground">/10</span>
+                <span className="text-base md:text-lg text-muted-foreground">/10</span>
               </div>
             </motion.div>
           </div>
