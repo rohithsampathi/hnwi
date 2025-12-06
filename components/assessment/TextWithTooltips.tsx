@@ -197,27 +197,37 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
     return { elements, foundTerms, newTermsToAdd };
   }, [text, excludeTermsSet, shownTerms, isScenarioText]); // Added isScenarioText
 
+  // Track terms that need to be added - using a string key for stable dependency
+  const newTermsKey = useMemo(() => {
+    return Array.from(newTermsToAdd).sort().join(',');
+  }, [newTermsToAdd]);
+
   // Update shown terms AFTER render (not during)
   useEffect(() => {
-    if (newTermsToAdd.size > 0) {
-      newTermsToAdd.forEach(term => addShownTerm(term));
+    if (newTermsKey) {
+      const terms = newTermsKey.split(',').filter(t => t);
+      terms.forEach(term => addShownTerm(term));
     }
-  }, [newTermsToAdd, addShownTerm]);
+  }, [newTermsKey, addShownTerm]);
+
+  // Track found terms with a stable string key
+  const foundTermsKey = useMemo(() => {
+    return Array.from(foundTerms).sort().join(',');
+  }, [foundTerms]);
 
   // Report found terms only when they actually change
   useEffect(() => {
-    if (onTermsFound && foundTerms.size > 0) {
-      // Convert Sets to strings for comparison
-      const foundTermsStr = Array.from(foundTerms).sort().join(',');
+    if (onTermsFound && foundTermsKey) {
       const reportedTermsStr = Array.from(reportedTermsRef.current).sort().join(',');
 
       // Only call onTermsFound if terms changed
-      if (foundTermsStr !== reportedTermsStr) {
-        onTermsFound(foundTerms);
-        reportedTermsRef.current = new Set(foundTerms);
+      if (foundTermsKey !== reportedTermsStr) {
+        const termsSet = new Set(foundTermsKey.split(',').filter(t => t));
+        onTermsFound(termsSet);
+        reportedTermsRef.current = termsSet;
       }
     }
-  }, [foundTerms, onTermsFound]);
+  }, [foundTermsKey, onTermsFound]);
 
   return (
     <span className={className}>

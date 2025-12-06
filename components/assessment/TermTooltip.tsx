@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect, useId, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info } from 'lucide-react';
@@ -20,6 +20,9 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({ term, definition, chil
   const tooltipId = useId();
   const { openTooltipId, setOpenTooltipId } = useTooltip();
   const [isHovered, setIsHovered] = useState(false);
+  const termRef = useRef<HTMLSpanElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
 
   // This tooltip is open if it's the currently open tooltip in global state
   const isOpen = openTooltipId === tooltipId;
@@ -44,10 +47,92 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({ term, definition, chil
     investment: 'Investment',
   };
 
+  // Calculate tooltip position to avoid overflow
+  const calculateTooltipPosition = useCallback(() => {
+    if (!termRef.current || !isOpen) return;
+
+    const termRect = termRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Tooltip dimensions (approximate)
+    const tooltipWidth = Math.min(viewportWidth * 0.9, 384); // 90vw or max-w-md
+    const tooltipHeight = 250; // Approximate height
+
+    let left = termRect.left + (termRect.width / 2) - (tooltipWidth / 2);
+    let top = termRect.bottom + 10; // 10px below the term
+
+    // Prevent overflow on the right
+    if (left + tooltipWidth > viewportWidth - 10) {
+      left = viewportWidth - tooltipWidth - 10;
+    }
+
+    // Prevent overflow on the left
+    if (left < 10) {
+      left = 10;
+    }
+
+    // If tooltip would overflow bottom, position it above the term
+    if (top + tooltipHeight > viewportHeight - 10) {
+      top = termRect.top - tooltipHeight - 10;
+    }
+
+    // If still overflowing top, center it vertically
+    if (top < 10) {
+      top = (viewportHeight - tooltipHeight) / 2;
+    }
+
+    setTooltipPosition({ top, left });
+  }, [isOpen]);
+
+  // Update position when tooltip opens or window resizes
+  useEffect(() => {
+    if (isOpen) {
+      calculateTooltipPosition();
+
+      const handleResize = () => calculateTooltipPosition();
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('scroll', handleResize);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('scroll', handleResize);
+      };
+    }
+  }, [isOpen, calculateTooltipPosition]);
+
+  // Handle click outside to close tooltip
+  useEffect(() => {
+    if (isOpen && isSticky) {
+      const handleClickOutside = (event: MouseEvent) => {
+        // Check if click is outside both the term and the tooltip
+        if (
+          termRef.current &&
+          !termRef.current.contains(event.target as Node) &&
+          tooltipRef.current &&
+          !tooltipRef.current.contains(event.target as Node)
+        ) {
+          setOpenTooltipId(null);
+        }
+      };
+
+      // Add slight delay to avoid immediate close on the same click that opened it
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
+
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [isOpen, isSticky, setOpenTooltipId]);
+
   return (
     <span className="relative inline-block group">
       {/* Clickable term - using span instead of button to avoid nesting issues */}
       <span
+        ref={termRef}
         onClick={(e) => {
           e.stopPropagation();
           // Toggle: if this tooltip is open, close it; otherwise open it
@@ -95,15 +180,15 @@ export const TermTooltip: React.FC<TermTooltipProps> = ({ term, definition, chil
         <AnimatePresence>
           {isOpen && (
             <motion.div
+              ref={tooltipRef}
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="fixed z-[9999] w-[90vw] sm:w-96 max-w-md pointer-events-none"
+              className="fixed z-[9999] w-[90vw] sm:w-96 max-w-md pointer-events-auto"
               style={{
-                left: '50%',
-                top: '40%',
-                transform: 'translate(-50%, -50%)',
+                left: `${tooltipPosition.left}px`,
+                top: `${tooltipPosition.top}px`,
               }}
             >
               <div className="bg-card/98 backdrop-blur-2xl border-2 border-primary/50 rounded-2xl p-4 sm:p-5 shadow-2xl ring-2 ring-primary/30">

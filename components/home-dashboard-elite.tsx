@@ -225,8 +225,8 @@ export function HomeDashboardElite({
 
         // Check if user has any completed assessments
         const hasCompleted = response?.assessments?.length > 0 ||
-                           response?.length > 0 ||
-                           false
+          response?.length > 0 ||
+          false
 
         setHasCompletedAssessment(hasCompleted)
       } catch (error) {
@@ -316,7 +316,11 @@ export function HomeDashboardElite({
         const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe
         const viewParam = (isPersonalMode && hasCompletedAssessment) ? 'personalized' : 'all'
 
-        let apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=true`
+        // FIX: Only request Crown Vault assets in personalized mode to prevent backend 500 errors
+        // sending include_crown_vault=true with view=all causes internal server error
+        const includeCrownVault = viewParam === 'personalized'
+
+        let apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${includeCrownVault}`
 
         // Call API with requireAuth=true, bustCache=false (enable caching)
         // Note: Service Worker handles caching automatically via HTTP headers
@@ -386,22 +390,22 @@ export function HomeDashboardElite({
 
               // Check if this is actually real estate (residential/building) despite being marked as automotive/vehicle
               if (categoryLower.includes('automotive') ||
-                  categoryLower.includes('vehicle') ||
-                  categoryLower === 'luxury vehicles' ||
-                  categoryLower === 'luxury vehicle') {
+                categoryLower.includes('vehicle') ||
+                categoryLower === 'luxury vehicles' ||
+                categoryLower === 'luxury vehicle') {
                 const isRealEstate = combined.includes('residential') ||
-                                    combined.includes('building') ||
-                                    combined.includes('architecture') ||
-                                    combined.includes('apartment') ||
-                                    combined.includes('condo') ||
-                                    combined.includes('real estate') ||
-                                    combined.includes('property investment') ||
-                                    combined.includes('branded residence') ||
-                                    (titleLower.includes('investment') && (
-                                      combined.includes('miami') ||
-                                      combined.includes('tower') ||
-                                      combined.includes('residence')
-                                    ))
+                  combined.includes('building') ||
+                  combined.includes('architecture') ||
+                  combined.includes('apartment') ||
+                  combined.includes('condo') ||
+                  combined.includes('real estate') ||
+                  combined.includes('property investment') ||
+                  combined.includes('branded residence') ||
+                  (titleLower.includes('investment') && (
+                    combined.includes('miami') ||
+                    combined.includes('tower') ||
+                    combined.includes('residence')
+                  ))
 
                 if (isRealEstate) {
                   correctedCategory = 'Real Estate'
@@ -448,9 +452,9 @@ export function HomeDashboardElite({
                 last_price_update: opp.last_price_update,
                 // Katherine AI analysis (check for non-empty strings)
                 katherine_analysis: (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
-                                   (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
-                                   (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment && opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
-                                   null
+                  (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
+                  (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment && opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
+                  null
               }
             })
             .filter((city): city is City => city !== null) // Remove null entries
@@ -522,21 +526,21 @@ export function HomeDashboardElite({
     // Crown Assets: ONLY from actual Crown Vault source (user's personal assets)
     // Must explicitly be from "Crown Vault" source, not just mention "asset" in category
     const isCrownAsset = city.source?.toLowerCase().includes('crown vault') ||
-                         city.source?.toLowerCase() === 'crown vault'
+      city.source?.toLowerCase() === 'crown vault'
 
     // Privé Opportunities: Victor-scored opportunities from Privé Exchange
     const isPriveOpportunity = city.victor_score !== undefined ||
-                               city.source?.toLowerCase().includes('privé') ||
-                               city.source?.toLowerCase().includes('prive')
+      city.source?.toLowerCase().includes('privé') ||
+      city.source?.toLowerCase().includes('prive')
 
     // HNWI Pattern Opportunities: MOEv4 market intelligence, Live HNWI Data, and other patterns
     // This is the default category for everything that's not Crown Vault or Privé
     const isHNWIPattern = city.source === 'MOEv4' ||
-                          city.source?.toLowerCase().includes('live hnwi data') ||
-                          city.source?.toLowerCase().includes('pattern') ||
-                          city.category?.toLowerCase().includes('intelligence') ||
-                          city.category?.toLowerCase().includes('trend') ||
-                          (!isCrownAsset && !isPriveOpportunity) // Default category
+      city.source?.toLowerCase().includes('live hnwi data') ||
+      city.source?.toLowerCase().includes('pattern') ||
+      city.category?.toLowerCase().includes('intelligence') ||
+      city.category?.toLowerCase().includes('trend') ||
+      (!isCrownAsset && !isPriveOpportunity) // Default category
 
     // Show city if its category toggle is enabled
     if (isCrownAsset && showCrownAssets) return true
@@ -549,11 +553,10 @@ export function HomeDashboardElite({
   return (
     <>
       <div
-        className={`fixed inset-0 overflow-hidden transition-all duration-500 ${
-          isPersonalMode && hasCompletedAssessment
+        className={`fixed inset-0 overflow-hidden transition-all duration-500 ${isPersonalMode && hasCompletedAssessment
             ? 'personal-mode-active'
             : ''
-        }`}
+          }`}
         style={{ marginTop: '40px' }}
       >
         {/* Personal Mode Visual Effect - Animated Border */}
@@ -624,29 +627,28 @@ export function HomeDashboardElite({
               {/* Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute left-0 top-full mt-1 bg-background border border-border rounded shadow-lg z-[501] min-w-[120px]">
-                    {[
-                      { value: 'live', label: 'Live Data', bold: true },
-                      { value: '7D', label: '7D' },
-                      { value: '14D', label: '14D' },
-                      { value: '21D', label: '21D' },
-                      { value: '1M', label: '1M' },
-                      { value: '3M', label: '3M' },
-                      { value: '6M', label: '6M' }
-                    ].map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setTimeframe(option.value)
-                          setIsDropdownOpen(false)
-                          // Data refresh happens automatically via useEffect dependency on timeframe
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${
-                          timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'
+                  {[
+                    { value: 'live', label: 'Live Data', bold: true },
+                    { value: '7D', label: '7D' },
+                    { value: '14D', label: '14D' },
+                    { value: '21D', label: '21D' },
+                    { value: '1M', label: '1M' },
+                    { value: '3M', label: '3M' },
+                    { value: '6M', label: '6M' }
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setTimeframe(option.value)
+                        setIsDropdownOpen(false)
+                        // Data refresh happens automatically via useEffect dependency on timeframe
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-primary hover:text-white transition-colors ${timeframe === option.value ? 'bg-primary/10 text-primary' : 'text-foreground'
                         } ${option.bold ? 'font-bold' : ''}`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -668,55 +670,54 @@ export function HomeDashboardElite({
                 {/* Dropdown Menu */}
                 {isCategoryDropdownOpen && (
                   <div className="absolute left-0 top-full mt-1 bg-background/95 backdrop-blur-sm border border-border rounded shadow-lg z-[501] min-w-[200px] max-h-[400px] overflow-y-auto">
-                      {/* Select All / Deselect All */}
-                      <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
-                        <button
-                          onClick={() => {
-                            if (selectedCategories.length === availableCategories.length) {
-                              setSelectedCategories([])
-                            } else {
-                              setSelectedCategories([...availableCategories])
-                            }
-                          }}
-                          className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                        >
-                          {selectedCategories.length === availableCategories.length ? 'Deselect All' : 'Select All'}
-                        </button>
-                      </div>
+                    {/* Select All / Deselect All */}
+                    <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+                      <button
+                        onClick={() => {
+                          if (selectedCategories.length === availableCategories.length) {
+                            setSelectedCategories([])
+                          } else {
+                            setSelectedCategories([...availableCategories])
+                          }
+                        }}
+                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {selectedCategories.length === availableCategories.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
 
-                      {/* Category Options */}
-                      {availableCategories.map(category => {
-                        const isSelected = selectedCategories.includes(category)
-                        return (
-                          <label
-                            key={category}
-                            className={`flex items-center gap-2.5 px-3 py-2.5 text-xs cursor-pointer transition-colors border-b border-border/30 last:border-b-0 ${
-                              isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+                    {/* Category Options */}
+                    {availableCategories.map(category => {
+                      const isSelected = selectedCategories.includes(category)
+                      return (
+                        <label
+                          key={category}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 text-xs cursor-pointer transition-colors border-b border-border/30 last:border-b-0 ${isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
                             }`}
-                          >
-                            <div className="relative flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedCategories([...selectedCategories, category])
-                                  } else {
-                                    setSelectedCategories(selectedCategories.filter(c => c !== category))
-                                  }
-                                }}
-                                className="w-4 h-4 rounded border-2 border-border/50 checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0 cursor-pointer accent-primary"
-                                style={{
-                                  colorScheme: theme === 'dark' ? 'dark' : 'light'
-                                }}
-                              />
-                            </div>
-                            <span className={`flex-1 font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
-                              {category}
-                            </span>
-                          </label>
-                        )
-                      })}
+                        >
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedCategories([...selectedCategories, category])
+                                } else {
+                                  setSelectedCategories(selectedCategories.filter(c => c !== category))
+                                }
+                              }}
+                              className="w-4 h-4 rounded border-2 border-border/50 checked:bg-primary checked:border-primary focus:ring-2 focus:ring-primary/20 focus:ring-offset-0 cursor-pointer accent-primary"
+                              style={{
+                                colorScheme: theme === 'dark' ? 'dark' : 'light'
+                              }}
+                            />
+                          </div>
+                          <span className={`flex-1 font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {category}
+                          </span>
+                        </label>
+                      )
+                    })}
                   </div>
                 )}
               </div>
