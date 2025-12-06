@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Strategic Wealth DNA Assessment | Exclusive HNWI Intelligence",
-    description: "Join 675K HNWIs discovering their strategic archetype. Calibrated against 1,900+ intelligence briefs. See how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts. Free for verified members.",
+    description: "Join the 0.1% HNWIs discovering their strategic archetype. Calibrated against 1,900+ intelligence briefs. See how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts. Free for verified members.",
     type: "website",
     locale: "en_US",
     url: "https://app.hnwichronicles.com/assessment",
