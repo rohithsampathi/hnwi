@@ -38,9 +38,26 @@ export const useAssessmentSSE = (sessionId: string | null) => {
   const shouldReconnectRef = useRef<boolean>(true);
   const retryCountRef = useRef<number>(0);
   const maxRetries = 3; // Limit retries to prevent infinite loops
+  const isMobileRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!sessionId) return;
+
+    // Detect if mobile browser (less reliable SSE support)
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || '';
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+      return isMobile || isSafari; // Safari also has SSE issues
+    };
+
+    isMobileRef.current = checkMobile();
+
+    // Skip SSE entirely on mobile browsers - let polling handle it
+    if (isMobileRef.current) {
+      console.log('Mobile browser detected - SSE disabled, using polling instead');
+      return;
+    }
 
     // Reset retry count when sessionId changes
     retryCountRef.current = 0;
@@ -48,7 +65,7 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     // Construct SSE URL
     const sseUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/assessment/stream/${sessionId}`;
 
-    // Create EventSource
+    // Create EventSource only for desktop
     const eventSource = new EventSource(sseUrl, { withCredentials: true });
     eventSourceRef.current = eventSource;
 

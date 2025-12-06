@@ -24,6 +24,7 @@ export default function AuthenticatedAssessmentPage() {
   const [user, setUser] = useState<any>(null);
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
+  const [hasCheckedExisting, setHasCheckedExisting] = useState(false);
 
   // Clear vault session storage when user navigates away or closes tab
   useEffect(() => {
@@ -98,8 +99,11 @@ export default function AuthenticatedAssessmentPage() {
   // Check Command Centre for existing assessment - single source of truth
   useEffect(() => {
     if (!user?.id && !user?.user_id) return;
+    if (hasCheckedExisting) return; // Prevent double checking
 
     const checkCommandCentre = async () => {
+      setHasCheckedExisting(true);
+
       try {
         const response = await fetch('/api/command-centre/opportunities?view=personalized&include_crown_vault=false');
 
@@ -108,6 +112,8 @@ export default function AuthenticatedAssessmentPage() {
 
           // If Command Centre has session_id and tier, user completed assessment
           if (data.session_id && data.tier) {
+            // Clear vault session storage to prevent animation on redirect
+            sessionStorage.removeItem('assessmentVaultShownThisSession');
             router.replace(`/assessment/results/${data.session_id}`);
           }
         }
@@ -117,7 +123,7 @@ export default function AuthenticatedAssessmentPage() {
     };
 
     checkCommandCentre();
-  }, [user, router]);
+  }, [user, router, hasCheckedExisting]);
 
   // Handle landing -> map intro
   const handleShowMapIntro = () => {

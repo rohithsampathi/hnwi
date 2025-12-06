@@ -91,6 +91,16 @@ const pwaConfig = withPWA({
       },
     },
     {
+      // SSE/Stream endpoints - NEVER cache or intercept (fixes mobile assessment)
+      urlPattern: /\/api\/assessment\/stream/,
+      handler: 'NetworkOnly',
+      options: {
+        fetchOptions: {
+          credentials: 'include',
+        },
+      },
+    },
+    {
       // All API endpoints - StaleWhileRevalidate with error filtering
       // CRITICAL: Serves cached data immediately, updates in background
       // CRITICAL: Don't cache errors (401/403/500) - fixes reauth loop bug

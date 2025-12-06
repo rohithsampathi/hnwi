@@ -19,7 +19,27 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const [showVaultEntry, setShowVaultEntry] = useState(false);
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
-  const vaultInitRef = useRef(false);
+  // Initialize vault state based on session storage immediately
+  const getInitialVaultState = () => {
+    if (typeof window === 'undefined') return { showVault: false, unlocked: false };
+
+    const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
+    if (vaultShownThisSession) {
+      return { showVault: false, unlocked: true };
+    } else {
+      sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
+      return { showVault: true, unlocked: false };
+    }
+  };
+
+  // Use lazy initial state to prevent double execution
+  const [vaultState] = useState(() => getInitialVaultState());
+
+  // Set the vault states from initial calculation
+  useEffect(() => {
+    setShowVaultEntry(vaultState.showVault);
+    setVaultUnlocked(vaultState.unlocked);
+  }, []); // Only on mount, vault state is determined at initialization
 
   // Fetch dynamic brief count
   useEffect(() => {
@@ -49,26 +69,6 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
 
     fetchBriefCount();
   }, []);
-
-  // Show vault entry animation only on initial assessment landing
-  useEffect(() => {
-    // Prevent double execution using ref
-    if (vaultInitRef.current) return;
-    vaultInitRef.current = true;
-
-    // Check if we've already shown vault for this assessment session
-    const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
-
-    if (!vaultShownThisSession) {
-      // First time in this assessment session - show vault
-      // Set the flag immediately to prevent double execution
-      sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
-      setShowVaultEntry(true);
-    } else {
-      // Already shown in this session - skip directly to content
-      setVaultUnlocked(true);
-    }
-  }, []); // Empty dependency array - run only once on mount
 
   // Fetch opportunities for vault entry background map
   useEffect(() => {

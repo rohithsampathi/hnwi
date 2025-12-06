@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { SimulationResult } from '@/lib/hooks/useAssessmentSSE';
 
@@ -28,12 +28,16 @@ export function DigitalTwinWaiting({
   sessionId,
   onComplete,
   testCompletionTime,
-  simulationResult,
-  pdfUrl,
-  resultData
+  simulationResult: sseSimulationResult, // Renamed to avoid conflict
+  pdfUrl: ssePdfUrl, // Renamed to avoid conflict
+  resultData: sseResultData // Renamed to avoid conflict
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [briefCount, setBriefCount] = useState<number>(1900); // Default fallback
+  const [pollCount, setPollCount] = useState(0);
+  const [isPolling, setIsPolling] = useState(false);
+  const [hasCompleted, setHasCompleted] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'assessment', label: 'Assessment completed', estimatedSeconds: 0, status: 'complete' },
     { id: 'briefs', label: 'Retrieving 20+ HNWI World briefs', estimatedSeconds: 30, status: 'processing' },
@@ -90,41 +94,104 @@ export function DigitalTwinWaiting({
     setSteps(updatedSteps);
   }, [elapsedTime]);
 
-  // Listen for simulation result
+  // PRIMARY MECHANISM: Start polling immediately (works on all browsers including mobile)
   useEffect(() => {
-    if (simulationResult) {
-      // Mark simulation step as complete
-      setSteps(prev => prev.map(step =>
-        step.id === 'simulation' ? { ...step, status: 'complete' } : step
-      ));
-    }
-  }, [simulationResult]);
+    if (!sessionId || hasCompleted || isPolling) return;
 
-  // Listen for assessment completion (with resultData)
+    setIsPolling(true);
+    let localPollCount = 0;
+    const maxPolls = 60; // 60 polls @ 3 seconds = 3 minutes max
+
+    const pollForResults = async () => {
+      try {
+        const response = await fetch(`/api/assessment/results/${sessionId}`);
+
+        if (response.ok) {
+          const data = await response.json();
+
+          // Check if results are ready (has tier and simulation)
+          if (data && data.tier) {
+            // Clear polling interval
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+
+            // Mark all steps as complete
+            setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
+            setHasCompleted(true);
+
+            // Create simulation result from the data
+            const simulationResult = {
+              outcome: data.simulation?.outcome || 'DAMAGED',
+              tier: data.tier,
+              cognitive_mri: data.simulation?.cognitive_mri || '',
+              confidence: data.confidence || 0
+            };
+
+            // Wait briefly for UI update then redirect
+            setTimeout(() => {
+              onComplete(simulationResult, '');
+            }, 1000);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+
+      // Increment poll count
+      localPollCount++;
+      setPollCount(localPollCount);
+
+      // Stop after max attempts
+      if (localPollCount >= maxPolls) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+        }
+        // Force completion after timeout
+        setHasCompleted(true);
+        onComplete({ outcome: 'DAMAGED', tier: 'unknown', cognitive_mri: '', confidence: 0 }, '');
+      }
+    };
+
+    // Start polling immediately
+    pollForResults();
+
+    // Then poll every 3 seconds
+    pollingIntervalRef.current = setInterval(pollForResults, 3000);
+
+    // Cleanup on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [sessionId, hasCompleted, isPolling, onComplete]);
+
+  // OPTIONAL: Listen for SSE events if they work (desktop fallback)
   useEffect(() => {
-    // CRITICAL: Wait for resultData (fetched from assessment_completed event)
-    // This contains pdf_data for client-side PDF generation
-    if (resultData && simulationResult) {
+    // If we already completed via polling, ignore SSE
+    if (hasCompleted) return;
+
+    // If SSE provides data, use it (but don't rely on it)
+    if (sseSimulationResult && sseResultData) {
+      // Clear polling if still running
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
 
       // Mark all steps as complete
       setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
+      setHasCompleted(true);
 
-      // Wait 1 second then redirect
+      // Use SSE data for completion
       setTimeout(() => {
-        // Pass empty string for pdfUrl since we'll generate client-side from resultData
-        onComplete(simulationResult, '');
+        onComplete(sseSimulationResult, '');
       }, 1000);
     }
-    // Fallback: If we get pdfUrl but no resultData (legacy behavior)
-    else if (pdfUrl && simulationResult && !resultData) {
-
-      setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
-
-      setTimeout(() => {
-        onComplete(simulationResult, pdfUrl);
-      }, 1000);
-    }
-  }, [resultData, pdfUrl, simulationResult, onComplete]);
+  }, [sseSimulationResult, sseResultData, hasCompleted, onComplete]);
 
   const totalEstimatedSeconds = steps.reduce((sum, step) => sum + step.estimatedSeconds, 0);
   const progressPercentage = Math.min((elapsedTime / totalEstimatedSeconds) * 100, 95); // Cap at 95% until PDF ready
@@ -252,8 +319,8 @@ export function DigitalTwinWaiting({
           </div>
         </div>
 
-        {/* Simulation Result Preview */}
-        {simulationResult && (
+        {/* Simulation Result Preview - show if polling detects completion */}
+        {hasCompleted && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -261,7 +328,7 @@ export function DigitalTwinWaiting({
           >
             <div className="text-center">
               <h3 className="text-xl font-bold text-foreground mb-1">
-                Simulation Complete: {simulationResult.outcome}
+                Simulation Complete
               </h3>
               <p className="text-sm text-muted-foreground">
                 Finalizing your personalized report...
