@@ -19,7 +19,6 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const [showVaultEntry, setShowVaultEntry] = useState(false);
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [hasShownVault, setHasShownVault] = useState(false);
 
   // Fetch dynamic brief count
   useEffect(() => {
@@ -50,17 +49,15 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
     fetchBriefCount();
   }, []);
 
-  // Check if vault entry should be shown (first visit)
+  // Show vault entry animation every time the page loads
   useEffect(() => {
-    const hasSeenVault = sessionStorage.getItem('assessmentVaultShown');
-    if (!hasSeenVault && !hasShownVault) {
+    // Use a timeout to prevent React StrictMode double-execution issues
+    const timer = setTimeout(() => {
       setShowVaultEntry(true);
-      setHasShownVault(true);
-      sessionStorage.setItem('assessmentVaultShown', 'true');
-    } else {
-      setVaultUnlocked(true); // Skip vault animation if already shown
-    }
-  }, [hasShownVault]);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []); // Empty dependency array - run only once on mount
 
   // Fetch opportunities for vault entry background map
   useEffect(() => {
