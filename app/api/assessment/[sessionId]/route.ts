@@ -17,7 +17,6 @@ export async function GET(
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment Session] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     const response = await fetch(`${API_BASE_URL}/api/assessment/${sessionId}`, {
       method: 'GET',
@@ -36,7 +35,6 @@ export async function GET(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[API] Assessment session error:', error);
     return NextResponse.json(
       { error: 'Failed to get session status' },
       { status: 500 }

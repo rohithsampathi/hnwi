@@ -10,6 +10,7 @@ import { AuthPopupProvider } from "@/contexts/auth-popup-context"
 import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
 import { AuthSyncProvider } from "@/components/auth-sync-provider"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
+import { ServiceWorkerUpdateManager } from "@/components/sw-update-manager"
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -151,6 +152,7 @@ export default function RootLayout({
                     <StepUpMfaProvider>
                       {children}
                       <PWAInstallPrompt />
+                      <ServiceWorkerUpdateManager />
                       <div id="toast-container" className="fixed top-0 right-0 z-50">
                         {/* Toast container for notifications */}
                       </div>

@@ -23,7 +23,6 @@ export async function GET(
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment Result] Cookies being forwarded:', allCookies.map(c => c.name).join(', '));
 
     // Proxy to backend with authentication cookies
     const response = await fetch(`${API_BASE_URL}/api/assessment/result/${sessionId}`, {
@@ -47,7 +46,6 @@ export async function GET(
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('[Assessment Result] Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch assessment result' },
       { status: 500 }

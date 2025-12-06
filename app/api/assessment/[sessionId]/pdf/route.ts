@@ -19,7 +19,6 @@ export async function GET(
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment PDF] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     const response = await fetch(
       `${API_BASE_URL}/api/assessment/${sessionId}/pdf?dynamic=${dynamic}`,
@@ -51,7 +50,6 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('[API] Assessment PDF error:', error);
     return NextResponse.json(
       { error: 'Failed to download PDF' },
       { status: 500 }

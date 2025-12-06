@@ -18,7 +18,6 @@ export async function POST(
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment Link User] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     const response = await fetch(
       `${API_BASE_URL}/api/assessment/${sessionId}/link-user`,
@@ -41,7 +40,6 @@ export async function POST(
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[API] Assessment link-user error:', error);
     return NextResponse.json(
       { error: 'Failed to link session to user' },
       { status: 500 }

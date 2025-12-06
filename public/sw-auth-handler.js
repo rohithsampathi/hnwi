@@ -3,6 +3,9 @@
 // This handles authentication-related messages from the main thread
 // Add this to your service worker (sw.js) after workbox initialization
 
+// Service Worker Version - MUST MATCH lib/sw-version.ts
+const SW_VERSION = '2.2.0';
+
 // Listen for auth-related messages from main thread
 self.addEventListener('message', (event) => {
   if (!event.data || !event.data.type) return
@@ -10,6 +13,11 @@ self.addEventListener('message', (event) => {
   const { type, timestamp, clearCaches } = event.data
 
   switch (type) {
+    case 'GET_VERSION':
+      // Return current SW version
+      event.ports[0]?.postMessage({ version: SW_VERSION });
+      break
+
     case 'AUTH_LOGOUT':
       // User logged out - immediately clear all auth-related caches
       handleAuthLogout(timestamp)
@@ -18,7 +26,6 @@ self.addEventListener('message', (event) => {
     case 'AUTH_LOGIN':
       // User logged in - CRITICAL: Clear stale caches to prevent re-auth issues
       // This prevents cached API responses from previous sessions causing auth failures
-      console.log('[SW] User authenticated at', timestamp)
       if (clearCaches) {
         handleAuthLogin(timestamp)
       }
@@ -38,8 +45,6 @@ self.addEventListener('message', (event) => {
 // Handle logout by clearing all auth-sensitive caches
 async function handleAuthLogout(timestamp) {
   try {
-    console.log('[SW] Handling logout, clearing caches...', timestamp)
-
     const cacheNames = await caches.keys()
 
     // Filter and delete caches that may contain user-specific data
@@ -55,13 +60,8 @@ async function handleAuthLogout(timestamp) {
 
     // Delete all identified caches
     await Promise.all(
-      cachesToDelete.map(cacheName => {
-        console.log('[SW] Deleting cache:', cacheName)
-        return caches.delete(cacheName)
-      })
+      cachesToDelete.map(cacheName => caches.delete(cacheName))
     )
-
-    console.log('[SW] Cache clearing complete. Deleted', cachesToDelete.length, 'caches')
 
     // Notify all clients that caches have been cleared
     const clients = await self.clients.matchAll()
@@ -73,7 +73,7 @@ async function handleAuthLogout(timestamp) {
       })
     })
   } catch (error) {
-    console.error('[SW] Error clearing caches on logout:', error)
+    // Silent fail
   }
 }
 
@@ -82,8 +82,6 @@ async function handleAuthLogout(timestamp) {
 // where the user previously logged in with different/expired credentials
 async function handleAuthLogin(timestamp) {
   try {
-    console.log('[SW] Handling login, clearing stale caches...', timestamp)
-
     const cacheNames = await caches.keys()
 
     // Clear all API-related caches to ensure fresh data for new session
@@ -100,13 +98,8 @@ async function handleAuthLogin(timestamp) {
 
     // Delete all identified caches
     await Promise.all(
-      cachesToDelete.map(cacheName => {
-        console.log('[SW] Clearing stale cache on login:', cacheName)
-        return caches.delete(cacheName)
-      })
+      cachesToDelete.map(cacheName => caches.delete(cacheName))
     )
-
-    console.log('[SW] Login cache clearing complete. Cleared', cachesToDelete.length, 'caches')
 
     // Notify all clients that caches have been cleared for fresh session
     const clients = await self.clients.matchAll()
@@ -118,7 +111,7 @@ async function handleAuthLogin(timestamp) {
       })
     })
   } catch (error) {
-    console.error('[SW] Error clearing caches on login:', error)
+    // Silent fail
   }
 }
 

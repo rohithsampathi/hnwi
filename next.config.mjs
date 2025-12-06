@@ -94,7 +94,10 @@ const pwaConfig = withPWA({
       // All API endpoints - StaleWhileRevalidate with error filtering
       // CRITICAL: Serves cached data immediately, updates in background
       // CRITICAL: Don't cache errors (401/403/500) - fixes reauth loop bug
-      urlPattern: /\/api\//,
+      // CRITICAL: Don't cache POST requests - fixes mobile assessment issues
+      urlPattern: ({ url, request }) => {
+        return url.pathname.startsWith('/api/') && request.method === 'GET';
+      },
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'api',
@@ -116,6 +119,20 @@ const pwaConfig = withPWA({
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 5 * 60, // 5 minutes - cache is auto-refreshed in background
+        },
+      },
+    },
+    {
+      // POST/PUT/DELETE API requests - Network only (no caching)
+      // Fixes mobile-specific issues with assessment and form submissions
+      urlPattern: ({ url, request }) => {
+        return url.pathname.startsWith('/api/') &&
+               (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE');
+      },
+      handler: 'NetworkOnly',
+      options: {
+        fetchOptions: {
+          credentials: 'include',
         },
       },
     },

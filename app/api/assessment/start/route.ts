@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment Start] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     const backendUrl = `${API_BASE_URL}/api/assessment/start`;
 
@@ -45,13 +44,10 @@ export async function POST(request: NextRequest) {
 
     // Log question structure to debug ID field
     if (data.questions && data.questions.length > 0) {
-      console.log('[Assessment Start] First question keys:', Object.keys(data.questions[0]));
-      console.log('[Assessment Start] First question:', JSON.stringify(data.questions[0], null, 2));
     }
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[API] Assessment start error:', error);
     return NextResponse.json(
       {
         error: 'Failed to start assessment session',

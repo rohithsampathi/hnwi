@@ -108,5 +108,5 @@
     }
   });
 
-  console.log('[Error Suppression] Razorpay and service worker errors will be hidden');
+  // Silent - errors suppressed
 })();

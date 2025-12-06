@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Can Retake] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     // Proxy to backend
     const response = await fetch(`${API_BASE_URL}/api/assessment/can-retake?${params.toString()}`, {
@@ -48,7 +47,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('[Can Retake] Error:', error);
     return NextResponse.json(
       { error: 'Failed to check retake eligibility' },
       { status: 500 }

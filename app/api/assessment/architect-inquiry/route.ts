@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { session_id, email, whatsapp, tier } = body;
 
-    console.log('[Architect Inquiry] Submitting inquiry:', { session_id, email, tier });
 
     // Forward to backend
     const response = await fetch(`${API_BASE_URL}/api/assessment/architect-inquiry`, {
@@ -29,11 +28,9 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Architect Inquiry] Backend error:', errorText);
 
       // Even if backend fails, log locally and return success
       // This ensures we don't lose the lead
-      console.log('[Architect Inquiry] FALLBACK - Logging locally:', body);
 
       return NextResponse.json({
         success: true,
@@ -43,7 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('[Architect Inquiry] Success:', data);
 
     return NextResponse.json({
       success: true,
@@ -51,11 +47,9 @@ export async function POST(request: NextRequest) {
       data
     });
   } catch (error) {
-    console.error('[Architect Inquiry] Error:', error);
 
     // Log the inquiry attempt even on error
     const body = await request.json().catch(() => ({}));
-    console.log('[Architect Inquiry] CRITICAL - Failed submission:', body);
 
     return NextResponse.json(
       {

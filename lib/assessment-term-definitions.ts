@@ -812,6 +812,24 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     fullName: 'Restricted Stock',
     definition: 'Company shares granted with vesting schedule or performance conditions. Typically issued to founders at formation with 4-year vesting. Without 83(b) election, taxable as ordinary income when shares vest.',
     category: 'legal'
+  },
+  'NNN': {
+    term: 'NNN',
+    fullName: 'Triple Net Lease',
+    definition: 'Commercial lease where the tenant pays all property expenses (taxes, insurance, maintenance) in addition to rent. Landlord receives passive income with minimal management responsibilities but lower returns (5-6% cap rates). Contrast with active management properties that require hands-on oversight but offer higher returns (8-10%).',
+    category: 'investment'
+  },
+  'NNN LEASE': {
+    term: 'NNN Lease',
+    fullName: 'Triple Net Lease',
+    definition: 'Commercial lease where the tenant pays all property expenses (taxes, insurance, maintenance) in addition to rent. Landlord receives passive income with minimal management responsibilities but lower returns (5-6% cap rates). Contrast with active management properties that require hands-on oversight but offer higher returns (8-10%).',
+    category: 'investment'
+  },
+  'TRIPLE NET': {
+    term: 'Triple Net',
+    fullName: 'Triple Net Lease',
+    definition: 'Commercial lease where the tenant pays all property expenses (taxes, insurance, maintenance) in addition to rent. Landlord receives passive income with minimal management responsibilities but lower returns (5-6% cap rates). Contrast with active management properties that require hands-on oversight but offer higher returns (8-10%).',
+    category: 'investment'
   }
 };
 

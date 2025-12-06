@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Retake Check] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     // Call backend to check retake eligibility
     const response = await fetch(
@@ -46,7 +45,6 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[API] Assessment retake-check error:', error);
     return NextResponse.json(
       { error: 'Failed to check retake eligibility' },
       { status: 500 }

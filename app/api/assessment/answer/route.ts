@@ -8,17 +8,14 @@ import { API_BASE_URL } from '@/config/api';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('[Assessment Answer] Request body:', JSON.stringify(body, null, 2));
 
     // Get cookies from server-side for authentication
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    console.log('[Assessment Answer] Forwarding cookies:', allCookies.map(c => c.name).join(', '));
 
     const backendUrl = `${API_BASE_URL}/api/assessment/answer`;
-    console.log('[Assessment Answer] Calling backend:', backendUrl);
 
     const response = await fetch(backendUrl, {
       method: 'POST',
@@ -30,11 +27,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    console.log('[Assessment Answer] Backend response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Assessment Answer] Backend error response:', errorText);
 
       let error;
       try {
@@ -43,15 +38,12 @@ export async function POST(request: NextRequest) {
         error = { error: errorText || 'Failed to submit answer' };
       }
 
-      console.error('[Assessment Answer] Parsed error:', error);
       return NextResponse.json(error, { status: response.status });
     }
 
     const data = await response.json();
-    console.log('[Assessment Answer] Success response:', JSON.stringify(data, null, 2));
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[API] Assessment answer error:', error);
     return NextResponse.json(
       { error: 'Failed to submit answer' },
       { status: 500 }

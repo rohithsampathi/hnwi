@@ -171,7 +171,7 @@ export const useAssessmentState = () => {
         setCurrentQuestionIndex(data.currentQuestionIndex || 0);
         setStatus(data.status || 'in_progress');
       } catch (error) {
-        console.error('[Assessment] Failed to load saved progress:', error);
+        // Silent fail
       }
     }
   }, [sessionId]);

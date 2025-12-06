@@ -19,7 +19,6 @@ export async function GET(
 ) {
   const { sessionId } = params;
 
-  console.log('[SSE] Client connecting for session:', sessionId);
 
   // Create a ReadableStream for SSE
   const stream = new ReadableStream({
@@ -41,7 +40,6 @@ export async function GET(
       // Backend SSE URL
       const sseUrl = `${API_BASE_URL}/api/assessment/stream/${sessionId}`;
 
-      console.log('[SSE] Connecting to backend:', sseUrl);
 
       try {
         // Fetch from backend SSE endpoint
@@ -69,14 +67,11 @@ export async function GET(
           const { done, value } = await reader.read();
 
           if (done) {
-            console.log('[SSE] ⚠️ Backend stream closed unexpectedly');
-            console.log('[SSE] ⚠️ Stream ended for session:', sessionId);
             break;
           }
 
           // Decode chunk
           const chunk = decoder.decode(value, { stream: true });
-          console.log('[SSE Proxy] 📦 Received chunk from backend:', chunk.substring(0, 200) + (chunk.length > 200 ? '...' : ''));
           buffer += chunk;
 
           // Process complete messages (separated by double newline)
@@ -93,22 +88,17 @@ export async function GET(
               for (const line of lines) {
                 if (line.startsWith('event:')) {
                   eventType = line.substring(6).trim();
-                  console.log('[SSE Proxy] 📥 Event type received from backend:', eventType);
                 } else if (line.startsWith('data:')) {
                   eventData = line.substring(5).trim();
                   const dataPreview = eventData.length > 100 ? eventData.substring(0, 100) + '...' : eventData;
-                  console.log('[SSE Proxy] 📥 Event data received from backend:', dataPreview);
                 }
               }
 
               // Forward to client
               if (eventData) {
-                console.log('[SSE Proxy] 📤 Forwarding event type:', eventType);
                 const dataPreview = eventData.length > 100 ? eventData.substring(0, 100) + '...' : eventData;
-                console.log('[SSE Proxy] 📤 Event data being forwarded:', dataPreview);
                 const forwardMessage = `event: ${eventType}\ndata: ${eventData}\n\n`;
                 controller.enqueue(encoder.encode(forwardMessage));
-                console.log('[SSE Proxy] ✅ Event forwarded successfully to browser');
               }
             }
           }
@@ -118,8 +108,6 @@ export async function GET(
         controller.close();
 
       } catch (error) {
-        console.error('[SSE] ❌ Stream error:', error);
-        console.error('[SSE] ❌ Error details:', error instanceof Error ? error.stack : error);
 
         // Send error event
         try {
@@ -128,7 +116,6 @@ export async function GET(
             timestamp: new Date().toISOString()
           });
         } catch (sendError) {
-          console.error('[SSE] ❌ Could not send error event:', sendError);
         }
 
         controller.close();
@@ -136,7 +123,6 @@ export async function GET(
     },
 
     cancel() {
-      console.log('[SSE] Client disconnected');
     }
   });
 

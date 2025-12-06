@@ -144,7 +144,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     // Assessment completed
     eventSource.addEventListener('assessment_completed', (e) => {
       const completionData = JSON.parse(e.data);
-      console.log('[SSE] Assessment completed event:', completionData);
 
       setIsComplete(true);
       setEvents(prev => [...prev, {
@@ -155,24 +154,21 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
       // Respect backend's should_reconnect flag (NEW from backend)
       if (completionData.should_reconnect === false) {
-        console.log('[SSE] Backend requested no reconnection - closing stream');
         shouldReconnectRef.current = false;
         eventSource.close();
 
         // If backend provides redirect URL, fetch results
         if (completionData.redirect_url) {
-          console.log('[SSE] Fetching results from:', completionData.redirect_url);
           setRedirectUrl(completionData.redirect_url);
 
           // Fetch the complete result data for PDF generation
           fetch(completionData.redirect_url)
             .then(res => res.json())
             .then(data => {
-              console.log('[SSE] Results fetched successfully:', data);
               setResultData(data);
             })
             .catch(err => {
-              console.error('[SSE] Failed to fetch results:', err);
+              // Silent fail
             });
         }
       } else {
@@ -183,13 +179,11 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
     // Error handling
     eventSource.onerror = (error) => {
-      console.log('[SSE] Error occurred:', error);
       setIsConnected(false);
       retryCountRef.current++;
 
       // Stop reconnecting if max retries exceeded
       if (retryCountRef.current >= maxRetries) {
-        console.log(`[SSE] Max retries (${maxRetries}) exceeded - stopping reconnection`);
         shouldReconnectRef.current = false;
         eventSource.close();
         return;
@@ -197,12 +191,10 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
       // Only auto-reconnect if backend allows it AND not complete
       if (shouldReconnectRef.current && !isComplete) {
-        console.log(`[SSE] Auto-reconnecting in 3 seconds... (attempt ${retryCountRef.current}/${maxRetries})`);
         setTimeout(() => {
           // Browser will automatically reconnect
         }, 3000);
       } else {
-        console.log('[SSE] No reconnection - closing stream');
         eventSource.close();
       }
     };

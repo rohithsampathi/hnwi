@@ -55,7 +55,6 @@ export default function DashboardPage() {
 
       try {
         const userId = user.id || user.user_id
-        console.log('[Dashboard] Checking assessment status for user:', userId)
 
         const response = await fetch(`/api/assessment/history/${userId}`)
 
@@ -64,23 +63,16 @@ export default function DashboardPage() {
           const assessments = data?.assessments || data || []
 
           if (assessments.length > 0) {
-            console.log('[Dashboard] User has completed assessment - granting access')
             setHasAssessment(true)
           } else {
-            console.log('[Dashboard] User has NOT completed assessment - showing map with assessment prompt')
             // Show dashboard anyway - the P toggle will prompt them to take assessment
             setHasAssessment(false)
           }
         } else {
-          console.log('[Dashboard] Failed to check assessment status:', response.status)
-          if (response.status === 429) {
-            console.error('[Dashboard] Rate limited! Please wait before retrying.')
-          }
           // On API error, allow access (fail open to prevent blocking legitimate users)
           setHasAssessment(true)
         }
       } catch (error) {
-        console.error('[Dashboard] Error checking assessment:', error)
         // On error, allow access (fail open)
         setHasAssessment(true)
       } finally {
