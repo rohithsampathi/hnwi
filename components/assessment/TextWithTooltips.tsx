@@ -57,7 +57,8 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
       'hurdle rate', 'investment-grade', 'cap rate', 'core asset',
       'value-add', 'distressed debt', 'Roth IRA', 'Traditional IRA',
       'step-up', 'Chapter 11', 'OECD Pillar Two', 'Pillar Two', 'Portugal NHR',
-      'fiscal residence', 'portable income', 'marginal rate', 'Switzerland forfait'
+      'fiscal residence', 'portable income', 'marginal rate', 'Switzerland forfait',
+      'BVI holding company', 'BVI' // Added BVI related terms
     ];
 
     let remainingText = text;

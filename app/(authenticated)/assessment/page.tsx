@@ -25,6 +25,20 @@ export default function AuthenticatedAssessmentPage() {
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
 
+  // Clear vault session storage when user navigates away or closes tab
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Clear the session storage when leaving the assessment
+      sessionStorage.removeItem('assessmentVaultShownThisSession');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   const {
     sessionId,
     allQuestions,
@@ -167,24 +181,25 @@ export default function AuthenticatedAssessmentPage() {
       const nextIndex = currentQuestionIndex + 1;
       const isLastQuestion = nextIndex >= allQuestions.length;
 
-      // Update progress - use backend's progress if available, otherwise calculate manually
+      // Update progress - we're moving to the NEXT question after this answer
+      // So progress should reflect where we are going, not where we were
       if (response.progress) {
-
         // Backend returns answers_submitted (completed count)
-        // But we want to show CURRENT question number for display
-        const currentQuestionDisplay = response.progress.is_complete
+        // The NEXT question number is answers_submitted + 1 (unless we're done)
+        const nextQuestionNumber = response.progress.is_complete
           ? response.progress.total_questions
-          : response.progress.answers_submitted + 1;
+          : Math.min(response.progress.answers_submitted + 1, response.progress.total_questions);
 
         setProgress({
-          current: currentQuestionDisplay,
+          current: nextQuestionNumber,
           total: response.progress.total_questions,
           completed: response.progress.is_complete
         });
       } else {
         // Fallback: Manual progress calculation if backend doesn't return it
+        // Show the NEXT question number (nextIndex + 1 for human-readable)
         setProgress({
-          current: isLastQuestion ? allQuestions.length : nextIndex + 1,
+          current: Math.min(nextIndex + 1, allQuestions.length), // Cap at total questions
           total: allQuestions.length,
           completed: isLastQuestion
         });

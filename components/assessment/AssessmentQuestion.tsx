@@ -189,6 +189,9 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     fetchOpportunities();
   }, []);
 
+  // Track previous city count for calculating increment
+  const [previousCityCount, setPreviousCityCount] = useState(0);
+
   // Handle calibration events - progressively ADD backend-selected opportunities
   useEffect(() => {
     if (calibrationEvents.length === 0) return;
@@ -271,6 +274,19 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
       });
     }
   }, [calibrationEvents]);
+
+  // Track when filtered cities count changes to update previous count
+  useEffect(() => {
+    // Only update previousCityCount when we get new opportunities
+    // This happens after calibration events are processed
+    if (filteredCities.length > previousCityCount && calibrationEvents.length > 0) {
+      // Delay update to show the increment notification first
+      const timer = setTimeout(() => {
+        setPreviousCityCount(filteredCities.length);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [filteredCities.length, calibrationEvents.length, previousCityCount]);
 
   // Reset selection, scenario terms, and shown tooltips when question changes
   useEffect(() => {
@@ -362,17 +378,164 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
         </div>
       </div>
 
-      {/* Main Content - Split Layout */}
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)]">
-        {/* Opportunity Map - Right Side (or Top on Mobile) */}
+      {/* Main Content - Split Layout - Questions first on mobile, map on desktop right */}
+      <div className="flex flex-col-reverse lg:flex-row min-h-[calc(100vh-200px)]">
+        {/* Question Content - Primary focus (Left on desktop, Bottom on mobile) */}
+        <motion.div
+          key={question.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'} flex flex-col`}
+        >
+          {loading ? (
+            <div className="p-4 sm:p-6 md:p-8">
+              <BrainThinkingLoader isVisible={loading} />
+            </div>
+          ) : (
+            <>
+              {/* Fixed Scenario Section - Clean Card */}
+              <div className="p-4 sm:p-6 md:p-8 lg:pt-8">
+                <div className="bg-card/60 backdrop-blur-xl border border-primary/30 rounded-2xl p-4 sm:p-6 md:p-8">
+                  <div className="mb-4 sm:mb-6">
+                    <ProgressiveReveal delay={0.1}>
+                      <div className="inline-block px-3 py-1.5 bg-card/80 backdrop-blur-md border border-primary/40 rounded-full text-xs sm:text-sm font-bold text-primary uppercase tracking-wider mb-3 sm:mb-4">
+                        Scenario {progress.current}
+                      </div>
+                    </ProgressiveReveal>
+
+                    {showTitle && (
+                      <ProgressiveReveal delay={0.3}>
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-3 sm:mb-4 leading-tight tracking-tight">
+                          <TypewriterText
+                            text={question.title}
+                            speed={30}
+                            onComplete={() => setShowScenario(true)}
+                          />
+                        </h2>
+                      </ProgressiveReveal>
+                    )}
+                  </div>
+
+                  {showScenario && question.scenario && (
+                    <ProgressiveReveal delay={0.2}>
+                      <div className="mb-4 p-3 sm:p-4 bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl">
+                        <p className="text-sm sm:text-base text-muted-foreground leading-relaxed font-light">
+                          <TypewriterText
+                            text={question.scenario}
+                            speed={15}
+                            showTooltips={true}
+                            onTermsFound={(terms) => setScenarioTerms(prev => new Set([...prev, ...terms]))}
+                            onComplete={() => setShowQuestion(true)}
+                          />
+                        </p>
+                      </div>
+                    </ProgressiveReveal>
+                  )}
+
+                  {/* If no scenario, trigger question immediately after title */}
+                  {showTitle && !question.scenario && !showQuestion && (
+                    <>
+                      {setTimeout(() => setShowQuestion(true), 100) && null}
+                    </>
+                  )}
+
+                  {showQuestion && (
+                    <ProgressiveReveal delay={0.2}>
+                      <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
+                        <p className="text-base sm:text-lg md:text-xl text-foreground leading-relaxed font-medium">
+                          <TypewriterText
+                            text={question.question_text}
+                            speed={20}
+                            onComplete={() => setShowChoices(true)}
+                          />
+                        </p>
+                      </div>
+                    </ProgressiveReveal>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Options Section */}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 pb-8">
+                {/* Choices - Mobile optimized with progressive reveal */}
+                {showChoices && (
+                  <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                    <ProgressiveReveal delay={0.1}>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 px-1">
+                        Select your strategic position:
+                      </p>
+                    </ProgressiveReveal>
+
+                    {question.choices.map((choice, index) => (
+                      <ProgressiveReveal key={choice.id} delay={0.3 + (index * 0.15)}>
+                        <ChoiceCard
+                          choice={choice}
+                          label={String.fromCharCode(65 + index)} // A, B, C, D
+                          isSelected={selectedChoice === choice.id}
+                          onSelect={() => setSelectedChoice(choice.id)}
+                          disabled={loading}
+                          excludeTerms={scenarioTerms}
+                        />
+                      </ProgressiveReveal>
+                    ))}
+                  </div>
+                )}
+
+                {/* Submit button - Premium mobile (only show after choices) */}
+                {showChoices && (
+                  <ProgressiveReveal delay={0.5 + (question.choices.length * 0.15)}>
+                    <div className="flex flex-col items-center gap-3">
+                      <motion.button
+                        onClick={handleSubmit}
+                        disabled={!selectedChoice || loading}
+                        className={`
+                          w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 rounded-xl font-bold text-sm sm:text-base transition-all duration-300
+                          ${!selectedChoice || loading
+                            ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                            : 'bg-primary text-primary-foreground shadow-lg hover:shadow-primary/30'
+                          }
+                        `}
+                        whileHover={selectedChoice && !loading ? { scale: 1.02 } : {}}
+                        whileTap={selectedChoice && !loading ? { scale: 0.98 } : {}}
+                      >
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className="inline-block w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                            <span>Analyzing Response...</span>
+                          </span>
+                        ) : (
+                          'Lock Position'
+                        )}
+                      </motion.button>
+
+                      {selectedChoice && !loading && (
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-xs text-muted-foreground"
+                        >
+                          Response time: {elapsedTime}s
+                        </motion.p>
+                      )}
+                    </div>
+                  </ProgressiveReveal>
+                )}
+              </div>
+            </>
+          )}
+        </motion.div>
+
+        {/* Opportunity Map - Secondary (Right on desktop, Top on mobile) */}
         {showMap && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative overflow-hidden"
+            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative overflow-hidden order-first lg:order-last"
           >
-            <div className="w-full h-[520px] lg:h-[754px] lg:pt-8">
+            <div className="w-full h-[300px] sm:h-[400px] lg:h-[calc(100vh-120px)] lg:pt-8">
               {loadingMap ? (
                 <div className="h-full flex items-center justify-center">
                   <CrownLoader size="lg" text="Loading Command Centre" />
@@ -424,28 +587,32 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                   )}
                 </motion.div>
 
-                {/* Latest Calibration Event */}
-                {calibrationEvents.length > 0 && (
+                {/* Latest Calibration Event - Show accurate counts using actual filtered cities data */}
+                {calibrationEvents.length > 0 && filteredCities.length > 0 && (
                   <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[500] w-auto max-w-[90%] sm:max-w-md">
-                    {calibrationEvents.slice(-1).map((event, index) => (
-                      <motion.div
-                        key={`${event.filter}-${event.remaining}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
-                      >
-                        <div className="flex items-center justify-center gap-2 sm:gap-3">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
-                            <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">{event.message}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                            <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">+{event.removed}</span>
-                            <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{event.remaining} total</span>
-                          </div>
+                    <motion.div
+                      key={`calibration-${filteredCities.length}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
+                    >
+                      <div className="flex items-center justify-center gap-2 sm:gap-3">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
+                          <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
+                            {filteredCities.length > previousCityCount
+                              ? `+${filteredCities.length - previousCityCount} opportunities discovered matching your DNA`
+                              : `DNA analysis in progress...`}
+                          </span>
                         </div>
-                      </motion.div>
-                    ))}
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                          <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
+                            +{filteredCities.length > previousCityCount ? filteredCities.length - previousCityCount : 0}
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
                 )}
               </>
@@ -453,153 +620,6 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             </div>
           </motion.div>
         )}
-
-        {/* Question Content - Left Side (or Bottom on Mobile) */}
-        <motion.div
-          key={question.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'} flex flex-col`}
-        >
-          {loading ? (
-            <div className="p-4 sm:p-6 md:p-8">
-              <BrainThinkingLoader isVisible={loading} />
-            </div>
-          ) : (
-            <>
-              {/* Fixed Scenario Section - Clean Card */}
-              <div className="p-4 sm:p-6 md:p-8 lg:pt-8">
-                <div className="bg-card/60 backdrop-blur-xl border border-primary/30 rounded-2xl p-6 sm:p-8 md:p-10">
-                  <div className="mb-6 sm:mb-8">
-                    <ProgressiveReveal delay={0.1}>
-                      <div className="inline-block px-4 py-2 bg-card/80 backdrop-blur-md border border-primary/40 rounded-full text-xs sm:text-sm font-bold text-primary uppercase tracking-wider mb-4 sm:mb-5">
-                        Scenario {progress.current}
-                      </div>
-                    </ProgressiveReveal>
-
-                    {showTitle && (
-                      <ProgressiveReveal delay={0.3}>
-                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-4 sm:mb-5 leading-tight tracking-tight">
-                          <TypewriterText
-                            text={question.title}
-                            speed={30}
-                            onComplete={() => setShowScenario(true)}
-                          />
-                        </h2>
-                      </ProgressiveReveal>
-                    )}
-                  </div>
-
-                  {showScenario && question.scenario && (
-                    <ProgressiveReveal delay={0.2}>
-                      <div className="mb-6 p-4 sm:p-5 bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl">
-                        <p className="text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed font-light">
-                          <TypewriterText
-                            text={question.scenario}
-                            speed={15}
-                            showTooltips={true}
-                            onTermsFound={(terms) => setScenarioTerms(prev => new Set([...prev, ...terms]))}
-                            onComplete={() => setShowQuestion(true)}
-                          />
-                        </p>
-                      </div>
-                    </ProgressiveReveal>
-                  )}
-
-                  {/* If no scenario, trigger question immediately after title */}
-                  {showTitle && !question.scenario && !showQuestion && (
-                    <>
-                      {setTimeout(() => setShowQuestion(true), 100) && null}
-                    </>
-                  )}
-
-                  {showQuestion && (
-                    <ProgressiveReveal delay={0.2}>
-                      <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
-                        <p className="text-base sm:text-lg md:text-xl text-foreground leading-relaxed font-medium">
-                          <TypewriterText
-                            text={question.question_text}
-                            speed={20}
-                            onComplete={() => setShowChoices(true)}
-                          />
-                        </p>
-                      </div>
-                    </ProgressiveReveal>
-                  )}
-                </div>
-              </div>
-
-              {/* Scrollable Options Section - Matches map height */}
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:h-[754px]">
-                {/* Choices - Mobile optimized with progressive reveal */}
-                {showChoices && (
-                  <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
-                    <ProgressiveReveal delay={0.1}>
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-3 px-1">
-                        Select your strategic position:
-                      </p>
-                    </ProgressiveReveal>
-
-                    {question.choices.map((choice, index) => (
-                      <ProgressiveReveal key={choice.id} delay={0.3 + (index * 0.2)}>
-                        <ChoiceCard
-                          choice={choice}
-                          label={String.fromCharCode(65 + index)} // A, B, C, D
-                          isSelected={selectedChoice === choice.id}
-                          onSelect={() => setSelectedChoice(choice.id)}
-                          disabled={loading}
-                          excludeTerms={scenarioTerms}
-                        />
-                      </ProgressiveReveal>
-                    ))}
-                  </div>
-                )}
-
-                {/* Submit button - Premium mobile (only show after choices) */}
-                {showChoices && (
-                  <ProgressiveReveal delay={0.5 + (question.choices.length * 0.2)}>
-                    <div className="flex flex-col items-center gap-3 pb-8">
-                      <motion.button
-                        onClick={handleSubmit}
-                        disabled={!selectedChoice || loading}
-                        className={`
-                          w-full sm:w-auto px-8 sm:px-10 md:px-12 py-4 sm:py-5 md:py-6 rounded-2xl font-bold text-base sm:text-lg transition-all duration-300
-                          ${!selectedChoice || loading
-                            ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
-                            : 'bg-primary text-primary-foreground'
-                          }
-                        `}
-                        whileHover={selectedChoice && !loading ? { scale: 1.02 } : {}}
-                        whileTap={selectedChoice && !loading ? { scale: 0.98 } : {}}
-                      >
-                        {loading ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <span className="inline-block w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                            <span>Analyzing Response...</span>
-                          </span>
-                        ) : (
-                          'Lock Position'
-                        )}
-                      </motion.button>
-
-                      {selectedChoice && !loading && (
-                        <motion.p
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="text-xs text-muted-foreground"
-                        >
-                          Response time: {elapsedTime}s
-                        </motion.p>
-                      )}
-                    </div>
-                  </ProgressiveReveal>
-                )}
-              </div>
-            </>
-          )}
-        </motion.div>
       </div>
     </>
   );

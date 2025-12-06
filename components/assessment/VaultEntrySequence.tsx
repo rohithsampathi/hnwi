@@ -49,30 +49,43 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
   useEffect(() => {
   }, [opportunities]);
 
-  // Subtle sound effects
+  // Subtle sound effects (with user gesture requirement handling)
   const playSound = (type: 'step' | 'unlock') => {
+    // Only play sounds if we have user interaction (skip in automated sequences)
     if (typeof window !== 'undefined' && window.AudioContext) {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+        // Check if AudioContext is running (requires user gesture)
+        if (audioContext.state === 'suspended') {
+          // Don't play sound if context is suspended - avoids console warnings
+          return;
+        }
 
-      if (type === 'step') {
-        // Subtle beep for each step
-        oscillator.frequency.value = 800;
-        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      } else {
-        // Unlock sound - lower, more satisfying
-        oscillator.frequency.value = 400;
-        gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        if (type === 'step') {
+          // Subtle beep for each step
+          oscillator.frequency.value = 800;
+          gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        } else {
+          // Unlock sound - lower, more satisfying
+          oscillator.frequency.value = 400;
+          gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        }
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (error) {
+        // Silently ignore audio errors (e.g., when AudioContext is not allowed)
+        // This prevents console warnings when user hasn't interacted yet
       }
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
     }
   };
 

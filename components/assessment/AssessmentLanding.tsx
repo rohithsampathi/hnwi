@@ -49,11 +49,21 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
     fetchBriefCount();
   }, []);
 
-  // Show vault entry animation every time the page loads
+  // Show vault entry animation only on initial assessment landing
   useEffect(() => {
     // Use a timeout to prevent React StrictMode double-execution issues
     const timer = setTimeout(() => {
-      setShowVaultEntry(true);
+      // Check if we've already shown vault for this assessment session
+      const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
+
+      if (!vaultShownThisSession) {
+        // First time in this assessment session - show vault
+        setShowVaultEntry(true);
+        sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
+      } else {
+        // Already shown in this session - skip directly to content
+        setVaultUnlocked(true);
+      }
     }, 0);
 
     return () => clearTimeout(timer);
@@ -134,14 +144,14 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
         initial={vaultUnlocked ? { opacity: 0, scale: 0.95 } : false}
         animate={vaultUnlocked ? { opacity: 1, scale: 1 } : {}}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16 lg:py-20"
+        className="relative z-10 max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-8 md:py-12 lg:py-16"
       >
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut", delay: vaultUnlocked ? 0.3 : 0 }}
-          className="text-center mb-12 sm:mb-16 md:mb-20"
+          className="text-center mb-6 sm:mb-10 md:mb-14 lg:mb-16"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -224,7 +234,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: vaultUnlocked ? 3.2 : 0.6 }}
-          className="bg-card/50 backdrop-blur-xl border border-primary/30 rounded-3xl p-6 sm:p-8 md:p-10 mb-12 sm:mb-16 md:mb-20 shadow-2xl"
+          className="bg-card/50 backdrop-blur-xl border border-primary/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 mb-6 sm:mb-10 md:mb-14 lg:mb-16 shadow-2xl"
         >
           <div className="text-center mb-8 sm:mb-10">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
@@ -278,7 +288,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: vaultUnlocked ? 3.8 : 0.8 }}
-          className="mb-12 sm:mb-16 md:mb-20"
+          className="mb-6 sm:mb-10 md:mb-14 lg:mb-16"
         >
           <div className="text-center mb-8 sm:mb-10 md:mb-12">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">
@@ -345,7 +355,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: vaultUnlocked ? 4.6 : 1.0 }}
-          className="bg-card/40 backdrop-blur-2xl border border-primary/30 rounded-3xl p-6 sm:p-8 md:p-10 mb-12 sm:mb-16 shadow-2xl"
+          className="bg-card/40 backdrop-blur-2xl border border-primary/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 mb-6 sm:mb-10 md:mb-12 shadow-2xl"
         >
           <div className="text-center mb-8 sm:mb-10">
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4">

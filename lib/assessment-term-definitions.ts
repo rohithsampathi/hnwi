@@ -830,6 +830,18 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     fullName: 'Triple Net Lease',
     definition: 'Commercial lease where the tenant pays all property expenses (taxes, insurance, maintenance) in addition to rent. Landlord receives passive income with minimal management responsibilities but lower returns (5-6% cap rates). Contrast with active management properties that require hands-on oversight but offer higher returns (8-10%).',
     category: 'investment'
+  },
+  'BVI': {
+    term: 'BVI',
+    fullName: 'British Virgin Islands',
+    definition: 'Popular offshore jurisdiction for establishing holding companies and investment structures. Known for strong privacy laws, zero corporate tax on foreign income, and business-friendly regulations. Commonly used for asset protection and international investment structuring.',
+    category: 'legal'
+  },
+  'BVI HOLDING COMPANY': {
+    term: 'BVI Holding Company',
+    fullName: 'British Virgin Islands Holding Company',
+    definition: 'Offshore company structure established in the British Virgin Islands primarily to hold assets, investments, or subsidiary companies. Offers tax efficiency (0% on foreign income), privacy protection, and flexible corporate governance. Commonly used for international real estate holdings and investment fund structures.',
+    category: 'legal'
   }
 };
 
