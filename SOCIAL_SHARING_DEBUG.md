@@ -117,8 +117,8 @@ curl "http://localhost:3000/api/debug/meta-tags?url=http://localhost:3000/share/
 
 ### ❌ Incorrect (Fallback/Default)
 ```html
-<title>HNWI Chronicles - What the world's top 1% realise before others know</title>
-<meta property="og:title" content="HNWI Chronicles - What the world's top 1% realise before others know" />
+<title>HNWI Chronicles - What the world's top 0.1% realise before others know</title>
+<meta property="og:title" content="HNWI Chronicles - What the world's top 0.1% realise before others know" />
 <meta property="og:description" content="Access exclusive wealth intelligence..." />
 ```
 

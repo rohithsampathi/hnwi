@@ -365,7 +365,10 @@ export default function AuthenticatedAssessmentPage() {
         {/* Question with Integrated Map and Calibration */}
         <AssessmentQuestion
           question={currentQuestion}
-          progress={progress}
+          progress={{
+            ...progress,
+            current: currentQuestionIndex + 1 // Show actual current question number
+          }}
           onAnswer={handleAnswerSubmit}
           loading={loading}
           calibrationEvents={syntheticCalibrationEvents}

@@ -275,18 +275,6 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     }
   }, [calibrationEvents]);
 
-  // Track when filtered cities count changes to update previous count
-  useEffect(() => {
-    // Only update previousCityCount when we get new opportunities
-    // This happens after calibration events are processed
-    if (filteredCities.length > previousCityCount && calibrationEvents.length > 0) {
-      // Delay update to show the increment notification first
-      const timer = setTimeout(() => {
-        setPreviousCityCount(filteredCities.length);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [filteredCities.length, calibrationEvents.length, previousCityCount]);
 
   // Reset selection, scenario terms, and shown tooltips when question changes
   useEffect(() => {
@@ -341,6 +329,19 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
 
     return false;
   });
+
+  // Track when filtered cities count changes to update previous count
+  useEffect(() => {
+    // Only update previousCityCount when we get new opportunities
+    // This happens after calibration events are processed
+    if (filteredCities.length > previousCityCount && calibrationEvents.length > 0) {
+      // Delay update to show the increment notification first
+      const timer = setTimeout(() => {
+        setPreviousCityCount(filteredCities.length);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [filteredCities.length, calibrationEvents.length, previousCityCount]);
 
   return (
     <>
@@ -588,33 +589,38 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                 </motion.div>
 
                 {/* Latest Calibration Event - Show accurate counts using actual filtered cities data */}
-                {calibrationEvents.length > 0 && filteredCities.length > 0 && (
-                  <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[500] w-auto max-w-[90%] sm:max-w-md">
-                    <motion.div
-                      key={`calibration-${filteredCities.length}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
-                    >
-                      <div className="flex items-center justify-center gap-2 sm:gap-3">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
-                          <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
-                            {filteredCities.length > previousCityCount
-                              ? `+${filteredCities.length - previousCityCount} opportunities discovered matching your DNA`
-                              : `DNA analysis in progress...`}
-                          </span>
+                {(() => {
+                  const increment = Math.max(0, filteredCities.length - previousCityCount);
+                  const hasNewOpportunities = calibrationEvents.length > 0 && filteredCities.length > 0 && increment > 0;
+
+                  if (!hasNewOpportunities) return null;
+
+                  return (
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[500] w-auto max-w-[90%] sm:max-w-md">
+                      <motion.div
+                        key={`calibration-${filteredCities.length}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
+                      >
+                        <div className="flex items-center justify-center gap-2 sm:gap-3">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
+                            <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
+                              +{increment} opportunities discovered matching your DNA
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                            <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
+                              +{increment}
+                            </span>
+                            <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                          <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
-                            +{filteredCities.length > previousCityCount ? filteredCities.length - previousCityCount : 0}
-                          </span>
-                          <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
+                      </motion.div>
+                    </div>
+                  );
+                })()}
               </>
             )}
             </div>

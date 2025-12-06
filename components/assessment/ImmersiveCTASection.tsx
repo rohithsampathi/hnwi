@@ -44,7 +44,7 @@ export function ImmersiveCTASection({
       title: "You've Proven You're an Architect",
       narrative: [
         "While others react to market movements, you design the structures that capture wealth across jurisdictions.",
-        "Your strategic thinking places you in the top 5% of HNWI wealth managers globally.",
+        "Your strategic thinking places you in the top 0.1% of HNWI wealth managers globally.",
         "You don't just participate in markets—you architect systems that compound advantages over decades."
       ],
       cta: {

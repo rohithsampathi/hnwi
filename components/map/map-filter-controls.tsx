@@ -58,18 +58,18 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
     <div
       className={`lg:hidden ${props.useAbsolutePositioning ? 'absolute' : 'fixed'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
         props.useAbsolutePositioning
-          ? 'bottom-[40px]'
-          : isLandscape ? 'bottom-[20px]' : 'bottom-[160px] md:bottom-[100px]'
+          ? 'bottom-[30px]'  // Moved down from 40px to 30px (10px lower)
+          : isLandscape ? 'bottom-[10px]' : 'bottom-[150px] md:bottom-[90px]'  // Also adjusted these by 10px
       }`}
     >
-      <div className="flex flex-col items-center gap-1.5">
-        {/* Ultra-lean slider */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-2.5 py-1 shadow-lg min-w-[260px] flex flex-col items-center">
-          <div className="text-[10px] font-medium text-muted-foreground text-center -mt-1 -mb-1">
+      <div className="flex flex-col items-center gap-1">
+        {/* Ultra-compact slider for mobile */}
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-md px-2 py-0.5 shadow-lg min-w-[220px] flex flex-col items-center">
+          <div className="text-[9px] font-medium text-muted-foreground text-center -mt-0.5 -mb-0.5">
             {formatCurrency(props.selectedPriceRange.min)} — {formatCurrency(props.selectedPriceRange.max)}
           </div>
 
-          <div className="custom-range-slider-mobile w-[90%]">
+          <div className="custom-range-slider-mobile w-[85%]">
             <RangeSlider
               min={MIN}
               max={MAX}
@@ -83,91 +83,91 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
 
           <style jsx global>{`
             .custom-range-slider-mobile .range-slider {
-              height: 14px !important;
+              height: 10px !important;
               background: transparent !important;
             }
             .custom-range-slider-mobile .range-slider__range {
               background: hsl(var(--primary)) !important;
-              height: 3px !important;
+              height: 2px !important;
             }
             .custom-range-slider-mobile .range-slider__thumb {
-              width: 12px !important;
-              height: 12px !important;
+              width: 10px !important;
+              height: 10px !important;
               background: hsl(var(--primary)) !important;
-              border: 2px solid ${props.theme === 'dark' ? '#fff' : '#000'} !important;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+              border: 1.5px solid ${props.theme === 'dark' ? '#fff' : '#000'} !important;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
               cursor: grab !important;
             }
             .custom-range-slider-mobile .range-slider__thumb:active {
               cursor: grabbing !important;
-              transform: scale(1.15) !important;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+              transform: scale(1.1) !important;
+              box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
             }
             .custom-range-slider-mobile .range-slider__track {
               background: transparent !important;
-              height: 3px !important;
+              height: 2px !important;
             }
           `}</style>
         </div>
 
-        {/* Filter icons and Zoom out on same line */}
-        <div className="flex items-center justify-center gap-3">
-          {/* Filter icons with container - Reordered: Globe, Diamond, Crown */}
-          <div className="flex items-center gap-1.5 bg-background/95 backdrop-blur-sm border border-border rounded-full px-2.5 py-1.5 shadow-lg">
+        {/* Filter icons and Zoom out on same line - more compact */}
+        <div className="flex items-center justify-center gap-2">
+          {/* Filter icons with container - smaller padding and icons */}
+          <div className="flex items-center gap-1 bg-background/95 backdrop-blur-sm border border-border rounded-full px-2 py-1 shadow-lg">
             <button
               onClick={() => props.onToggleHNWIPatterns()}
-              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+              className={`text-xs p-1.5 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
                 props.showHNWIPatterns
                   ? props.theme === 'dark'
-                    ? 'bg-primary/10 text-primary font-medium shadow-md'
-                    : 'bg-black text-white font-medium shadow-md'
+                    ? 'bg-primary/10 text-primary font-medium shadow-sm'
+                    : 'bg-black text-white font-medium shadow-sm'
                   : 'text-muted-foreground hover:bg-muted/50'
               }`}
               aria-label="HNWI Patterns"
             >
-              <TrendingUp className="h-4 w-4" />
+              <TrendingUp className="h-3 w-3" />
             </button>
 
             <button
               onClick={() => props.onTogglePriveOpportunities()}
-              className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+              className={`text-xs p-1.5 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
                 props.showPriveOpportunities
                   ? props.theme === 'dark'
-                    ? 'bg-primary/10 text-primary font-medium shadow-md'
-                    : 'bg-black text-white font-medium shadow-md'
+                    ? 'bg-primary/10 text-primary font-medium shadow-sm'
+                    : 'bg-black text-white font-medium shadow-sm'
                   : 'text-muted-foreground hover:bg-muted/50'
               }`}
               aria-label="Privé Opportunities"
             >
-              <Gem className="h-4 w-4" />
+              <Gem className="h-3 w-3" />
             </button>
 
             {!props.hideCrownAssetsToggle && (
               <button
                 onClick={() => props.onToggleCrownAssets()}
-                className={`text-xs p-2 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                className={`text-xs p-1.5 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
                   props.showCrownAssets
                     ? props.theme === 'dark'
-                      ? 'bg-primary/10 text-primary font-medium shadow-md'
-                      : 'bg-black text-white font-medium shadow-md'
+                      ? 'bg-primary/10 text-primary font-medium shadow-sm'
+                      : 'bg-black text-white font-medium shadow-sm'
                     : 'text-muted-foreground hover:bg-muted/50'
                 }`}
                 aria-label="Crown Assets"
               >
-                <Crown className="h-4 w-4" />
+                <Crown className="h-3 w-3" />
               </button>
             )}
           </div>
 
-          {/* Zoom out - only show when zoomed in (zoom > 2) */}
+          {/* Zoom out - only show when zoomed in (zoom > 2) - smaller */}
           {props.currentZoom > 2 && (
             <button
               onClick={props.onReset}
-              className="text-xs px-2 py-1.5 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-1 bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-lg"
+              className="text-xs px-1.5 py-1 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-0.5 bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-lg"
               aria-label="Zoom out"
             >
-              <ZoomOut className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-semibold">Zoom out</span>
+              <ZoomOut className="h-3 w-3" />
+              <span className="text-[9px] font-semibold">Zoom out</span>
             </button>
           )}
         </div>

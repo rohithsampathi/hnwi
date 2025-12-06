@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Lock, Zap } from 'lucide-react';
 import { VaultEntrySequence } from './VaultEntrySequence';
@@ -19,6 +19,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const [showVaultEntry, setShowVaultEntry] = useState(false);
   const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
+  const vaultInitRef = useRef(false);
 
   // Fetch dynamic brief count
   useEffect(() => {
@@ -51,22 +52,22 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
 
   // Show vault entry animation only on initial assessment landing
   useEffect(() => {
-    // Use a timeout to prevent React StrictMode double-execution issues
-    const timer = setTimeout(() => {
-      // Check if we've already shown vault for this assessment session
-      const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
+    // Prevent double execution using ref
+    if (vaultInitRef.current) return;
+    vaultInitRef.current = true;
 
-      if (!vaultShownThisSession) {
-        // First time in this assessment session - show vault
-        setShowVaultEntry(true);
-        sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
-      } else {
-        // Already shown in this session - skip directly to content
-        setVaultUnlocked(true);
-      }
-    }, 0);
+    // Check if we've already shown vault for this assessment session
+    const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
 
-    return () => clearTimeout(timer);
+    if (!vaultShownThisSession) {
+      // First time in this assessment session - show vault
+      // Set the flag immediately to prevent double execution
+      sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
+      setShowVaultEntry(true);
+    } else {
+      // Already shown in this session - skip directly to content
+      setVaultUnlocked(true);
+    }
   }, []); // Empty dependency array - run only once on mount
 
   // Fetch opportunities for vault entry background map

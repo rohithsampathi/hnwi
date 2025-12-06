@@ -23,7 +23,7 @@ export function AssessmentResultsHeader({
     architect: {
       icon: Crown,
       iconColor: 'text-primary',
-      tagline: 'Systems Architect · Top 5% Global HNWI Strategy'
+      tagline: 'Systems Architect · Top 0.1% Global HNWI Strategy'
     },
     operator: {
       icon: TrendingUp,
