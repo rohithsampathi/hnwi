@@ -58,7 +58,7 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
       'value-add', 'distressed debt', 'Roth IRA', 'Traditional IRA',
       'step-up', 'Chapter 11', 'OECD Pillar Two', 'Pillar Two', 'Portugal NHR',
       'fiscal residence', 'portable income', 'marginal rate', 'Switzerland forfait',
-      'BVI holding company', 'BVI' // Added BVI related terms
+      'BVI holding company', 'Private Foundation', 'BVI' // Added Private Foundation and BVI related terms
     ];
 
     let remainingText = text;

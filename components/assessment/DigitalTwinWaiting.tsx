@@ -38,6 +38,7 @@ export function DigitalTwinWaiting({
   const [isPolling, setIsPolling] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(1); // Start at step 1 (0 is already complete)
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'assessment', label: 'Assessment completed', estimatedSeconds: 0, status: 'complete' },
     { id: 'briefs', label: 'Retrieving 20+ HNWI World briefs', estimatedSeconds: 30, status: 'processing' },
@@ -75,24 +76,30 @@ export function DigitalTwinWaiting({
     return () => clearInterval(timer);
   }, []);
 
-  // Update steps based on elapsed time
+  // Progress through steps slowly based on elapsed time
+  // But only for visual effect - actual completion based on polling
   useEffect(() => {
-    let cumulativeTime = 0;
-    const updatedSteps = steps.map(step => {
-      if (step.id === 'assessment') return { ...step, status: 'complete' as const };
+    if (hasCompleted) return; // Stop progressing if already complete
 
-      cumulativeTime += step.estimatedSeconds;
+    // Move to next step every 30 seconds for visual feedback
+    const stepInterval = 30; // seconds per step
+    const targetStepIndex = Math.min(Math.floor(elapsedTime / stepInterval) + 1, steps.length - 2); // Don't auto-complete PDF step
 
-      if (elapsedTime >= cumulativeTime) {
-        return { ...step, status: 'complete' as const };
-      } else if (elapsedTime >= cumulativeTime - step.estimatedSeconds) {
-        return { ...step, status: 'processing' as const };
-      }
-      return { ...step, status: 'pending' as const };
-    });
+    if (targetStepIndex !== currentStepIndex && targetStepIndex < steps.length - 1) {
+      setCurrentStepIndex(targetStepIndex);
 
-    setSteps(updatedSteps);
-  }, [elapsedTime]);
+      // Update step statuses based on current step
+      const updatedSteps = steps.map((step, index) => {
+        if (index < targetStepIndex) {
+          return { ...step, status: 'complete' as const };
+        } else if (index === targetStepIndex) {
+          return { ...step, status: 'processing' as const };
+        }
+        return { ...step, status: 'pending' as const };
+      });
+      setSteps(updatedSteps);
+    }
+  }, [elapsedTime, currentStepIndex, hasCompleted, steps.length]);
 
   // PRIMARY MECHANISM: Start polling immediately (works on all browsers including mobile)
   useEffect(() => {
@@ -104,7 +111,8 @@ export function DigitalTwinWaiting({
 
     const pollForResults = async () => {
       try {
-        const response = await fetch(`/api/assessment/results/${sessionId}`);
+        // CRITICAL FIX: Use correct endpoint - /result not /results
+        const response = await fetch(`/api/assessment/result/${sessionId}`);
 
         if (response.ok) {
           const data = await response.json();
@@ -135,6 +143,11 @@ export function DigitalTwinWaiting({
             }, 1000);
             return;
           }
+        } else if (response.status === 404) {
+          // Results not ready yet, continue polling
+          console.log(`Poll ${localPollCount}: Results not ready yet for ${sessionId}`);
+        } else {
+          console.error(`Poll ${localPollCount}: Unexpected status ${response.status}`);
         }
       } catch (error) {
         console.error('Polling error:', error);
@@ -169,42 +182,65 @@ export function DigitalTwinWaiting({
     };
   }, [sessionId, hasCompleted, isPolling, onComplete]);
 
-  // OPTIONAL: Listen for SSE events if they work (desktop fallback)
+  // ENHANCED SSE: Improved SSE event handling (desktop/mobile)
   useEffect(() => {
     // If we already completed via polling, ignore SSE
     if (hasCompleted) return;
 
-    // If SSE provides data, use it (but don't rely on it)
+    // CRITICAL: Only proceed if we have BOTH simulation result AND result data with result_available flag
     if (sseSimulationResult && sseResultData) {
-      // Clear polling if still running
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+      // Verify result_available flag from assessment_completed event
+      if (sseResultData.result_available === true) {
+        // Clear polling if still running
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+
+        // Mark all steps as complete
+        setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
+        setHasCompleted(true);
+
+        // Now it's safe to fetch and complete
+        setTimeout(() => {
+          onComplete(sseSimulationResult, '');
+        }, 1000);
+      } else {
+        console.log('SSE: Results not yet available, waiting for result_available flag');
       }
-
-      // Mark all steps as complete
-      setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
-      setHasCompleted(true);
-
-      // Use SSE data for completion
-      setTimeout(() => {
-        onComplete(sseSimulationResult, '');
-      }, 1000);
     }
   }, [sseSimulationResult, sseResultData, hasCompleted, onComplete]);
 
   const totalEstimatedSeconds = steps.reduce((sum, step) => sum + step.estimatedSeconds, 0);
   const progressPercentage = Math.min((elapsedTime / totalEstimatedSeconds) * 100, 95); // Cap at 95% until PDF ready
 
+  // Mobile touch event handler
+  const handleMobileResults = () => {
+    if (hasCompleted) {
+      // Force re-render on mobile by updating state
+      setSteps(prev => [...prev]);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div
+      className="min-h-screen flex items-center justify-center bg-background"
+      style={{ padding: '20px 6px' }} // CRITICAL: 6px side padding as requested
+      onTouchEnd={handleMobileResults} // Mobile fix for touch events
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-2xl w-full bg-card rounded-2xl shadow-2xl overflow-hidden border border-border"
+        style={{
+          // Mobile optimizations: GPU acceleration
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+          willChange: 'transform'
+        }}
       >
         {/* Header */}
-        <div className="bg-primary p-8 text-primary-foreground text-center">
+        <div className="bg-primary p-6 text-primary-foreground text-center">
           <h1 className="text-3xl font-bold mb-2">
             Digital Twin Simulation
           </h1>
@@ -214,7 +250,7 @@ export function DigitalTwinWaiting({
         </div>
 
         {/* Progress Overview */}
-        <div className="p-8 border-b border-border">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-foreground">
               Overall Progress
@@ -241,7 +277,7 @@ export function DigitalTwinWaiting({
         </div>
 
         {/* Processing Steps */}
-        <div className="p-8 space-y-4">
+        <div className="p-6 space-y-4">
           {steps.map((step, index) => (
             <motion.div
               key={step.id}
@@ -308,7 +344,7 @@ export function DigitalTwinWaiting({
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-muted/50 border-t border-border">
+        <div className="p-4 bg-muted/50 border-t border-border">
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
               This analysis requires deep pattern matching across {briefCount.toLocaleString()}+ HNWI World developments.
@@ -324,7 +360,7 @@ export function DigitalTwinWaiting({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-primary/10 border-t-4 border-primary"
+            className="p-4 bg-primary/10 border-t-4 border-primary"
           >
             <div className="text-center">
               <h3 className="text-xl font-bold text-foreground mb-1">

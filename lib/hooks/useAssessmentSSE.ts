@@ -161,6 +161,7 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     // Assessment completed
     eventSource.addEventListener('assessment_completed', (e) => {
       const completionData = JSON.parse(e.data);
+      console.log('SSE: Assessment completed event received', completionData);
 
       setIsComplete(true);
       setEvents(prev => [...prev, {
@@ -169,32 +170,48 @@ export const useAssessmentSSE = (sessionId: string | null) => {
         timestamp: new Date().toISOString()
       }]);
 
-      // Respect backend's should_reconnect flag (NEW from backend)
-      if (completionData.should_reconnect === false) {
-        shouldReconnectRef.current = false;
-        eventSource.close();
+      // CRITICAL: Check if results are actually available before proceeding
+      if (completionData.result_available === true) {
+        console.log('SSE: Results are available, processing completion');
 
-        // If backend provides redirect URL, fetch results
-        if (completionData.redirect_url) {
-          setRedirectUrl(completionData.redirect_url);
+        // Store the result data with the result_available flag
+        setResultData({
+          ...completionData,
+          result_available: true
+        });
 
-          // Fetch the complete result data for PDF generation
-          fetch(completionData.redirect_url)
-            .then(res => res.json())
-            .then(data => {
-              setResultData(data);
-            })
-            .catch(err => {
-              // Silent fail
-            });
+        // Respect backend's should_reconnect flag
+        if (completionData.should_reconnect === false) {
+          shouldReconnectRef.current = false;
+          eventSource.close();
+
+          // If backend provides redirect URL, fetch results
+          if (completionData.redirect_url) {
+            setRedirectUrl(completionData.redirect_url);
+
+            // Fetch the complete result data for PDF generation
+            fetch(completionData.redirect_url)
+              .then(res => res.json())
+              .then(data => {
+                setResultData({
+                  ...data,
+                  result_available: true
+                });
+              })
+              .catch(err => {
+                console.error('SSE: Failed to fetch results from redirect URL', err);
+              });
+          }
+        } else {
+          // Legacy behavior - close stream
+          eventSource.close();
         }
       } else {
-        // Legacy behavior - close stream
-        eventSource.close();
+        console.log('SSE: Results not yet available, waiting...');
       }
     });
 
-    // Error handling
+    // Error handling with exponential backoff
     eventSource.onerror = (error) => {
       setIsConnected(false);
       retryCountRef.current++;
@@ -203,14 +220,20 @@ export const useAssessmentSSE = (sessionId: string | null) => {
       if (retryCountRef.current >= maxRetries) {
         shouldReconnectRef.current = false;
         eventSource.close();
+        console.log('SSE: Max retries exceeded, stopping reconnection attempts');
         return;
       }
 
       // Only auto-reconnect if backend allows it AND not complete
       if (shouldReconnectRef.current && !isComplete) {
+        // Implement exponential backoff: 3s, 6s, 12s
+        const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current - 1), 12000);
+        console.log(`SSE: Reconnecting in ${backoffTime}ms (attempt ${retryCountRef.current}/${maxRetries})`);
+
         setTimeout(() => {
           // Browser will automatically reconnect
-        }, 3000);
+          console.log('SSE: Attempting reconnection...');
+        }, backoffTime);
       } else {
         eventSource.close();
       }

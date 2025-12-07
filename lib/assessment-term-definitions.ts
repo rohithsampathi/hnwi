@@ -51,6 +51,12 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     definition: 'A tax-exempt irrevocable trust designed to reduce taxable income by dispersing income to beneficiaries for a period, then donating the remainder to charity.',
     category: 'trust'
   },
+  'DAF': {
+    term: 'DAF',
+    fullName: 'Donor-Advised Fund',
+    definition: 'A charitable giving vehicle that allows donors to make an immediate tax-deductible contribution to a fund, then recommend grants to charities over time. Provides immediate tax benefits while allowing flexible timing of charitable distributions.',
+    category: 'tax'
+  },
   'CLT': {
     term: 'CLT',
     fullName: 'Charitable Lead Trust',
@@ -698,6 +704,18 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     fullName: 'Swiss Lump-Sum Taxation',
     definition: 'Swiss tax regime allowing eligible foreigners to pay fixed lump-sum tax based on living expenses instead of actual income. Minimum annual tax CHF 150K-400K depending on canton. Provides tax certainty and confidentiality.',
     category: 'tax'
+  },
+  'FOUNDATION': {
+    term: 'Foundation',
+    fullName: 'Private Foundation',
+    definition: 'A tax-exempt nonprofit organization established by an individual or family to support charitable causes. Offers significant tax deductions, estate planning benefits, and family legacy building, but subject to strict IRS regulations including minimum 5% annual distributions and excise taxes on self-dealing.',
+    category: 'trust'
+  },
+  'PRIVATE FOUNDATION': {
+    term: 'Private Foundation',
+    fullName: 'Private Foundation',
+    definition: 'A tax-exempt nonprofit organization established by an individual or family to support charitable causes. Offers significant tax deductions, estate planning benefits, and family legacy building, but subject to strict IRS regulations including minimum 5% annual distributions and excise taxes on self-dealing.',
+    category: 'trust'
   },
   'MONACO': {
     term: 'Monaco',
