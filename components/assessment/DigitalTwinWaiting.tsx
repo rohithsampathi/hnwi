@@ -76,16 +76,21 @@ export function DigitalTwinWaiting({
     return () => clearInterval(timer);
   }, []);
 
-  // Progress through steps slowly based on elapsed time
-  // But only for visual effect - actual completion based on polling
+  // Progress through steps with more realistic timing
   useEffect(() => {
     if (hasCompleted) return; // Stop progressing if already complete
 
-    // Move to next step every 30 seconds for visual feedback
-    const stepInterval = 30; // seconds per step
-    const targetStepIndex = Math.min(Math.floor(elapsedTime / stepInterval) + 1, steps.length - 2); // Don't auto-complete PDF step
+    // More realistic step progression timing
+    let targetStepIndex = 1; // Start with briefs retrieval
 
-    if (targetStepIndex !== currentStepIndex && targetStepIndex < steps.length - 1) {
+    if (elapsedTime >= 20) targetStepIndex = 2; // Start simulation at 20s
+    if (elapsedTime >= 50) targetStepIndex = 3; // Gap analysis at 50s
+    if (elapsedTime >= 70) targetStepIndex = 4; // Forensic validation at 70s
+
+    // Don't auto-complete PDF step (index 5) - wait for actual completion
+    targetStepIndex = Math.min(targetStepIndex, steps.length - 2);
+
+    if (targetStepIndex !== currentStepIndex) {
       setCurrentStepIndex(targetStepIndex);
 
       // Update step statuses based on current step
@@ -101,13 +106,26 @@ export function DigitalTwinWaiting({
     }
   }, [elapsedTime, currentStepIndex, hasCompleted, steps.length]);
 
-  // PRIMARY MECHANISM: Start polling immediately (works on all browsers including mobile)
+  // FALLBACK MECHANISM: Polling only starts if SSE doesn't provide results
   useEffect(() => {
     if (!sessionId || hasCompleted || isPolling) return;
 
-    setIsPolling(true);
+    // Only start polling after 30 seconds if SSE hasn't provided results
+    const pollDelayTimer = setTimeout(() => {
+      if (!sseSimulationResult && !hasCompleted) {
+        setIsPolling(true);
+      }
+    }, 30000); // Wait 30s before starting polling as fallback
+
+    return () => clearTimeout(pollDelayTimer);
+  }, [sessionId, hasCompleted, isPolling, sseSimulationResult]);
+
+  // Polling mechanism (fallback only)
+  useEffect(() => {
+    if (!isPolling || hasCompleted) return;
+
     let localPollCount = 0;
-    const maxPolls = 60; // 60 polls @ 3 seconds = 3 minutes max
+    const maxPolls = 30; // 30 polls @ 5 seconds = 2.5 minutes max
 
     const pollForResults = async () => {
       try {
@@ -143,14 +161,13 @@ export function DigitalTwinWaiting({
             }, 1000);
             return;
           }
-        } else if (response.status === 404) {
-          // Results not ready yet, continue polling
-          console.log(`Poll ${localPollCount}: Results not ready yet for ${sessionId}`);
+        } else if (response.status === 404 || response.status === 400) {
+          // Results not ready yet (backend returns 400 or 404), continue polling
         } else {
-          console.error(`Poll ${localPollCount}: Unexpected status ${response.status}`);
+          // Unexpected status
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        // Polling error - silent fail
       }
 
       // Increment poll count
@@ -168,11 +185,11 @@ export function DigitalTwinWaiting({
       }
     };
 
-    // Start polling immediately
+    // Start polling immediately when fallback is triggered
     pollForResults();
 
-    // Then poll every 3 seconds
-    pollingIntervalRef.current = setInterval(pollForResults, 3000);
+    // Then poll every 5 seconds as fallback
+    pollingIntervalRef.current = setInterval(pollForResults, 5000);
 
     // Cleanup on unmount
     return () => {
@@ -206,7 +223,7 @@ export function DigitalTwinWaiting({
           onComplete(sseSimulationResult, '');
         }, 1000);
       } else {
-        console.log('SSE: Results not yet available, waiting for result_available flag');
+        // Results not yet available, waiting for result_available flag
       }
     }
   }, [sseSimulationResult, sseResultData, hasCompleted, onComplete]);

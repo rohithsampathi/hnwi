@@ -284,17 +284,17 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
         </div>
       </div>
 
-      {/* Stats Overlay - Top Left - Clean Badge */}
+      {/* Stats Overlay - Top Left Corner - Below header to avoid overlap */}
       {!loadingMap && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 1.5, duration: 0.5 }}
-          className="absolute top-4 left-4 sm:top-6 sm:left-6 bg-card/75 sm:bg-card/85 backdrop-blur-md sm:backdrop-blur-lg border border-primary/30 rounded-xl sm:rounded-2xl px-4 py-3 sm:px-6 sm:py-5 z-30"
+          className="absolute top-5 left-4 sm:top-5 sm:left-6 bg-card/95 backdrop-blur-2xl border border-primary/40 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 z-30 shadow-2xl"
         >
-          <div className="text-[10px] sm:text-xs text-muted-foreground/70 font-medium uppercase tracking-wider mb-1 sm:mb-2">Live Opportunities</div>
-          <div className="text-2xl sm:text-4xl md:text-5xl font-bold text-primary mb-0.5 sm:mb-1">{filteredCities.length}</div>
-          <div className="text-[10px] sm:text-xs text-muted-foreground/60 font-light">across {new Set(filteredCities.map(c => c.country)).size} countries</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-0.5">Live Opportunities</div>
+          <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary leading-tight">{filteredCities.length}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground/80 font-light">of {totalCount} total</div>
         </motion.div>
       )}
     </div>

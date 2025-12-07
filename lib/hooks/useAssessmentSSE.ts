@@ -43,21 +43,8 @@ export const useAssessmentSSE = (sessionId: string | null) => {
   useEffect(() => {
     if (!sessionId) return;
 
-    // Detect if mobile browser (less reliable SSE support)
-    const checkMobile = () => {
-      const userAgent = navigator.userAgent || '';
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
-      return isMobile || isSafari; // Safari also has SSE issues
-    };
-
-    isMobileRef.current = checkMobile();
-
-    // Skip SSE entirely on mobile browsers - let polling handle it
-    if (isMobileRef.current) {
-      console.log('Mobile browser detected - SSE disabled, using polling instead');
-      return;
-    }
+    // SSE works on all modern browsers including PWAs
+    // We'll use SSE as primary and polling as fallback
 
     // Reset retry count when sessionId changes
     retryCountRef.current = 0;
@@ -161,7 +148,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     // Assessment completed
     eventSource.addEventListener('assessment_completed', (e) => {
       const completionData = JSON.parse(e.data);
-      console.log('SSE: Assessment completed event received', completionData);
 
       setIsComplete(true);
       setEvents(prev => [...prev, {
@@ -172,8 +158,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
       // CRITICAL: Check if results are actually available before proceeding
       if (completionData.result_available === true) {
-        console.log('SSE: Results are available, processing completion');
-
         // Store the result data with the result_available flag
         setResultData({
           ...completionData,
@@ -199,7 +183,7 @@ export const useAssessmentSSE = (sessionId: string | null) => {
                 });
               })
               .catch(err => {
-                console.error('SSE: Failed to fetch results from redirect URL', err);
+                // Silent fail
               });
           }
         } else {
@@ -207,7 +191,7 @@ export const useAssessmentSSE = (sessionId: string | null) => {
           eventSource.close();
         }
       } else {
-        console.log('SSE: Results not yet available, waiting...');
+        // Results not yet available, waiting...
       }
     });
 
@@ -220,7 +204,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
       if (retryCountRef.current >= maxRetries) {
         shouldReconnectRef.current = false;
         eventSource.close();
-        console.log('SSE: Max retries exceeded, stopping reconnection attempts');
         return;
       }
 
@@ -228,11 +211,9 @@ export const useAssessmentSSE = (sessionId: string | null) => {
       if (shouldReconnectRef.current && !isComplete) {
         // Implement exponential backoff: 3s, 6s, 12s
         const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current - 1), 12000);
-        console.log(`SSE: Reconnecting in ${backoffTime}ms (attempt ${retryCountRef.current}/${maxRetries})`);
 
         setTimeout(() => {
           // Browser will automatically reconnect
-          console.log('SSE: Attempting reconnection...');
         }, backoffTime);
       } else {
         eventSource.close();
