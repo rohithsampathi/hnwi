@@ -21,30 +21,53 @@ interface ParsedSection {
 
 /**
  * Parse analysis text:
- * - Remove redundant metadata prefix (Location, Entry Investment, Risk Profile)
+ * - Remove ONLY standalone metadata lines (short single-line metadata)
  * - Convert markdown headings (##) to styled headings
- * - Preserve citations
+ * - Preserve citations and all analysis content
  */
 function parseAnalysis(text: string): ParsedSection[] {
   const sections: ParsedSection[] = []
 
-  // Step 1: Remove metadata lines (Location, Entry Investment, Risk Profile)
+  // Step 1: Remove ALL metadata header variations from start of analysis
   let cleanedText = text
 
-  // Remove lines that match metadata patterns
-  const metadataPatterns = [
-    /^Location:.*$/m,
-    /^Entry Investment:.*$/m,
-    /^Risk Profile:.*$/m,
-    /^Source:.*$/m
-  ]
+  // Universal metadata removal pattern - handles ANY combination of metadata fields
+  // Captures everything from start until "Risk Profile: XXX -" and removes it
+  // This works for any combination of: Conviction, Location, Entry Investment, Expected Return
+  cleanedText = cleanedText.replace(
+    /^(?:(?:Conviction|Location|Entry Investment|Expected Return):\s*.+?\s+)*Risk Profile:\s*[\w\s-]+?\s+-\s+/i,
+    ''
+  )
 
-  for (const pattern of metadataPatterns) {
-    cleanedText = cleanedText.replace(pattern, '')
+  // Fallback: If no "Risk Profile -" pattern, try just removing metadata fields at start
+  if (cleanedText === text) {
+    cleanedText = cleanedText.replace(
+      /^(?:Conviction|Location|Entry Investment|Expected Return|Risk Profile):\s*.+?\s+-\s+/i,
+      ''
+    )
   }
 
-  // Clean up any extra blank lines at the start
-  cleanedText = cleanedText.trim()
+  // Also handle case where metadata is on separate lines
+  const lines = cleanedText.split(/\r?\n/)
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim()
+
+    // Keep empty lines
+    if (!trimmed) return true
+
+    // Remove standalone metadata lines
+    const isStandaloneMetadata =
+      /^Location:\s*.+$/i.test(trimmed) && trimmed.length < 200 ||
+      /^Conviction:\s*\d+\.?\d*\/10\s*\([A-Z\s-]+\)$/i.test(trimmed) ||
+      /^Entry Investment:\s*\$[\d,K]+-?\$?[\d,K]*$/i.test(trimmed) ||
+      /^Expected Return:\s*\d+-?\d*%(\s+over\s+\d+-?\d*\s+(months?|years?))?$/i.test(trimmed) ||
+      /^Risk Profile:\s*[\w-]+$/i.test(trimmed) ||
+      /^[-–—]+$/.test(trimmed)
+
+    return !isStandaloneMetadata
+  })
+
+  cleanedText = filteredLines.join('\n').trim()
 
   // Step 2: Parse headings and content from cleaned text
   const contentLines = cleanedText.split(/\r?\n/)
@@ -124,6 +147,10 @@ export function FormattedAnalysis({
               onCitationClick={onCitationClick}
               citationMap={citationMap}
               className="text-xs"
+              options={{
+                convertMarkdownBold: true,
+                preserveLineBreaks: true
+              }}
             />
           </div>
         )

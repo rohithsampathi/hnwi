@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { Clock, Map as MapIcon, Target, TrendingUp } from 'lucide-react';
@@ -16,6 +16,12 @@ import { ProgressiveReveal } from './ProgressiveReveal';
 import { BrainThinkingLoader } from './BrainThinkingLoader';
 import { TooltipProvider, useTooltip } from './TooltipContext';
 import type { City } from '@/components/interactive-world-map';
+import { extractDevIds } from '@/lib/parse-dev-citations';
+import type { Citation } from '@/lib/parse-dev-citations';
+import { useCitationManager } from '@/hooks/use-citation-manager';
+import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
+import { AnimatePresence } from 'framer-motion';
+import { useOpportunities } from '@/lib/hooks/useOpportunities';
 
 // Dynamically import the map component with SSR disabled (same as home dashboard)
 const InteractiveWorldMap = dynamic(
@@ -58,11 +64,20 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showMap, setShowMap] = useState(true);
-  const [allCities, setAllCities] = useState<City[]>([]); // All available opportunities
   const [cities, setCities] = useState<City[]>([]); // Currently visible opportunities (start at 0)
-  const [loadingMap, setLoadingMap] = useState(true);
-  const [initialCount, setInitialCount] = useState(0);
   const [scenarioTerms, setScenarioTerms] = useState<Set<string>>(new Set());
+
+  // Fetch opportunities using centralized hook (assessment mode)
+  const {
+    cities: allCities,
+    loading: loadingMap,
+    totalCount: initialCount
+  } = useOpportunities({
+    isPublic: true, // Use public endpoint for assessment
+    publicEndpoint: '/api/public/assessment/preview-opportunities',
+    filterCrownVault: true, // Always filter out Crown Vault in assessment
+    cleanCategories: false // Keep raw category names for assessment
+  });
 
   // Gamification: Progressive reveal states
   const [showTitle, setShowTitle] = useState(false);
@@ -74,120 +89,41 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
 
-  // Fetch Command Centre opportunities - show ALL opportunities from the start
-  // This gives us the full opportunity set to display on the map
+  // Citation management (same as home dashboard)
+  const {
+    citations: managedCitations,
+    setCitations: setManagedCitations,
+    citationMap,
+    selectedCitationId,
+    setSelectedCitationId,
+    isPanelOpen,
+    openCitation,
+    closePanel
+  } = useCitationManager();
+
+  // Screen size detection for citation panel
+  const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
+
+  // Screen size detection (matching home dashboard)
   useEffect(() => {
-    async function fetchOpportunities() {
-      setLoadingMap(true);
-      try {
-        // Use assessment preview endpoint for consistent counts
-        const response = await fetch('/api/public/assessment/preview-opportunities');
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isLandscapeMobile = isTouchDevice && height < 500;
+      const isMobile = width < 1024 || isLandscapeMobile;
+      setScreenSize(isMobile ? 'mobile' : 'desktop');
+    };
 
-        if (!response.ok) {
-          setLoadingMap(false);
-          return;
-        }
-
-        const data = await response.json();
-        processGenericOpportunityData(data);
-      } catch (error) {
-        setLoadingMap(false);
-      }
-    }
-
-    function processGenericOpportunityData(data: any) {
-      // Handle both wrapped and direct array responses
-      const opportunities = data?.opportunities || (Array.isArray(data) ? data : data?.data || []);
-      // Use total_count from response, or fall back to the length of opportunities returned
-      const totalCount = data?.total_count || opportunities.length;
-
-      const { cities: processedCities, totalCount: finalCount } = processOpportunitiesToCities(opportunities, totalCount);
-
-      // Store all available cities but don't display any yet (start at 0)
-      // Progressive reveal happens through calibration events
-      setAllCities(processedCities);
-      setInitialCount(finalCount);
-      setCities([]); // Start with 0 visible - progressive reveal via calibration
-      setLoadingMap(false);
-    }
-
-    function processOpportunitiesToCities(opportunities: any[], totalCount: number): { cities: City[], totalCount: number } {
-      if (!opportunities || opportunities.length === 0) {
-        return { cities: [], totalCount };
-      }
-
-      // Transform opportunities to city format
-      const cityData: City[] = opportunities
-        .map((opp: any) => {
-          const lat = opp.latitude;
-          const lng = opp.longitude;
-          const displayName = opp.location || opp.country || opp.title || 'Opportunity';
-
-          // Validate coordinates
-          if (!lat || !lng || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-            return null;
-          }
-
-          // Skip (0, 0) coordinates
-          if (lat === 0 && lng === 0) {
-            return null;
-          }
-
-          // Filter out Crown Vault opportunities
-          const isCrownAsset = opp.source?.toLowerCase().includes('crown vault') ||
-                               opp.source?.toLowerCase() === 'crown vault';
-          if (isCrownAsset) {
-            return null;
-          }
-
-          // Strip citations from analysis for assessment display
-          const cleanAnalysis = opp.analysis
-            ? opp.analysis
-                .replace(/\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\]/gi, '') // Remove DEVID citations
-                .replace(/\]\([^\)]+\)/g, '') // Remove markdown links
-                .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markdown
-                .trim()
-            : undefined;
-
-          return {
-            name: displayName,
-            country: opp.country || 'Unknown',
-            latitude: lat,
-            longitude: lng,
-            population: opp.value,
-            type: opp.source === "MOEv4" ? "finance" : "luxury",
-            _id: opp._id,
-            id: opp.id,
-            title: opp.title,
-            tier: opp.tier,
-            value: opp.value,
-            risk: opp.risk,
-            analysis: cleanAnalysis,
-            source: opp.source,
-            category: opp.category,
-          } as City;
-        })
-        .filter((city): city is City => city !== null);
-
-      // Deduplicate by ID
-      const seenIds = new Set<string>();
-      const deduplicatedCities = cityData.filter(city => {
-        const uniqueId = city._id || city.id;
-        if (!uniqueId) return true;
-
-        if (seenIds.has(uniqueId)) {
-          return false;
-        }
-
-        seenIds.add(uniqueId);
-        return true;
-      });
-
-      return { cities: deduplicatedCities, totalCount };
-    }
-
-    fetchOpportunities();
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Handle citation click from map popup
+  const handleCitationClick = useCallback((citationId: string) => {
+    openCitation(citationId);
+  }, [openCitation]);
 
   // Track previous city count for calculating increment
   const [previousCityCount, setPreviousCityCount] = useState(0);
@@ -235,14 +171,8 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
               return null;
             }
 
-            // Strip citations from analysis for assessment display
-            const cleanAnalysis = opp.analysis
-              ? opp.analysis
-                  .replace(/\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\]/gi, '') // Remove DEVID citations
-                  .replace(/\]\([^\)]+\)/g, '') // Remove markdown links
-                  .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markdown
-                  .trim()
-              : undefined;
+            // Extract citations from analysis (keeping them for map display)
+            const devIds = extractDevIds(opp.analysis || '');
 
             return {
               name: displayName,
@@ -257,9 +187,12 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
               tier: opp.tier,
               value: opp.value,
               risk: opp.risk,
-              analysis: cleanAnalysis,
+              analysis: opp.analysis, // Keep full analysis with citations
               source: opp.source,
               category: opp.category,
+              // Citation data
+              devIds: devIds,
+              hasCitations: devIds.length > 0,
             } as City;
           })
           .filter((city): city is City => city !== null);
@@ -329,6 +262,30 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
 
     return false;
   });
+
+  // Extract all citations from filtered cities (matching home dashboard)
+  useEffect(() => {
+    const allCitations: Citation[] = [];
+    const seenIds = new Set<string>();
+    let citationNumber = 1;
+
+    filteredCities.forEach(city => {
+      if (city.devIds && city.devIds.length > 0) {
+        city.devIds.forEach(devId => {
+          if (!seenIds.has(devId)) {
+            seenIds.add(devId);
+            allCitations.push({
+              id: devId,
+              number: citationNumber++,
+              originalText: `[Dev ID: ${devId}]`
+            });
+          }
+        });
+      }
+    });
+
+    setManagedCitations(allCitations);
+  }, [filteredCities.length, showPriveOpportunities, showHNWIPatterns]); // Only depend on the length and filter states
 
   // Track when filtered cities count changes to update previous count
   useEffect(() => {
@@ -536,20 +493,21 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             exit={{ opacity: 0, x: 20 }}
             className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative overflow-hidden order-first lg:order-last"
           >
-            <div className="w-full h-[300px] sm:h-[400px] lg:h-[calc(100vh-120px)] lg:pt-8">
+            <div className="w-full h-[300px] sm:h-[400px] lg:h-[calc(100vh-120px)] lg:pt-8 relative">
               {loadingMap ? (
                 <div className="h-full flex items-center justify-center">
                   <CrownLoader size="lg" text="Loading Command Centre" />
                 </div>
               ) : (
                 <>
+                  {/* Map container - fills parent completely */}
                   <InteractiveWorldMap
                     width="100%"
                     height="100%"
                     showControls={true}
                     cities={filteredCities}
-                    onCitationClick={() => {}} // Disable citation clicks in assessment
-                    citationMap={new Map()} // Empty citation map to strip citations
+                    onCitationClick={handleCitationClick} // Enable citation clicks
+                    citationMap={citationMap} // Pass citation map for proper numbering
                     showCrownAssets={false} // No Crown Assets during assessment
                     showPriveOpportunities={showPriveOpportunities}
                     showHNWIPatterns={showHNWIPatterns}
@@ -557,76 +515,105 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                     onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
                     onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
                     hideCrownAssetsToggle={true} // Hide Crown Assets toggle in assessment
-                    useAbsolutePositioning={true} // Position controls inside map frame for assessment
+                    useAbsolutePositioning={true} // Keep controls inside map bounds
                   />
 
-                {/* Calibration Status Overlay */}
-                {isCalibrating && (
-                  <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[500] px-3 py-2 sm:px-6 sm:py-3 bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl max-w-[90%]">
-                    <span className="flex items-center gap-1.5 sm:gap-2 text-black dark:text-primary text-xs sm:text-sm font-semibold whitespace-nowrap">
-                      <Target size={14} className="animate-pulse flex-shrink-0" />
-                      <span className="truncate">Calibrating DNA...</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Opportunity Counter - Real-time updates (shows filtered count) */}
-                <motion.div
-                  key={filteredCities.length} // Re-animate when count changes
-                  initial={{ scale: 1.2, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute top-2 left-2 sm:top-4 sm:left-4 z-[500] bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl px-2 py-2 sm:px-4 sm:py-3 max-w-[140px] sm:max-w-none"
-                >
-                  <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground mb-0.5 sm:mb-1 truncate font-medium uppercase tracking-wider">Command Centre</div>
-                  <div className="text-xl sm:text-3xl font-bold text-black dark:text-primary leading-tight">{filteredCities.length}</div>
-                  <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground truncate font-light">of {initialCount} opps</div>
-                  {filteredCities.length > 0 && filteredCities.length < initialCount && (
-                    <div className="text-[10px] sm:text-xs text-black dark:text-green-400 mt-0.5 sm:mt-1 truncate font-semibold">
-                      +{filteredCities.length} found
+                  {/* Overlays positioned absolutely with pointer-events-none */}
+                  {/* Calibration Status Overlay */}
+                  {isCalibrating && (
+                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[400] pointer-events-none">
+                      <div className="px-3 py-2 sm:px-6 sm:py-3 bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl max-w-[90%]">
+                        <span className="flex items-center gap-1.5 sm:gap-2 text-black dark:text-primary text-xs sm:text-sm font-semibold whitespace-nowrap">
+                          <Target size={14} className="animate-pulse flex-shrink-0" />
+                          <span className="truncate">Calibrating DNA...</span>
+                        </span>
+                      </div>
                     </div>
                   )}
-                </motion.div>
 
-                {/* Latest Calibration Event - Show accurate counts using actual filtered cities data */}
-                {(() => {
-                  const increment = Math.max(0, filteredCities.length - previousCityCount);
-                  const hasNewOpportunities = calibrationEvents.length > 0 && filteredCities.length > 0 && increment > 0;
+                  {/* Opportunity Counter - Real-time updates (shows filtered count) */}
+                  <motion.div
+                    key={filteredCities.length} // Re-animate when count changes
+                    initial={{ scale: 1.2, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute top-2 left-2 sm:top-4 sm:left-4 z-[400] bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl px-2 py-2 sm:px-4 sm:py-3 max-w-[140px] sm:max-w-none pointer-events-none"
+                  >
+                    <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground mb-0.5 sm:mb-1 truncate font-medium uppercase tracking-wider">Command Centre</div>
+                    <div className="text-xl sm:text-3xl font-bold text-black dark:text-primary leading-tight">{filteredCities.length}</div>
+                    <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground truncate font-light">of {initialCount} opps</div>
+                    {filteredCities.length > 0 && filteredCities.length < initialCount && (
+                      <div className="text-[10px] sm:text-xs text-black dark:text-green-400 mt-0.5 sm:mt-1 truncate font-semibold">
+                        +{filteredCities.length} found
+                      </div>
+                    )}
+                  </motion.div>
 
-                  if (!hasNewOpportunities) return null;
+                  {/* Latest Calibration Event - Show accurate counts using actual filtered cities data */}
+                  {(() => {
+                    const increment = Math.max(0, filteredCities.length - previousCityCount);
+                    const hasNewOpportunities = calibrationEvents.length > 0 && filteredCities.length > 0 && increment > 0;
 
-                  return (
-                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[500] w-auto max-w-[90%] sm:max-w-md">
-                      <motion.div
-                        key={`calibration-${filteredCities.length}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
-                      >
-                        <div className="flex items-center justify-center gap-2 sm:gap-3">
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
-                            <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
-                              +{increment} opportunities discovered matching your DNA
-                            </span>
+                    if (!hasNewOpportunities) return null;
+
+                    return (
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[400] w-auto max-w-[90%] sm:max-w-md pointer-events-none">
+                        <motion.div
+                          key={`calibration-${filteredCities.length}`}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-card/95 border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl"
+                        >
+                          <div className="flex items-center justify-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
+                              <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
+                                +{increment} opportunities discovered matching your DNA
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                              <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
+                                +{increment}
+                              </span>
+                              <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                            <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
-                              +{increment}
-                            </span>
-                            <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </div>
-                  );
-                })()}
-              </>
-            )}
+                        </motion.div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
           </motion.div>
         )}
       </div>
+
+      {/* Citation Panel - Desktop Only (matching home dashboard) */}
+      {isPanelOpen && screenSize === 'desktop' && (
+        <div className="hidden lg:block">
+          <EliteCitationPanel
+            citations={managedCitations}
+            selectedCitationId={selectedCitationId}
+            onClose={closePanel}
+            onCitationSelect={setSelectedCitationId}
+            citationMap={citationMap}
+          />
+        </div>
+      )}
+
+      {/* Mobile Citation Panel - Full screen with AnimatePresence */}
+      {isPanelOpen && screenSize === 'mobile' && (
+        <AnimatePresence>
+          <EliteCitationPanel
+            citations={managedCitations}
+            selectedCitationId={selectedCitationId}
+            onClose={closePanel}
+            onCitationSelect={setSelectedCitationId}
+            citationMap={citationMap}
+          />
+        </AnimatePresence>
+      )}
     </>
   );
 };

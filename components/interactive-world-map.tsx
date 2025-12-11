@@ -132,7 +132,7 @@ export function InteractiveWorldMap({
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
   const [forceRender, setForceRender] = useState(0)
-  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 10000000 })
+  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   const markerRefs = React.useRef<Map<string, any>>(new Map())
 
   // ROOT FIX: Store scroll positions at MAP level, keyed by clusterId
@@ -310,7 +310,7 @@ export function InteractiveWorldMap({
                 : createCustomIcon(center, clusterIndex, theme, getColor, isOpen ? clusterIndex : null)
               }
               ref={(ref) => {
-                if (ref && !isCluster) {
+                if (ref) {
                   markerRefs.current.set(markerKey, ref)
                 }
               }}
@@ -318,6 +318,16 @@ export function InteractiveWorldMap({
                 click: () => {
                   if (!isCluster) {
                     handleCityClick(center, clusterId)
+                  } else {
+                    // For clusters, open the popup to show all cities
+                    const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
+                    const markerRef = markerRefs.current.get(markerKey)
+                    if (markerRef) {
+                      markerRef.openPopup()
+                    }
+                    setOpenClusterId(clusterId)
+                    setSelectedCity(center)
+                    setFlyToCity(center)
                   }
                 }
               }}

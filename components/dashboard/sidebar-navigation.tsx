@@ -46,12 +46,14 @@ export function SidebarNavigation({
   const [isLandscape, setIsLandscape] = useState(false)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean | null>(null)
   const [isCheckingAssessment, setIsCheckingAssessment] = useState(true)
+  const [completedSessionId, setCompletedSessionId] = useState<string | null>(null)
 
   // Check if user has completed assessment - controls whether Assessment menu item is shown
   useEffect(() => {
     if (!isUserAuthenticated) {
       setIsCheckingAssessment(false)
       setHasCompletedAssessment(false)
+      setCompletedSessionId(null)
       return
     }
 
@@ -63,6 +65,7 @@ export function SidebarNavigation({
 
         if (!userId) {
           setHasCompletedAssessment(false)
+          setCompletedSessionId(null)
           setIsCheckingAssessment(false)
           return
         }
@@ -71,15 +74,25 @@ export function SidebarNavigation({
 
         if (response.ok) {
           const data = await response.json()
+
           const assessments = data?.assessments || data || []
-          setHasCompletedAssessment(assessments.length > 0)
+          if (Array.isArray(assessments) && assessments.length > 0) {
+            const sessionId = assessments[0]?.session_id || null
+            setHasCompletedAssessment(true)
+            setCompletedSessionId(sessionId)
+          } else {
+            setHasCompletedAssessment(false)
+            setCompletedSessionId(null)
+          }
         } else {
           // On error, assume no assessment to be safe
           setHasCompletedAssessment(false)
+          setCompletedSessionId(null)
         }
       } catch (error) {
         // On error, assume no assessment
         setHasCompletedAssessment(false)
+        setCompletedSessionId(null)
       } finally {
         setIsCheckingAssessment(false)
       }
@@ -155,7 +168,7 @@ export function SidebarNavigation({
     return () => clearInterval(interval)
   }, [])
 
-  // All navigation items with business mode flags - Reordered: Ask Rohith below HNWI World, Assessment before Profile
+  // All navigation items with business mode flags - Reordered: Ask Rohith below HNWI World, Simulation before Profile
   const allNavItems = [
     { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
     {
@@ -204,7 +217,7 @@ export function SidebarNavigation({
       businessOnly: false
     },
     {
-      name: "Assessment",
+      name: "Simulation",
       icon: ClipboardCheck,
       route: "assessment",
       description: "Discover your wealth archetype and get personalized strategic insights tailored to your profile.",
@@ -243,12 +256,12 @@ export function SidebarNavigation({
   ]
 
   // Additional menu items for three dots dropdown
-  // Assessment is always shown - clicking it redirects to results if completed
+  // Simulation is always shown - clicking it redirects to results if completed
   const moreMenuItems = [
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
-    { name: "Assessment", icon: ClipboardCheck, route: "assessment" },
+    { name: "Simulation", icon: ClipboardCheck, route: "assessment" },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
@@ -261,7 +274,12 @@ export function SidebarNavigation({
     } else if (route === "ask-rohith") {
       router.push("/ask-rohith")
     } else if (route === "assessment") {
-      router.push("/assessment")
+      // If user has completed assessment, redirect to results instead of landing page
+      if (hasCompletedAssessment && completedSessionId) {
+        router.push(`/assessment/results/${completedSessionId}`)
+      } else {
+        router.push("/assessment")
+      }
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "prive-exchange") {

@@ -8,7 +8,7 @@ import { MapPin, Crown, Globe, Linkedin, Brain } from "lucide-react"
 import type { City } from "@/components/interactive-world-map"
 import { CitationText } from "@/components/elite/citation-text"
 import { FormattedAnalysis } from "@/components/elite/formatted-analysis"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { AdvancedScrollArea } from "@/components/ui/advanced-scroll-area"
 import {
   formatValue,
   formatLabel,
@@ -30,9 +30,8 @@ interface MapPopupSingleProps {
   onCitationClick?: (citationId: string) => void
   citationMap?: Map<string, number>
   onNavigate?: (route: string) => void
-  // ROOT FIX: Scroll position managed by parent (InteractiveWorldMap)
-  scrollPosition: number
-  onScrollPositionChange: (clusterId: string, position: number) => void
+  scrollPosition?: number // Optional - no longer used but kept for compatibility
+  onScrollPositionChange?: (clusterId: string, position: number) => void // Optional
 }
 
 export function MapPopupSingle({
@@ -43,13 +42,24 @@ export function MapPopupSingle({
   onExpand,
   onCitationClick,
   citationMap,
-  onNavigate,
-  scrollPosition,
-  onScrollPositionChange
+  onNavigate
 }: MapPopupSingleProps) {
   const isExpanded = expandedClusterId === clusterId
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
-  const isProgrammaticScrollRef = React.useRef(false)
+
+  // Debug logging for analysis field
+  React.useEffect(() => {
+    if (isExpanded) {
+      console.log('[MapPopup] Opportunity Debug:', {
+        title: city.title,
+        hasAnalysis: !!city.analysis,
+        analysisLength: city.analysis?.length || 0,
+        analysisPreview: city.analysis?.substring(0, 100),
+        hasElitePulse: !!city.elite_pulse_analysis,
+        elitePulseLength: city.elite_pulse_analysis?.length || 0
+      });
+    }
+  }, [isExpanded, city.title, city.analysis, city.elite_pulse_analysis]);
 
   // Extract first paragraph from analysis text
   const getFirstParagraph = (text: string | undefined): string => {
@@ -59,96 +69,8 @@ export function MapPopupSingle({
     return paragraphs[0]?.trim() || text
   }
 
-  // Scroll preservation with proper event handling
-  React.useLayoutEffect(() => {
-    if (!isExpanded) return
-
-    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]')
-    if (!scrollContainer) return
-
-    // Restore scroll position only on mount or when content changes (not from user scroll)
-    if (scrollContainer.scrollTop !== scrollPosition) {
-      isProgrammaticScrollRef.current = true
-      scrollContainer.scrollTop = scrollPosition
-      // Reset flag after a short delay
-      setTimeout(() => {
-        isProgrammaticScrollRef.current = false
-      }, 100)
-    }
-
-    // Save scroll position on scroll
-    const handleScroll = () => {
-      // Skip if this scroll was programmatic
-      if (isProgrammaticScrollRef.current) return
-
-      const newPosition = scrollContainer.scrollTop
-      onScrollPositionChange(clusterId, newPosition)
-    }
-
-    // CRITICAL: Stop wheel events from bubbling to Leaflet (prevents rubber band)
-    const handleWheel = (e: WheelEvent) => {
-      const element = scrollContainer as HTMLElement
-      const scrollTop = element.scrollTop
-      const scrollHeight = element.scrollHeight
-      const height = element.clientHeight
-      const wheelDelta = e.deltaY
-
-      const isScrollingDown = wheelDelta > 0
-      const isScrollingUp = wheelDelta < 0
-      const atTop = scrollTop === 0
-      const atBottom = scrollTop + height >= scrollHeight
-
-      // At top and scrolling up, or at bottom and scrolling down - allow map interaction
-      if ((atTop && isScrollingUp) || (atBottom && isScrollingDown)) {
-        return // Let event bubble to Leaflet
-      }
-
-      // Otherwise, we're scrolling within content - stop propagation AND prevent default
-      e.stopPropagation()
-      e.preventDefault() // CRITICAL: Prevents rubber band effect
-    }
-
-    // CRITICAL: Handle touch events for mobile (prevents rubber band on touch devices)
-    let touchStartY = 0
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0].clientY
-    }
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const element = scrollContainer as HTMLElement
-      const scrollTop = element.scrollTop
-      const scrollHeight = element.scrollHeight
-      const height = element.clientHeight
-      const touchY = e.touches[0].clientY
-      const touchDelta = touchStartY - touchY
-
-      const isScrollingDown = touchDelta > 0
-      const isScrollingUp = touchDelta < 0
-      const atTop = scrollTop === 0
-      const atBottom = scrollTop + height >= scrollHeight
-
-      // At top and scrolling up, or at bottom and scrolling down - allow map interaction
-      if ((atTop && isScrollingUp) || (atBottom && isScrollingDown)) {
-        return // Let event bubble to Leaflet
-      }
-
-      // Otherwise, we're scrolling within content - stop propagation AND prevent default
-      e.stopPropagation()
-      e.preventDefault() // CRITICAL: Prevents rubber band effect on mobile
-    }
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: false })
-    scrollContainer.addEventListener('touchstart', handleTouchStart, { passive: true })
-    scrollContainer.addEventListener('touchmove', handleTouchMove, { passive: false })
-
-    return () => {
-      scrollContainer.removeEventListener('scroll', handleScroll)
-      scrollContainer.removeEventListener('wheel', handleWheel)
-      scrollContainer.removeEventListener('touchstart', handleTouchStart)
-      scrollContainer.removeEventListener('touchmove', handleTouchMove)
-    }
-  }, [isExpanded, clusterId, onScrollPositionChange]) // Removed scrollPosition from deps - only restore on mount/expand
+  // OverlayScrollbars handles scroll isolation natively via CSS containment
+  // No need for manual event listeners - advanced-scroll-area handles this
 
   return (
     <div
@@ -258,10 +180,10 @@ export function MapPopupSingle({
         </button>
       </div>
 
-      {/* SCROLLABLE CONTENT - Using Radix UI ScrollArea (battle-tested) */}
+      {/* SCROLLABLE CONTENT - Using Advanced OverlayScrollbars */}
       {isExpanded && (
         <div className="border-t border-border" ref={scrollAreaRef}>
-          <ScrollArea className="h-[280px]" style={{ touchAction: 'pan-y' }}>
+          <AdvancedScrollArea maxHeight={280}>
             <div className="px-3 pt-3 pb-8 space-y-3">
             {/* Crown Vault Asset */}
             {city.source?.toLowerCase().includes('crown') && (
@@ -334,7 +256,10 @@ export function MapPopupSingle({
                 )}
 
                 {(city as any).katherine_analysis && (
-                  <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                  <div
+                    className="bg-primary/5 rounded-lg p-3 border border-primary/20"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <p className="text-xs text-primary mb-2 font-semibold flex items-center gap-1">
                       <Brain className="h-3 w-3" />
                       Elite Pulse
@@ -354,7 +279,7 @@ export function MapPopupSingle({
 
             {/* Regular Analysis */}
             {!city.source?.toLowerCase().includes('crown') && city.analysis && (
-              <div>
+              <div onClick={(e) => e.stopPropagation()}>
                 <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
                 <div className="text-xs leading-relaxed">
                   <FormattedAnalysis
@@ -369,7 +294,7 @@ export function MapPopupSingle({
 
             {/* Elite Pulse */}
             {!city.source?.toLowerCase().includes('crown') && city.elite_pulse_analysis && (
-              <div>
+              <div onClick={(e) => e.stopPropagation()}>
                 <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
                 <div className="text-xs leading-relaxed">
                   <FormattedAnalysis
@@ -457,7 +382,7 @@ export function MapPopupSingle({
               </div>
             )}
             </div>
-          </ScrollArea>
+          </AdvancedScrollArea>
         </div>
       )}
 

@@ -1,12 +1,10 @@
 // components/map/map-filter-controls.tsx
-// Ultra-lean dual-range slider using react-range-slider-input
+// Ultra-lean dual-range slider with native implementation
 
 "use client"
 
-import React from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Crown, Gem, TrendingUp, ZoomOut } from "lucide-react"
-import RangeSlider from "react-range-slider-input"
-import "react-range-slider-input/dist/style.css"
 
 interface MapFilterControlsProps {
   selectedPriceRange: { min: number; max: number }
@@ -33,12 +31,165 @@ function formatCurrency(value: number): string {
   return `$${value}`
 }
 
+// Dual Range Slider Component
+function DualRangeSlider({ min, max, step, value, onChange, theme }: {
+  min: number;
+  max: number;
+  step: number;
+  value: [number, number];
+  onChange: (values: [number, number]) => void;
+  theme: string;
+}) {
+  const [minVal, setMinVal] = useState(value[0]);
+  const [maxVal, setMaxVal] = useState(value[1]);
+  const minValRef = useRef(value[0]);
+  const maxValRef = useRef(value[1]);
+  const rangeRef = useRef<HTMLDivElement>(null);
+
+  // Convert value to percentage
+  const getPercent = (value: number) => Math.round(((value - min) / (max - min)) * 100);
+
+  // Update range bar position when values change
+  useEffect(() => {
+    const minPercent = getPercent(minVal);
+    const maxPercent = getPercent(maxVal);
+
+    if (rangeRef.current) {
+      rangeRef.current.style.left = `${minPercent}%`;
+      rangeRef.current.style.width = `${maxPercent - minPercent}%`;
+    }
+  }, [minVal, maxVal]);
+
+  // Sync with external value changes
+  useEffect(() => {
+    setMinVal(value[0]);
+    setMaxVal(value[1]);
+    minValRef.current = value[0];
+    maxValRef.current = value[1];
+  }, [value]);
+
+  const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMinVal = Math.min(Number(e.target.value), maxVal - step);
+    setMinVal(newMinVal);
+    minValRef.current = newMinVal;
+    onChange([newMinVal, maxVal]);
+  };
+
+  const handleMaxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMaxVal = Math.max(Number(e.target.value), minVal + step);
+    setMaxVal(newMaxVal);
+    maxValRef.current = newMaxVal;
+    onChange([minVal, newMaxVal]);
+  };
+
+  return (
+    <div className="relative w-full h-3 flex items-center">
+      {/* Track background */}
+      <div className="absolute w-full h-[3px] bg-muted-foreground/30 rounded-full" />
+
+      {/* Active range */}
+      <div
+        ref={rangeRef}
+        className="absolute h-[3px] bg-primary rounded-full z-[1]"
+      />
+
+      {/* Min range input */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={minVal}
+        onChange={handleMinChange}
+        className="dual-range-slider dual-range-slider-min"
+        style={{
+          position: 'absolute',
+          width: '100%',
+          pointerEvents: 'all',
+          zIndex: minVal > max - 100 ? 5 : 3,
+        }}
+      />
+
+      {/* Max range input */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={maxVal}
+        onChange={handleMaxChange}
+        className="dual-range-slider dual-range-slider-max"
+        style={{
+          position: 'absolute',
+          width: '100%',
+          pointerEvents: 'all',
+          zIndex: 4,
+        }}
+      />
+
+      <style jsx global>{`
+        .dual-range-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          height: 3px;
+          background: transparent;
+          outline: none;
+        }
+
+        .dual-range-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: hsl(var(--primary));
+          border: 2px solid ${theme === 'dark' ? '#fff' : '#000'};
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          position: relative;
+          z-index: 10;
+        }
+
+        .dual-range-slider::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: hsl(var(--primary));
+          border: 2px solid ${theme === 'dark' ? '#fff' : '#000'};
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          position: relative;
+          z-index: 10;
+        }
+
+        .dual-range-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+        }
+
+        .dual-range-slider::-moz-range-thumb:hover {
+          transform: scale(1.1);
+        }
+
+        .dual-range-slider::-webkit-slider-thumb:active {
+          transform: scale(1.15);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .dual-range-slider::-moz-range-thumb:active {
+          transform: scale(1.15);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // Mobile variant - ultra minimal
 export function MapFilterControlsMobile(props: MapFilterControlsProps) {
   // Detect landscape mode for better positioning
-  const [isLandscape, setIsLandscape] = React.useState(false)
+  const [isLandscape, setIsLandscape] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const checkOrientation = () => {
       const isLandscapeMode = window.innerHeight < 500 && window.innerWidth > window.innerHeight
       setIsLandscape(isLandscapeMode)
@@ -58,56 +209,27 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
     <div
       className={`lg:hidden ${props.useAbsolutePositioning ? 'absolute' : 'fixed'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto transition-all ${
         props.useAbsolutePositioning
-          ? 'bottom-[30px]'  // Moved down from 40px to 30px (10px lower)
-          : isLandscape ? 'bottom-[10px]' : 'bottom-[150px] md:bottom-[90px]'  // Also adjusted these by 10px
+          ? 'bottom-[30px]'
+          : isLandscape ? 'bottom-[10px]' : 'bottom-[150px] md:bottom-[90px]'
       }`}
     >
       <div className="flex flex-col items-center gap-1">
         {/* Ultra-compact slider for mobile */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-md px-2 py-0.5 shadow-lg min-w-[220px] flex flex-col items-center">
-          <div className="text-[9px] font-medium text-muted-foreground text-center -mt-0.5 -mb-0.5">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-md px-3 py-1.5 shadow-lg min-w-[220px] flex flex-col items-center gap-1">
+          <div className="text-[9px] font-medium text-muted-foreground text-center">
             {formatCurrency(props.selectedPriceRange.min)} — {formatCurrency(props.selectedPriceRange.max)}
           </div>
 
-          <div className="custom-range-slider-mobile w-[85%]">
-            <RangeSlider
+          <div className="w-[90%]">
+            <DualRangeSlider
               min={MIN}
               max={MAX}
               step={10000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
-              onInput={(values: number[]) => {
-                props.onPriceRangeChange({ min: values[0], max: values[1] })
-              }}
+              onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
+              theme={props.theme}
             />
           </div>
-
-          <style jsx global>{`
-            .custom-range-slider-mobile .range-slider {
-              height: 10px !important;
-              background: transparent !important;
-            }
-            .custom-range-slider-mobile .range-slider__range {
-              background: hsl(var(--primary)) !important;
-              height: 2px !important;
-            }
-            .custom-range-slider-mobile .range-slider__thumb {
-              width: 10px !important;
-              height: 10px !important;
-              background: hsl(var(--primary)) !important;
-              border: 1.5px solid ${props.theme === 'dark' ? '#fff' : '#000'} !important;
-              box-shadow: 0 1px 2px rgba(0,0,0,0.15) !important;
-              cursor: grab !important;
-            }
-            .custom-range-slider-mobile .range-slider__thumb:active {
-              cursor: grabbing !important;
-              transform: scale(1.1) !important;
-              box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
-            }
-            .custom-range-slider-mobile .range-slider__track {
-              background: transparent !important;
-              height: 2px !important;
-            }
-          `}</style>
         </div>
 
         {/* Filter icons and Zoom out on same line - more compact */}
@@ -182,50 +304,21 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
     <div className={`hidden lg:block ${props.useAbsolutePositioning ? 'absolute bottom-[40px]' : 'fixed bottom-24'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto`}>
       <div className="flex flex-col items-center gap-3">
         {/* Ultra-lean slider */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-3 py-1 shadow-lg min-w-[300px] flex flex-col items-center">
-          <div className="text-[10px] font-medium text-muted-foreground text-center -mt-1 -mb-1">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-4 py-2 shadow-lg min-w-[320px] flex flex-col items-center gap-1.5">
+          <div className="text-[10px] font-medium text-muted-foreground text-center">
             {formatCurrency(props.selectedPriceRange.min)} — {formatCurrency(props.selectedPriceRange.max)}
           </div>
 
-          <div className="custom-range-slider-desktop w-[90%]">
-            <RangeSlider
+          <div className="w-[90%]">
+            <DualRangeSlider
               min={MIN}
               max={MAX}
               step={10000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
-              onInput={(values: number[]) => {
-                props.onPriceRangeChange({ min: values[0], max: values[1] })
-              }}
+              onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
+              theme={props.theme}
             />
           </div>
-
-          <style jsx global>{`
-            .custom-range-slider-desktop .range-slider {
-              height: 14px !important;
-              background: transparent !important;
-            }
-            .custom-range-slider-desktop .range-slider__range {
-              background: hsl(var(--primary)) !important;
-              height: 3px !important;
-            }
-            .custom-range-slider-desktop .range-slider__thumb {
-              width: 14px !important;
-              height: 14px !important;
-              background: hsl(var(--primary)) !important;
-              border: 2px solid ${props.theme === 'dark' ? '#fff' : '#000'} !important;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
-              cursor: grab !important;
-            }
-            .custom-range-slider-desktop .range-slider__thumb:active {
-              cursor: grabbing !important;
-              transform: scale(1.15) !important;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
-            }
-            .custom-range-slider-desktop .range-slider__track {
-              background: transparent !important;
-              height: 3px !important;
-            }
-          `}</style>
         </div>
 
         {/* Filters */}

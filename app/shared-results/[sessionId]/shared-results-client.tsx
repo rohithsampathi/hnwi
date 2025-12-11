@@ -14,9 +14,14 @@ import dynamic from 'next/dynamic';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { AssessmentResultsHeader } from '@/components/assessment/AssessmentResultsHeader';
-import { DigitalTwinSimulation } from '@/components/assessment/DigitalTwinSimulation';
-import { GapAnalysisSection } from '@/components/assessment/GapAnalysisSection';
 import { CrownLoader } from '@/components/ui/crown-loader';
+import {
+  ExecutiveSummary,
+  SpiderGraphComparison,
+  CelebrityOpportunities,
+  StrategicPositioningGaps,
+  StrategicInsightsInfographic
+} from '@/components/report';
 
 // Dynamic import for InteractiveWorldMap
 const InteractiveWorldMap = dynamic(
@@ -49,6 +54,9 @@ export default function SharedResultsClient() {
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
 
+  // HNWI World count
+  const [hnwiWorldCount, setHnwiWorldCount] = useState<number>(1860); // Default fallback
+
   // Citation management
   const {
     citations,
@@ -63,19 +71,111 @@ export default function SharedResultsClient() {
 
   const { getResults } = useAssessmentAPI();
 
-  // Convert briefs_cited to Citation format
+  // Convert briefs_cited + celebrity_opportunities + personalized_opportunities analysis to Citation format (ZERO DUPLICATES GUARANTEED)
   useEffect(() => {
-    if (results?.briefs_cited && results.briefs_cited.length > 0) {
-      const citationList: Citation[] = results.briefs_cited.map((briefId, index) => ({
+    if (!results) return;
+
+    // Collect all unique DEVIDs with aggressive deduplication
+    const allDevIds = new Set<string>();
+    const seenIds = new Map<string, boolean>(); // Extra layer of duplicate prevention
+
+    // 1. Add intelligence briefs (briefs_cited)
+    if (results.briefs_cited && results.briefs_cited.length > 0) {
+      results.briefs_cited.forEach((briefId: string) => {
+        // Normalize: trim whitespace and convert to lowercase for comparison
+        const normalized = String(briefId).trim().toLowerCase();
+        if (normalized && !seenIds.has(normalized)) {
+          allDevIds.add(briefId.trim()); // Add original (trimmed) to Set
+          seenIds.set(normalized, true);
+        }
+      });
+    }
+
+    // 2. Add HNWI peer opportunities (celebrity_opportunities)
+    if (results.enhanced_report?.celebrity_opportunities?.celebrity_opportunities) {
+      results.enhanced_report.celebrity_opportunities.celebrity_opportunities.forEach((opp: any) => {
+        if (opp.devid) {
+          // Normalize: trim whitespace and convert to lowercase for comparison
+          const normalized = String(opp.devid).trim().toLowerCase();
+          if (normalized && !seenIds.has(normalized)) {
+            allDevIds.add(String(opp.devid).trim()); // Add original (trimmed) to Set
+            seenIds.set(normalized, true);
+          }
+        }
+      });
+    }
+
+    // 3. CRITICAL FIX: Extract DEVIDs from personalized opportunities' analysis and elite_pulse_analysis
+    const opportunities = results.personalized_opportunities ||
+      (results.answers?.flatMap((answer: any) => answer.opportunities || []) || []);
+
+    if (opportunities && opportunities.length > 0) {
+      opportunities.forEach((opp: any) => {
+        // Extract from analysis field
+        if (opp.analysis) {
+          const analysisMatches = opp.analysis.matchAll(/\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*([^\]\r\n]+)\]/gi);
+          for (const match of analysisMatches) {
+            const devId = match[1]?.trim();
+            if (devId) {
+              const normalized = devId.toLowerCase();
+              if (!seenIds.has(normalized)) {
+                allDevIds.add(devId);
+                seenIds.set(normalized, true);
+              }
+            }
+          }
+        }
+        // Extract from elite_pulse_analysis field
+        if (opp.elite_pulse_analysis) {
+          const pulseMatches = opp.elite_pulse_analysis.matchAll(/\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*([^\]\r\n]+)\]/gi);
+          for (const match of pulseMatches) {
+            const devId = match[1]?.trim();
+            if (devId) {
+              const normalized = devId.toLowerCase();
+              if (!seenIds.has(normalized)) {
+                allDevIds.add(devId);
+                seenIds.set(normalized, true);
+              }
+            }
+          }
+        }
+        // Extract from katherine_analysis field (Crown Vault)
+        if ((opp as any).katherine_analysis) {
+          const katherineMatches = (opp as any).katherine_analysis.matchAll(/\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*([^\]\r\n]+)\]/gi);
+          for (const match of katherineMatches) {
+            const devId = match[1]?.trim();
+            if (devId) {
+              const normalized = devId.toLowerCase();
+              if (!seenIds.has(normalized)) {
+                allDevIds.add(devId);
+                seenIds.set(normalized, true);
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Convert to Citation format - Final deduplication pass
+    if (allDevIds.size > 0) {
+      const uniqueIds = Array.from(allDevIds);
+
+      // Triple-check: Remove any duplicates that somehow made it through
+      const finalUniqueIds = uniqueIds.filter((id, index, self) =>
+        self.findIndex(i => i.toLowerCase().trim() === id.toLowerCase().trim()) === index
+      );
+
+      const citationList: Citation[] = finalUniqueIds.map((briefId, index) => ({
         id: briefId,
         number: index + 1,
         originalText: `[DEVID-${briefId}]`
       }));
+
       setCitations(citationList);
     }
   }, [results, setCitations]);
 
-  // Screen size detection
+  // Screen size detection for mobile/desktop (matching home dashboard)
   useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth;
@@ -89,6 +189,27 @@ export default function SharedResultsClient() {
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // Fetch HNWI World development count
+  useEffect(() => {
+    async function fetchHNWICount() {
+      try {
+        const response = await fetch('/api/developments/counts');
+        if (response.ok) {
+          const data = await response.json();
+          // Try different possible field names
+          const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs;
+          if (count && typeof count === 'number') {
+            setHnwiWorldCount(count);
+          }
+        }
+      } catch (error) {
+        // Keep default fallback value
+      }
+    }
+
+    fetchHNWICount();
   }, []);
 
   useEffect(() => {
@@ -196,7 +317,7 @@ export default function SharedResultsClient() {
         />
 
         {/* Content Area */}
-        <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8 relative z-10">
+        <div className={`${results.enhanced_report ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 sm:px-8 py-8 space-y-8 relative z-10`}>
           {/* Personalized Opportunities Map */}
           {opportunities && opportunities.length > 0 && (
             <motion.section
@@ -210,11 +331,19 @@ export default function SharedResultsClient() {
                 <h2 className="text-xl font-bold">Personalized Opportunities</h2>
               </div>
 
-              <div className="bg-card border border-border overflow-hidden rounded-lg">
+              <div className="bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-muted/30">
                   <p className="text-sm text-muted-foreground">
-                    This <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> profile identified <span className="font-bold text-foreground">{opportunities.length} opportunities</span> aligned with their strategic DNA.
+                    This <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> profile identified <span className="font-bold text-foreground">{opportunities.length} validated opportunities</span> across {new Set(opportunities.map((o: any) => o.country)).size} countries where peers in this cohort have executed successfully.
                   </p>
+                  <div className="flex items-start gap-2 mt-2 text-sm text-muted-foreground">
+                    <svg className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                    </svg>
+                    <span>
+                      <span className="font-medium text-foreground">Click any location</span> to view peer execution data, intelligence sources, and performance metrics for each opportunity.
+                    </span>
+                  </div>
                 </div>
 
                 <div className="h-[600px] relative">
@@ -236,7 +365,7 @@ export default function SharedResultsClient() {
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
                       <p className="text-muted-foreground text-sm">
-                        Opportunities data is being processed.
+                        Opportunities data is being processed. Location data will be available shortly.
                       </p>
                     </div>
                   )}
@@ -245,25 +374,128 @@ export default function SharedResultsClient() {
             </motion.section>
           )}
 
-          {/* Digital Twin Simulation */}
-          <DigitalTwinSimulation
-            outcome={outcome as 'SURVIVED' | 'DAMAGED' | 'DESTROYED'}
-            narrative={results.simulation?.simulation_narrative || ''}
-            onCitationClick={openCitation}
-          />
+          {/* Enhanced Report Components - Only show if backend data exists */}
+          {results.enhanced_report?.full_analytics?.strategic_positioning && (
+            <>
+              {/* Executive Summary */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                <ExecutiveSummary data={{
+                  tier: results.tier,
+                  percentile: results.enhanced_report.full_analytics.strategic_positioning.peer_rank_percentile,
+                  opportunities_accessible: opportunities?.length || 0,
+                  opportunities_missed: results.enhanced_report.celebrity_opportunities?.total_missed || 0,
+                  peer_group_size: hnwiWorldCount, // Real: 1,860 HNWI World developments
+                  optimization_potential: results.enhanced_report.full_analytics.strategic_positioning.spider_graph?.dimensions
+                    ? (results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.reduce((acc: number, dim: any) => {
+                        return acc + ((dim.top_0_1_percentile - dim.user_score) / dim.top_0_1_percentile);
+                      }, 0) / results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.length)
+                    : 0.23,
+                  net_worth_estimate: "$5-10M",
+                  confidence_score: results.confidence,
+                  mental_models_applied: results.simulation?.reasoning_trace?.match(/\d+ out of \d+ mental models/)?.[0] || null,
+                  sophistication_score: (() => {
+                    const levels = results.forensic_validation?.evidence?.sophistication_levels;
+                    if (!levels || !Array.isArray(levels) || levels.length === 0) return null;
 
-          {/* Gap Analysis & Intelligence Sources */}
-          <GapAnalysisSection
-            gapAnalysis={results.gap_analysis || ''}
-            briefsCited={results.briefs_cited}
-            onCitationClick={openCitation}
-          />
+                    const validLevels = levels.filter((l: any) => typeof l === 'number' && !isNaN(l));
+                    if (validLevels.length === 0) return null;
+
+                    const avg = validLevels.reduce((a: number, b: number) => a + b, 0) / validLevels.length;
+                    return isNaN(avg) ? null : avg.toFixed(2);
+                  })()
+                }} />
+              </motion.div>
+
+              {/* Spider Graph - Peer Comparison */}
+              {results.enhanced_report.full_analytics.strategic_positioning.spider_graph && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  <SpiderGraphComparison data={(() => {
+                    const spider = results.enhanced_report.full_analytics.strategic_positioning.spider_graph;
+
+                    // Transform improvement_areas from backend (array of dimension names)
+                    // to frontend structure (array of objects with details)
+                    const improvementAreas = (spider.improvement_areas || []).map((dimName: string) => {
+                      const dim = spider.dimensions.find((d: any) => d.name === dimName);
+                      if (!dim) return null;
+
+                      const gap = dim.top_0_1_percentile - dim.user_score;
+                      return {
+                        dimension: dimName,
+                        current_score: dim.user_score / 10,  // Convert 0-10 to 0-1 scale
+                        target_score: dim.top_0_1_percentile / 10,  // Convert 0-10 to 0-1 scale
+                        gap: gap / 10,  // Convert gap to 0-1 scale
+                        improvement_potential: (gap / dim.top_0_1_percentile) * 100,
+                        actionable_steps: []
+                      };
+                    }).filter((a: any) => a !== null);
+
+                    return {
+                      dimensions: spider.dimensions.map((d: any) => d.name),
+                      user_scores: spider.dimensions.map((d: any) => d.user_score / 10), // Convert 0-10 to 0-1 scale
+                      peer_average: spider.dimensions.map((d: any) => d.peer_average / 10), // Convert 0-10 to 0-1 scale
+                      top_performers: spider.dimensions.map((d: any) => d.top_0_1_percentile / 10), // Convert 0-10 to 0-1 scale
+                      hnwi_world_count: spider.hnwi_world_count || hnwiWorldCount,
+                      improvement_areas: improvementAreas
+                    };
+                  })()} />
+                </motion.div>
+              )}
+
+              {/* Celebrity Opportunities - High-Adoption Opportunities */}
+              {results.enhanced_report?.celebrity_opportunities && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                >
+                  <CelebrityOpportunities
+                    data={results.enhanced_report.celebrity_opportunities}
+                    onCitationClick={openCitation}
+                  />
+                </motion.div>
+              )}
+
+              {/* Strategic Positioning Gaps - Dollar-Impact Opportunity Costs */}
+              {results.enhanced_report?.strategic_positioning_gaps?.gaps &&
+               results.enhanced_report.strategic_positioning_gaps.gaps.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
+                  <StrategicPositioningGaps data={results.enhanced_report.strategic_positioning_gaps} />
+                </motion.div>
+              )}
+            </>
+          )}
+
+          {/* Strategic Insights Infographic - Always show (uses simulation data) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <StrategicInsightsInfographic
+              outcome={outcome as 'SURVIVED' | 'DAMAGED' | 'DESTROYED'}
+              tier={results.tier}
+              briefsCited={results.briefs_cited || []}
+              onCitationClick={openCitation}
+            />
+          </motion.div>
 
           {/* Take Assessment CTA - Prominent */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
             className="text-center py-12 bg-gradient-to-b from-primary/5 to-transparent rounded-2xl border border-primary/20"
           >
             <h3 className="text-2xl font-bold mb-3">Discover Your Strategic DNA</h3>
@@ -278,7 +510,7 @@ export default function SharedResultsClient() {
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
             </button>
             <p className="text-xs text-muted-foreground mt-4">
-              Free • 10 questions • 8 minutes
+              Free access to {hnwiWorldCount.toLocaleString()} HNWI World developments
             </p>
           </motion.div>
         </div>

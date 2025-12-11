@@ -149,8 +149,8 @@ export const openRazorpayCheckout = async (
 
     // Product names for display
     const productNames = {
-      operator: 'Assessment Report - Operator Tier',
-      observer: 'Assessment Report - Observer Tier'
+      operator: 'Simulation Report - Operator Tier',
+      observer: 'Simulation Report - Observer Tier'
     };
 
     // Build prefill with only non-empty values to avoid Razorpay validation errors

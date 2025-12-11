@@ -9,7 +9,6 @@ import type { HomeDashboardEliteProps } from "@/types/dashboard"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { secureApi } from "@/lib/secure-api"
 import type { City } from "@/components/interactive-world-map"
-import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { useCitationManager } from "@/hooks/use-citation-manager"
 import { Brain, Crown, TrendingUp, Target } from "lucide-react"
@@ -17,6 +16,7 @@ import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { PersonalModeToggle } from "@/components/personal-mode-toggle"
+import { useOpportunities } from "@/lib/hooks/useOpportunities"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -31,72 +31,12 @@ const InteractiveWorldMap = dynamic(
   }
 )
 
-interface Opportunity {
-  _id?: string  // MongoDB ID
-  id?: string   // Alternative ID field
-  title: string
-  tier: string
-  location: string
-  latitude: number
-  longitude: number
-  country: string
-  value: string
-  risk: string
-  analysis: string
-  source: string
-  victor_score?: string
-  elite_pulse_analysis?: string
-  category?: string  // Asset category from backend
-  industry?: string  // Industry classification from backend
-  product?: string   // Product type from backend
-  start_date?: string  // Publish/start date
-  is_new?: boolean     // New opportunity indicator from backend
-  executors?: Array<{
-    name: string
-    email?: string
-    phone?: string
-    role?: string
-    strategic_trusted_partner?: boolean
-    website?: string
-    linkedin?: string
-  }>
-  // Price tracking fields from backend
-  cost_per_unit?: number
-  unit_count?: number
-  current_price?: number
-  entry_price?: number
-  appreciation?: {
-    percentage: number
-    absolute: number
-    annualized: number
-    time_held_days: number
-  }
-  price_history?: Array<{
-    timestamp: string
-    price: number
-    source: 'manual' | 'katherine_analysis' | 'system'
-    confidence_score?: number
-    notes?: string
-  }>
-  last_price_update?: string
-  katherine_analysis?: string
-  elite_pulse_impact?: {
-    katherine_analysis?: string
-    katherine_ai_analysis?: {
-      strategic_assessment?: string
-    }
-  }
-}
-
 export function HomeDashboardElite({
   user,
   onNavigate,
   userData,
   hasCompletedAssessmentProp
 }: HomeDashboardEliteProps) {
-  const [cities, setCities] = useState<City[]>([])
-  const [loading, setLoading] = useState(true)
-  const [initialLoad, setInitialLoad] = useState(true) // Track initial load separately
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
@@ -111,7 +51,6 @@ export function HomeDashboardElite({
   // Category filter state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
-  const [availableCategories, setAvailableCategories] = useState<string[]>([])
 
   // Citation management
   const {
@@ -131,8 +70,63 @@ export function HomeDashboardElite({
   // Personal Mode state
   const [isPersonalMode, setIsPersonalMode] = useState(false)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(hasCompletedAssessmentProp || false)
-  const [personalModeLoading, setPersonalModeLoading] = useState(false)
   const [showModeBanner, setShowModeBanner] = useState(false)
+
+  // Fetch opportunities using centralized hook (dashboard mode)
+  const {
+    cities,
+    loading,
+    availableCategories,
+    refetch
+  } = useOpportunities({
+    isPublic: false, // Use authenticated endpoint for dashboard
+    timeframe,
+    isPersonalMode,
+    hasCompletedAssessment,
+    includeCrownVault: isPersonalMode && hasCompletedAssessment,
+    cleanCategories: true // Clean category names for better UI
+  })
+
+  // Track initial load separately for full-screen loader
+  const [initialLoad, setInitialLoad] = useState(true)
+
+  // Mark initial load as complete when loading finishes
+  useEffect(() => {
+    if (!loading && initialLoad) {
+      setInitialLoad(false)
+    }
+  }, [loading, initialLoad])
+
+  // Initialize selected categories when available categories change
+  useEffect(() => {
+    if (availableCategories.length > 0 && selectedCategories.length === 0) {
+      setSelectedCategories(availableCategories)
+    }
+  }, [availableCategories])
+
+  // Extract citations from cities when they change
+  useEffect(() => {
+    const allCitations: Citation[] = []
+    const seenIds = new Set<string>()
+    let citationNumber = 1
+
+    cities.forEach(city => {
+      if (city.devIds && city.devIds.length > 0) {
+        city.devIds.forEach(devId => {
+          if (!seenIds.has(devId)) {
+            seenIds.add(devId)
+            allCitations.push({
+              id: devId,
+              number: citationNumber++,
+              originalText: `[Dev ID: ${devId}]`
+            })
+          }
+        })
+      }
+    })
+
+    setManagedCitations(allCitations)
+  }, [cities, setManagedCitations])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -277,221 +271,14 @@ export function HomeDashboardElite({
     // Clear selected categories when switching modes to prevent stale filters
     setSelectedCategories([])
 
-    // In Personal Mode, always show Crown Assets and Privé Opportunities
+    // In Personal Mode, always show all opportunity types (Crown Assets, Privé, and HNWI Patterns)
+    // HNWI Patterns include assessment-matched opportunities
     if (isPersonalMode && hasCompletedAssessment) {
       setShowCrownAssets(true)
       setShowPriveOpportunities(true)
+      setShowHNWIPatterns(true) // CRITICAL: Include assessment-matched opportunities
     }
   }, [isPersonalMode, hasCompletedAssessment])
-
-  // Clean category names by removing status/completion indicators
-  const cleanCategoryName = (category: string): string => {
-    if (!category) return category
-
-    // Remove content in brackets/parentheses and common suffixes/status words
-    const cleanedCategory = category
-      // Remove content in parentheses like (Build-ready)
-      .replace(/\s*\([^)]*\)/g, '')
-      // Remove content in square brackets like [Build-ready]
-      .replace(/\s*\[[^\]]*\]/g, '')
-      // Remove common suffixes with dashes
-      .replace(/\s*-\s*(completed|under construction|ongoing|in progress|pending|active|inactive|sold|available)/gi, '')
-      // Remove common suffixes without dashes
-      .replace(/\s+(completed|under construction|ongoing|in progress|pending|active|inactive|sold|available)/gi, '')
-      .trim()
-
-    return cleanedCategory
-  }
-
-  useEffect(() => {
-    const fetchOpportunities = async () => {
-      setLoading(true)
-
-      // Clear cities when view mode changes to prevent showing stale data
-      setCities([])
-
-      try {
-        // SOTA: Service Worker handles caching with StaleWhileRevalidate
-        // Build API URL following backend integration guide
-        const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe
-        const viewParam = (isPersonalMode && hasCompletedAssessment) ? 'personalized' : 'all'
-
-        // FIX: Only request Crown Vault assets in personalized mode to prevent backend 500 errors
-        // sending include_crown_vault=true with view=all causes internal server error
-        const includeCrownVault = viewParam === 'personalized'
-
-        let apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${includeCrownVault}`
-
-        // Call API with requireAuth=true, bustCache=false (enable caching)
-        // Note: Service Worker handles caching automatically via HTTP headers
-        const response = await secureApi.get(apiUrl, true, false)
-
-        // Handle wrapped response structure from backend
-        // Backend returns: { success: true, view: "personalized"|"all", opportunities: [...], metadata: {...} }
-        const opportunities = response?.opportunities || (Array.isArray(response) ? response : [])
-
-        if (opportunities && opportunities.length > 0) {
-          // Extract categories that actually have opportunities (not empty categories)
-          // Clean category names by removing status indicators
-          const categoriesWithOpportunities = new Set<string>()
-          opportunities.forEach((opp: Opportunity) => {
-            if (opp.category) {
-              const cleanedCategory = cleanCategoryName(opp.category)
-              if (cleanedCategory) {
-                categoriesWithOpportunities.add(cleanedCategory)
-              }
-            }
-          })
-          const filteredCategories = Array.from(categoriesWithOpportunities).sort()
-
-          if (filteredCategories.length > 0) {
-            setAvailableCategories(filteredCategories)
-            // Initialize selectedCategories to all categories if empty
-            if (selectedCategories.length === 0) {
-              setSelectedCategories(filteredCategories)
-            }
-          }
-        }
-
-        if (opportunities && opportunities.length > 0) {
-          // Transform opportunities to city format for the map
-          const cityData: City[] = opportunities
-            .map((opp: Opportunity, index: number) => {
-              // Use backend coordinates directly - no overrides
-              let lat = opp.latitude
-              let lng = opp.longitude
-              let displayName = opp.location || opp.country || opp.title || 'Opportunity'
-
-              // Validate coordinates are within valid range
-              if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-                // Skip this opportunity if coordinates are invalid
-                return null
-              }
-
-              // Skip if coordinates are (0, 0) - likely missing data
-              if (lat === 0 && lng === 0) {
-                return null
-              }
-
-              // Extract citations from BOTH analysis and elite_pulse_analysis
-              const devIdsFromAnalysis = extractDevIds(opp.analysis || '')
-              const devIdsFromElitePulse = extractDevIds(opp.elite_pulse_analysis || '')
-              // Combine and deduplicate
-              const allDevIds = Array.from(new Set([...devIdsFromAnalysis, ...devIdsFromElitePulse]))
-              const devIds = allDevIds
-
-              // Smart category override: Fix miscategorized opportunities
-              // If backend marks automotive-branded real estate as "automotive", override to "Real Estate"
-              let correctedCategory = opp.category ? cleanCategoryName(opp.category) : opp.category
-              const titleLower = (opp.title || '').toLowerCase()
-              const analysisLower = (opp.analysis || '').toLowerCase()
-              const combined = titleLower + ' ' + analysisLower
-              const categoryLower = (correctedCategory || '').toLowerCase()
-
-              // Check if this is actually real estate (residential/building) despite being marked as automotive/vehicle
-              if (categoryLower.includes('automotive') ||
-                categoryLower.includes('vehicle') ||
-                categoryLower === 'luxury vehicles' ||
-                categoryLower === 'luxury vehicle') {
-                const isRealEstate = combined.includes('residential') ||
-                  combined.includes('building') ||
-                  combined.includes('architecture') ||
-                  combined.includes('apartment') ||
-                  combined.includes('condo') ||
-                  combined.includes('real estate') ||
-                  combined.includes('property investment') ||
-                  combined.includes('branded residence') ||
-                  (titleLower.includes('investment') && (
-                    combined.includes('miami') ||
-                    combined.includes('tower') ||
-                    combined.includes('residence')
-                  ))
-
-                if (isRealEstate) {
-                  correctedCategory = 'Real Estate'
-                }
-              }
-
-              return {
-                name: displayName,
-                country: opp.country || 'Unknown',
-                latitude: lat,
-                longitude: lng,
-                population: opp.value,
-                type: opp.source === "MOEv4" ? "finance" : "luxury",
-                // Include full opportunity data
-                _id: opp._id,  // MongoDB ID for deep linking
-                id: opp.id,    // Alternative ID field
-                title: opp.title,
-                tier: opp.tier,
-                value: opp.value,
-                risk: opp.risk,
-                analysis: opp.analysis,
-                source: opp.source,
-                victor_score: opp.victor_score,
-                elite_pulse_analysis: opp.elite_pulse_analysis,
-                // Category/Industry/Product from backend (with smart override)
-                category: correctedCategory,
-                industry: opp.industry,
-                product: opp.product,
-                start_date: opp.start_date,
-                // Use backend's is_new flag (no frontend date calculation)
-                is_new: opp.is_new,
-                // Citation data
-                devIds: devIds,
-                hasCitations: devIds.length > 0,
-                // Executor data
-                executors: opp.executors,
-                // Price data from command centre (for Crown Vault assets)
-                cost_per_unit: opp.cost_per_unit,
-                unit_count: opp.unit_count,
-                current_price: opp.current_price,
-                entry_price: opp.entry_price,
-                appreciation: opp.appreciation,
-                price_history: opp.price_history,
-                last_price_update: opp.last_price_update,
-                // Katherine AI analysis (check for non-empty strings)
-                katherine_analysis: (opp.katherine_analysis && opp.katherine_analysis.trim()) ||
-                  (opp.elite_pulse_impact?.katherine_analysis && opp.elite_pulse_impact.katherine_analysis.trim()) ||
-                  (opp.elite_pulse_impact?.katherine_ai_analysis?.strategic_assessment && opp.elite_pulse_impact.katherine_ai_analysis.strategic_assessment.trim()) ||
-                  null
-              }
-            })
-            .filter((city): city is City => city !== null) // Remove null entries
-
-          // Extract all citations across all opportunities
-          const allCitations: Citation[] = []
-          const seenIds = new Set<string>()
-          let citationNumber = 1
-
-          cityData.forEach(city => {
-            if (city.devIds && city.devIds.length > 0) {
-              city.devIds.forEach(devId => {
-                if (!seenIds.has(devId)) {
-                  seenIds.add(devId)
-                  allCitations.push({
-                    id: devId,
-                    number: citationNumber++,
-                    originalText: `[Dev ID: ${devId}]`
-                  })
-                }
-              })
-            }
-          })
-
-          setManagedCitations(allCitations)
-          setCities(cityData)
-        }
-      } catch (error: any) {
-        // Let secureApi handle auth errors automatically
-      } finally {
-        setLoading(false)
-        setInitialLoad(false) // Mark initial load as complete
-      }
-    }
-
-    fetchOpportunities()
-  }, [timeframe, isPersonalMode, hasCompletedAssessment]) // Re-fetch when timeframe or personalization changes
 
   // Only show full-screen loader on initial load, not on subsequent data fetches
   if (initialLoad && loading) {

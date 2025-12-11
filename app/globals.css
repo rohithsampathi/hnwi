@@ -10,6 +10,9 @@
 /* Import Leaflet CSS */
 @import 'leaflet/dist/leaflet.css';
 
+/* Import OverlayScrollbars CSS for advanced scroll handling */
+@import 'overlayscrollbars/overlayscrollbars.css';
+
 body {
   font-family: "Trojan Pro", Arial, Helvetica, sans-serif;
 }
@@ -816,4 +819,38 @@ footer nav button, footer nav div {
 
 .animate-hnwi-emphasis {
   animation: hnwi-emphasis 1.5s ease-in-out;
+}
+
+/* OverlayScrollbars Custom Theme - HNWI Chronicles */
+.os-theme-dark > .os-scrollbar > .os-scrollbar-track > .os-scrollbar-handle {
+  background: rgba(218, 165, 32, 0.4);
+  border-radius: 4px;
+}
+
+.os-theme-dark > .os-scrollbar > .os-scrollbar-track > .os-scrollbar-handle:hover {
+  background: rgba(218, 165, 32, 0.6);
+}
+
+.os-theme-dark > .os-scrollbar > .os-scrollbar-track > .os-scrollbar-handle:active {
+  background: rgba(218, 165, 32, 0.8);
+}
+
+.os-theme-dark > .os-scrollbar-vertical {
+  width: 8px;
+  padding: 2px;
+}
+
+.os-theme-dark > .os-scrollbar-horizontal {
+  height: 8px;
+  padding: 2px;
+}
+
+/* Ensure scrollbars don't interfere with map */
+.os-host {
+  overflow: hidden !important;
+}
+
+.os-viewport {
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
 }

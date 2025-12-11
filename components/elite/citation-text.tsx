@@ -26,18 +26,13 @@ const convertMarkdownBold = (value: string): string => {
   // Convert markdown bold (**text**) to HTML bold
   let formatted = value.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 
-  // Also bold formatting for specific side headings with colons (same as formatAnalysis)
+  // Bold ALL headings that end with a colon
+  // Matches patterns like "Winners:", "Key Strategy:", "Investment Thesis:", etc.
+  // This applies to any capitalized word(s) followed by a colon at the start of a line or after a break
   formatted = formatted.replace(
-    /(Winners:|Losers:|Potential Moves:|Opportunities:|Risks:|Recommendations & Future Paths:|Entry Point:|Entry Points:|Potential Move:)/g,
-    "<strong>$1</strong>",
+    /(?:^|<br\/>|<p>)(\s*)([A-Z][^:<]*?:)(?=\s|<br|<\/|$)/gm,
+    '$1<strong>$2</strong>'
   )
-
-  // Bold any text before a colon at the start of a line (sub-sub-headings)
-  // This catches patterns like "Key Strategy:", "Important Note:", etc.
-  // Only if not already wrapped in <strong> tags
-  if (!formatted.includes('<strong>') && formatted.match(/^[A-Z][^:]+:/)) {
-    formatted = formatted.replace(/^([^:]+:)/, '<strong>$1</strong>')
-  }
 
   return formatted
 }
@@ -191,9 +186,14 @@ export function CitationText({
           return (
             <button
               key={index}
-              onClick={() => onCitationClick(citationId)}
-              className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 rounded transition-colors mx-0.5 align-baseline"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                onCitationClick(citationId)
+              }}
+              className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 rounded transition-colors mx-0.5 align-baseline cursor-pointer"
               aria-label={`Citation ${displayNumber}`}
+              style={{ pointerEvents: 'auto' }}
             >
               [{displayNumber}]
             </button>

@@ -75,7 +75,7 @@ export const useAssessmentAPI = () => {
   };
 
   const getResults = async (sessionId: string) => {
-    return apiCall(`/api/assessment/${sessionId}/results`, 'GET');
+    return apiCall(`/api/assessment/result/${sessionId}`, 'GET');
   };
 
   const linkUserToSession = async (sessionId: string, payload: LinkUserPayload) => {

@@ -361,7 +361,7 @@ export function TacticsLab() {
                       "Multi-agent reasoning system with 7 specialized AI engines",
                       "Advanced pattern recognition for emerging wealth management trends",
                       "Regulatory impact assessment across global jurisdictions",
-                      "Powered by Claude Opus 4.1, Sonnet 4.0, and leading frontier models"
+                      "Powered by Gemini 3.0 Pro, Open AI 5.1, Claude Opus 4.5, Sonnet 4.5, and leading frontier models"
                     ].map((improvement, index) => (
                       <motion.div
                         key={index}

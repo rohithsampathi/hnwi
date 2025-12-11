@@ -297,6 +297,12 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     definition: 'Tax-deferred exchange allowing real estate investors to defer capital gains taxes by reinvesting proceeds from a property sale into a like-kind property.',
     category: 'tax'
   },
+  'OZ': {
+    term: 'OZ',
+    fullName: 'Opportunity Zone',
+    definition: 'Economically distressed community where new investments may be eligible for preferential tax treatment, including deferral and potential elimination of capital gains. Investors can defer taxes on capital gains by reinvesting in qualified OZ funds.',
+    category: 'tax'
+  },
   'QOZ': {
     term: 'QOZ',
     fullName: 'Qualified Opportunity Zone',

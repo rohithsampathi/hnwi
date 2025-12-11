@@ -60,14 +60,10 @@ export function EliteCitationPanel({
 
   // Handle citation click - fetch development lazily when clicked
   const handleCitationClick = async (citationId: string) => {
-    console.log('🔗 Citation clicked:', citationId)
-
     // Check if citation already exists
     const existingCitation = allCitations.find(c => c.id === citationId)
 
     if (!existingCitation) {
-      console.log('➕ Adding new citation:', citationId)
-
       // Get next citation number
       const nextNumber = Math.max(...allCitations.map(c => c.number), 0) + 1
 
@@ -82,15 +78,25 @@ export function EliteCitationPanel({
       setLocalCitationMap(prev => new Map(prev).set(citationId, nextNumber))
     }
 
-    // LAZY LOAD: Fetch development only when clicked (if not already fetched)
+    // LAZY LOAD: Fetch development only when clicked (if not already fetched or marked as not found)
     if (!developments.has(citationId)) {
-      console.log('📥 Lazy loading development:', citationId)
       setLoading(true)
 
       try {
-        const response = await fetch(`/api/developments/public/${citationId}`, {
-          credentials: 'include'
-        })
+        // First check if development exists to avoid 404 console errors
+        const existsResponse = await fetch(`/api/developments/public/${citationId}/exists`)
+        const { exists } = await existsResponse.json()
+
+        if (!exists) {
+          // Mark as not found without triggering 404 error
+          setDevelopments(prev => new Map(prev).set(citationId, null as any))
+          setLoading(false)
+          onCitationSelect(citationId) // Still select the citation to show "not found" message
+          return
+        }
+
+        // Development exists, fetch full data
+        const response = await fetch(`/api/developments/public/${citationId}`)
 
         if (response.ok) {
           const dev = await response.json()
@@ -134,9 +140,15 @@ export function EliteCitationPanel({
             setAllCitations(newCitations)
             setLocalCitationMap(newCitationMap)
           }
+        } else if (response.status === 404) {
+          // 404 is expected - not all Dev IDs have corresponding records
+          // Mark as "not found" in developments map to avoid re-fetching
+          setDevelopments(prev => new Map(prev).set(citationId, null as any))
         }
       } catch (err) {
-        console.error(`Failed to lazy load citation ${citationId}:`, err)
+        // Network errors or other unexpected errors
+        // Mark as "not found" to avoid re-fetching
+        setDevelopments(prev => new Map(prev).set(citationId, null as any))
       } finally {
         setLoading(false)
       }

@@ -58,6 +58,7 @@ export default function AuthenticatedAssessmentPage() {
     startAssessment,
     submitAnswer,
     completeAssessment,
+    getAssessmentHistory,
     loading,
     error
   } = useAssessmentAPI();
@@ -96,34 +97,38 @@ export default function AuthenticatedAssessmentPage() {
     }
   }, [flowStage]);
 
-  // Check Command Centre for existing assessment - single source of truth
+  // Check for existing completed assessment
   useEffect(() => {
     if (!user?.id && !user?.user_id) return;
     if (hasCheckedExisting) return; // Prevent double checking
 
-    const checkCommandCentre = async () => {
+    const checkExistingAssessment = async () => {
       setHasCheckedExisting(true);
 
       try {
-        const response = await fetch('/api/command-centre/opportunities?view=personalized&include_crown_vault=false');
+        const userId = user?.id || user?.user_id;
+        const history = await getAssessmentHistory(userId, user?.email);
 
-        if (response.ok) {
-          const data = await response.json();
+        // If user has completed assessments, redirect to most recent one
+        if (history && Array.isArray(history) && history.length > 0) {
+          // Get most recent completed assessment (should be first in array, sorted by date)
+          const mostRecent = history[0];
 
-          // If Command Centre has session_id and tier, user completed assessment
-          if (data.session_id && data.tier) {
+          if (mostRecent.session_id) {
             // Clear vault session storage to prevent animation on redirect
             sessionStorage.removeItem('assessmentVaultShownThisSession');
-            router.replace(`/assessment/results/${data.session_id}`);
+            console.log(`[Assessment] User has existing assessment, redirecting to: ${mostRecent.session_id}`);
+            router.replace(`/assessment/results/${mostRecent.session_id}`);
           }
         }
       } catch (error) {
-        // On error, stay on landing page
+        console.error('[Assessment] Error checking existing assessments:', error);
+        // On error, allow user to continue to landing page
       }
     };
 
-    checkCommandCentre();
-  }, [user, router, hasCheckedExisting]);
+    checkExistingAssessment();
+  }, [user, router, hasCheckedExisting, getAssessmentHistory]);
 
   // Handle landing -> map intro
   const handleShowMapIntro = () => {
