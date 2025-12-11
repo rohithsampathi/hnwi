@@ -866,6 +866,18 @@ export const TERM_DEFINITIONS: Record<string, TermDefinition> = {
     fullName: 'British Virgin Islands Holding Company',
     definition: 'Offshore company structure established in the British Virgin Islands primarily to hold assets, investments, or subsidiary companies. Offers tax efficiency (0% on foreign income), privacy protection, and flexible corporate governance. Commonly used for international real estate holdings and investment fund structures.',
     category: 'legal'
+  },
+  'DEFI': {
+    term: 'DeFi',
+    fullName: 'Decentralized Finance',
+    definition: 'DeFi lending: Earn 5-15% APY on stablecoins. Traditional banks pay 0.1%. But smart contract risk, no insurance.',
+    category: 'investment'
+  },
+  'APY': {
+    term: 'APY',
+    fullName: 'Annual Percentage Yield',
+    definition: 'The real rate of return earned on an investment, taking into account the effect of compounding interest. DeFi platforms offer 5-15% APY on stablecoins versus 0.1% at traditional banks.',
+    category: 'financial'
   }
 };
 

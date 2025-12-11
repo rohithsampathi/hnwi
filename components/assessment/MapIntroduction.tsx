@@ -229,7 +229,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                       </div>
                       <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
-                          text={`Each dot on this map represents a real peer HNWI buying or selling an alternative asset. These are ${filteredCities.length.toLocaleString()} live opportunities across the globe.`}
+                          text={`Each dot on this map represents a real peer HNWI buying or selling an alternative asset. These are ${totalCount.toLocaleString()} live opportunities across the globe.`}
                           speed={15}
                           onComplete={() => setTimeout(() => setShowMessage3(true), 500)}
                         />
