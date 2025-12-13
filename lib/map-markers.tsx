@@ -338,7 +338,7 @@ export function createCustomIcon(
   const iconSvg = getSmallMarkerIcon(city, isCrownVault, isVictor)
 
   // Make the marker blink (opacity change) if opportunity is new
-  // STRICT CHECK: Only blink if is_new === true (not just truthy)
+  // is_new is already filtered to only include last 5 added opportunities in useOpportunities hook
   const shouldBlink = city.is_new === true;
   const blinkAnimation = shouldBlink ? `
     <style>

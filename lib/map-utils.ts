@@ -5,12 +5,16 @@ import type { City } from "@/components/interactive-world-map"
 
 /**
  * Parse value string to number for calculations
+ * CRITICAL: Strips bracketed text before parsing
  */
 export function parseValueToNumber(value: string | undefined): number {
   if (!value) return 0
 
+  // Strip bracketed text (anything within parentheses)
+  let cleanValue = value.replace(/\s*\([^)]*\)/g, '').trim()
+
   // Remove $ and commas
-  const cleanValue = value.replace(/[$,]/g, '')
+  cleanValue = cleanValue.replace(/[$,]/g, '')
 
   // Extract number and suffix
   const match = cleanValue.match(/([\d.]+)([KMB])?/)
@@ -47,19 +51,23 @@ export function formatLabel(text: string | undefined): string | undefined {
 
 /**
  * Format value to ensure K/M suffix
+ * CRITICAL: Strips bracketed text like "(land + fees + lavish 1,500 sqft home)" before formatting
  */
 export function formatValue(value: string | undefined): string | undefined {
   if (!value) return value
 
+  // Strip bracketed text (anything within parentheses)
+  const cleanValue = value.replace(/\s*\([^)]*\)/g, '').trim()
+
   // If already has K, M, B suffix, return as is
-  if (/[KMB]$/i.test(value)) return value
+  if (/[KMB]$/i.test(cleanValue)) return cleanValue
 
   // Extract number from string like "$420" or "420" or "$1,000,000"
-  const match = value.match(/\$?([\d,]+)/)
-  if (!match) return value
+  const match = cleanValue.match(/\$?([\d,]+)/)
+  if (!match) return cleanValue
 
   const num = parseFloat(match[1].replace(/,/g, ''))
-  const prefix = value.startsWith('$') ? '$' : ''
+  const prefix = cleanValue.startsWith('$') ? '$' : ''
 
   // Always format based on the actual numeric value
   if (num >= 1000000) {
@@ -71,7 +79,7 @@ export function formatValue(value: string | undefined): string | undefined {
     return `${prefix}${num}K`
   }
 
-  return value
+  return cleanValue
 }
 
 /**

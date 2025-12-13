@@ -396,15 +396,13 @@ export function HomeDashboardElite({
               {/* Custom Dropdown Button */}
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`py-1.5 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center gap-2 ${timeframe === 'live' ? 'pl-6 pr-8 font-bold' : 'pl-3 pr-8'}`}
+                className={`relative py-1.5 text-xs bg-secondary text-foreground rounded hover:bg-primary hover:text-white transition-colors cursor-pointer border border-border flex items-center ${timeframe === 'live' ? 'pl-3 pr-8 font-bold' : 'pl-3 pr-8'}`}
               >
-                {/* Blinking dot - only visible when Live Data is selected */}
+                {/* Blinking dot - only visible when Live Data is selected - positioned before text */}
                 {timeframe === 'live' && (
-                  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
-                    </span>
+                  <span className="relative flex h-2 w-2 mr-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                   </span>
                 )}
                 <span>{timeframe === 'live' ? 'Live Data' : timeframe}</span>

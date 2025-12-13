@@ -175,9 +175,10 @@ export function InteractiveWorldMap({
   )
 
   // Get color from value (memoized callback)
+  // Use fixed range (0-1000000) for consistent coloring, not dataset min/max
   const getColor = useCallback(
-    (value: string | undefined) => getColorFromValue(value, valueRankMap, colorScale),
-    [valueRankMap, colorScale]
+    (value: string | undefined) => getColorFromValue(value, 0, 1000000),
+    []
   )
 
   // Generate stable cluster ID from coordinates

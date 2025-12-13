@@ -47,19 +47,8 @@ export function MapPopupSingle({
   const isExpanded = expandedClusterId === clusterId
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
 
-  // Debug logging for analysis field
-  React.useEffect(() => {
-    if (isExpanded) {
-      console.log('[MapPopup] Opportunity Debug:', {
-        title: city.title,
-        hasAnalysis: !!city.analysis,
-        analysisLength: city.analysis?.length || 0,
-        analysisPreview: city.analysis?.substring(0, 100),
-        hasElitePulse: !!city.elite_pulse_analysis,
-        elitePulseLength: city.elite_pulse_analysis?.length || 0
-      });
-    }
-  }, [isExpanded, city.title, city.analysis, city.elite_pulse_analysis]);
+  // is_new is already filtered to only include last 5 added opportunities in useOpportunities hook
+  const shouldShowNewBadge = city.is_new === true
 
   // Extract first paragraph from analysis text
   const getFirstParagraph = (text: string | undefined): string => {
@@ -97,7 +86,7 @@ export function MapPopupSingle({
               <Crown className="h-4 w-4 text-amber-500" />
             )}
             {cleanTitle(city.title, city.source)}
-            {city.is_new && (
+            {shouldShowNewBadge && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-primary/10 text-primary rounded border border-primary/30">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>

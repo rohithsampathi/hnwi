@@ -258,17 +258,6 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
 
-        // Debug logging for personalized mode
-        if (viewParam === 'personalized') {
-          console.log('[useOpportunities] Personal Mode API Request:', {
-            view: viewParam,
-            timeframe: timeframeParam,
-            includeCrownVault: shouldIncludeCrownVault,
-            hasCompletedAssessment,
-            isPersonalMode
-          });
-        }
-
         // Use secureApi for authenticated requests
         response = await secureApi.get(apiUrl, true, false);
 
@@ -276,14 +265,49 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         opportunities = response?.opportunities ||
                        (Array.isArray(response) ? response : []);
 
-        // Debug logging for personalized mode response
-        if (viewParam === 'personalized') {
-          console.log('[useOpportunities] Personal Mode Response:', {
-            totalOpportunities: opportunities.length,
-            sources: [...new Set(opportunities.map(o => o.source))],
-            sampleOpportunity: opportunities[0]?.title
-          });
-        }
+        // CLIENT-SIDE FILTERING: Apply timeframe and expiry filters
+        const now = new Date();
+
+        opportunities = opportunities.filter(opp => {
+          // 1. Filter out expired MOEv4 opportunities (180 days after DEVID brief creation)
+          if (opp.source === 'MOEv4' && opp.start_date) {
+            try {
+              const startDate = new Date(opp.start_date);
+              const expiryDate = new Date(startDate.getTime() + (180 * 24 * 60 * 60 * 1000)); // +180 days
+
+              // Filter out expired opportunities
+              if (expiryDate < now) return false;
+            } catch {
+              // Keep if date parsing fails
+            }
+          }
+
+          // 2. Apply timeframe filter based on start_date
+          if (timeframeParam !== 'LIVE' && opp.start_date) {
+            try {
+              const startDate = new Date(opp.start_date);
+
+              // Calculate cutoff date based on timeframe
+              let daysBack = 180; // Default for LIVE
+
+              if (timeframeParam === '7D') daysBack = 7;
+              else if (timeframeParam === '14D') daysBack = 14;
+              else if (timeframeParam === '21D') daysBack = 21;
+              else if (timeframeParam === '1M') daysBack = 30;
+              else if (timeframeParam === '3M') daysBack = 90;
+              else if (timeframeParam === '6M') daysBack = 180;
+
+              const cutoffDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+
+              // Keep only opportunities added within the timeframe
+              if (startDate < cutoffDate) return false;
+            } catch {
+              // Keep if date parsing fails
+            }
+          }
+
+          return true;
+        });
 
         setTotalCount(opportunities.length);
       }
@@ -318,6 +342,29 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         return true;
       });
 
+      // Only mark the last 5 added opportunities as "new" (based on start_date)
+      // Sort by start_date descending to find the 5 most recent
+      const sortedByDate = [...deduplicatedCities]
+        .filter(city => city.start_date && city.is_new === true)
+        .sort((a, b) => {
+          const dateA = new Date(a.start_date!).getTime();
+          const dateB = new Date(b.start_date!).getTime();
+          return dateB - dateA; // Most recent first
+        });
+
+      // Get IDs of the last 5 added opportunities
+      const last5Ids = new Set(
+        sortedByDate.slice(0, 5).map(city => city._id || city.id).filter(Boolean)
+      );
+
+      // Update is_new flag: only true for the last 5 added
+      deduplicatedCities.forEach(city => {
+        const cityId = city._id || city.id;
+        if (city.is_new === true && cityId && !last5Ids.has(cityId)) {
+          city.is_new = false;
+        }
+      });
+
       // Extract available categories
       const categoriesSet = new Set<string>();
       deduplicatedCities.forEach(city => {
@@ -339,7 +386,6 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch opportunities';
       setError(errorMessage);
-      console.error('Error fetching opportunities:', err);
     } finally {
       setLoading(false);
     }

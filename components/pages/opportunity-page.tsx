@@ -278,10 +278,9 @@ export function OpportunityPage({
                 {opportunity.type && <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">{opportunity.type}</PremiumBadge>}
                 {opportunity.value && <Badge variant="outline">{opportunity.value}</Badge>}
                 {opportunity.expectedReturn && <Badge variant="outline">{opportunity.expectedReturn}</Badge>}
-                {opportunity.investmentHorizon && <Badge variant="outline">{opportunity.investmentHorizon}</Badge>}
                 {opportunity.riskLevel && (
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={opportunity.riskLevel.toLowerCase() === 'low' ? 'text-primary' : ''}
                   >
                     {opportunity.riskLevel} Risk

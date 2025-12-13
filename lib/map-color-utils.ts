@@ -5,22 +5,70 @@ import chroma from "chroma-js"
 import type { City } from "@/components/interactive-world-map"
 import { parseValueToNumber } from "@/lib/map-utils"
 
+// Gradient color stops - matches the slider exactly
+// Green: 0-100K (0-10%), Yellow/Gold: 100K-800K (10-80%), Red: 800K-1M (80-100%)
+const GRADIENT_COLORS = [
+  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // 0K - Deep dark emerald
+  { pos: 5, color: [23, 165, 97], hex: '#17a561' },     // 50K - Vibrant emerald
+  { pos: 10, color: [45, 209, 127], hex: '#2dd17f' },   // 100K - Bright emerald green
+  { pos: 20, color: [80, 233, 145], hex: '#50e991' },   // 200K - Light emerald
+  { pos: 30, color: [120, 240, 160], hex: '#78f0a0' },  // 300K - Lighter emerald
+  { pos: 40, color: [255, 215, 0], hex: '#ffd700' },    // 400K - Pure golden topaz
+  { pos: 50, color: [255, 200, 0], hex: '#ffc800' },    // 500K - Bright gold
+  { pos: 60, color: [255, 176, 0], hex: '#ffb000' },    // 600K - Rich golden amber
+  { pos: 70, color: [255, 150, 0], hex: '#ff9600' },    // 700K - Deep amber
+  { pos: 80, color: [230, 57, 70], hex: '#e63946' },    // 800K - Bright ruby red (RED STARTS HERE)
+  { pos: 90, color: [193, 18, 31], hex: '#c1121f' },    // 900K - Rich ruby
+  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // 1M - Deep dark burgundy ruby
+]
+
+/**
+ * Get color from gradient based on percentage (0-100)
+ * This matches the exact logic used in the slider
+ */
+function getGradientColorFromPercent(percent: number): string {
+  // Find the two colors to interpolate between
+  let lowerColor = GRADIENT_COLORS[0]
+  let upperColor = GRADIENT_COLORS[GRADIENT_COLORS.length - 1]
+
+  for (let i = 0; i < GRADIENT_COLORS.length - 1; i++) {
+    if (percent >= GRADIENT_COLORS[i].pos && percent <= GRADIENT_COLORS[i + 1].pos) {
+      lowerColor = GRADIENT_COLORS[i]
+      upperColor = GRADIENT_COLORS[i + 1]
+      break
+    }
+  }
+
+  // Interpolate between the two colors
+  const range = upperColor.pos - lowerColor.pos
+  const rangePct = range === 0 ? 0 : (percent - lowerColor.pos) / range
+
+  const r = Math.round(lowerColor.color[0] + (upperColor.color[0] - lowerColor.color[0]) * rangePct)
+  const g = Math.round(lowerColor.color[1] + (upperColor.color[1] - lowerColor.color[1]) * rangePct)
+  const b = Math.round(lowerColor.color[2] + (upperColor.color[2] - lowerColor.color[2]) * rangePct)
+
+  return `rgb(${r}, ${g}, ${b})`
+}
+
 /**
  * Create a color scale with 1000 smooth shades
  * Emerald → Topaz → Ruby gradient
+ * Green: 0-100K (0-10%), Yellow/Gold: 100K-800K (10-80%), Red: 800K-1M (80-100%)
  */
 export function createColorScale(): string[] {
   const scale = chroma.scale([
-    '#0d5c3a', // Deep dark emerald (cheapest)
-    '#17a561', // Vibrant emerald
-    '#2dd17f', // Bright emerald green
-    '#50e991', // Light emerald
-    '#ffd700', // Pure golden topaz (midpoint - maximum brightness!)
-    '#ffb000', // Rich golden amber
-    '#ff8c00', // Deep amber/orange
-    '#e63946', // Bright ruby red
-    '#c1121f', // Rich ruby
-    '#800020'  // Deep dark burgundy ruby (most expensive)
+    '#0d5c3a', // 0K - Deep dark emerald
+    '#17a561', // 50K - Vibrant emerald
+    '#2dd17f', // 100K - Bright emerald green
+    '#50e991', // 200K - Light emerald
+    '#78f0a0', // 300K - Lighter emerald
+    '#ffd700', // 400K - Pure golden topaz
+    '#ffc800', // 500K - Bright gold
+    '#ffb000', // 600K - Rich golden amber
+    '#ff9600', // 700K - Deep amber
+    '#e63946', // 800K - Bright ruby red (RED STARTS HERE)
+    '#c1121f', // 900K - Rich ruby
+    '#800020'  // 1M - Deep dark burgundy ruby
   ])
   .mode('lch') // LCH color space for vibrant, perceptually uniform gradients
 
@@ -60,28 +108,27 @@ export function calculateValueRanking(cities: City[]): {
 }
 
 /**
- * Get color from value using rank-based distribution
+ * Get color from value using percentage-based distribution (matches slider logic)
  */
 export function getColorFromValue(
   value: string | undefined,
-  valueRankMap: Map<number, number>,
-  colorScale: string[]
+  minValue: number,
+  maxValue: number
 ): string {
   const numValue = parseValueToNumber(value)
 
-  if (numValue === 0 || valueRankMap.size === 0) {
-    // Fallback to mid-range color (topaz)
-    return colorScale[499] // Middle of 1000 colors
+  if (numValue === 0 || maxValue === minValue) {
+    // Fallback to lowest color
+    return GRADIENT_COLORS[0].hex
   }
 
-  // Get rank-based position (0 to 1) from pre-calculated map
-  const position = valueRankMap.get(numValue) ?? 0.5
+  // Calculate percentage position (0-100) based on value within min-max range
+  const percent = ((numValue - minValue) / (maxValue - minValue)) * 100
 
-  // Map position to one of 1000 colors (index 0-999)
-  const colorIndex = Math.floor(position * 999)
-  const color = colorScale[colorIndex]
+  // Clamp to 0-100 range
+  const clampedPercent = Math.max(0, Math.min(100, percent))
 
-  return color
+  return getGradientColorFromPercent(clampedPercent)
 }
 
 /**
@@ -164,10 +211,19 @@ export function clusterCities(
 
 /**
  * Check if a city matches the selected price range
+ * CRITICAL: When max is at 1M (slider at maximum), include ALL values >= 1M
  */
 export function createPriceRangeMatcher(selectedPriceRange: { min: number; max: number }) {
   return (city: City): boolean => {
     const value = parseValueToNumber(city.value || city.population)
+
+    // When slider is at max (1M+), include all values >= 1M
+    const MAX_VALUE = 1000000
+    if (selectedPriceRange.max === MAX_VALUE) {
+      return value >= selectedPriceRange.min
+    }
+
+    // Otherwise, normal range check
     return value >= selectedPriceRange.min && value <= selectedPriceRange.max
   }
 }

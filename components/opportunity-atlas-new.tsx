@@ -92,18 +92,42 @@ const regions = [
   { id: 'south-america', name: 'South America' }
 ];
 
+// Helper function to safely extract numeric values from fields that could be numbers or objects
+const getNumericValue = (value: any): number | null => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'object' && value !== null) {
+    // Try common numeric field names
+    const commonFields = ['value', 'amount', 'total', 'usd', 'price', 'cost', '$numberDecimal'];
+    for (const field of commonFields) {
+      if (typeof value[field] === 'number') return value[field];
+      // Handle MongoDB Decimal128 format
+      if (typeof value[field] === 'string' && !isNaN(parseFloat(value[field]))) {
+        return parseFloat(value[field]);
+      }
+    }
+    // If no known field found, try to find any numeric value in the object
+    for (const key in value) {
+      if (typeof value[key] === 'number') return value[key];
+      if (typeof value[key] === 'string' && !isNaN(parseFloat(value[key]))) {
+        return parseFloat(value[key]);
+      }
+    }
+  }
+  return null;
+};
+
 // Opportunity card component for the right panel
-function OpportunityCard({ 
-  opportunity, 
-  onClick, 
-  isExpanded, 
+function OpportunityCard({
+  opportunity,
+  onClick,
+  isExpanded,
   onShare,
   shareState,
   onTalkToConcierge,
   conciergeState,
   scoring,
   onOpportunityView
-}: { 
+}: {
   opportunity: Opportunity;
   onClick: () => void;
   isExpanded: boolean;
@@ -272,7 +296,6 @@ function OpportunityCard({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
             className="border-t border-border/30"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 space-y-6">
               {/* Deal Capsule - Premium metrics container */}
@@ -590,7 +613,7 @@ function OpportunityCard({
                               <div className="flex justify-between items-baseline">
                                 <span className="text-sm text-muted-foreground">Base</span>
                                 <span className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                                  ${opportunity.pricing.base_price_usd.toLocaleString()}
+                                  ${(getNumericValue(opportunity.pricing.base_price_usd) || 0).toLocaleString()}
                                 </span>
                               </div>
                             )}
@@ -598,7 +621,7 @@ function OpportunityCard({
                               <div className="flex justify-between items-baseline">
                                 <span className="text-sm text-muted-foreground">Total Required</span>
                                 <span className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
-                                  ${opportunity.pricing.total_investment_required.toLocaleString()}
+                                  ${(getNumericValue(opportunity.pricing.total_investment_required) || 0).toLocaleString()}
                                 </span>
                               </div>
                             )}
@@ -615,7 +638,7 @@ function OpportunityCard({
                                 <div className="flex justify-between items-baseline">
                                   <span className="text-xs text-muted-foreground">Per Acre</span>
                                   <span className="text-sm font-medium text-foreground">
-                                    ₹{opportunity.pricing.price_breakdown.per_acre_inr.toLocaleString()}
+                                    ₹{(getNumericValue(opportunity.pricing.price_breakdown.per_acre_inr) || 0).toLocaleString()}
                                   </span>
                                 </div>
                               </div>
@@ -627,7 +650,7 @@ function OpportunityCard({
                                   <div className="flex justify-between items-baseline mb-1">
                                     <span className="text-xs text-muted-foreground">Stamp Duty ({opportunity.pricing.transaction_costs.stamp_duty_percentage}%)</span>
                                     <span className="text-sm font-medium text-foreground">
-                                      ${opportunity.pricing.transaction_costs.stamp_duty.toLocaleString()}
+                                      ${(getNumericValue(opportunity.pricing.transaction_costs.stamp_duty) || 0).toLocaleString()}
                                     </span>
                                   </div>
                                 )}
@@ -635,7 +658,7 @@ function OpportunityCard({
                                   <div className="flex justify-between items-baseline">
                                     <span className="text-xs text-muted-foreground">Registration Fee ({opportunity.pricing.transaction_costs.registration_fee_percentage}%)</span>
                                     <span className="text-sm font-medium text-foreground">
-                                      ${opportunity.pricing.transaction_costs.registration_fee.toLocaleString()}
+                                      ${(getNumericValue(opportunity.pricing.transaction_costs.registration_fee) || 0).toLocaleString()}
                                     </span>
                                   </div>
                                 )}
@@ -685,7 +708,7 @@ function OpportunityCard({
                                   <div className="flex justify-between items-baseline mb-1">
                                     <span className="text-xs text-muted-foreground">Monthly</span>
                                     <span className="text-sm font-medium text-foreground">
-                                      ${opportunity.exit_strategy.holding_costs.monthly_total.toLocaleString()}
+                                      ${(getNumericValue(opportunity.exit_strategy.holding_costs.monthly_total) || 0).toLocaleString()}
                                     </span>
                                   </div>
                                 )}
@@ -693,7 +716,7 @@ function OpportunityCard({
                                   <div className="flex justify-between items-baseline">
                                     <span className="text-xs text-muted-foreground">Annual</span>
                                     <span className="text-sm font-medium text-foreground">
-                                      ${opportunity.exit_strategy.holding_costs.annual_total.toLocaleString()}
+                                      ${(getNumericValue(opportunity.exit_strategy.holding_costs.annual_total) || 0).toLocaleString()}
                                     </span>
                                   </div>
                                 )}
@@ -1241,7 +1264,36 @@ export function OpportunityAtlasNew({
       // Collapsing the card
       setExpandedOpportunityId(null);
     } else {
-      // Expanding the card
+      // Expanding the card - LOG DATA HERE
+      console.log('=== PRIVÉ EXCHANGE EXPANDED CARD DATA ===');
+      console.log('Full Opportunity Object:', opportunity);
+      console.log('---');
+      console.log('Title:', opportunity.title);
+      console.log('ID:', opportunity.id);
+      console.log('---');
+      console.log('Minimum Investment Display:', opportunity.minimum_investment_display);
+      console.log('Value (legacy):', opportunity.value);
+      console.log('Expected Return (low-high):', opportunity.expected_return_annual_low, '-', opportunity.expected_return_annual_high);
+      console.log('Expected Return (legacy):', opportunity.expectedReturn);
+      console.log('---');
+      console.log('Time Horizon Display Object:', (opportunity as any).time_horizon_display);
+      console.log('Investment Horizon (legacy):', opportunity.investmentHorizon);
+      console.log('Liquidity Level:', opportunity.liquidity_level);
+      console.log('---');
+      console.log('Region:', opportunity.region);
+      console.log('Country:', opportunity.country);
+      console.log('Industry:', opportunity.industry);
+      console.log('---');
+      console.log('Investment Thesis:', opportunity.investment_thesis);
+      console.log('Pricing:', opportunity.pricing);
+      console.log('Exit Strategy:', opportunity.exit_strategy);
+      console.log('Asset Details:', opportunity.asset_details);
+      console.log('Risk Analysis:', opportunity.risk_analysis);
+      console.log('Return Analysis:', opportunity.return_analysis);
+      console.log('Victor Rating:', opportunity.victor_rating);
+      console.log('Victor Score:', opportunity.victor_score);
+      console.log('===========================================');
+
       setExpandedOpportunityId(opportunity.id);
       // Store opportunity info for reference
       sessionStorage.setItem('currentOpportunityId', opportunity.id);
