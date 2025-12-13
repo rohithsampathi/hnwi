@@ -90,6 +90,13 @@ export const BrainThinkingLoader: React.FC<BrainThinkingLoaderProps> = ({
         <span className="text-sm text-muted-foreground ml-2">{message}</span>
       </div>
 
+      {/* Informational message about map updates */}
+      <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 mb-4">
+        <p className="text-sm text-muted-foreground text-center leading-relaxed">
+          Once your response is processed, opportunities executed by individuals that match your thinking style will be updated on the map below. Click on the dot to explore each opportunity.
+        </p>
+      </div>
+
       {/* Choice cards skeleton */}
       <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
         <div className="h-4 bg-muted rounded w-48 mb-2 sm:mb-3" />

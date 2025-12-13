@@ -1310,13 +1310,60 @@ export function OpportunityAtlasNew({
         throw new Error('Invalid response from server');
       }
 
-      // Copy the UUID-based share URL to clipboard
-      await navigator.clipboard.writeText(data.shareUrl);
+      // Use Web Share API for mobile/PWA (native share sheet)
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: opportunity.title,
+            text: `Check out this investment opportunity: ${opportunity.title}`,
+            url: data.shareUrl
+          });
+
+          // Show success state
+          if (opportunity?.id) {
+            setShareState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
+
+            // Reset success state after 2 seconds
+            setTimeout(() => {
+              setShareState(prev => ({ ...(prev || {}), [opportunity.id]: false }));
+            }, 2000);
+          }
+
+          toast({
+            title: "Shared Successfully",
+            description: "Opportunity shared via your device",
+            duration: 2000,
+          });
+
+          return;
+        } catch (shareError: any) {
+          // User cancelled share or share failed - fall through to clipboard
+          if (shareError.name !== 'AbortError') {
+            console.warn('Web Share API failed:', shareError);
+          }
+        }
+      }
+
+      // Fallback to clipboard for desktop or if Web Share fails
+      // Use ClipboardItem API for better PWA support
+      if (navigator.clipboard && window.ClipboardItem) {
+        try {
+          const blob = new Blob([data.shareUrl], { type: 'text/plain' });
+          const clipboardItem = new ClipboardItem({ 'text/plain': blob });
+          await navigator.clipboard.write([clipboardItem]);
+        } catch (clipboardError) {
+          // Final fallback: direct writeText
+          await navigator.clipboard.writeText(data.shareUrl);
+        }
+      } else {
+        // Legacy clipboard access
+        await navigator.clipboard.writeText(data.shareUrl);
+      }
 
       // Show success toast
       toast({
-        title: "Share Link Created",
-        description: `Link copied to clipboard`,
+        title: "Link Copied",
+        description: "Share link copied to clipboard",
         duration: 2000,
       });
 
@@ -1333,10 +1380,9 @@ export function OpportunityAtlasNew({
     } catch (error) {
       console.error('Share error:', error);
 
-      // Fallback for clipboard copy errors
       toast({
         title: "Share Failed",
-        description: "Unable to create share link. Please try again.",
+        description: "Unable to share. Please try again.",
         variant: "destructive",
         duration: 3000,
       });

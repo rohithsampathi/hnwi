@@ -53,6 +53,7 @@ export default function AssessmentResultsClient() {
 
   const [results, setResults] = useState<AssessmentResults | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingEnhancedReport, setLoadingEnhancedReport] = useState(false);
   const retryCountRef = useRef(0);
   const hasLoadedRef = useRef(false);
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
@@ -276,6 +277,55 @@ export default function AssessmentResultsClient() {
 
     fetchResults();
   }, [sessionId, router, getResults]);
+
+  // Poll for enhanced report if not available initially
+  useEffect(() => {
+    if (!results) return;
+
+    // If enhanced report already exists, no need to poll
+    if (results.enhanced_report?.full_analytics?.strategic_positioning) {
+      return;
+    }
+
+    // Set loading state for enhanced report
+    setLoadingEnhancedReport(true);
+
+    let pollCount = 0;
+    const maxPolls = 10; // Poll for up to 30 seconds (10 polls × 3 seconds)
+
+    const pollForEnhancedReport = async () => {
+      try {
+        const data = await getResults(sessionId);
+
+        // Check if enhanced report is now available
+        if (data.enhanced_report?.full_analytics?.strategic_positioning) {
+          setResults(data);
+          setLoadingEnhancedReport(false);
+          return true; // Stop polling
+        }
+
+        return false; // Continue polling
+      } catch (err) {
+        console.error('Error polling for enhanced report:', err);
+        return false;
+      }
+    };
+
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+
+      const shouldStop = await pollForEnhancedReport();
+
+      if (shouldStop || pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        if (pollCount >= maxPolls) {
+          setLoadingEnhancedReport(false); // Stop showing loading state after max polls
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [results, sessionId, getResults]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/shared-results/${sessionId}`;
@@ -599,8 +649,29 @@ export default function AssessmentResultsClient() {
             </motion.section>
           )}
 
-          {/* Enhanced Report Components - Only show if backend data exists */}
-          {results.enhanced_report?.full_analytics?.strategic_positioning && (
+          {/* Enhanced Report Loading State */}
+          {loadingEnhancedReport && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="relative z-10"
+            >
+              <div className="bg-card/60 backdrop-blur-xl border border-primary/30 rounded-2xl p-8 text-center">
+                <CrownLoader
+                  size="md"
+                  text="Generating Extended Report"
+                  subtext="Analyzing peer benchmarks and strategic positioning..."
+                />
+                <p className="text-sm text-muted-foreground mt-4">
+                  This may take up to 30 seconds. Your complete analysis will appear automatically.
+                </p>
+              </div>
+            </motion.section>
+          )}
+
+          {/* Enhanced Report Components - Only show if backend data exists and not loading */}
+          {!loadingEnhancedReport && results.enhanced_report?.full_analytics?.strategic_positioning && (
             <>
               {/* Executive Summary */}
               <motion.div
