@@ -52,6 +52,8 @@ export function CitationPanel({
   const [loading, setLoading] = useState(false)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
   const [globalCitationMap, setGlobalCitationMap] = useState<Map<string, number>>(new Map())
+  const desktopScrollRef = React.useRef<HTMLDivElement>(null)
+  const mobileScrollRef = React.useRef<HTMLDivElement>(null)
 
   // Recursively fetch ALL citation levels and build complete serial map
   useEffect(() => {
@@ -137,30 +139,37 @@ export function CitationPanel({
 
   // Auto-scroll to selected citation tab when citation changes
   useEffect(() => {
-    if (!selectedCitationId) return
+    if (!selectedCitationId || citations.length === 0) return
 
-    // Wait for panel animation and DOM
-    const timer = setTimeout(() => {
-      const selectedButton = document.querySelector(`button[data-citation-id="${selectedCitationId}"]`) as HTMLElement
-      if (!selectedButton) return
+    // Use requestAnimationFrame to ensure DOM is ready
+    const scrollToSelected = () => {
+      requestAnimationFrame(() => {
+        // Try to find and scroll the selected button into view
+        const desktopButton = desktopScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
+        const mobileButton = mobileScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
 
-      const scrollContainer = selectedButton.closest('.overflow-x-auto') as HTMLElement
-      if (!scrollContainer) return
+        if (desktopButton) {
+          desktopButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          })
+        }
 
-      // Get button's position relative to its offset parent
-      const buttonLeft = selectedButton.offsetLeft
-      const buttonWidth = selectedButton.offsetWidth
-      const containerWidth = scrollContainer.clientWidth
+        if (mobileButton) {
+          mobileButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          })
+        }
+      })
+    }
 
-      // Calculate position to center the button
-      const targetScroll = buttonLeft - (containerWidth / 2) + (buttonWidth / 2)
-
-      // Set scroll position directly
-      scrollContainer.scrollLeft = targetScroll
-    }, 400)
-
+    // Small delay to ensure panel animation completes
+    const timer = setTimeout(scrollToSelected, 300)
     return () => clearTimeout(timer)
-  }, [selectedCitationId])
+  }, [selectedCitationId, citations.length])
 
   return (
     <>
@@ -204,7 +213,7 @@ export function CitationPanel({
 
         {/* Desktop Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="flex gap-1 overflow-x-auto" id="rohith-citation-tabs-desktop">
+          <div ref={desktopScrollRef} className="flex gap-1 overflow-x-auto scrollbar-hide">
             {citations.map((citation) => (
               <Button
                 key={citation.id}
@@ -301,7 +310,7 @@ export function CitationPanel({
 
         {/* Mobile Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="flex gap-1 overflow-x-auto" id="rohith-citation-tabs-mobile">
+          <div ref={mobileScrollRef} className="flex gap-1 overflow-x-auto scrollbar-hide">
             {citations.map((citation) => (
               <Button
                 key={citation.id}

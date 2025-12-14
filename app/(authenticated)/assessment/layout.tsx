@@ -1,7 +1,7 @@
 // app/(authenticated)/assessment/layout.tsx
 // Layout with premium metadata for assessment pages
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "Strategic Wealth DNA Assessment | HNWI Chronicles - Discover Your $10M+ Decision Pattern",
@@ -56,15 +56,6 @@ export const metadata: Metadata = {
   },
   category: "Wealth Intelligence",
   classification: "Strategic Assessment",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
   other: {
     "og:rich_attachment": "true",
     "article:author": "HNWI Chronicles Intelligence Division",
@@ -74,6 +65,16 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
 };
 
 export default function AssessmentLayout({

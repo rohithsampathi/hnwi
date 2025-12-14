@@ -51,6 +51,8 @@ export function EliteCitationPanel({
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
   const [allCitations, setAllCitations] = useState<Citation[]>(citations)
   const [localCitationMap, setLocalCitationMap] = useState<Map<string, number>>(citationMap || new Map())
+  const desktopScrollRef = React.useRef<HTMLDivElement>(null)
+  const mobileScrollRef = React.useRef<HTMLDivElement>(null)
 
   // Initialize local state when props change
   useEffect(() => {
@@ -167,34 +169,41 @@ export function EliteCitationPanel({
       handleCitationClick(selectedCitationId)
     }
     // Otherwise, user must click a citation to load it (lazy loading)
-  }, [selectedCitationId]) // Only run when selectedCitationId changes
+  }, [selectedCitationId, citations.length]) // Run when selectedCitationId changes or citations are loaded
 
   // Auto-scroll to selected citation tab when panel opens or citation changes
   useEffect(() => {
-    if (!selectedCitationId) return
+    if (!selectedCitationId || allCitations.length === 0) return
 
-    // Wait for panel animation and DOM
-    const timer = setTimeout(() => {
-      const selectedButton = document.querySelector(`button[data-citation-id="${selectedCitationId}"]`) as HTMLElement
-      if (!selectedButton) return
+    // Use requestAnimationFrame to ensure DOM is ready
+    const scrollToSelected = () => {
+      requestAnimationFrame(() => {
+        // Try to find and scroll the selected button into view
+        const desktopButton = desktopScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
+        const mobileButton = mobileScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
 
-      const scrollContainer = selectedButton.closest('.overflow-x-auto') as HTMLElement
-      if (!scrollContainer) return
+        if (desktopButton) {
+          desktopButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          })
+        }
 
-      // Get button's position relative to its offset parent
-      const buttonLeft = selectedButton.offsetLeft
-      const buttonWidth = selectedButton.offsetWidth
-      const containerWidth = scrollContainer.clientWidth
+        if (mobileButton) {
+          mobileButton.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          })
+        }
+      })
+    }
 
-      // Calculate position to center the button
-      const targetScroll = buttonLeft - (containerWidth / 2) + (buttonWidth / 2)
-
-      // Set scroll position directly
-      scrollContainer.scrollLeft = targetScroll
-    }, 400)
-
+    // Small delay to ensure panel animation completes
+    const timer = setTimeout(scrollToSelected, 300)
     return () => clearTimeout(timer)
-  }, [selectedCitationId])
+  }, [selectedCitationId, allCitations.length])
 
   return (
     <>
@@ -238,7 +247,7 @@ export function EliteCitationPanel({
 
         {/* Desktop Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30 flex-shrink-0">
-          <div className="overflow-x-auto scrollbar-hide max-w-full" id="citation-tabs-desktop">
+          <div ref={desktopScrollRef} className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
               {allCitations.map((citation) => (
                 <Button
@@ -337,7 +346,7 @@ export function EliteCitationPanel({
 
         {/* Mobile Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="overflow-x-auto scrollbar-hide max-w-full" id="citation-tabs-mobile">
+          <div ref={mobileScrollRef} className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
               {allCitations.map((citation) => (
                 <Button

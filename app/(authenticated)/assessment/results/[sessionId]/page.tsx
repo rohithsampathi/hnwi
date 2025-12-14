@@ -24,10 +24,10 @@ export async function generateMetadata({
     const isProduction = process.env.NODE_ENV === 'production';
     const apiBaseUrl = isProduction
       ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3001';
+      : 'http://localhost:3000';
 
     // Try to fetch assessment results to get tier for metadata
-    const response = await fetch(`${apiBaseUrl}/api/assessment/results/${params.sessionId}`, {
+    const response = await fetch(`${apiBaseUrl}/api/assessment/result/${params.sessionId}`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json'
