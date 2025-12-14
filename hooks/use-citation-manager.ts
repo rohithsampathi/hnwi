@@ -60,15 +60,8 @@ export function useCitationManager(initialCitations: Citation[] = []): CitationM
   }, [])
 
   const openCitation = useCallback((citationId: string) => {
-    console.log('🔓 openCitation called with ID:', citationId)
-    console.log('📋 Current citations:', citations)
-    console.log('🗺️ Citation exists in map?', citationMap.has(citationId))
-
     setSelectedCitationId(citationId)
     setPanelOpen(true)
-
-    console.log('✅ Set selectedCitationId to:', citationId)
-    console.log('✅ Set isPanelOpen to: true')
   }, [citations, citationMap])
 
   const closePanel = useCallback(() => {

@@ -173,17 +173,27 @@ export function EliteCitationPanel({
   useEffect(() => {
     if (!selectedCitationId) return
 
-    // Wait a bit for the DOM to render
-    setTimeout(() => {
-      const selectedButton = document.querySelector(`button[data-citation-id="${selectedCitationId}"]`)
-      if (selectedButton) {
-        selectedButton.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'center'
-        })
-      }
-    }, 100)
+    // Wait for panel animation and DOM
+    const timer = setTimeout(() => {
+      const selectedButton = document.querySelector(`button[data-citation-id="${selectedCitationId}"]`) as HTMLElement
+      if (!selectedButton) return
+
+      const scrollContainer = selectedButton.closest('.overflow-x-auto') as HTMLElement
+      if (!scrollContainer) return
+
+      // Get button's position relative to its offset parent
+      const buttonLeft = selectedButton.offsetLeft
+      const buttonWidth = selectedButton.offsetWidth
+      const containerWidth = scrollContainer.clientWidth
+
+      // Calculate position to center the button
+      const targetScroll = buttonLeft - (containerWidth / 2) + (buttonWidth / 2)
+
+      // Set scroll position directly
+      scrollContainer.scrollLeft = targetScroll
+    }, 400)
+
+    return () => clearTimeout(timer)
   }, [selectedCitationId])
 
   return (
@@ -228,7 +238,7 @@ export function EliteCitationPanel({
 
         {/* Desktop Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30 flex-shrink-0">
-          <div className="overflow-x-auto scrollbar-hide max-w-full">
+          <div className="overflow-x-auto scrollbar-hide max-w-full" id="citation-tabs-desktop">
             <div className="flex gap-1 pb-1 min-w-max">
               {allCitations.map((citation) => (
                 <Button
@@ -238,7 +248,7 @@ export function EliteCitationPanel({
                   onClick={() => onCitationSelect(citation.id)}
                   data-citation-id={citation.id}
                   className={cn(
-                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
+                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
                     selectedCitationId === citation.id
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted-foreground/10"
@@ -327,7 +337,7 @@ export function EliteCitationPanel({
 
         {/* Mobile Citation Tabs */}
         <div className="px-3 py-3 border-b border-border bg-muted/30">
-          <div className="overflow-x-auto scrollbar-hide max-w-full">
+          <div className="overflow-x-auto scrollbar-hide max-w-full" id="citation-tabs-mobile">
             <div className="flex gap-1 pb-1 min-w-max">
               {allCitations.map((citation) => (
                 <Button
@@ -337,7 +347,7 @@ export function EliteCitationPanel({
                   onClick={() => onCitationSelect(citation.id)}
                   data-citation-id={citation.id}
                   className={cn(
-                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem]",
+                    "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
                     selectedCitationId === citation.id
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted-foreground/10"

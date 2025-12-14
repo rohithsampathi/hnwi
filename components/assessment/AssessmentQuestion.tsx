@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
-import { Clock, Map as MapIcon, Target, TrendingUp } from 'lucide-react';
+import { Clock, Map as MapIcon, Target, TrendingUp, Zap } from 'lucide-react';
 import { Question, Progress } from '@/lib/hooks/useAssessmentState';
 import { ChoiceCard } from './ChoiceCard';
 import { CrownLoader } from '@/components/ui/crown-loader';
@@ -127,6 +127,26 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
 
   // Track previous city count for calculating increment
   const [previousCityCount, setPreviousCityCount] = useState(0);
+
+  // Banner state for showing new opportunities notification
+  const [showOpportunityBanner, setShowOpportunityBanner] = useState(false);
+  const [opportunityIncrement, setOpportunityIncrement] = useState(0);
+
+  // Scroll to map function
+  const scrollToMap = () => {
+    const mapElement = document.getElementById('assessment-map-container');
+    if (mapElement) {
+      mapElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Scroll to question function
+  const scrollToQuestion = () => {
+    const questionElement = document.getElementById('assessment-question-container');
+    if (questionElement) {
+      questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Handle calibration events - progressively ADD backend-selected opportunities
   useEffect(() => {
@@ -287,16 +307,31 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     setManagedCitations(allCitations);
   }, [filteredCities.length, showPriveOpportunities, showHNWIPatterns]); // Only depend on the length and filter states
 
-  // Track when filtered cities count changes to update previous count
+  // Track when filtered cities count changes to update previous count and show banner
   useEffect(() => {
     // Only update previousCityCount when we get new opportunities
     // This happens after calibration events are processed
     if (filteredCities.length > previousCityCount && calibrationEvents.length > 0) {
+      const increment = filteredCities.length - previousCityCount;
+
+      // Show the banner above the question
+      setOpportunityIncrement(increment);
+      setShowOpportunityBanner(true);
+
+      // Hide banner after 10 seconds
+      const bannerTimer = setTimeout(() => {
+        setShowOpportunityBanner(false);
+      }, 10000);
+
       // Delay update to show the increment notification first
-      const timer = setTimeout(() => {
+      const countTimer = setTimeout(() => {
         setPreviousCityCount(filteredCities.length);
       }, 3000);
-      return () => clearTimeout(timer);
+
+      return () => {
+        clearTimeout(bannerTimer);
+        clearTimeout(countTimer);
+      };
     }
   }, [filteredCities.length, calibrationEvents.length, previousCityCount]);
 
@@ -336,16 +371,60 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
         </div>
       </div>
 
+      {/* Premium Intelligence Banner - New Opportunities Added */}
+      <AnimatePresence>
+        {showOpportunityBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="z-30 max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-3"
+          >
+            <motion.button
+              onClick={scrollToMap}
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.995 }}
+              className="w-full px-5 sm:px-6 py-3.5 sm:py-4 bg-card/80 hover:bg-card/90 backdrop-blur-xl border border-primary/30 hover:border-primary/50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden"
+            >
+              {/* Subtle premium shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent group-hover:via-primary/10 transition-all duration-500" />
+
+              <div className="relative flex items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 group-hover:bg-primary/15 transition-colors">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm sm:text-base font-semibold text-foreground leading-tight">
+                      {opportunityIncrement} New {opportunityIncrement === 1 ? 'Opportunity' : 'Opportunities'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {filteredCities.length} total on Command Centre
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-primary font-medium">
+                  <span className="hidden sm:inline">View Map</span>
+                  <span className="group-hover:translate-y-0.5 transition-transform">↓</span>
+                </div>
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content - Split Layout - Questions first on mobile, map on desktop right */}
-      <div className="flex flex-col-reverse lg:flex-row min-h-[calc(100vh-200px)]">
+      <div className="flex flex-col-reverse lg:flex-row">
         {/* Question Content - Primary focus (Left on desktop, Bottom on mobile) */}
         <motion.div
+          id="assessment-question-container"
           key={question.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5 }}
-          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'} flex flex-col`}
+          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'}`}
         >
           {loading ? (
             <div className="p-4 sm:p-6 md:p-8">
@@ -416,7 +495,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
               </div>
 
               {/* Scrollable Options Section */}
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 pb-8">
+              <div className="px-4 sm:px-6 md:px-8 pb-8">
                 {/* Choices - Mobile optimized with progressive reveal */}
                 {showChoices && (
                   <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
@@ -488,6 +567,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
         {/* Opportunity Map - Secondary (Right on desktop, Top on mobile) */}
         {showMap && (
           <motion.div
+            id="assessment-map-container"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
@@ -518,7 +598,36 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                     useAbsolutePositioning={true} // Keep controls inside map bounds
                   />
 
-                  {/* Overlays positioned absolutely with pointer-events-none */}
+                  {/* Overlays positioned absolutely */}
+                  {/* Up Arrow to Simulation */}
+                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[400]">
+                    <motion.button
+                      onClick={scrollToQuestion}
+                      whileHover={{ scale: 1.1, y: -2 }}
+                      whileTap={{ scale: 0.9 }}
+                      animate={{
+                        y: [0, -4, 0],
+                        opacity: [0.7, 1, 0.7],
+                      }}
+                      transition={{
+                        y: {
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        },
+                        opacity: {
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }
+                      }}
+                      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                      title="Back to simulation"
+                    >
+                      <span className="text-primary text-xl sm:text-2xl font-bold">↑</span>
+                    </motion.button>
+                  </div>
+
                   {/* Calibration Status Overlay */}
                   {isCalibrating && (
                     <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[400] pointer-events-none">

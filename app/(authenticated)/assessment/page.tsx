@@ -117,12 +117,10 @@ export default function AuthenticatedAssessmentPage() {
           if (mostRecent.session_id) {
             // Clear vault session storage to prevent animation on redirect
             sessionStorage.removeItem('assessmentVaultShownThisSession');
-            console.log(`[Assessment] User has existing assessment, redirecting to: ${mostRecent.session_id}`);
             router.replace(`/assessment/results/${mostRecent.session_id}`);
           }
         }
       } catch (error) {
-        console.error('[Assessment] Error checking existing assessments:', error);
         // On error, allow user to continue to landing page
       }
     };

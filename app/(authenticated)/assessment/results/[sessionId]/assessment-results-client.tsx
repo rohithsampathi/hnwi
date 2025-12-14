@@ -306,7 +306,6 @@ export default function AssessmentResultsClient() {
 
         return false; // Continue polling
       } catch (err) {
-        console.error('Error polling for enhanced report:', err);
         return false;
       }
     };
