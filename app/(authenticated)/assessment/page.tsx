@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssessmentLanding } from '@/components/assessment/AssessmentLanding';
 import { MapIntroduction } from '@/components/assessment/MapIntroduction';
@@ -24,7 +24,7 @@ export default function AuthenticatedAssessmentPage() {
   const [user, setUser] = useState<any>(null);
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
-  const [hasCheckedExisting, setHasCheckedExisting] = useState(false);
+  const hasCheckedExistingRef = useRef(false);
 
   // Clear vault session storage when user navigates away or closes tab
   useEffect(() => {
@@ -45,6 +45,7 @@ export default function AuthenticatedAssessmentPage() {
     allQuestions,
     currentQuestionIndex,
     progress,
+    status,
     setSessionId,
     setAllQuestions,
     setCurrentQuestionIndex,
@@ -97,36 +98,39 @@ export default function AuthenticatedAssessmentPage() {
     }
   }, [flowStage]);
 
-  // Check for existing completed assessment
+  // Check for existing completed assessment - ONCE on initial mount with user data
   useEffect(() => {
+    // Only run if we have user data AND haven't checked yet
     if (!user?.id && !user?.user_id) return;
-    if (hasCheckedExisting) return; // Prevent double checking
+    if (hasCheckedExistingRef.current) return;
+
+    // Mark as checked immediately to prevent any re-runs
+    hasCheckedExistingRef.current = true;
 
     const checkExistingAssessment = async () => {
-      setHasCheckedExisting(true);
-
       try {
         const userId = user?.id || user?.user_id;
         const history = await getAssessmentHistory(userId, user?.email);
 
-        // If user has completed assessments, redirect to most recent one
+        // Only redirect if user has completed assessments
         if (history && Array.isArray(history) && history.length > 0) {
-          // Get most recent completed assessment (should be first in array, sorted by date)
           const mostRecent = history[0];
 
-          if (mostRecent.session_id) {
+          // Only redirect if it's truly completed (has results/PDF)
+          if (mostRecent.session_id && (mostRecent.pdf_url || mostRecent.status === 'completed')) {
             // Clear vault session storage to prevent animation on redirect
             sessionStorage.removeItem('assessmentVaultShownThisSession');
             router.replace(`/assessment/results/${mostRecent.session_id}`);
           }
         }
       } catch (error) {
-        // On error, allow user to continue to landing page
+        // Silent fail - allow user to continue
+        console.error('Error checking assessment history:', error);
       }
     };
 
     checkExistingAssessment();
-  }, [user, router, hasCheckedExisting, getAssessmentHistory]);
+  }, [user, router, getAssessmentHistory]); // Minimal dependencies - only what's absolutely needed
 
   // Handle landing -> map intro
   const handleShowMapIntro = () => {
@@ -159,7 +163,6 @@ export default function AuthenticatedAssessmentPage() {
       setStatus('in_progress');
       setFlowStage('assessment');
     } catch (err: any) {
-
       // Backend will return error if retake not allowed - show message to user
       if (err.message?.includes('retake') || err.message?.includes('30 days') || err.message?.includes('wait')) {
         // Parse retake info from error if available
