@@ -942,16 +942,16 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                 Log In
               </Button>
 
-              {/* Take Assessment button - Secondary */}
+              {/* Start Simulation button - Secondary */}
               <Button
-                onClick={() => window.location.href = '/assessment'}
+                onClick={() => window.location.href = '/simulation'}
                 className={`w-full sm:w-[200px] max-w-[280px] h-[50px] text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
                   theme === "dark"
                     ? "bg-[hsl(43_74%_49%_/_0.2)] text-[hsl(43_74%_49%)] border border-[hsl(43_74%_49%_/_0.3)] hover:bg-[hsl(43_74%_49%_/_0.3)] hover:border-[hsl(43_74%_49%_/_0.5)]"
                     : "bg-[hsl(0_0%_10%_/_0.1)] text-[hsl(0_0%_20%)] border border-[hsl(0_0%_10%_/_0.2)] hover:bg-[hsl(0_0%_10%_/_0.15)] hover:text-[hsl(0_0%_10%)] hover:border-[hsl(0_0%_10%_/_0.3)]"
                 }`}
               >
-                Take Assessment
+                Start Simulation
               </Button>
             </div>
 

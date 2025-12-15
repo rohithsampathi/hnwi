@@ -40,7 +40,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
     if (pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-rohith', showBackButton: true }
-    if (pathname.includes('/assessment')) return { title: '', currentPage: 'assessment', showBackButton: true }
+    if (pathname.includes('/simulation')) return { title: '', currentPage: 'simulation', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }
     if (pathname.includes('/prive-exchange')) return { title: '', currentPage: 'prive-exchange', showBackButton: true }
     if (pathname.includes('/crown-vault')) return { title: '', currentPage: 'crown-vault', showBackButton: true }
@@ -76,8 +76,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       router.push("/dashboard")
     } else if (route === "ask-rohith") {
       router.push("/ask-rohith")
-    } else if (route === "assessment") {
-      router.push("/assessment")
+    } else if (route === "assessment" || route === "simulation") {
+      router.push("/simulation")
     } else if (route === "strategy-vault") {
       router.push("/hnwi-world")
     } else if (route === "strategy-engine") {
@@ -126,7 +126,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // Allow assessment pages for both authenticated and unauthenticated users
     // This check must happen FIRST and ALWAYS run when on assessment pages
     // CRITICAL: This must be checked BEFORE the early return for isAuthenticated !== null
-    if (currentPathname.includes('/assessment')) {
+    if (currentPathname.includes('/simulation')) {
       // Abort any ongoing auth checks
       authCheckAbortRef.current = true
 
@@ -276,20 +276,20 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
             // CRITICAL: Triple-check we're not on assessment page before redirecting
             const finalPathCheck = pathnameRef.current
-            if (finalPathCheck.includes('/assessment')) {
+            if (finalPathCheck.includes('/simulation')) {
               console.debug('[Auth] Final check: on assessment page, aborting redirect')
               setIsCheckingAuth(false)
               return
             }
 
-            if (currentPath === checkStartPathname && !currentPath.includes('/assessment')) {
+            if (currentPath === checkStartPathname && !currentPath.includes('/simulation')) {
               console.debug('[Auth] No user found, redirecting from', currentPath, 'to /')
               setIsAuthenticated(false)
               setIsInitialLoad(false)
               router.push("/")
             } else if (currentPath !== checkStartPathname) {
               console.debug('[Auth] Aborting redirect - navigated from', checkStartPathname, 'to', currentPath)
-            } else if (currentPath.includes('/assessment')) {
+            } else if (currentPath.includes('/simulation')) {
               console.debug('[Auth] Aborting redirect - on assessment page')
             }
             setIsCheckingAuth(false)

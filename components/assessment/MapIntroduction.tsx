@@ -250,7 +250,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                       </div>
                       <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
-                          text="This is the reality of HNWI World. Your assessment will reveal which opportunities match your strategic DNA."
+                          text="This is the reality of HNWI World. Your simulation will reveal which opportunities match your strategic DNA."
                           speed={15}
                           onComplete={() => setTimeout(() => setShowButton(true), 300)}
                         />
@@ -271,7 +271,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span>Begin Your Assessment</span>
+                    <span>Begin Your Simulation</span>
                     <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
                   </motion.button>
                   <p className="text-xs sm:text-sm md:text-base text-muted-foreground/70 font-light mt-3 sm:mt-4 leading-relaxed">

@@ -1,5 +1,5 @@
 // app/(authenticated)/assessment/page.tsx
-// Complete C10 Assessment with SSE, calibration, and Digital Twin simulation
+// Complete C10 Simulation with SSE, calibration, and Digital Twin simulation
 
 "use client";
 
@@ -120,7 +120,7 @@ export default function AuthenticatedAssessmentPage() {
           if (mostRecent.session_id && (mostRecent.pdf_url || mostRecent.status === 'completed')) {
             // Clear vault session storage to prevent animation on redirect
             sessionStorage.removeItem('assessmentVaultShownThisSession');
-            router.replace(`/assessment/results/${mostRecent.session_id}`);
+            router.replace(`/simulation/results/${mostRecent.session_id}`);
           }
         }
       } catch (error) {
@@ -166,9 +166,9 @@ export default function AuthenticatedAssessmentPage() {
       // Backend will return error if retake not allowed - show message to user
       if (err.message?.includes('retake') || err.message?.includes('30 days') || err.message?.includes('wait')) {
         // Parse retake info from error if available
-        alert(`Assessment Unavailable\n\n${err.message}\n\nPlease try again later.`);
+        alert(`Simulation Unavailable\n\n${err.message}\n\nPlease try again later.`);
       } else {
-        alert(`Failed to start assessment: ${err.message}`);
+        alert(`Failed to start simulation: ${err.message}`);
       }
     }
   };
@@ -296,7 +296,7 @@ export default function AuthenticatedAssessmentPage() {
       // Check if it's the incomplete assessment error
       if (err.message?.includes('Incomplete assessment') || err.message?.includes('answers submitted')) {
         const errorMsg = err.message || 'Some answers may not have been saved properly.';
-        alert(`Assessment completion warning:\n\n${errorMsg}\n\nWe'll retry automatically. If this persists, please refresh the page.`);
+        alert(`Simulation completion warning:\n\n${errorMsg}\n\nWe'll retry automatically. If this persists, please refresh the page.`);
       }
     }
   };
@@ -304,7 +304,7 @@ export default function AuthenticatedAssessmentPage() {
   // Handle Digital Twin completion
   const handleDigitalTwinComplete = (result: any, pdfUrlPath: string) => {
     if (sessionId) {
-      router.push(`/assessment/results/${sessionId}`);
+      router.push(`/simulation/results/${sessionId}`);
     }
   };
 
@@ -313,10 +313,10 @@ export default function AuthenticatedAssessmentPage() {
     return (
       <>
         <MetaTags
-          title="C10 Strategic Assessment - HNWI Chronicles"
-          description="Take the exclusive 10-question assessment to discover your strategic tier and unlock personalized intelligence."
+          title="C10 Strategic Simulation - HNWI Chronicles"
+          description="Take the exclusive 10-question simulation to discover your strategic tier and unlock personalized intelligence."
           image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/assessment"
+          url="https://app.hnwichronicles.com/simulation"
         />
         <AssessmentLanding onContinue={handleShowMapIntro} />
       </>
@@ -328,10 +328,10 @@ export default function AuthenticatedAssessmentPage() {
     return (
       <>
         <MetaTags
-          title="HNWI World - Strategic Assessment"
-          description="Explore the reality of HNWI World before your assessment begins."
+          title="HNWI World - Strategic Simulation"
+          description="Explore the reality of HNWI World before your simulation begins."
           image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/assessment"
+          url="https://app.hnwichronicles.com/simulation"
         />
         <MapIntroduction onContinue={handleStartAssessment} />
       </>
@@ -344,10 +344,10 @@ export default function AuthenticatedAssessmentPage() {
     return (
       <>
         <MetaTags
-          title="C10 Assessment - Digital Twin Simulation"
+          title="C10 Simulation - Digital Twin"
           description="Running your personalized Digital Twin simulation through crisis scenarios."
           image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/assessment"
+          url="https://app.hnwichronicles.com/simulation"
         />
         <DigitalTwinWaiting
           sessionId={sessionId}
@@ -368,10 +368,10 @@ export default function AuthenticatedAssessmentPage() {
     return (
       <>
         <MetaTags
-          title={`C10 Assessment - Question ${currentQuestionIndex + 1}/10`}
+          title={`C10 Simulation - Question ${currentQuestionIndex + 1}/10`}
           description="Strategic scenario analysis in progress."
           image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/assessment"
+          url="https://app.hnwichronicles.com/simulation"
         />
 
         {/* Question with Integrated Map and Calibration */}
@@ -406,15 +406,15 @@ export default function AuthenticatedAssessmentPage() {
     return (
       <>
         <MetaTags
-          title="C10 Assessment - Completing"
-          description="Finalizing your assessment results."
+          title="C10 Simulation - Completing"
+          description="Finalizing your simulation results."
           image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/assessment"
+          url="https://app.hnwichronicles.com/simulation"
         />
         <div className="flex items-center justify-center p-12">
           <CrownLoader
             size="lg"
-            text="Finalizing Assessment"
+            text="Finalizing Simulation"
             subtext="Preparing your strategic DNA analysis..."
           />
         </div>
@@ -426,7 +426,7 @@ export default function AuthenticatedAssessmentPage() {
   return (
     <>
       <MetaTags
-        title="C10 Assessment - Initializing"
+        title="C10 Simulation - Initializing"
         description="Initializing strategic classification protocol."
         image="https://app.hnwichronicles.com/images/assessment-og.png"
         url="https://app.hnwichronicles.com/assessment"
@@ -446,7 +446,7 @@ export default function AuthenticatedAssessmentPage() {
           ) : (
             <CrownLoader
               size="lg"
-              text="Initializing Assessment"
+              text="Initializing Simulation"
               subtext="Preparing your strategic classification protocol..."
             />
           )}
