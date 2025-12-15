@@ -40,15 +40,21 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
       return;
     }
 
-    // CRITICAL FIX: Don't show auth popup if user just logged in
-    // Cookies need time to propagate, especially in incognito mode
+    // ROOT FIX: Never show auth popup on simulation pages (public access allowed)
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
+      console.debug('[AuthPopup] Skipping popup - on simulation page');
+      return;
+    }
+
+    // ROOT FIX: Don't show auth popup if user recently logged in (within 5 minutes)
+    // This prevents false "session expired" popups in incognito mode where cookies may be slow
     if (typeof window !== 'undefined') {
       const loginTimestamp = sessionStorage.getItem('loginTimestamp')
-      const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 20000 // 20 seconds
+      const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000 // 5 minutes
 
-      if (justLoggedIn) {
-        console.debug('[AuthPopup] Skipping popup - user just logged in', {
-          timeSinceLogin: loginTimestamp ? Date.now() - parseInt(loginTimestamp) : 'unknown'
+      if (recentlyLoggedIn) {
+        console.debug('[AuthPopup] Skipping popup - user recently logged in', {
+          minutesSinceLogin: loginTimestamp ? Math.round((Date.now() - parseInt(loginTimestamp)) / 60000) : 'unknown'
         })
         return
       }

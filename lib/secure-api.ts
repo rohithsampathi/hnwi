@@ -330,6 +330,12 @@ export const ensureClientCsrfToken = async (): Promise<string | null> => ensureC
 // Try to refresh token before showing auth error
 const tryRefreshToken = async (): Promise<boolean> => {
   try {
+    // ROOT FIX: Never attempt refresh on simulation pages (public access)
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
+      console.debug('[API] Skipping refresh - on simulation page');
+      return false;
+    }
+
     // Get CSRF token for refresh request (if available)
     const csrfToken = readCsrfToken();
     const headers: Record<string, string> = {
@@ -372,6 +378,12 @@ const tryRefreshToken = async (): Promise<boolean> => {
 
 // Clear auth state (no redirect - let the layout handle it)
 const handleAuthError = async (): Promise<boolean> => {
+  // ROOT FIX: Never handle auth errors on simulation pages (public access)
+  if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
+    console.debug('[API] Skipping auth error handling - on simulation page');
+    return false;
+  }
+
   // If already refreshing, just return false
   if (isRefreshingAuth) {
     return false;

@@ -163,6 +163,72 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       setIsCheckingAuth(true)
 
       try {
+        // ROOT FIX: Never attempt auth refresh for simulation pages (public access allowed)
+        if (pathname.includes('/simulation')) {
+          console.debug('[Auth] Simulation page - using minimal auth check')
+
+          // Try to get user data from session storage only (no API calls)
+          let userId = getCurrentUserId()
+          let authUser = getCurrentUser()
+
+          if (userId && authUser) {
+            setUser(authUser)
+            setIsAuthenticated(true)
+          } else {
+            // Non-authenticated user on simulation - allow access
+            setUser(null)
+            setIsAuthenticated(true) // Set to true to prevent redirects
+          }
+          setIsInitialLoad(false)
+          setIsCheckingAuth(false)
+          return
+        }
+
+        // Check if user just logged in FIRST, before any auth manager calls
+        const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
+        const hasSessionData = typeof window !== 'undefined' &&
+          (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
+
+        // If user logged in within last 5 minutes AND has session data, trust it completely
+        // No API calls, no refresh attempts - just use the session data
+        if (loginTimestamp && hasSessionData && (Date.now() - parseInt(loginTimestamp)) < 300000) { // 5 minutes
+          console.debug('[Auth] User logged in recently - using cached session data')
+
+          // Reconstruct user from sessionStorage
+          let userId: string | null = null
+          let authUser: any = null
+
+          try {
+            const userObj = sessionStorage.getItem('userObject')
+            const userEmail = sessionStorage.getItem('userEmail')
+            const userIdFromStorage = sessionStorage.getItem('userId')
+
+            if (userObj) {
+              authUser = JSON.parse(userObj)
+              userId = authUser?.id || authUser?.user_id || userIdFromStorage
+            } else if (userEmail && userIdFromStorage) {
+              // Minimal user object from sessionStorage
+              authUser = {
+                id: userIdFromStorage,
+                user_id: userIdFromStorage,
+                email: userEmail
+              }
+              userId = userIdFromStorage
+            }
+
+            // If we have valid session data, use it immediately
+            if (userId && authUser) {
+              setUser(authUser)
+              setIsAuthenticated(true)
+              setIsInitialLoad(false)
+              setIsCheckingAuth(false)
+              return // Done - no further checks needed
+            }
+          } catch (e) {
+            console.debug('[Auth] Failed to parse sessionStorage - will check auth normally')
+          }
+        }
+
         // Use centralized auth manager
         let userId = getCurrentUserId()
         let authUser = getCurrentUser()
@@ -184,50 +250,16 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           userId = getCurrentUserId()
           authUser = getCurrentUser()
 
-          // If still no user, try one more time with the auth manager refresh
-          // Only attempt refresh if there's some indication of a session (sessionStorage has data)
+          // If still no user, only try refresh if NOT recently logged in
           if (!userId || !authUser) {
-            const hasSessionData = typeof window !== 'undefined' &&
-              (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
+            // Double-check login timestamp again
+            const recentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000
 
-            // CRITICAL FIX: Check if we just logged in (within last 15 seconds)
-            // If so, skip refresh to avoid session expiry popup in incognito mode
-            // Cookies need time to propagate, especially in incognito mode
-            const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
-            const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 15000 // 15 seconds
-
-            // Only call refreshUser if we have session data AND didn't just login
-            if (hasSessionData && !justLoggedIn) {
+            // Only call refreshUser if we have session data AND didn't recently login
+            if (hasSessionData && !recentLogin) {
               const { refreshUser } = await import("@/lib/auth-manager")
               authUser = await refreshUser()
               userId = authUser?.id || authUser?.user_id
-            } else if (hasSessionData && justLoggedIn) {
-              // Just logged in - trust sessionStorage without making API call
-              // This prevents "Session Expired" popup in incognito mode
-              // where cookies may not be accessible immediately
-              console.debug('[Auth] Just logged in - trusting sessionStorage data without refresh')
-
-              // Reconstruct user from sessionStorage
-              try {
-                const userObj = sessionStorage.getItem('userObject')
-                const userEmail = sessionStorage.getItem('userEmail')
-                const userIdFromStorage = sessionStorage.getItem('userId')
-
-                if (userObj) {
-                  authUser = JSON.parse(userObj)
-                  userId = authUser?.id || authUser?.user_id || userIdFromStorage
-                } else if (userEmail && userIdFromStorage) {
-                  // Minimal user object from sessionStorage
-                  authUser = {
-                    id: userIdFromStorage,
-                    user_id: userIdFromStorage,
-                    email: userEmail
-                  }
-                  userId = userIdFromStorage
-                }
-              } catch (e) {
-                console.debug('[Auth] Failed to parse sessionStorage user data')
-              }
             }
           }
         }
@@ -241,25 +273,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
         // With cookie-based auth, we check for user data, not tokens
         if (!userId || !authUser) {
-          // CRITICAL FIX: If we just logged in but still don't have user data,
-          // wait a bit longer for sessionStorage to sync (especially in incognito mode)
-          const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
-          const justLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 15000
-
-          if (justLoggedIn) {
-            // Give it one more chance - wait 1.5 seconds and check again
-            await new Promise(resolve => setTimeout(resolve, 1500))
-
-            // CRITICAL: Check again if we're still on the same page using ref
-            if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
-              console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
-              setIsCheckingAuth(false)
-              return // Abort
-            }
-
-            userId = getCurrentUserId()
-            authUser = getCurrentUser()
-          }
 
           // FINAL CHECK: Only redirect if we're still on the page where the check started
           // AND it's not an assessment page (assessment pages are public)
@@ -370,7 +383,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                             user={user}
                             isUserAuthenticated={!!user}
                           >
-                            <TokenRefreshManager refreshIntervalHours={20} />
+                            <TokenRefreshManager refreshIntervalMinutes={45} />
                             <BackgroundSyncInitializer />
                             {children}
                             <Toaster />
