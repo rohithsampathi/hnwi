@@ -4,7 +4,7 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Shield, Lock, Globe, Zap, Database, Network } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -44,6 +44,13 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
   const [progress, setProgress] = useState(0);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const hasStartedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  // Keep onComplete ref updated
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Debug: log opportunities
   useEffect(() => {
@@ -89,40 +96,81 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
     }
   };
 
-  // Progress through loading steps
+  // Progress through loading steps - only run once per mount
   useEffect(() => {
-    if (currentStep < loadingSteps.length) {
-      const stepDuration = loadingSteps[currentStep].duration;
+    // Prevent multiple executions if already started
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+
+    let isMounted = true;
+    const intervals: NodeJS.Timeout[] = [];
+    const timeouts: NodeJS.Timeout[] = [];
+
+    const runStep = (stepIndex: number) => {
+      if (!isMounted || stepIndex >= loadingSteps.length) return;
+
+      const stepDuration = loadingSteps[stepIndex].duration;
       const startTime = Date.now();
 
       const interval = setInterval(() => {
+        if (!isMounted) {
+          clearInterval(interval);
+          return;
+        }
+
         const elapsed = Date.now() - startTime;
         const stepProgress = Math.min((elapsed / stepDuration) * 100, 100);
-        const totalProgress = ((currentStep * 100) + stepProgress) / loadingSteps.length;
+        const totalProgress = ((stepIndex * 100) + stepProgress) / loadingSteps.length;
         setProgress(totalProgress);
 
         if (stepProgress >= 100) {
           clearInterval(interval);
-          if (currentStep < loadingSteps.length - 1) {
-            playSound('step'); // Play sound on step change
-            setCurrentStep(prev => prev + 1);
+          if (stepIndex < loadingSteps.length - 1) {
+            playSound('step');
+            setCurrentStep(stepIndex + 1);
+            // Run next step
+            const timeout = setTimeout(() => {
+              if (isMounted) runStep(stepIndex + 1);
+            }, 50);
+            timeouts.push(timeout);
           } else {
             // Start unlocking sequence
-            setTimeout(() => {
-              setIsUnlocking(true);
-              playSound('unlock'); // Play unlock sound
+            const unlockTimeout = setTimeout(() => {
+              if (isMounted) {
+                setIsUnlocking(true);
+                playSound('unlock');
+              }
             }, 300);
-            setTimeout(() => {
-              setIsComplete(true);
-              setTimeout(onComplete, 800);
+            timeouts.push(unlockTimeout);
+
+            const completeTimeout = setTimeout(() => {
+              if (isMounted) {
+                setIsComplete(true);
+                const finalTimeout = setTimeout(() => {
+                  if (isMounted) {
+                    onCompleteRef.current();
+                  }
+                }, 800);
+                timeouts.push(finalTimeout);
+              }
             }, 1500);
+            timeouts.push(completeTimeout);
           }
         }
       }, 16); // ~60fps
 
-      return () => clearInterval(interval);
-    }
-  }, [currentStep, onComplete]);
+      intervals.push(interval);
+    };
+
+    // Start the sequence
+    runStep(0);
+
+    return () => {
+      isMounted = false;
+      intervals.forEach(clearInterval);
+      timeouts.forEach(clearTimeout);
+    };
+  }, []); // Empty deps - only run once on mount
 
   const CurrentIcon = loadingSteps[currentStep]?.icon || Shield;
 

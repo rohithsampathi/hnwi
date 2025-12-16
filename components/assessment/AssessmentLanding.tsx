@@ -16,30 +16,29 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const [briefCount, setBriefCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
-  const [showVaultEntry, setShowVaultEntry] = useState(false);
-  const [vaultUnlocked, setVaultUnlocked] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
-  // Initialize vault state based on session storage immediately
-  const getInitialVaultState = () => {
-    if (typeof window === 'undefined') return { showVault: false, unlocked: false };
+
+  // Initialize vault state based on session storage - directly in useState
+  // Calculate vault state once at initialization
+  const getVaultInitialState = () => {
+    if (typeof window === 'undefined') {
+      return { showVault: false, unlocked: false };
+    }
 
     const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
     if (vaultShownThisSession) {
+      // Already shown this session - skip vault, already unlocked
       return { showVault: false, unlocked: true };
     } else {
+      // First time this session - show vault, not yet unlocked
       sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
       return { showVault: true, unlocked: false };
     }
   };
 
-  // Use lazy initial state to prevent double execution
-  const [vaultState] = useState(() => getInitialVaultState());
-
-  // Set the vault states from initial calculation
-  useEffect(() => {
-    setShowVaultEntry(vaultState.showVault);
-    setVaultUnlocked(vaultState.unlocked);
-  }, []); // Only on mount, vault state is determined at initialization
+  const [vaultState] = useState(getVaultInitialState);
+  const [showVaultEntry, setShowVaultEntry] = useState(vaultState.showVault);
+  const [vaultUnlocked, setVaultUnlocked] = useState(vaultState.unlocked);
 
   // Fetch dynamic brief count
   useEffect(() => {

@@ -3,7 +3,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AssessmentLanding } from '@/components/assessment/AssessmentLanding';
 import { MapIntroduction } from '@/components/assessment/MapIntroduction';
@@ -21,6 +21,7 @@ type FlowStage = 'landing' | 'map_intro' | 'retake_locked' | 'assessment' | 'dig
 export default function AuthenticatedAssessmentPage() {
   const router = useRouter();
   const [flowStage, setFlowStage] = useState<FlowStage>('landing');
+  const hasProgressedPastLanding = useRef(false);
   const [user, setUser] = useState<any>(null);
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
@@ -133,9 +134,10 @@ export default function AuthenticatedAssessmentPage() {
   }, [user, router, getAssessmentHistory]); // Minimal dependencies - only what's absolutely needed
 
   // Handle landing -> map intro
-  const handleShowMapIntro = () => {
+  const handleShowMapIntro = useCallback(() => {
+    hasProgressedPastLanding.current = true;
     setFlowStage('map_intro');
-  };
+  }, []);
 
   // Handle map intro -> start assessment
   const handleStartAssessment = async () => {
@@ -308,8 +310,16 @@ export default function AuthenticatedAssessmentPage() {
     }
   };
 
+  // Prevent going back to landing after progressing
+  useEffect(() => {
+    if (flowStage === 'landing' && hasProgressedPastLanding.current) {
+      // Something tried to reset us to landing - prevent it
+      setFlowStage('map_intro');
+    }
+  }, [flowStage]);
+
   // Landing page - always show, backend will handle restrictions
-  if (flowStage === 'landing') {
+  if (flowStage === 'landing' && !hasProgressedPastLanding.current) {
     return (
       <>
         <MetaTags
