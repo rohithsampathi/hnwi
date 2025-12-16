@@ -58,9 +58,9 @@ const PLAN_FEATURES = {
 }
 
 const PLAN_PRICING = {
-  observer: { monthly: 199, yearly: 1990 },
-  operator: { monthly: 599, yearly: 5990 },
-  architect: { monthly: 1499, yearly: 14990 }
+  observer: { monthly: 199, yearly: 2500 },
+  operator: { monthly: 599, yearly: 7500 },
+  architect: { monthly: 1499, yearly: 30000 }
 }
 
 export function SubscriptionCard({ 

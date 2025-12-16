@@ -21,27 +21,31 @@ export function TierPricingComparison({
   onArchitectSubmit,
   onPaymentSuccess
 }: TierPricingComparisonProps) {
+  // Architect form state
   const [architectEmail, setArchitectEmail] = useState('');
   const [architectWhatsapp, setArchitectWhatsapp] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false);
+  const [architectSubmitting, setArchitectSubmitting] = useState(false);
+  const [architectSubmitted, setArchitectSubmitted] = useState(false);
+  const [showArchitectForm, setShowArchitectForm] = useState(false);
+
+  // Operator & Observer payment state
+  const [processingPaymentTier, setProcessingPaymentTier] = useState<'operator' | 'observer' | null>(null);
 
   const handleArchitectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    setArchitectSubmitting(true);
     try {
       await onArchitectSubmit(architectEmail, architectWhatsapp);
-      setSubmitted(true);
+      setArchitectSubmitted(true);
     } catch (error) {
-      // Error handled
+      alert('Failed to submit. Please try again.');
     } finally {
-      setSubmitting(false);
+      setArchitectSubmitting(false);
     }
   };
 
   const handlePayment = async (tier: 'operator' | 'observer') => {
-    setProcessingPayment(true);
+    setProcessingPaymentTier(tier);
 
     try {
       // Open Razorpay with empty userData - user fills details in Razorpay modal
@@ -55,19 +59,19 @@ export function TierPricingComparison({
         },
         (verifyData) => {
           // Payment successful and verified
-          setProcessingPayment(false);
+          setProcessingPaymentTier(null);
           onPaymentSuccess(tier, verifyData);
         },
         (error) => {
           // Payment failed or cancelled
-          setProcessingPayment(false);
+          setProcessingPaymentTier(null);
           if (error.message !== 'Payment cancelled') {
             alert(error.message || 'Payment failed. Please try again.');
           }
         }
       );
     } catch (error) {
-      setProcessingPayment(false);
+      setProcessingPaymentTier(null);
       alert('Failed to initiate payment. Please try again.');
     }
   };
@@ -77,8 +81,8 @@ export function TierPricingComparison({
       id: 'architect',
       name: 'Architect',
       icon: Crown,
-      price: 'Founding Member',
-      priceSubtext: 'Building infrastructure together',
+      price: '$1,499',
+      priceSubtext: 'per month • Building infrastructure together',
       gradient: 'from-primary/10 to-primary/5',
       borderColor: 'border-primary',
       iconColor: 'text-primary',
@@ -98,7 +102,7 @@ export function TierPricingComparison({
       name: 'Operator',
       icon: TrendingUp,
       price: '$599',
-      priceSubtext: 'per month • Funding evolution',
+      priceSubtext: 'per month • Strategic partnership',
       gradient: 'from-muted/50 to-muted/20',
       borderColor: 'border-border',
       iconColor: 'text-foreground',
@@ -110,7 +114,7 @@ export function TierPricingComparison({
         'Ask Rohith AI unlimited questions',
         'Track your wealth with Crown Vault'
       ],
-      ctaText: 'Support Operator Mission',
+      ctaText: 'Join Operator Network',
       highlighted: currentTier === 'operator'
     },
     {
@@ -237,9 +241,32 @@ export function TierPricingComparison({
                     </p>
                   </div>
                 ) : isArchitect ? (
-                  // Architect: Embedded form
+                  // Architect: Button first, then form
                   <>
-                    {!submitted ? (
+                    {architectSubmitted ? (
+                      <div className="text-center py-4">
+                        <div className="inline-flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-full mb-3">
+                          <Check className="w-6 h-6 text-green-500" />
+                        </div>
+                        <p className="text-sm font-medium mb-1">Request Submitted!</p>
+                        <p className="text-xs text-muted-foreground">
+                          We'll reach out within 24 hours.
+                        </p>
+                      </div>
+                    ) : !showArchitectForm ? (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowArchitectForm(true)}
+                          className="w-full group inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-all"
+                        >
+                          {tier.ctaText}
+                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          No payment required. We'll contact you within 24h.
+                        </p>
+                      </div>
+                    ) : (
                       <form onSubmit={handleArchitectSubmit} className="space-y-3">
                         <div>
                           <label className="block text-xs font-medium mb-1.5 flex items-center gap-1.5">
@@ -273,38 +300,28 @@ export function TierPricingComparison({
 
                         <button
                           type="submit"
-                          disabled={submitting}
+                          disabled={architectSubmitting}
                           className="w-full group inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submitting ? 'Submitting...' : tier.ctaText}
-                          {!submitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                          {architectSubmitting ? 'Submitting...' : 'Submit Request'}
+                          {!architectSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                         </button>
 
                         <p className="text-xs text-muted-foreground text-center">
                           No payment required. We'll contact you within 24h.
                         </p>
                       </form>
-                    ) : (
-                      <div className="text-center py-4">
-                        <div className="inline-flex items-center justify-center w-12 h-12 bg-green-500/10 rounded-full mb-3">
-                          <Check className="w-6 h-6 text-green-500" />
-                        </div>
-                        <p className="text-sm font-medium mb-1">Request Submitted!</p>
-                        <p className="text-xs text-muted-foreground">
-                          We'll reach out within 24 hours.
-                        </p>
-                      </div>
                     )}
                   </>
-                ) : isPaymentTier ? (
-                  // Operator/Observer: Direct Razorpay payment
+                ) : tier.id === 'operator' || tier.id === 'observer' ? (
+                  // Operator & Observer: Direct Razorpay payment
                   <div className="space-y-3">
                     <button
                       onClick={() => handlePayment(tier.id as 'operator' | 'observer')}
-                      disabled={processingPayment}
+                      disabled={processingPaymentTier === tier.id}
                       className="w-full group inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground font-bold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {processingPayment ? (
+                      {processingPaymentTier === tier.id ? (
                         <>
                           <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                           Opening Payment...
@@ -317,7 +334,7 @@ export function TierPricingComparison({
                       )}
                     </button>
                     <p className="text-xs text-muted-foreground text-center">
-                      Monthly funding • Build peer intelligence together • Lifetime wealth legacy
+                      Monthly subscription • Build peer intelligence together • Lifetime wealth legacy
                     </p>
                   </div>
                 ) : null}
@@ -334,7 +351,7 @@ export function TierPricingComparison({
           Higher tiers unlock exclusive opportunities and personalized strategic support.
         </p>
         <p className="text-xs text-muted-foreground/70 max-w-xl mx-auto italic">
-          Your monthly funding supports the collective mission: building peer intelligence, preserving wealth legacy,
+          Your annual funding supports the collective mission: building peer intelligence, preserving wealth legacy,
           and architecting permissionless financial sovereignty together.
         </p>
       </div>

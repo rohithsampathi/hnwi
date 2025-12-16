@@ -608,7 +608,48 @@ export default function AssessmentResultsClient() {
               <div className="bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-muted/30">
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> tier positioning identifies <span className="font-bold text-foreground">{opportunities.length} validated opportunities</span> across {new Set(opportunities.map((o: any) => o.country)).size} countries where peers in your cohort have executed successfully.
+                    {(() => {
+                      // Calculate filtered count for display
+                      const filteredCount = opportunities.filter((city: any) => {
+                        if (!city.latitude || !city.longitude) return false;
+
+                        const isPriveOpportunity = city.victor_score !== undefined ||
+                                                  city.source?.toLowerCase().includes('privé') ||
+                                                  city.source?.toLowerCase().includes('prive');
+
+                        const isHNWIPattern = city.source === 'MOEv4' ||
+                                             city.source?.toLowerCase().includes('live hnwi data') ||
+                                             city.source?.toLowerCase().includes('pattern') ||
+                                             !isPriveOpportunity;
+
+                        if (isPriveOpportunity && showPriveOpportunities) return true;
+                        if (isHNWIPattern && showHNWIPatterns) return true;
+                        return false;
+                      }).length;
+
+                      const filteredCountries = new Set(opportunities.filter((city: any) => {
+                        if (!city.latitude || !city.longitude) return false;
+
+                        const isPriveOpportunity = city.victor_score !== undefined ||
+                                                  city.source?.toLowerCase().includes('privé') ||
+                                                  city.source?.toLowerCase().includes('prive');
+
+                        const isHNWIPattern = city.source === 'MOEv4' ||
+                                             city.source?.toLowerCase().includes('live hnwi data') ||
+                                             city.source?.toLowerCase().includes('pattern') ||
+                                             !isPriveOpportunity;
+
+                        if (isPriveOpportunity && showPriveOpportunities) return true;
+                        if (isHNWIPattern && showHNWIPatterns) return true;
+                        return false;
+                      }).map((o: any) => o.country)).size;
+
+                      return (
+                        <>
+                          <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> tier positioning identifies <span className="font-bold text-foreground">{filteredCount} validated opportunities</span> across {filteredCountries} countries where peers in your cohort have executed successfully.
+                        </>
+                      );
+                    })()}
                   </p>
                   <div className="flex items-start gap-2 mt-2 text-sm text-muted-foreground">
                     <svg className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -621,28 +662,66 @@ export default function AssessmentResultsClient() {
                 </div>
 
                 <div className="h-[600px] relative">
-                  {opportunities.filter((opp: any) => opp.latitude && opp.longitude).length > 0 ? (
-                    <InteractiveWorldMap
-                      cities={opportunities}
-                      showControls={true}
-                      showCrownAssets={false}
-                      showPriveOpportunities={showPriveOpportunities}
-                      showHNWIPatterns={showHNWIPatterns}
-                      onToggleCrownAssets={() => {}}
-                      onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
-                      onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
-                      hideCrownAssetsToggle={true}
-                      useAbsolutePositioning={true}
-                      onCitationClick={openCitation}
-                      citationMap={citationMap}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
-                      <p className="text-muted-foreground text-sm">
-                        Opportunities data is being processed. Location data will be available shortly.
-                      </p>
-                    </div>
-                  )}
+                  {(() => {
+                    // Filter and transform opportunities with correct type field
+                    const filteredOpportunities = opportunities
+                      .filter((city: any) => {
+                        // Must have valid coordinates
+                        if (!city.latitude || !city.longitude) return false;
+
+                        // Apply category filters
+                        const isPriveOpportunity = city.victor_score !== undefined ||
+                                                  city.source?.toLowerCase().includes('privé') ||
+                                                  city.source?.toLowerCase().includes('prive');
+
+                        const isHNWIPattern = city.source === 'MOEv4' ||
+                                             city.source?.toLowerCase().includes('live hnwi data') ||
+                                             city.source?.toLowerCase().includes('pattern') ||
+                                             !isPriveOpportunity;
+
+                        if (isPriveOpportunity && showPriveOpportunities) return true;
+                        if (isHNWIPattern && showHNWIPatterns) return true;
+
+                        return false;
+                      })
+                      .map((city: any) => {
+                        // Determine if this is a Privé opportunity (for diamond icons)
+                        const isPriveOpportunity = city.victor_score !== undefined ||
+                                                  city.source?.toLowerCase().includes('privé') ||
+                                                  city.source?.toLowerCase().includes('prive');
+
+                        // CRITICAL FIX: map-markers.tsx uses victor_score to show diamond icons, not type field
+                        // If this is a Privé opportunity but doesn't have victor_score, add it
+                        const enhancedCity = {
+                          ...city,
+                          type: city.source === "MOEv4" ? "finance" : "luxury"
+                        };
+
+                        if (isPriveOpportunity && !enhancedCity.victor_score) {
+                          enhancedCity.victor_score = "prive"; // Add any truthy value to trigger diamond icon
+                        }
+
+                        return enhancedCity;
+                      });
+
+                    // Always show the map, even with empty array
+                    return (
+                      <InteractiveWorldMap
+                        cities={filteredOpportunities}
+                        showControls={true}
+                        showCrownAssets={false}
+                        showPriveOpportunities={showPriveOpportunities}
+                        showHNWIPatterns={showHNWIPatterns}
+                        onToggleCrownAssets={() => {}}
+                        onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
+                        onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
+                        hideCrownAssetsToggle={true}
+                        useAbsolutePositioning={true}
+                        onCitationClick={openCitation}
+                        citationMap={citationMap}
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             </motion.section>

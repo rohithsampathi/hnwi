@@ -9,7 +9,7 @@ const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
-// Tier pricing for email confirmation
+// Tier pricing for email confirmation (monthly)
 const TIER_AMOUNTS = {
   operator: 599,
   observer: 199

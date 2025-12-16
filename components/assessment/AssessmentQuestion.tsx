@@ -634,7 +634,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                       <div className="px-3 py-2 sm:px-6 sm:py-3 bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl max-w-[90%]">
                         <span className="flex items-center gap-1.5 sm:gap-2 text-black dark:text-primary text-xs sm:text-sm font-semibold whitespace-nowrap">
                           <Target size={14} className="animate-pulse flex-shrink-0" />
-                          <span className="truncate">Calibrating DNA...</span>
+                          <span className="truncate">Calibrating...</span>
                         </span>
                       </div>
                     </div>

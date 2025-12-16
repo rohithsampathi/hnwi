@@ -51,6 +51,46 @@ export function AssessmentResultsContent({
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
 
+  // Filter and transform opportunities (matching home dashboard logic)
+  const filteredOpportunities = opportunities
+    .filter(city => {
+      // Privé Opportunities: Victor-scored opportunities
+      const isPriveOpportunity = city.victor_score !== undefined ||
+                                 city.source?.toLowerCase().includes('privé') ||
+                                 city.source?.toLowerCase().includes('prive');
+
+      // HNWI Pattern Opportunities: MOEv4 and other patterns (default category)
+      const isHNWIPattern = city.source === 'MOEv4' ||
+                            city.source?.toLowerCase().includes('live hnwi data') ||
+                            city.source?.toLowerCase().includes('pattern') ||
+                            !isPriveOpportunity; // Default to HNWI Pattern if not Privé
+
+      // Show city if its category toggle is enabled
+      if (isPriveOpportunity && showPriveOpportunities) return true;
+      if (isHNWIPattern && showHNWIPatterns) return true;
+
+      return false;
+    })
+    .map(city => {
+      // Determine if this is a Privé opportunity (for diamond icons)
+      const isPriveOpportunity = city.victor_score !== undefined ||
+                                city.source?.toLowerCase().includes('privé') ||
+                                city.source?.toLowerCase().includes('prive');
+
+      // CRITICAL FIX: map-markers.tsx uses victor_score to show diamond icons, not type field
+      // If this is a Privé opportunity but doesn't have victor_score, add it
+      const enhancedCity = {
+        ...city,
+        type: city.source === "MOEv4" ? "finance" : "luxury"
+      };
+
+      if (isPriveOpportunity && !enhancedCity.victor_score) {
+        enhancedCity.victor_score = "prive"; // Add any truthy value to trigger diamond icon
+      }
+
+      return enhancedCity;
+    });
+
   return (
     <div className="max-w-5xl mx-auto px-8 py-8 space-y-12">
       {/* Personalized Intelligence Map */}
@@ -63,7 +103,7 @@ export function AssessmentResultsContent({
         >
           <h2 className="text-2xl font-bold mb-2">Your Intelligence Landscape</h2>
           <p className="text-sm text-muted-foreground">
-            {opportunities.length} personalized opportunities mapped based on your C10 Strategic DNA
+            {filteredOpportunities.length} personalized opportunities mapped based on your C10 Strategic DNA
           </p>
         </motion.div>
 
@@ -74,7 +114,7 @@ export function AssessmentResultsContent({
           className="relative"
         >
           <InteractiveWorldMap
-            cities={opportunities}
+            cities={filteredOpportunities}
             onCitationClick={onCitationClick}
             citationMap={citationMap}
             useAbsolutePositioning={true}

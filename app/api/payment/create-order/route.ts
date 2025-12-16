@@ -8,12 +8,12 @@ const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 const TIER_PRICING = {
   operator: {
-    amount: 59900, // $599 in cents
+    amount: 59900, // $599 monthly in cents
     currency: 'USD',
     receipt_prefix: 'HNWI_OP_'
   },
   observer: {
-    amount: 19900, // $199 in cents
+    amount: 19900, // $199 monthly in cents
     currency: 'USD',
     receipt_prefix: 'HNWI_OB_'
   }
