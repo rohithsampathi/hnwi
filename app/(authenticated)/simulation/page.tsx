@@ -105,13 +105,36 @@ export default function AuthenticatedAssessmentPage() {
     if (!user?.id && !user?.user_id) return;
     if (hasCheckedExistingRef.current) return;
 
+    // CRITICAL: Don't redirect if user has already progressed past landing
+    // This prevents the redirect when user data loads late (e.g., in incognito mode)
+    if (flowStage !== 'landing' || hasProgressedPastLanding.current) {
+      // Mark as checked but don't redirect - user is already in the flow
+      hasCheckedExistingRef.current = true;
+      return;
+    }
+
     // Mark as checked immediately to prevent any re-runs
     hasCheckedExistingRef.current = true;
 
     const checkExistingAssessment = async () => {
       try {
+        // Double-check we're still on landing before proceeding
+        if (flowStage !== 'landing' || hasProgressedPastLanding.current) {
+          return;
+        }
+
         const userId = user?.id || user?.user_id;
-        const history = await getAssessmentHistory(userId, user?.email);
+
+        // Add timeout protection - abandon check after 3 seconds
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Assessment check timeout')), 3000)
+        );
+
+        // Race between the actual check and the timeout
+        const history = await Promise.race([
+          getAssessmentHistory(userId, user?.email),
+          timeoutPromise
+        ]).catch(() => null); // Return null on timeout
 
         // Only redirect if user has completed assessments
         if (history && Array.isArray(history) && history.length > 0) {
@@ -119,9 +142,12 @@ export default function AuthenticatedAssessmentPage() {
 
           // Only redirect if it's truly completed (has results/PDF)
           if (mostRecent.session_id && (mostRecent.pdf_url || mostRecent.status === 'completed')) {
-            // Clear vault session storage to prevent animation on redirect
-            sessionStorage.removeItem('assessmentVaultShownThisSession');
-            router.replace(`/simulation/results/${mostRecent.session_id}`);
+            // Final check: only redirect if still on landing
+            if (flowStage === 'landing' && !hasProgressedPastLanding.current) {
+              // Clear vault session storage to prevent animation on redirect
+              sessionStorage.removeItem('assessmentVaultShownThisSession');
+              router.replace(`/simulation/results/${mostRecent.session_id}`);
+            }
           }
         }
       } catch (error) {
@@ -131,7 +157,7 @@ export default function AuthenticatedAssessmentPage() {
     };
 
     checkExistingAssessment();
-  }, [user, router, getAssessmentHistory]); // Minimal dependencies - only what's absolutely needed
+  }, [user, router, getAssessmentHistory, flowStage]); // Added flowStage to dependencies
 
   // Handle landing -> map intro
   const handleShowMapIntro = useCallback(() => {
