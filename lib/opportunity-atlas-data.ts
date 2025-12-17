@@ -106,14 +106,24 @@ const baseCategories = [
 ];
 
 function categorizeOpportunity(opportunity: Opportunity): string {
+  // First check if backend provides explicit category field
+  const backendCategory = (opportunity as any).category?.toLowerCase() || '';
+  if (backendCategory.includes('real estate')) return 'real-estate';
+  if (backendCategory.includes('private equity')) return 'private-equity';
+  if (backendCategory.includes('venture')) return 'venture-capital';
+  if (backendCategory.includes('metal')) return 'strategic-metals';
+  if (backendCategory.includes('crypto') || backendCategory.includes('digital')) return 'crypto-digital';
+  if (backendCategory.includes('bond') || backendCategory.includes('fixed income')) return 'fixed-income';
+
+  // Fallback to keyword matching in text fields
   const searchText = `${opportunity.type || ''} ${opportunity.industry || ''} ${opportunity.product || ''} ${opportunity.title || ''}`.toLowerCase();
-  
+
   for (const [keyword, categoryId] of Object.entries(categoryMappings)) {
     if (searchText.includes(keyword)) {
       return categoryId;
     }
   }
-  
+
   // Default fallback based on common patterns
   if (searchText.includes('equity') || searchText.includes('fund')) {
     return 'private-equity';
@@ -121,7 +131,7 @@ function categorizeOpportunity(opportunity: Opportunity): string {
   if (searchText.includes('property') || searchText.includes('land')) {
     return 'real-estate';
   }
-  
+
   return 'private-equity'; // Default category
 }
 

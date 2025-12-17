@@ -10,7 +10,6 @@ import { Clock, Map as MapIcon, Target, TrendingUp, Zap } from 'lucide-react';
 import { Question, Progress } from '@/lib/hooks/useAssessmentState';
 import { ChoiceCard } from './ChoiceCard';
 import { CrownLoader } from '@/components/ui/crown-loader';
-import { TextWithTooltips } from './TextWithTooltips';
 import { TypewriterText } from './TypewriterText';
 import { ProgressiveReveal } from './ProgressiveReveal';
 import { BrainThinkingLoader } from './BrainThinkingLoader';
@@ -515,6 +514,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                           <TypewriterText
                             text={question.title}
                             speed={30}
+                            terms={question.terms}
                             onComplete={() => setShowScenario(true)}
                           />
                         </h2>
@@ -530,6 +530,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                             text={question.scenario}
                             speed={15}
                             showTooltips={true}
+                            terms={question.terms}
                             onTermsFound={(terms) => setScenarioTerms(prev => new Set([...prev, ...terms]))}
                             onComplete={() => setShowQuestion(true)}
                           />
@@ -552,6 +553,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                           <TypewriterText
                             text={question.question_text}
                             speed={20}
+                            terms={question.terms}
                             onComplete={() => setShowChoices(true)}
                           />
                         </p>
@@ -580,6 +582,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                           isSelected={selectedChoice === choice.id}
                           onSelect={() => setSelectedChoice(choice.id)}
                           disabled={loading}
+                          terms={question.terms}
                           excludeTerms={scenarioTerms}
                         />
                       </ProgressiveReveal>
@@ -803,7 +806,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   );
 };
 
-// Wrapper component that provides tooltip context
+// Wrapper component with TooltipProvider
 export const AssessmentQuestion: React.FC<AssessmentQuestionProps> = (props) => {
   return (
     <TooltipProvider>

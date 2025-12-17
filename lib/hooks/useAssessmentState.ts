@@ -43,6 +43,13 @@ export interface ProgressiveSignal {
   certainty_level: string;
 }
 
+export interface TermDefinition {
+  term: string;
+  full_name: string;
+  definition: string;
+  category: 'tax' | 'legal' | 'financial' | 'trust' | 'regulatory' | 'investment';
+}
+
 export interface Question {
   id: string;
   question_number: number;
@@ -63,6 +70,7 @@ export interface Question {
     insight_observer: string;
   }>;
   weight: number;
+  terms?: TermDefinition[]; // Terms with tooltips provided by backend
 }
 
 export interface Progress {

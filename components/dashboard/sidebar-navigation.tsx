@@ -621,8 +621,8 @@ export function SidebarNavigation({
                 <div className="space-y-2">
                   <div className="leading-relaxed text-[9px] break-words">
                     A product of <span className="font-semibold text-primary">Montaigne</span>
-                    <br />
-                    Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
+                    {/* <br />
+                    Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
                   </div>
                   <div className="text-muted-foreground/80 font-medium text-[8px] leading-tight break-words">
                     © 2025 All Rights Reserved.

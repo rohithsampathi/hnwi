@@ -501,7 +501,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
           <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
+              A product of <span className="font-semibold text-primary">Montaigne</span> 
+              {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
             </Paragraph>
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
               © 2025 All Rights Reserved. HNWI Chronicles.
@@ -855,7 +856,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
             <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
               <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-                A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
+                A product of <span className="font-semibold text-primary">Montaigne</span>
+                 {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
               </Paragraph>
               <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
                 © 2025 All Rights Reserved. HNWI Chronicles.
@@ -1119,7 +1121,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
         <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
           <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              A product of <span className="font-semibold text-primary">Montaigne</span> • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span>
+              A product of <span className="font-semibold text-primary">Montaigne</span> 
+              {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
             </Paragraph>
             <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
               © 2025 All Rights Reserved. HNWI Chronicles.

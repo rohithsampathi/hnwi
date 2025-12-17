@@ -5,6 +5,7 @@
 
 import { motion } from 'framer-motion';
 import { TextWithTooltips } from './TextWithTooltips';
+import type { TermDefinition } from '@/lib/hooks/useAssessmentState';
 
 interface Choice {
   id: string;
@@ -18,6 +19,7 @@ interface ChoiceCardProps {
   isSelected: boolean;
   onSelect: () => void;
   disabled?: boolean;
+  terms?: TermDefinition[]; // Terms provided by backend
   excludeTerms?: Set<string>; // Terms already shown in scenario
 }
 
@@ -27,6 +29,7 @@ export const ChoiceCard: React.FC<ChoiceCardProps> = ({
   isSelected,
   onSelect,
   disabled,
+  terms,
   excludeTerms
 }) => {
   return (
@@ -66,7 +69,7 @@ export const ChoiceCard: React.FC<ChoiceCardProps> = ({
               text-sm sm:text-base leading-relaxed
               ${isSelected ? 'text-foreground font-medium' : 'text-foreground'}
             `}>
-              <TextWithTooltips text={choice.text} excludeTerms={excludeTerms} />
+              <TextWithTooltips text={choice.text} terms={terms} excludeTerms={excludeTerms} />
             </p>
           </div>
 

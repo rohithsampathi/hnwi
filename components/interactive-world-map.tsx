@@ -135,6 +135,17 @@ export function InteractiveWorldMap({
   const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   const markerRefs = React.useRef<Map<string, any>>(new Map())
 
+  // Wrapper to prevent unnecessary price range updates (prevents infinite loop in rc-slider)
+  const handlePriceRangeChange = useCallback((newRange: { min: number; max: number }) => {
+    setSelectedPriceRange(prev => {
+      // Only update if values actually changed (prevents re-render with same values)
+      if (prev.min !== newRange.min || prev.max !== newRange.max) {
+        return newRange;
+      }
+      return prev; // Return same reference to prevent re-render
+    });
+  }, []);
+
   // ROOT FIX: Store scroll positions at MAP level, keyed by clusterId
   // This survives all re-renders caused by city updates during calibration
   const [clusterScrollPositions, setClusterScrollPositions] = useState<Map<string, number>>(new Map())
@@ -399,7 +410,7 @@ export function InteractiveWorldMap({
       {onToggleCrownAssets && onTogglePriveOpportunities && onToggleHNWIPatterns && (
         <MapFilterControlsMobile
           selectedPriceRange={selectedPriceRange}
-          onPriceRangeChange={setSelectedPriceRange}
+          onPriceRangeChange={handlePriceRangeChange}
           showCrownAssets={showCrownAssets}
           showPriveOpportunities={showPriveOpportunities}
           showHNWIPatterns={showHNWIPatterns}
@@ -418,7 +429,7 @@ export function InteractiveWorldMap({
       {onToggleCrownAssets && onTogglePriveOpportunities && onToggleHNWIPatterns && (
         <MapFilterControlsDesktop
           selectedPriceRange={selectedPriceRange}
-          onPriceRangeChange={setSelectedPriceRange}
+          onPriceRangeChange={handlePriceRangeChange}
           showCrownAssets={showCrownAssets}
           showPriveOpportunities={showPriveOpportunities}
           showHNWIPatterns={showHNWIPatterns}

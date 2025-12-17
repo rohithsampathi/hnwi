@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { TextWithTooltips } from './TextWithTooltips';
+import type { TermDefinition } from '@/lib/hooks/useAssessmentState';
 
 interface TypewriterTextProps {
   text: string;
@@ -13,6 +14,7 @@ interface TypewriterTextProps {
   onComplete?: () => void;
   className?: string;
   showTooltips?: boolean;
+  terms?: TermDefinition[]; // Terms provided by backend
   excludeTerms?: Set<string>;
   onTermsFound?: (terms: Set<string>) => void;
 }
@@ -24,6 +26,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
   onComplete,
   className = '',
   showTooltips = false,
+  terms,
   excludeTerms,
   onTermsFound
 }) => {
@@ -82,6 +85,7 @@ export const TypewriterText: React.FC<TypewriterTextProps> = ({
       <span className={className}>
         <TextWithTooltips
           text={text}
+          terms={terms}
           excludeTerms={excludeTerms}
           onTermsFound={onTermsFound}
         />

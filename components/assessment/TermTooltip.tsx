@@ -7,8 +7,8 @@ import { useState, useEffect, useId, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info } from 'lucide-react';
-import { TermDefinition } from '@/lib/assessment-term-definitions';
 import { useTooltip } from './TooltipContext';
+import type { TermDefinition } from '@/lib/hooks/useAssessmentState';
 
 interface TermTooltipProps {
   term: string;
