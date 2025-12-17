@@ -50,9 +50,12 @@ async function handlePost(request: NextRequest) {
     })
 
     // Generate the shareable URL
-    const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
-    const protocol = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https')
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_PRODUCTION_URL || (host ? `${protocol}://${host}` : '')
+    // In production builds, always use the production URL for shares
+    // In development, use the base URL (localhost)
+    const isProduction = process.env.NODE_ENV === 'production'
+    const baseUrl = isProduction
+      ? process.env.NEXT_PUBLIC_PRODUCTION_URL || process.env.NEXT_PUBLIC_BASE_URL
+      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
 
     if (!baseUrl) {
       return NextResponse.json(
