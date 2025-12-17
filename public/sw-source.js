@@ -1,7 +1,9 @@
 // Service Worker for HNWI Chronicles
 // This file provides push notification support and offline capabilities
 
-const CACHE_NAME = 'hnwi-chronicles-v1';
+// INCREMENT VERSION TO FORCE CACHE UPDATE
+const CACHE_VERSION = '2.1.0'; // Updated to fix assessment issues
+const CACHE_NAME = `hnwi-chronicles-v${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline';
 
 // Files to cache for offline functionality
@@ -32,19 +34,37 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
+            // Delete ALL old caches that don't match current version
             if (cacheName !== CACHE_NAME) {
+              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
+        // Clear any assessment-related data from all caches
+        return caches.open(CACHE_NAME).then((cache) => {
+          return cache.keys().then((requests) => {
+            const assessmentRequests = requests.filter(request => {
+              const url = new URL(request.url);
+              return url.pathname.includes('/assessment') ||
+                     url.pathname.includes('/simulation');
+            });
+            return Promise.all(
+              assessmentRequests.map(request => cache.delete(request))
+            );
+          });
+        });
+      })
+      .then(() => {
+        console.log('[SW] Service Worker activated with version:', CACHE_VERSION);
         return self.clients.claim();
       })
   );
@@ -57,6 +77,24 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
+
+  // CRITICAL: Never cache assessment/simulation related endpoints
+  const url = new URL(event.request.url);
+  const isAssessmentEndpoint = url.pathname.includes('/assessment') ||
+                                url.pathname.includes('/simulation');
+
+  // For assessment endpoints, always use network-only strategy
+  if (isAssessmentEndpoint) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return new Response('Assessment service temporarily unavailable', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
@@ -266,7 +304,51 @@ self.addEventListener('message', (event) => {
       case 'SKIP_WAITING':
         self.skipWaiting();
         break;
-      
+
+      case 'CLEAR_CACHE':
+        // Clear all caches on demand
+        event.waitUntil(
+          caches.keys().then((cacheNames) => {
+            return Promise.all(
+              cacheNames.map((cacheName) => caches.delete(cacheName))
+            );
+          }).then(() => {
+            console.log('[SW] All caches cleared');
+            // Notify clients that cache was cleared
+            self.clients.matchAll().then(clients => {
+              clients.forEach(client => {
+                client.postMessage({ type: 'CACHE_CLEARED' });
+              });
+            });
+          })
+        );
+        break;
+
+      case 'CLEAR_ASSESSMENT_CACHE':
+        // Clear only assessment-related cache entries
+        event.waitUntil(
+          caches.open(CACHE_NAME).then((cache) => {
+            return cache.keys().then((requests) => {
+              const assessmentRequests = requests.filter(request => {
+                const url = new URL(request.url);
+                return url.pathname.includes('/assessment') ||
+                       url.pathname.includes('/simulation');
+              });
+              return Promise.all(
+                assessmentRequests.map(request => cache.delete(request))
+              );
+            });
+          }).then(() => {
+            console.log('[SW] Assessment cache cleared');
+            self.clients.matchAll().then(clients => {
+              clients.forEach(client => {
+                client.postMessage({ type: 'ASSESSMENT_CACHE_CLEARED' });
+              });
+            });
+          })
+        );
+        break;
+
       case 'CACHE_NOTIFICATION':
         // Cache notification data for offline access
         if (event.data.notification) {
@@ -280,7 +362,7 @@ self.addEventListener('message', (event) => {
             });
         }
         break;
-      
+
       default:
     }
   }

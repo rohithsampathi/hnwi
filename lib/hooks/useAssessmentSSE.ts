@@ -49,8 +49,9 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     // Reset retry count when sessionId changes
     retryCountRef.current = 0;
 
-    // Construct SSE URL
-    const sseUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/assessment/stream/${sessionId}`;
+    // Construct SSE URL - use relative URL to go through Next.js API routes
+    // This ensures backend URL is never exposed to the client
+    const sseUrl = `/api/assessment/stream/${sessionId}`;
 
     // Create EventSource only for desktop
     const eventSource = new EventSource(sseUrl, { withCredentials: true });

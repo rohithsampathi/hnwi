@@ -20,14 +20,16 @@ export async function generateMetadata({
   let confidenceScore = 85;
 
   try {
-    // Determine the correct base URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const apiBaseUrl = isProduction
-      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000';
+    // Determine the correct base URL for server-side fetching
+    // In server components, we need to use absolute URLs for fetch
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
+                    process.env.NEXT_PUBLIC_PRODUCTION_URL ||
+                    (process.env.NODE_ENV === 'production'
+                      ? 'https://app.hnwichronicles.com'
+                      : 'http://localhost:3000');
 
     // Try to fetch assessment results to get tier for metadata
-    const response = await fetch(`${apiBaseUrl}/api/assessment/result/${params.sessionId}`, {
+    const response = await fetch(`${baseUrl}/api/assessment/result/${params.sessionId}`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json'

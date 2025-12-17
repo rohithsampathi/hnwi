@@ -26,6 +26,32 @@ export default function AuthenticatedAssessmentPage() {
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
   const hasCheckedExistingRef = useRef(false);
+  const shouldAbortRedirect = useRef(false); // New ref to prevent late redirects
+
+  // ROOT FIX: Reset assessment state on mount (especially for PWA/mobile)
+  useEffect(() => {
+    // Clear any stale assessment state on component mount
+    // This is critical for PWA/mobile where browser state persists
+    const resetAssessmentState = () => {
+      // Reset all refs to initial state
+      hasProgressedPastLanding.current = false;
+      hasCheckedExistingRef.current = false;
+      shouldAbortRedirect.current = false;
+
+      // Clear any stale session storage
+      const keysToRemove = Object.keys(sessionStorage).filter(key =>
+        key.includes('assessment') || key.includes('simulation')
+      );
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+
+      // If PWA, ensure we're starting fresh
+      if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('[Assessment] PWA mode detected, state reset');
+      }
+    };
+
+    resetAssessmentState();
+  }, []); // Only run once on mount
 
   // Clear vault session storage when user navigates away or closes tab
   useEffect(() => {
@@ -105,6 +131,9 @@ export default function AuthenticatedAssessmentPage() {
     if (!user?.id && !user?.user_id) return;
     if (hasCheckedExistingRef.current) return;
 
+    // CRITICAL: Abort if user has already started the assessment flow
+    if (shouldAbortRedirect.current) return;
+
     // CRITICAL: Don't redirect if user has already progressed past landing
     // This prevents the redirect when user data loads late (e.g., in incognito mode)
     if (flowStage !== 'landing' || hasProgressedPastLanding.current) {
@@ -118,8 +147,8 @@ export default function AuthenticatedAssessmentPage() {
 
     const checkExistingAssessment = async () => {
       try {
-        // Double-check we're still on landing before proceeding
-        if (flowStage !== 'landing' || hasProgressedPastLanding.current) {
+        // Triple-check abort conditions before proceeding
+        if (shouldAbortRedirect.current || flowStage !== 'landing' || hasProgressedPastLanding.current) {
           return;
         }
 
@@ -136,14 +165,19 @@ export default function AuthenticatedAssessmentPage() {
           timeoutPromise
         ]).catch(() => null); // Return null on timeout
 
+        // CRITICAL: Check abort flag again before any redirect
+        if (shouldAbortRedirect.current) {
+          return;
+        }
+
         // Only redirect if user has completed assessments
         if (history && Array.isArray(history) && history.length > 0) {
           const mostRecent = history[0];
 
           // Only redirect if it's truly completed (has results/PDF)
           if (mostRecent.session_id && (mostRecent.pdf_url || mostRecent.status === 'completed')) {
-            // Final check: only redirect if still on landing
-            if (flowStage === 'landing' && !hasProgressedPastLanding.current) {
+            // Final check: only redirect if still on landing AND not aborted
+            if (!shouldAbortRedirect.current && flowStage === 'landing' && !hasProgressedPastLanding.current) {
               // Clear vault session storage to prevent animation on redirect
               sessionStorage.removeItem('assessmentVaultShownThisSession');
               router.replace(`/simulation/results/${mostRecent.session_id}`);
@@ -162,12 +196,14 @@ export default function AuthenticatedAssessmentPage() {
   // Handle landing -> map intro
   const handleShowMapIntro = useCallback(() => {
     hasProgressedPastLanding.current = true;
+    shouldAbortRedirect.current = true; // Prevent any late redirects
     setFlowStage('map_intro');
   }, []);
 
   // Handle map intro -> start assessment
   const handleStartAssessment = async () => {
     try {
+      shouldAbortRedirect.current = true; // Ensure no late redirects
       const response = await startAssessment({
         user_id: user?.id || user?.user_id,
         email: user?.email
@@ -340,9 +376,18 @@ export default function AuthenticatedAssessmentPage() {
   useEffect(() => {
     if (flowStage === 'landing' && hasProgressedPastLanding.current) {
       // Something tried to reset us to landing - prevent it
+      shouldAbortRedirect.current = true; // Make sure redirects are still blocked
       setFlowStage('map_intro');
     }
   }, [flowStage]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      shouldAbortRedirect.current = false;
+      hasProgressedPastLanding.current = false;
+    };
+  }, []);
 
   // Landing page - always show, backend will handle restrictions
   if (flowStage === 'landing' && !hasProgressedPastLanding.current) {

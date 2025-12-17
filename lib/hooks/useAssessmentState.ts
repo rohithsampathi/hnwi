@@ -106,10 +106,12 @@ export interface AssessmentResults {
 type AssessmentStatus = 'not_started' | 'in_progress' | 'generating_pdf' | 'complete';
 
 export const useAssessmentState = () => {
-  // Session management
+  // Session management - check for stale data first
   const [sessionId, setSessionIdState] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('assessment_session_id');
+    // Check if session ID exists and is valid (not stale)
+    const storedId = localStorage.getItem('assessment_session_id');
+    return storedId || null;
   });
 
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -120,6 +122,44 @@ export const useAssessmentState = () => {
   const [progressiveSignals, setProgressiveSignals] = useState<ProgressiveSignal[]>([]);
   const [results, setResults] = useState<AssessmentResults | null>(null);
   const [status, setStatus] = useState<AssessmentStatus>('not_started');
+
+  // ROOT FIX: Clear stale assessment data on mount (PWA/mobile fix)
+  useEffect(() => {
+    const checkAndClearStaleData = () => {
+      if (typeof window === 'undefined') return;
+
+      const storedSessionId = localStorage.getItem('assessment_session_id');
+      if (storedSessionId) {
+        const progressKey = `assessment_progress_${storedSessionId}`;
+        const savedProgress = localStorage.getItem(progressKey);
+
+        if (savedProgress) {
+          try {
+            const data = JSON.parse(savedProgress);
+            const lastUpdated = data.lastUpdated;
+
+            // If data is older than 24 hours, clear it
+            if (lastUpdated) {
+              const hoursSinceUpdate = (Date.now() - new Date(lastUpdated).getTime()) / (1000 * 60 * 60);
+              if (hoursSinceUpdate > 24) {
+                console.log('[Assessment] Clearing stale assessment data');
+                localStorage.removeItem('assessment_session_id');
+                localStorage.removeItem(progressKey);
+                setSessionIdState(null); // Clear the state too
+              }
+            }
+          } catch (error) {
+            // Invalid data, clear it
+            localStorage.removeItem('assessment_session_id');
+            localStorage.removeItem(progressKey);
+            setSessionIdState(null);
+          }
+        }
+      }
+    };
+
+    checkAndClearStaleData();
+  }, []); // Only run once on mount
 
   // Persist session ID to localStorage
   const setSessionId = (newSessionId: string | null) => {
