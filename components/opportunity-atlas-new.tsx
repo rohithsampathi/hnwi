@@ -931,14 +931,33 @@ function OpportunityCard({
                       </h2>
                       <div className="space-y-2">
                         {opportunity.risk_analysis?.risk_factors && opportunity.risk_analysis.risk_factors.length > 0 ? (
-                          opportunity.risk_analysis.risk_factors.map((factor: any, idx: number) => (
-                            <div key={idx} className="flex items-start gap-2">
-                              <span className="text-muted-foreground mt-1">·</span>
-                              <p className="text-sm text-muted-foreground">
-                                {typeof factor === 'object' ? factor.factor_name || String(factor) : String(factor)}
-                              </p>
-                            </div>
-                          ))
+                          opportunity.risk_analysis.risk_factors.map((factor: any, idx: number) => {
+                            // Extract text from factor object or string
+                            let riskText = '';
+                            if (typeof factor === 'string') {
+                              riskText = factor;
+                            } else if (typeof factor === 'object' && factor !== null) {
+                              // Try multiple common property names
+                              riskText = factor.factor_name || factor.name || factor.risk ||
+                                        factor.description || factor.text || factor.label ||
+                                        factor.title || '';
+
+                              // If still no text found, try to get any string value from the object
+                              if (!riskText) {
+                                const stringValues = Object.values(factor).filter(v => typeof v === 'string');
+                                riskText = stringValues[0] as string || 'Risk information unavailable';
+                              }
+                            } else {
+                              riskText = String(factor);
+                            }
+
+                            return (
+                              <div key={idx} className="flex items-start gap-2">
+                                <span className="text-muted-foreground mt-1">·</span>
+                                <p className="text-sm text-muted-foreground">{riskText}</p>
+                              </div>
+                            );
+                          })
                         ) : opportunity.cons ? (
                           opportunity.cons.map((con, idx) => (
                             <div key={idx} className="flex items-start gap-2">
