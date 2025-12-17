@@ -251,7 +251,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                 {loadingCount ? '...' : formatNumber(briefCount || 1900)}
               </div>
               <div className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">
-                Intelligence Briefs
+                HNWI Developments
               </div>
               <div className="text-xs text-muted-foreground/60 font-light">
                 Since Feb 2023
@@ -382,7 +382,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
               },
               {
                 title: 'Opportunity calibration',
-                desc: 'Which $100K+ deals align with your DNA vs. which ones you should avoid'
+                desc: 'Which $500K+ deals align with your DNA vs. which ones you should avoid'
               },
             ].map((item, index) => (
               <motion.div

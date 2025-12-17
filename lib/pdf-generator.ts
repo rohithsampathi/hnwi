@@ -320,9 +320,9 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   // Clean stat cards
   const stats = [
     {
-      label: 'Peer Percentile',
+      label: 'Opportunity Access',
       value: `${reportData.executive_summary.percentile}th`,
-      subtitle: `Top ${100 - reportData.executive_summary.percentile}% of ${reportData.executive_summary.peer_group_size.toLocaleString()} peers`
+      subtitle: `Qualified for top ${100 - reportData.executive_summary.percentile}% most sophisticated opportunities`
     },
     {
       label: 'Validated Opportunities',

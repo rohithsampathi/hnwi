@@ -61,12 +61,12 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Percentile */}
+        {/* Percentile - Opportunity Qualification */}
         <MetricCard
           icon={<TrendingUp className="w-8 h-8 text-primary" />}
-          label="Peer Percentile"
+          label="Opportunity Access"
           value={`${percentile}th`}
-          subtitle={`Top ${100 - percentile}% of ${peer_group_size.toLocaleString()} peers`}
+          subtitle={`Qualified for top ${100 - percentile}% most sophisticated opportunities`}
           delay={0.1}
         />
 

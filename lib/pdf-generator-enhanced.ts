@@ -139,9 +139,9 @@ export const generateEnhancedPDF = (reportData: EnhancedReportData): jsPDF => {
   yPos = 175;
   doc.setFontSize(11);
   doc.setTextColor(200, 200, 200);
-  doc.text(`Percentile: ${reportData.executive_summary.percentile}th`, pageWidth / 2, yPos, { align: 'center' });
+  doc.text(`Opportunity Access: ${reportData.executive_summary.percentile}th`, pageWidth / 2, yPos, { align: 'center' });
   yPos += 8;
-  doc.text(`Peer Group: ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWIs`, pageWidth / 2, yPos, { align: 'center' });
+  doc.text(`Qualified for top ${100 - reportData.executive_summary.percentile}% opportunities`, pageWidth / 2, yPos, { align: 'center' });
   yPos += 8;
   doc.text(`Opportunities Accessible: ${reportData.executive_summary.opportunities_accessible}`, pageWidth / 2, yPos, { align: 'center' });
 
@@ -175,9 +175,9 @@ export const generateEnhancedPDF = (reportData: EnhancedReportData): jsPDF => {
 
   const summaryMetrics = [
     `Tier Classification: ${reportData.executive_summary.tier.toUpperCase()}`,
-    `Performance Percentile: ${reportData.executive_summary.percentile}th`,
+    `Opportunity Qualification: ${reportData.executive_summary.percentile}th percentile (qualified for top ${100 - reportData.executive_summary.percentile}%)`,
     `Net Worth Estimate: ${reportData.executive_summary.net_worth_estimate}`,
-    `Peer Group Size: ${reportData.executive_summary.peer_group_size.toLocaleString()} developments`,
+    `Intelligence Sources: ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWI World developments`,
     `Opportunities Accessible: ${reportData.executive_summary.opportunities_accessible}`,
     `Opportunities Missed: ${reportData.executive_summary.opportunities_missed}`,
     `Optimization Potential: ${(reportData.executive_summary.optimization_potential * 100).toFixed(1)}%`,

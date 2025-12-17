@@ -20,10 +20,10 @@ export function PeerBenchmarking({ data }: PeerBenchmarkingProps) {
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground mb-2">
-          How You Compare to {cohort_definition.size.toLocaleString()} Similar HNWIs
+          Opportunity Qualification Analysis
         </h2>
         <p className="text-muted-foreground">
-          Your peer cohort: {cohort_definition.tier} tier, {cohort_definition.net_worth_range}, {cohort_definition.age_range}, {cohort_definition.geographic_region}
+          Analysis based on {cohort_definition.size.toLocaleString()} HNWIs: {cohort_definition.tier} tier, {cohort_definition.net_worth_range}, {cohort_definition.age_range}, {cohort_definition.geographic_region}
         </p>
       </div>
 
@@ -53,7 +53,7 @@ interface PercentileDistributionProps {
 function PercentileDistribution({ userPercentile, cohortSize }: PercentileDistributionProps) {
   return (
     <div className="bg-muted rounded-lg p-6 border border-border">
-      <h3 className="text-lg font-bold text-foreground mb-4">Your Percentile Ranking</h3>
+      <h3 className="text-lg font-bold text-foreground mb-4">Your Opportunity Qualification Level</h3>
 
       {/* Percentile Number */}
       <div className="text-center mb-6">
@@ -64,7 +64,7 @@ function PercentileDistribution({ userPercentile, cohortSize }: PercentileDistri
           <span className="text-3xl font-bold text-muted-foreground">th</span>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
-          You're in the top {100 - userPercentile}% of {cohortSize.toLocaleString()} peers
+          Qualified for top {100 - userPercentile}% most sophisticated opportunities
         </p>
       </div>
 
@@ -93,9 +93,9 @@ function PercentileDistribution({ userPercentile, cohortSize }: PercentileDistri
 
         {/* Scale Labels */}
         <div className="flex justify-between mt-12 text-xs text-muted-foreground">
-          <span>0th (Bottom)</span>
-          <span>50th (Median)</span>
-          <span>100th (Top)</span>
+          <span>Entry Level</span>
+          <span>Mid-Tier Opportunities</span>
+          <span>Most Sophisticated</span>
         </div>
       </div>
     </div>
@@ -131,7 +131,7 @@ function MetricComparisonBar({ metric }: MetricComparisonBarProps) {
         <div>
           <h4 className="text-lg font-semibold text-foreground mb-1">{metric_name}</h4>
           <p className="text-sm text-muted-foreground">
-            You're at the {percentile}th percentile for this metric
+            Qualifies you for top {100 - percentile}% opportunities in this category
           </p>
         </div>
         <div className={`flex items-center gap-1 ${trendColor}`}>

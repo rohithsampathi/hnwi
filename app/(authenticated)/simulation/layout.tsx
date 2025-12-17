@@ -5,7 +5,7 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "Strategic Wealth DNA Assessment | HNWI Chronicles - Discover Your $10M+ Decision Pattern",
-  description: "The only assessment calibrated against 1,900+ intelligence briefs and 140K+ wealth movements. Discover if you're an Architect, Operator, or Observer. Used by verified HNWIs managing $10M-$100M+ portfolios. 10 scenarios. 8 minutes. Your exact wealth archetype.",
+  description: "The only assessment calibrated against 1,850+ HNWI developments and 140K+ wealth movements. Discover if you're an Architect, Operator, or Observer. Used by verified HNWIs managing $10M-$100M+ portfolios. 10 scenarios. 8 minutes. Your exact wealth archetype.",
   keywords: "HNWI assessment, wealth DNA test, strategic archetype analysis, wealth psychology assessment, family office intelligence, ultra-high-net-worth profiling, investment personality test, wealth preservation strategy, Digital Twin simulation, crisis response modeling",
   authors: [{ name: "HNWI Chronicles Intelligence Division" }],
   creator: "HNWI Chronicles",

@@ -281,6 +281,21 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     if (isHNWIPattern && showHNWIPatterns) return true;
 
     return false;
+  }).map((city) => {
+    // Determine if this is a Privé opportunity (for diamond icons)
+    const isPriveOpportunity = city.victor_score !== undefined ||
+                               city.source?.toLowerCase().includes('privé') ||
+                               city.source?.toLowerCase().includes('prive');
+
+    // CRITICAL FIX: map-markers.tsx uses victor_score to show diamond icons
+    // If this is a Privé opportunity but doesn't have victor_score, add it
+    const enhancedCity = { ...city };
+
+    if (isPriveOpportunity && !enhancedCity.victor_score) {
+      enhancedCity.victor_score = "prive"; // Add any truthy value to trigger diamond icon
+    }
+
+    return enhancedCity;
   });
 
   // Extract all citations from filtered cities (matching home dashboard)
@@ -571,7 +586,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative overflow-hidden order-first lg:order-last"
+            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative order-first lg:order-last"
           >
             <div className="w-full h-[300px] sm:h-[400px] lg:h-[calc(100vh-120px)] lg:pt-8 relative">
               {loadingMap ? (

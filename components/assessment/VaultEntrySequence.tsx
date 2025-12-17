@@ -98,15 +98,20 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
 
   // Progress through loading steps - only run once per mount
   useEffect(() => {
-    // Prevent multiple executions if already started
-    if (hasStartedRef.current) return;
-    hasStartedRef.current = true;
+    // Reset the ref on mount to ensure animation runs
+    hasStartedRef.current = false;
 
     let isMounted = true;
     const intervals: NodeJS.Timeout[] = [];
     const timeouts: NodeJS.Timeout[] = [];
 
-    const runStep = (stepIndex: number) => {
+    // Small delay to ensure component is fully mounted
+    const startDelay = setTimeout(() => {
+      // Prevent multiple executions if already started
+      if (hasStartedRef.current) return;
+      hasStartedRef.current = true;
+
+      const runStep = (stepIndex: number) => {
       if (!isMounted || stepIndex >= loadingSteps.length) return;
 
       const stepDuration = loadingSteps[stepIndex].duration;
@@ -162,10 +167,12 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
       intervals.push(interval);
     };
 
-    // Start the sequence
-    runStep(0);
+      // Start the sequence
+      runStep(0);
+    }, 100); // 100ms delay to ensure mount
 
     return () => {
+      clearTimeout(startDelay);
       isMounted = false;
       intervals.forEach(clearInterval);
       timeouts.forEach(clearTimeout);

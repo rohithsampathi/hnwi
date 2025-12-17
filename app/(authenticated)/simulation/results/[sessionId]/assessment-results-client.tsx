@@ -291,7 +291,7 @@ export default function AssessmentResultsClient() {
     setLoadingEnhancedReport(true);
 
     let pollCount = 0;
-    const maxPolls = 10; // Poll for up to 30 seconds (10 polls × 3 seconds)
+    const maxPolls = 30; // Poll for up to 90 seconds (30 polls × 3 seconds)
 
     const pollForEnhancedReport = async () => {
       try {
@@ -742,7 +742,7 @@ export default function AssessmentResultsClient() {
                   subtext="Analyzing peer benchmarks and strategic positioning..."
                 />
                 <p className="text-sm text-muted-foreground mt-4">
-                  This may take up to 30 seconds. Your complete analysis will appear automatically.
+                  This may take up to 90 seconds. Your complete analysis will appear automatically.
                 </p>
               </div>
             </motion.section>

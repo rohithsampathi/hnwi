@@ -275,7 +275,7 @@ export function DigitalTwinWaiting({
             <div className="flex items-center gap-4">
               {testCompletionTime && (
                 <span className="text-sm font-mono text-muted-foreground">
-                  Test Time: {testCompletionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                  Simulation Time: {testCompletionTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                 </span>
               )}
               <span className="text-sm font-mono text-muted-foreground">

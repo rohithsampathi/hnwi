@@ -72,9 +72,12 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
 
     // COMMERCIAL REAL ESTATE & BUILDINGS
     // Must check before VILLAS because "Real Estate" contains "estate"
-    if (backendData.includes('real estate') || backendData.includes('commercial') ||
-        backendData.includes('office') || backendData.includes('building') ||
-        backendData.includes('property')) {
+    // Check exact category match first, then broader text matching
+    if (category === 'real estate' || category === 'real_estate' || category === 'commercial' ||
+        category === 'property' || category === 'commercial_property' ||
+        backendData.includes('real estate') || backendData.includes('real_estate') ||
+        backendData.includes('commercial property') || backendData.includes('commercial_property') ||
+        backendData.includes('office building') || backendData.includes('office space')) {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <rect x="3" y="1" width="18" height="22" rx="1"/>
         <rect x="7" y="5" width="3" height="3"/>
@@ -109,8 +112,10 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
     }
 
     // VEHICLES & AUTOMOBILES
-    if (backendData.includes('vehicle') || backendData.includes('car') ||
-        backendData.includes('automobile') || backendData.includes('auto')) {
+    // More specific check - avoid matching "auto" as it's too broad (could match "automatic", "automated", etc.)
+    if (backendData.includes('vehicle') || backendData.includes(' car ') || backendData.includes('cars ') ||
+        backendData.includes('automobile') || backendData.includes('automotive') ||
+        category === 'vehicles' || category === 'automobiles' || category === 'cars') {
       return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
         <circle cx="7" cy="17" r="2"/>
@@ -233,9 +238,11 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isVictor: boolean
   }
 
   // Vehicles / Cars
-  if (combined.includes('car') || combined.includes('vehicle') ||
-      title.includes('harrier') || title.includes('tata') ||
-      combined.includes('automobile')) {
+  // More specific matching - check for car brands or specific terms
+  if (combined.includes(' car ') || combined.includes('vehicle') ||
+      title.includes('harrier') || title.includes('tata') || title.includes('toyota') ||
+      title.includes('honda') || title.includes('mercedes') || title.includes('bmw') ||
+      combined.includes('automobile') || combined.includes('automotive')) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
       <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
       <circle cx="7" cy="17" r="2"/>
