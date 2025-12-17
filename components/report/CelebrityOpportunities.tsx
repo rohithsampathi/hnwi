@@ -77,9 +77,12 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
   const dnaMatch = opportunity.dna_match_score || opportunity.match_score; // Use dna_match_score (0-10)
   const celebrityScore = opportunity.celebrity_score || 0;
 
-  // Clean why_celebrity text - remove any "Demonstrated X% performance" lines
+  // Clean why_celebrity text - remove any "Demonstrated X% performance" lines and market significance text
   const cleanedWhyCelebrity = opportunity.why_celebrity
-    ? opportunity.why_celebrity.replace(/Demonstrated\s+\d+\.?\d*%\s+performance\s*/gi, '').trim()
+    ? opportunity.why_celebrity
+        .replace(/Demonstrated\s+\d+\.?\d*%\s+performance\s*/gi, '')
+        .replace(/,?\s*(High|Med|Low)\s+market\s+significance\s*/gi, '')
+        .trim()
     : '';
 
   return (
@@ -109,7 +112,7 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
 
         {/* Performance Text Line */}
         {opportunity.has_outperformance && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground whitespace-nowrap">
             Peers demonstrated <span className="font-bold">{opportunity.performance_percentage.toFixed(1)}%</span> performance
           </p>
         )}
@@ -136,7 +139,7 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
           {celebrityScore > 0 && (
             <div className="flex items-center gap-1.5">
               <Target className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 whitespace-nowrap">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div
                     key={i}
@@ -148,7 +151,7 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
                   />
                 ))}
                 <span className="text-[10px] text-muted-foreground ml-1">
-                  {celebrityScore >= 0.7 ? 'High' : celebrityScore >= 0.5 ? 'Med' : 'Low'} significance
+                  {celebrityScore >= 0.6 ? 'High' : celebrityScore >= 0.3 ? 'Med' : 'Low'} market significance
                 </span>
               </div>
             </div>
