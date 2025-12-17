@@ -512,7 +512,7 @@ export function OpportunityPage({
                     </CardTitle>
                   </div>
                   <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                    Comprehensive assessment of opportunities and considerations
+                    Comprehensive analysis of opportunities and considerations
                   </p>
                 </div>
 

@@ -64,10 +64,10 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showMap, setShowMap] = useState(true);
-  const [cities, setCities] = useState<City[]>([]); // Currently visible opportunities (start at 0)
+  const [cities, setCities] = useState<City[]>([]); // Backend-controlled opportunities (starts empty)
   const [scenarioTerms, setScenarioTerms] = useState<Set<string>>(new Set());
 
-  // Fetch opportunities using centralized hook (assessment mode)
+  // Fetch opportunities using centralized hook (assessment mode) - only for total count reference
   const {
     cities: allCities,
     loading: loadingMap,
@@ -78,6 +78,8 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     filterCrownVault: true, // Always filter out Crown Vault in assessment
     cleanCategories: false // Keep raw category names for assessment
   });
+
+  // DO NOT initialize cities - let backend control what's shown through calibration events
 
   // Gamification: Progressive reveal states
   const [showTitle, setShowTitle] = useState(false);
@@ -148,6 +150,9 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     }
   };
 
+  // Track newly added city IDs for blinking animation
+  const [newCityIds, setNewCityIds] = useState<Set<string>>(new Set());
+
   // Handle calibration events - progressively ADD backend-selected opportunities
   useEffect(() => {
     if (calibrationEvents.length === 0) return;
@@ -158,12 +163,19 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     // If backend sent specific opportunities, use those (deduplicating by ID)
     if (backendOpportunities.length > 0) {
       setCities(prevVisible => {
+        // First, clear all previous "isNew" flags from existing cities
+        const existingCitiesWithoutNew = prevVisible.map(city => ({
+          ...city,
+          isNew: false // Clear previous blinking state
+        }));
+
         // Get IDs of currently visible opportunities
         const visibleIds = new Set(prevVisible.map(c => c._id || c.id));
 
         let duplicateCount = 0;
         let invalidCoordCount = 0;
         let crownVaultCount = 0;
+        const newlyAddedIds: string[] = [];
 
         // Transform backend opportunities to City format and filter out duplicates
         const newCities = backendOpportunities
@@ -194,6 +206,9 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             // Extract citations from analysis (keeping them for map display)
             const devIds = extractDevIds(opp.analysis || '');
 
+            // Track this as a newly added city
+            newlyAddedIds.push(uniqueId);
+
             return {
               name: displayName,
               country: opp.country || 'Unknown',
@@ -213,17 +228,23 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
               // Citation data
               devIds: devIds,
               hasCitations: devIds.length > 0,
+              isNew: true, // Mark as new for blinking animation
             } as City;
           })
           .filter((city): city is City => city !== null);
 
         const addedCount = newCities.length;
-        const newTotal = prevVisible.length + addedCount;
+        const newTotal = existingCitiesWithoutNew.length + addedCount;
 
         if (duplicateCount > 0 || invalidCoordCount > 0 || crownVaultCount > 0) {
         }
 
-        return [...prevVisible, ...newCities];
+        // Clear and update the set of new city IDs for this response
+        setNewCityIds(new Set(newlyAddedIds));
+
+        // Don't clear the blinking - let it persist until next calibration event
+
+        return [...existingCitiesWithoutNew, ...newCities];
       });
     }
   }, [calibrationEvents]);
@@ -293,6 +314,12 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
 
     if (isPriveOpportunity && !enhancedCity.victor_score) {
       enhancedCity.victor_score = "prive"; // Add any truthy value to trigger diamond icon
+    }
+
+    // Check if this city is new (for blinking animation)
+    const cityId = enhancedCity._id || enhancedCity.id;
+    if (newCityIds.has(cityId)) {
+      enhancedCity.isNew = true;
     }
 
     return enhancedCity;

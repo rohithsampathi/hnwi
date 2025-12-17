@@ -276,9 +276,9 @@ export function SidebarNavigation({
     } else if (route === "assessment") {
       // If user has completed assessment, redirect to results instead of landing page
       if (hasCompletedAssessment && completedSessionId) {
-        router.push(`/assessment/results/${completedSessionId}`)
+        router.push(`/simulation/results/${completedSessionId}`)
       } else {
-        router.push("/assessment")
+        router.push("/simulation")
       }
     } else if (route === "social-hub") {
       router.push("/social-hub")

@@ -53,10 +53,10 @@ export function AssessmentExistingResults({ latestAssessment }: AssessmentExisti
   const daysUntilRetake = Math.ceil((retakeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const canRetake = now >= retakeDate;
 
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/assessment`;
+  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/simulation`;
 
   const handleViewResults = () => {
-    router.push(`/assessment/results/${latestAssessment.session_id}`);
+    router.push(`/simulation/results/${latestAssessment.session_id}`);
   };
 
   const handleDownloadPDF = async () => {

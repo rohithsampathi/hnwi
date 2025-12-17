@@ -1,4 +1,4 @@
-// app/(authenticated)/assessment/page.tsx
+// app/(authenticated)/simulation/page.tsx
 // Complete C10 Simulation with SSE, calibration, and Digital Twin simulation
 
 "use client";
@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { AssessmentLanding } from '@/components/assessment/AssessmentLanding';
 import { MapIntroduction } from '@/components/assessment/MapIntroduction';
 import { AssessmentQuestion } from '@/components/assessment/AssessmentQuestion';
-import { DigitalTwinWaiting } from '@/components/assessment/DigitalTwinWaiting';
+import { DigitalTwinWaitingInteractive as DigitalTwinWaiting } from '@/components/assessment/DigitalTwinWaitingInteractive';
 import { MetaTags } from '@/components/meta-tags';
 import { useAssessmentState, Question } from '@/lib/hooks/useAssessmentState';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
@@ -510,7 +510,7 @@ export default function AuthenticatedAssessmentPage() {
         title="C10 Simulation - Initializing"
         description="Initializing strategic classification protocol."
         image="https://app.hnwichronicles.com/images/assessment-og.png"
-        url="https://app.hnwichronicles.com/assessment"
+        url="https://app.hnwichronicles.com/simulation"
       />
       <div className="flex items-center justify-center p-12">
         <div className="text-center">

@@ -105,7 +105,7 @@ export async function generateMetadata({
       "article:author": "HNWI Chronicles Intelligence Division",
       "article:section": "Strategic Assessment",
       "og:rich_attachment": "true",
-      "og:see_also": "https://app.hnwichronicles.com/assessment",
+      "og:see_also": "https://app.hnwichronicles.com/simulation",
       "fb:app_id": process.env.NEXT_PUBLIC_FB_APP_ID || "",
     }
   };

@@ -1,5 +1,5 @@
-// app/(authenticated)/assessment/results/[sessionId]/page.tsx
-// Server component for assessment results with premium metadata
+// app/(authenticated)/simulation/results/[sessionId]/page.tsx
+// Server component for simulation results with premium metadata
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -70,7 +70,7 @@ export async function generateMetadata({
       title: `${tierName} Strategic DNA Profile | HNWI Assessment Complete`,
       description: `Verified ${tierName} archetype with ${confidenceScore}% confidence. Access your personalized opportunities, Digital Twin simulation, and strategic intelligence gaps.`,
       type: "website",
-      url: `https://app.hnwichronicles.com/assessment/results/${params.sessionId}`,
+      url: `https://app.hnwichronicles.com/simulation/results/${params.sessionId}`,
       siteName: "HNWI Chronicles",
       locale: "en_US",
       images: [
@@ -95,13 +95,13 @@ export async function generateMetadata({
       }
     },
     alternates: {
-      canonical: `https://app.hnwichronicles.com/assessment/results/${params.sessionId}`,
+      canonical: `https://app.hnwichronicles.com/simulation/results/${params.sessionId}`,
     },
     category: "Wealth Intelligence",
-    classification: "Assessment Results",
+    classification: "Simulation Results",
     other: {
       "article:author": "HNWI Chronicles Intelligence Division",
-      "article:section": "Strategic Assessment Results",
+      "article:section": "Strategic Simulation Results",
       "og:rich_attachment": "true",
       "fb:app_id": process.env.NEXT_PUBLIC_FB_APP_ID || "",
       "apple-mobile-web-app-capable": "yes",

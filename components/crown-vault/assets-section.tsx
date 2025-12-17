@@ -110,7 +110,7 @@ const KatherinePortfolioAnalysis = ({ assets }: { assets: CrownVaultAsset[] }) =
             <div>
               <h3 className="text-xl font-bold">Katherine Sterling-Chen Portfolio Analysis</h3>
               <p className="text-sm text-muted-foreground">
-                Elite Pulse Intelligence Assessment • {portfolioAnalysis.totalAssets} Assets Analyzed
+                Elite Pulse Intelligence Simulation • {portfolioAnalysis.totalAssets} Assets Analyzed
               </p>
             </div>
           </div>

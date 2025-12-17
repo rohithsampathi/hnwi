@@ -1,5 +1,5 @@
-// app/(authenticated)/assessment/results/[sessionId]/enhanced/page.tsx
-// Enhanced Assessment Report with visual analytics
+// app/(authenticated)/simulation/results/[sessionId]/enhanced/page.tsx
+// Enhanced Simulation Report with visual analytics
 // Implements all advanced report components
 
 'use client';
@@ -58,7 +58,7 @@ export default function EnhancedReportPage() {
   }, [sessionId]);
 
   const handleBack = () => {
-    router.push(`/assessment/results/${sessionId}`);
+    router.push(`/simulation/results/${sessionId}`);
   };
 
   const handleDownload = () => {
@@ -76,7 +76,7 @@ export default function EnhancedReportPage() {
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/assessment/results/${sessionId}/enhanced`;
+    const shareUrl = `${window.location.origin}/simulation/results/${sessionId}/enhanced`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       alert('Link copied to clipboard!');
