@@ -412,7 +412,7 @@ export function DigitalTwinWaitingInteractive({
   const progressPercentage = calculateProgress();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-[10px] py-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -424,22 +424,22 @@ export function DigitalTwinWaitingInteractive({
           initial={{ y: -20 }}
           animate={{ y: 0 }}
         >
-          <div className="bg-gradient-to-r from-primary to-primary/80 p-8 text-primary-foreground">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-                  <Zap className="w-8 h-8" />
-                  Digital Twin Simulation
+          <div className="bg-gradient-to-r from-primary to-primary/80 p-4 sm:p-6 md:p-8 text-primary-foreground">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 flex items-center gap-2 sm:gap-3">
+                  <Zap className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 flex-shrink-0" />
+                  <span className="leading-tight">Digital Twin Simulation</span>
                 </h1>
-                <p className="text-primary-foreground/90">
+                <p className="text-sm sm:text-base text-primary-foreground/90 leading-snug">
                   Simulating your portfolio through the April 2026 Transparency Cliff
                 </p>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-mono font-bold">
+              <div className="text-left sm:text-right flex-shrink-0">
+                <div className="text-2xl sm:text-3xl font-mono font-bold">
                   {Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}
                 </div>
-                <div className="text-sm text-primary-foreground/80">Elapsed Time</div>
+                <div className="text-xs sm:text-sm text-primary-foreground/80">Elapsed Time</div>
               </div>
             </div>
           </div>
@@ -450,7 +450,7 @@ export function DigitalTwinWaitingInteractive({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-4 gap-4 mb-6"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6"
         >
           {dynamicMetrics.map((metric, index) => (
             <motion.div
@@ -458,11 +458,11 @@ export function DigitalTwinWaitingInteractive({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.1 * index }}
-              className="bg-card rounded-xl p-4 border border-border hover:border-primary/50 transition-colors"
+              className="bg-card rounded-xl p-3 sm:p-4 border border-border hover:border-primary/50 transition-colors"
             >
               <div className="text-center">
                 <motion.div
-                  className="text-2xl font-bold text-primary"
+                  className="text-xl sm:text-2xl font-bold text-primary"
                   key={`${metric.label}-${metric.current}`}
                   initial={{ scale: 0.8, opacity: 0.5 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -470,7 +470,7 @@ export function DigitalTwinWaitingInteractive({
                 >
                   {metric.current.toLocaleString()}{metric.suffix}
                 </motion.div>
-                <div className="text-xs text-muted-foreground">{metric.label}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground leading-tight mt-1">{metric.label}</div>
                 {/* Show progress bar if metric is actively counting */}
                 {metric.current > 0 && metric.current < metric.target && (
                   <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
@@ -488,26 +488,26 @@ export function DigitalTwinWaitingInteractive({
         </motion.div>
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Processing Steps */}
           <motion.div
-            className="bg-card rounded-2xl shadow-xl border border-border p-6"
+            className="bg-card rounded-xl sm:rounded-2xl shadow-xl border border-border p-4 sm:p-6"
             initial={{ x: -20 }}
             animate={{ x: 0 }}
           >
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary" />
-              Processing Pipeline
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+              <span>Processing Pipeline</span>
             </h2>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {steps.map((step, index) => (
                 <motion.div
                   key={step.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`relative p-4 rounded-xl transition-all cursor-pointer ${
+                  className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl transition-all cursor-pointer ${
                     step.status === 'complete'
                       ? 'bg-primary/10 border border-primary/30'
                       : step.status === 'processing'
@@ -517,14 +517,14 @@ export function DigitalTwinWaitingInteractive({
                   onMouseEnter={() => setHoveredStep(step.id)}
                   onMouseLeave={() => setHoveredStep(null)}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     {/* Animated Icon */}
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
                       {step.status === 'complete' && (
                         <motion.div
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
-                          className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground"
+                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm sm:text-base"
                         >
                           ✓
                         </motion.div>
@@ -533,21 +533,21 @@ export function DigitalTwinWaitingInteractive({
                         <motion.div
                           animate={{ rotate: 360 }}
                           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                          className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary"
+                          className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary [&>svg]:w-3 [&>svg]:h-3 sm:[&>svg]:w-5 sm:[&>svg]:h-5"
                         >
                           {step.icon}
                         </motion.div>
                       )}
                       {step.status === 'pending' && (
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground [&>svg]:w-3 [&>svg]:h-3 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
                           {step.icon}
                         </div>
                       )}
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1">
-                      <div className={`font-semibold ${
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm sm:text-base font-semibold leading-tight ${
                         step.status === 'complete' || step.status === 'processing'
                           ? 'text-foreground'
                           : 'text-muted-foreground'
@@ -563,13 +563,13 @@ export function DigitalTwinWaitingInteractive({
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                           >
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-snug">
                               {step.description}
                             </p>
                             {step.metrics && (
-                              <div className="flex flex-wrap gap-2 mt-2">
+                              <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
                                 {step.metrics.map((metric, i) => (
-                                  <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                                  <span key={i} className="text-[10px] sm:text-xs bg-primary/10 text-primary px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
                                     {metric}
                                   </span>
                                 ))}
@@ -587,7 +587,7 @@ export function DigitalTwinWaitingInteractive({
                         transition={{ duration: 2, repeat: Infinity }}
                         className="flex-shrink-0"
                       >
-                        <Sparkles className="w-5 h-5 text-primary" />
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       </motion.div>
                     )}
                   </div>
@@ -597,16 +597,16 @@ export function DigitalTwinWaitingInteractive({
           </motion.div>
 
           {/* Right Side - Facts and Progress */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Rotating Facts Card */}
             <motion.div
-              className="bg-card rounded-2xl shadow-xl border border-border p-6"
+              className="bg-card rounded-xl sm:rounded-2xl shadow-xl border border-border p-4 sm:p-6"
               initial={{ x: 20 }}
               animate={{ x: 0 }}
             >
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
-                Intelligence Insights
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+                <span>Intelligence Insights</span>
               </h2>
 
               <AnimatePresence mode="wait">
@@ -616,15 +616,15 @@ export function DigitalTwinWaitingInteractive({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.5 }}
-                  className="bg-primary/5 rounded-xl p-4 border border-primary/20"
+                  className="bg-primary/5 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-primary/20"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-1">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
                       {React.createElement(HNWI_FACTS[currentFactIndex].icon, {
-                        className: "w-6 h-6 text-primary"
+                        className: "w-5 h-5 sm:w-6 sm:h-6 text-primary"
                       })}
                     </div>
-                    <p className="text-sm text-foreground">
+                    <p className="text-xs sm:text-sm text-foreground leading-snug">
                       {HNWI_FACTS[currentFactIndex].text}
                     </p>
                   </div>
@@ -649,11 +649,11 @@ export function DigitalTwinWaitingInteractive({
 
             {/* Overall Progress Card */}
             <motion.div
-              className="bg-card rounded-2xl shadow-xl border border-border p-6"
+              className="bg-card rounded-xl sm:rounded-2xl shadow-xl border border-border p-4 sm:p-6"
               initial={{ y: 20 }}
               animate={{ y: 0 }}
             >
-              <h2 className="text-xl font-bold mb-4">Overall Progress</h2>
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Overall Progress</h2>
 
               {/* Circular Progress */}
               <div className="relative w-32 h-32 mx-auto mb-4">
@@ -693,39 +693,41 @@ export function DigitalTwinWaitingInteractive({
                 </div>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground">
+              <div className="text-center text-xs sm:text-sm text-muted-foreground">
                 Analyzing {briefCount.toLocaleString()}+ HNWI World developments
               </div>
             </motion.div>
 
             {/* Dynamic Status Messages based on current processing */}
             <motion.div
-              className="bg-primary/5 rounded-xl p-4 border border-primary/20"
+              className="bg-primary/5 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-primary/20"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              <div className="flex items-center gap-2 text-sm text-primary font-semibold">
-                <Activity className="w-4 h-4" />
-                {(() => {
-                  const currentStep = steps[currentStepIndex];
-                  switch (currentStep?.id) {
-                    case 'briefs':
-                      return `Analyzing ${dynamicMetrics[0].current.toLocaleString()} HNWI World developments`;
-                    case 'simulation':
-                      return `Testing scenario ${dynamicMetrics[1].current} of 12`;
-                    case 'gap':
-                      return `Discovering opportunities: ${dynamicMetrics[3].current} found`;
-                    case 'forensic':
-                      return 'Validating strategic positioning';
-                    case 'pdf':
-                      return 'Finalizing your comprehensive report';
-                    default:
-                      return 'Processing your strategic analysis';
-                  }
-                })()}
+              <div className="flex items-start gap-2 text-xs sm:text-sm text-primary font-semibold leading-tight">
+                <Activity className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span className="flex-1">
+                  {(() => {
+                    const currentStep = steps[currentStepIndex];
+                    switch (currentStep?.id) {
+                      case 'briefs':
+                        return `Analyzing ${dynamicMetrics[0].current.toLocaleString()} HNWI World developments`;
+                      case 'simulation':
+                        return `Testing scenario ${dynamicMetrics[1].current} of 12`;
+                      case 'gap':
+                        return `Discovering opportunities: ${dynamicMetrics[3].current} found`;
+                      case 'forensic':
+                        return 'Validating strategic positioning';
+                      case 'pdf':
+                        return 'Finalizing your comprehensive report';
+                      default:
+                        return 'Processing your strategic analysis';
+                    }
+                  })()}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-snug">
                 {Math.round(progressPercentage)}% complete • Est. {Math.max(0, Math.round((160 - elapsedTime) / 60))} min remaining
               </p>
             </motion.div>
@@ -739,17 +741,17 @@ export function DigitalTwinWaitingInteractive({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="mt-6 bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-center text-primary-foreground shadow-2xl"
+              className="mt-4 sm:mt-6 bg-gradient-to-r from-primary to-primary/80 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center text-primary-foreground shadow-2xl"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 10 }}
               >
-                <Sparkles className="w-12 h-12 mx-auto mb-3" />
+                <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3" />
               </motion.div>
-              <h3 className="text-2xl font-bold mb-2">Simulation Complete!</h3>
-              <p className="text-primary-foreground/90">
+              <h3 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Simulation Complete!</h3>
+              <p className="text-sm sm:text-base text-primary-foreground/90">
                 Your personalized strategic report is ready
               </p>
             </motion.div>

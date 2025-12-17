@@ -153,6 +153,9 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
   // Track newly added city IDs for blinking animation
   const [newCityIds, setNewCityIds] = useState<Set<string>>(new Set());
 
+  // Track map scroll position to show/hide up arrow
+  const [isAtMapBottom, setIsAtMapBottom] = useState(false);
+
   // Handle calibration events - progressively ADD backend-selected opportunities
   useEffect(() => {
     if (calibrationEvents.length === 0) return;
@@ -376,6 +379,28 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
       };
     }
   }, [filteredCities.length, calibrationEvents.length, previousCityCount]);
+
+  // Detect scroll position on map to show/hide up arrow at bottom
+  useEffect(() => {
+    const handleScroll = () => {
+      const mapContainer = document.getElementById('assessment-map-container');
+      if (!mapContainer) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+      const mapRect = mapContainer.getBoundingClientRect();
+      const mapBottom = mapRect.bottom;
+      const windowHeight = window.innerHeight;
+
+      // Show up arrow when user has scrolled past 70% of the map height
+      const isNearBottom = mapBottom - windowHeight < (mapRect.height * 0.3);
+      setIsAtMapBottom(isNearBottom);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial state
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <>
@@ -613,9 +638,9 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative order-first lg:order-last"
+            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative order-first lg:order-last z-0"
           >
-            <div className="w-full h-[300px] sm:h-[400px] lg:h-[calc(100vh-120px)] lg:pt-8 relative">
+            <div className="w-full h-[600px] lg:h-[calc(100vh-120px)] lg:pt-8 relative">
               {loadingMap ? (
                 <div className="h-full flex items-center justify-center">
                   <CrownLoader size="lg" text="Loading Command Centre" />
@@ -640,39 +665,48 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                     useAbsolutePositioning={true} // Keep controls inside map bounds
                   />
 
-                  {/* Overlays positioned absolutely */}
-                  {/* Up Arrow to Simulation */}
-                  <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[400]">
-                    <motion.button
-                      onClick={scrollToQuestion}
-                      whileHover={{ scale: 1.1, y: -2 }}
-                      whileTap={{ scale: 0.9 }}
-                      animate={{
-                        y: [0, -4, 0],
-                        opacity: [0.7, 1, 0.7],
-                      }}
-                      transition={{
-                        y: {
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        },
-                        opacity: {
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }
-                      }}
-                      className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-                      title="Back to simulation"
-                    >
-                      <span className="text-primary text-xl sm:text-2xl font-bold">↑</span>
-                    </motion.button>
-                  </div>
+                  {/* Overlays positioned absolutely - Use very high z-index to be above map canvas */}
+                  {/* Up Arrow to Simulation - Show when scrolled to bottom of map */}
+                  <AnimatePresence>
+                    {isAtMapBottom && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 z-[9999] pointer-events-none"
+                      >
+                        <motion.button
+                          onClick={scrollToQuestion}
+                          whileHover={{ scale: 1.1, y: -2 }}
+                          whileTap={{ scale: 0.9 }}
+                          animate={{
+                            y: [0, -4, 0],
+                            opacity: [0.7, 1, 0.7],
+                          }}
+                          transition={{
+                            y: {
+                              duration: 1.5,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            },
+                            opacity: {
+                              duration: 1.5,
+                              repeat: Infinity,
+                              ease: "easeInOut"
+                            }
+                          }}
+                          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 pointer-events-auto"
+                          title="Back to simulation"
+                        >
+                          <span className="text-primary text-xl sm:text-2xl font-bold">↑</span>
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Calibration Status Overlay */}
                   {isCalibrating && (
-                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[400] pointer-events-none">
+                    <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[9999] pointer-events-none">
                       <div className="px-3 py-2 sm:px-6 sm:py-3 bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl max-w-[90%] sm:max-w-none">
                         <span className="flex items-center gap-1.5 sm:gap-2 text-black dark:text-primary text-xs sm:text-sm font-semibold whitespace-nowrap">
                           <Target size={14} className="animate-pulse flex-shrink-0" />
@@ -688,7 +722,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                     initial={{ scale: 1.2, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.3 }}
-                    className="absolute top-2 left-2 sm:top-4 sm:left-4 z-[400] bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl px-2 py-2 sm:px-4 sm:py-3 max-w-[140px] sm:max-w-none pointer-events-none"
+                    className="absolute top-2 left-2 sm:top-4 sm:left-4 z-[9999] bg-card/95 backdrop-blur-2xl border border-primary/30 rounded-lg sm:rounded-2xl px-2 py-2 sm:px-4 sm:py-3 max-w-[140px] sm:max-w-none pointer-events-none"
                   >
                     <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground mb-0.5 sm:mb-1 truncate font-medium uppercase tracking-wider">Command Centre</div>
                     <div className="text-xl sm:text-3xl font-bold text-black dark:text-primary leading-tight">{filteredCities.length}</div>
@@ -708,7 +742,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                     if (!hasNewOpportunities) return null;
 
                     return (
-                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[400] w-auto max-w-[90%] sm:max-w-md pointer-events-none">
+                      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-[9999] w-auto max-w-[90%] sm:max-w-md pointer-events-none">
                         <motion.div
                           key={`calibration-${filteredCities.length}`}
                           initial={{ opacity: 0, y: 20 }}

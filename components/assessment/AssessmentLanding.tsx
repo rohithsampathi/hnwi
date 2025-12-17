@@ -12,26 +12,33 @@ interface AssessmentLandingProps {
   onContinue: () => void;
 }
 
+// PRODUCTION FIX: Module-level flag survives sessionStorage clearing and service worker caching
+// This prevents vault re-showing in incognito mode on first load in production
+let vaultShownInThisAppSession = false;
+
 export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue }) => {
   const [briefCount, setBriefCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
 
-  // Initialize vault state based on session storage - directly in useState
-  // Calculate vault state once at initialization
+  // Initialize vault state using module-level variable (production-safe)
+  // Module-level variable survives:
+  // - sessionStorage clearing by parent component
+  // - Service worker page caching in production
+  // - Component remounts
+  // - Incognito mode sessions
   const getVaultInitialState = () => {
     if (typeof window === 'undefined') {
       return { showVault: false, unlocked: false };
     }
 
-    const vaultShownThisSession = sessionStorage.getItem('assessmentVaultShownThisSession');
-    if (vaultShownThisSession) {
-      // Already shown this session - skip vault, already unlocked
+    if (vaultShownInThisAppSession) {
+      // Already shown during this app session - skip vault, already unlocked
       return { showVault: false, unlocked: true };
     } else {
-      // First time this session - show vault, not yet unlocked
-      sessionStorage.setItem('assessmentVaultShownThisSession', 'true');
+      // First time this app session - show vault, not yet unlocked
+      vaultShownInThisAppSession = true;
       return { showVault: true, unlocked: false };
     }
   };
