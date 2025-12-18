@@ -13,52 +13,85 @@ import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import { ServiceWorkerUpdateManager } from "@/components/sw-update-manager"
 import './globals.css'
 
+const siteUrl = "https://app.hnwichronicles.com"
+const ogImage = `${siteUrl}/logo.png`
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://app.hnwichronicles.com"),
-  title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
+  metadataBase: new URL(siteUrl),
+
+  title: {
+    default: "HNWI Chronicles",
+    template: "%s | HNWI Chronicles",
+  },
+
   description:
-    "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
-  keywords: ["HNWI", "wealth management", "financial intelligence", "strategic insights", "market analysis"],
-  authors: [{ name: "Montaigne Smart Business Solutions Private Limited" }],
-  creator: "Montaigne Smart Business Solutions Private Limited",
-  publisher: "Montaigne Smart Business Solutions Private Limited",
+    "Invite-only intelligence platform for HNWIs and family offices — tracked signals, insider briefs, and curated opportunities across real assets and alternative wealth.",
+
+  applicationName: "HNWI Chronicles",
+  authors: [{ name: "Montaigne Smart Business Solutions Pvt Ltd" }],
+  creator: "Montaigne Smart Business Solutions Pvt Ltd",
+  publisher: "Montaigne Smart Business Solutions Pvt Ltd",
+  category: "Finance",
+
+  keywords: [
+    "HNWI",
+    "family office",
+    "single family office",
+    "multi family office",
+    "wealth intelligence",
+    "alternative assets",
+    "real assets",
+    "private markets",
+    "cross-border",
+    "regulatory",
+  ],
+
+  alternates: {
+    canonical: "/",
+  },
+
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
+
   manifest: "/manifest.json",
+
   icons: {
     icon: "/logo.png",
-    shortcut: "/logo.png",
+    shortcut: "/Rohith.ico",
     apple: "/logo.png",
   },
+
   openGraph: {
     type: "website",
-    locale: "en_US",
-    url: "https://app.hnwichronicles.com",
+    url: siteUrl,
     siteName: "HNWI Chronicles",
-    title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
+    locale: "en_US",
+    title: "HNWI Chronicles",
     description:
-      "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
+      "Invite-only intelligence platform for HNWIs and family offices — tracked signals, insider briefs, and curated opportunities across real assets and alternative wealth.",
     images: [
       {
-        url: "/logo.png?v=2025", // Cache-busting version parameter
+        url: ogImage,
         width: 1200,
         height: 630,
-        alt: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
+        alt: "HNWI Chronicles",
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
-    title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
-    description:
-      "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
     site: "@hnwichronicles",
     creator: "@hnwichronicles",
-    images: ["/logo.png?v=2025"], // Cache-busting version parameter
+    title: "HNWI Chronicles",
+    description:
+      "Invite-only intelligence platform for HNWIs and family offices — tracked signals, insider briefs, and curated opportunities across real assets and alternative wealth.",
+    images: [ogImage],
   },
+
   robots: {
     index: true,
     follow: true,
@@ -70,10 +103,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  verification: {
-    google: "your-google-site-verification",
-  },
-  generator: 'v0.dev'
 }
 
 export const viewport: Viewport = {

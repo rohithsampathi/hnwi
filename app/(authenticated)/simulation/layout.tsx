@@ -4,12 +4,24 @@
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Strategic Wealth DNA Simulation | HNWI Chronicles - Discover Your $10M+ Decision Pattern",
-  description: "The only simulation calibrated against 1,850+ HNWI developments and 92K+ wealth signals. Discover if you're an Architect, Operator, or Observer. Used by verified HNWIs managing $10M-$100M+ portfolios. 10 scenarios. 10 minutes. Your exact wealth archetype.",
-  keywords: "HNWI simulation, wealth DNA test, strategic archetype analysis, wealth psychology simulation, family office intelligence, ultra-high-net-worth profiling, investment personality test, wealth preservation strategy, Digital Twin simulation, crisis response modeling",
-  authors: [{ name: "HNWI Chronicles Intelligence Division" }],
-  creator: "HNWI Chronicles",
-  publisher: "HNWI Chronicles - Crown Intelligence Platform",
+  title: "Strategic Wealth DNA Simulation",
+  description: "Calibrated against 1,850+ HNWI developments and 92K+ wealth signals — discover your strategic archetype (Architect, Operator, or Observer). See how you'd navigate $10M+ decisions and crisis scenarios. 10 scenarios. 10 minutes.",
+  keywords: [
+    "HNWI simulation",
+    "wealth DNA test",
+    "strategic archetype analysis",
+    "wealth psychology simulation",
+    "family office intelligence",
+    "ultra-high-net-worth profiling",
+    "investment personality test",
+    "wealth preservation strategy",
+    "Digital Twin simulation",
+    "crisis response modeling",
+  ],
+  authors: [{ name: "Montaigne Smart Business Solutions Pvt Ltd" }],
+  creator: "Montaigne Smart Business Solutions Pvt Ltd",
+  publisher: "Montaigne Smart Business Solutions Pvt Ltd",
+  category: "Finance",
   robots: {
     index: true,
     follow: true,
@@ -22,48 +34,31 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Strategic Wealth DNA Assessment | Exclusive HNWI Intelligence",
-    description: "Discover your strategic archetype. Calibrated against 1,900+ intelligence briefs. See how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts. Free for verified members.",
     type: "website",
     locale: "en_US",
-    url: "https://app.hnwichronicles.com/assessment",
+    url: "https://app.hnwichronicles.com/simulation",
     siteName: "HNWI Chronicles",
+    title: "Strategic Wealth DNA Simulation",
+    description: "Calibrated against 1,850+ HNWI developments — discover your strategic archetype and see how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts.",
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "HNWI Chronicles Strategic Assessment - Wealth DNA Analysis",
+        alt: "HNWI Chronicles — Strategic Wealth DNA Simulation",
       },
-      {
-        url: "/images/assessment-preview.png",
-        width: 1200,
-        height: 630,
-        alt: "Discover Your Strategic Archetype - Architect, Operator, or Observer",
-      }
     ],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@HNWIChronicles",
-    creator: "@HNWIChronicles",
+    site: "@hnwichronicles",
+    creator: "@hnwichronicles",
     title: "Strategic Wealth DNA Simulation",
-    description: "The only simulation calibrated against real HNWI data. Discover your $10M+ decision pattern in 10 minutes.",
+    description: "Calibrated against 1,850+ HNWI developments — discover your strategic archetype and see how you'd navigate $10M+ decisions in 10 minutes.",
     images: ["/logo.png"],
   },
   alternates: {
-    canonical: "https://app.hnwichronicles.com/assessment",
-  },
-  category: "Wealth Intelligence",
-  classification: "Strategic Assessment",
-  other: {
-    "og:rich_attachment": "true",
-    "article:author": "HNWI Chronicles Intelligence Division",
-    "article:section": "Strategic Assessment",
-    "og:see_also": "https://app.hnwichronicles.com/dashboard",
-    "fb:app_id": process.env.NEXT_PUBLIC_FB_APP_ID || "",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    canonical: "/simulation",
   },
 };
 
