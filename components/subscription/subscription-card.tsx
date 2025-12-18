@@ -51,7 +51,7 @@ const PLAN_FEATURES = {
     "Social Hub - elite networking events",
     "Direct WhatsApp access to analysts",
     "Custom portfolio impact analysis",
-    "Full historical archive (1,562 briefs)",
+    "Full historical archive (1,900+ briefs)",
     "Priority intelligence alerts",
     "Quarterly wealth defense review"
   ]

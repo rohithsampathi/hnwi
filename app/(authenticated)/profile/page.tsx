@@ -8,12 +8,19 @@ import { ProfilePage } from "@/components/profile-page"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { BackButton } from "@/components/ui/back-button"
 import { getCurrentUser, updateUser, logoutUser } from "@/lib/auth-manager"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function ProfileRoute() {
   const router = useRouter()
   // Use AuthManager to get current user
   const [user, setUser] = useState<any>(() => getCurrentUser())
   const [loading, setLoading] = useState(false)
+
+  // Set page title and meta description
+  usePageTitle(
+    "Profile",
+    "Manage your HNWI Chronicles member profile, preferences, and account settings for personalized wealth intelligence."
+  )
 
   useEffect(() => {
     // If no user, try to get from AuthManager

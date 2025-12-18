@@ -6,12 +6,19 @@ import { useRouter } from "next/navigation"
 import React, { useEffect, useState } from "react"
 import { SplashScreen } from "@/components/splash-screen"
 import { getCurrentUser } from "@/lib/auth-manager"
+import { usePageTitleSimple } from "@/hooks/use-page-title"
 
 export default function Home() {
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+
+  // Set page title and meta description
+  usePageTitleSimple(
+    "HNWI Chronicles – Private Intelligence for Modern Wealth",
+    "Exclusive wealth intelligence platform for $1M+ net worth individuals. Real-time market analysis, off-market opportunities, AI-powered strategic planning, and generational wealth architecture."
+  )
 
   useEffect(() => {
     // Mark as hydrated to prevent SSR/client mismatch

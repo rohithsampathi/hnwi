@@ -3,7 +3,7 @@
 
 "use client"
 
-import { ArrowLeft, Crown, Brain, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield, MessageSquare, Bot } from "lucide-react"
+import { ArrowLeft, Crown, Brain, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield, MessageSquare, Bot, Network } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { cn } from "@/lib/utils"
@@ -37,6 +37,7 @@ export function PageHeader({
     if (pathname.includes('/tactics-lab') || pathname.includes('/strategy-engine')) return Beaker
     if (pathname.includes('/profile')) return UserCircle2
     if (pathname.includes('/playbooks')) return BookOpen
+    if (pathname.includes('/trusted-network')) return Network
     // Default to Crown for any other pages
     return Crown
   }

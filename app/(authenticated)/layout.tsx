@@ -45,6 +45,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     if (pathname.includes('/prive-exchange')) return { title: '', currentPage: 'prive-exchange', showBackButton: true }
     if (pathname.includes('/crown-vault')) return { title: '', currentPage: 'crown-vault', showBackButton: true }
     if (pathname.includes('/social-hub')) return { title: '', currentPage: 'social-hub', showBackButton: true }
+    if (pathname.includes('/trusted-network')) return { title: '', currentPage: 'trusted-network', showBackButton: true }
     if (pathname.includes('/tactics-lab')) return { title: '', currentPage: 'tactics-lab', showBackButton: true }
     if (pathname.includes('/calendar')) return { title: '', currentPage: 'calendar', showBackButton: true }
     if (pathname.includes('/profile')) return { title: '', currentPage: 'profile', showBackButton: true }

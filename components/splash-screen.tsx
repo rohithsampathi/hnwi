@@ -10,11 +10,11 @@ import { useTheme } from "@/contexts/theme-context"
 import { ParticlesBackground } from "./particles-background"
 import { ThemeToggle } from "./theme-toggle"
 import { Heading1, Lead, Paragraph, Heading2 } from "@/components/ui/typography"
-import { MetaTags } from "./meta-tags"
 import { OnboardingPage } from "./onboarding-page"
 import { ForgotPasswordForm } from "./forgot-password-form"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
+import { usePageTitleSimple } from "@/hooks/use-page-title"
 import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock, Shield } from "lucide-react"
 import { MfaCodeInput } from "./mfa-code-input"
 
@@ -40,6 +40,23 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   const [mfaToken, setMfaToken] = useState<string | null>(null)
   const [isResending, setIsResending] = useState(false)
   const [rememberDevice, setRememberDevice] = useState(false)
+
+  // Set page title and description based on state
+  const getPageTitle = () => {
+    if (showOnboarding) return 'Create Account - HNWI Chronicles';
+    if (showForgotPassword) return 'Reset Password - HNWI Chronicles';
+    if (showLoginForm) return 'Sign In - HNWI Chronicles';
+    return 'HNWI Chronicles – Private Intelligence for Modern Wealth';
+  };
+
+  const getPageDescription = () => {
+    if (showOnboarding) return 'Join HNWI Chronicles. Exclusive wealth intelligence platform combining AI-powered market analysis, off-market opportunities, and strategic planning for ultra-high-net-worth individuals.';
+    if (showForgotPassword) return 'Reset your HNWI Chronicles password to regain access to exclusive wealth intelligence and premium investment opportunities.';
+    if (showLoginForm) return 'Sign in to HNWI Chronicles. Access real-time wealth intelligence, AI-scored opportunities, and strategic insights for ultra-high-net-worth individuals.';
+    return 'Private intelligence platform for modern wealth. Real-time market intelligence, exclusive opportunities, and AI-powered strategic planning for $1M+ net worth individuals.';
+  };
+
+  usePageTitleSimple(getPageTitle(), getPageDescription(), [showOnboarding, showForgotPassword, showLoginForm]);
 
   const handleCreateAccount = () => {
     setShowOnboarding(true)
@@ -515,13 +532,6 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
 
   if (showLoginForm) {
     return (
-      <>
-        <MetaTags
-          title="Login | HNWI Chronicles"
-          description="Access your HNWI Chronicles account. Dive into wealth intelligence and strategic insights for high-net-worth individuals."
-          image="https://hnwichronicles.com/login-og-image.jpg"
-          url="https://hnwichronicles.com/login"
-        />
         <div className="min-h-screen flex flex-col bg-background">
           <ParticlesBackground />
 
@@ -865,18 +875,10 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
             </div>
           </footer>
         </div>
-      </>
     )
   }
 
   return (
-    <>
-      <MetaTags
-        title="HNWI Chronicles – Your Gateway to Global Wealth Intelligence"
-        description="Unlock exclusive insights, playbooks, and strategic intelligence tailored for High-Net-Worth Individuals. HNWI Chronicles empowers you with data-driven strategies, industry trends, and actionable frameworks to navigate the world of wealth and influence."
-        image="https://hnwichronicles.com/og-image.jpg"
-        url="https://montaigne.co/hnwichronicles"
-      />
       <div
         className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300 bg-background`}
       >
@@ -1130,6 +1132,5 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           </div>
         </footer>
       </div>
-    </>
   )
 }

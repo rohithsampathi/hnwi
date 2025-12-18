@@ -34,13 +34,13 @@ export class AuthenticationManager {
   private initialize(): void {
     if (typeof window === 'undefined') return;
 
-    // Try to recover user from sessionStorage
-    const storedUser = sessionStorage.getItem('userObject');
+    // Try to recover user from localStorage (changed from sessionStorage for hard refresh persistence)
+    const storedUser = localStorage.getItem('userObject');
 
     if (storedUser) {
       try {
         this.user = JSON.parse(storedUser);
-        // If we have user data in sessionStorage, we're authenticated
+        // If we have user data in localStorage, we're authenticated
         // (the backend cookies will validate on API calls)
         this.authenticated = true;
       } catch (error) {
@@ -52,14 +52,14 @@ export class AuthenticationManager {
   public login(userData: User): User {
     if (typeof window === 'undefined') return userData;
 
-    // Store user data in memory and sessionStorage
+    // Store user data in memory and localStorage
     this.user = userData;
     this.authenticated = true;
 
-    // Store user data in sessionStorage (NOT localStorage - session only)
-    sessionStorage.setItem('userEmail', userData.email || '');
-    sessionStorage.setItem('userId', userData.id || userData.user_id || '');
-    sessionStorage.setItem('userObject', JSON.stringify(userData));
+    // Store user data in localStorage (changed from sessionStorage for hard refresh persistence)
+    localStorage.setItem('userEmail', userData.email || '');
+    localStorage.setItem('userId', userData.id || userData.user_id || '');
+    localStorage.setItem('userObject', JSON.stringify(userData));
 
     // CRITICAL FIX: Also sync to pwaStorage for lib/api.ts compatibility
     // lib/api.ts reads from pwaStorage via secure-api's getCurrentUserId()
@@ -92,13 +92,12 @@ export class AuthenticationManager {
     this.authenticated = false;
 
     // Clear all storage (including login timestamp)
-    sessionStorage.clear();
-
-    // Clear legacy localStorage (migration cleanup)
-    // Cookies handle auth - no token removal needed
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
     localStorage.removeItem('userObject');
+
+    // Also clear any legacy sessionStorage items
+    sessionStorage.clear();
 
     // CRITICAL FIX: Also clear pwaStorage to stay in sync
     if (typeof window !== 'undefined') {
@@ -122,14 +121,14 @@ export class AuthenticationManager {
   }
 
   public getCurrentUser(): User | null {
-    // Always check sessionStorage first to ensure we have the latest data
-    // This is important for navigation between pages
+    // Always check localStorage first to ensure we have the latest data
+    // This is important for navigation between pages and hard refreshes
     if (typeof window !== 'undefined') {
-      const storedUser = sessionStorage.getItem('userObject');
+      const storedUser = localStorage.getItem('userObject');
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          // Update in-memory cache if sessionStorage has newer data
+          // Update in-memory cache if localStorage has newer data
           if (!this.user || JSON.stringify(this.user) !== storedUser) {
             this.user = parsedUser;
             this.authenticated = true;
@@ -138,7 +137,7 @@ export class AuthenticationManager {
           // Failed to parse stored user;
         }
       } else {
-        // No user in sessionStorage - clear memory cache
+        // No user in localStorage - clear memory cache
         this.user = null;
         this.authenticated = false;
       }
@@ -155,7 +154,7 @@ export class AuthenticationManager {
     }
 
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('userId');
+      return localStorage.getItem('userId');
     }
 
     return null;
@@ -181,7 +180,7 @@ export class AuthenticationManager {
     this.user = { ...this.user, ...updates };
 
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('userObject', JSON.stringify(this.user));
+      localStorage.setItem('userObject', JSON.stringify(this.user));
 
       // Emit update event
       window.dispatchEvent(new CustomEvent('auth:userUpdated', {

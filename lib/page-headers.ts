@@ -86,6 +86,11 @@ export const PAGE_HEADERS: Record<string, PageHeaderConfig> = {
     description: 'Manage your account settings and preferences.',
     showBackButton: true,
   },
+  'trusted-network': {
+    title: 'Executor Directory',
+    description: 'Vetted executors for intelligence-driven action',
+    showBackButton: true,
+  },
 }
 
 // Routes that should never show headers

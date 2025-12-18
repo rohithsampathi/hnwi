@@ -22,6 +22,7 @@ import { TierPricingModal } from '@/components/assessment/TierPricingModal';
 import { getCurrentUser, isAuthenticated } from '@/lib/auth-manager';
 import { secureApi } from '@/lib/secure-api';
 import { CrownLoader } from '@/components/ui/crown-loader';
+import { usePageTitle } from '@/hooks/use-page-title';
 import {
   ExecutiveSummary,
   SpiderGraphComparison,
@@ -86,6 +87,15 @@ export default function AssessmentResultsClient() {
   } = useCitationManager();
 
   const { getResults } = useAssessmentAPI();
+
+  // Set dynamic page title based on results
+  usePageTitle(
+    results && results.tier
+      ? `Your ${results.tier.charAt(0).toUpperCase() + results.tier.slice(1)} Strategic Results`
+      : 'Your Strategic Results',
+    undefined,
+    [results?.tier]
+  );
 
   // Convert briefs_cited + celebrity_opportunities + personalized_opportunities analysis to Citation format (ZERO DUPLICATES GUARANTEED)
   useEffect(() => {

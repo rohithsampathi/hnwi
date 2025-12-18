@@ -175,7 +175,7 @@ export const HighConfidenceUnlock: React.FC<HighConfidenceUnlockProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2 text-gray-300">
                       <div className={`w-1.5 h-1.5 rounded-full bg-${config.color}`} />
-                      1,562+ intelligence briefs
+                      1,900+ intelligence briefs
                     </div>
                     <div className="flex items-center gap-2 text-gray-300">
                       <div className={`w-1.5 h-1.5 rounded-full bg-${config.color}`} />

@@ -4,9 +4,16 @@
 
 import { useRouter } from "next/navigation"
 import { TrustedNetworkPage } from "@/components/pages/trusted-network-page"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function TrustedNetworkRoute() {
   const router = useRouter()
+
+  // Set page title and meta description
+  usePageTitle(
+    "Executor Directory",
+    "Vetted executors for intelligence-driven action. Trusted professionals and service providers for implementing your wealth strategies."
+  )
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {

@@ -127,9 +127,9 @@ class UnifiedAuthManager {
       }
 
       if (result.success && result.user) {
-        // CRITICAL: Set login timestamp IMMEDIATELY on success
+        // CRITICAL: Set login timestamp IMMEDIATELY on success (changed to localStorage for hard refresh persistence)
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem('loginTimestamp', Date.now().toString())
+          localStorage.setItem('loginTimestamp', Date.now().toString())
         }
 
         // Direct login success - sync all auth systems
@@ -205,9 +205,9 @@ class UnifiedAuthManager {
           })
         }
 
-        // CRITICAL: Set login timestamp IMMEDIATELY on MFA success
+        // CRITICAL: Set login timestamp IMMEDIATELY on MFA success (changed to localStorage for hard refresh persistence)
         if (typeof window !== 'undefined') {
-          sessionStorage.setItem('loginTimestamp', Date.now().toString())
+          localStorage.setItem('loginTimestamp', Date.now().toString())
         }
 
         // MFA success - sync all auth systems and clear stored email
@@ -492,15 +492,21 @@ class UnifiedAuthManager {
     // 2. Mark secure-api as authenticated
     setAuthState(true)
 
-    // 3. Ensure sessionStorage persistence (critical for PWA)
+    // 3. Ensure localStorage persistence (critical for PWA and hard refresh)
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('userObject', JSON.stringify(user))
-      sessionStorage.setItem('userId', user.id || user.user_id || '')
-      sessionStorage.setItem('userEmail', user.email || '')
+      localStorage.setItem('userObject', JSON.stringify(user))
+      localStorage.setItem('userId', user.id || user.user_id || '')
+      localStorage.setItem('userEmail', user.email || '')
 
       // CRITICAL FIX: Set login timestamp to prevent immediate session checks
       // This gives cookies time to propagate before any authenticated API calls
       // Especially important in incognito mode where cookies may take longer to set
+      localStorage.setItem('loginTimestamp', Date.now().toString())
+
+      // Also keep in sessionStorage for backward compatibility with some components
+      sessionStorage.setItem('userObject', JSON.stringify(user))
+      sessionStorage.setItem('userId', user.id || user.user_id || '')
+      sessionStorage.setItem('userEmail', user.email || '')
       sessionStorage.setItem('loginTimestamp', Date.now().toString())
     }
 

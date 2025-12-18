@@ -5,8 +5,8 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { HomeDashboardElite } from "@/components/home-dashboard-elite"
-import { MetaTags } from "@/components/meta-tags"
 import { getCurrentUser } from "@/lib/auth-manager"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -14,6 +14,12 @@ export default function DashboardPage() {
   const [isCheckingAccess, setIsCheckingAccess] = useState(true)
   const [hasAssessment, setHasAssessment] = useState(false)
   const [hasCheckedAccess, setHasCheckedAccess] = useState(false) // Prevent multiple checks
+
+  // Set page title and meta description
+  usePageTitle(
+    "Home",
+    "Real-time wealth intelligence dashboard. Elite pulse insights, AI-scored opportunities, and market intelligence for ultra-high-net-worth individuals."
+  )
 
   // Load user data from centralized auth and listen for updates
   useEffect(() => {
@@ -113,38 +119,22 @@ export default function DashboardPage() {
   // Show loading while checking access
   if (isCheckingAccess) {
     return (
-      <>
-        <MetaTags
-          title="HNWI Chronicles Dashboard - Loading"
-          description="Loading your personalized wealth intelligence dashboard."
-          image="https://app.hnwichronicles.com/images/dashboard-og.png"
-          url="https://app.hnwichronicles.com/dashboard"
-        />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
-      </>
+      </div>
     )
   }
 
   // Always render dashboard - P toggle will handle assessment prompting
   return (
-    <>
-      <MetaTags
-        title="HNWI Chronicles Dashboard - Your Wealth Intelligence Command Center"
-        description="Access exclusive market intelligence, investment opportunities, and wealth strategies designed for high-net-worth individuals. Your personalized dashboard for financial success."
-        image="https://app.hnwichronicles.com/images/dashboard-og.png"
-        url="https://app.hnwichronicles.com/dashboard"
-      />
-      <HomeDashboardElite
-        user={user}
-        userData={user}
-        onNavigate={handleNavigation}
-        hasCompletedAssessmentProp={hasAssessment}
-      />
-    </>
+    <HomeDashboardElite
+      user={user}
+      userData={user}
+      onNavigate={handleNavigation}
+      hasCompletedAssessmentProp={hasAssessment}
+    />
   )
 }

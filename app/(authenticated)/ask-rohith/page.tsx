@@ -4,10 +4,16 @@
 
 import { useRouter } from "next/navigation"
 import { AskRohithPage } from "@/components/pages/ask-rohith-page"
-import { MetaTags } from "@/components/meta-tags"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function AskRohithRoute() {
   const router = useRouter()
+
+  // Set page title and meta description
+  usePageTitle(
+    "Ask Rohith",
+    "Your 24/7 AI intelligence ally with complete conversation memory and portfolio awareness. Strategic analysis, market research, and wealth preservation strategies from 50+ years HNWI patterns."
+  )
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {
@@ -34,15 +40,5 @@ export default function AskRohithRoute() {
     }
   }
 
-  return (
-    <>
-      <MetaTags
-        title="Ask Rohith | Private Intelligence Ally - HNWI Chronicles"
-        description="Chat with Rohith, your private intelligence ally with full portfolio awareness and memory. Get personalized investment insights, market analysis, and strategic intelligence."
-        image="https://app.hnwichronicles.com/images/ask-rohith-og.png"
-        url="https://app.hnwichronicles.com/ask-rohith"
-      />
-      <AskRohithPage onNavigate={handleNavigation} />
-    </>
-  )
+  return <AskRohithPage onNavigate={handleNavigation} />
 }

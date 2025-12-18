@@ -123,7 +123,7 @@ export const GamifiedUpgrade: React.FC<GamifiedUpgradeProps> = ({
               </li>
               <li className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5" />
-                <span>Limited exposure to 1,562 HNWI World intelligence briefs</span>
+                <span>Limited exposure to 1,900+ HNWI World intelligence briefs</span>
               </li>
               <li className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5" />
@@ -156,7 +156,7 @@ export const GamifiedUpgrade: React.FC<GamifiedUpgradeProps> = ({
 
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-black/40 rounded-lg p-4">
-              <div className="text-yellow-500 font-bold mb-2">1,562+ Intelligence Briefs</div>
+              <div className="text-yellow-500 font-bold mb-2">1,900+ Intelligence Briefs</div>
               <div className="text-sm text-gray-400">
                 Since February 2023. Pattern recognition that's impossible without historical context.
               </div>

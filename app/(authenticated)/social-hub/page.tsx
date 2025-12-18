@@ -4,9 +4,16 @@
 
 import { useRouter } from "next/navigation"
 import { SocialHubPage } from "@/components/pages/social-hub-page"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function SocialHubRoute() {
   const router = useRouter()
+
+  // Set page title and meta description
+  usePageTitle(
+    "Social Hub",
+    "Where the right people gather. Elite events with average attendee $5M+ net worth. Investment syndication, Art Basel VIP access, Davos side events, and co-investment opportunities."
+  )
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {

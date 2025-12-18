@@ -9,7 +9,7 @@ import { AssessmentLanding } from '@/components/assessment/AssessmentLanding';
 import { MapIntroduction } from '@/components/assessment/MapIntroduction';
 import { AssessmentQuestion } from '@/components/assessment/AssessmentQuestion';
 import { DigitalTwinWaitingInteractive as DigitalTwinWaiting } from '@/components/assessment/DigitalTwinWaitingInteractive';
-import { MetaTags } from '@/components/meta-tags';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useAssessmentState, Question } from '@/lib/hooks/useAssessmentState';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
 import { useAssessmentSSE } from '@/lib/hooks/useAssessmentSSE';
@@ -99,6 +99,40 @@ export default function AuthenticatedAssessmentPage() {
     pdfUrl,
     resultData
   } = useAssessmentSSE(sessionId);
+
+  // Dynamic page title and description based on flow stage
+  const getPageTitle = () => {
+    switch (flowStage) {
+      case 'landing':
+        return 'Strategic DNA Drill';
+      case 'map_intro':
+        return 'HNWI World';
+      case 'assessment':
+        return `Decision Drill - Scenario ${currentQuestionIndex + 1}/10`;
+      case 'digital_twin':
+        return 'Strategic DNA Analysis';
+      default:
+        return 'Strategic DNA Drill';
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (flowStage) {
+      case 'landing':
+        return 'Reveal your strategic DNA under visibility pressure. A decision drill for cross-border and real-asset complexity that determines your wealth archetype.';
+      case 'map_intro':
+        return 'Explore the global landscape of wealth opportunities and strategic positioning across jurisdictions and asset classes.';
+      case 'assessment':
+        return 'Navigate complex scenarios to reveal your strategic decision-making patterns and wealth management style.';
+      case 'digital_twin':
+        return 'Your strategic DNA analysis is being generated. Comprehensive insights into your wealth archetype and personalized intelligence recommendations.';
+      default:
+        return 'Discover your wealth archetype through strategic decision scenarios tailored to HNWI complexity.';
+    }
+  };
+
+  // Set dynamic page title based on current flow stage
+  usePageTitle(getPageTitle(), getPageDescription(), [flowStage, currentQuestionIndex])
 
   // Load user data
   useEffect(() => {
@@ -392,30 +426,14 @@ export default function AuthenticatedAssessmentPage() {
   // Landing page - always show, backend will handle restrictions
   if (flowStage === 'landing' && !hasProgressedPastLanding.current) {
     return (
-      <>
-        <MetaTags
-          title="C10 Strategic Simulation - HNWI Chronicles"
-          description="Take the exclusive 10-question simulation to discover your strategic tier and unlock personalized intelligence."
-          image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/simulation"
-        />
         <AssessmentLanding onContinue={handleShowMapIntro} />
-      </>
     );
   }
 
   // Map Introduction
   if (flowStage === 'map_intro') {
     return (
-      <>
-        <MetaTags
-          title="HNWI World - Strategic Simulation"
-          description="Explore the reality of HNWI World before your simulation begins."
-          image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/simulation"
-        />
         <MapIntroduction onContinue={handleStartAssessment} />
-      </>
     );
   }
 
@@ -423,13 +441,6 @@ export default function AuthenticatedAssessmentPage() {
   // Digital Twin waiting screen
   if (flowStage === 'digital_twin' && sessionId) {
     return (
-      <>
-        <MetaTags
-          title="C10 Simulation - Digital Twin"
-          description="Running your personalized Digital Twin simulation through crisis scenarios."
-          image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/simulation"
-        />
         <DigitalTwinWaiting
           sessionId={sessionId}
           onComplete={handleDigitalTwinComplete}
@@ -438,7 +449,6 @@ export default function AuthenticatedAssessmentPage() {
           pdfUrl={pdfUrl}
           resultData={resultData}
         />
-      </>
     );
   }
 
@@ -448,13 +458,6 @@ export default function AuthenticatedAssessmentPage() {
 
     return (
       <>
-        <MetaTags
-          title={`C10 Simulation - Question ${currentQuestionIndex + 1}/10`}
-          description="Strategic scenario analysis in progress."
-          image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/simulation"
-        />
-
         {/* Question with Integrated Map and Calibration */}
         <AssessmentQuestion
           question={currentQuestion}
@@ -485,13 +488,6 @@ export default function AuthenticatedAssessmentPage() {
   // Show completing state if we're in the fallback scenario
   if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
     return (
-      <>
-        <MetaTags
-          title="C10 Simulation - Completing"
-          description="Finalizing your simulation results."
-          image="https://app.hnwichronicles.com/images/assessment-og.png"
-          url="https://app.hnwichronicles.com/simulation"
-        />
         <div className="flex items-center justify-center p-12">
           <CrownLoader
             size="lg"
@@ -499,19 +495,12 @@ export default function AuthenticatedAssessmentPage() {
             subtext="Preparing your strategic DNA analysis..."
           />
         </div>
-      </>
     );
   }
 
   // Loading or error state
   return (
     <>
-      <MetaTags
-        title="C10 Simulation - Initializing"
-        description="Initializing strategic classification protocol."
-        image="https://app.hnwichronicles.com/images/assessment-og.png"
-        url="https://app.hnwichronicles.com/simulation"
-      />
       <div className="flex items-center justify-center p-12">
         <div className="text-center">
           {error ? (

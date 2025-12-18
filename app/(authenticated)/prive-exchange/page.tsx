@@ -4,9 +4,16 @@
 
 import { useRouter } from "next/navigation"
 import { PriveExchangePage } from "@/components/pages/prive-exchange-page"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function PriveExchangeRoute() {
   const router = useRouter()
+
+  // Set page title and meta description
+  usePageTitle(
+    "Privé Exchange",
+    "Off-market investment opportunities. $100K+ minimum investments unavailable publicly. Pre-vetted through 47-point due diligence with 15-25% expected annual returns."
+  )
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {

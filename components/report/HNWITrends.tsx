@@ -64,7 +64,7 @@ export function HNWITrends({ trends, onTrendClick }: HNWITrendsProps) {
       {/* Bottom Note */}
       <div className="mt-6 p-4 bg-primary/10 border border-primary/30 rounded-lg">
         <p className="text-sm text-foreground text-center">
-          Intelligence powered by <span className="text-primary font-bold">1,562+ developments</span> from HNWI World
+          Intelligence powered by <span className="text-primary font-bold">1,900+ developments</span> from HNWI World
         </p>
       </div>
     </section>

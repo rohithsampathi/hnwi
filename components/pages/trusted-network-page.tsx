@@ -70,8 +70,6 @@ import { getMetallicCardStyle } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { PremiumBadge } from "@/components/ui/premium-badge";
-import { PageWrapper } from "@/components/ui/page-wrapper";
-import { PageHeaderWithBack } from "@/components/ui/back-button";
 import { usePageDataCache } from "@/contexts/page-data-cache-context";
 import {
   getExecutors,
@@ -375,19 +373,9 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   };
 
   return (
-    <PageWrapper>
-      <div className="container mx-auto px-4 pb-20">
-        {/* Header */}
-        <PageHeaderWithBack
-          title="Executor Directory"
-          icon={Network}
-          description="Vetted executors for intelligence-driven action"
-          onBack={() => onNavigate?.("dashboard")}
-        />
-        <div className="mb-8" />
-
+    <>
       {/* Filters */}
-      <div className="mb-6 space-y-4">
+      <div className="mb-6 space-y-4 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Category Filter */}
           <Select value={categoryFilter} onValueChange={(val) => {
@@ -506,7 +494,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
 
       {/* Executors Grid */}
       {!loading && !error && (
-        <>
+        <div className="pb-20 max-w-7xl mx-auto">
           <div className="mb-4 text-sm text-muted-foreground">
             {executors.length} executor{executors.length !== 1 ? "s" : ""} found
           </div>
@@ -852,9 +840,8 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
               </Button>
             </div>
           )}
-        </>
+        </div>
       )}
-      </div>
 
       {/* Introduction Request Modal */}
       <Dialog open={showIntroModal} onOpenChange={setShowIntroModal}>
@@ -940,6 +927,6 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageWrapper>
+    </>
   );
 }

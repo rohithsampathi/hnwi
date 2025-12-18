@@ -221,6 +221,7 @@ export function SidebarNavigation({
       icon: ClipboardCheck,
       route: "assessment",
       description: "Discover your wealth archetype and get personalized strategic insights tailored to your profile.",
+      isNew: true,
       businessOnly: false
     },
     // War Room - Hidden for now
@@ -261,7 +262,7 @@ export function SidebarNavigation({
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
-    { name: "Simulation", icon: ClipboardCheck, route: "assessment" },
+    { name: "Simulation", icon: ClipboardCheck, route: "assessment", isNew: true },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
@@ -717,7 +718,7 @@ export function SidebarNavigation({
                     onClick={() => !isItemDisabled && handleNavigate(item.route)}
                     disabled={isItemDisabled}
                     className={cn(
-                      "flex items-center space-x-3 py-3 group",
+                      "flex items-center space-x-3 py-3 group relative",
                       isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background"
                     )}
                   >
@@ -731,6 +732,11 @@ export function SidebarNavigation({
                       isActive && 'text-primary',
                       theme === 'light' && "group-hover:text-white"
                     )}>{item.name}</span>
+                    {item.isNew && (
+                      <span className="ml-auto text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                        New
+                      </span>
+                    )}
                   </DropdownMenuItem>
                 )
               })}

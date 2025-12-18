@@ -10,8 +10,11 @@ import type { City } from "@/components/interactive-world-map"
 export function parseValueToNumber(value: string | undefined): number {
   if (!value) return 0
 
+  // Ensure value is a string (handle numbers and other types)
+  const valueStr = String(value)
+
   // Strip bracketed text (anything within parentheses)
-  let cleanValue = value.replace(/\s*\([^)]*\)/g, '').trim()
+  let cleanValue = valueStr.replace(/\s*\([^)]*\)/g, '').trim()
 
   // Remove $ and commas
   cleanValue = cleanValue.replace(/[$,]/g, '')
@@ -37,8 +40,11 @@ export function parseValueToNumber(value: string | undefined): number {
 export function formatLabel(text: string | undefined): string | undefined {
   if (!text) return text
 
+  // Ensure text is a string (handle numbers and other types)
+  const textStr = String(text)
+
   // Replace underscores with spaces
-  let formatted = text.replace(/_/g, ' ')
+  let formatted = textStr.replace(/_/g, ' ')
 
   // Convert from all caps or mixed case to Title Case
   formatted = formatted.toLowerCase()
@@ -56,8 +62,11 @@ export function formatLabel(text: string | undefined): string | undefined {
 export function formatValue(value: string | undefined): string | undefined {
   if (!value) return value
 
+  // Ensure value is a string (handle numbers and other types)
+  const valueStr = String(value)
+
   // Strip bracketed text (anything within parentheses)
-  const cleanValue = value.replace(/\s*\([^)]*\)/g, '').trim()
+  const cleanValue = valueStr.replace(/\s*\([^)]*\)/g, '').trim()
 
   // If already has K, M, B suffix, return as is
   if (/[KMB]$/i.test(cleanValue)) return cleanValue
@@ -89,30 +98,33 @@ export function formatValue(value: string | undefined): string | undefined {
 export function cleanAnalysisText(analysis: string | undefined): string | undefined {
   if (!analysis) return analysis
 
+  // Ensure analysis is a string (handle numbers and other types)
+  const analysisStr = String(analysis)
+
   // Check if text contains "Risk Profile:"
-  const riskProfileIndex = analysis.indexOf('Risk Profile:')
+  const riskProfileIndex = analysisStr.indexOf('Risk Profile:')
 
   if (riskProfileIndex !== -1) {
     // Find the first " - " after "Risk Profile:"
-    const dashIndex = analysis.indexOf(' - ', riskProfileIndex)
+    const dashIndex = analysisStr.indexOf(' - ', riskProfileIndex)
 
     if (dashIndex !== -1) {
       // Return everything after " - "
-      return analysis.substring(dashIndex + 3).trim() // +3 to skip " - "
+      return analysisStr.substring(dashIndex + 3).trim() // +3 to skip " - "
     }
   }
 
   // Fallback: If no "Risk Profile:" found, check for "Entry Investment:" at the start
-  if (analysis.startsWith('Entry Investment:')) {
+  if (analysisStr.startsWith('Entry Investment:')) {
     // Find first " - " and take everything after it
-    const dashIndex = analysis.indexOf(' - ')
+    const dashIndex = analysisStr.indexOf(' - ')
     if (dashIndex !== -1) {
-      return analysis.substring(dashIndex + 3).trim()
+      return analysisStr.substring(dashIndex + 3).trim()
     }
   }
 
   // Return original if no patterns matched
-  return analysis.trim()
+  return analysisStr.trim()
 }
 
 /**
@@ -120,7 +132,10 @@ export function cleanAnalysisText(analysis: string | undefined): string | undefi
  */
 export function formatSource(source: string | undefined): string | undefined {
   if (!source) return source
-  const lowerSource = source.toLowerCase()
+
+  // Ensure source is a string (handle numbers and other types)
+  const sourceStr = String(source)
+  const lowerSource = sourceStr.toLowerCase()
 
   if (lowerSource === 'moev4' || lowerSource === 'moe v4') {
     return 'Live HNWI Data'
@@ -139,12 +154,15 @@ export function formatSource(source: string | undefined): string | undefined {
 export function cleanTitle(title: string | undefined, source: string | undefined): string | undefined {
   if (!title) return title
 
+  // Ensure title is a string (handle numbers and other types)
+  const titleStr = String(title)
+
   // Remove 🔐 emoji from Crown Vault opportunities
   if (source?.toLowerCase().includes('crown vault')) {
-    return title.replace(/🔐\s*/g, '').trim()
+    return titleStr.replace(/🔐\s*/g, '').trim()
   }
 
-  return title
+  return titleStr
 }
 
 /**
@@ -153,24 +171,28 @@ export function cleanTitle(title: string | undefined, source: string | undefined
 export function generateTier(value: string | undefined, source: string | undefined): string | undefined {
   if (!value || !source) return undefined
 
+  // Ensure value and source are strings (handle numbers and other types)
+  const valueStr = String(value)
+  const sourceStr = String(source)
+
   // Only generate tier for Prive Exchange/Market Place
-  const lowerSource = source.toLowerCase()
+  const lowerSource = sourceStr.toLowerCase()
   if (lowerSource !== 'prive exchange' && lowerSource !== 'privé exchange') {
     return undefined
   }
 
   // Extract numeric value
-  const match = value.match(/\$?([\d,]+)/)
+  const match = valueStr.match(/\$?([\d,]+)/)
   if (!match) return undefined
 
   let num = parseFloat(match[1].replace(/,/g, ''))
 
   // If value has K suffix, multiply by 1000
-  if (/K$/i.test(value)) {
+  if (/K$/i.test(valueStr)) {
     num = num * 1000
   }
   // If value has M suffix, multiply by 1,000,000
-  else if (/M$/i.test(value)) {
+  else if (/M$/i.test(valueStr)) {
     num = num * 1000000
   }
   // Assume values without suffix are in thousands
@@ -347,7 +369,10 @@ export function getCategoryIcon(city: City, iconColor: string): string {
 export function getOpacityFromAge(startDate: string | undefined): number {
   if (!startDate) return 0.30 // Default to 70% transparency if no date
 
-  const opportunityDate = new Date(startDate)
+  // Ensure startDate is a string (handle numbers and other types)
+  const startDateStr = String(startDate)
+
+  const opportunityDate = new Date(startDateStr)
   const now = new Date()
   const ageInMs = now.getTime() - opportunityDate.getTime()
   const ageInMonths = ageInMs / (1000 * 60 * 60 * 24 * 30) // Approximate months

@@ -62,7 +62,7 @@ The C10 Assessment has been completely redesigned to be premium, immersive, and 
 const [briefCount, setBriefCount] = useState<number | null>(null);
 useEffect(() => {
   const response = await fetch('/api/developments/counts');
-  setBriefCount(data.total || 1562);
+  setBriefCount(data.total || 1900);
 }, []);
 
 // Mobile-first grid

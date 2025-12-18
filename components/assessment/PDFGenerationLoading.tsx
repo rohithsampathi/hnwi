@@ -191,11 +191,11 @@ export const PDFGenerationLoading: React.FC<PDFGenerationLoadingProps> = ({
             <div className="text-sm text-gray-500 mb-1">DEVIDs</div>
             <div className="text-2xl font-bold text-yellow-500">
               <motion.span
-                key={Math.floor(progress * 15.62)}
+                key={Math.floor(progress * 19)}
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                {Math.floor(progress * 15.62)}/1,562
+                {Math.floor(progress * 19)}/1,900
               </motion.span>
             </div>
           </div>

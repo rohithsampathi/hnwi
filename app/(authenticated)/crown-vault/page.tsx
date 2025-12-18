@@ -4,9 +4,16 @@
 
 import { useRouter } from "next/navigation"
 import CrownVaultPage from "@/components/pages/crown-vault-page"
+import { usePageTitle } from "@/hooks/use-page-title"
 
 export default function CrownVaultRoute() {
   const router = useRouter()
+
+  // Set page title and meta description
+  usePageTitle(
+    "Crown Vault",
+    "Generational wealth architecture. AI-powered asset management with military-grade encryption, heir management, and estate planning to prevent 70% typical wealth transfer loss."
+  )
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {
