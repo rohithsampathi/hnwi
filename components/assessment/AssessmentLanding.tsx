@@ -116,23 +116,23 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             transition={{ duration: 1 }}
             className="fixed inset-0 pointer-events-none z-50"
           >
-            <div className="absolute top-4 left-4 w-12 h-12 border-t-2 border-l-2 border-primary/30" />
-            <div className="absolute top-4 right-4 w-12 h-12 border-t-2 border-r-2 border-primary/30" />
-            <div className="absolute bottom-4 left-4 w-12 h-12 border-b-2 border-l-2 border-primary/30" />
-            <div className="absolute bottom-4 right-4 w-12 h-12 border-b-2 border-r-2 border-primary/30" />
+            <div className="absolute top-4 left-4 w-12 h-12 lg:w-16 lg:h-16 border-t border-l border-primary/20 lg:border-primary/30 lg:border-t-2 lg:border-l-2" />
+            <div className="absolute top-4 right-4 w-12 h-12 lg:w-16 lg:h-16 border-t border-r border-primary/20 lg:border-primary/30 lg:border-t-2 lg:border-r-2" />
+            <div className="absolute bottom-4 left-4 w-12 h-12 lg:w-16 lg:h-16 border-b border-l border-primary/20 lg:border-primary/30 lg:border-b-2 lg:border-l-2" />
+            <div className="absolute bottom-4 right-4 w-12 h-12 lg:w-16 lg:h-16 border-b border-r border-primary/20 lg:border-primary/30 lg:border-b-2 lg:border-r-2" />
           </motion.div>
         )}
 
         {/* Ambient gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
+        <div className="hidden sm:block absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
+        <div className="hidden sm:block absolute bottom-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
 
         <motion.div
           initial={vaultUnlocked ? { opacity: 0, scale: 0.95 } : false}
           animate={vaultUnlocked ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 md:py-24"
+          className="relative z-10 max-w-6xl mx-auto px-2 sm:px-6 lg:px-8 py-8 sm:py-20 lg:py-24"
         >
 
           {/* Hero Section */}
@@ -140,20 +140,20 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: vaultUnlocked ? 0.3 : 0 }}
-            className="text-center mb-40"
+            className="text-center mb-16 sm:mb-24 md:mb-32 lg:mb-40"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/80 backdrop-blur-md border border-primary/40 mb-8 shadow-xl shadow-primary/10"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/60 sm:bg-card/80 backdrop-blur-sm sm:backdrop-blur-md border border-primary/30 sm:border-primary/40 mb-8 sm:shadow-xl sm:shadow-primary/10"
             >
               <Lock className="w-4 h-4 text-primary" />
               <span className="text-xs sm:text-sm font-semibold text-primary tracking-wide">INVITE-ONLY • VERIFIED ACCESS</span>
             </motion.div>
 
             <motion.h1
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-foreground mb-8 leading-[1.05] tracking-tight"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-foreground mb-6 sm:mb-8 leading-[1.05] tracking-tight px-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: vaultUnlocked ? 0.5 : 0 }}
@@ -171,7 +171,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             </motion.h1>
 
             <motion.p
-              className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-light mb-12"
+              className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-light mb-8 sm:mb-12 px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: vaultUnlocked ? 1.8 : 0.4 }}
@@ -197,7 +197,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
               transition={{ duration: 0.6, delay: vaultUnlocked ? 2.4 : 0.5 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className={`group inline-flex items-center justify-center gap-3 px-12 py-6 rounded-2xl font-bold text-lg transition-all shadow-2xl relative overflow-hidden ${
+              className={`group inline-flex items-center justify-center gap-2 sm:gap-3 px-8 sm:px-12 py-4 sm:py-6 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all shadow-lg sm:shadow-2xl relative overflow-hidden ${
                 isStarting
                   ? 'bg-primary/50 text-primary-foreground/70 cursor-not-allowed'
                   : 'bg-primary text-primary-foreground hover:shadow-primary/30'
@@ -241,24 +241,24 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: vaultUnlocked ? 3.2 : 0.8 }}
-            className="mb-40"
+            className="mb-16 sm:mb-24 md:mb-32 lg:mb-40"
           >
-            <div className="bg-gradient-to-br from-card/40 to-card/20 backdrop-blur-2xl border border-primary/20 rounded-3xl p-10 sm:p-14 shadow-2xl">
+            <div className="bg-gradient-to-br from-card/40 to-card/20 backdrop-blur-sm lg:backdrop-blur-2xl border border-primary/10 lg:border-primary/20 rounded-2xl lg:rounded-3xl p-4 sm:p-8 lg:p-14 shadow-sm lg:shadow-2xl lg:shadow-primary/5">
               <div className="text-center mb-12">
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 px-2">
                   Built on tracked intelligence
                 </h2>
-                <p className="text-lg text-muted-foreground font-light max-w-2xl mx-auto">
+                <p className="text-base sm:text-lg text-muted-foreground font-light max-w-2xl mx-auto px-4">
                   Your answers are benchmarked against patterns we track across real-world developments and wealth signals.
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-8 sm:gap-12">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
                 <div className="text-center">
-                  <div className="text-6xl sm:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
+                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
                     {loadingCount ? '...' : formatNumber(briefCount || 1900)}
                   </div>
-                  <div className="text-sm sm:text-base text-muted-foreground font-medium uppercase tracking-wider">
+                  <div className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">
                     HNWI Developments
                   </div>
                   <div className="text-xs text-muted-foreground/60 font-light mt-2">
@@ -267,10 +267,10 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                 </div>
 
                 <div className="text-center">
-                  <div className="text-6xl sm:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
+                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
                     92K+
                   </div>
-                  <div className="text-sm sm:text-base text-muted-foreground font-medium uppercase tracking-wider">
+                  <div className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">
                     Wealth Signals
                   </div>
                   <div className="text-xs text-muted-foreground/60 font-light mt-2">
@@ -279,10 +279,10 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                 </div>
 
                 <div className="text-center">
-                  <div className="text-6xl sm:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
+                  <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
                     10
                   </div>
-                  <div className="text-sm sm:text-base text-muted-foreground font-medium uppercase tracking-wider">
+                  <div className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">
                     Scenarios
                   </div>
                   <div className="text-xs text-muted-foreground/60 font-light mt-2">
@@ -298,13 +298,13 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: vaultUnlocked ? 3.8 : 1.0 }}
-            className="mb-40"
+            className="mb-16 sm:mb-24 md:mb-32 lg:mb-40"
           >
-            <div className="text-center mb-14">
-              <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-5">
+            <div className="text-center mb-10 sm:mb-14">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-5 px-2">
                 Three decision archetypes
               </h2>
-              <p className="text-xl text-muted-foreground font-light max-w-2xl mx-auto">
+              <p className="text-lg sm:text-xl text-muted-foreground font-light max-w-2xl mx-auto px-4">
                 Same markets. Different instincts. Discover yours.
               </p>
             </div>
@@ -315,25 +315,19 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                   tier: 'ARCHITECT',
                   tagline: 'Build systems',
                   desc: 'You build wealth infrastructure that compounds across generations. Multi-jurisdiction structures, generational planning, institutional thinking.',
-                  icon: Layers,
-                  gradient: 'from-primary/20 via-primary/10 to-primary/5',
-                  borderGlow: 'group-hover:shadow-primary/20'
+                  icon: Layers
                 },
                 {
                   tier: 'OPERATOR',
                   tagline: 'Execute windows',
                   desc: 'You spot timing edges and move capital quickly. Tactical excellence, opportunity recognition, fast execution within established systems.',
-                  icon: Target,
-                  gradient: 'from-primary/15 via-primary/8 to-primary/5',
-                  borderGlow: 'group-hover:shadow-primary/15'
+                  icon: Target
                 },
                 {
                   tier: 'OBSERVER',
                   tagline: 'Defend capital',
                   desc: 'You monitor threats and protect what you have built. Regulatory awareness, risk mitigation, wealth preservation through volatility.',
-                  icon: Shield,
-                  gradient: 'from-primary/10 via-primary/6 to-primary/5',
-                  borderGlow: 'group-hover:shadow-primary/10'
+                  icon: Shield
                 },
               ].map((archetype, index) => {
                 const Icon = archetype.icon;
@@ -343,13 +337,13 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: (vaultUnlocked ? 4.0 : 1.1) + (index * 0.15) }}
-                    className={`group relative bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-xl border border-primary/30 rounded-3xl p-8 hover:border-primary/60 transition-all duration-500 shadow-xl ${archetype.borderGlow}`}
+                    className="group relative bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-sm lg:backdrop-blur-xl border border-primary/20 lg:border-primary/30 rounded-2xl lg:rounded-3xl p-6 lg:p-8 hover:border-primary/60 transition-all duration-500 shadow-sm lg:shadow-xl hover:shadow-2xl hover:shadow-primary/10 overflow-hidden"
                   >
-                    {/* Animated gradient overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${archetype.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none`} />
+                    {/* Animated gradient overlay - desktop only */}
+                    <div className="hidden lg:block absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none" />
 
                     <div className="relative z-10">
-                      <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <div className="flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 rounded-xl lg:rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 lg:border-primary/30 mb-6 group-hover:scale-110 transition-transform duration-300">
                         <Icon className="w-10 h-10 text-primary" strokeWidth={1.5} />
                       </div>
                       <div className="mb-4">
@@ -365,8 +359,8 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                       </p>
                     </div>
 
-                    {/* Bottom accent line */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-3xl" />
+                    {/* Bottom accent line - desktop only */}
+                    <div className="hidden lg:block absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-b-3xl" />
                   </motion.div>
                 );
               })}
@@ -378,18 +372,18 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: vaultUnlocked ? 4.6 : 1.2 }}
-            className="bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-2xl border border-primary/20 rounded-3xl p-10 sm:p-14 shadow-2xl mb-32"
+            className="bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-sm lg:backdrop-blur-2xl border border-primary/10 lg:border-primary/20 rounded-2xl lg:rounded-3xl p-4 sm:p-8 lg:p-14 shadow-sm lg:shadow-2xl lg:shadow-primary/5 mb-16 sm:mb-20 md:mb-24 lg:mb-32"
           >
-            <div className="text-center mb-12">
-              <h3 className="text-4xl sm:text-5xl font-bold text-foreground mb-5">
+            <div className="text-center mb-8 sm:mb-12">
+              <h3 className="text-2xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 sm:mb-5 px-2">
                 What you'll receive
               </h3>
-              <p className="text-xl text-muted-foreground font-light">
+              <p className="text-base sm:text-xl text-muted-foreground font-light px-2">
                 A complete intelligence profile
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8">
               {[
                 {
                   title: 'Your archetype',
@@ -416,45 +410,49 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
                 return (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 1.3 + (index * 0.1) }}
-                    className="group p-8 rounded-2xl bg-gradient-to-br from-background/80 to-background/50 border border-primary/20 hover:border-primary/40 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 1.3 + (index * 0.1) }}
+                    className="group relative bg-gradient-to-br from-background/80 to-background/50 backdrop-blur-sm border border-primary/15 lg:border-primary/20 hover:border-primary/40 rounded-xl lg:rounded-2xl p-6 sm:p-8 transition-all duration-300 shadow-sm lg:shadow-lg hover:shadow-xl overflow-hidden"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                          <Icon className="w-6 h-6 text-primary" strokeWidth={2} />
+                    {/* Hover gradient overlay - desktop only */}
+                    <div className="hidden lg:block absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    <div className="relative z-10 text-center">
+                      <div className="flex items-center justify-center mb-4 lg:mb-6">
+                        <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 lg:border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                          <Icon className="w-7 h-7 lg:w-8 lg:h-8 text-primary" strokeWidth={2} />
                         </div>
                       </div>
-                      <div className="flex-1">
-                        <h4 className="text-xl font-semibold text-foreground mb-3">
-                          {item.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground font-light leading-relaxed">
-                          {item.desc}
-                        </p>
-                      </div>
+                      <h4 className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground mb-3 lg:mb-4">
+                        {item.title}
+                      </h4>
+                      <p className="text-sm sm:text-base text-muted-foreground font-light leading-relaxed">
+                        {item.desc}
+                      </p>
                     </div>
+
+                    {/* Bottom accent line - desktop only */}
+                    <div className="hidden lg:block absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </motion.div>
                 );
               })}
             </div>
 
             {/* Privacy footer */}
-            <div className="flex flex-wrap items-center justify-center gap-6 pt-10 mt-10 border-t border-primary/10 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 pt-6 sm:pt-10 mt-6 sm:mt-10 border-t border-primary/5 sm:border-primary/10 text-xs sm:text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-primary/70" />
-                <span>100% private</span>
+                <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-primary/70" />
+                <span className="whitespace-nowrap">100% private</span>
               </div>
-              <span>•</span>
-              <span>No allocation disclosure</span>
-              <span>•</span>
-              <span>Zero data stored</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">No allocation disclosure</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">Zero data stored</span>
+              <span className="hidden sm:inline">•</span>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary/70" />
-                <span>Results in ~10 minutes</span>
+                <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-primary/70" />
+                <span className="whitespace-nowrap">Results in ~10 minutes</span>
               </div>
             </div>
           </motion.div>
@@ -466,7 +464,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             transition={{ duration: 0.5, delay: vaultUnlocked ? 5.2 : 1.4 }}
             className="text-center"
           >
-            <p className="text-xs text-muted-foreground/60 font-light leading-relaxed max-w-3xl mx-auto">
+            <p className="text-xs text-muted-foreground/60 font-light leading-relaxed max-w-3xl mx-auto px-4">
               This is a decision-making simulation to surface strategic patterns. Scenarios reference structuring and regulatory themes as analytical exercises only. Not legal, tax, or financial advice.
             </p>
           </motion.div>
