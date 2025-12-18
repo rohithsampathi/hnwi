@@ -24,6 +24,36 @@ const nextConfig = {
     parallelServerCompiles: true,
     optimizeCss: true,
   },
+
+  // Cache control headers for OG meta tags and social sharing
+  async headers() {
+    return [
+      {
+        // Apply to all routes with OG meta tags
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, must-revalidate',
+          },
+          {
+            key: 'X-Robots-Tag',
+            value: 'index, follow',
+          },
+        ],
+      },
+      {
+        // Specific cache control for logo/OG images
+        source: '/logo.png',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, immutable',
+          },
+        ],
+      },
+    ];
+  },
   
   // Suppress development warnings
   onDemandEntries: {

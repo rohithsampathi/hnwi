@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Share2, ArrowRight } from 'lucide-react';
+import { Globe, Share2, ArrowRight, ChevronDown } from 'lucide-react';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
 import { AssessmentResults } from '@/lib/hooks/useAssessmentState';
 import type { Citation } from '@/lib/parse-dev-citations';
@@ -70,6 +70,14 @@ export default function SharedResultsClient() {
   } = useCitationManager();
 
   const { getResults } = useAssessmentAPI();
+
+  // Scroll to analysis section below map
+  const scrollToAnalysis = () => {
+    const analysisElement = document.getElementById('analysis-section');
+    if (analysisElement) {
+      analysisElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Convert briefs_cited + celebrity_opportunities + personalized_opportunities analysis to Citation format (ZERO DUPLICATES GUARANTEED)
   useEffect(() => {
@@ -372,7 +380,7 @@ export default function SharedResultsClient() {
 
                       return (
                         <>
-                          This <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> profile identified <span className="font-bold text-foreground">{filteredCount} validated opportunities</span> across {filteredCountries} countries where peers in this cohort have executed successfully.
+                          This <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> profile identified <span className="font-bold text-foreground">{filteredCount} tracked signals</span> across {filteredCountries} countries matched to this strategic posture. Each includes sources + case notes.
                         </>
                       );
                     })()}
@@ -382,7 +390,7 @@ export default function SharedResultsClient() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                     </svg>
                     <span>
-                      <span className="font-medium text-foreground">Click any location</span> to view peer execution data, intelligence sources, and performance metrics for each opportunity.
+                      <span className="font-medium text-foreground">Click any location</span> to view intelligence sources, case notes, and performance metrics for each signal.
                     </span>
                   </div>
                 </div>
@@ -448,6 +456,33 @@ export default function SharedResultsClient() {
                       />
                     );
                   })()}
+
+                  {/* Down Arrow - Scroll to Analysis */}
+                  <motion.button
+                    onClick={scrollToAnalysis}
+                    whileHover={{ scale: 1.1, y: 2 }}
+                    whileTap={{ scale: 0.9 }}
+                    animate={{
+                      y: [0, 4, 0],
+                      opacity: [0.7, 1, 0.7],
+                    }}
+                    transition={{
+                      y: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      },
+                      opacity: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
+                    }}
+                    className="absolute top-1/2 -translate-y-1/2 right-4 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-[9999]"
+                    title="View analysis"
+                  >
+                    <ChevronDown className="text-primary w-6 h-6 sm:w-7 sm:h-7" />
+                  </motion.button>
                 </div>
               </div>
             </motion.section>
@@ -458,6 +493,7 @@ export default function SharedResultsClient() {
             <>
               {/* Executive Summary */}
               <motion.div
+                id="analysis-section"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
@@ -558,6 +594,7 @@ export default function SharedResultsClient() {
 
           {/* Strategic Insights Infographic - Always show (uses simulation data) */}
           <motion.div
+            id={results.enhanced_report?.full_analytics?.strategic_positioning ? undefined : "analysis-section"}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}

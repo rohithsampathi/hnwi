@@ -52,17 +52,17 @@ const PREMIUM_COLORS = {
 const TIER_CONFIG = {
   architect: {
     label: 'ARCHITECT',
-    subtitle: 'Systems Architect · Top 0.1% Global HNWI Strategy',
+    subtitle: 'Systems Builder · Strategic intelligence for long-term wealth architecture',
     color: PREMIUM_COLORS.gold,
   },
   operator: {
     label: 'OPERATOR',
-    subtitle: 'Strategic Operator · Top 1% Execution',
+    subtitle: 'Tactical Executor · Intelligence optimized for rapid deployment',
     color: PREMIUM_COLORS.platinum,
   },
   observer: {
     label: 'OBSERVER',
-    subtitle: 'Market Observer · Top 10% Awareness',
+    subtitle: 'Defensive Posture · Intelligence focused on wealth preservation',
     color: PREMIUM_COLORS.slate,
   },
   premium: {
@@ -325,7 +325,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
       subtitle: `Qualified for top ${100 - reportData.executive_summary.percentile}% most sophisticated opportunities`
     },
     {
-      label: 'Validated Opportunities',
+      label: 'Validated Signals',
       value: reportData.executive_summary.opportunities_accessible.toString(),
       subtitle: `${reportData.executive_summary.opportunities_missed} peer-executed opportunities missed`
     },
@@ -337,7 +337,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     {
       label: 'Gap Analysis',
       value: `+${Math.round(reportData.executive_summary.optimization_potential * 100)}%`,
-      subtitle: 'Performance gap vs top 0.1%'
+      subtitle: 'Performance gap vs peer benchmark'
     }
   ];
 
@@ -411,7 +411,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Dimension', 'Your Profile', 'Top 0.1%', 'Gap']],
+    head: [['Dimension', 'Your Profile', 'Peer Benchmark', 'Gap']],
     body: tableData,
     theme: 'plain',
     headStyles: {
@@ -448,7 +448,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
 
   addSectionHeader(
     'Critical Performance Gaps',
-    'Where top 0.1% peers are outperforming your positioning'
+    'Where peer benchmarks exceed your current positioning'
   );
 
   const topGaps = spiderData.improvement_areas.slice(0, 3);
@@ -559,7 +559,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   doc.setTextColor(...PREMIUM_COLORS.charcoal);
   doc.setFont('helvetica', 'normal');
   doc.text(
-    'Closing these gaps would position you within the top 0.1% of peer cohort performance benchmarks',
+    'Closing these gaps would align your positioning with peer benchmark performance',
     pageWidth / 2,
     yPos + 7,
     { align: 'center' }
@@ -573,8 +573,8 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   yPos = 20;
 
   addSectionHeader(
-    'High Profile Peer Opportunities',
-    `Validated opportunities from ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWI World developments`
+    'High Profile Peer Signals',
+    `Validated signals from ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWI World developments`
   );
 
   // Total advantage
@@ -602,7 +602,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   doc.setFontSize(8);
   doc.setTextColor(...PREMIUM_COLORS.slate);
   doc.setFont('helvetica', 'normal');
-  doc.text('Peer advantage captured (24-month window)', pageWidth / 2, yPos + 13, { align: 'center' });
+  doc.text('Total signal opportunity value tracked (24-month window)', pageWidth / 2, yPos + 13, { align: 'center' });
 
   yPos += 22;
 
@@ -710,7 +710,7 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     {
       title: 'Next Steps',
       items: [
-        'Review high-profile peer opportunities',
+        'Review high-profile peer signals',
         'Analyze strategic positioning gaps',
         'Access full HNWI World intelligence'
       ]

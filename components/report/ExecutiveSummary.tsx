@@ -73,9 +73,9 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
         {/* Opportunities */}
         <MetricCard
           icon={<Target className="w-8 h-8 text-primary" />}
-          label="Validated Opportunities"
+          label="Validated Signals"
           value={opportunities_accessible.toString()}
-          subtitle={`${opportunities_missed} peer-executed opportunities missed`}
+          subtitle={`${opportunities_missed} peer signals identified`}
           delay={0.2}
         />
 
@@ -93,7 +93,7 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
           icon={<TrendingUp className="w-8 h-8 text-primary" />}
           label="Gap Analysis"
           value={`+${(optimization_potential * 100).toFixed(0)}%`}
-          subtitle="Performance gap vs top 0.1%"
+          subtitle="Performance gap vs peer benchmark"
           delay={0.4}
         />
       </div>

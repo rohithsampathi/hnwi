@@ -166,7 +166,7 @@ export const GamifiedUpgrade: React.FC<GamifiedUpgradeProps> = ({
             <div className="bg-black/40 rounded-lg p-4">
               <div className="text-yellow-500 font-bold mb-2">Real-Time HNWI World</div>
               <div className="text-sm text-gray-400">
-                140,000+ tracked wealth movements. See patterns 3-7 days before markets.
+                92,000+ tracked wealth signals. See patterns long before they are news.
               </div>
               <div className="text-xs text-yellow-500/60 mt-2">Worth: $500K+/year</div>
             </div>

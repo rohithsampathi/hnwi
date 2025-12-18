@@ -58,7 +58,7 @@ function GapCard({ gap, index }: GapCardProps) {
             </span>
             <span className="text-sm text-muted-foreground">→</span>
             <span className="text-sm text-muted-foreground">
-              Top 0.1%: <span className="text-primary font-semibold">{gap.top_0_1_benchmark.toFixed(1)}/10</span>
+              Peer Benchmark: <span className="text-primary font-semibold">{gap.top_0_1_benchmark.toFixed(1)}/10</span>
             </span>
           </div>
         </div>
@@ -86,7 +86,7 @@ function GapCard({ gap, index }: GapCardProps) {
         </div>
         <div className="flex items-center justify-between mt-2">
           <span className="text-xs text-muted-foreground">You</span>
-          <span className="text-xs text-foreground">Top 0.1%</span>
+          <span className="text-xs text-foreground">Peer Benchmark</span>
         </div>
       </div>
 

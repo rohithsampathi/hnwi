@@ -5,7 +5,7 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "Strategic Wealth DNA Simulation | HNWI Chronicles - Discover Your $10M+ Decision Pattern",
-  description: "The only simulation calibrated against 1,850+ HNWI developments and 140K+ wealth movements. Discover if you're an Architect, Operator, or Observer. Used by verified HNWIs managing $10M-$100M+ portfolios. 10 scenarios. 8 minutes. Your exact wealth archetype.",
+  description: "The only simulation calibrated against 1,850+ HNWI developments and 92K+ wealth signals. Discover if you're an Architect, Operator, or Observer. Used by verified HNWIs managing $10M-$100M+ portfolios. 10 scenarios. 10 minutes. Your exact wealth archetype.",
   keywords: "HNWI simulation, wealth DNA test, strategic archetype analysis, wealth psychology simulation, family office intelligence, ultra-high-net-worth profiling, investment personality test, wealth preservation strategy, Digital Twin simulation, crisis response modeling",
   authors: [{ name: "HNWI Chronicles Intelligence Division" }],
   creator: "HNWI Chronicles",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Strategic Wealth DNA Assessment | Exclusive HNWI Intelligence",
-    description: "Join the 0.1% HNWIs discovering their strategic archetype. Calibrated against 1,900+ intelligence briefs. See how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts. Free for verified members.",
+    description: "Discover your strategic archetype. Calibrated against 1,900+ intelligence briefs. See how you'd navigate $10M+ decisions, crisis scenarios, and global wealth shifts. Free for verified members.",
     type: "website",
     locale: "en_US",
     url: "https://app.hnwichronicles.com/assessment",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     site: "@HNWIChronicles",
     creator: "@HNWIChronicles",
     title: "Strategic Wealth DNA Simulation",
-    description: "The only simulation calibrated against real HNWI data. Discover your $10M+ decision pattern in 8 minutes.",
+    description: "The only simulation calibrated against real HNWI data. Discover your $10M+ decision pattern in 10 minutes.",
     images: ["/logo.png"],
   },
   alternates: {

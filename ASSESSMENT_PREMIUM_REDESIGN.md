@@ -252,8 +252,8 @@ className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
   },
   {
     icon: <TrendingUp />,
-    value: '140K+',
-    label: 'Wealth Movements'
+    value: '92K+',
+    label: 'Wealth Signals'
   },
   {
     icon: <Shield />,

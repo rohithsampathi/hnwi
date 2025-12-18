@@ -229,7 +229,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                       </div>
                       <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
-                          text={`Each dot on this map represents a real peer HNWI buying or selling an alternative asset. These are ${totalCount.toLocaleString()} live opportunities across the globe.`}
+                          text="Each marker is a live alternative-asset signal we're tracking across jurisdictions."
                           speed={15}
                           onComplete={() => setTimeout(() => setShowMessage3(true), 500)}
                         />
@@ -250,7 +250,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                       </div>
                       <p className="text-sm sm:text-base md:text-lg text-foreground leading-relaxed font-light">
                         <TypewriterText
-                          text="This is the reality of HNWI World. Your simulation will reveal which opportunities match your strategic DNA."
+                          text="Run the decision drill to see which signals match your strategic DNA (and which ones you should ignore)."
                           speed={15}
                           onComplete={() => setTimeout(() => setShowButton(true), 300)}
                         />
@@ -271,11 +271,11 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span>Begin Your Simulation</span>
+                    <span>Begin the Drill</span>
                     <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform" />
                   </motion.button>
                   <p className="text-xs sm:text-sm md:text-base text-muted-foreground/70 font-light mt-3 sm:mt-4 leading-relaxed">
-                    Discover which opportunities are calibrated to your strategy
+                    See your archetype • See your map • Know your next move
                   </p>
                 </div>
               </ProgressiveReveal>
@@ -292,7 +292,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
           transition={{ delay: 1.5, duration: 0.5 }}
           className="absolute top-5 left-4 sm:top-5 sm:left-6 bg-card/95 backdrop-blur-2xl border border-primary/40 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 z-30 shadow-2xl"
         >
-          <div className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-0.5">Live Opportunities</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase tracking-wider mb-0.5">Live Signals</div>
           <div className="text-xl sm:text-2xl md:text-3xl font-bold text-primary leading-tight">{filteredCities.length}</div>
           <div className="text-[10px] sm:text-xs text-muted-foreground/80 font-light">of {totalCount} total</div>
         </motion.div>

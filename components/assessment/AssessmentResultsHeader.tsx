@@ -23,17 +23,17 @@ export function AssessmentResultsHeader({
     architect: {
       icon: Crown,
       iconColor: 'text-primary',
-      tagline: 'Systems Architect · Top 0.1% Global HNWI Strategy'
+      tagline: 'Systems Builder · Strategic intelligence for long-term wealth architecture'
     },
     operator: {
       icon: TrendingUp,
       iconColor: 'text-foreground',
-      tagline: 'Tactical Operator · Precision Executor'
+      tagline: 'Tactical Executor · Intelligence optimized for rapid deployment'
     },
     observer: {
       icon: AlertTriangle,
       iconColor: 'text-foreground',
-      tagline: 'Passive Observer · Protection Required'
+      tagline: 'Defensive Posture · Intelligence focused on wealth preservation'
     }
   };
 

@@ -93,7 +93,7 @@ export const BrainThinkingLoader: React.FC<BrainThinkingLoaderProps> = ({
       {/* Informational message about map updates */}
       <div className="bg-card/50 backdrop-blur-sm border border-primary/20 rounded-xl p-4 mb-4">
         <p className="text-sm text-muted-foreground text-center leading-relaxed">
-          Once your response is processed, opportunities executed by individuals that match your thinking style will be updated on the map below. Click on the dot to explore each opportunity.
+          Once your response is processed, signals executed by individuals that match your thinking style will be updated on the map below. Click on the dot to explore each signal.
         </p>
       </div>
 

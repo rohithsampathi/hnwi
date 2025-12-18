@@ -6,7 +6,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SimulationResult } from '@/lib/hooks/useAssessmentSSE';
-import { Globe, Brain, Shield, TrendingUp, AlertTriangle, Sparkles, Activity, Zap } from 'lucide-react';
+import { Globe, Brain, Shield, TrendingUp, AlertTriangle, Sparkles, Activity, Zap, Lightbulb, CheckCircle } from 'lucide-react';
 
 interface DigitalTwinWaitingProps {
   sessionId: string;
@@ -31,7 +31,7 @@ type ProcessingStep = {
 const HNWI_FACTS = [
   { icon: Globe, text: "Analyzing patterns across 67 jurisdictions for wealth migration signals" },
   { icon: Brain, text: "Processing 1,900+ HNWI World developments since February 2023" },
-  { icon: Shield, text: "Simulating your portfolio through 12 crisis scenarios" },
+  { icon: Shield, text: "Simulating your portfolio through 10 crisis scenarios" },
   { icon: TrendingUp, text: "Identifying opportunities worth $10M+ in cumulative value" },
   { icon: AlertTriangle, text: "Testing resilience against the April 2026 Transparency Cliff" },
   { icon: Sparkles, text: "Matching your DNA with 87 peer portfolios for benchmarking" }
@@ -56,6 +56,7 @@ export function DigitalTwinWaitingInteractive({
   const [currentStepIndex, setCurrentStepIndex] = useState(1);
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
+  const [actualOpportunitiesCount, setActualOpportunitiesCount] = useState<number | null>(null);
 
   // Dynamic metrics that update based on current step
   const [dynamicMetrics, setDynamicMetrics] = useState([
@@ -91,7 +92,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <Brain className="w-5 h-5" />,
       estimatedSeconds: 40,
       status: 'pending',
-      metrics: ['12 crisis scenarios', '87 peer comparisons', '2026 cliff modeling']
+      metrics: ['10 crisis scenarios', '87 peer comparisons', '2026 cliff modeling']
     },
     {
       id: 'gap',
@@ -140,6 +141,30 @@ export function DigitalTwinWaitingInteractive({
     }
     fetchBriefCount();
   }, []);
+
+  // Fetch actual opportunities count from session results
+  useEffect(() => {
+    async function fetchOpportunitiesCount() {
+      try {
+        const response = await fetch(`/api/assessment/result/${sessionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const oppCount = data.enhanced_report?.full_analytics?.celebrity_opportunities?.celebrity_opportunities?.length ||
+                          data.enhanced_report?.celebrity_opportunities?.celebrity_opportunities?.length;
+          if (oppCount && typeof oppCount === 'number') {
+            setActualOpportunitiesCount(oppCount);
+          }
+        }
+      } catch (error) {
+        // Use fallback value
+      }
+    }
+
+    // Only fetch if we don't have the count yet
+    if (!actualOpportunitiesCount && sessionId) {
+      fetchOpportunitiesCount();
+    }
+  }, [sessionId, actualOpportunitiesCount]);
 
   // Timer
   useEffect(() => {
@@ -210,6 +235,11 @@ export function DigitalTwinWaitingInteractive({
     setDynamicMetrics(prev => {
       const newMetrics = [...prev];
 
+      // Calculate dynamic opportunity targets based on actual count
+      const finalOppCount = actualOpportunitiesCount || 35; // Use actual or fallback
+      const oppMidway = Math.floor(finalOppCount * 0.65); // 65% by gap analysis
+      const oppEarly = Math.floor(finalOppCount * 0.15); // 15% by simulation
+
       // Update targets based on which step is processing
       switch (currentStep.id) {
         case 'briefs':
@@ -223,39 +253,39 @@ export function DigitalTwinWaitingInteractive({
         case 'simulation':
           // Running Digital Twin simulation - scenarios and peers should be counting
           newMetrics[0].target = briefCount; // Developments complete
-          newMetrics[1].target = 12; // Scenarios being tested
+          newMetrics[1].target = 10; // Scenarios being tested
           newMetrics[2].target = 87; // Peer comparisons running
-          newMetrics[3].target = 5; // Some opportunities found
+          newMetrics[3].target = oppEarly; // Some opportunities found
           break;
 
         case 'gap':
           // Generating Extended Report - opportunities should be counting up
           newMetrics[0].target = briefCount; // Developments complete
-          newMetrics[1].target = 12; // Scenarios complete
+          newMetrics[1].target = 10; // Scenarios complete
           newMetrics[2].target = 87; // Peer comparisons complete
-          newMetrics[3].target = 23; // Finding more opportunities
+          newMetrics[3].target = oppMidway; // Finding more opportunities
           break;
 
         case 'forensic':
           // Response validation - all metrics should be near final
           newMetrics[0].target = briefCount; // Developments complete
-          newMetrics[1].target = 12; // Scenarios complete
+          newMetrics[1].target = 10; // Scenarios complete
           newMetrics[2].target = 87; // Peer comparisons complete
-          newMetrics[3].target = 31; // Final opportunities count
+          newMetrics[3].target = Math.floor(finalOppCount * 0.9); // Near final opportunities count
           break;
 
         case 'pdf':
           // Finalizing - all metrics at maximum
           newMetrics[0].target = briefCount; // All developments
-          newMetrics[1].target = 12; // All scenarios
+          newMetrics[1].target = 10; // All scenarios
           newMetrics[2].target = 87; // All peers
-          newMetrics[3].target = 35; // All opportunities
+          newMetrics[3].target = finalOppCount; // All opportunities
           break;
       }
 
       return newMetrics;
     });
-  }, [currentStepIndex, briefCount]);
+  }, [currentStepIndex, briefCount, actualOpportunitiesCount]);
 
   // Animate metrics smoothly towards their targets
   useEffect(() => {
@@ -587,7 +617,7 @@ export function DigitalTwinWaitingInteractive({
                         transition={{ duration: 2, repeat: Infinity }}
                         className="flex-shrink-0"
                       >
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                        <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       </motion.div>
                     )}
                   </div>
@@ -605,7 +635,7 @@ export function DigitalTwinWaitingInteractive({
               animate={{ x: 0 }}
             >
               <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+                <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
                 <span>Intelligence Insights</span>
               </h2>
 
@@ -692,10 +722,6 @@ export function DigitalTwinWaitingInteractive({
                   </div>
                 </div>
               </div>
-
-              <div className="text-center text-xs sm:text-sm text-muted-foreground">
-                Analyzing {briefCount.toLocaleString()}+ HNWI World developments
-              </div>
             </motion.div>
 
             {/* Dynamic Status Messages based on current processing */}
@@ -714,7 +740,7 @@ export function DigitalTwinWaitingInteractive({
                       case 'briefs':
                         return `Analyzing ${dynamicMetrics[0].current.toLocaleString()} HNWI World developments`;
                       case 'simulation':
-                        return `Testing scenario ${dynamicMetrics[1].current} of 12`;
+                        return `Testing scenario ${dynamicMetrics[1].current} of 10`;
                       case 'gap':
                         return `Discovering opportunities: ${dynamicMetrics[3].current} found`;
                       case 'forensic':
@@ -748,7 +774,7 @@ export function DigitalTwinWaitingInteractive({
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 10 }}
               >
-                <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3" />
+                <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3" />
               </motion.div>
               <h3 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Simulation Complete!</h3>
               <p className="text-sm sm:text-base text-primary-foreground/90">

@@ -15,7 +15,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://app.hnwichronicles.com"),
-  title: "HNWI Chronicles - What the world's top 0.1% realise before others know",
+  title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
   description:
     "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
   keywords: ["HNWI", "wealth management", "financial intelligence", "strategic insights", "market analysis"],
@@ -38,26 +38,26 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://app.hnwichronicles.com",
     siteName: "HNWI Chronicles",
-    title: "HNWI Chronicles - What the world's top 0.1% realise before others know",
+    title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
     description:
       "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
     images: [
       {
-        url: "/logo.png",
+        url: "/logo.png?v=2025", // Cache-busting version parameter
         width: 1200,
         height: 630,
-        alt: "HNWI Chronicles - What the world's top 0.1% realise before others know",
+        alt: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "HNWI Chronicles - What the world's top 0.1% realise before others know",
+    title: "HNWI Chronicles - Intelligence Platform for HNWIs & Family Office Principals",
     description:
       "Access exclusive wealth intelligence, strategic playbooks, and real-time market insights tailored for High-Net-Worth Individuals. HNWI Chronicles empowers wealth managers and HNWIs with data-driven strategies and competitive intelligence.",
     site: "@hnwichronicles",
     creator: "@hnwichronicles",
-    images: ["/logo.png"],
+    images: ["/logo.png?v=2025"], // Cache-busting version parameter
   },
   robots: {
     index: true,

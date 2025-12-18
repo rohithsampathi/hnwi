@@ -99,7 +99,7 @@ export function StrategicInsightsInfographic({
           icon={<Lightbulb className="w-6 h-6" />}
           title="Next Steps"
           items={[
-            'Review high-profile peer opportunities below',
+            'Review high-profile peer signals below',
             'Analyze strategic positioning gaps',
             'Access full HNWI World intelligence'
           ]}

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { TierPricingComparison } from './TierPricingComparison';
-import { Download } from 'lucide-react';
+import { Download, ChevronDown } from 'lucide-react';
 import type { City } from '@/components/interactive-world-map';
 
 // Dynamic import to prevent SSR issues with map libraries (react-globe.gl, leaflet)
@@ -50,6 +50,14 @@ export function AssessmentResultsContent({
 }: AssessmentResultsContentProps) {
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
+
+  // Scroll to analysis section below map
+  const scrollToAnalysis = () => {
+    const analysisElement = document.getElementById('analysis-section');
+    if (analysisElement) {
+      analysisElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Filter and transform opportunities (matching home dashboard logic)
   const filteredOpportunities = opportunities
@@ -111,7 +119,7 @@ export function AssessmentResultsContent({
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="relative"
+          className="relative h-[600px]"
         >
           <InteractiveWorldMap
             cities={filteredOpportunities}
@@ -124,11 +132,39 @@ export function AssessmentResultsContent({
             onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
             onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
           />
+
+          {/* Down Arrow - Scroll to Analysis */}
+          <motion.button
+            onClick={scrollToAnalysis}
+            whileHover={{ scale: 1.1, y: 2 }}
+            whileTap={{ scale: 0.9 }}
+            animate={{
+              y: [0, 4, 0],
+              opacity: [0.7, 1, 0.7],
+            }}
+            transition={{
+              y: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              },
+              opacity: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }
+            }}
+            className="absolute top-1/2 -translate-y-1/2 right-4 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-[9999]"
+            title="View analysis"
+          >
+            <ChevronDown className="text-primary w-6 h-6 sm:w-7 sm:h-7" />
+          </motion.button>
         </motion.div>
       </section>
 
       {/* Download PDF Section */}
       <motion.section
+        id="analysis-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}

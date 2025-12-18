@@ -43,8 +43,8 @@ const PLANS = [
     color: 'from-blue-500 to-cyan-600',
     tagline: '"Watch HNWI\'s" - Market Intelligence Dashboard',
     features: [
-      'HNWI World tracking 140,000+ wealth movements',
-      'Daily intelligence briefs (6 AM UTC)',
+      'HNWI World tracking 92,000+ wealth signals',
+      'Tri Weekly intelligence briefs',
       '30-day archive access',
       'Elite Pulse market intelligence',
       'Pattern recognition insights'

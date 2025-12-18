@@ -463,10 +463,10 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                   </div>
                   <div className="text-left">
                     <p className="text-sm sm:text-base font-semibold text-foreground leading-tight">
-                      {opportunityIncrement} New {opportunityIncrement === 1 ? 'Opportunity' : 'Opportunities'}
+                      {opportunityIncrement} New {opportunityIncrement === 1 ? 'Signal' : 'Signals'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {filteredCities.length} total on Command Centre
+                      {filteredCities.length} total signals on Command Centre
                     </p>
                   </div>
                 </div>
@@ -729,7 +729,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                   >
                     <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground mb-0.5 sm:mb-1 truncate font-medium uppercase tracking-wider">Command Centre</div>
                     <div className="text-xl sm:text-3xl font-bold text-black dark:text-primary leading-tight">{filteredCities.length}</div>
-                    <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground truncate font-light">of {initialCount} opps</div>
+                    <div className="text-[10px] sm:text-xs text-black dark:text-muted-foreground truncate font-light">of {initialCount} signals</div>
                     {filteredCities.length > 0 && filteredCities.length < initialCount && (
                       <div className="text-[10px] sm:text-xs text-black dark:text-green-400 mt-0.5 sm:mt-1 truncate font-semibold">
                         +{filteredCities.length} found
@@ -756,14 +756,14 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
                             <div className="flex items-center gap-1.5 sm:gap-2">
                               <TrendingUp size={12} className="text-black dark:text-green-400 flex-shrink-0" />
                               <span className="text-[11px] sm:text-xs text-black dark:text-foreground font-semibold whitespace-nowrap">
-                                +{increment} opportunities discovered matching your DNA
+                                +{increment} signals discovered matching your DNA
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                               <span className="text-[11px] sm:text-xs font-bold text-black dark:text-green-400">
                                 +{increment}
                               </span>
-                              <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total</span>
+                              <span className="text-[10px] sm:text-[11px] text-black dark:text-muted-foreground whitespace-nowrap">{filteredCities.length} total signals</span>
                             </div>
                           </div>
                         </motion.div>

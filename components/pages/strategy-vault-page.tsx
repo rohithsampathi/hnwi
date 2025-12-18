@@ -17,7 +17,7 @@ export function StrategyVaultPage({ onNavigate }: { onNavigate: (route: string) 
     <>
       <MetaTags
         title="HNWI World: Private Wealth Intelligence, Every Day | HNWI Chronicles"
-        description="Morning intelligence for the top 0.1%. What 312 family offices are discussing privately."
+        description="Morning intelligence for HNWIs and family office principals. What 312 family offices are discussing privately."
         image="https://app.hnwichronicles.com/images/hnwi-world-og.png"
         url="https://app.hnwichronicles.com/hnwi-world"
       />

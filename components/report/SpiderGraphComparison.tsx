@@ -91,8 +91,8 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
     // TEXT COLOR - Gold (primary) in dark mode, Black in light mode
     const textColor = isDarkMode ? primaryColor : '#000000';
 
-    // TOP 0.1% COLOR - Grey in both modes
-    const topPerformersColor = '#9CA3AF'; // Grey
+    // BENCHMARK COLOR - Grey in both modes
+    const benchmarkColor = '#9CA3AF'; // Grey
     const platinumGray = '#E5E4E2';
 
     // Add subtle radial gradient background for depth
@@ -120,7 +120,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
       svg.append('circle')
         .attr('r', (radius / levels) * i)
         .attr('fill', 'none')
-        .attr('stroke', i === levels ? topPerformersColor : platinumGray)
+        .attr('stroke', i === levels ? benchmarkColor : platinumGray)
         .attr('stroke-width', i === levels ? 2 : 1)
         .attr('stroke-opacity', i === levels ? 0.5 : 0.2)
         .attr('stroke-dasharray', i === levels ? 'none' : '4,4');
@@ -224,12 +224,12 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    // Draw top 0.1% performers area (SUBTLE BENCHMARK - DIM)
+    // Draw peer benchmark area (SUBTLE BENCHMARK - DIM)
     svg.append('path')
       .attr('d', createPathData(top_performers))
-      .attr('fill', topPerformersColor)
+      .attr('fill', benchmarkColor)
       .attr('fill-opacity', 0.03)
-      .attr('stroke', topPerformersColor)
+      .attr('stroke', benchmarkColor)
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '8,4')
       .attr('stroke-opacity', 0.3);
@@ -296,7 +296,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
           </div>
           <div className="hidden md:flex items-center gap-6 px-4">
             <LegendItem label="Your Profile" color="currentColor" className="dark:text-primary text-black" />
-            <LegendItem label="Top 0.1%" color="#9CA3AF" border="dashed" />
+            <LegendItem label="Peer Benchmark" color="#9CA3AF" border="dashed" />
           </div>
         </div>
       </div>
@@ -310,7 +310,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
         {/* Mobile Legend */}
         <div className="flex md:hidden justify-center gap-6 mt-6 pt-6 border-t border-border">
           <LegendItem label="Your Profile" color="currentColor" className="dark:text-primary text-black" />
-          <LegendItem label="Top 0.1%" color="#9CA3AF" border="dashed" />
+          <LegendItem label="Peer Benchmark" color="#9CA3AF" border="dashed" />
         </div>
       </div>
 
@@ -324,7 +324,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
                   Critical Performance Gaps
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Where top 0.1% peers are outperforming your positioning
+                  Where peer benchmarks exceed your current positioning
                 </p>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg border border-border">
@@ -350,7 +350,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
                         {area.dimension}
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        You're {(area.improvement_potential || 0).toFixed(0)}% behind top 0.1% benchmark
+                        You're {(area.improvement_potential || 0).toFixed(0)}% behind peer benchmark
                       </p>
                     </div>
 
@@ -358,7 +358,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Your Position</span>
-                        <span className="text-muted-foreground">Top 0.1%</span>
+                        <span className="text-muted-foreground">Peer Benchmark</span>
                       </div>
                       <div className="relative h-2 bg-muted/50 rounded-full overflow-hidden">
                         {/* Your score */}
@@ -392,7 +392,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
                         <div className="text-[10px] text-muted-foreground">Gap to Close</div>
                       </div>
                       <div className="text-center p-2 bg-muted/30 rounded-lg">
-                        <div className="text-lg font-bold text-foreground">Top 0.1%</div>
+                        <div className="text-lg font-bold text-foreground">Peer</div>
                         <div className="text-[10px] text-muted-foreground">Benchmark</div>
                       </div>
                       <div className="text-center p-2 bg-muted/30 rounded-lg">
@@ -405,10 +405,10 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
               ))}
             </div>
 
-            {/* Summary Footer - FOMO Trigger */}
+            {/* Summary Footer */}
             <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
               <p className="text-sm text-muted-foreground text-center">
-                <span className="font-semibold text-primary">Closing these gaps</span> would position you within the top 0.1% of peer cohort performance benchmarks
+                <span className="font-semibold text-primary">Closing these gaps</span> would align your positioning with peer benchmark performance
               </p>
             </div>
           </div>

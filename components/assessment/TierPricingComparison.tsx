@@ -263,7 +263,7 @@ export function TierPricingComparison({
                           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </button>
                         <p className="text-xs text-muted-foreground text-center">
-                          No payment required. We'll contact you within 24h.
+                          Request onboarding — billing after activation.
                         </p>
                       </div>
                     ) : (
@@ -286,13 +286,12 @@ export function TierPricingComparison({
                         <div>
                           <label className="block text-xs font-medium mb-1.5 flex items-center gap-1.5">
                             <Phone className="w-3 h-3 text-primary" />
-                            WhatsApp Number
+                            WhatsApp Number <span className="text-muted-foreground font-normal">(optional)</span>
                           </label>
                           <input
                             type="tel"
                             value={architectWhatsapp}
                             onChange={(e) => setArchitectWhatsapp(e.target.value)}
-                            required
                             placeholder="+91 98765 43210"
                             className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                           />
@@ -308,7 +307,7 @@ export function TierPricingComparison({
                         </button>
 
                         <p className="text-xs text-muted-foreground text-center">
-                          No payment required. We'll contact you within 24h.
+                          Request onboarding — billing after activation.
                         </p>
                       </form>
                     )}
@@ -351,7 +350,7 @@ export function TierPricingComparison({
           Higher tiers unlock exclusive opportunities and personalized strategic support.
         </p>
         <p className="text-xs text-muted-foreground/70 max-w-xl mx-auto italic">
-          Your annual funding supports the collective mission: building peer intelligence, preserving wealth legacy,
+          Your funding supports the collective mission: building peer intelligence, preserving wealth legacy,
           and architecting permissionless financial sovereignty together.
         </p>
       </div>

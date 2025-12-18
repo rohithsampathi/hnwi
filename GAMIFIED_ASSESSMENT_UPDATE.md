@@ -132,7 +132,7 @@ Made the landing page more conversational and inviting:
 **Before:**
 ```
 Title: "Discover Your Strategic DNA"
-Subtitle: "10 scenarios. 8 minutes. Your classification among the world's top 0.1%."
+Subtitle: "10 scenarios. 10 minutes. Your classification among the world's top 0.1%."
 Tiers: "Systems thinker, structural arbitrageur"
 How It Works: "Real-time DNA analysis across intelligence briefs"
 Button: "Begin Classification"
@@ -141,7 +141,7 @@ Button: "Begin Classification"
 **After:**
 ```
 Title: "What's Your Wealth Strategy DNA?"
-Subtitle: "Answer 10 real-world scenarios. Get your strategic tier. In just 8 minutes."
+Subtitle: "Answer 10 real-world scenarios. Get your strategic tier. In just 10 minutes."
 Tiers: "You build systems that generate wealth"
 How It Works: "You answer 10 realistic wealth scenarios"
 Button: "Start Your Assessment"

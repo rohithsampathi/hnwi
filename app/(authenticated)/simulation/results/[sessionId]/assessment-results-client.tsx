@@ -555,7 +555,7 @@ export default function AssessmentResultsClient() {
             >
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
                 <Globe className="w-6 h-6 text-primary" strokeWidth={2} />
-                <h2 className="text-xl font-bold">Your Personalized Opportunities</h2>
+                <h2 className="text-xl font-bold">Your Personalized Opportunities Map</h2>
               </div>
 
               <div className="bg-card border border-border overflow-hidden">
@@ -599,7 +599,7 @@ export default function AssessmentResultsClient() {
 
                       return (
                         <>
-                          <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> tier positioning identifies <span className="font-bold text-foreground">{filteredCount} validated opportunities</span> across {filteredCountries} countries where peers in your cohort have executed successfully.
+                          <span className="font-bold text-primary">{results.tier.toUpperCase()}</span> tier positioning identifies <span className="font-bold text-foreground">{filteredCount} tracked signals</span> across {filteredCountries} countries matched to your strategic posture.
                         </>
                       );
                     })()}
@@ -609,7 +609,7 @@ export default function AssessmentResultsClient() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                     </svg>
                     <span>
-                      <span className="font-medium text-foreground">Click any location</span> to view peer execution data, intelligence sources, and performance metrics for each opportunity.
+                      <span className="font-medium text-foreground">Click any location</span> to view intelligence sources, case notes, and performance metrics for each signal.
                     </span>
                   </div>
                 </div>

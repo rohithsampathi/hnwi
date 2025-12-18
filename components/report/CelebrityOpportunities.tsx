@@ -1,6 +1,6 @@
 // components/report/HighProfilePeerOpportunities.tsx
-// High Profile Peer Opportunities - Validated opportunities from successful peer execution
-// Evidence-based FOMO: Shows what high-performing peers captured that you didn't
+// High Profile Peer Opportunities - Tracked signals matched to your strategic posture
+// Evidence-based intelligence: Shows market movements and case notes aligned to your DNA
 
 "use client";
 
@@ -113,7 +113,7 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
         {/* Performance Text Line */}
         {opportunity.has_outperformance && (
           <p className="text-xs text-muted-foreground whitespace-nowrap">
-            Peers demonstrated <span className="font-bold">{opportunity.performance_percentage.toFixed(1)}%</span> performance
+            Observed <span className="font-bold">{opportunity.performance_percentage.toFixed(1)}%</span> movement since signal
           </p>
         )}
 
@@ -202,15 +202,14 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
             High Profile Peer Opportunities
           </h2>
           <p className="text-muted-foreground">
-            Validated opportunities from successful peer execution, backed by{' '}
-            <span className="font-semibold text-primary">
-              1,860
-            </span>{' '}
-            HNWI World developments
+            <span className="font-semibold text-primary">{data.total_missed}</span> tracked signals across{' '}
+            <span className="font-semibold text-primary">51 countries</span> matched to your posture.
+            Each pin includes sources + case notes from{' '}
+            <span className="font-semibold text-primary">1,860+</span> HNWI World developments
           </p>
         </div>
 
-        {/* Peer Advantage Captured */}
+        {/* Total Signal Value */}
         <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/30 rounded-lg p-4">
           <div className="flex items-center gap-2 text-foreground mb-1">
             <Users className="w-5 h-5 text-primary" />
@@ -219,7 +218,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Peer advantage captured (24-month window)
+            Total signal opportunity value tracked (24-month window)
           </p>
         </div>
       </div>
@@ -260,7 +259,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
       {/* Summary Footer */}
       <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4">
         <p className="text-sm text-muted-foreground text-center">
-          <span className="font-semibold text-primary">{data.total_missed} opportunities</span> where peers in your tier executed while you evaluated • Average match score:{' '}
+          <span className="font-semibold text-primary">{data.total_missed} tracked signals</span> from HNWI World intelligence matched to your strategic DNA • Average alignment score:{' '}
           <span className="font-semibold text-foreground">{data.avg_match_score.toFixed(1)}/10</span>
         </p>
       </div>

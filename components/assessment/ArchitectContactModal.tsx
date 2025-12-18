@@ -148,13 +148,12 @@ export function ArchitectContactModal({ isOpen, onClose, sessionId }: ArchitectC
                   <div>
                     <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                       <Phone className="w-4 h-4 text-primary" />
-                      WhatsApp Number
+                      WhatsApp Number <span className="text-muted-foreground font-normal text-xs">(optional)</span>
                     </label>
                     <input
                       type="tel"
                       value={whatsapp}
                       onChange={(e) => setWhatsapp(e.target.value)}
-                      required
                       placeholder="+91 98765 43210"
                       className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-foreground"
                     />
@@ -174,7 +173,7 @@ export function ArchitectContactModal({ isOpen, onClose, sessionId }: ArchitectC
                 </form>
 
                 <p className="text-xs text-muted-foreground text-center mt-4">
-                  No payment required now. We'll discuss your custom plan first.
+                  Request onboarding — billing after activation.
                 </p>
               </div>
             </>
