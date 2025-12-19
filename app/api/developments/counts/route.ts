@@ -8,7 +8,8 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 export async function GET() {
   try {
     // Fetch development count from backend
-    const response = await fetch(`${API_BASE_URL}/api/developments/count`, {
+    // Do not expose backend URL in errors
+    const response = await fetch(`${API_BASE_URL}/api/developments/counts`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -17,7 +18,7 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      // If backend endpoint doesn't exist or fails, return default
+      // If backend endpoint doesn't exist or fails, return fallback (no error exposure)
       return NextResponse.json({
         total_count: 1900,
         developments: {
@@ -28,8 +29,9 @@ export async function GET() {
 
     const data = await response.json();
 
-    // Normalize the response format
-    const count = data.count || data.total_count || data.total || 1900;
+    // Extract count from nested response format
+    // Backend returns: { developments: { total_count: 1875, source: "mongodb" }, opportunities: {...} }
+    const count = data.developments?.total_count || data.count || data.total_count || data.total || 1900;
 
     return NextResponse.json({
       total_count: count,
@@ -39,8 +41,8 @@ export async function GET() {
         total_count: count
       }
     });
-  } catch (error) {
-    // Return default fallback on error
+  } catch {
+    // Return default fallback on error (no error details exposed)
     return NextResponse.json({
       total_count: 1900,
       developments: {

@@ -32,6 +32,19 @@ export interface EnhancedReportData {
 
   // Actionable Insights
   strategic_insights: StrategicInsight[];
+
+  // Gap Analysis (text)
+  gap_analysis?: string;
+
+  // Digital Twin Simulation
+  digital_twin?: {
+    narrative: string;
+    outcome: 'SURVIVED' | 'DAMAGED' | 'DESTROYED';
+    confidence: number;
+  };
+
+  // Full Simulation Data
+  simulation?: any;
 }
 
 export interface ExecutiveSummary {

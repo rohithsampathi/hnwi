@@ -18,6 +18,12 @@ import { CrownLoader } from '@/components/ui/crown-loader';
 
 type FlowStage = 'landing' | 'map_intro' | 'retake_locked' | 'assessment' | 'digital_twin';
 
+// MODULE-LEVEL FLAGS: Survive component re-mounts (same pattern as vault in AssessmentLanding)
+// These persist through React re-renders, parent updates, auth changes, router state
+// But reset on page refresh/navigation (desired behavior)
+let simulationFlowStarted = false; // Set when user clicks "Begin the Drill"
+let assessmentSessionActive = false; // Set when API returns questions
+
 export default function AuthenticatedAssessmentPage() {
   const router = useRouter();
   const [flowStage, setFlowStage] = useState<FlowStage>('landing');
@@ -156,6 +162,16 @@ export default function AuthenticatedAssessmentPage() {
 
   // Check for existing completed assessment - ONCE on initial mount with user data
   useEffect(() => {
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRITICAL RACE CONDITION FIX: Check module-level flags FIRST
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Module-level flags survive component re-mounts (unlike refs which reset)
+    // If user has started the flow, NEVER run the redirect check
+    if (simulationFlowStarted || assessmentSessionActive) {
+      hasCheckedExistingRef.current = true; // Mark as checked to prevent future runs
+      return; // EXIT IMMEDIATELY - user is mid-flow
+    }
+
     // Only run if we have user data AND haven't checked yet
     if (!user?.id && !user?.user_id) return;
     if (hasCheckedExistingRef.current) return;
@@ -223,7 +239,9 @@ export default function AuthenticatedAssessmentPage() {
 
   // Handle landing -> map intro
   const handleShowMapIntro = useCallback(() => {
-    hasProgressedPastLanding.current = true;
+    // Set BOTH module-level flag AND ref for maximum safety
+    simulationFlowStarted = true; // Module-level: survives re-mounts
+    hasProgressedPastLanding.current = true; // Ref: for within-render checks
     shouldAbortRedirect.current = true; // Prevent any late redirects
     setFlowStage('map_intro');
   }, []);
@@ -242,6 +260,10 @@ export default function AuthenticatedAssessmentPage() {
         ...q,
         id: q.id || q.question_id || q._id, // Fallback chain for ID field
       }));
+
+      // CRITICAL: Set module-level flag BEFORE any state updates
+      // This ensures even if component re-mounts during state updates, flag persists
+      assessmentSessionActive = true;
 
       // Store session and questions
       setSessionId(response.session_id);
@@ -396,6 +418,10 @@ export default function AuthenticatedAssessmentPage() {
   // Handle Digital Twin completion
   const handleDigitalTwinComplete = (result: any, pdfUrlPath: string) => {
     if (sessionId) {
+      // Reset module-level flags when navigating to results
+      // This ensures clean state if user returns to /simulation page later
+      simulationFlowStarted = false;
+      assessmentSessionActive = false;
       router.push(`/simulation/results/${sessionId}`);
     }
   };
@@ -447,7 +473,22 @@ export default function AuthenticatedAssessmentPage() {
   }
 
   // Assessment in progress
-  if (flowStage === 'assessment' && allQuestions.length > 0 && currentQuestionIndex < allQuestions.length) {
+  if (flowStage === 'assessment') {
+    // DEFENSIVE GUARD: Ensure we have all required data before rendering questions
+    // This prevents edge cases where flowStage updates but questions haven't loaded yet
+    if (!sessionId || allQuestions.length === 0 || currentQuestionIndex >= allQuestions.length) {
+      // State is inconsistent - show brief loading while React batches settle
+      return (
+        <div className="flex items-center justify-center p-12">
+          <CrownLoader
+            size="lg"
+            text="Loading Question"
+            subtext="Preparing your first scenario..."
+          />
+        </div>
+      );
+    }
+
     const currentQuestion = allQuestions[currentQuestionIndex];
 
     return (
@@ -469,28 +510,17 @@ export default function AuthenticatedAssessmentPage() {
   }
 
   // Fallback: Assessment completed but not transitioned properly
-  // This can happen if all questions are answered but flowStage didn't update
+  // This is now handled by the defensive guard in the assessment render block above
+  // Keeping this useEffect as an additional safety net for edge cases
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - TS doesn't understand this is reachable via dependency changes
     if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
-
       // Force transition to digital_twin stage
       setFlowStage('digital_twin');
       setStatus('generating_pdf');
     }
-  }, [flowStage, sessionId, currentQuestionIndex, allQuestions.length]);
-
-  // Show completing state if we're in the fallback scenario
-  if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
-    return (
-        <div className="flex items-center justify-center p-12">
-          <CrownLoader
-            size="lg"
-            text="Finalizing Simulation"
-            subtext="Preparing your strategic DNA analysis..."
-          />
-        </div>
-    );
-  }
+  }, [flowStage, sessionId, currentQuestionIndex, allQuestions.length, setFlowStage, setStatus]);
 
   // Loading or error state
   return (

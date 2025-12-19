@@ -438,6 +438,211 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
 
   yPos = (doc as any).lastAutoTable.finalY + 18;
 
+  // === SPIDER GRAPH VISUALIZATION ===
+  checkPageBreak(130);
+
+  addSectionHeader(
+    'Peer Comparison Spider Graph',
+    'Visual representation of your positioning across key dimensions'
+  );
+
+  // Legend - centered at top with better visibility
+  const legendY = yPos;
+  const legendSpacing = 40;
+  const legendStartX = pageWidth / 2 - legendSpacing;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+
+  // Your Profile (black box) - more prominent
+  doc.setFillColor(...PREMIUM_COLORS.charcoal);
+  doc.roundedRect(legendStartX, legendY, 8, 4, 0.5, 0.5, 'F');
+  doc.setTextColor(...PREMIUM_COLORS.charcoal);
+  doc.text('Your Profile', legendStartX + 10, legendY + 3);
+
+  // Peer Benchmark (grey box with dashed border) - more prominent
+  doc.setFillColor(...PREMIUM_COLORS.platinum);
+  doc.roundedRect(legendStartX + legendSpacing, legendY, 8, 4, 0.5, 0.5, 'F');
+  doc.setDrawColor(...PREMIUM_COLORS.platinum);
+  doc.setLineWidth(1.5);
+  doc.setLineDash([2, 1]);
+  doc.roundedRect(legendStartX + legendSpacing, legendY, 8, 4, 0.5, 0.5, 'S');
+  doc.setLineDash([]);
+  doc.setTextColor(...PREMIUM_COLORS.slate);
+  doc.text('Peer Benchmark', legendStartX + legendSpacing + 10, legendY + 3);
+
+  yPos += 16;
+
+  // Circular Spider Chart Configuration
+  const chartCenterX = pageWidth / 2;
+  const chartCenterY = yPos + 45;
+  const chartRadius = 38;
+  const numDimensions = spiderData.dimensions.length;
+  const levels = 5;
+
+  // Draw circular grid (concentric circles)
+  for (let i = 1; i <= levels; i++) {
+    const r = (chartRadius / levels) * i;
+    doc.setDrawColor(...PREMIUM_COLORS.pearl);
+    doc.setLineWidth(i === levels ? 0.8 : 0.4);
+    if (i === levels) {
+      doc.setDrawColor(...PREMIUM_COLORS.slate);
+      doc.setGState(new doc.GState({ opacity: 0.6 }));
+    }
+    if (i < levels) {
+      doc.setLineDash([2, 2]);
+    } else {
+      doc.setLineDash([]);
+    }
+    doc.circle(chartCenterX, chartCenterY, r, 'S');
+    doc.setLineDash([]);
+    doc.setGState(new doc.GState({ opacity: 1 }));
+
+    // Add percentage labels (20%, 40%, 60%, 80%) - more prominent
+    if (i < levels) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(...PREMIUM_COLORS.charcoal);
+      doc.setFont('helvetica', 'bold');
+      doc.setGState(new doc.GState({ opacity: 0.7 }));
+      doc.text(
+        `${(i / levels * 100).toFixed(0)}%`,
+        chartCenterX + 3,
+        chartCenterY - r + 1.5
+      );
+      doc.setGState(new doc.GState({ opacity: 1 }));
+    }
+  }
+
+  // Draw radial axes from center
+  spiderData.dimensions.forEach((dim, i) => {
+    const angle = (i * 2 * Math.PI / numDimensions) - Math.PI / 2;
+    const x2 = chartCenterX + Math.cos(angle) * chartRadius;
+    const y2 = chartCenterY + Math.sin(angle) * chartRadius;
+
+    doc.setDrawColor(...PREMIUM_COLORS.pearl);
+    doc.setLineWidth(0.3);
+    doc.line(chartCenterX, chartCenterY, x2, y2);
+  });
+
+  // Draw Peer Benchmark area (grey, dashed, subtle fill)
+  const drawPolygon = (scores: number[], fillColor: number[], strokeColor: number[], opacity: number, dashed: boolean = false) => {
+    const points: { x: number; y: number }[] = [];
+
+    scores.forEach((score, i) => {
+      const angle = (i * 2 * Math.PI / numDimensions) - Math.PI / 2;
+      const r = score * chartRadius;
+      const x = chartCenterX + Math.cos(angle) * r;
+      const y = chartCenterY + Math.sin(angle) * r;
+      points.push({ x, y });
+    });
+
+    // Draw filled polygon
+    if (opacity > 0) {
+      doc.setFillColor(...fillColor);
+      doc.setGState(new doc.GState({ opacity }));
+      doc.setDrawColor(...strokeColor);
+      doc.setLineWidth(dashed ? 1.5 : 2.5); // Thicker line for user profile
+      if (dashed) {
+        doc.setLineDash([4, 3]);
+      }
+
+      // Build path
+      if (points.length > 0) {
+        let pathString = '';
+        points.forEach((point, idx) => {
+          if (idx === 0) {
+            pathString = `M ${point.x} ${point.y}`;
+          } else {
+            pathString += ` L ${point.x} ${point.y}`;
+          }
+        });
+        pathString += ' Z';
+
+        // Use lines to create polygon
+        doc.lines(
+          points.slice(1).map((p, idx) => [p.x - points[idx].x, p.y - points[idx].y]),
+          points[0].x,
+          points[0].y,
+          undefined,
+          'FD'
+        );
+      }
+
+      doc.setLineDash([]);
+      doc.setGState(new doc.GState({ opacity: 1 }));
+    }
+  };
+
+  // Draw areas (back to front)
+  // 1. Peer benchmark (top performers) - subtle grey with dashed border
+  drawPolygon(spiderData.top_performers, PREMIUM_COLORS.platinum, PREMIUM_COLORS.platinum, 0.12, true);
+
+  // 2. User scores - prominent black with stronger fill
+  drawPolygon(spiderData.user_scores, PREMIUM_COLORS.charcoal, PREMIUM_COLORS.charcoal, 0.35, false);
+
+  // Draw data points on user scores - larger and more prominent
+  spiderData.user_scores.forEach((score, i) => {
+    const angle = (i * 2 * Math.PI / numDimensions) - Math.PI / 2;
+    const r = score * chartRadius;
+    const x = chartCenterX + Math.cos(angle) * r;
+    const y = chartCenterY + Math.sin(angle) * r;
+
+    // Outer glow - larger
+    doc.setFillColor(...PREMIUM_COLORS.charcoal);
+    doc.setGState(new doc.GState({ opacity: 0.25 }));
+    doc.circle(x, y, 3, 'F');
+    doc.setGState(new doc.GState({ opacity: 1 }));
+
+    // Main point with white border - larger
+    doc.setFillColor(...PREMIUM_COLORS.charcoal);
+    doc.circle(x, y, 2, 'F');
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(1);
+    doc.circle(x, y, 2, 'S');
+  });
+
+  // Add dimension labels around perimeter - more prominent
+  const labelRadius = chartRadius + 16;
+  spiderData.dimensions.forEach((dim, i) => {
+    const angle = (i * 2 * Math.PI / numDimensions) - Math.PI / 2;
+    const labelX = chartCenterX + Math.cos(angle) * labelRadius;
+    const labelY = chartCenterY + Math.sin(angle) * labelRadius;
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(...PREMIUM_COLORS.charcoal);
+    doc.setFont('helvetica', 'bold');
+
+    // Word wrap for long labels
+    const words = dim.split(' ');
+    if (words.length > 2 || dim.length > 18) {
+      const midpoint = Math.ceil(words.length / 2);
+      const line1 = words.slice(0, midpoint).join(' ');
+      const line2 = words.slice(midpoint).join(' ');
+
+      doc.text(line1, labelX, labelY - 2, { align: 'center' });
+      doc.text(line2, labelX, labelY + 2, { align: 'center' });
+    } else {
+      doc.text(dim, labelX, labelY, { align: 'center' });
+    }
+  });
+
+  yPos = chartCenterY + chartRadius + 28;
+
+  // Summary note
+  doc.setFillColor(252, 250, 245);
+  doc.roundedRect(30, yPos, pageWidth - 60, 12, 2, 2, 'F');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...PREMIUM_COLORS.slate);
+  doc.setFont('helvetica', 'italic');
+  doc.text(
+    `Benchmarked against ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWI World developments`,
+    pageWidth / 2,
+    yPos + 7.5,
+    { align: 'center' }
+  );
+
+  yPos += 20;
+
   // === CRITICAL GAPS - Minimal Design ===
   doc.addPage();
   addPageBackground();
@@ -564,6 +769,174 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
 
   yPos += 22;
 
+  // === GAP ANALYSIS (if available) - MOVED BEFORE DIGITAL TWIN ===
+  const gapAnalysisText = (reportData as any).gap_analysis ||
+                          (reportData as any).strategic_analysis?.raw_text ||
+                          reportData.spider_graphs?.peer_comparison?.gap_analysis;
+
+  if (gapAnalysisText && typeof gapAnalysisText === 'string' && gapAnalysisText.trim().length > 0) {
+    doc.addPage();
+    addPageBackground();
+    yPos = 20;
+
+    addSectionHeader(
+      'Strategic Gap Analysis',
+      'Detailed analysis of positioning gaps and improvement opportunities'
+    );
+
+    // Clean and parse gap analysis into paragraphs
+    const cleanGapText = gapAnalysisText
+      .replace(/\*\*/g, '')
+      .replace(/\[(?:Dev\s*ID|DEVID)\s*[\-:–—]\s*[^\]]+\]/gi, '') // Remove all DEVID citations (handles "DEVID - id" and "Dev ID: id")
+      .replace(/\[DEVID\s*[\-:–—]\s*[^\]]+\]/gi, '') // Extra pass for any remaining
+      .trim();
+
+    // Split into paragraphs for better visual separation
+    const paragraphs = cleanGapText.split('\n\n').filter(p => p.trim().length > 0);
+
+    paragraphs.forEach((paragraph, idx) => {
+      const paragraphLines = doc.splitTextToSize(paragraph.trim(), pageWidth - 48);
+      const cardHeight = 10 + (paragraphLines.length * 5) + 6;
+
+      checkPageBreak(cardHeight + 6);
+
+      const cardX = 20;
+      const cardWidth = pageWidth - 40;
+
+      // Soft shadow
+      addSoftShadow(cardX, yPos, cardWidth, cardHeight, 2);
+
+      // Card background - alternate colors for visual variety
+      const bgColor = idx % 2 === 0 ? PREMIUM_COLORS.softWhite : [252, 250, 245] as [number, number, number];
+      doc.setFillColor(...bgColor);
+      doc.roundedRect(cardX, yPos, cardWidth, cardHeight, 2, 2, 'F');
+
+      // Minimal border
+      doc.setDrawColor(...PREMIUM_COLORS.pearl);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(cardX, yPos, cardWidth, cardHeight, 2, 2, 'S');
+
+      // Subtle left accent
+      doc.setFillColor(...PREMIUM_COLORS.gold);
+      doc.setGState(new doc.GState({ opacity: 0.4 }));
+      doc.rect(cardX, yPos, 2, cardHeight, 'F');
+      doc.setGState(new doc.GState({ opacity: 1 }));
+
+      // Content
+      let contentY = yPos + 8;
+      doc.setFontSize(8.5);
+      doc.setTextColor(...PREMIUM_COLORS.slate);
+      doc.setFont('helvetica', 'normal');
+
+      paragraphLines.forEach((line: string) => {
+        doc.text(line, cardX + 6, contentY);
+        contentY += 5;
+      });
+
+      yPos += cardHeight + 4;
+    });
+
+    yPos += 12;
+  }
+
+  // === DIGITAL TWIN SIMULATION - MOVED AFTER GAP ANALYSIS ===
+  doc.addPage();
+  addPageBackground();
+  yPos = 20;
+
+  addSectionHeader(
+    'Digital Twin Simulation',
+    '16-Month Crisis Projection Through the April 2026 Transparency Cliff'
+  );
+
+  // Digital Twin narrative from reportData
+  const digitalTwinNarrative = (reportData as any).digital_twin?.narrative ||
+                                (reportData as any).simulation?.simulation_narrative ||
+                                'Digital Twin simulation provides behavioral projection through crisis scenarios.';
+
+  // Parse narrative into sections
+  const parseNarrative = (text: string) => {
+    const sections: { title: string; content: string }[] = [];
+
+    // Extract sections by headers
+    const psychMatch = text.match(/\*\*Psychological DNA:?\*\*\s*([\s\S]*?)(?=\*\*|$)/i);
+    const timelineMatch = text.match(/\*\*(?:Behavioral Timeline|Timeline):?\*\*\s*([\s\S]*?)(?=\*\*|$)/i);
+    const decisionsMatch = text.match(/\*\*(?:Critical Decision Points?|Decisions):?\*\*\s*([\s\S]*?)(?=\*\*|$)/i);
+    const evidenceMatch = text.match(/\*\*(?:HNWI World Evidence|Evidence):?\*\*\s*([\s\S]*?)(?=\*\*|$)/i);
+    const outcomeMatch = text.match(/\*\*(?:Final Outcome|Outcome):?\*\*\s*([\s\S]*?)(?=\*\*|$)/i);
+
+    if (psychMatch) sections.push({ title: 'Psychological DNA', content: psychMatch[1].trim() });
+    if (timelineMatch) sections.push({ title: 'Behavioral Timeline', content: timelineMatch[1].trim() });
+    if (decisionsMatch) sections.push({ title: 'Critical Decision Points', content: decisionsMatch[1].trim() });
+    if (evidenceMatch) sections.push({ title: 'HNWI World Evidence', content: evidenceMatch[1].trim() });
+    if (outcomeMatch) sections.push({ title: 'Final Outcome', content: outcomeMatch[1].trim() });
+
+    return sections.length > 0 ? sections : [{ title: 'Simulation Analysis', content: text }];
+  };
+
+  const narrativeSections = parseNarrative(digitalTwinNarrative);
+
+  // Render each section with styled cards
+  narrativeSections.forEach((section, idx) => {
+    // Remove markdown bold markers and clean text
+    const cleanContent = section.content
+      .replace(/\*\*/g, '')
+      .replace(/\[(?:Dev\s*ID|DEVID)\s*[\-:–—]\s*[^\]]+\]/gi, '') // Remove all DEVID citations
+      .replace(/\[DEVID\s*[\-:–—]\s*[^\]]+\]/gi, '') // Extra pass for any remaining
+      .trim();
+
+    const contentLines = doc.splitTextToSize(cleanContent, pageWidth - 48);
+    const cardHeight = 10 + (contentLines.length * 5) + 8;
+
+    checkPageBreak(cardHeight + 6);
+
+    const cardX = 20;
+    const cardWidth = pageWidth - 40;
+
+    // Soft shadow
+    addSoftShadow(cardX, yPos, cardWidth, cardHeight, 2);
+
+    // Card background
+    doc.setFillColor(...PREMIUM_COLORS.softWhite);
+    doc.roundedRect(cardX, yPos, cardWidth, cardHeight, 2, 2, 'F');
+
+    // Minimal border
+    doc.setDrawColor(...PREMIUM_COLORS.pearl);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(cardX, yPos, cardWidth, cardHeight, 2, 2, 'S');
+
+    // Subtle top accent (purple for psychological DNA, gold for others)
+    const accentColor = section.title.toLowerCase().includes('psychological')
+      ? PREMIUM_COLORS.deepPurple
+      : section.title.toLowerCase().includes('evidence')
+      ? PREMIUM_COLORS.forestGreen
+      : PREMIUM_COLORS.gold;
+
+    doc.setFillColor(...accentColor);
+    doc.setGState(new doc.GState({ opacity: 0.3 }));
+    doc.rect(cardX, yPos, cardWidth, 2, 'F');
+    doc.setGState(new doc.GState({ opacity: 1 }));
+
+    // Section title
+    doc.setFontSize(10);
+    doc.setTextColor(...PREMIUM_COLORS.charcoal);
+    doc.setFont('helvetica', 'bold');
+    doc.text(section.title, cardX + 4, yPos + 8);
+
+    // Section content
+    let contentY = yPos + 16;
+    doc.setFontSize(8.5);
+    doc.setTextColor(...PREMIUM_COLORS.slate);
+    doc.setFont('helvetica', 'normal');
+
+    contentLines.forEach((line: string) => {
+      doc.text(line, cardX + 4, contentY);
+      contentY += 5;
+    });
+
+    yPos += cardHeight + 6;
+  });
+
   // === PEER OPPORTUNITIES - NEW PAGE ===
   doc.addPage();
   addPageBackground();
@@ -667,113 +1040,6 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   });
 
   yPos += 12;
-
-  // === STRATEGIC POSITIONING ===
-  doc.addPage();
-  addPageBackground();
-  yPos = 20;
-
-  addSectionHeader(
-    'Strategic Positioning Summary',
-    'Your strategic positioning shows strong crisis resilience'
-  );
-
-  // Portfolio sections
-  const portfolioSections = [
-    {
-      title: 'Strategic Strengths',
-      items: [
-        `${tierConfig.label.charAt(0) + tierConfig.label.slice(1).toLowerCase()} tier positioning`,
-        'Diversified opportunity access',
-        'Strong peer benchmarking'
-      ]
-    },
-    {
-      title: 'Growth Opportunities',
-      items: [
-        'Geographic expansion potential',
-        'Alternative asset allocation',
-        'Network leverage improvement'
-      ]
-    },
-    {
-      title: 'Risk Management',
-      items: [
-        'Portfolio diversification review',
-        'Liquidity optimization',
-        'Jurisdiction risk assessment'
-      ]
-    },
-    {
-      title: 'Next Steps',
-      items: [
-        'Review high-profile peer signals',
-        'Analyze strategic positioning gaps',
-        'Access full HNWI World intelligence'
-      ]
-    }
-  ];
-
-  const cardWidth = (pageWidth - 46) / 2;
-  const cardHeight = 40;
-  const cardSpacing = 6;
-
-  portfolioSections.forEach((section, idx) => {
-    const row = Math.floor(idx / 2);
-    const col = idx % 2;
-    const xPos = 20 + (col * (cardWidth + cardSpacing));
-    const cardY = yPos + (row * (cardHeight + cardSpacing));
-
-    addSoftShadow(xPos, cardY, cardWidth, cardHeight, 2);
-    doc.setFillColor(...PREMIUM_COLORS.softWhite);
-    doc.roundedRect(xPos, cardY, cardWidth, cardHeight, 2, 2, 'F');
-    doc.setDrawColor(...PREMIUM_COLORS.pearl);
-    doc.setLineWidth(0.2);
-    doc.roundedRect(xPos, cardY, cardWidth, cardHeight, 2, 2, 'S');
-
-    // Top accent
-    doc.setFillColor(...PREMIUM_COLORS.gold);
-    doc.setGState(new doc.GState({ opacity: 0.2 }));
-    doc.rect(xPos, cardY, cardWidth, 2, 'F');
-    doc.setGState(new doc.GState({ opacity: 1 }));
-
-    // Title
-    doc.setFontSize(10);
-    doc.setTextColor(...PREMIUM_COLORS.charcoal);
-    doc.setFont('helvetica', 'bold');
-    doc.text(section.title, xPos + 5, cardY + 10);
-
-    // Items
-    doc.setFontSize(8);
-    doc.setTextColor(...PREMIUM_COLORS.slate);
-    doc.setFont('helvetica', 'normal');
-
-    section.items.forEach((item, itemIdx) => {
-      const itemY = cardY + 18 + (itemIdx * 6);
-      doc.text('·', xPos + 5, itemY);
-      const lines = doc.splitTextToSize(item, cardWidth - 12);
-      doc.text(lines[0], xPos + 9, itemY);
-    });
-  });
-
-  yPos += (2 * cardHeight) + cardSpacing + 12;
-
-  // Recommendation
-  checkPageBreak(18);
-  doc.setFillColor(252, 250, 245);
-  doc.roundedRect(20, yPos, pageWidth - 40, 16, 2, 2, 'F');
-
-  doc.setFontSize(9);
-  doc.setTextColor(...PREMIUM_COLORS.charcoal);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Strategic Recommendation', pageWidth / 2, yPos + 7, { align: 'center' });
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...PREMIUM_COLORS.slate);
-  const recommendation = 'Focus on closing performance gaps while leveraging your existing strengths to maximize strategic positioning value.';
-  const recLines = doc.splitTextToSize(recommendation, pageWidth - 60);
-  doc.text(recLines, pageWidth / 2, yPos + 12, { align: 'center' });
 
   // === FINAL PAGE ===
   doc.addPage();

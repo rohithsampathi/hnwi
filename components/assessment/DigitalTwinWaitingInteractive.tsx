@@ -169,7 +169,13 @@ export function DigitalTwinWaitingInteractive({
   useEffect(() => {
     async function fetchBriefCount() {
       try {
-        const response = await fetch('/api/developments/counts');
+        const response = await fetch('/api/developments/counts', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs;
@@ -444,8 +450,12 @@ export function DigitalTwinWaitingInteractive({
         if (response.ok) {
           const data = await response.json();
 
-          // Navigate when we have tier (simulation might be null initially)
-          if (data && data.tier) {
+          // CRITICAL: Wait for FULL enhanced report before navigating
+          // Check for tier AND enhanced report with all critical components
+          const hasEnhancedReport = data.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph ||
+                                   data.enhanced_report?.celebrity_opportunities;
+
+          if (data && data.tier && hasEnhancedReport) {
 
             // Calculate time elapsed since component mount
             const timeElapsed = Date.now() - componentMountTime.current;
@@ -508,13 +518,16 @@ export function DigitalTwinWaitingInteractive({
   useEffect(() => {
     if (hasCompleted) return;
 
-    // CRITICAL: Trust backend when it says result_available=true and should_reconnect=false
-    // Backend sends this ONLY when results are fully ready
-    // Verify we have at least the tier before navigating
+    // CRITICAL: Wait for FULL enhanced report before navigating
+    // Check for tier AND enhanced report with all critical components
+    const hasEnhancedReport = sseResultData?.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph ||
+                             sseResultData?.enhanced_report?.celebrity_opportunities;
+
     if (sseResultData &&
         sseResultData.result_available === true &&
         sseResultData.should_reconnect === false &&
-        sseResultData.tier) {
+        sseResultData.tier &&
+        hasEnhancedReport) {
 
       // Calculate time elapsed since component mount
       const timeElapsed = Date.now() - componentMountTime.current;

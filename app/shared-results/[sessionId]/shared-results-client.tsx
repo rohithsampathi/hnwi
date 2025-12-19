@@ -202,7 +202,13 @@ export default function SharedResultsClient() {
   useEffect(() => {
     async function fetchHNWICount() {
       try {
-        const response = await fetch('/api/developments/counts');
+        const response = await fetch('/api/developments/counts', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           // Try different possible field names

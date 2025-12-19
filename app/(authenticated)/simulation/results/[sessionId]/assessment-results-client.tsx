@@ -250,7 +250,13 @@ export default function AssessmentResultsClient() {
   useEffect(() => {
     async function fetchHNWICount() {
       try {
-        const response = await fetch('/api/developments/counts');
+        const response = await fetch('/api/developments/counts', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           // Try different possible field names
@@ -500,10 +506,25 @@ export default function AssessmentResultsClient() {
         };
       }).filter((a: any) => a !== null) : [];
 
+      // Extract gap analysis text
+      const gapAnalysisText = (results as any).strategic_analysis?.raw_text ||
+                              results.enhanced_report?.full_analytics?.gap_analysis ||
+                              (results as any).gap_analysis;
+
+      // Extract digital twin data
+      const digitalTwinData = {
+        narrative: (results as any).digital_twin?.narrative || results.simulation?.simulation_narrative,
+        outcome: (results as any).digital_twin?.outcome || results.simulation?.outcome,
+        confidence: (results as any).tier_classification?.confidence || results.simulation?.confidence
+      };
+
       const enhancedReportData: EnhancedReportData = {
         session_id: sessionId,
         user_id: results.user_id || '',
         generated_at: new Date().toISOString(),
+        gap_analysis: gapAnalysisText, // Add gap analysis
+        digital_twin: digitalTwinData, // Add digital twin
+        simulation: results.simulation, // Add full simulation data
         executive_summary: {
           tier: results.tier,
           percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,
