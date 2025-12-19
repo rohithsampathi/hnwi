@@ -47,31 +47,25 @@ export function MapPopupSingle({
 
   renderCountRef.current++
 
-  console.log(`[MapPopupSingle #${renderCountRef.current}] City: ${city.title}, IsExpanded: ${isExpanded}, ClusterId: ${clusterId}`)
 
   // Log when ref connects/disconnects
   React.useEffect(() => {
     const container = scrollContainerRef.current
-    console.log(`[MapPopupSingle] REF UPDATE - Container exists: ${!!container}, ScrollTop: ${container?.scrollTop ?? 'N/A'}`)
   })
 
   // Track scroll events
   React.useEffect(() => {
     const container = scrollContainerRef.current
     if (!container || !isExpanded) {
-      console.log(`[MapPopupSingle] No scroll listener - Container: ${!!container}, IsExpanded: ${isExpanded}`)
       return
     }
 
     const handleScroll = () => {
-      console.log(`[MapPopupSingle] 🎯 SCROLL EVENT - ScrollTop: ${container.scrollTop}`)
     }
 
     container.addEventListener('scroll', handleScroll)
-    console.log(`[MapPopupSingle] ✅ Scroll listener ATTACHED`)
 
     return () => {
-      console.log(`[MapPopupSingle] ❌ Scroll listener REMOVED`)
       container.removeEventListener('scroll', handleScroll)
     }
   }, [isExpanded])

@@ -92,7 +92,6 @@ export const usePDFPolling = (sessionId: string | null, shouldStart: boolean) =>
         }
       } catch (error) {
         // Continue polling on error
-        console.log('[PDF Polling] Still generating...');
       }
     };
 

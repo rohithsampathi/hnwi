@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailSent) {
-      console.error('[Send Refund Notification] Failed to send email to:', user_email);
       return NextResponse.json(
         {
           error: 'Failed to send refund notification',
@@ -77,7 +76,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Send Refund Notification] ✅ Refund notification sent to:', user_email);
 
     return NextResponse.json({
       success: true,
@@ -85,7 +83,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Send Refund Notification] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

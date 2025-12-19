@@ -37,17 +37,15 @@ export const useAssessmentSSE = (sessionId: string | null) => {
   const eventSourceRef = useRef<EventSource | null>(null);
   const shouldReconnectRef = useRef<boolean>(true);
   const retryCountRef = useRef<number>(0);
-  const maxRetries = 3; // Limit retries to prevent infinite loops
+  const maxRetries = 8; // Increased retries for better resilience
   const isMobileRef = useRef<boolean>(false);
+  const [reconnectTrigger, setReconnectTrigger] = useState<number>(0); // Trigger reconnection
 
   useEffect(() => {
     if (!sessionId) return;
 
     // SSE works on all modern browsers including PWAs
     // We'll use SSE as primary and polling as fallback
-
-    // Reset retry count when sessionId changes
-    retryCountRef.current = 0;
 
     // Construct SSE URL - use relative URL to go through Next.js API routes
     // This ensures backend URL is never exposed to the client
@@ -61,6 +59,8 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     eventSource.addEventListener('connected', (e) => {
       const data = JSON.parse(e.data);
       setIsConnected(true);
+      // Reset retry count on successful connection
+      retryCountRef.current = 0;
       setEvents(prev => [...prev, {
         type: 'connected',
         data,
@@ -159,40 +159,65 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
       // CRITICAL: Check if results are actually available before proceeding
       if (completionData.result_available === true) {
-        // Store the result data with the result_available flag
-        setResultData({
-          ...completionData,
-          result_available: true
-        });
-
         // Respect backend's should_reconnect flag
         if (completionData.should_reconnect === false) {
           shouldReconnectRef.current = false;
-          eventSource.close();
 
-          // If backend provides redirect URL, fetch results
+          // IMMEDIATELY set result data with completion flag to trigger UI update
+          setResultData({
+            ...completionData,
+            result_available: true,
+            should_reconnect: false
+          });
+
+          // If backend provides redirect URL, fetch full results IMMEDIATELY
           if (completionData.redirect_url) {
             setRedirectUrl(completionData.redirect_url);
 
             // Fetch the complete result data for PDF generation
-            fetch(completionData.redirect_url)
-              .then(res => res.json())
+            // Use Promise.race to timeout after 5 seconds
+            const fetchPromise = fetch(completionData.redirect_url)
+              .then(res => {
+                if (!res.ok) {
+                  throw new Error(`HTTP ${res.status}`);
+                }
+                return res.json();
+              })
               .then(data => {
                 setResultData({
                   ...data,
-                  result_available: true
+                  result_available: true,
+                  should_reconnect: false
                 });
+
+                // Close SSE connection AFTER successful fetch
+                eventSource.close();
               })
               .catch(err => {
-                // Silent fail
+                // Still set completion flag even if fetch fails
+                // The component will use polling as fallback
+                setResultData({
+                  ...completionData,
+                  result_available: true,
+                  should_reconnect: false,
+                  fetch_failed: true
+                });
+                eventSource.close();
               });
+
+            // Don't close connection yet - wait for fetch to complete
+            // This prevents race condition where connection closes before fetch starts
+          } else {
+            // No redirect URL provided, close connection
+            eventSource.close();
           }
         } else {
-          // Legacy behavior - close stream
-          eventSource.close();
+          // Legacy behavior - should_reconnect is true, keep connection open
+          setResultData({
+            ...completionData,
+            result_available: true
+          });
         }
-      } else {
-        // Results not yet available, waiting...
       }
     });
 
@@ -210,11 +235,15 @@ export const useAssessmentSSE = (sessionId: string | null) => {
 
       // Only auto-reconnect if backend allows it AND not complete
       if (shouldReconnectRef.current && !isComplete) {
-        // Implement exponential backoff: 3s, 6s, 12s
-        const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current - 1), 12000);
+        // Implement exponential backoff: 2s, 4s, 8s, 16s, capped at 20s
+        const backoffTime = Math.min(2000 * Math.pow(2, retryCountRef.current - 1), 20000);
 
         setTimeout(() => {
-          // Browser will automatically reconnect
+          // Trigger reconnection by updating state
+          // This will cause the useEffect to re-run and create a new EventSource
+          if (shouldReconnectRef.current && !isComplete) {
+            setReconnectTrigger(prev => prev + 1);
+          }
         }, backoffTime);
       } else {
         eventSource.close();
@@ -225,7 +254,7 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     return () => {
       eventSource.close();
     };
-  }, [sessionId, isComplete]);
+  }, [sessionId, isComplete, reconnectTrigger]);
 
   // Get calibration events (for animation)
   const calibrationEvents = events.filter(e =>

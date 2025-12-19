@@ -332,7 +332,6 @@ const tryRefreshToken = async (): Promise<boolean> => {
   try {
     // ROOT FIX: Never attempt refresh on simulation pages (public access)
     if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
-      console.debug('[API] Skipping refresh - on simulation page');
       return false;
     }
 
@@ -365,13 +364,11 @@ const tryRefreshToken = async (): Promise<boolean> => {
     // If refresh failed with 401/403, the refresh token itself is expired
     // Clear old auth state to prepare for fresh login
     if (response.status === 401 || response.status === 403) {
-      console.warn('[API] Refresh token expired or invalid');
       setAuthState(false);
     }
 
     return false;
   } catch (error) {
-    console.error('[API] Token refresh network error:', error);
     return false;
   }
 };
@@ -380,7 +377,6 @@ const tryRefreshToken = async (): Promise<boolean> => {
 const handleAuthError = async (): Promise<boolean> => {
   // ROOT FIX: Never handle auth errors on simulation pages (public access)
   if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
-    console.debug('[API] Skipping auth error handling - on simulation page');
     return false;
   }
 
@@ -535,7 +531,6 @@ export const secureApiCall = async (
         parseInt(retryAfter) * 1000 :
         Math.min(1000 * Math.pow(2, retryCount), 10000); // Cap at 10 seconds
 
-      console.warn(`[API] Rate limited on ${endpoint}, retrying after ${backoffDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, backoffDelay));
       return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
     }
@@ -571,7 +566,6 @@ export const secureApiCall = async (
       } else {
         // Auth restoration failed - user cancelled or no auth popup available
         // Clear state and redirect
-        console.error(`[API] 401 Unauthorized on ${endpoint} - auth restoration failed`);
         setAuthState(false);
 
         // Clear user session data
@@ -632,8 +626,6 @@ export const secureApiCall = async (
       // Not a zero-trust challenge - treat as regular auth failure (CSRF, expired session, etc.)
       // Only attempt reauth ONCE (when retryCount === 0)
       if (retryCount === 0) {
-        console.warn(`[API] 403 Forbidden on ${endpoint}, attempting reauth (will not retry again)...`);
-
         // Try to refresh authentication
         const authRestored = await handleAuthError();
 
@@ -653,7 +645,6 @@ export const secureApiCall = async (
 
       // If retryCount > 0, we already tried reauth - don't retry again
       // Clear auth state and redirect to login
-      console.error(`[API] 403 Forbidden on ${endpoint} after reauth attempt - redirecting to auth`);
       setAuthState(false);
 
       // Clear user session data
@@ -733,12 +724,24 @@ export const secureApi = {
           'Expires': '0'
         } : {};
 
-        const response = await secureApiCall(endpoint, {
+        // CRITICAL: Add timestamp query parameter to prevent browser from caching by URL
+        // This prevents returning cached 400 "results not ready" responses
+        let finalEndpoint = endpoint;
+        if (bustCache) {
+          const separator = endpoint.includes('?') ? '&' : '?';
+          finalEndpoint = `${endpoint}${separator}t=${Date.now()}`;
+        }
+
+        const response = await secureApiCall(finalEndpoint, {
           method: 'GET',
           headers
         }, requireAuth);
 
         if (!response.ok) {
+          // CRITICAL: Remove from pending requests BEFORE throwing
+          // This allows retries to make fresh requests instead of returning cached failures
+          pendingRequests.delete(requestKey);
+
           // Extract error details from response body before throwing
           let errorDetail;
           try {
@@ -755,10 +758,15 @@ export const secureApi = {
           throw error;
         }
 
-        return await response.json();
-      } finally {
-        // Clean up pending request
+        const data = await response.json();
+        // Clean up pending request after successful response
         pendingRequests.delete(requestKey);
+        return data;
+      } catch (error) {
+        // CRITICAL: Remove from pending requests on ANY error
+        // This ensures retries make fresh requests
+        pendingRequests.delete(requestKey);
+        throw error;
       }
     })();
 

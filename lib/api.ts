@@ -125,9 +125,6 @@ export async function getEvents(): Promise<SocialEvent[]> {
     
     return [];
   } catch (error: any) {
-    console.error('getEvents error:', error);
-    console.error('getEvents error status:', error?.status);
-    console.error('getEvents error response:', error?.response);
 
     // Handle tier requirement with enhanced error details
     if (error?.status === 403 || error?.response?.status === 403) {
@@ -142,7 +139,6 @@ export async function getEvents(): Promise<SocialEvent[]> {
           feature: errorDetail.feature || "social_events_access"
         }
       };
-      console.error('Throwing tier error:', tierError);
       throw tierError;
     }
 

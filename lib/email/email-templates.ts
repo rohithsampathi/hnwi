@@ -30,7 +30,6 @@ interface RefundNotificationData {
  */
 export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean> {
   if (!data.user_email || data.user_email.includes('example.com')) {
-    console.log('[Email] Skipping welcome email - invalid email');
     return false;
   }
 
@@ -49,7 +48,6 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean>
  */
 export async function sendEmailVerification(data: EmailVerificationData): Promise<boolean> {
   if (!data.user_email || data.user_email.includes('example.com')) {
-    console.log('[Email] Skipping verification email - invalid email');
     return false;
   }
 
@@ -68,7 +66,6 @@ export async function sendEmailVerification(data: EmailVerificationData): Promis
  */
 export async function sendRefundNotification(data: RefundNotificationData): Promise<boolean> {
   if (!data.user_email || data.user_email.includes('example.com')) {
-    console.log('[Email] Skipping refund notification - invalid email');
     return false;
   }
 

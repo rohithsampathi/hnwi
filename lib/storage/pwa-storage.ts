@@ -35,7 +35,6 @@ class PWAStorage {
 
     // Check if IndexedDB is available
     if (typeof window === 'undefined' || !window.indexedDB) {
-      console.warn('IndexedDB not available, using memory storage');
       this.isInitialized = true;
       return;
     }
@@ -45,7 +44,6 @@ class PWAStorage {
 
       return new Promise((resolve, reject) => {
         request.onerror = () => {
-          console.error('Failed to open IndexedDB:', request.error);
           // Fall back to memory storage
           this.isInitialized = true;
           resolve();
@@ -70,7 +68,6 @@ class PWAStorage {
         };
       });
     } catch (error) {
-      console.error('Error initializing IndexedDB:', error);
       this.isInitialized = true;
     }
   }
@@ -116,11 +113,9 @@ class PWAStorage {
 
         request.onsuccess = () => resolve();
         request.onerror = () => {
-          console.error('Failed to set item in IndexedDB:', request.error);
           resolve(); // Don't reject, we have memory cache
         };
       } catch (error) {
-        console.error('Error setting item:', error);
         resolve();
       }
     });
@@ -179,11 +174,9 @@ class PWAStorage {
         };
 
         request.onerror = () => {
-          console.error('Failed to get item from IndexedDB:', request.error);
           resolve(null);
         };
       } catch (error) {
-        console.error('Error getting item:', error);
         resolve(null);
       }
     });
@@ -216,11 +209,9 @@ class PWAStorage {
 
         request.onsuccess = () => resolve();
         request.onerror = () => {
-          console.error('Failed to remove item from IndexedDB:', request.error);
           resolve();
         };
       } catch (error) {
-        console.error('Error removing item:', error);
         resolve();
       }
     });
@@ -253,11 +244,9 @@ class PWAStorage {
 
         request.onsuccess = () => resolve();
         request.onerror = () => {
-          console.error('Failed to clear IndexedDB:', request.error);
           resolve();
         };
       } catch (error) {
-        console.error('Error clearing storage:', error);
         resolve();
       }
     });
@@ -283,11 +272,9 @@ class PWAStorage {
         };
 
         request.onerror = () => {
-          console.error('Failed to get keys from IndexedDB:', request.error);
           resolve(Array.from(this.memoryCache.keys()));
         };
       } catch (error) {
-        console.error('Error getting keys:', error);
         resolve(Array.from(this.memoryCache.keys()));
       }
     });
@@ -317,7 +304,6 @@ class PWAStorage {
         }
       };
     } catch (error) {
-      console.error('Error cleaning up expired items:', error);
     }
   }
 
@@ -333,7 +319,6 @@ class PWAStorage {
     this.memoryCache.set(key, value);
     // Async update to IndexedDB in background
     this.setItem(key, value).catch(err => {
-      console.error('Background setItem failed:', err);
     });
   }
 
@@ -342,7 +327,6 @@ class PWAStorage {
     this.memoryCache.delete(key);
     // Async remove from IndexedDB in background
     this.removeItem(key).catch(err => {
-      console.error('Background removeItem failed:', err);
     });
   }
 }

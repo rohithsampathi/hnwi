@@ -27,15 +27,7 @@ type ProcessingStep = {
   metrics?: string[];
 };
 
-// Rotating facts about HNWI World
-const HNWI_FACTS = [
-  { icon: Globe, text: "Analyzing patterns across 67 jurisdictions for wealth migration signals" },
-  { icon: Brain, text: "Processing 1,900+ HNWI World developments since February 2023" },
-  { icon: Shield, text: "Simulating your portfolio through 10 crisis scenarios" },
-  { icon: TrendingUp, text: "Identifying opportunities worth $10M+ in cumulative value" },
-  { icon: AlertTriangle, text: "Testing resilience against the April 2026 Transparency Cliff" },
-  { icon: Sparkles, text: "Matching your DNA with 87 peer portfolios for benchmarking" }
-];
+// NOTE: HNWI_FACTS moved inside component to access dynamic peerCount
 
 // Removed static SIMULATION_METRICS - will make them dynamic based on current step
 
@@ -49,6 +41,7 @@ export function DigitalTwinWaitingInteractive({
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [briefCount, setBriefCount] = useState<number>(1900);
+  const [peerCount, setPeerCount] = useState<number>(87); // Dynamic peer comparison count from backend
   const [pollCount, setPollCount] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
@@ -57,6 +50,21 @@ export function DigitalTwinWaitingInteractive({
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
   const [actualOpportunitiesCount, setActualOpportunitiesCount] = useState<number | null>(null);
+  const hasFetchedCountsRef = useRef(false); // Prevent multiple fetches of counts
+
+  // NO minimum display time - show results immediately when ready
+  const componentMountTime = useRef<number>(Date.now());
+  const MINIMUM_DISPLAY_TIME_MS = 0; // No minimum - instant navigation
+
+  // Rotating facts about HNWI World (dynamic based on peerCount and briefCount)
+  const HNWI_FACTS = [
+    { icon: Globe, text: "Analyzing patterns across 67 jurisdictions for wealth migration signals" },
+    { icon: Brain, text: `Processing ${briefCount.toLocaleString()}+ HNWI World developments since February 2023` },
+    { icon: Shield, text: "Simulating your portfolio through 10 crisis scenarios" },
+    { icon: TrendingUp, text: "Identifying opportunities worth $10M+ in cumulative value" },
+    { icon: AlertTriangle, text: "Testing resilience against the April 2026 Transparency Cliff" },
+    { icon: Sparkles, text: `Matching your DNA with ${peerCount} peer portfolios for benchmarking` }
+  ];
 
   // Dynamic metrics that update based on current step
   const [dynamicMetrics, setDynamicMetrics] = useState([
@@ -83,7 +91,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <Globe className="w-5 h-5" />,
       estimatedSeconds: 20,
       status: 'processing',
-      metrics: ['1,900+ developments', '67 jurisdictions', '3 years of patterns']
+      metrics: [`${briefCount.toLocaleString()}+ developments`, '67 jurisdictions', '3 years of patterns']
     },
     {
       id: 'simulation',
@@ -92,7 +100,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <Brain className="w-5 h-5" />,
       estimatedSeconds: 40,
       status: 'pending',
-      metrics: ['10 crisis scenarios', '87 peer comparisons', '2026 cliff modeling']
+      metrics: ['10 crisis scenarios', `${peerCount} peer comparisons`, '2026 cliff modeling']
     },
     {
       id: 'gap',
@@ -101,7 +109,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <TrendingUp className="w-5 h-5" />,
       estimatedSeconds: 60,
       status: 'pending',
-      metrics: ['Spider graph analysis', 'Peer comparison', 'Strategic gaps']
+      metrics: ['Spider graph analysis', `${peerCount} peer comparison`, 'Strategic gaps']
     },
     {
       id: 'forensic',
@@ -110,7 +118,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <Activity className="w-5 h-5" />,
       estimatedSeconds: 20,
       status: 'pending',
-      metrics: ['Cross-validation', 'Confidence scoring', 'Peer benchmarking']
+      metrics: ['Cross-validation', 'Confidence scoring', `${peerCount} peer benchmarking`]
     },
     {
       id: 'pdf',
@@ -122,6 +130,34 @@ export function DigitalTwinWaitingInteractive({
       metrics: ['Full analytics', 'Opportunity maps', 'Action plans']
     },
   ]);
+
+  // Update step metrics when briefCount or peerCount changes
+  useEffect(() => {
+    setSteps(prevSteps => prevSteps.map(step => {
+      if (step.id === 'briefs') {
+        return {
+          ...step,
+          metrics: [`${briefCount.toLocaleString()}+ developments`, '67 jurisdictions', '3 years of patterns']
+        };
+      } else if (step.id === 'simulation') {
+        return {
+          ...step,
+          metrics: ['10 crisis scenarios', `${peerCount} peer comparisons`, '2026 cliff modeling']
+        };
+      } else if (step.id === 'gap') {
+        return {
+          ...step,
+          metrics: ['Spider graph analysis', `${peerCount} peer comparison`, 'Strategic gaps']
+        };
+      } else if (step.id === 'forensic') {
+        return {
+          ...step,
+          metrics: ['Cross-validation', 'Confidence scoring', `${peerCount} peer benchmarking`]
+        };
+      }
+      return step;
+    }));
+  }, [briefCount, peerCount]);
 
   // Fetch dynamic brief count
   useEffect(() => {
@@ -142,46 +178,75 @@ export function DigitalTwinWaitingInteractive({
     fetchBriefCount();
   }, []);
 
-  // Fetch actual opportunities count from session results
+  // Fetch actual opportunities count AND peer count from session results
+  // ONLY when SSE says results are ready - ONCE
   useEffect(() => {
-    async function fetchOpportunitiesCount() {
+    // CRITICAL: Don't fetch if already completed or already fetched
+    if (hasCompleted) return;
+    if (hasFetchedCountsRef.current) return;
+
+    // Don't fetch until SSE confirms results are available
+    if (!sseResultData?.result_available) return;
+    if (actualOpportunitiesCount !== null) return; // Already have the count
+
+    hasFetchedCountsRef.current = true; // Mark as fetched immediately to prevent duplicates
+
+    async function fetchDynamicCounts() {
       try {
-        const response = await fetch(`/api/assessment/result/${sessionId}`);
+        // Bust cache when fetching counts
+        const response = await fetch(`/api/assessment/result/${sessionId}?t=${Date.now()}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
+
+          // Extract opportunities count
           const oppCount = data.enhanced_report?.full_analytics?.celebrity_opportunities?.celebrity_opportunities?.length ||
-                          data.enhanced_report?.celebrity_opportunities?.celebrity_opportunities?.length;
+                          data.enhanced_report?.celebrity_opportunities?.celebrity_opportunities?.length ||
+                          data.personalized_opportunities?.length ||
+                          35; // Fallback
           if (oppCount && typeof oppCount === 'number') {
             setActualOpportunitiesCount(oppCount);
           }
+
+          // Extract peer comparison sample size
+          const peerSampleSize = data.enhanced_report?.full_analytics?.strategic_positioning?.sample_size ||
+                                data.enhanced_report?.strategic_positioning?.sample_size;
+          if (peerSampleSize && typeof peerSampleSize === 'number') {
+            setPeerCount(peerSampleSize);
+          }
         }
       } catch (error) {
-        // Use fallback value
+        // Use fallback values
       }
     }
 
-    // Only fetch if we don't have the count yet
-    if (!actualOpportunitiesCount && sessionId) {
-      fetchOpportunitiesCount();
-    }
-  }, [sessionId, actualOpportunitiesCount]);
+    fetchDynamicCounts();
+  }, [sessionId, sseResultData, actualOpportunitiesCount, hasCompleted]);
 
-  // Timer
+  // Timer - stop when completed
   useEffect(() => {
+    if (hasCompleted) return; // Don't run timer if already completed
+
     const timer = setInterval(() => {
       setElapsedTime(prev => prev + 1);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [hasCompleted]);
 
-  // Rotate facts every 5 seconds
+  // Rotate facts every 5 seconds - stop when completed
   useEffect(() => {
+    if (hasCompleted) return; // Don't rotate facts if already completed
+
     const interval = setInterval(() => {
       setCurrentFactIndex(prev => (prev + 1) % HNWI_FACTS.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [hasCompleted, HNWI_FACTS.length]);
 
   // Progress through steps based on cumulative time with realistic progression
   useEffect(() => {
@@ -254,7 +319,7 @@ export function DigitalTwinWaitingInteractive({
           // Running Digital Twin simulation - scenarios and peers should be counting
           newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios being tested
-          newMetrics[2].target = 87; // Peer comparisons running
+          newMetrics[2].target = peerCount; // Peer comparisons running (DYNAMIC from backend)
           newMetrics[3].target = oppEarly; // Some opportunities found
           break;
 
@@ -262,7 +327,7 @@ export function DigitalTwinWaitingInteractive({
           // Generating Extended Report - opportunities should be counting up
           newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios complete
-          newMetrics[2].target = 87; // Peer comparisons complete
+          newMetrics[2].target = peerCount; // Peer comparisons complete (DYNAMIC from backend)
           newMetrics[3].target = oppMidway; // Finding more opportunities
           break;
 
@@ -270,7 +335,7 @@ export function DigitalTwinWaitingInteractive({
           // Response validation - all metrics should be near final
           newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios complete
-          newMetrics[2].target = 87; // Peer comparisons complete
+          newMetrics[2].target = peerCount; // Peer comparisons complete (DYNAMIC from backend)
           newMetrics[3].target = Math.floor(finalOppCount * 0.9); // Near final opportunities count
           break;
 
@@ -278,17 +343,19 @@ export function DigitalTwinWaitingInteractive({
           // Finalizing - all metrics at maximum
           newMetrics[0].target = briefCount; // All developments
           newMetrics[1].target = 10; // All scenarios
-          newMetrics[2].target = 87; // All peers
+          newMetrics[2].target = peerCount; // All peers (DYNAMIC from backend)
           newMetrics[3].target = finalOppCount; // All opportunities
           break;
       }
 
       return newMetrics;
     });
-  }, [currentStepIndex, briefCount, actualOpportunitiesCount]);
+  }, [currentStepIndex, briefCount, peerCount, actualOpportunitiesCount]);
 
-  // Animate metrics smoothly towards their targets
+  // Animate metrics smoothly towards their targets - stop when completed
   useEffect(() => {
+    if (hasCompleted) return; // Don't animate metrics if already completed
+
     const interval = setInterval(() => {
       setDynamicMetrics(prev => {
         return prev.map(metric => {
@@ -313,36 +380,71 @@ export function DigitalTwinWaitingInteractive({
     }, 100); // Update every 100ms for smooth animation
 
     return () => clearInterval(interval);
-  }, []);
+  }, [hasCompleted]);
 
-  // Polling mechanism (fallback)
+  // Polling mechanism (fallback) - start after 45 seconds
+  // This ensures we catch results even if SSE fails, but gives backend time to generate
   useEffect(() => {
     if (!sessionId || hasCompleted || isPolling) return;
 
     const pollDelayTimer = setTimeout(() => {
-      if (!sseSimulationResult && !hasCompleted) {
+      if (!hasCompleted) {
         setIsPolling(true);
       }
-    }, 45000); // Increased delay before starting to poll
+    }, 45000); // Start polling after 45 seconds as fallback
 
     return () => clearTimeout(pollDelayTimer);
-  }, [sessionId, hasCompleted, isPolling, sseSimulationResult]);
+  }, [sessionId, hasCompleted, isPolling]);
+
+  // Stop polling when hasCompleted changes
+  useEffect(() => {
+    if (hasCompleted && pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+      setIsPolling(false);
+    }
+  }, [hasCompleted]);
 
   useEffect(() => {
-    if (!isPolling || hasCompleted) return;
+    // CRITICAL: Don't start polling if already completed
+    if (hasCompleted) {
+      return;
+    }
+    if (!isPolling) return;
 
     let localPollCount = 0;
-    const maxPolls = 40; // Increased max polls for extended report generation
+    const maxPolls = 50; // Increased max polls for extended report generation (from 40)
 
     const pollForResults = async () => {
+      // CRITICAL: Check if SSE already completed - stop polling immediately
+      if (hasCompleted || !isPolling) {
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        setIsPolling(false); // Ensure polling is stopped
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/assessment/result/${sessionId}`);
+        // CRITICAL: Bust cache to prevent returning cached 400 responses
+        const response = await fetch(`/api/assessment/result/${sessionId}?t=${Date.now()}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
 
         if (response.ok) {
           const data = await response.json();
 
-          // Check if BOTH basic results AND enhanced report are ready
-          if (data && data.tier && data.enhanced_report?.full_analytics?.strategic_positioning) {
+          // Navigate when we have tier (simulation might be null initially)
+          if (data && data.tier) {
+
+            // Calculate time elapsed since component mount
+            const timeElapsed = Date.now() - componentMountTime.current;
+            const remainingTime = Math.max(0, MINIMUM_DISPLAY_TIME_MS - timeElapsed);
+
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = null;
@@ -358,14 +460,17 @@ export function DigitalTwinWaitingInteractive({
               confidence: data.confidence || 0
             };
 
+            // ENFORCE MINIMUM DISPLAY TIME: Wait for remaining time + 1 second transition
+            const navigationDelay = remainingTime + 1000;
+
             setTimeout(() => {
               onComplete(simulationResult, '');
-            }, 1000);
+            }, navigationDelay);
             return;
           }
         }
       } catch (error) {
-        // Silent fail
+        // Network or other error - continue polling
       }
 
       localPollCount++;
@@ -380,8 +485,10 @@ export function DigitalTwinWaitingInteractive({
       }
     };
 
+    // Start first poll immediately
     pollForResults();
-    pollingIntervalRef.current = setInterval(pollForResults, 5000);
+    // Then poll every 6 seconds
+    pollingIntervalRef.current = setInterval(pollForResults, 6000);
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -390,36 +497,72 @@ export function DigitalTwinWaitingInteractive({
     };
   }, [sessionId, hasCompleted, isPolling, onComplete]);
 
-  // SSE event handling - wait for enhanced report
+  // SSE event handling - Trust backend's assessment_completed event
+  // CRITICAL: Enforce minimum display time to ensure proper user experience
   useEffect(() => {
     if (hasCompleted) return;
 
-    if (sseSimulationResult && sseResultData) {
-      // Check if BOTH basic results AND enhanced report are ready
-      if (sseResultData.result_available === true &&
-          sseResultData.enhanced_report_ready === true) {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
+    // CRITICAL: Trust backend when it says result_available=true and should_reconnect=false
+    // Backend sends this ONLY when results are fully ready
+    // Verify we have at least the tier before navigating
+    if (sseResultData &&
+        sseResultData.result_available === true &&
+        sseResultData.should_reconnect === false &&
+        sseResultData.tier) {
+
+      // Calculate time elapsed since component mount
+      const timeElapsed = Date.now() - componentMountTime.current;
+      const remainingTime = Math.max(0, MINIMUM_DISPLAY_TIME_MS - timeElapsed);
+
+      // Stop all polling immediately
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      setIsPolling(false); // CRITICAL: Stop polling mechanism
+
+      setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
+      setHasCompleted(true);
+
+      // Extract simulation result from SSE data
+      const simulationResult = {
+        outcome: sseResultData.simulation?.outcome || sseSimulationResult?.outcome || 'DAMAGED',
+        tier: sseResultData.tier || sseSimulationResult?.tier || 'observer',
+        cognitive_mri: sseResultData.simulation?.cognitive_mri || sseSimulationResult?.cognitive_mri || '',
+        confidence: sseResultData.confidence || sseSimulationResult?.confidence || 0
+      };
+
+      // ENFORCE MINIMUM DISPLAY TIME: Wait for remaining time + 1 second transition
+      const navigationDelay = remainingTime + 1000;
+
+      setTimeout(() => {
+        // Pass result data through sessionStorage for incognito mode compatibility
+        // This allows results page to load even without authentication cookies
+        try {
+          sessionStorage.setItem(`assessment_result_${sessionId}`, JSON.stringify(sseResultData));
+        } catch (e) {
+          // Silent fail if sessionStorage is full
         }
 
-        setSteps(prev => prev.map(step => ({ ...step, status: 'complete' })));
-        setHasCompleted(true);
-
-        setTimeout(() => {
-          onComplete(sseSimulationResult, '');
-        }, 1000);
-      }
+        onComplete(simulationResult, ssePdfUrl || '');
+      }, navigationDelay);
     }
-  }, [sseSimulationResult, sseResultData, hasCompleted, onComplete]);
+  }, [sseResultData, sseSimulationResult, ssePdfUrl, hasCompleted, onComplete, sessionId, MINIMUM_DISPLAY_TIME_MS]);
 
   // Calculate progress based on completed steps + progress within current step
+  // SCIENTIFIC: Uses actual step completion + time-based estimation within steps
   const calculateProgress = () => {
     if (hasCompleted) return 100;
+
+    // If SSE signals results are available, jump to 95%
+    if (sseResultData?.result_available === true) {
+      return 95;
+    }
 
     let completedTime = 0;
     let currentStepProgress = 0;
 
+    // Calculate time-based progress through steps
     for (let i = 1; i < steps.length; i++) {
       if (i < currentStepIndex) {
         // Add full time for completed steps
@@ -436,7 +579,22 @@ export function DigitalTwinWaitingInteractive({
 
     const totalTime = steps.reduce((sum, step) => sum + step.estimatedSeconds, 0);
     const totalProgress = completedTime + currentStepProgress;
-    return Math.min(95, (totalProgress / totalTime) * 100); // Cap at 95% until fully complete
+
+    // Calculate base percentage from time
+    let percentage = (totalProgress / totalTime) * 100;
+
+    // SCIENTIFIC ADJUSTMENT: Use metric progress to refine percentage
+    // If we have actual metrics progress, blend it with time-based estimate
+    const metricsProgress = dynamicMetrics.reduce((sum, metric) => {
+      if (metric.target === 0) return sum;
+      return sum + (metric.current / metric.target);
+    }, 0) / dynamicMetrics.length;
+
+    // Blend time-based (70%) with metrics-based (30%) for scientific accuracy
+    percentage = (percentage * 0.7) + (metricsProgress * 100 * 0.3);
+
+    // Cap at 85% until SSE confirms completion
+    return Math.min(85, percentage);
   };
 
   const progressPercentage = calculateProgress();

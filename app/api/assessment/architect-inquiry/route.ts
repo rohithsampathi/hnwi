@@ -50,8 +50,6 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Backend error for Architect inquiry:', errorText);
-      console.error('Lead data (for manual recovery):', JSON.stringify(leadData, null, 2));
 
       // Even if backend fails, log locally and return success
       // This ensures we don't lose the lead
@@ -73,11 +71,9 @@ export async function POST(request: NextRequest) {
       data
     });
   } catch (error) {
-    console.error('Error submitting Architect inquiry:', error);
 
     // Log the inquiry attempt even on error for recovery
     const bodyStr = await request.text().catch(() => '{}');
-    console.error('Failed inquiry data:', bodyStr);
 
     return NextResponse.json(
       {

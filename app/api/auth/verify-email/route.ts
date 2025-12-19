@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     try {
       const payload = await verifyVerificationToken(token);
 
-      console.log('[Verify Email] ✅ Email verified successfully for user:', payload.user_id);
 
       // At this point, you could call your backend to update the user's email_verified status
       // For now, we'll just return success with the verified data
@@ -45,7 +44,6 @@ export async function GET(request: NextRequest) {
 
       // Handle expired tokens
       if (errorMessage === 'EXPIRED') {
-        console.error('[Verify Email] Token expired');
         return NextResponse.json(
           {
             error: 'Verification token expired',
@@ -56,7 +54,6 @@ export async function GET(request: NextRequest) {
       }
 
       // Handle invalid tokens
-      console.error('[Verify Email] Invalid token:', errorMessage);
       return NextResponse.json(
         {
           error: 'Invalid verification token',
@@ -67,7 +64,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('[Verify Email] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -99,7 +95,6 @@ export async function POST(request: NextRequest) {
     try {
       const payload = await verifyVerificationToken(token);
 
-      console.log('[Verify Email] ✅ Email verified successfully for user:', payload.user_id);
 
       // At this point, you could call your backend to update the user's email_verified status
       // For now, we'll just return success with the verified data
@@ -118,7 +113,6 @@ export async function POST(request: NextRequest) {
 
       // Handle expired tokens
       if (errorMessage === 'EXPIRED') {
-        console.error('[Verify Email] Token expired');
         return NextResponse.json(
           {
             error: 'Verification token expired',
@@ -129,7 +123,6 @@ export async function POST(request: NextRequest) {
       }
 
       // Handle invalid tokens
-      console.error('[Verify Email] Invalid token:', errorMessage);
       return NextResponse.json(
         {
           error: 'Invalid verification token',
@@ -140,7 +133,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('[Verify Email] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

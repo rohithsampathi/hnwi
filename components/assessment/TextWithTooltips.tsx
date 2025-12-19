@@ -66,6 +66,16 @@ export const TextWithTooltips: React.FC<TextWithTooltipsProps> = ({
         const match = remainingText.match(termRegex);
 
         if (match && match.index === 0) {
+          // CRITICAL FIX: Check if there's a word character before current position
+          // This prevents matching "irs" within "heirs" when remainingText starts with "irs"
+          const charBefore = position > 0 ? text[position - 1] : '';
+          const isWordCharBefore = /\w/.test(charBefore);
+
+          // Skip this match if there's a word character before (not a real word boundary)
+          if (isWordCharBefore) {
+            continue;
+          }
+
           const termKey = termDef.term.toUpperCase();
           foundTermsInText.add(termKey);
 

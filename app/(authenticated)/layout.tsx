@@ -166,7 +166,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       try {
         // ROOT FIX: Never attempt auth refresh for simulation pages (public access allowed)
         if (pathname.includes('/simulation')) {
-          console.debug('[Auth] Simulation page - using minimal auth check')
 
           // Try to get user data from session storage only (no API calls)
           let userId = getCurrentUserId()
@@ -193,7 +192,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         // If user logged in within last 5 minutes AND has session data, trust it completely
         // No API calls, no refresh attempts - just use the session data
         if (loginTimestamp && hasSessionData && (Date.now() - parseInt(loginTimestamp)) < 300000) { // 5 minutes
-          console.debug('[Auth] User logged in recently - using cached session data')
 
           // Reconstruct user from sessionStorage
           let userId: string | null = null
@@ -226,7 +224,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
               return // Done - no further checks needed
             }
           } catch (e) {
-            console.debug('[Auth] Failed to parse sessionStorage - will check auth normally')
           }
         }
 
@@ -242,7 +239,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
           // CRITICAL: Check if we navigated away during the delay using ref (not closure)
           if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
-            console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
             setIsCheckingAuth(false)
             return // Abort this auth check
           }
@@ -267,7 +263,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
         // CRITICAL: Before doing anything with the auth result, verify we're still on the same page using ref
         if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
-          console.debug('[Auth] Aborting auth check - navigated from', checkStartPathname, 'to', pathnameRef.current, '| aborted:', authCheckAbortRef.current)
           setIsCheckingAuth(false)
           return // Abort - user navigated away
         }
@@ -283,7 +278,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             const isAborted = authCheckAbortRef.current
 
             if (isAborted) {
-              console.debug('[Auth] Auth check aborted - not redirecting')
               setIsCheckingAuth(false)
               return
             }
@@ -291,20 +285,16 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             // CRITICAL: Triple-check we're not on assessment page before redirecting
             const finalPathCheck = pathnameRef.current
             if (finalPathCheck.includes('/simulation')) {
-              console.debug('[Auth] Final check: on assessment page, aborting redirect')
               setIsCheckingAuth(false)
               return
             }
 
             if (currentPath === checkStartPathname && !currentPath.includes('/simulation')) {
-              console.debug('[Auth] No user found, redirecting from', currentPath, 'to /')
               setIsAuthenticated(false)
               setIsInitialLoad(false)
               router.push("/")
             } else if (currentPath !== checkStartPathname) {
-              console.debug('[Auth] Aborting redirect - navigated from', checkStartPathname, 'to', currentPath)
             } else if (currentPath.includes('/simulation')) {
-              console.debug('[Auth] Aborting redirect - on assessment page')
             }
             setIsCheckingAuth(false)
             return

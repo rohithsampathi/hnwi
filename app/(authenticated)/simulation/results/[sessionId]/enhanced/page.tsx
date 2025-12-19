@@ -47,7 +47,6 @@ export default function EnhancedReportPage() {
           throw new Error('Enhanced report data not available');
         }
       } catch (err: any) {
-        console.error('Error loading enhanced report:', err);
         setError(err.message || 'Failed to load report');
       } finally {
         setLoading(false);
@@ -70,7 +69,6 @@ export default function EnhancedReportPage() {
     try {
       downloadEnhancedPDF(reportData, sessionId);
     } catch (err) {
-      console.error('PDF generation error:', err);
       alert('Failed to generate PDF. Please try again.');
     }
   };

@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error retrieving shared conversation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -105,7 +104,6 @@ async function handlePost(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error sharing conversation:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

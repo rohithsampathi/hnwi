@@ -100,31 +100,26 @@ class SecureLogger {
 
   debug(message: string, data?: any) {
     if (this.shouldLog('debug')) {
-      console.debug(this.formatMessage('debug', message, data));
     }
   }
 
   info(message: string, data?: any) {
     if (this.shouldLog('info')) {
-      console.info(this.formatMessage('info', message, data));
     }
   }
 
   warn(message: string, data?: any) {
     if (this.shouldLog('warn')) {
-      console.warn(this.formatMessage('warn', message, data));
     }
   }
 
   error(message: string, data?: any) {
     if (this.shouldLog('error')) {
-      console.error(this.formatMessage('error', message, data));
     }
   }
 
   // Production-safe logging for critical errors only
   critical(message: string, data?: any) {
-    console.error(this.formatMessage('error', `CRITICAL: ${message}`, data));
   }
 }
 

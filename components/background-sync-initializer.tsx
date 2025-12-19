@@ -73,7 +73,6 @@ export default function BackgroundSyncInitializer() {
         // Silent fail - PWA services are optional and shouldn't break the main app
         // In production, PWA failures are logged but don't affect functionality
         if (process.env.NODE_ENV === 'development') {
-          console.warn('PWA initialization failed:', error)
         }
       }
     }

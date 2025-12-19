@@ -64,11 +64,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       case 'smtp':
         return await sendWithSMTP(options);
       default:
-        console.error('[Email] Unknown email provider:', provider);
         return false;
     }
   } catch (error) {
-    console.error('[Email] Error sending email:', error);
     return false;
   }
 }
@@ -80,7 +78,6 @@ async function sendWithResend(options: EmailOptions): Promise<boolean> {
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
   if (!RESEND_API_KEY) {
-    console.error('[Email] RESEND_API_KEY not configured');
     return false;
   }
 
@@ -103,15 +100,12 @@ async function sendWithResend(options: EmailOptions): Promise<boolean> {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('[Email] Resend API error:', error);
       return false;
     }
 
     const data = await response.json();
-    console.log('[Email] Email sent via Resend:', data.id);
     return true;
   } catch (error) {
-    console.error('[Email] Resend error:', error);
     return false;
   }
 }
@@ -123,7 +117,6 @@ async function sendWithSendGrid(options: EmailOptions): Promise<boolean> {
   const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 
   if (!SENDGRID_API_KEY) {
-    console.error('[Email] SENDGRID_API_KEY not configured');
     return false;
   }
 
@@ -159,14 +152,11 @@ async function sendWithSendGrid(options: EmailOptions): Promise<boolean> {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('[Email] SendGrid API error:', error);
       return false;
     }
 
-    console.log('[Email] Email sent via SendGrid');
     return true;
   } catch (error) {
-    console.error('[Email] SendGrid error:', error);
     return false;
   }
 }
@@ -175,7 +165,6 @@ async function sendWithSendGrid(options: EmailOptions): Promise<boolean> {
  * Send email using SMTP (NodeMailer would be needed)
  */
 async function sendWithSMTP(options: EmailOptions): Promise<boolean> {
-  console.error('[Email] SMTP provider not yet implemented. Please use Resend or SendGrid.');
   return false;
 }
 
@@ -203,7 +192,6 @@ export async function sendPaymentConfirmation(
 
   // Don't send if no valid email
   if (!recipientEmail || !recipientEmail.includes('@') || recipientEmail.includes('example.com')) {
-    console.log('[Email] Skipping payment confirmation - no valid email provided');
     return false;
   }
 

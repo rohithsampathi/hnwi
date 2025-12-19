@@ -46,8 +46,6 @@ async function handler(request: NextRequest) {
 
     // Debug logging
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Proxy] Incoming request: ${url.pathname}${url.search}`)
-      console.log(`[Proxy] Path segments before shift:`, pathSegments)
     }
 
     // Remove 'api' from the beginning if it exists (it should)
@@ -56,7 +54,6 @@ async function handler(request: NextRequest) {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[Proxy] Path segments after shift:`, pathSegments)
     }
 
     // Skip if it's an auth route (those have dedicated handlers)
@@ -111,12 +108,10 @@ async function handler(request: NextRequest) {
     }
 
     if (process.env.NODE_ENV === 'development' && isDevelopments) {
-      console.log(`[Proxy] ${backendPath} - timeframe: ${timeframe}, timeout: ${timeoutDuration}ms`)
     }
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => {
-      console.error(`[Proxy] Request timeout after ${timeoutDuration}ms for ${backendUrl}`)
       controller.abort()
     }, timeoutDuration + 5000)
 
@@ -133,7 +128,6 @@ async function handler(request: NextRequest) {
       clearTimeout(timeoutId)
       const requestDuration = Date.now() - requestStartTime
       if (process.env.NODE_ENV === 'development' && isDevelopments) {
-        console.log(`[Proxy] Request completed in ${requestDuration}ms`)
       }
     })
 
@@ -145,9 +139,6 @@ async function handler(request: NextRequest) {
 
       // Debug logging for Rohith responses
       if (process.env.NODE_ENV === 'development' && pathSegments.includes('rohith') && pathSegments.includes('message')) {
-        console.log('[Proxy] Rohith Response Status:', backendResponse.status)
-        console.log('[Proxy] Rohith Response Keys:', Object.keys(responseBody))
-        console.log('[Proxy] Rohith Response Sample:', JSON.stringify(responseBody).substring(0, 500))
       }
     } else {
       responseBody = await backendResponse.text()
@@ -207,7 +198,6 @@ async function handler(request: NextRequest) {
 
     // Log errors in development for debugging
     if (process.env.NODE_ENV === 'development') {
-      console.error('Proxy error:', error, 'URL:', backendUrl)
     }
 
     return NextResponse.json(

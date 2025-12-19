@@ -325,7 +325,7 @@ export default function SharedResultsClient() {
         />
 
         {/* Content Area */}
-        <div className={`${results.enhanced_report ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 sm:px-8 py-8 space-y-8 relative z-10`}>
+        <div className={`${results.enhanced_report ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-4 sm:px-8 py-8 space-y-32 relative z-10`}>
           {/* Personalized Opportunities Map */}
           {opportunities && opportunities.length > 0 && (
             <motion.section
@@ -457,9 +457,16 @@ export default function SharedResultsClient() {
                     );
                   })()}
 
-                  {/* Down Arrow - Scroll to Analysis */}
+                  {/* Down Arrow Indicator */}
                   <motion.button
-                    onClick={scrollToAnalysis}
+                    onClick={() => {
+                      const nextSection = document.querySelector('#analysis-section') ||
+                                         document.querySelector('[class*="ExecutiveSummary"]') ||
+                                         document.querySelector('section');
+                      if (nextSection) {
+                        nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
                     whileHover={{ scale: 1.1, y: 2 }}
                     whileTap={{ scale: 0.9 }}
                     animate={{
@@ -478,10 +485,11 @@ export default function SharedResultsClient() {
                         ease: "easeInOut"
                       }
                     }}
-                    className="absolute top-1/2 -translate-y-1/2 right-4 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-primary/20 hover:bg-primary/40 backdrop-blur-xl border border-primary/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-[9999]"
-                    title="View analysis"
+                    style={{ top: '50%', transform: 'translateY(-50%)' }}
+                    className="absolute right-4 z-[9999] w-8 h-8 flex items-center justify-center bg-[hsl(var(--primary))]/20 hover:bg-[hsl(var(--primary))]/40 backdrop-blur-xl border border-[hsl(var(--primary))]/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    title="Scroll to analysis"
                   >
-                    <ChevronDown className="text-primary w-6 h-6 sm:w-7 sm:h-7" />
+                    <span className="text-[hsl(var(--primary))] text-lg font-bold">↓</span>
                   </motion.button>
                 </div>
               </div>

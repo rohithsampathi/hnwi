@@ -4,8 +4,10 @@
 
 "use client";
 
-import { motion } from 'framer-motion';
-import { AlertCircle, TrendingUp, Clock, Target } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, TrendingUp, Clock, Target, FileText, Zap } from 'lucide-react';
+import { CitationText } from '@/components/elite/citation-text';
 
 export interface StrategicGap {
   dimension: string;
@@ -33,10 +35,148 @@ export interface StrategicPositioningGapsData {
   total_gaps_identified: number;
 }
 
+interface StrategicPositioningGapsProps {
+  data: StrategicPositioningGapsData;
+  gapAnalysis?: string;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
+}
+
 interface GapCardProps {
   gap: StrategicGap;
   index: number;
 }
+
+// Parse gap analysis into sections - optimized for standard format
+const parseGapAnalysis = (text: string) => {
+  const sections: { title: string; content: string; icon: any; color: string }[] = [];
+
+  // Standard section headers with their styling
+  const standardSections = [
+    { header: 'STRATEGIC STRENGTHS', displayTitle: 'Strategic Strengths', icon: Target, color: 'text-primary' },
+    { header: 'GROWTH OPPORTUNITIES', displayTitle: 'Growth Opportunities', icon: TrendingUp, color: 'text-primary' },
+    { header: 'RISK MANAGEMENT', displayTitle: 'Risk Management', icon: AlertCircle, color: 'text-primary' },
+    { header: 'NEXT STEPS', displayTitle: 'Next Steps', icon: Zap, color: 'text-primary' }
+  ];
+
+  // Split text by the standard section headers
+  // More robust approach: split the text and capture the sections
+  const headerPattern = /(STRATEGIC STRENGTHS|GROWTH OPPORTUNITIES|RISK MANAGEMENT|NEXT STEPS):\s*/gi;
+
+  // Find all header matches
+  const matches = Array.from(text.matchAll(headerPattern));
+
+  if (matches.length > 0) {
+    // For each match, extract the content until the next match
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const headerText = match[1].toUpperCase();
+      const startIndex = match.index! + match[0].length;
+      const endIndex = i < matches.length - 1 ? matches[i + 1].index! : text.length;
+      const content = text.substring(startIndex, endIndex).trim();
+
+      // Find the corresponding section config
+      const sectionConfig = standardSections.find(s => s.header === headerText);
+
+      if (sectionConfig && content) {
+        sections.push({
+          title: sectionConfig.displayTitle,
+          content: content,
+          icon: sectionConfig.icon,
+          color: sectionConfig.color
+        });
+      }
+    }
+  }
+
+  // If standard format not found, fall back to markdown headers
+  if (sections.length === 0) {
+    const headerRegex = /###\s+([^\n]+)/g;
+    const parts = text.split(headerRegex);
+
+    for (let i = 1; i < parts.length; i += 2) {
+      const title = parts[i].trim();
+      const content = parts[i + 1]?.trim() || '';
+
+      let icon = FileText;
+      let color = 'text-primary';
+
+      if (title.includes('STRENGTH') || title.includes('CURRENT STATE')) {
+        icon = Target;
+      } else if (title.includes('GROWTH') || title.includes('OPPORTUNIT')) {
+        icon = TrendingUp;
+      } else if (title.includes('RISK') || title.includes('MANAGEMENT')) {
+        icon = AlertCircle;
+      } else if (title.includes('NEXT') || title.includes('STEPS')) {
+        icon = Zap;
+      }
+
+      if (title && content) {
+        sections.push({ title, content, icon, color });
+      }
+    }
+  }
+
+  return sections;
+};
+
+// Extract bullet points from content - optimized for standard format
+const extractBulletPoints = (text: string): string[] => {
+  const points: string[] = [];
+
+  // First, try to extract bullet points (• or -)
+  const bulletMatches = text.match(/(?:^|\n)\s*[•\-]\s*([^\n]+(?:\n(?!\s*[•\-])[^\n]+)*)/gm);
+  if (bulletMatches && bulletMatches.length > 0) {
+    bulletMatches.forEach(match => {
+      const cleaned = match.replace(/^\s*[•\-]\s*/, '').trim();
+      if (cleaned.length > 10) {
+        points.push(cleaned);
+      }
+    });
+    return points;
+  }
+
+  // Try to extract numbered lists (1., 2., etc)
+  const numberedMatches = text.match(/(?:^|\n)\s*\d+\.\s*([^\n]+(?:\n(?!\s*\d+\.)[^\n]+)*)/gm);
+  if (numberedMatches && numberedMatches.length > 0) {
+    numberedMatches.forEach(match => {
+      const cleaned = match.replace(/^\s*\d+\.\s*/, '').trim();
+      if (cleaned.length > 10) {
+        points.push(cleaned);
+      }
+    });
+    return points;
+  }
+
+  // If no explicit bullets/numbers, split by line breaks and extract meaningful lines
+  const lines = text.split(/\n+/);
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    // Skip empty lines and very short fragments
+    if (trimmed.length < 20) return;
+
+    // Look for lines that start with action words or contain substantive content
+    if (
+      trimmed.match(/^(IMMEDIATE|SHORT|MEDIUM|STRATEGIC|ONGOING|Review|Allocate|Deploy|Layer|Audit|Fix|Tackle|Boost|Model|Check|Scenario|Mental|Structural|Portfolio|Geographic|Tax|Concentration|India)/i) ||
+      trimmed.length >= 40
+    ) {
+      points.push(trimmed);
+    }
+  });
+
+  // If we still have no points, split by periods and extract sentences
+  if (points.length === 0) {
+    const sentences = text.split(/\.\s+(?=[A-Z])/);
+    sentences.forEach(sentence => {
+      const trimmed = sentence.trim();
+      if (trimmed.length >= 30 && trimmed.length <= 400) {
+        points.push(trimmed);
+      }
+    });
+  }
+
+  return points;
+};
 
 function GapCard({ gap, index }: GapCardProps) {
   return (
@@ -154,73 +294,176 @@ function GapCard({ gap, index }: GapCardProps) {
   );
 }
 
-interface StrategicPositioningGapsProps {
-  data: StrategicPositioningGapsData;
+interface StrategicGapAnalysisSectionProps {
+  sections: { title: string; content: string; icon: any; color: string }[];
+  rawText: string;
+  onCitationClick?: (citationId: string) => void;
+  hasGaps: boolean;
+  citationMap?: Map<string, number>;
 }
 
-export function StrategicPositioningGaps({ data }: StrategicPositioningGapsProps) {
-  // Handle case where no gaps exist yet
-  if (!data.gaps || data.gaps.length === 0) {
+function StrategicGapAnalysisSection({ sections, rawText, onCitationClick, hasGaps, citationMap }: StrategicGapAnalysisSectionProps) {
+  const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>(() => {
+    // Initialize all sections as collapsed by default
+    const initial: { [key: number]: boolean } = {};
+    sections.forEach((_, index) => {
+      initial[index] = false;
+    });
+    return initial;
+  });
+
+  const toggleSection = (index: number) => {
+    const wasExpanded = expandedSections[index];
+    setExpandedSections(prev => ({ ...prev, [index]: !prev[index] }));
+
+    // Scroll to section when expanding
+    if (!wasExpanded) {
+      setTimeout(() => {
+        const element = document.getElementById(`gap-section-${index}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 100);
+    }
+  };
+
+  if (sections.length === 0) {
     return (
-      <section className="space-y-6">
-        <div className="bg-card border border-border rounded-lg p-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <AlertCircle className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">
-            No Critical Gaps Identified
-          </h3>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Your strategic positioning shows strong performance across key dimensions. Continue monitoring peer benchmarks for optimization opportunities.
-          </p>
-        </div>
-      </section>
+      <div className="bg-card p-6 border border-border rounded-xl mt-6">
+        <CitationText
+          text={rawText}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
+          className="text-foreground leading-relaxed"
+          options={{
+            stripMarkdownBold: true,
+            convertMarkdownBold: true,
+            preserveLineBreaks: true,
+            renderParagraphs: true
+          }}
+        />
+      </div>
     );
   }
 
   return (
-    <section className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-foreground mb-2">
-            Strategic Positioning Gaps
-          </h2>
-          <p className="text-muted-foreground">
-            High-impact areas where closing gaps can unlock significant returns
-          </p>
-        </div>
-
-        {/* Total Opportunity Cost - Only show if multiple gaps */}
-        {data.total_gaps_identified > 1 && (
-          <div className="bg-muted/30 border border-border rounded-lg p-4">
-            <div className="flex items-center gap-2 text-foreground mb-1">
-              <AlertCircle className="w-5 h-5 text-primary" />
-              <span className="text-3xl font-bold">
-                ${(data.total_annual_opportunity_cost / 1000).toFixed(0)}K
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Total annual opportunity cost
-            </p>
-          </div>
-        )}
+    <div className="space-y-6 mt-8">
+      {/* Main Heading - Match Digital Twin style */}
+      <div className="flex items-center gap-3 pb-3 border-b border-border">
+        <h3 className="text-lg font-bold text-foreground">Gap Analysis Breakdown</h3>
+        <span className="text-sm text-muted-foreground ml-2">Detailed Insights</span>
       </div>
 
-      {/* Gap Cards */}
       <div className="space-y-6">
-        {data.gaps.map((gap, index) => (
-          <GapCard key={gap.dimension} gap={gap} index={index} />
-        ))}
-      </div>
+        {sections.map((section, index) => {
+          const Icon = section.icon;
+          const bulletPoints = extractBulletPoints(section.content);
+          const isExpanded = expandedSections[index] ?? false;
 
-      {/* Summary Footer */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-        <p className="text-sm text-muted-foreground text-center">
-          <span className="font-semibold text-primary">{data.total_gaps_identified} gaps</span> identified
-          with actionable steps to improve performance and unlock returns
-        </p>
+          return (
+            <div key={index} id={`gap-section-${index}`} className="bg-card border border-border rounded-xl overflow-hidden">
+              <button
+                onClick={() => toggleSection(index)}
+                className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
+              >
+                <Icon className={`w-5 h-5 ${section.color} flex-shrink-0`} />
+                <span className="text-lg font-bold flex-1 text-left">{section.title}</span>
+                <span className={`ml-auto text-sm text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="px-6 pb-6 pt-2 border-t border-border/50">
+                      <CitationText
+                        text={section.content}
+                        onCitationClick={onCitationClick}
+                        citationMap={citationMap}
+                        className="text-foreground leading-relaxed"
+                        options={{
+                          stripMarkdownBold: true,
+                          convertMarkdownBold: true,
+                          preserveLineBreaks: true,
+                          renderParagraphs: true
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
-    </section>
+    </div>
+  );
+}
+
+export function StrategicPositioningGaps({ data, gapAnalysis, onCitationClick, citationMap }: StrategicPositioningGapsProps) {
+  // Parse gap analysis if provided
+  const gapAnalysisSections = gapAnalysis ? parseGapAnalysis(gapAnalysis) : [];
+
+  // Handle case where no gaps exist but we have gap analysis
+  const hasGaps = data.gaps && data.gaps.length > 0;
+  const hasGapAnalysis = !!gapAnalysis;
+
+  // If neither gaps nor gap analysis, show nothing
+  if (!hasGaps && !hasGapAnalysis) {
+    return null;
+  }
+
+  return (
+    <div>
+            <div className="space-y-6">
+              {/* Total Opportunity Cost - Only show if multiple gaps */}
+              {hasGaps && data.total_gaps_identified > 1 && (
+                <div className="bg-muted/30 border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-foreground mb-1">
+                    <AlertCircle className="w-5 h-5 text-primary" />
+                    <span className="text-3xl font-bold">
+                      ${(data.total_annual_opportunity_cost / 1000).toFixed(0)}K
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Total annual opportunity cost across all dimensions
+                  </p>
+                </div>
+              )}
+
+              {/* Gap Cards - Only show if gaps exist */}
+              {hasGaps && (
+                <div className="space-y-6">
+                  {data.gaps.map((gap, index) => (
+                    <GapCard key={gap.dimension} gap={gap} index={index} />
+                  ))}
+                </div>
+              )}
+
+              {/* Strategic Gap Analysis - Integrated */}
+              {gapAnalysis && (
+                <StrategicGapAnalysisSection
+                  sections={gapAnalysisSections}
+                  rawText={gapAnalysis}
+                  onCitationClick={onCitationClick}
+                  hasGaps={hasGaps}
+                  citationMap={citationMap}
+                />
+              )}
+
+              {/* Summary Footer - End of Gap Analysis Breakdown */}
+              <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <p className="text-sm text-muted-foreground text-center">
+                  <span className="font-semibold text-primary">Closing these gaps</span> would align your positioning with peer benchmark performance
+                </p>
+              </div>
+            </div>
+    </div>
   );
 }

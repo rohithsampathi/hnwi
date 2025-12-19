@@ -25,7 +25,7 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
   } = data;
 
   return (
-    <section className="relative overflow-hidden bg-card rounded-lg p-8 mb-8 border border-border">
+    <section className="relative">
       {/* Tier Badge with Real Intelligence */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -33,9 +33,9 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
         transition={{ duration: 0.5 }}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
       >
-        <div className="inline-flex items-center gap-3 px-6 py-3 bg-primary/10 rounded-full border border-primary/20">
-          <Award className="w-6 h-6 text-primary" />
-          <span className="text-foreground font-bold text-xl tracking-wide">
+        <div className="inline-flex items-center gap-4 px-8 py-4 bg-primary/10 rounded-full border border-primary/20">
+          <Award className="w-8 h-8 text-primary" />
+          <span className="text-foreground font-bold text-3xl tracking-wide">
             {tier.toUpperCase()} TIER
           </span>
         </div>

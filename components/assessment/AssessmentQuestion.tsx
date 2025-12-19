@@ -490,7 +490,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5 }}
-          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'}`}
+          className={`${showMap ? 'lg:w-1/2' : 'w-full max-w-5xl mx-auto'} lg:overflow-x-hidden`}
         >
           {loading ? (
             <div className="p-4 sm:p-6 md:p-8">
@@ -641,7 +641,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative order-first lg:order-last z-0"
+            className="lg:w-1/2 bg-background lg:sticky lg:top-16 relative order-first lg:order-last z-0 isolate pointer-events-auto"
           >
             <div className="w-full h-[600px] lg:h-[calc(100vh-120px)] lg:pt-8 relative">
               {loadingMap ? (

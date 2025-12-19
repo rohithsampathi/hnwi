@@ -39,9 +39,7 @@ async function connectToDatabase() {
       socketTimeoutMS: 45000,
     })
 
-    console.log('[MongoDB] Connecting to database...')
     await client.connect()
-    console.log('[MongoDB] Successfully connected')
 
     const db = client.db('mis') // Using the 'mis' database
 
@@ -51,7 +49,6 @@ async function connectToDatabase() {
 
     return { client, db }
   } catch (error) {
-    console.error('[MongoDB] Connection failed:', error)
     throw error
   }
 }

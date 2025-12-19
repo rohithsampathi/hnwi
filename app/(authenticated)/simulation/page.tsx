@@ -43,11 +43,6 @@ export default function AuthenticatedAssessmentPage() {
         key.includes('assessment') || key.includes('simulation')
       );
       keysToRemove.forEach(key => sessionStorage.removeItem(key));
-
-      // If PWA, ensure we're starting fresh
-      if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('[Assessment] PWA mode detected, state reset');
-      }
     };
 
     resetAssessmentState();
@@ -168,9 +163,9 @@ export default function AuthenticatedAssessmentPage() {
     // CRITICAL: Abort if user has already started the assessment flow
     if (shouldAbortRedirect.current) return;
 
-    // CRITICAL: Don't redirect if user has already progressed past landing
+    // CRITICAL: Don't redirect if user has already progressed past landing OR is in active session
     // This prevents the redirect when user data loads late (e.g., in incognito mode)
-    if (flowStage !== 'landing' || hasProgressedPastLanding.current) {
+    if (flowStage !== 'landing' || hasProgressedPastLanding.current || sessionId) {
       // Mark as checked but don't redirect - user is already in the flow
       hasCheckedExistingRef.current = true;
       return;
@@ -220,12 +215,11 @@ export default function AuthenticatedAssessmentPage() {
         }
       } catch (error) {
         // Silent fail - allow user to continue
-        console.error('Error checking assessment history:', error);
       }
     };
 
     checkExistingAssessment();
-  }, [user, router, getAssessmentHistory, flowStage]); // Added flowStage to dependencies
+  }, [user, router, getAssessmentHistory, flowStage, sessionId]); // Added flowStage and sessionId to dependencies
 
   // Handle landing -> map intro
   const handleShowMapIntro = useCallback(() => {

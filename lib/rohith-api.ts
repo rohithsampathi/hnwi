@@ -345,8 +345,6 @@ export class RohithAPI {
 
       // Debug logging in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Rohith API] Response keys:', Object.keys(response))
-        console.log('[Rohith API] Response sample:', JSON.stringify(response).substring(0, 500))
       }
 
       const responseTime = Date.now() - startTime
@@ -368,8 +366,6 @@ export class RohithAPI {
 
       // Debug logging for response extraction
       if (process.env.NODE_ENV === 'development') {
-        console.log('[Rohith API] Extracted response text length:', responseText.length)
-        console.log('[Rohith API] Response text preview:', responseText.substring(0, 100))
       }
 
       const conversationResponse: ConversationResponse = {

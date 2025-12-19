@@ -17,7 +17,6 @@ import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { AssessmentResultsHeader } from '@/components/assessment/AssessmentResultsHeader';
 import { DigitalTwinSimulation } from '@/components/assessment/DigitalTwinSimulation';
-import { GapAnalysisSection } from '@/components/assessment/GapAnalysisSection';
 import { TierPricingModal } from '@/components/assessment/TierPricingModal';
 import { getCurrentUser, isAuthenticated } from '@/lib/auth-manager';
 import { secureApi } from '@/lib/secure-api';
@@ -27,9 +26,9 @@ import {
   ExecutiveSummary,
   SpiderGraphComparison,
   CelebrityOpportunities,
-  StrategicPositioningGaps,
-  StrategicInsightsInfographic
+  StrategicPositioningGaps
 } from '@/components/report';
+import { useAssessmentSSE } from '@/lib/hooks/useAssessmentSSE';
 
 // Dynamic import for InteractiveWorldMap to avoid SSR issues with Leaflet
 const InteractiveWorldMap = dynamic(
@@ -54,8 +53,10 @@ export default function AssessmentResultsClient() {
 
   const [results, setResults] = useState<AssessmentResults | null>(null);
   const [loading, setLoading] = useState(true);
-  const retryCountRef = useRef(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0); // Use state instead of ref to reset on mount
   const hasLoadedRef = useRef(false);
+  const isFetchingRef = useRef(false); // CRITICAL: Prevent parallel fetches
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
 
   // Map filter toggles (no Crown Assets for simulation results)
@@ -72,7 +73,7 @@ export default function AssessmentResultsClient() {
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
 
   // HNWI World count
-  const [hnwiWorldCount, setHnwiWorldCount] = useState<number>(1860); // Default fallback
+  const [hnwiWorldCount, setHnwiWorldCount] = useState<number>(1900); // Default fallback
 
   // Citation management (using same hook as home dashboard)
   const {
@@ -87,6 +88,13 @@ export default function AssessmentResultsClient() {
   } = useCitationManager();
 
   const { getResults } = useAssessmentAPI();
+
+  // Connect to SSE for real-time processing status when results aren't ready
+  const {
+    simulationResult: sseSimulationResult,
+    pdfUrl: ssePdfUrl,
+    resultData: sseResultData
+  } = useAssessmentSSE(sessionId);
 
   // Set dynamic page title based on results
   usePageTitle(
@@ -260,34 +268,162 @@ export default function AssessmentResultsClient() {
   }, []);
 
   useEffect(() => {
-    if (hasLoadedRef.current) return;
+    // CRITICAL: Prevent multiple parallel fetches
+    if (hasLoadedRef.current || isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
 
     const fetchResults = async () => {
       if (hasLoadedRef.current) return;
 
+      // ROOT FIX: Check sessionStorage first for SSE-provided data
+      // This prevents unnecessary API calls when SSE already fetched results
+      try {
+        const cachedData = sessionStorage.getItem(`assessment_result_${sessionId}`);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+
+          if (parsedData.tier) {
+            hasLoadedRef.current = true;
+            isFetchingRef.current = false;
+            setResults(parsedData);
+            setLoading(false);
+            sessionStorage.removeItem(`assessment_result_${sessionId}`);
+            return;
+          }
+        }
+      } catch (e) {
+        // Failed to parse cached data
+      }
+
       try {
         const data = await getResults(sessionId);
 
-        hasLoadedRef.current = true;
-        setResults(data);
-        setLoading(false);
-      } catch (err: any) {
-        // Retry a few times in case results are still being generated
-        if (retryCountRef.current < 3) {
-          retryCountRef.current++;
-          setTimeout(fetchResults, 2000);
-        } else {
-          // After retries, redirect to assessment landing page
+        if (data.tier) {
           hasLoadedRef.current = true;
-          router.replace('/simulation');
+          isFetchingRef.current = false;
+          setResults(data);
+          setLoading(false);
+        } else {
+          isFetchingRef.current = false;
         }
+      } catch (err: any) {
+        const nextRetryCount = retryCount + 1;
+        setRetryCount(nextRetryCount);
+
+        if (nextRetryCount >= 10) {
+          isFetchingRef.current = false;
+          setLoading(false);
+          setLoadError('Unable to load your results. Your assessment may still be processing. Please refresh the page in a moment.');
+          return;
+        }
+
+        const delay = Math.min(2000 * Math.pow(2, nextRetryCount - 1), 20000);
+        setTimeout(fetchResults, delay);
       }
     };
 
     fetchResults();
-  }, [sessionId, router, getResults]);
 
-  // Enhanced report polling removed - Digital Twin loader now waits for complete report
+    // Cleanup: Reset fetching flag if component unmounts
+    return () => {
+      isFetchingRef.current = false;
+    };
+  }, [sessionId]); // CRITICAL: Removed getResults to prevent infinite re-triggers
+
+  // Enhanced report polling - poll until enhanced report is available
+  // Start after Digital Twin loader crosses 80% (after ~60s delay)
+  // Poll every 10 seconds for max 2 minutes (12 attempts)
+  const enhancedReportPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingStartTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingStartedRef = useRef(false);
+
+  // Also check SSE data for completion
+  useEffect(() => {
+    if (sseResultData?.result_available === true && sseResultData?.tier) {
+      if (loading) {
+        setLoading(false);
+      }
+      if (!results || !results.tier) {
+        setResults(sseResultData as any);
+      }
+    }
+  }, [sseResultData, loading, results]);
+
+  useEffect(() => {
+    if (!results) return;
+
+    if (results.tier) {
+      if (loading) {
+        setLoading(false);
+      }
+      if (enhancedReportPollingRef.current) {
+        clearInterval(enhancedReportPollingRef.current);
+        enhancedReportPollingRef.current = null;
+      }
+      if (pollingStartTimerRef.current) {
+        clearTimeout(pollingStartTimerRef.current);
+        pollingStartTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (!loading) {
+      setLoading(true);
+    }
+
+    if (pollingStartedRef.current) return;
+    pollingStartedRef.current = true;
+
+    pollingStartTimerRef.current = setTimeout(() => {
+      let pollAttempts = 0;
+      const maxPollAttempts = 12;
+
+      const pollForCompleteResults = async () => {
+        pollAttempts++;
+
+        if (pollAttempts >= maxPollAttempts) {
+          setLoading(false);
+          if (enhancedReportPollingRef.current) {
+            clearInterval(enhancedReportPollingRef.current);
+            enhancedReportPollingRef.current = null;
+          }
+          return;
+        }
+
+        try {
+          const data = await getResults(sessionId);
+
+          if (data.tier) {
+            setResults(data);
+            setLoading(false);
+
+            if (enhancedReportPollingRef.current) {
+              clearInterval(enhancedReportPollingRef.current);
+              enhancedReportPollingRef.current = null;
+            }
+          }
+        } catch (err) {
+          // Polling error
+        }
+      };
+
+      pollForCompleteResults();
+      enhancedReportPollingRef.current = setInterval(pollForCompleteResults, 10000);
+    }, 60000);
+
+    return () => {
+      if (enhancedReportPollingRef.current) {
+        clearInterval(enhancedReportPollingRef.current);
+        enhancedReportPollingRef.current = null;
+      }
+      if (pollingStartTimerRef.current) {
+        clearTimeout(pollingStartTimerRef.current);
+        pollingStartTimerRef.current = null;
+      }
+      pollingStartedRef.current = false;
+    };
+  }, [results, loading, sessionId, getResults]);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/shared-results/${sessionId}`;
@@ -468,7 +604,6 @@ export default function AssessmentResultsClient() {
 
       await generateAndDownloadPDF(enhancedReportData, sessionId);
     } catch (err) {
-      console.error('PDF generation error:', err);
       alert('Failed to generate PDF. Please try again.');
     }
   };
@@ -478,9 +613,28 @@ export default function AssessmentResultsClient() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <CrownLoader
           size="lg"
-          text="Loading Your Results"
-          subtext="Analyzing your strategic DNA profile..."
+          text="Analyzing Your Strategic DNA"
+          subtext="Building your personalized intelligence report..."
         />
+      </div>
+    );
+  }
+
+  // Show error state if loading failed
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-4">Unable to Load Results</h2>
+          <p className="text-muted-foreground mb-6">{loadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     );
   }
@@ -498,11 +652,12 @@ export default function AssessmentResultsClient() {
     );
   }
 
-  const outcome = results.simulation?.outcome || 'DAMAGED';
+  const outcome = results.simulation?.outcome || (results as any).digital_twin?.outcome || 'DAMAGED';
   const comprehensiveScore = results.confidence ? results.confidence * 10 : 0;
 
-  // Extract opportunities from answers if not in personalized_opportunities
+  // Extract opportunities - support multiple backend structures
   const opportunities = results.personalized_opportunities ||
+    (results as any).opportunities ||
     (results.answers?.flatMap((answer: any) => answer.opportunities || []) || []);
 
   // Tier display formatting
@@ -554,14 +709,14 @@ export default function AssessmentResultsClient() {
         />
 
         {/* Content Area - Scrolls with page */}
-        <div className={`${results.enhanced_report ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-8 py-8 space-y-8 relative z-10`}>
+        <div className={`${results.enhanced_report ? 'max-w-6xl' : 'max-w-5xl'} mx-auto px-8 py-8 space-y-32 relative z-10`}>
           {/* Personalized Opportunities Map */}
           {opportunities && opportunities.length > 0 && (
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="relative z-10"
+              className="relative z-0"
             >
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
                 <Globe className="w-6 h-6 text-primary" strokeWidth={2} />
@@ -685,18 +840,52 @@ export default function AssessmentResultsClient() {
                       />
                     );
                   })()}
+
+                  {/* Down Arrow Indicator */}
+                  <motion.button
+                    onClick={() => {
+                      const nextSection = document.querySelector('#analysis-section') ||
+                                         document.querySelector('[class*="ExecutiveSummary"]') ||
+                                         document.querySelector('section');
+                      if (nextSection) {
+                        nextSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    whileHover={{ scale: 1.1, y: 2 }}
+                    whileTap={{ scale: 0.9 }}
+                    animate={{
+                      y: [0, 4, 0],
+                      opacity: [0.7, 1, 0.7],
+                    }}
+                    transition={{
+                      y: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      },
+                      opacity: {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
+                    }}
+                    style={{ top: '50%', transform: 'translateY(-50%)' }}
+                    className="absolute right-4 z-[9999] w-8 h-8 flex items-center justify-center bg-[hsl(var(--primary))]/20 hover:bg-[hsl(var(--primary))]/40 backdrop-blur-xl border border-[hsl(var(--primary))]/40 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    title="Scroll to analysis"
+                  >
+                    <span className="text-[hsl(var(--primary))] text-lg font-bold">↓</span>
+                  </motion.button>
                 </div>
               </div>
             </motion.section>
           )}
 
-          {/* Enhanced Report Loading State - Removed since Digital Twin loader handles this now */}
-
-          {/* Enhanced Report Components - Only show if backend data exists */}
-          {results.enhanced_report?.full_analytics?.strategic_positioning && (
+          {/* Enhanced Report Components - Show if we have tier (results are complete) */}
+          {results.tier && (
             <>
               {/* Executive Summary */}
               <motion.div
+                id="analysis-section"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
@@ -728,86 +917,99 @@ export default function AssessmentResultsClient() {
                 }} />
               </motion.div>
 
-              {/* Spider Graph - Peer Comparison */}
+              {/* Spider Graph - Peer Comparison (with integrated Strategic Positioning Gaps) */}
               {results.enhanced_report.full_analytics.strategic_positioning.spider_graph && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                 >
-                  <SpiderGraphComparison data={(() => {
-                    const spider = results.enhanced_report.full_analytics.strategic_positioning.spider_graph;
+                  <SpiderGraphComparison
+                    data={(() => {
+                      const spider = results.enhanced_report.full_analytics.strategic_positioning.spider_graph;
 
-                    // Transform improvement_areas from backend (array of dimension names)
-                    // to frontend structure (array of objects with details)
-                    const improvementAreas = (spider.improvement_areas || []).map((dimName: string) => {
-                      const dim = spider.dimensions.find((d: any) => d.name === dimName);
-                      if (!dim) return null;
+                      // Transform improvement_areas from backend (array of dimension names)
+                      // to frontend structure (array of objects with details)
+                      const improvementAreas = (spider.improvement_areas || []).map((dimName: string) => {
+                        const dim = spider.dimensions.find((d: any) => d.name === dimName);
+                        if (!dim) return null;
 
-                      const gap = dim.top_0_1_percentile - dim.user_score;
+                        const gap = dim.top_0_1_percentile - dim.user_score;
+                        return {
+                          dimension: dimName,
+                          current_score: dim.user_score / 10,  // Convert 0-10 to 0-1 scale
+                          target_score: dim.top_0_1_percentile / 10,  // Convert 0-10 to 0-1 scale
+                          gap: gap / 10,  // Convert gap to 0-1 scale
+                          improvement_potential: (gap / dim.top_0_1_percentile) * 100,
+                          actionable_steps: []
+                        };
+                      }).filter((a: any) => a !== null);
+
                       return {
-                        dimension: dimName,
-                        current_score: dim.user_score / 10,  // Convert 0-10 to 0-1 scale
-                        target_score: dim.top_0_1_percentile / 10,  // Convert 0-10 to 0-1 scale
-                        gap: gap / 10,  // Convert gap to 0-1 scale
-                        improvement_potential: (gap / dim.top_0_1_percentile) * 100,
-                        actionable_steps: []
+                        dimensions: spider.dimensions.map((d: any) => d.name),
+                        user_scores: spider.dimensions.map((d: any) => d.user_score / 10), // Convert 0-10 to 0-1 scale
+                        peer_average: spider.dimensions.map((d: any) => d.peer_average / 10), // Convert 0-10 to 0-1 scale
+                        top_performers: spider.dimensions.map((d: any) => d.top_0_1_percentile / 10), // Convert 0-10 to 0-1 scale
+                        hnwi_world_count: spider.hnwi_world_count || hnwiWorldCount,
+                        improvement_areas: improvementAreas
                       };
-                    }).filter((a: any) => a !== null);
-
-                    return {
-                      dimensions: spider.dimensions.map((d: any) => d.name),
-                      user_scores: spider.dimensions.map((d: any) => d.user_score / 10), // Convert 0-10 to 0-1 scale
-                      peer_average: spider.dimensions.map((d: any) => d.peer_average / 10), // Convert 0-10 to 0-1 scale
-                      top_performers: spider.dimensions.map((d: any) => d.top_0_1_percentile / 10), // Convert 0-10 to 0-1 scale
-                      hnwi_world_count: spider.hnwi_world_count || hnwiWorldCount,
-                      improvement_areas: improvementAreas
-                    };
-                  })()} />
-                </motion.div>
-              )}
-
-              {/* Celebrity Opportunities - High-Adoption Opportunities */}
-              {results.enhanced_report?.celebrity_opportunities && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                >
-                  <CelebrityOpportunities
-                    data={results.enhanced_report.celebrity_opportunities}
+                    })()}
+                    gapsData={(() => {
+                      const hasGaps = results.enhanced_report?.strategic_positioning_gaps?.gaps &&
+                                     results.enhanced_report.strategic_positioning_gaps.gaps.length > 0;
+                      return hasGaps ? results.enhanced_report.strategic_positioning_gaps : undefined;
+                    })()}
+                    gapAnalysis={
+                      (results as any).strategic_analysis?.raw_text ||
+                      results.enhanced_report?.full_analytics?.gap_analysis ||
+                      (results as any).gap_analysis
+                    }
                     onCitationClick={openCitation}
+                    citationMap={citationMap}
                   />
-                </motion.div>
-              )}
-
-              {/* Strategic Positioning Gaps - Dollar-Impact Opportunity Costs */}
-              {results.enhanced_report?.strategic_positioning_gaps?.gaps &&
-               results.enhanced_report.strategic_positioning_gaps.gaps.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                >
-                  <StrategicPositioningGaps data={results.enhanced_report.strategic_positioning_gaps} />
                 </motion.div>
               )}
             </>
           )}
 
-          {/* Strategic Insights Infographic - Always show (uses simulation data) */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <StrategicInsightsInfographic
-              outcome={outcome as 'SURVIVED' | 'DAMAGED' | 'DESTROYED'}
-              tier={results.tier}
-              briefsCited={results.briefs_cited || []}
-              onCitationClick={openCitation}
-            />
-          </motion.div>
+          {/* Digital Twin Simulation - Psychological DNA & Behavioral Timeline */}
+          {(() => {
+            // NEW STRUCTURE: digital_twin at top level
+            const narrative = (results as any).digital_twin?.narrative || results.simulation?.simulation_narrative;
+            const dtOutcome = (results as any).digital_twin?.outcome || results.simulation?.outcome;
+            const dtConfidence = (results as any).tier_classification?.confidence || results.simulation?.confidence;
+
+            if (!narrative) return null;
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.55 }}
+              >
+                <DigitalTwinSimulation
+                  narrative={narrative}
+                  outcome={dtOutcome || 'DAMAGED'}
+                  confidence={dtConfidence}
+                  onCitationClick={openCitation}
+                />
+              </motion.div>
+            );
+          })()}
+
+          {/* HNWI Peer Signals - High-Adoption Opportunities */}
+          {results.enhanced_report?.celebrity_opportunities && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.56 }}
+            >
+              <CelebrityOpportunities
+                data={results.enhanced_report.celebrity_opportunities}
+                onCitationClick={openCitation}
+              />
+            </motion.div>
+          )}
 
           {/* Intelligence Platform Access */}
           <motion.div

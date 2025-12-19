@@ -37,7 +37,8 @@ export const useAssessmentAPI = () => {
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
     body?: any,
-    requireAuth: boolean = false // Will be set per-endpoint based on need
+    requireAuth: boolean = false, // Will be set per-endpoint based on need
+    bustCache: boolean = false // Enable cache-busting for GET requests
   ) => {
     setLoading(true);
     setError(null);
@@ -47,7 +48,7 @@ export const useAssessmentAPI = () => {
 
       if (method === 'GET') {
         // Note: secureApi.get signature is (endpoint, requireAuth, bustCache)
-        response = await secureApi.get(endpoint, requireAuth, false);
+        response = await secureApi.get(endpoint, requireAuth, bustCache);
       } else {
         response = await secureApi.post(endpoint, body, requireAuth);
       }
@@ -75,7 +76,8 @@ export const useAssessmentAPI = () => {
   };
 
   const getResults = async (sessionId: string) => {
-    return apiCall(`/api/assessment/result/${sessionId}`, 'GET');
+    // CRITICAL: Enable cache-busting to prevent browser from returning cached 400 responses
+    return apiCall(`/api/assessment/result/${sessionId}`, 'GET', undefined, false, true);
   };
 
   const linkUserToSession = async (sessionId: string, payload: LinkUserPayload) => {

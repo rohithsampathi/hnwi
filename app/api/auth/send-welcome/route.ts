@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailSent) {
-      console.error('[Send Welcome] Failed to send email to:', user_email);
       return NextResponse.json(
         {
           error: 'Failed to send welcome email',
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Send Welcome] ✅ Welcome email sent to:', user_email);
 
     return NextResponse.json({
       success: true,
@@ -61,7 +59,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Send Welcome] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

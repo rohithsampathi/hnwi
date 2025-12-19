@@ -135,10 +135,7 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
       .filter(item => item.length > 20 && item.startsWith('**'))  // Only blocks starting with **
 
     if (tier === 1) {
-      console.log('=== TIER 1 PARSING ===')
-      console.log('Opportunities found:', items.length)
       items.forEach((item, i) => {
-        console.log(`Opp ${i}:`, item.split('\n')[0].substring(0, 80))
       })
     }
 
@@ -217,15 +214,6 @@ function extractRuschaTierOpportunities(ruschaData: string, tier: number): any[]
       if (!description) {
         // Last resort: use full text but this shouldn't happen
         description = text
-      }
-
-      if (tier === 1) {
-        console.log('Parsed:', {
-          title: title.substring(0, 40),
-          capital,
-          risk,
-          description: description.substring(0, 80)
-        })
       }
 
       // Extract location

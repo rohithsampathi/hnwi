@@ -22,8 +22,6 @@ async function getSharedOpportunity(opportunityId: string): Promise<Opportunity 
       ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
       : 'http://localhost:3000'  // Use Next.js dev server, not backend
 
-    console.log(`[Share Page] Environment: ${process.env.NODE_ENV}`)
-    console.log(`[Share Page] Fetching opportunity ${opportunityId} from ${apiBaseUrl}`)
 
     // Call the Next.js API route (works in both dev and production)
     const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${opportunityId}`, {
@@ -36,24 +34,20 @@ async function getSharedOpportunity(opportunityId: string): Promise<Opportunity 
     if (response.ok) {
       const data = await response.json()
       if (data.success && data.opportunity) {
-        console.log(`[Share Page] Successfully fetched opportunity ${opportunityId}`)
         return data.opportunity as Opportunity
       }
     }
 
-    console.error(`[Share Page] Failed to fetch opportunity: ${response.status} ${response.statusText}`)
 
     // Try to get error details
     try {
       const errorData = await response.json()
-      console.error(`[Share Page] Error details:`, errorData)
     } catch (e) {
       // Ignore JSON parse errors
     }
 
     return null
   } catch (error) {
-    console.error('[Share Page] Error fetching shared opportunity:', error)
     return null
   }
 }

@@ -1284,34 +1284,6 @@ export function OpportunityAtlasNew({
       setExpandedOpportunityId(null);
     } else {
       // Expanding the card - LOG DATA HERE
-      console.log('=== PRIVÉ EXCHANGE EXPANDED CARD DATA ===');
-      console.log('Full Opportunity Object:', opportunity);
-      console.log('---');
-      console.log('Title:', opportunity.title);
-      console.log('ID:', opportunity.id);
-      console.log('---');
-      console.log('Minimum Investment Display:', opportunity.minimum_investment_display);
-      console.log('Value (legacy):', opportunity.value);
-      console.log('Expected Return (low-high):', opportunity.expected_return_annual_low, '-', opportunity.expected_return_annual_high);
-      console.log('Expected Return (legacy):', opportunity.expectedReturn);
-      console.log('---');
-      console.log('Time Horizon Display Object:', (opportunity as any).time_horizon_display);
-      console.log('Investment Horizon (legacy):', opportunity.investmentHorizon);
-      console.log('Liquidity Level:', opportunity.liquidity_level);
-      console.log('---');
-      console.log('Region:', opportunity.region);
-      console.log('Country:', opportunity.country);
-      console.log('Industry:', opportunity.industry);
-      console.log('---');
-      console.log('Investment Thesis:', opportunity.investment_thesis);
-      console.log('Pricing:', opportunity.pricing);
-      console.log('Exit Strategy:', opportunity.exit_strategy);
-      console.log('Asset Details:', opportunity.asset_details);
-      console.log('Risk Analysis:', opportunity.risk_analysis);
-      console.log('Return Analysis:', opportunity.return_analysis);
-      console.log('Victor Rating:', opportunity.victor_rating);
-      console.log('Victor Score:', opportunity.victor_score);
-      console.log('===========================================');
 
       setExpandedOpportunityId(opportunity.id);
       // Store opportunity info for reference
@@ -1410,7 +1382,6 @@ export function OpportunityAtlasNew({
         } catch (shareError: any) {
           // User cancelled share or share failed - fall through to clipboard
           if (shareError.name !== 'AbortError') {
-            console.warn('Web Share API failed:', shareError);
           }
         }
       }
@@ -1449,7 +1420,6 @@ export function OpportunityAtlasNew({
       }
 
     } catch (error) {
-      console.error('Share error:', error);
 
       toast({
         title: "Share Failed",

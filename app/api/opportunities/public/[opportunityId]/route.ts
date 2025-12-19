@@ -27,27 +27,23 @@ export async function GET(
     const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareId)
 
     if (!isValidUUID) {
-      console.log(`[Opportunities Public API] Invalid UUID format: ${shareId}`)
       return NextResponse.json(
         { success: false, error: 'Invalid share ID format' },
         { status: 400 }
       )
     }
 
-    console.log(`[Opportunities Public API] Looking up shareId: ${shareId}`)
 
     // Retrieve from MongoDB
     const sharedOpp = await getSharedOpportunity(shareId)
 
     if (!sharedOpp || !sharedOpp.opportunityData) {
-      console.log(`[Opportunities Public API] Share not found: ${shareId}`)
       return NextResponse.json(
         { success: false, error: 'Opportunity not found or has expired' },
         { status: 404 }
       )
     }
 
-    console.log(`[Opportunities Public API] Found and returning opportunity`)
 
     return NextResponse.json({
       success: true,
@@ -60,7 +56,6 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('[Opportunities Public API] Error:', error)
     return NextResponse.json(
       { success: false, error: 'Service temporarily unavailable' },
       { status: 500 }

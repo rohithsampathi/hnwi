@@ -80,11 +80,9 @@ export const initServiceWorkerListener = (callbacks?: {
         switch (event.data.type) {
           case 'CACHE_CLEARED':
             callbacks?.onCacheCleared?.();
-            console.log('[SW Client] Cache cleared successfully');
             break;
           case 'ASSESSMENT_CACHE_CLEARED':
             callbacks?.onAssessmentCacheCleared?.();
-            console.log('[SW Client] Assessment cache cleared successfully');
             break;
           default:
             break;
@@ -114,7 +112,6 @@ export const isPWA = (): boolean => {
  * Clear PWA cache and refresh for assessment issues
  */
 export const fixAssessmentIssues = async (): Promise<void> => {
-  console.log('[SW Client] Fixing assessment issues...');
 
   // 1. Clear assessment cache
   await clearAssessmentCache();
@@ -132,6 +129,5 @@ export const fixAssessmentIssues = async (): Promise<void> => {
 
   // 4. If on mobile PWA, show a message
   if (isPWA()) {
-    console.log('[SW Client] Running in PWA mode, cache cleared');
   }
 };

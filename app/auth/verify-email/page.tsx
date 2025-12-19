@@ -54,7 +54,6 @@ export default function VerifyEmailPage() {
         }
       }
     } catch (error) {
-      console.error('[Verify Email] Error:', error);
       setStatus('error');
       setMessage('An error occurred while verifying your email. Please try again later.');
     }
@@ -75,7 +74,6 @@ export default function VerifyEmailPage() {
       // For now, showing a placeholder
       alert('Resend functionality requires additional backend integration. Please contact support at hnwi@montaigne.co');
     } catch (error) {
-      console.error('[Resend Verification] Error:', error);
       alert('Failed to resend verification email. Please try again.');
     } finally {
       setIsResending(false);

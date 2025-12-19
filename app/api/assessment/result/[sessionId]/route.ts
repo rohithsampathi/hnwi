@@ -23,9 +23,10 @@ export async function GET(
     const allCookies = cookieStore.getAll();
     const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
+    const backendUrl = `${API_BASE_URL}/api/assessment/result/${sessionId}`;
 
     // Proxy to backend with authentication cookies
-    const response = await fetch(`${API_BASE_URL}/api/assessment/result/${sessionId}`, {
+    const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -36,9 +37,19 @@ export async function GET(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+      // CRITICAL: Add no-cache headers for error responses (especially 400)
+      // This prevents browser from caching "results not ready" responses
       return NextResponse.json(
         errorData,
-        { status: response.status }
+        {
+          status: response.status,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        }
       );
     }
 

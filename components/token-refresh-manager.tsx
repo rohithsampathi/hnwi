@@ -32,7 +32,6 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
       try {
         // ROOT FIX: Never refresh on simulation pages
         if (window.location.pathname.includes('/simulation')) {
-          console.debug('[TokenRefresh] Skipping refresh - on simulation page')
           return
         }
 
@@ -41,7 +40,6 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
         const stillRecent = currentLoginTimestamp && (Date.now() - parseInt(currentLoginTimestamp)) < 300000
 
         if (stillRecent) {
-          console.debug('[TokenRefresh] Skipping refresh - user recently logged in')
           return
         }
 

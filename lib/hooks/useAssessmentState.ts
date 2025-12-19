@@ -150,7 +150,6 @@ export const useAssessmentState = () => {
             if (lastUpdated) {
               const hoursSinceUpdate = (Date.now() - new Date(lastUpdated).getTime()) / (1000 * 60 * 60);
               if (hoursSinceUpdate > 24) {
-                console.log('[Assessment] Clearing stale assessment data');
                 localStorage.removeItem('assessment_session_id');
                 localStorage.removeItem(progressKey);
                 setSessionIdState(null); // Clear the state too

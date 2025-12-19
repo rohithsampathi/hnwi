@@ -282,9 +282,7 @@ export class EnhancedCacheService {
       const cacheName = this.getCacheName(dataType)
       await caches.delete(cacheName)
 
-      console.log(`[Cache] Cleared cache for ${dataType}`)
     } catch (error) {
-      console.error(`[Cache] Failed to clear cache for ${dataType}:`, error)
     }
   }
 
@@ -297,11 +295,9 @@ export class EnhancedCacheService {
       for (const cacheName of cacheNames) {
         if (cacheName === 'api' || cacheName.includes('opportunities')) {
           await caches.delete(cacheName)
-          console.log(`[Cache] Cleared Service Worker cache: ${cacheName}`)
         }
       }
     } catch (error) {
-      console.error('[Cache] Failed to clear Service Worker caches:', error)
     }
   }
 
@@ -318,11 +314,9 @@ export class EnhancedCacheService {
       for (const request of requests) {
         if (request.url.includes('/api/opportunities')) {
           await apiCache.delete(request)
-          console.log(`[Cache] Cleared cached opportunity data from Service Worker`)
         }
       }
     } catch (error) {
-      console.error('[Cache] Failed to clear opportunities cache:', error)
     }
   }
 }

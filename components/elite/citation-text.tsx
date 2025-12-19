@@ -27,10 +27,10 @@ const convertMarkdownBold = (value: string): string => {
   let formatted = value.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 
   // Bold ALL headings that end with a colon
-  // Matches patterns like "Winners:", "Key Strategy:", "Investment Thesis:", etc.
-  // This applies to any capitalized word(s) followed by a colon at the start of a line or after a break
+  // Matches patterns like "Winners:", "Key Strategy:", "Mental model gap:", etc.
+  // This applies to any capitalized word(s) followed by a colon at the start of a line, after a break, or after bullets
   formatted = formatted.replace(
-    /(?:^|<br\/>|<p>)(\s*)([A-Z][^:<]*?:)(?=\s|<br|<\/|$)/gm,
+    /(?:^|<br\/>|<p>|[•\-])(\s*)([A-Z][^:<]*?:)(?=\s|<br|<\/|$)/gm,
     '$1<strong>$2</strong>'
   )
 

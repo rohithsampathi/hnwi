@@ -6,13 +6,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { motion } from 'framer-motion';
+import { TrendingUp } from 'lucide-react';
 import type { SpiderGraphData, ImprovementArea } from '@/types/assessment-report';
+import { StrategicPositioningGaps, StrategicPositioningGapsData } from './StrategicPositioningGaps';
 
 interface SpiderGraphComparisonProps {
   data: SpiderGraphData;
+  gapsData?: StrategicPositioningGapsData;
+  gapAnalysis?: string;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number>;
 }
 
-export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
+export function SpiderGraphComparison({ data, gapsData, gapAnalysis, onCitationClick, citationMap }: SpiderGraphComparisonProps) {
   const { dimensions, user_scores, peer_average, top_performers, improvement_areas, hnwi_world_count } = data;
   const svgRef = useRef<SVGSVGElement>(null);
   const [themeKey, setThemeKey] = useState(0);
@@ -279,45 +286,48 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
   }, [dimensions, user_scores, top_performers, themeKey]);
 
   return (
-    <div className="relative bg-gradient-to-br from-card via-card to-card/50 rounded-2xl overflow-hidden border border-primary/20 shadow-2xl mb-8">
-      {/* Premium Header */}
-      <div className="relative bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-8 py-6 border-b border-primary/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-1 tracking-tight">
-              Multi-Dimensional Performance Analysis
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {hnwi_world_count
-                ? `Benchmarked against ${hnwi_world_count.toLocaleString()} HNWI World developments • Since Feb 2023`
-                : `${dimensions.length} key dimensions analyzed`
-              }
-            </p>
-          </div>
-          <div className="hidden md:flex items-center gap-6 px-4">
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+    >
+      {/* Header - matching Digital Twin structure */}
+      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
+        <h2 className="text-3xl font-bold">Multi-Dimensional Performance Analysis</h2>
+        <span className="text-sm text-muted-foreground ml-2">
+          {hnwi_world_count
+            ? `Benchmarked against ${hnwi_world_count.toLocaleString()} developments`
+            : `${dimensions.length} dimensions`
+          }
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {/* Chart - no container */}
+        <div>
+          {/* Legend - Desktop Only */}
+          <div className="hidden md:flex items-center justify-center gap-6 pb-2">
             <LegendItem label="Your Profile" color="currentColor" className="dark:text-primary text-black" />
             <LegendItem label="Peer Benchmark" color="#9CA3AF" border="dashed" />
           </div>
-        </div>
-      </div>
 
-      {/* Chart Container */}
-      <div className="relative px-8 py-8 bg-gradient-to-b from-transparent to-muted/10">
-        <div className="flex justify-center">
-          <svg ref={svgRef} className="max-w-full h-auto drop-shadow-lg" />
+          {/* Chart */}
+          <div className="relative py-4">
+            <div className="flex justify-center">
+              <svg ref={svgRef} className="max-w-full h-auto drop-shadow-lg" />
+            </div>
+
+            {/* Mobile Legend */}
+            <div className="flex md:hidden justify-center gap-6 mt-6 pt-6 border-t border-border">
+              <LegendItem label="Your Profile" color="currentColor" className="dark:text-primary text-black" />
+              <LegendItem label="Peer Benchmark" color="#9CA3AF" border="dashed" />
+            </div>
+          </div>
         </div>
 
-        {/* Mobile Legend */}
-        <div className="flex md:hidden justify-center gap-6 mt-6 pt-6 border-t border-border">
-          <LegendItem label="Your Profile" color="currentColor" className="dark:text-primary text-black" />
-          <LegendItem label="Peer Benchmark" color="#9CA3AF" border="dashed" />
-        </div>
-      </div>
-
-      {/* Premium Improvement Areas - FOMO Redesign */}
-      {improvement_areas && improvement_areas.length > 0 && (
-        <div className="px-8 pb-8">
-          <div className="bg-gradient-to-br from-primary/5 via-transparent to-primary/5 rounded-xl border border-primary/20 p-6">
+        {/* Critical Performance Gaps */}
+        {improvement_areas && improvement_areas.length > 0 && (
+          <div>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-bold text-foreground mb-1">
@@ -336,7 +346,7 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
               {improvement_areas.slice(0, 3).map((area, i) => (
                 <div
                   key={i}
-                  className="group relative bg-card/80 backdrop-blur-sm rounded-lg p-5 border border-border hover:border-primary/40 transition-all duration-300 hover:shadow-lg"
+                  className="group relative bg-card border border-border rounded-lg p-5 hover:border-primary/40 transition-all duration-300 hover:shadow-lg"
                 >
                   {/* Rank Badge */}
                   <div className="absolute -left-2 -top-2 w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center shadow-lg border-2 border-background">
@@ -404,17 +414,20 @@ export function SpiderGraphComparison({ data }: SpiderGraphComparisonProps) {
                 </div>
               ))}
             </div>
-
-            {/* Summary Footer */}
-            <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-              <p className="text-sm text-muted-foreground text-center">
-                <span className="font-semibold text-primary">Closing these gaps</span> would align your positioning with peer benchmark performance
-              </p>
-            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Strategic Positioning Gaps - Integrated subsection */}
+        {(gapsData || gapAnalysis) && (
+          <StrategicPositioningGaps
+            data={gapsData || { gaps: [], total_annual_opportunity_cost: 0, total_gaps_identified: 0 }}
+            gapAnalysis={gapAnalysis}
+            onCitationClick={onCitationClick}
+            citationMap={citationMap}
+          />
+        )}
+      </div>
+    </motion.section>
   );
 }
 

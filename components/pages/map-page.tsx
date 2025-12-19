@@ -142,7 +142,6 @@ export function MapPage() {
       }, 600000)
 
     } catch (error) {
-      console.error('Error fetching map data:', error)
       toast({
         title: "Loading Error",
         description: "Unable to load map data. Using cached version if available.",

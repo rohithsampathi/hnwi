@@ -87,7 +87,6 @@ export const initiateRazorpayPayment = async (
   const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
   if (!razorpayKey) {
-    console.error('Razorpay key not configured');
     alert('Payment gateway not configured. Please contact support.');
     onFailure?.();
     return;
@@ -109,12 +108,10 @@ export const initiateRazorpayPayment = async (
       color: '#DAA520' // Primary color (gold)
     },
     handler: (response: RazorpayResponse) => {
-      console.log('Payment successful:', response);
       onSuccess?.(response);
     },
     modal: {
       ondismiss: () => {
-        console.log('Payment cancelled by user');
         onFailure?.();
       }
     }
@@ -144,7 +141,6 @@ export const verifyPaymentSignature = async (
     const data = await response.json();
     return data.verified === true;
   } catch (error) {
-    console.error('Payment verification failed:', error);
     return false;
   }
 };

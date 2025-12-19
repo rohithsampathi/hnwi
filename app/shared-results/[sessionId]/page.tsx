@@ -41,7 +41,6 @@ export async function generateMetadata({
     }
   } catch (error) {
     // Silently fall back to default tier name
-    console.error('[Shared Results Metadata] Error fetching assessment data:', error);
   }
 
   // Premium HNWI-standard metadata

@@ -42,7 +42,6 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
 
     // ROOT FIX: Never show auth popup on simulation pages (public access allowed)
     if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
-      console.debug('[AuthPopup] Skipping popup - on simulation page');
       return;
     }
 
@@ -53,9 +52,6 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
       const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000 // 5 minutes
 
       if (recentlyLoggedIn) {
-        console.debug('[AuthPopup] Skipping popup - user recently logged in', {
-          minutesSinceLogin: loginTimestamp ? Math.round((Date.now() - parseInt(loginTimestamp)) / 60000) : 'unknown'
-        })
         return
       }
     }

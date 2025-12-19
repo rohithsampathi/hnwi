@@ -73,7 +73,6 @@ async function handlePost(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error sharing opportunity:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

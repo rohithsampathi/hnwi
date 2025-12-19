@@ -17,7 +17,6 @@ const loadLogoAsBase64 = async (): Promise<string> => {
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error('Failed to load logo:', error);
     return '';
   }
 };
@@ -127,7 +126,6 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
       try {
         doc.addImage(logo, 'PNG', logoX, logoY, logoSize, logoSize);
       } catch (error) {
-        console.error('Failed to add logo watermark:', error);
       }
     }
 
@@ -218,7 +216,6 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     try {
       doc.addImage(logo, 'PNG', coverLogoX, coverLogoY, coverLogoSize, coverLogoSize);
     } catch (error) {
-      console.error('Failed to add cover logo:', error);
     }
   }
 
@@ -804,7 +801,6 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     try {
       doc.addImage(logo, 'PNG', finalLogoX, finalLogoY, finalLogoSize, finalLogoSize);
     } catch (error) {
-      console.error('Failed to add final page logo:', error);
     }
     yPos += finalLogoSize + 8;
   } else {

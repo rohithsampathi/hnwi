@@ -15,39 +15,12 @@ export async function generateMetadata({
 }: {
   params: { sessionId: string }
 }): Promise<Metadata> {
-  // Try to get assessment info for metadata customization
-  let tierName = "Strategic";
-  let confidenceScore = 85;
+  const { sessionId } = params;
 
-  try {
-    // Determine the correct base URL for server-side fetching
-    // In server components, we need to use absolute URLs for fetch
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                    process.env.NEXT_PUBLIC_PRODUCTION_URL ||
-                    (process.env.NODE_ENV === 'production'
-                      ? 'https://app.hnwichronicles.com'
-                      : 'http://localhost:3000');
-
-    // Try to fetch assessment results to get tier for metadata
-    const response = await fetch(`${baseUrl}/api/assessment/result/${params.sessionId}`, {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.tier) {
-        tierName = data.tier.charAt(0).toUpperCase() + data.tier.slice(1);
-      }
-      if (data.confidence) {
-        confidenceScore = Math.round(data.confidence * 100);
-      }
-    }
-  } catch (error) {
-    // Silently fall back to defaults
-  }
+  // Use default values - client will update title dynamically via usePageTitle
+  // This prevents server-side fetch from interfering with SSE completion
+  const tierName = "Strategic";
+  const confidenceScore = 85;
 
   // Premium HNWI-standard metadata for results page
   const title = `Your ${tierName} DNA Results | HNWI Strategic Assessment Complete`;
@@ -70,7 +43,7 @@ export async function generateMetadata({
       title: `${tierName} Strategic DNA Profile | HNWI Assessment Complete`,
       description: `Verified ${tierName} archetype with ${confidenceScore}% confidence. Access your personalized opportunities, Digital Twin simulation, and strategic intelligence gaps.`,
       type: "website",
-      url: `https://app.hnwichronicles.com/simulation/results/${params.sessionId}`,
+      url: `https://app.hnwichronicles.com/simulation/results/${sessionId}`,
       siteName: "HNWI Chronicles",
       locale: "en_US",
       images: [
@@ -95,7 +68,7 @@ export async function generateMetadata({
       }
     },
     alternates: {
-      canonical: `https://app.hnwichronicles.com/simulation/results/${params.sessionId}`,
+      canonical: `https://app.hnwichronicles.com/simulation/results/${sessionId}`,
     },
     category: "Wealth Intelligence",
     classification: "Simulation Results",

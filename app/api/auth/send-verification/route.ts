@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
     const expiresInHours = getTokenExpiryHours();
     const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000);
 
-    console.log('[Send Verification] 🔐 Generated JWT token for user:', user_id);
 
     // Generate verification URL
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -58,7 +57,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailSent) {
-      console.error('[Send Verification] Failed to send email to:', user_email);
       return NextResponse.json(
         {
           error: 'Failed to send verification email',
@@ -68,7 +66,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Send Verification] ✅ Verification email sent to:', user_email);
 
     return NextResponse.json({
       success: true,
@@ -77,7 +74,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Send Verification] Error:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',
