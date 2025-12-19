@@ -47,52 +47,73 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
   const hasStartedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
 
+  // Persistent audio context
+  const audioContextRef = useRef<AudioContext | null>(null);
+
   // Keep onComplete ref updated
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Debug: log opportunities
+  // Initialize audio context on mount
   useEffect(() => {
-  }, [opportunities]);
-
-  // Subtle sound effects (with user gesture requirement handling)
-  const playSound = (type: 'step' | 'unlock') => {
-    // Only play sounds if we have user interaction (skip in automated sequences)
     if (typeof window !== 'undefined' && window.AudioContext) {
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-        // Check if AudioContext is running (requires user gesture)
-        if (audioContext.state === 'suspended') {
-          // Don't play sound if context is suspended - avoids console warnings
-          return;
-        }
-
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        if (type === 'step') {
-          // Subtle beep for each step
-          oscillator.frequency.value = 800;
-          gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-        } else {
-          // Unlock sound - lower, more satisfying
-          oscillator.frequency.value = 400;
-          gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        }
-
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
+        // Try to resume immediately (will work if user already interacted with page)
+        audioContextRef.current.resume().catch(() => {
+          // Silently fail - will be resumed on first playSound call
+        });
       } catch (error) {
-        // Silently ignore audio errors (e.g., when AudioContext is not allowed)
-        // This prevents console warnings when user hasn't interacted yet
+        // Audio not supported
       }
+    }
+
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, []);
+
+  // Subtle sound effects with automatic resume attempt
+  const playSound = async (type: 'step' | 'unlock') => {
+    if (!audioContextRef.current) return;
+
+    try {
+      // Always attempt to resume if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      // Only proceed if context is now running
+      if (audioContextRef.current.state !== 'running') {
+        return;
+      }
+
+      const oscillator = audioContextRef.current.createOscillator();
+      const gainNode = audioContextRef.current.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContextRef.current.destination);
+
+      if (type === 'step') {
+        // Subtle beep for each step
+        oscillator.frequency.value = 800;
+        gainNode.gain.setValueAtTime(0.05, audioContextRef.current.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContextRef.current.currentTime + 0.1);
+      } else {
+        // Unlock sound - lower, more satisfying
+        oscillator.frequency.value = 400;
+        gainNode.gain.setValueAtTime(0.08, audioContextRef.current.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContextRef.current.currentTime + 0.3);
+      }
+
+      oscillator.start(audioContextRef.current.currentTime);
+      oscillator.stop(audioContextRef.current.currentTime + 0.3);
+    } catch (error) {
+      // Silently ignore audio errors
     }
   };
 
@@ -181,6 +202,17 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
 
   const CurrentIcon = loadingSteps[currentStep]?.icon || Shield;
 
+  // Enable audio on any user interaction
+  const handleUserInteraction = async () => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (error) {
+        // Ignore
+      }
+    }
+  };
+
   return (
     <AnimatePresence>
       {!isComplete && (
@@ -189,6 +221,8 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8 }}
           className="fixed inset-0 z-[9999] bg-background flex items-center justify-center overflow-hidden"
+          onClick={handleUserInteraction}
+          onMouseMove={handleUserInteraction}
         >
           {/* Assessment Map with Opportunities as background */}
           <motion.div

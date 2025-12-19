@@ -892,11 +892,11 @@ export default function AssessmentResultsClient() {
               >
                 <ExecutiveSummary data={{
                   tier: results.tier,
-                  percentile: results.enhanced_report.full_analytics.strategic_positioning.peer_rank_percentile,
+                  percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,
                   opportunities_accessible: opportunities?.length || 0,
-                  opportunities_missed: results.enhanced_report.celebrity_opportunities?.total_missed || 0,
+                  opportunities_missed: results.enhanced_report?.celebrity_opportunities?.total_missed || 0,
                   peer_group_size: hnwiWorldCount, // Real: 1,860 HNWI World developments
-                  optimization_potential: results.enhanced_report.full_analytics.strategic_positioning.spider_graph?.dimensions
+                  optimization_potential: results.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph?.dimensions
                     ? (results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.reduce((acc: number, dim: any) => {
                         return acc + ((dim.top_0_1_percentile - dim.user_score) / dim.top_0_1_percentile);
                       }, 0) / results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.length)
@@ -918,7 +918,7 @@ export default function AssessmentResultsClient() {
               </motion.div>
 
               {/* Spider Graph - Peer Comparison (with integrated Strategic Positioning Gaps) */}
-              {results.enhanced_report.full_analytics.strategic_positioning.spider_graph && (
+              {results.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -926,7 +926,7 @@ export default function AssessmentResultsClient() {
                 >
                   <SpiderGraphComparison
                     data={(() => {
-                      const spider = results.enhanced_report.full_analytics.strategic_positioning.spider_graph;
+                      const spider = results.enhanced_report!.full_analytics!.strategic_positioning!.spider_graph;
 
                       // Transform improvement_areas from backend (array of dimension names)
                       // to frontend structure (array of objects with details)

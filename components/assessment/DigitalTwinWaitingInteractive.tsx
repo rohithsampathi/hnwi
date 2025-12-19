@@ -52,6 +52,12 @@ export function DigitalTwinWaitingInteractive({
   const [actualOpportunitiesCount, setActualOpportunitiesCount] = useState<number | null>(null);
   const hasFetchedCountsRef = useRef(false); // Prevent multiple fetches of counts
 
+  // Audio management with foolproof error handling
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioInitializedRef = useRef(false);
+  const audioPlayAttemptCountRef = useRef(0);
+  const MAX_AUDIO_RETRY_ATTEMPTS = 3;
+
   // NO minimum display time - show results immediately when ready
   const componentMountTime = useRef<number>(Date.now());
   const MINIMUM_DISPLAY_TIME_MS = 0; // No minimum - instant navigation

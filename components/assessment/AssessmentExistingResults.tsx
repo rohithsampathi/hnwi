@@ -152,7 +152,7 @@ export function AssessmentExistingResults({ latestAssessment }: AssessmentExisti
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">You can retake the assessment in <span className="font-bold text-foreground">{daysUntilRetake} days</span></p>
+                  <p className="text-sm text-muted-foreground mb-2">You can retake the simulation in <span className="font-bold text-foreground">{daysUntilRetake} days</span></p>
                   <p className="text-xs text-muted-foreground">Available on {retakeDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               )}

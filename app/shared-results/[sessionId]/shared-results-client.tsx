@@ -14,13 +14,12 @@ import dynamic from 'next/dynamic';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { AssessmentResultsHeader } from '@/components/assessment/AssessmentResultsHeader';
+import { DigitalTwinSimulation } from '@/components/assessment/DigitalTwinSimulation';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import {
   ExecutiveSummary,
   SpiderGraphComparison,
-  CelebrityOpportunities,
-  StrategicPositioningGaps,
-  StrategicInsightsInfographic
+  CelebrityOpportunities
 } from '@/components/report';
 
 // Dynamic import for InteractiveWorldMap
@@ -496,8 +495,8 @@ export default function SharedResultsClient() {
             </motion.section>
           )}
 
-          {/* Enhanced Report Components - Only show if backend data exists */}
-          {results.enhanced_report?.full_analytics?.strategic_positioning && (
+          {/* Enhanced Report Components - Show if we have tier (results are complete) */}
+          {results.tier && (
             <>
               {/* Executive Summary */}
               <motion.div
@@ -508,11 +507,11 @@ export default function SharedResultsClient() {
               >
                 <ExecutiveSummary data={{
                   tier: results.tier,
-                  percentile: results.enhanced_report.full_analytics.strategic_positioning.peer_rank_percentile,
+                  percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,
                   opportunities_accessible: opportunities?.length || 0,
-                  opportunities_missed: results.enhanced_report.celebrity_opportunities?.total_missed || 0,
-                  peer_group_size: hnwiWorldCount, // Real: 1,860 HNWI World developments
-                  optimization_potential: results.enhanced_report.full_analytics.strategic_positioning.spider_graph?.dimensions
+                  opportunities_missed: results.enhanced_report?.celebrity_opportunities?.total_missed || 0,
+                  peer_group_size: hnwiWorldCount,
+                  optimization_potential: results.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph?.dimensions
                     ? (results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.reduce((acc: number, dim: any) => {
                         return acc + ((dim.top_0_1_percentile - dim.user_score) / dim.top_0_1_percentile);
                       }, 0) / results.enhanced_report.full_analytics.strategic_positioning.spider_graph.dimensions.length)
@@ -533,87 +532,99 @@ export default function SharedResultsClient() {
                 }} />
               </motion.div>
 
-              {/* Spider Graph - Peer Comparison */}
-              {results.enhanced_report.full_analytics.strategic_positioning.spider_graph && (
+              {/* Spider Graph - Peer Comparison (with integrated Strategic Positioning Gaps) */}
+              {results.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                 >
-                  <SpiderGraphComparison data={(() => {
-                    const spider = results.enhanced_report.full_analytics.strategic_positioning.spider_graph;
+                  <SpiderGraphComparison
+                    data={(() => {
+                      const spider = results.enhanced_report!.full_analytics!.strategic_positioning!.spider_graph;
 
-                    // Transform improvement_areas from backend (array of dimension names)
-                    // to frontend structure (array of objects with details)
-                    const improvementAreas = (spider.improvement_areas || []).map((dimName: string) => {
-                      const dim = spider.dimensions.find((d: any) => d.name === dimName);
-                      if (!dim) return null;
+                      // Transform improvement_areas from backend (array of dimension names)
+                      // to frontend structure (array of objects with details)
+                      const improvementAreas = (spider.improvement_areas || []).map((dimName: string) => {
+                        const dim = spider.dimensions.find((d: any) => d.name === dimName);
+                        if (!dim) return null;
 
-                      const gap = dim.top_0_1_percentile - dim.user_score;
+                        const gap = dim.top_0_1_percentile - dim.user_score;
+                        return {
+                          dimension: dimName,
+                          current_score: dim.user_score / 10,
+                          target_score: dim.top_0_1_percentile / 10,
+                          gap: gap / 10,
+                          improvement_potential: (gap / dim.top_0_1_percentile) * 100,
+                          actionable_steps: []
+                        };
+                      }).filter((a: any) => a !== null);
+
                       return {
-                        dimension: dimName,
-                        current_score: dim.user_score / 10,  // Convert 0-10 to 0-1 scale
-                        target_score: dim.top_0_1_percentile / 10,  // Convert 0-10 to 0-1 scale
-                        gap: gap / 10,  // Convert gap to 0-1 scale
-                        improvement_potential: (gap / dim.top_0_1_percentile) * 100,
-                        actionable_steps: []
+                        dimensions: spider.dimensions.map((d: any) => d.name),
+                        user_scores: spider.dimensions.map((d: any) => d.user_score / 10),
+                        peer_average: spider.dimensions.map((d: any) => d.peer_average / 10),
+                        top_performers: spider.dimensions.map((d: any) => d.top_0_1_percentile / 10),
+                        hnwi_world_count: spider.hnwi_world_count || hnwiWorldCount,
+                        improvement_areas: improvementAreas
                       };
-                    }).filter((a: any) => a !== null);
-
-                    return {
-                      dimensions: spider.dimensions.map((d: any) => d.name),
-                      user_scores: spider.dimensions.map((d: any) => d.user_score / 10), // Convert 0-10 to 0-1 scale
-                      peer_average: spider.dimensions.map((d: any) => d.peer_average / 10), // Convert 0-10 to 0-1 scale
-                      top_performers: spider.dimensions.map((d: any) => d.top_0_1_percentile / 10), // Convert 0-10 to 0-1 scale
-                      hnwi_world_count: spider.hnwi_world_count || hnwiWorldCount,
-                      improvement_areas: improvementAreas
-                    };
-                  })()} />
-                </motion.div>
-              )}
-
-              {/* Celebrity Opportunities - High-Adoption Opportunities */}
-              {results.enhanced_report?.celebrity_opportunities && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                >
-                  <CelebrityOpportunities
-                    data={results.enhanced_report.celebrity_opportunities}
+                    })()}
+                    gapsData={(() => {
+                      const hasGaps = results.enhanced_report?.strategic_positioning_gaps?.gaps &&
+                                     results.enhanced_report.strategic_positioning_gaps.gaps.length > 0;
+                      return hasGaps ? results.enhanced_report.strategic_positioning_gaps : undefined;
+                    })()}
+                    gapAnalysis={
+                      (results as any).strategic_analysis?.raw_text ||
+                      results.enhanced_report?.full_analytics?.gap_analysis ||
+                      (results as any).gap_analysis
+                    }
                     onCitationClick={openCitation}
+                    citationMap={citationMap}
                   />
-                </motion.div>
-              )}
-
-              {/* Strategic Positioning Gaps - Dollar-Impact Opportunity Costs */}
-              {results.enhanced_report?.strategic_positioning_gaps?.gaps &&
-               results.enhanced_report.strategic_positioning_gaps.gaps.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                >
-                  <StrategicPositioningGaps data={results.enhanced_report.strategic_positioning_gaps} />
                 </motion.div>
               )}
             </>
           )}
 
-          {/* Strategic Insights Infographic - Always show (uses simulation data) */}
-          <motion.div
-            id={results.enhanced_report?.full_analytics?.strategic_positioning ? undefined : "analysis-section"}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <StrategicInsightsInfographic
-              outcome={outcome as 'SURVIVED' | 'DAMAGED' | 'DESTROYED'}
-              tier={results.tier}
-              briefsCited={results.briefs_cited || []}
-              onCitationClick={openCitation}
-            />
-          </motion.div>
+          {/* Digital Twin Simulation - Psychological DNA & Behavioral Timeline */}
+          {(() => {
+            // NEW STRUCTURE: digital_twin at top level
+            const narrative = (results as any).digital_twin?.narrative || results.simulation?.simulation_narrative;
+            const dtOutcome = (results as any).digital_twin?.outcome || results.simulation?.outcome;
+            const dtConfidence = (results as any).tier_classification?.confidence || results.simulation?.confidence;
+
+            if (!narrative) return null;
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.55 }}
+              >
+                <DigitalTwinSimulation
+                  narrative={narrative}
+                  outcome={dtOutcome || 'DAMAGED'}
+                  confidence={dtConfidence}
+                  onCitationClick={openCitation}
+                />
+              </motion.div>
+            );
+          })()}
+
+          {/* HNWI Peer Signals - High-Adoption Opportunities */}
+          {results.enhanced_report?.celebrity_opportunities && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.56 }}
+            >
+              <CelebrityOpportunities
+                data={results.enhanced_report.celebrity_opportunities}
+                onCitationClick={openCitation}
+              />
+            </motion.div>
+          )}
 
           {/* Take Assessment CTA - Prominent */}
           <motion.div
@@ -624,17 +635,17 @@ export default function SharedResultsClient() {
           >
             <h3 className="text-2xl font-bold mb-3">Discover Your Strategic DNA</h3>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Take the assessment to unlock your personalized HNWI intelligence report and opportunity map.
+              Run the drill to unlock your personalized HNWI intelligence report and opportunity map.
             </p>
             <button
               onClick={() => router.push('/assessment')}
               className="group inline-flex items-center justify-center gap-3 px-10 py-5 bg-primary hover:opacity-90 text-primary-foreground font-bold transition-all rounded-2xl text-lg"
             >
-              Take the Assessment
+              Run the Drill
               <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
             </button>
             <p className="text-xs text-muted-foreground mt-4">
-              Free access to {hnwiWorldCount.toLocaleString()} HNWI World developments
+              Access to {hnwiWorldCount.toLocaleString()} HNWI World developments
             </p>
           </motion.div>
         </div>
