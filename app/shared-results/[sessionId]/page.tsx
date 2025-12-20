@@ -49,7 +49,7 @@ export async function generateMetadata({
 
   // Use absolute URL with cache-busting for social media OG images
   const siteUrl = "https://app.hnwichronicles.com";
-  const ogImage = `${siteUrl}/logo.png?v=20241220`;
+  const ogImage = `${siteUrl}/logo.png?v=20241220e`;
 
   return {
     title,
@@ -75,8 +75,8 @@ export async function generateMetadata({
       images: [
         {
           url: ogImage,
-          width: 1024,
-          height: 1024,
+          width: 650,
+          height: 650,
           alt: `${tierName} Wealth DNA Profile - HNWI Chronicles`,
           type: "image/png",
         }

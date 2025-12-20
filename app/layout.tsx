@@ -14,8 +14,8 @@ import { ServiceWorkerUpdateManager } from "@/components/sw-update-manager"
 import './globals.css'
 
 const siteUrl = "https://app.hnwichronicles.com"
-// Logo with cache-busting to force WhatsApp refresh (increment version when logo changes)
-const ogImage = `${siteUrl}/logo.png?v=20241220`
+// Logo optimized to 650x650 (275KB) with cache-busting for WhatsApp
+const ogImage = `${siteUrl}/logo.png?v=20241220e`
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -76,8 +76,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: ogImage,
-        width: 1024,
-        height: 1024,
+        width: 650,
+        height: 650,
         alt: "HNWI Chronicles",
       },
     ],
