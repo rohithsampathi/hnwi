@@ -48,9 +48,9 @@ export async function generateMetadata({
       locale: "en_US",
       images: [
         {
-          url: "/logo.png",
-          width: 1200,
-          height: 630,
+          url: "https://app.hnwichronicles.com/logo.png?v=20241220",
+          width: 1024,
+          height: 1024,
           alt: `${tierName} DNA Profile - HNWI Chronicles Assessment Results`,
           type: "image/png",
         }
@@ -63,7 +63,7 @@ export async function generateMetadata({
       title: `${tierName} DNA Profile Unlocked`,
       description: `Strategic archetype identified. ${confidenceScore}% confidence. View personalized opportunities and Digital Twin simulation.`,
       images: {
-        url: "/logo.png",
+        url: "https://app.hnwichronicles.com/logo.png?v=20241220",
         alt: `${tierName} DNA - HNWI Chronicles`
       }
     },

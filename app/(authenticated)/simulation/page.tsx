@@ -483,13 +483,10 @@ export default function AuthenticatedAssessmentPage() {
     }
   }, [flowStage]);
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      shouldAbortRedirect.current = false;
-      hasProgressedPastLanding.current = false;
-    };
-  }, []);
+  // CRITICAL FIX: Do NOT reset refs on unmount
+  // These refs need to persist across component remounts within the same session
+  // Module-level flags (simulationFlowStarted, assessmentSessionActive) already handle session-level persistence
+  // Cleanup only needed for event listeners, not state flags
 
   // Landing page - always show, backend will handle restrictions
   if (flowStage === 'landing' && !hasProgressedPastLanding.current) {

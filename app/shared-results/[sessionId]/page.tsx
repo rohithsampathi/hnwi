@@ -47,6 +47,10 @@ export async function generateMetadata({
   const title = `${tierName} Wealth DNA Profile | Exclusive HNWI Assessment Results`;
   const description = `Discover how this ${tierName} archetype navigates $10M+ wealth decisions. Access their personalized opportunity map, Digital Twin simulation, and strategic intelligence gaps. Only for verified HNWIs.`;
 
+  // Use absolute URL with cache-busting for social media OG images
+  const siteUrl = "https://app.hnwichronicles.com";
+  const ogImage = `${siteUrl}/logo.png?v=20241220`;
+
   return {
     title,
     description,
@@ -65,14 +69,14 @@ export async function generateMetadata({
       title: `${tierName} Wealth DNA | HNWI Strategic Profile`,
       description: `This ${tierName} profile reveals how ultra-wealthy individuals with this DNA pattern identify opportunities worth $100K-$10M+. View their command centre intelligence map.`,
       type: "article",
-      url: `https://app.hnwichronicles.com/shared-results/${params.sessionId}`,
+      url: `${siteUrl}/shared-results/${params.sessionId}`,
       siteName: "HNWI Chronicles",
       locale: "en_US",
       images: [
         {
-          url: "/logo.png",
-          width: 1200,
-          height: 630,
+          url: ogImage,
+          width: 1024,
+          height: 1024,
           alt: `${tierName} Wealth DNA Profile - HNWI Chronicles`,
           type: "image/png",
         }
@@ -91,7 +95,7 @@ export async function generateMetadata({
       title: `${tierName} Wealth DNA Profile`,
       description: `Exclusive: How ${tierName} archetypes identify $100K-$10M+ opportunities. View their strategic DNA analysis.`,
       images: {
-        url: "/logo.png",
+        url: ogImage,
         alt: `${tierName} Wealth DNA - HNWI Chronicles`
       }
     },

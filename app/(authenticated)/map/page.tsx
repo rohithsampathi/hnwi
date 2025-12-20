@@ -28,9 +28,9 @@ export const metadata: Metadata = {
     description: "Interactive global map of exclusive investment opportunities, Crown Vault assets, and HNWI intelligence patterns — tracked signals across markets worldwide.",
     images: [
       {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
+        url: "https://app.hnwichronicles.com/logo.png?v=20241220",
+        width: 1024,
+        height: 1024,
         alt: "HNWI Chronicles — Global Opportunity Map",
       },
     ],
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     creator: "@hnwichronicles",
     title: "Global Opportunity Map",
     description: "Interactive global map of exclusive investment opportunities, Crown Vault assets, and HNWI intelligence patterns — tracked signals across markets worldwide.",
-    images: ["/logo.png"],
+    images: ["https://app.hnwichronicles.com/logo.png?v=20241220"],
   },
   alternates: {
     canonical: "/map",

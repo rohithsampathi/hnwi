@@ -35,6 +35,10 @@ const loadingSteps = [
   { icon: Network, text: 'Accessing global wealth network', duration: 1400 },
 ];
 
+// MODULE-LEVEL FLAG: Prevents animation from restarting on component remounts
+// Resets only on page refresh (desired behavior)
+let vaultSequenceHasRun = false;
+
 export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
   onComplete,
   briefCount = 1900,
@@ -117,10 +121,17 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
     }
   };
 
-  // Progress through loading steps - only run once per mount
+  // Progress through loading steps - only run once per session
   useEffect(() => {
-    // Reset the ref on mount to ensure animation runs
-    hasStartedRef.current = false;
+    // CRITICAL FIX: Check module-level flag FIRST
+    // If vault animation has already run in this session, skip it
+    // This prevents reset on component remounts (which can happen due to parent re-renders)
+    if (vaultSequenceHasRun) {
+      // Animation already ran - complete immediately without showing
+      setIsComplete(true);
+      onCompleteRef.current();
+      return;
+    }
 
     let isMounted = true;
     const intervals: NodeJS.Timeout[] = [];
@@ -129,8 +140,9 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
     // Small delay to ensure component is fully mounted
     const startDelay = setTimeout(() => {
       // Prevent multiple executions if already started
-      if (hasStartedRef.current) return;
+      if (hasStartedRef.current || vaultSequenceHasRun) return;
       hasStartedRef.current = true;
+      vaultSequenceHasRun = true; // Mark as run at session level
 
       const runStep = (stepIndex: number) => {
       if (!isMounted || stepIndex >= loadingSteps.length) return;

@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     
     // Create a more suitable OG image URL with fallback
     const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(opportunity.title)}&type=${encodeURIComponent(opportunity.type || 'Investment')}`
-    const fallbackImageUrl = `${baseUrl}/logo.png`
+    const fallbackImageUrl = `${baseUrl}/logo.png?v=20241220`
 
     const title = `${opportunity.title} | Invest Scan - HNWI Chronicles`
     const description = opportunity.description 
@@ -71,8 +71,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           },
           {
             url: fallbackImageUrl,
-            width: 1200,
-            height: 630,
+            width: 1024,
+            height: 1024,
             alt: opportunity.title,
           }
         ],

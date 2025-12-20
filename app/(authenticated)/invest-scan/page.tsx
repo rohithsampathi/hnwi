@@ -28,9 +28,9 @@ export const metadata: Metadata = {
     description: "Discover curated investment opportunities across global markets with interactive geographic analysis — explore emerging markets, developed economies, and strategic investment regions tailored for HNWIs.",
     images: [
       {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
+        url: "https://app.hnwichronicles.com/logo.png?v=20241220",
+        width: 1024,
+        height: 1024,
         alt: "HNWI Chronicles — Invest Scan",
       },
     ],
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     creator: "@hnwichronicles",
     title: "Invest Scan",
     description: "Discover curated investment opportunities across global markets with interactive geographic analysis — explore emerging markets, developed economies, and strategic investment regions tailored for HNWIs.",
-    images: ["/logo.png"],
+    images: ["https://app.hnwichronicles.com/logo.png?v=20241220"],
   },
   alternates: {
     canonical: "/invest-scan",

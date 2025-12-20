@@ -70,6 +70,10 @@ export async function generateMetadata({
   const title = `${opportunity.title} | Privé Exchange Off Market`
   const description = opportunity.description || `Exclusive ${opportunity.type || 'investment'} opportunity available through Privé Exchange.`
 
+  // Use absolute URL with cache-busting for social media OG images
+  const siteUrl = "https://app.hnwichronicles.com"
+  const ogImage = `${siteUrl}/logo.png?v=20241220`
+
   return {
     title,
     description,
@@ -77,13 +81,13 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
-      url: `https://app.hnwichronicles.com/share/opportunity/${params.id}`,
+      url: `${siteUrl}/share/opportunity/${params.id}`,
       siteName: "HNWI Chronicles",
       images: [
         {
-          url: "/logo.png",
-          width: 1200,
-          height: 630,
+          url: ogImage,
+          width: 1024,
+          height: 1024,
           alt: title
         }
       ]
@@ -92,7 +96,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: ["/logo.png"]
+      images: [ogImage]
     }
   }
 }
