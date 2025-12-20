@@ -188,26 +188,16 @@ const isZeroTrustResponse = (payload: any): boolean => {
   );
 };
 
-// Check if user is authenticated (based on session check, not tokens)
-let isAuthenticatedCache: boolean | null = null;
-
+// CRITICAL FIX: Always use authManager as the single source of truth
+// This prevents race conditions on hard refresh where different modules have different auth states
 export const isAuthenticated = (): boolean => {
-  // Check both our cache and authManager for consistency
-  const managerAuth = authManager.isAuthenticated()
-  if (managerAuth && isAuthenticatedCache === false) {
-    // AuthManager has auth but we don't - sync it
-    isAuthenticatedCache = true
-  } else if (!managerAuth && isAuthenticatedCache === true) {
-    // We have auth but authManager doesn't - clear it
-    isAuthenticatedCache = false
-  }
-  return isAuthenticatedCache ?? managerAuth
+  // ALWAYS defer to authManager - it's the single source of truth
+  return authManager.isAuthenticated();
 };
 
 export const setAuthState = (authenticated: boolean): void => {
-  isAuthenticatedCache = authenticated;
-  // Keep authManager in sync
-  authManager.setAuthenticated(authenticated)
+  // ONLY update authManager - it's the single source of truth
+  authManager.setAuthenticated(authenticated);
 };
 
 // Request queue for handling 401s
@@ -398,7 +388,7 @@ const handleAuthError = async (): Promise<boolean> => {
   }
 
   // Token refresh failed, now show auth popup
-  isAuthenticatedCache = false;
+  authManager.setAuthenticated(false);
 
   // CRITICAL: Clear old auth state to prevent conflicts during re-login
   // This ensures the popup login starts fresh without stale cookies interfering
@@ -425,7 +415,7 @@ const handleAuthError = async (): Promise<boolean> => {
         onSuccess: () => {
           // Auth successful, retry queued requests
           isRefreshingAuth = false;
-          isAuthenticatedCache = true;
+          authManager.setAuthenticated(true);
           processRequestQueue();
           resolve(true);
         },
@@ -495,6 +485,12 @@ export const secureApiCall = async (
   retryCount: number = 0,
   maxRetries: number = 3
 ): Promise<Response> => {
+  // CRITICAL: Ensure auth is initialized before making any API calls
+  // This prevents race conditions on hard refresh where API calls happen before auth state is recovered
+  if (requireAuth && typeof window !== 'undefined') {
+    await authManager.waitForInitialization();
+  }
+
   // Always use relative URLs - goes through Next.js API routes
   const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
@@ -898,13 +894,17 @@ export const checkSession = async (): Promise<any> => {
 };
 
 export const loginUser = (userData: any): void => {
-  // Store only non-sensitive user data in PWA-compatible storage
+  // CRITICAL: Call authManager.login() to properly store in localStorage
+  // This ensures data persists across hard refresh
+  authManager.login(userData);
+
+  // Also store in PWA-compatible storage for service worker access
   if (typeof window !== 'undefined') {
     pwaStorage.setItemSync('userEmail', userData.email || '');
     pwaStorage.setItemSync('userId', userData.id || userData.user_id || '');
     pwaStorage.setItemSync('userObject', JSON.stringify(userData));
 
-    // Emit login event
+    // Emit login event (authManager.login already emits, but keep for backward compatibility)
     window.dispatchEvent(new CustomEvent('auth:login', {
       detail: { user: userData }
     }));
@@ -925,15 +925,15 @@ export const logoutUser = async (): Promise<void> => {
   // Clear client state
   setAuthState(false);
 
+  // CRITICAL: Use authManager.logout() to properly clear all auth data
+  // This clears localStorage, sessionStorage, and pwaStorage consistently
+  authManager.logout();
+
   if (typeof window !== 'undefined') {
+    // Also clear pwaStorage for service worker (authManager.logout handles localStorage)
     pwaStorage.clear();
 
-    // Clear legacy localStorage (migration cleanup)
-    // Cookies handle auth - no token removal needed
-    localStorage.removeItem('userId');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userObject');
-
+    // Emit logout event (authManager.logout already emits, but keep for backward compatibility)
     window.dispatchEvent(new CustomEvent('auth:logout'));
   }
 };

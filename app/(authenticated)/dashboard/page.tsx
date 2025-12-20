@@ -62,7 +62,11 @@ export default function DashboardPage() {
       try {
         const userId = user.id || user.user_id
 
-        const response = await fetch(`/api/assessment/history/${userId}`)
+        // SOTA AUTHENTICATION: Backend API calls use httpOnly cookies
+        // No need to check auth state - fetch will send cookies automatically
+        const response = await fetch(`/api/assessment/history/${userId}`, {
+          credentials: 'include' // Ensure cookies are sent
+        })
 
         if (response.ok) {
           const data = await response.json()
@@ -74,8 +78,12 @@ export default function DashboardPage() {
             // Show dashboard anyway - the P toggle will prompt them to take assessment
             setHasAssessment(false)
           }
+        } else if (response.status === 401 || response.status === 403) {
+          // Backend says not authenticated - auth expired during page load
+          // Layout will handle redirect on next navigation
+          setHasAssessment(false)
         } else {
-          // On API error, allow access (fail open to prevent blocking legitimate users)
+          // On other API error, allow access (fail open to prevent blocking)
           setHasAssessment(true)
         }
       } catch (error) {
@@ -119,10 +127,12 @@ export default function DashboardPage() {
   // Show loading while checking access
   if (isCheckingAccess) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="w-full h-screen">
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
         </div>
       </div>
     )

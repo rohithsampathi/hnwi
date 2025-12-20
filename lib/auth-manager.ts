@@ -17,49 +17,114 @@ export class AuthenticationManager {
   private static instance: AuthenticationManager;
   private user: User | null = null;
   private authenticated: boolean = false;
+  private isInitialized: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
 
   private constructor() {
-    if (typeof window !== 'undefined') {
-      this.initialize();
-    }
+    // Don't initialize here - will be done synchronously on module load
   }
 
   public static getInstance(): AuthenticationManager {
     if (!AuthenticationManager.instance) {
       AuthenticationManager.instance = new AuthenticationManager();
+      // Initialize immediately when instance is created
+      AuthenticationManager.instance.initializeSync();
     }
     return AuthenticationManager.instance;
   }
 
-  private initialize(): void {
-    if (typeof window === 'undefined') return;
-
-    // Try to recover user from localStorage (changed from sessionStorage for hard refresh persistence)
-    const storedUser = localStorage.getItem('userObject');
-
-    if (storedUser) {
-      try {
-        this.user = JSON.parse(storedUser);
-        // If we have user data in localStorage, we're authenticated
-        // (the backend cookies will validate on API calls)
-        this.authenticated = true;
-      } catch (error) {
-        // Failed to parse stored user;
-      }
+  // CRITICAL: Synchronous initialization that happens immediately
+  private initializeSync(): void {
+    if (this.isInitialized || typeof window === 'undefined') {
+      this.isInitialized = true;
+      return;
     }
+
+    // CRITICAL: Check both localStorage (primary) and sessionStorage (fallback)
+    // This ensures we recover auth state after hard refresh or new tab
+    try {
+      const storedUser = localStorage.getItem('userObject') || sessionStorage.getItem('userObject');
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      const userEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+
+      if (storedUser && userId) {
+        try {
+          this.user = JSON.parse(storedUser);
+          // If we have valid user data, we're authenticated
+          // The backend cookies will validate on actual API calls
+          this.authenticated = true;
+        } catch (error) {
+          // Failed to parse stored user - clear invalid data
+          this.user = null;
+          this.authenticated = false;
+        }
+      } else if (userId && userEmail) {
+        // Minimal recovery - have ID and email but no full user object
+        this.user = { id: userId, user_id: userId, email: userEmail } as User;
+        this.authenticated = true;
+      } else {
+        // No auth data found
+        this.user = null;
+        this.authenticated = false;
+      }
+    } catch (error) {
+      // Storage access failed - clear state
+      this.user = null;
+      this.authenticated = false;
+    }
+
+    this.isInitialized = true;
+  }
+
+  // Ensure initialization before any operation
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      this.initializeSync();
+    }
+  }
+
+  // Wait for initialization to complete (for async operations)
+  public async waitForInitialization(): Promise<void> {
+    if (this.isInitialized) return;
+
+    if (!this.initializationPromise) {
+      this.initializationPromise = new Promise<void>((resolve) => {
+        this.initializeSync();
+        resolve();
+      });
+    }
+
+    return this.initializationPromise;
   }
 
   public login(userData: User): User {
     if (typeof window === 'undefined') return userData;
 
+    this.ensureInitialized();
+
     // Store user data in memory and localStorage
     this.user = userData;
     this.authenticated = true;
 
-    // Store user data in localStorage (changed from sessionStorage for hard refresh persistence)
-    localStorage.setItem('userEmail', userData.email || '');
-    localStorage.setItem('userId', userData.id || userData.user_id || '');
-    localStorage.setItem('userObject', JSON.stringify(userData));
+    // DUAL STORAGE: Write to both localStorage AND sessionStorage
+    // localStorage: Persists across hard refresh and new tabs
+    // sessionStorage: Backup for single session, more secure for shared computers
+    const userEmail = userData.email || '';
+    const userId = userData.id || userData.user_id || '';
+    const userObjectStr = JSON.stringify(userData);
+    const timestamp = Date.now().toString();
+
+    // Write to localStorage (primary - persists across hard refresh)
+    localStorage.setItem('userEmail', userEmail);
+    localStorage.setItem('userId', userId);
+    localStorage.setItem('userObject', userObjectStr);
+    localStorage.setItem('loginTimestamp', timestamp);
+
+    // Write to sessionStorage (backup - single session only)
+    sessionStorage.setItem('userEmail', userEmail);
+    sessionStorage.setItem('userId', userId);
+    sessionStorage.setItem('userObject', userObjectStr);
+    sessionStorage.setItem('loginTimestamp', timestamp);
 
     // CRITICAL FIX: Also sync to pwaStorage for lib/api.ts compatibility
     // lib/api.ts reads from pwaStorage via secure-api's getCurrentUserId()
@@ -67,12 +132,13 @@ export class AuthenticationManager {
       try {
         // Dynamic import to avoid circular dependency
         import('./storage/pwa-storage').then(({ pwaStorage }) => {
-          pwaStorage.setItemSync('userEmail', userData.email || '');
-          pwaStorage.setItemSync('userId', userData.id || userData.user_id || '');
-          pwaStorage.setItemSync('userObject', JSON.stringify(userData));
+          pwaStorage.setItemSync('userEmail', userEmail);
+          pwaStorage.setItemSync('userId', userId);
+          pwaStorage.setItemSync('userObject', userObjectStr);
+          pwaStorage.setItemSync('loginTimestamp', timestamp);
         });
       } catch (error) {
-        // pwaStorage not available - sessionStorage will be used as fallback
+        // pwaStorage not available - dual storage will handle fallback
       }
     }
 
@@ -87,17 +153,24 @@ export class AuthenticationManager {
   public logout(): void {
     if (typeof window === 'undefined') return;
 
+    this.ensureInitialized();
+
     // Clear user data
     this.user = null;
     this.authenticated = false;
 
-    // Clear all storage (including login timestamp)
+    // DUAL STORAGE: Clear both localStorage AND sessionStorage
+    // Clear localStorage
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
     localStorage.removeItem('userObject');
+    localStorage.removeItem('loginTimestamp');
 
-    // Also clear any legacy sessionStorage items
-    sessionStorage.clear();
+    // Clear sessionStorage
+    sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('userObject');
+    sessionStorage.removeItem('loginTimestamp');
 
     // CRITICAL FIX: Also clear pwaStorage to stay in sync
     if (typeof window !== 'undefined') {
@@ -121,31 +194,64 @@ export class AuthenticationManager {
   }
 
   public getCurrentUser(): User | null {
-    // Always check localStorage first to ensure we have the latest data
-    // This is important for navigation between pages and hard refreshes
+    this.ensureInitialized();
+
+    // If we have a user in memory and storage hasn't been explicitly cleared, return it
+    // This prevents unnecessary re-checking of storage which can cause race conditions
+    if (this.user) {
+      // Quick check to ensure storage wasn't cleared externally
+      if (typeof window !== 'undefined') {
+        const hasStorageData = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        if (!hasStorageData) {
+          // Storage was cleared externally - clear memory cache
+          this.user = null;
+          this.authenticated = false;
+          return null;
+        }
+      }
+      return this.user;
+    }
+
+    // No user in memory - try to recover from storage
+    // This should only happen on initial load or after logout
     if (typeof window !== 'undefined') {
-      const storedUser = localStorage.getItem('userObject');
-      if (storedUser) {
+      // Check both localStorage (primary) and sessionStorage (fallback)
+      const storedUser = localStorage.getItem('userObject') || sessionStorage.getItem('userObject');
+      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+      const userEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+
+      if (storedUser && userId) {
         try {
           const parsedUser = JSON.parse(storedUser);
-          // Update in-memory cache if localStorage has newer data
-          if (!this.user || JSON.stringify(this.user) !== storedUser) {
-            this.user = parsedUser;
-            this.authenticated = true;
-          }
+          this.user = parsedUser;
+          this.authenticated = true;
+          return this.user;
         } catch (error) {
-          // Failed to parse stored user;
+          // Failed to parse - try minimal recovery
+          if (userId && userEmail) {
+            this.user = { id: userId, user_id: userId, email: userEmail } as User;
+            this.authenticated = true;
+            return this.user;
+          }
         }
-      } else {
-        // No user in localStorage - clear memory cache
-        this.user = null;
-        this.authenticated = false;
+      } else if (userId && userEmail) {
+        // Minimal recovery if we have ID and email but no full object
+        this.user = { id: userId, user_id: userId, email: userEmail } as User;
+        this.authenticated = true;
+        return this.user;
       }
+
+      // No user data found
+      this.user = null;
+      this.authenticated = false;
     }
+
     return this.user;
   }
 
   public getUserId(): string | null {
+    this.ensureInitialized();
+
     // First ensure we have the latest user data
     this.getCurrentUser();
 
@@ -161,20 +267,32 @@ export class AuthenticationManager {
   }
 
   public isAuthenticated(): boolean {
-    // Check if we have user data which indicates authentication
+    this.ensureInitialized();
+
+    // CRITICAL: Always check current user to ensure we have latest state
+    // This prevents false negatives after hard refresh
     const user = this.getCurrentUser();
-    return this.authenticated || !!user;
+
+    // We're authenticated if we have a valid user with an ID
+    const hasValidUser = !!(user && (user.id || user.user_id));
+
+    // Update internal state if needed
+    if (hasValidUser && !this.authenticated) {
+      this.authenticated = true;
+    } else if (!hasValidUser && this.authenticated) {
+      this.authenticated = false;
+    }
+
+    return hasValidUser;
   }
 
   public setAuthenticated(value: boolean): void {
+    this.ensureInitialized();
     this.authenticated = value;
   }
 
-  public ensureInitialized(): void {
-    // No-op for compatibility
-  }
-
   public updateUser(updates: Partial<User>): User | null {
+    this.ensureInitialized();
     if (!this.user) return null;
 
     this.user = { ...this.user, ...updates };
@@ -193,7 +311,8 @@ export class AuthenticationManager {
 
   public async refreshAuth(): Promise<User | null> {
     try {
-      // First try to refresh the token
+      // SOTA AUTHENTICATION: Backend is source of truth
+      // Step 1: Try to refresh the token first
       const refreshResponse = await fetch('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include',
@@ -214,15 +333,16 @@ export class AuthenticationManager {
         if (sessionResponse.ok) {
           const data = await sessionResponse.json();
           if (data.user) {
+            // Backend validated - sync localStorage with backend truth
             this.login(data.user);
             return this.user;
           }
         }
       }
 
-      // If token refresh failed, try session check directly
+      // Step 2: If token refresh failed, try session check directly
       const response = await fetch('/api/auth/session', {
-        credentials: 'include', // Send cookies
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         }
@@ -230,17 +350,20 @@ export class AuthenticationManager {
 
       if (response.ok) {
         const data = await response.json();
-
         if (data.user) {
+          // Backend validated - sync localStorage with backend truth
           this.login(data.user);
           return this.user;
         }
-      } else if (response.status === 401) {
-        // Not authenticated
-        this.logout();
       }
+
+      // Step 3: Backend says not authenticated (401/403)
+      // Clear localStorage cache to stay in sync with backend
+      // Don't auto-logout here - let calling code decide
+      // This prevents clearing cache during temporary network issues
     } catch (error) {
-      // Failed to refresh auth;
+      // Network error - don't modify localStorage
+      // Let calling code handle fallback behavior
     }
 
     return null;
@@ -261,8 +384,15 @@ export class AuthenticationManager {
   }
 }
 
-// Export singleton instance
+// CRITICAL: Initialize singleton immediately on module load to prevent race conditions
+// This ensures auth state is recovered from storage before any code can check it
 export const authManager = AuthenticationManager.getInstance();
+
+// Force initialization to happen immediately if we're in the browser
+if (typeof window !== 'undefined') {
+  // This ensures the singleton is initialized synchronously before any other code runs
+  authManager.isAuthenticated(); // This will trigger ensureInitialized()
+}
 
 // Export convenience functions
 export const getCurrentUserId = () => authManager.getUserId();

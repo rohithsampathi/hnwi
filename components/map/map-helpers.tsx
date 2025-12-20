@@ -37,13 +37,13 @@ export function FlyToCity({ city, zoomLevel = 8 }: { city: City | null; zoomLeve
 /**
  * Component to reset map view to world overview
  */
-export function ResetView({ shouldReset, onReset }: { shouldReset: boolean; onReset: () => void }) {
+export function ResetView({ shouldReset, onReset, minZoom = 2.2 }: { shouldReset: boolean; onReset: () => void; minZoom?: number }) {
   const map = useMap()
 
   React.useEffect(() => {
     if (shouldReset) {
       // Smooth, progressive zoom out animation (3.5 seconds)
-      map.flyTo([20, 0], 2.8, {
+      map.flyTo([20, 0], minZoom, {
         duration: 3.5,
         easeLinearity: 0.15,
         animate: true
@@ -53,7 +53,7 @@ export function ResetView({ shouldReset, onReset }: { shouldReset: boolean; onRe
         onReset()
       }, 3600)
     }
-  }, [shouldReset, map, onReset])
+  }, [shouldReset, map, onReset, minZoom])
 
   return null
 }

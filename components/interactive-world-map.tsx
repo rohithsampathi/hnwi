@@ -127,7 +127,7 @@ export function InteractiveWorldMap({
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
   const [flyToCity, setFlyToCity] = useState<City | null>(null)
   const [resetView, setResetView] = useState(false)
-  const [currentZoom, setCurrentZoom] = useState(1.8)
+  const [currentZoom, setCurrentZoom] = useState(2.5)
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
@@ -277,18 +277,101 @@ export function InteractiveWorldMap({
     }, 10)
   }, [])
 
+  // Calculate dynamic min zoom based on viewport to ensure map fills width
+  const [minZoomLevel, setMinZoomLevel] = useState(2.5)
+
+  React.useEffect(() => {
+    const calculateMinZoom = () => {
+      if (typeof window !== 'undefined') {
+        const screenWidth = window.innerWidth
+        const screenHeight = window.innerHeight
+        const aspectRatio = screenWidth / screenHeight
+
+        // Calculate zoom based on both width and aspect ratio
+        // More aggressive zoom to ensure map ALWAYS fills viewport
+        let zoom = 2.5 // Default higher zoom
+
+        // Portrait modes (taller than wide) - need higher zoom to fill
+        if (aspectRatio < 0.6) {
+          // Very tall portrait (phone portrait)
+          zoom = 3.5
+        }
+        else if (aspectRatio < 0.75) {
+          // Standard portrait
+          zoom = 3.0
+        }
+        else if (aspectRatio < 1.0) {
+          // Square-ish to mild portrait
+          zoom = 2.8
+        }
+        // Landscape modes
+        else if (aspectRatio > 2.3) {
+          // Ultra-wide screens (21:9 or wider)
+          zoom = 1.5
+        }
+        else if (aspectRatio > 1.7) {
+          // Wide screens (16:9 to 21:9)
+          zoom = 1.8
+        }
+        else if (aspectRatio > 1.5) {
+          // Standard widescreen (3:2, 16:10)
+          zoom = 2.2
+        }
+        else {
+          // Standard screens (4:3, 5:4)
+          zoom = 2.5
+        }
+
+        // Additional adjustments based on actual dimensions
+        // For very small heights, increase zoom to prevent vertical gaps
+        if (screenHeight < 600) {
+          zoom = Math.max(zoom + 0.5, 3.0)
+        }
+        else if (screenHeight < 800) {
+          zoom = Math.max(zoom + 0.3, 2.5)
+        }
+
+        setMinZoomLevel(zoom)
+        setCurrentZoom(zoom) // Also update current zoom
+      }
+    }
+
+    calculateMinZoom()
+    window.addEventListener('resize', calculateMinZoom)
+    // Also listen for orientation changes on mobile
+    window.addEventListener('orientationchange', () => {
+      setTimeout(calculateMinZoom, 100) // Delay to ensure dimensions are updated
+    })
+
+    return () => {
+      window.removeEventListener('resize', calculateMinZoom)
+      window.removeEventListener('orientationchange', calculateMinZoom)
+    }
+  }, [])
+
+  // Define map bounds - more restrictive latitude to prevent any gaps
+  // Extended longitude to allow horizontal wrapping on wide screens
+  const maxBounds: [[number, number], [number, number]] = [
+    [-50, -360], // Southwest - more restricted latitude, extended longitude
+    [65, 360]     // Northeast - more restricted latitude, extended longitude
+  ]
+
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className={`relative w-full h-full overflow-hidden ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
       <MapContainer
+        key={`map-${minZoomLevel}`} // Force re-render when zoom changes
         center={[20, 0]}
-        zoom={1.8}
-        minZoom={1.8}
+        zoom={minZoomLevel}
+        minZoom={minZoomLevel}
         maxZoom={18}
         style={{ width: "100%", height: "100%", position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         zoomControl={false}
         scrollWheelZoom={true}
         attributionControl={false}
         worldCopyJump={true}
+        maxBounds={maxBounds}
+        maxBoundsViscosity={1.0}  // Makes bounds completely rigid - no elastic scrolling
+        bounceAtZoomLimits={false}  // Prevents bounce effect at zoom limits
       >
         <TileLayer url={tileUrl} noWrap={false} />
 
@@ -313,6 +396,9 @@ export function InteractiveWorldMap({
           const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
           const isOpen = openClusterId === clusterId
 
+          // Check if this marker should blink (new opportunity) and give it higher z-index
+          const isBlinking = !isCluster && (center.is_new === true || (center as any).isNew === true)
+
           return (
             <Marker
               key={`marker-${center._id || center.id || ''}-${center.latitude.toFixed(6)}-${center.longitude.toFixed(6)}-${center.title || ''}`}
@@ -321,6 +407,7 @@ export function InteractiveWorldMap({
                 ? createClusterIcon(cluster.cities.length, primaryType, theme)
                 : createCustomIcon(center, clusterIndex, theme, getColor, isOpen ? clusterIndex : null)
               }
+              zIndexOffset={isBlinking ? 10000 : isCluster ? 100 : 0} // Blinking dots get highest z-index
               ref={(ref) => {
                 if (ref) {
                   markerRefs.current.set(markerKey, ref)
@@ -401,7 +488,7 @@ export function InteractiveWorldMap({
 
         {/* Map Helper Components */}
         <FlyToCity city={flyToCity} />
-        <ResetView shouldReset={resetView} onReset={() => setResetView(false)} />
+        <ResetView shouldReset={resetView} onReset={() => setResetView(false)} minZoom={minZoomLevel} />
         <MapClickHandler onMapClick={handleMapClick} />
         <ZoomTracker onZoomChange={setCurrentZoom} />
       </MapContainer>

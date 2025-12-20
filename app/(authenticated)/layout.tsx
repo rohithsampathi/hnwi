@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, ReactNode, useRef } from "react"
+import { useState, useEffect, useLayoutEffect, ReactNode, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
@@ -18,7 +18,7 @@ import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
-import { getCurrentUser, getCurrentUserId, isAuthenticated as checkAuth } from "@/lib/auth-manager"
+import { getCurrentUser, isAuthenticated as checkAuth, refreshUser } from "@/lib/auth-manager"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import BackgroundSyncInitializer from "@/components/background-sync-initializer"
 import '@/lib/auth/debug-helper' // Load debug helper
@@ -30,12 +30,12 @@ interface AuthenticatedLayoutProps {
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
+  // CRITICAL: Start with null to match SSR, check localStorage in useEffect
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState("")
-  const [isCheckingAuth, setIsCheckingAuth] = useState(false)
-  
+
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
@@ -55,14 +55,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   
   const pageConfig = getPageConfig(pathname)
   const [mounted, setMounted] = useState(false)
-
-  // Use ref to track current pathname for async operations
-  // CRITICAL: Update ref synchronously, not in useEffect, to avoid race conditions
-  const pathnameRef = useRef(pathname)
-  pathnameRef.current = pathname // Update synchronously on every render
-
-  // Track if an auth check should be aborted
-  const authCheckAbortRef = useRef(false)
 
   // Update current page based on pathname
   useEffect(() => {
@@ -116,212 +108,167 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     setMounted(true)
   }, [])
 
+  // CRITICAL: Synchronous localStorage check BEFORE first paint to prevent loading flash
+  // useLayoutEffect runs synchronously after DOM updates but before browser paint
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || !pathname) return
+    if (isAuthenticated !== null) return // Already checked
+
+    // Quick synchronous check of localStorage
+    const cachedUser = getCurrentUser()
+    if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
+      setUser(cachedUser)
+      setIsAuthenticated(true)
+      setIsInitialLoad(false)
+      setMounted(true)
+    }
+  }, [pathname, isAuthenticated])
+
+  // SINGLE AUTH CHECK - Prevents race conditions
   useEffect(() => {
-    // CRITICAL: Wait for pathname to be available before any auth checks
-    // This prevents premature redirects on first page load
+    // Wait for component to mount
     if (!mounted || !pathname) return
 
-    // CRITICAL SAFEGUARD: Check pathname ref as well to catch any timing issues
-    const currentPathname = pathnameRef.current || pathname
-
-    // Allow assessment pages for both authenticated and unauthenticated users
-    // This check must happen FIRST and ALWAYS run when on assessment pages
-    // CRITICAL: This must be checked BEFORE the early return for isAuthenticated !== null
-    if (currentPathname.includes('/simulation')) {
-      // Abort any ongoing auth checks
-      authCheckAbortRef.current = true
-
-      // Check if user is actually authenticated
-      const authUserId = getCurrentUserId()
-      const authUser = getCurrentUser()
-      const isUserAuthenticated = !!(authUserId && authUser)
-
-      // Only update state if needed to prevent infinite loops
-      if (isAuthenticated !== true) {
-        setIsAuthenticated(true)
-        setIsInitialLoad(false)
-      }
-
-      // If user is authenticated, keep their user data so they have full menu access
-      // If not authenticated, set user to null (public assessment)
-      if (isUserAuthenticated && user === null) {
-        setUser(authUser) // Keep authenticated user data
-      } else if (!isUserAuthenticated && user !== null) {
-        setUser(null) // Clear user for public assessment
-      }
-
-      return
-    }
-
-    // For non-assessment pages, only check auth if not already checked
-    // This comes AFTER assessment check to ensure assessment pages always bypass auth
-    if (isCheckingAuth || isAuthenticated !== null) return
+    // Prevent multiple auth checks
+    if (isAuthenticated !== null) return
 
     const checkAuthStatus = async () => {
-      // Store the pathname at the start of this async operation
-      const checkStartPathname = pathname
-      authCheckAbortRef.current = false // Reset abort flag
-      setIsCheckingAuth(true)
-
       try {
-        // ROOT FIX: Never attempt auth refresh for simulation pages (public access allowed)
+        // Special handling for simulation pages (public access allowed)
         if (pathname.includes('/simulation')) {
-
-          // Try to get user data from session storage only (no API calls)
-          let userId = getCurrentUserId()
-          let authUser = getCurrentUser()
-
-          if (userId && authUser) {
-            setUser(authUser)
-            setIsAuthenticated(true)
-          } else {
-            // Non-authenticated user on simulation - allow access
-            setUser(null)
-            setIsAuthenticated(true) // Set to true to prevent redirects
-          }
+          console.log('[Auth Layout] Simulation page - allowing public access')
+          const authUser = getCurrentUser()
+          setUser(authUser) // Will be null for non-authenticated users
+          setIsAuthenticated(true) // Allow access regardless
           setIsInitialLoad(false)
-          setIsCheckingAuth(false)
           return
         }
 
-        // Check if user just logged in FIRST, before any auth manager calls
-        const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
-        const hasSessionData = typeof window !== 'undefined' &&
-          (sessionStorage.getItem('userEmail') || sessionStorage.getItem('userId') || sessionStorage.getItem('userObject'))
+        // CRITICAL: Initialize auth manager and wait for it to load localStorage
+        const { authManager } = await import('@/lib/auth-manager')
+        await authManager.waitForInitialization()
+        console.log('[Auth Layout] Auth manager initialized')
 
-        // If user logged in within last 5 minutes AND has session data, trust it completely
-        // No API calls, no refresh attempts - just use the session data
-        if (loginTimestamp && hasSessionData && (Date.now() - parseInt(loginTimestamp)) < 300000) { // 5 minutes
+        // Check localStorage FIRST - this is our source of truth
+        const cachedUser = getCurrentUser()
+        console.log('[Auth Layout] Checked localStorage:', {
+          hasUser: !!cachedUser,
+          userId: cachedUser?.id || cachedUser?.user_id,
+          email: cachedUser?.email
+        })
 
-          // Reconstruct user from sessionStorage
-          let userId: string | null = null
-          let authUser: any = null
-
-          try {
-            const userObj = sessionStorage.getItem('userObject')
-            const userEmail = sessionStorage.getItem('userEmail')
-            const userIdFromStorage = sessionStorage.getItem('userId')
-
-            if (userObj) {
-              authUser = JSON.parse(userObj)
-              userId = authUser?.id || authUser?.user_id || userIdFromStorage
-            } else if (userEmail && userIdFromStorage) {
-              // Minimal user object from sessionStorage
-              authUser = {
-                id: userIdFromStorage,
-                user_id: userIdFromStorage,
-                email: userEmail
-              }
-              userId = userIdFromStorage
-            }
-
-            // If we have valid session data, use it immediately
-            if (userId && authUser) {
-              setUser(authUser)
-              setIsAuthenticated(true)
-              setIsInitialLoad(false)
-              setIsCheckingAuth(false)
-              return // Done - no further checks needed
-            }
-          } catch (e) {
-          }
+        // TRUST LOCALSTORAGE: If we have valid user data, use it
+        // Backend will validate on API calls and handle 401s if invalid
+        if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
+          console.log('[Auth Layout] ✅ Using cached user from localStorage')
+          setUser(cachedUser)
+          setIsAuthenticated(true)
+          setIsInitialLoad(false)
+          return
         }
 
-        // Use centralized auth manager
-        let userId = getCurrentUserId()
-        let authUser = getCurrentUser()
+        console.log('[Auth Layout] No cached user - checking backend')
 
-        // If no user data initially, wait a bit for it to be available
-        // This handles the case where we navigate here right after MFA
-        if (!userId || !authUser) {
-          // Wait for auth data to be available (from MFA completion)
-          await new Promise(resolve => setTimeout(resolve, 500))
-
-          // CRITICAL: Check if we navigated away during the delay using ref (not closure)
-          if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
-            setIsCheckingAuth(false)
-            return // Abort this auth check
+        // No localStorage data - check backend as fallback
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
           }
+        })
 
-          // Check again after delay
-          userId = getCurrentUserId()
-          authUser = getCurrentUser()
+        console.log('[Auth Layout] Session response:', sessionResponse.status)
 
-          // If still no user, only try refresh if NOT recently logged in
-          if (!userId || !authUser) {
-            // Double-check login timestamp again
-            const recentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000
-
-            // Only call refreshUser if we have session data AND didn't recently login
-            if (hasSessionData && !recentLogin) {
-              const { refreshUser } = await import("@/lib/auth-manager")
-              authUser = await refreshUser()
-              userId = authUser?.id || authUser?.user_id
-            }
-          }
-        }
-
-        // CRITICAL: Before doing anything with the auth result, verify we're still on the same page using ref
-        if (pathnameRef.current !== checkStartPathname || authCheckAbortRef.current) {
-          setIsCheckingAuth(false)
-          return // Abort - user navigated away
-        }
-
-        // With cookie-based auth, we check for user data, not tokens
-        if (!userId || !authUser) {
-
-          // FINAL CHECK: Only redirect if we're still on the page where the check started
-          // AND it's not an assessment page (assessment pages are public)
-          // AND the check hasn't been aborted
-          if (!userId || !authUser) {
-            const currentPath = pathnameRef.current
-            const isAborted = authCheckAbortRef.current
-
-            if (isAborted) {
-              setIsCheckingAuth(false)
-              return
-            }
-
-            // CRITICAL: Triple-check we're not on assessment page before redirecting
-            const finalPathCheck = pathnameRef.current
-            if (finalPathCheck.includes('/simulation')) {
-              setIsCheckingAuth(false)
-              return
-            }
-
-            if (currentPath === checkStartPathname && !currentPath.includes('/simulation')) {
-              setIsAuthenticated(false)
-              setIsInitialLoad(false)
-              router.push("/")
-            } else if (currentPath !== checkStartPathname) {
-            } else if (currentPath.includes('/simulation')) {
-            }
-            setIsCheckingAuth(false)
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json()
+          console.log('[Auth Layout] Session data:', { hasUser: !!data.user })
+          if (data.user) {
+            // Backend has user - save to localStorage
+            console.log('[Auth Layout] ✅ Backend session valid - saving to localStorage')
+            authManager.login(data.user)
+            setUser(data.user)
+            setIsAuthenticated(true)
+            setIsInitialLoad(false)
             return
           }
         }
 
-        // Set user from auth manager
-        if (authUser) {
-          setUser(authUser)
+        console.log('[Auth Layout] Session check failed - trying refresh token')
+
+        // Try refresh token as last resort
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+
+        console.log('[Auth Layout] Refresh response:', refreshResponse.status)
+
+        if (refreshResponse.ok) {
+          // Refresh succeeded, check session again
+          const newSessionResponse = await fetch('/api/auth/session', {
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+
+          if (newSessionResponse.ok) {
+            const data = await newSessionResponse.json()
+            if (data.user) {
+              console.log('[Auth Layout] ✅ Refresh succeeded - saving to localStorage')
+              authManager.login(data.user)
+              setUser(data.user)
+              setIsAuthenticated(true)
+              setIsInitialLoad(false)
+              return
+            }
+          }
+        }
+
+        // No auth found anywhere - redirect to login
+        console.log('[Auth Layout] ❌ No auth found - redirecting to login')
+        setIsAuthenticated(false)
+        setIsInitialLoad(false)
+        router.push("/")
+      } catch (error) {
+        console.error('[Auth Layout] Error during auth check:', error)
+        // Network error - check localStorage as fallback
+        const fallbackUser = getCurrentUser()
+        console.log('[Auth Layout] Fallback check:', { hasFallbackUser: !!fallbackUser })
+        if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
+          // Allow access with cached data during network issues
+          console.log('[Auth Layout] ✅ Using fallback user from localStorage')
+          setUser(fallbackUser)
           setIsAuthenticated(true)
           setIsInitialLoad(false)
         } else {
-          setIsAuthenticated(true)
+          // No cached data and can't reach backend - redirect to login
+          console.log('[Auth Layout] ❌ No fallback user - redirecting to login')
+          setIsAuthenticated(false)
           setIsInitialLoad(false)
+          router.push("/")
         }
-      } catch (error) {
-        // Auth check failed
-        setIsAuthenticated(false)
-        setIsInitialLoad(false)
-      } finally {
-        setIsCheckingAuth(false)
       }
     }
 
-    // Execute auth check
     checkAuthStatus()
-  }, [mounted, pathname]) // Only re-run when mounted state or pathname changes, NOT when isAuthenticated changes
+  }, [mounted, pathname, router])
+
+  // Listen for logout events
+  useEffect(() => {
+    const handleLogout = () => {
+      console.log('[Auth Layout] 🚨 Logout event detected')
+      setUser(null)
+      setIsAuthenticated(false)
+      router.push("/")
+    }
+
+    window.addEventListener('auth:logout', handleLogout)
+    return () => window.removeEventListener('auth:logout', handleLogout)
+  }, [router])
 
   // Listen for auth updates to refresh user data
   useEffect(() => {

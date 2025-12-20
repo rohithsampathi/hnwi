@@ -312,6 +312,31 @@ async function handlePost(request: NextRequest) {
             });
           }
 
+          // CRITICAL FIX: Set session_user cookie for immediate session recovery
+          // This ensures /api/auth/session can validate the user before backend cookies propagate
+          const sessionUserData = JSON.stringify({
+            id: normalizedUser.id,
+            user_id: normalizedUser.user_id,
+            email: normalizedUser.email,
+            firstName: normalizedUser.firstName || normalizedUser.first_name,
+            lastName: normalizedUser.lastName || normalizedUser.last_name,
+            role: normalizedUser.role || 'user',
+            timestamp: Date.now()
+          });
+
+          successResponse.cookies.set('session_user', sessionUserData, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 // 7 days
+          });
+
+          logger.info('session_user cookie set for immediate session recovery', {
+            userId: normalizedUser.id,
+            email: normalizedUser.email
+          });
+
           // Store remember me preference for future token refreshes
           if (rememberMe) {
             successResponse.cookies.set('remember_me', 'true', {

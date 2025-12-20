@@ -34,19 +34,45 @@ export async function GET() {
     const cookieStore = cookies();
     const accessToken = cookieStore.get('access_token')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;
+    const sessionUser = cookieStore.get('session_user')?.value;
 
     // Log what cookies we're receiving
     const allCookies = cookieStore.getAll();
     logger.info('Session check - cookies received', {
       hasAccessToken: !!accessToken,
       hasRefreshToken: !!refreshToken,
+      hasSessionUser: !!sessionUser,
       cookieCount: allCookies.length,
+      cookieNames: allCookies.map(c => c.name),
       accessTokenLength: accessToken?.length || 0
     });
 
+    // CRITICAL FIX: Check session_user cookie first (set by login endpoint)
+    // This provides immediate session recovery after login before backend cookies propagate
+    if (sessionUser && !accessToken) {
+      try {
+        const userData = JSON.parse(sessionUser);
+        // Validate timestamp - session_user should be recent (within 24 hours)
+        if (userData.timestamp && (Date.now() - userData.timestamp < 24 * 60 * 60 * 1000)) {
+          logger.info('Session recovered from session_user cookie', {
+            userId: userData.id,
+            email: userData.email
+          });
+          return NextResponse.json({ user: userData });
+        } else {
+          logger.info('session_user cookie expired', {
+            timestamp: userData.timestamp,
+            age: Date.now() - userData.timestamp
+          });
+        }
+      } catch (parseError) {
+        logger.warn('Failed to parse session_user cookie', { error: parseError });
+      }
+    }
+
     // Only check backend cookies - no frontend session management
     if (!accessToken) {
-      logger.info('No access_token cookie found');
+      logger.info('No access_token cookie found and no valid session_user');
       return NextResponse.json({ user: null }, { status: 200 });
     }
     

@@ -48,7 +48,8 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
     // ROOT FIX: Don't show auth popup if user recently logged in (within 5 minutes)
     // This prevents false "session expired" popups in incognito mode where cookies may be slow
     if (typeof window !== 'undefined') {
-      const loginTimestamp = sessionStorage.getItem('loginTimestamp')
+      // Check localStorage for loginTimestamp (persists across hard refresh)
+      const loginTimestamp = localStorage.getItem('loginTimestamp')
       const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000 // 5 minutes
 
       if (recentlyLoggedIn) {

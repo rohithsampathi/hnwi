@@ -23,7 +23,8 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
     }
 
     // ROOT FIX: Don't start refresh if user just logged in
-    const loginTimestamp = typeof window !== 'undefined' ? sessionStorage.getItem('loginTimestamp') : null
+    // Check localStorage for loginTimestamp (persists across hard refresh)
+    const loginTimestamp = typeof window !== 'undefined' ? localStorage.getItem('loginTimestamp') : null
     const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000 // 5 minutes
 
     const refreshIntervalMs = refreshIntervalMinutes * 60 * 1000 // Convert minutes to milliseconds
@@ -36,7 +37,8 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
         }
 
         // Check again before refreshing - don't refresh if recently logged in
-        const currentLoginTimestamp = sessionStorage.getItem('loginTimestamp')
+        // Check localStorage for persistence across hard refresh
+        const currentLoginTimestamp = localStorage.getItem('loginTimestamp')
         const stillRecent = currentLoginTimestamp && (Date.now() - parseInt(currentLoginTimestamp)) < 300000
 
         if (stillRecent) {

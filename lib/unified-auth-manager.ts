@@ -127,12 +127,8 @@ class UnifiedAuthManager {
       }
 
       if (result.success && result.user) {
-        // CRITICAL: Set login timestamp IMMEDIATELY on success (changed to localStorage for hard refresh persistence)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('loginTimestamp', Date.now().toString())
-        }
-
         // Direct login success - sync all auth systems
+        // syncAuthSystems calls loginUser which automatically sets loginTimestamp
         await this.syncAuthSystems(result.user)
 
         this.updateAuthState({
@@ -205,14 +201,11 @@ class UnifiedAuthManager {
           })
         }
 
-        // CRITICAL: Set login timestamp IMMEDIATELY on MFA success (changed to localStorage for hard refresh persistence)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('loginTimestamp', Date.now().toString())
-        }
-
-        // MFA success - sync all auth systems and clear stored email
+        // MFA success - sync all auth systems FIRST and clear stored email
         await this.syncAuthSystems(result.user)
         this.mfaEmail = null
+
+        // Note: loginTimestamp is automatically set by authManager.login() called in syncAuthSystems
 
         // SOTA FIX: No need for delayed session check - we already have verified user data
         // The backend just confirmed authentication and returned user object
@@ -287,6 +280,21 @@ class UnifiedAuthManager {
   public async checkSession(): Promise<AuthState> {
     this.updateAuthState({ isLoading: true, error: null })
 
+    // CRITICAL FIX: Check localStorage FIRST before calling backend
+    // If we have valid user data in localStorage, trust it and skip backend check
+    // This prevents hard refresh logout when backend cookies are slow to propagate
+    const existingUser = getCurrentUser()
+    if (existingUser && (existingUser.id || existingUser.user_id)) {
+      console.log('[Unified Auth] Using cached user from localStorage, skipping backend check')
+      this.updateAuthState({
+        isAuthenticated: true,
+        user: existingUser,
+        isLoading: false,
+        error: null
+      })
+      return this.authState
+    }
+
     try {
       // Use secure-api for masked backend communication
       const result = await secureApi.get('/api/auth/session')
@@ -294,7 +302,6 @@ class UnifiedAuthManager {
       if (result.user) {
         // Preserve existing user data and merge with session response
         // This prevents losing user profile fields like 'name' that might not be in session response
-        const existingUser = getCurrentUser()
         const mergedUser = existingUser ? { ...existingUser, ...result.user } : result.user
 
         // Session valid - sync all auth systems with merged user data
@@ -307,23 +314,43 @@ class UnifiedAuthManager {
           error: null
         })
       } else {
-        // No session - clear auth state
-        await this.clearAuthSystems()
+        // Backend says no session - but check localStorage one more time
+        // Only clear if localStorage is also empty (prevents race conditions)
+        const finalCheck = getCurrentUser()
+        if (finalCheck && (finalCheck.id || finalCheck.user_id)) {
+          console.warn('[Unified Auth] Backend returned no user but localStorage has user - trusting localStorage')
+          this.updateAuthState({
+            isAuthenticated: true,
+            user: finalCheck,
+            isLoading: false,
+            error: null
+          })
+        } else {
+          // No user anywhere - safe to clear
+          console.log('[Unified Auth] No user in backend or localStorage - clearing auth')
+          await this.clearAuthSystems()
 
-        this.updateAuthState({
-          isAuthenticated: false,
-          user: null,
-          isLoading: false,
-          error: null
-        })
+          this.updateAuthState({
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+            error: null
+          })
+        }
       }
 
     } catch (error) {
       // Session check failed - might be network issue, keep existing state if user exists
-      const existingUser = getCurrentUser()
-      if (existingUser) {
-        this.updateAuthState({ isLoading: false })
+      const fallbackUser = getCurrentUser()
+      if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
+        console.warn('[Unified Auth] Session check failed but localStorage has user - trusting localStorage')
+        this.updateAuthState({
+          isAuthenticated: true,
+          user: fallbackUser,
+          isLoading: false
+        })
       } else {
+        console.log('[Unified Auth] Session check failed and no localStorage user - clearing auth')
         await this.clearAuthSystems()
         this.updateAuthState({
           isAuthenticated: false,
@@ -486,31 +513,21 @@ class UnifiedAuthManager {
     // Must happen before any auth state is set to avoid race conditions
     await this.clearServiceWorkerCachesOnLogin()
 
-    // 1. Store user in auth-manager (sessionStorage + memory)
+    // 1. Store user in auth-manager (handles DUAL storage: localStorage + sessionStorage)
+    // This also sets loginTimestamp automatically
     loginUser(user)
 
     // 2. Mark secure-api as authenticated
     setAuthState(true)
 
-    // 3. Ensure localStorage persistence (critical for PWA and hard refresh)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('userObject', JSON.stringify(user))
-      localStorage.setItem('userId', user.id || user.user_id || '')
-      localStorage.setItem('userEmail', user.email || '')
+    // 3. No need for redundant storage operations - loginUser handles everything
+    // loginUser from auth-manager.ts already:
+    // - Saves to localStorage (with loginTimestamp)
+    // - Saves to sessionStorage (with loginTimestamp)
+    // - Syncs to pwaStorage
+    // - Emits auth:login event
 
-      // CRITICAL FIX: Set login timestamp to prevent immediate session checks
-      // This gives cookies time to propagate before any authenticated API calls
-      // Especially important in incognito mode where cookies may take longer to set
-      localStorage.setItem('loginTimestamp', Date.now().toString())
-
-      // Also keep in sessionStorage for backward compatibility with some components
-      sessionStorage.setItem('userObject', JSON.stringify(user))
-      sessionStorage.setItem('userId', user.id || user.user_id || '')
-      sessionStorage.setItem('userEmail', user.email || '')
-      sessionStorage.setItem('loginTimestamp', Date.now().toString())
-    }
-
-    // 4. Emit auth events for other components
+    // 4. Emit auth events for other components (keeping for backward compatibility)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('auth:login', {
         detail: { user }

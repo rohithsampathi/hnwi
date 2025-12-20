@@ -102,7 +102,23 @@ export function MapPopupSingle({
         <div className="mb-2 pb-2 border-b border-border">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <MapPin className="h-3 w-3" />
-            {city.country}
+            {(() => {
+              // Check if city.name already includes the country to avoid duplication
+              if (city.name && city.country) {
+                // If name already contains country, just use name
+                if (city.name.includes(city.country) || city.name === city.country) {
+                  return city.name
+                }
+                // If country contains the name (duplicate data), just use name
+                if (city.country.includes(city.name)) {
+                  return city.name
+                }
+                // Otherwise combine them
+                return `${city.name}, ${city.country}`
+              }
+              // Fallback to whichever is available
+              return city.country || city.name || 'Unknown Location'
+            })()}
           </p>
         </div>
 

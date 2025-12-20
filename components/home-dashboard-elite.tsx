@@ -24,8 +24,10 @@ const InteractiveWorldMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <CrownLoader size="lg" text="Loading Elite Pulse" />
+      <div className="w-full h-screen bg-background">
+        <div className="flex items-center justify-center h-full">
+          <CrownLoader size="lg" text="Loading Elite Pulse" />
+        </div>
       </div>
     )
   }
@@ -283,8 +285,10 @@ export function HomeDashboardElite({
   // Only show full-screen loader on initial load, not on subsequent data fetches
   if (initialLoad && loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <CrownLoader size="lg" text="Loading Elite Pulse" />
+      <div className="w-full h-screen bg-background">
+        <div className="flex items-center justify-center h-full">
+          <CrownLoader size="lg" text="Loading Elite Pulse" />
+        </div>
       </div>
     )
   }
@@ -344,7 +348,6 @@ export function HomeDashboardElite({
             ? 'personal-mode-active'
             : ''
           }`}
-        style={{ marginTop: '40px' }}
       >
         {/* Personal Mode Visual Effect - Animated Border */}
         {isPersonalMode && hasCompletedAssessment && (
@@ -372,8 +375,8 @@ export function HomeDashboardElite({
           onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
         />
 
-        {/* Greeting Overlay - Positioned to match PageHeader layout */}
-        <div className="absolute top-12 md:top-16 left-4 md:left-[80px] z-[400] px-0 sm:px-2 lg:px-4 pointer-events-none">
+        {/* Greeting Overlay - Positioned with more breathing room from top */}
+        <div className="absolute top-20 md:top-24 left-4 md:left-[80px] z-[400] px-0 sm:px-2 lg:px-4 pointer-events-none">
           {/* Greeting and subtext - hidden after 10s on mobile, always visible on desktop */}
           {(showGreeting || isDesktop) && (
             <>

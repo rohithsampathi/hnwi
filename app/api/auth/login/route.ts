@@ -366,6 +366,40 @@ async function handlePost(request: NextRequest) {
         // Forward backend cookies
         forwardBackendCookies(response, backendCookies);
 
+        // CRITICAL FIX: Set session_user cookie for immediate session recovery
+        // This ensures /api/auth/session can validate the user before backend cookies propagate
+        if (backendResponse.user) {
+          const sessionUserData = JSON.stringify({
+            id: backendResponse.user.id || backendResponse.user.user_id,
+            user_id: backendResponse.user.id || backendResponse.user.user_id,
+            email: backendResponse.user.email,
+            firstName: backendResponse.user.firstName || backendResponse.user.first_name,
+            lastName: backendResponse.user.lastName || backendResponse.user.last_name,
+            role: backendResponse.user.role || 'user',
+            timestamp: Date.now()
+          });
+
+          const isProd = process.env.NODE_ENV === 'production';
+          const cookieDomain = getCookieDomain();
+
+          const sessionUserOptions: any = {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? ('none' as const) : ('lax' as const),
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/'
+          };
+          if (cookieDomain) sessionUserOptions.domain = cookieDomain;
+          if (isProd) sessionUserOptions.partitioned = true;
+
+          response.cookies.set('session_user', sessionUserData, sessionUserOptions);
+
+          logger.info('Set session_user cookie for immediate recovery', {
+            userId: backendResponse.user.id || backendResponse.user.user_id,
+            email: backendResponse.user.email
+          });
+        }
+
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
         return ApiAuth.addSecurityHeaders(response);
       } else {

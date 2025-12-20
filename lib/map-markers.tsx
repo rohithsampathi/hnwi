@@ -368,6 +368,7 @@ export function createCustomIcon(
       position: relative;
       width: 16px;
       height: 16px;
+      ${shouldBlink ? 'z-index: 10000;' : ''}
     ">
       <div style="
         width: 16px;
@@ -381,7 +382,7 @@ export function createCustomIcon(
         align-items: center;
         justify-content: center;
         position: relative;
-        ${shouldBlink ? `animation: blink-marker 1s ease-in-out infinite;` : ''}
+        ${shouldBlink ? `animation: blink-marker 1s ease-in-out infinite; z-index: 10000;` : ''}
       ">
         ${iconSvg}
       </div>
