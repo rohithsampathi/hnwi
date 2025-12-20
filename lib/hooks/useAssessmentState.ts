@@ -176,6 +176,8 @@ export const useAssessmentState = () => {
         localStorage.setItem('assessment_session_id', newSessionId);
       } else {
         localStorage.removeItem('assessment_session_id');
+        // MOBILE FIX: Also clear flowStage when session is cleared
+        localStorage.removeItem('assessment_flow_stage');
       }
     }
   };
@@ -195,8 +197,10 @@ export const useAssessmentState = () => {
 
   // Clear all assessment data
   const clearAssessment = () => {
-    setSessionId(null);
+    setSessionId(null); // This will also clear flowStage via setSessionId
     setCurrentQuestion(null);
+    setAllQuestions([]);
+    setCurrentQuestionIndex(0);
     setProgress({ current: 0, total: 40 });
     setAnswers({});
     setProgressiveSignals([]);
@@ -217,6 +221,10 @@ export const useAssessmentState = () => {
         setProgressiveSignals(data.progressiveSignals || []);
         setCurrentQuestionIndex(data.currentQuestionIndex || 0);
         setStatus(data.status || 'in_progress');
+        // MOBILE FIX: Restore allQuestions to survive component remounts
+        if (data.allQuestions && Array.isArray(data.allQuestions)) {
+          setAllQuestions(data.allQuestions);
+        }
       } catch (error) {
         // Silent fail
       }
@@ -232,11 +240,13 @@ export const useAssessmentState = () => {
       answers,
       progressiveSignals,
       status,
+      currentQuestionIndex, // MOBILE FIX: Persist currentQuestionIndex
+      allQuestions, // MOBILE FIX: Persist allQuestions to survive remounts
       lastUpdated: new Date().toISOString()
     };
 
     localStorage.setItem(`assessment_progress_${sessionId}`, JSON.stringify(progressData));
-  }, [sessionId, progress, answers, progressiveSignals, status]);
+  }, [sessionId, progress, answers, progressiveSignals, status, currentQuestionIndex, allQuestions]);
 
   return {
     sessionId,

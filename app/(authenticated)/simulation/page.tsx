@@ -26,32 +26,74 @@ let assessmentSessionActive = false; // Set when API returns questions
 
 export default function AuthenticatedAssessmentPage() {
   const router = useRouter();
-  const [flowStage, setFlowStage] = useState<FlowStage>('landing');
-  const hasProgressedPastLanding = useRef(false);
+
+  // MOBILE FIX: Initialize flowStage from localStorage to survive component remounts
+  const getInitialFlowStage = (): FlowStage => {
+    if (typeof window === 'undefined') return 'landing';
+
+    // Check if there's an active assessment session
+    const sessionId = localStorage.getItem('assessment_session_id');
+    const savedFlowStage = localStorage.getItem('assessment_flow_stage');
+
+    if (sessionId && savedFlowStage) {
+      // Validate the saved stage is a valid FlowStage
+      const validStages: FlowStage[] = ['landing', 'map_intro', 'retake_locked', 'assessment', 'digital_twin'];
+      if (validStages.includes(savedFlowStage as FlowStage)) {
+        // Mark that we've progressed if we're past landing
+        if (savedFlowStage !== 'landing') {
+          simulationFlowStarted = true;
+          assessmentSessionActive = true;
+        }
+        return savedFlowStage as FlowStage;
+      }
+    }
+
+    return 'landing';
+  };
+
+  const [flowStage, setFlowStageState] = useState<FlowStage>(getInitialFlowStage);
+  const hasProgressedPastLanding = useRef(flowStage !== 'landing'); // Initialize based on flowStage
   const [user, setUser] = useState<any>(null);
   const [syntheticCalibrationEvents, setSyntheticCalibrationEvents] = useState<any[]>([]);
   const [testCompletionTime, setTestCompletionTime] = useState<Date | null>(null);
   const hasCheckedExistingRef = useRef(false);
-  const shouldAbortRedirect = useRef(false); // New ref to prevent late redirects
+  const shouldAbortRedirect = useRef(flowStage !== 'landing'); // Prevent redirects if already in flow
 
-  // ROOT FIX: Reset assessment state on mount (especially for PWA/mobile)
+  // Wrapper for setFlowStage that also persists to localStorage
+  const setFlowStage = (stage: FlowStage) => {
+    setFlowStageState(stage);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('assessment_flow_stage', stage);
+    }
+  };
+
+  // MOBILE FIX: Only clear stale state, NOT active sessions
   useEffect(() => {
-    // Clear any stale assessment state on component mount
-    // This is critical for PWA/mobile where browser state persists
-    const resetAssessmentState = () => {
-      // Reset all refs to initial state
-      hasProgressedPastLanding.current = false;
-      hasCheckedExistingRef.current = false;
-      shouldAbortRedirect.current = false;
+    const clearStaleStateOnly = () => {
+      if (typeof window === 'undefined') return;
 
-      // Clear any stale session storage
+      // Check if there's an ACTIVE assessment session
+      const sessionId = localStorage.getItem('assessment_session_id');
+      const savedFlowStage = localStorage.getItem('assessment_flow_stage');
+
+      // If there's an active session (sessionId exists and flowStage is not landing)
+      // DO NOT clear anything - this is a remount during active assessment
+      if (sessionId && savedFlowStage && savedFlowStage !== 'landing') {
+        // Active session detected - skip clearing
+        hasProgressedPastLanding.current = true;
+        shouldAbortRedirect.current = true;
+        return;
+      }
+
+      // No active session - safe to clear stale sessionStorage only
+      // (localStorage is managed by useAssessmentState hook)
       const keysToRemove = Object.keys(sessionStorage).filter(key =>
         key.includes('assessment') || key.includes('simulation')
       );
       keysToRemove.forEach(key => sessionStorage.removeItem(key));
     };
 
-    resetAssessmentState();
+    clearStaleStateOnly();
   }, []); // Only run once on mount
 
   // Clear vault session storage when user navigates away or closes tab
@@ -422,6 +464,12 @@ export default function AuthenticatedAssessmentPage() {
       // This ensures clean state if user returns to /simulation page later
       simulationFlowStarted = false;
       assessmentSessionActive = false;
+
+      // Clear flowStage from localStorage when assessment is complete
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('assessment_flow_stage');
+      }
+
       router.push(`/simulation/results/${sessionId}`);
     }
   };
