@@ -133,6 +133,17 @@ function OpportunityCard({ opportunity, onCitationClick }: OpportunityCardProps)
           </div>
         </div>
 
+        {/* Execution Path Indicator */}
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${opportunity.rank <= 5 ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+          <div className="text-[10px] text-muted-foreground">
+            <span className="font-medium">Execution Path:</span>{' '}
+            <span className={opportunity.rank <= 5 ? 'text-green-600 font-semibold' : ''}>
+              {opportunity.rank <= 5 ? 'Available' : 'Not available yet'}
+            </span>
+          </div>
+        </div>
+
         {/* Intelligence Backing */}
         <div className="space-y-1.5">
           {/* Market Significance (Celebrity Score) */}
@@ -201,11 +212,14 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
           <h2 className="text-3xl font-bold text-foreground mb-2">
             High Profile Peer Opportunities
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-3">
             <span className="font-semibold text-primary">{data.total_missed}</span> tracked signals across{' '}
             <span className="font-semibold text-primary">51 countries</span> matched to your posture.
             Each pin includes sources + case notes from{' '}
             <span className="font-semibold text-primary">1,860+</span> HNWI World developments
+          </p>
+          <p className="text-sm text-muted-foreground border-l-2 border-primary/30 pl-3 italic">
+            Each signal includes an <span className="font-semibold text-foreground">Execution Path</span> — vetted executors (jurisdiction + capability tagged) so your team can move from detection to diligence.
           </p>
         </div>
 

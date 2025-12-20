@@ -525,6 +525,7 @@ export default function AssessmentResultsClient() {
         gap_analysis: gapAnalysisText, // Add gap analysis
         digital_twin: digitalTwinData, // Add digital twin
         simulation: results.simulation, // Add full simulation data
+        estimated_opportunity_cost_usd: results.enhanced_report?.celebrity_opportunities?.estimated_opportunity_cost_usd || 0, // Total value from backend
         executive_summary: {
           tier: results.tier,
           percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,

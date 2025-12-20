@@ -47,9 +47,21 @@ export function ServiceWorkerUpdateManager() {
     // Check for updates on mount
     const checkForUpdate = async () => {
       try {
+        // CRITICAL FIX: Check if SW is registered before comparing versions
+        // This prevents reload on first page load (especially mobile/incognito)
+        const registration = await navigator.serviceWorker.getRegistration();
+
+        if (!registration) {
+          // No SW registered yet - this is normal on first load
+          // SW will register via layout.tsx, don't treat as update needed
+          return;
+        }
+
         const currentVersion = await getServiceWorkerVersion();
 
-        if (!currentVersion || currentVersion !== SW_VERSION) {
+        // Only update if we HAVE a version AND it's WRONG
+        // Skip if currentVersion is null (SW registered but no version yet)
+        if (currentVersion && currentVersion !== SW_VERSION) {
           // Immediately and silently update - no notification, no delay
           await performSilentUpdate();
         }

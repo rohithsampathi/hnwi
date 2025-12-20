@@ -265,28 +265,8 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   const subtitleLines = doc.splitTextToSize(tierConfig.subtitle, 110);
   doc.text(subtitleLines, pageWidth / 2, yPos, { align: 'center' });
 
-  // Score card
-  yPos = 185;
-  doc.setFillColor(25, 25, 27);
-  doc.roundedRect(pageWidth / 2 - 45, yPos, 90, 32, 2, 2, 'F');
-  doc.setDrawColor(...PREMIUM_COLORS.gold);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(pageWidth / 2 - 45, yPos, 90, 32, 2, 2, 'S');
-
-  yPos += 10;
-  doc.setFontSize(9);
-  doc.setTextColor(170, 170, 170);
-  doc.setFont('helvetica', 'bold');
-  doc.text('COMPREHENSIVE SCORE', pageWidth / 2, yPos, { align: 'center' });
-
-  yPos += 11;
-  doc.setFontSize(24);
-  doc.setTextColor(...PREMIUM_COLORS.gold);
-  const score = reportData.executive_summary.confidence_score || 0.8;
-  const displayScore = score > 1 ? score : score * 10;
-  doc.text(`${displayScore.toFixed(1)}/10`, pageWidth / 2, yPos, { align: 'center' });
-
-  // Date
+  // Date (moved up since score card is removed)
+  yPos = 210;
   doc.setFontSize(8.5);
   doc.setTextColor(140, 140, 140);
   doc.setFont('helvetica', 'normal');
@@ -947,10 +927,22 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     `Validated signals from ${reportData.executive_summary.peer_group_size.toLocaleString()} HNWI World developments`
   );
 
-  // Total advantage
-  const totalAdvantage = reportData.celebrity_opportunities?.reduce((sum, opp) => {
-    return sum + (opp.financial_metrics?.avg_roi || 0) * (opp.financial_metrics?.median_investment || 0);
-  }, 0) || 6800000;
+  // Execution Path explanation
+  doc.setFillColor(252, 250, 245);
+  doc.roundedRect(20, yPos, pageWidth - 40, 10, 2, 2, 'F');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...PREMIUM_COLORS.slate);
+  doc.setFont('helvetica', 'italic');
+  const executionPathText = doc.splitTextToSize(
+    'Each signal includes an Execution Path — vetted executors (jurisdiction + capability tagged) so your team can move from detection to diligence.',
+    pageWidth - 52
+  );
+  doc.text(executionPathText, 26, yPos + 5.5);
+  yPos += 16;
+
+  // Use total opportunity value from backend (already calculated)
+  // Backend sends this as 'estimated_opportunity_cost_usd' in the celebrity_opportunities data
+  const totalAdvantage = (reportData as any).estimated_opportunity_cost_usd || 0;
 
   addSoftShadow(20, yPos, pageWidth - 40, 16, 2);
   doc.setFillColor(...PREMIUM_COLORS.softWhite);
@@ -976,14 +968,19 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
 
   yPos += 22;
 
-  // Opportunity list
-  const topOpportunities = reportData.celebrity_opportunities?.slice(0, 9) || [];
+  // Opportunity list - sorted by DNA match score (descending)
+  const sortedOpportunities = [...(reportData.celebrity_opportunities || [])].sort((a, b) => {
+    const aScore = a.alignment_score || 0;
+    const bScore = b.alignment_score || 0;
+    return bScore - aScore; // Descending order (highest first)
+  });
+  const topOpportunities = sortedOpportunities.slice(0, 9);
 
   topOpportunities.forEach((opp, idx) => {
-    checkPageBreak(20);
+    checkPageBreak(22);
 
     const cardX = 20;
-    const cardHeight = 18;
+    const cardHeight = 20;
     const cardWidth = pageWidth - 40;
 
     addSoftShadow(cardX, yPos, cardWidth, cardHeight, 1.5);
@@ -1013,7 +1010,24 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
     doc.setTextColor(...PREMIUM_COLORS.slate);
     doc.setFont('helvetica', 'normal');
     const cityOnly = opp.opportunity.location.split(',')[0].trim();
-    doc.text(cityOnly, cardX + 15, yPos + 13);
+    doc.text(cityOnly, cardX + 15, yPos + 11);
+
+    // Execution Path indicator with visual dot
+    const isExecutionPathAvailable = idx < 5; // Top 5 signals have execution path
+
+    // Draw small colored dot
+    doc.setFillColor(...(isExecutionPathAvailable ? [52, 168, 83] : PREMIUM_COLORS.slate));
+    doc.circle(cardX + 15, yPos + 14.5, 0.75, 'F');
+
+    // Text
+    doc.setFontSize(6.5);
+    doc.setTextColor(...(isExecutionPathAvailable ? [52, 168, 83] : PREMIUM_COLORS.slate));
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Execution Path: ${isExecutionPathAvailable ? 'Available' : 'Not available yet'}`,
+      cardX + 17.5,
+      yPos + 15
+    );
 
     // ROI badge
     const roi = opp.financial_metrics?.avg_roi || 0;
@@ -1027,14 +1041,22 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
       doc.text(`+${roi}%`, roiBadgeX + 14, yPos + 9.5, { align: 'center' });
     }
 
-    // DNA match
+    // DNA match with label
     const matchBadgeX = cardX + cardWidth - 32;
     doc.setFillColor(248, 248, 252);
-    doc.roundedRect(matchBadgeX, yPos + 5, 24, 7, 1, 1, 'F');
-    doc.setFontSize(7);
+    doc.roundedRect(matchBadgeX, yPos + 5, 24, 10, 1, 1, 'F');
+
+    // Score number
+    doc.setFontSize(7.5);
     doc.setTextColor(...PREMIUM_COLORS.deepPurple);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${opp.alignment_score.toFixed(1)}`, matchBadgeX + 12, yPos + 9.5, { align: 'center' });
+    doc.text(`${opp.alignment_score.toFixed(1)}`, matchBadgeX + 12, yPos + 9, { align: 'center' });
+
+    // "DNA" label
+    doc.setFontSize(5);
+    doc.setTextColor(...PREMIUM_COLORS.slate);
+    doc.setFont('helvetica', 'normal');
+    doc.text('DNA', matchBadgeX + 12, yPos + 12.5, { align: 'center' });
 
     yPos += cardHeight + 3;
   });
@@ -1151,13 +1173,11 @@ export const generateSimulationPDF = async (reportData: EnhancedReportData, logo
   doc.setFillColor(...PREMIUM_COLORS.gold);
   doc.rect(0, pageHeight - 1, pageWidth, 1, 'F');
 
-  // Add page numbers
+  // Add page numbers to ALL pages (including front and back)
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    if (i > 1 && i < totalPages) {
-      addPageFooter(i - 1, totalPages - 2);
-    }
+    addPageFooter(i, totalPages);
   }
 
   return doc;

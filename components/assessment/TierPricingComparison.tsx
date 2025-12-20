@@ -80,61 +80,65 @@ export function TierPricingComparison({
     {
       id: 'architect',
       name: 'Architect',
+      subtitle: 'Principal Infrastructure',
       icon: Crown,
       price: '$1,499',
-      priceSubtext: 'per month • Building infrastructure together',
+      priceSubtext: 'per month',
       gradient: 'from-primary/10 to-primary/5',
       borderColor: 'border-primary',
       iconColor: 'text-primary',
       features: [
-        'Access $500K+ investment deals',
-        'Get 3-7 day early warnings on regulations',
-        'Build your network with other Architects',
-        'Vote on new platform features',
-        'Use AI tools for wealth planning',
-        'Priority support from our team'
+        'Everything in Operator',
+        'Signal Coverage Map tracking matched + gap signals with month-over-month analysis',
+        'Executor Directory + warm-intro workflow for signals (where available): jurisdiction-tagged operators who can execute diligence / structuring / sourcing',
+        'Monthly Peer Signal Packet + Gap Closure Packet (structured, forwardable)',
+        'Quarterly drill + private debrief session',
+        'Request tracking on specific structures',
+        'Priority inbox for principal-level intelligence'
       ],
-      ctaText: 'Join Architect Collective',
+      ctaText: 'Request Principal Access',
       highlighted: currentTier === 'architect'
     },
     {
       id: 'operator',
       name: 'Operator',
+      subtitle: 'Active Coverage',
       icon: TrendingUp,
       price: '$599',
-      priceSubtext: 'per month • Strategic partnership',
+      priceSubtext: 'per month',
       gradient: 'from-muted/50 to-muted/20',
       borderColor: 'border-border',
       iconColor: 'text-foreground',
       features: [
-        'Get daily market intelligence briefs',
-        'Access investment opportunities $100K+',
-        'Connect with other Operators',
-        'Early warnings on tax changes',
-        'Ask Rohith AI unlimited questions',
-        'Track your wealth with Crown Vault'
+        'Everything in Observer',
+        'Set custom coverage: pick jurisdictions + asset arenas (personalized feed)',
+        'Daily intelligence briefs for your coverage',
+        'Access to $100K+ opportunity packets + case notes',
+        'Analysis assistant (unlimited AI queries)',
+        'Full Crown Vault asset tracking + heir management'
       ],
-      ctaText: 'Join Operator Network',
+      ctaText: 'Activate Coverage',
       highlighted: currentTier === 'operator'
     },
     {
       id: 'observer',
       name: 'Observer',
+      subtitle: 'Monitoring',
       icon: AlertTriangle,
       price: '$199',
-      priceSubtext: 'per month • Protecting together',
+      priceSubtext: 'per month',
       gradient: 'from-muted/50 to-muted/20',
       borderColor: 'border-border',
       iconColor: 'text-foreground',
       features: [
-        'Receive weekly intelligence updates',
-        'Get notified of major regulatory changes',
-        'Basic access to Ask Rohith AI',
-        'Store assets in Crown Vault',
-        'Join Observer community network',
-        'View HNWI World developments'
+        'Save your baseline posture map + gap list',
+        'Weekly "delta" updates for signals matching your profile',
+        'View pinned signals + briefs (read-only access)',
+        'Re-run quarterly drill to track drift',
+        'Basic Crown Vault access',
+        'Observer community network'
       ],
-      ctaText: 'Support Defense Collective',
+      ctaText: 'Start Monitoring',
       highlighted: currentTier === 'observer'
     }
   ];
@@ -164,18 +168,38 @@ export function TierPricingComparison({
       : undefined
   }));
 
+  // If user is Architect, show Architect as main tier and collapse others
+  const isArchitectUser = currentTier === 'architect';
+  const [showTeamTiers, setShowTeamTiers] = useState(false);
+
+  // For Architect users: only show Architect tier by default, others under "Team access tiers"
+  const displayTiers = isArchitectUser && !showTeamTiers
+    ? tiers.filter(t => t.id === 'architect')
+    : tiers;
+
   return (
     <section className="py-12">
       <div className="text-center mb-8 px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold mb-3">Your Access Options</h2>
+        <h2 className="text-3xl font-bold mb-3">
+          {isArchitectUser ? 'Your Principal Access' : 'Your Access Options'}
+        </h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          Based on your assessment, you qualify for the <span className="font-bold text-foreground">{currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}</span> tier.
-          See all available tiers below to understand the complete intelligence ecosystem.
+          {isArchitectUser ? (
+            <>
+              You qualify for <span className="font-bold text-primary">Architect</span> — principal-level infrastructure.
+              This is the highest tier with complete platform access.
+            </>
+          ) : (
+            <>
+              Based on your assessment, you qualify for the <span className="font-bold text-foreground">{currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}</span> tier.
+              See all available tiers below to understand the complete intelligence ecosystem.
+            </>
+          )}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {tiers.map((tier, index) => {
+      <div className={`grid grid-cols-1 ${!isArchitectUser || showTeamTiers ? 'lg:grid-cols-3' : ''} gap-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`}>
+        {displayTiers.map((tier, index) => {
           const Icon = tier.icon;
           const isArchitect = tier.id === 'architect';
           const isPaymentTier = tier.id === 'operator' || tier.id === 'observer';
@@ -199,11 +223,16 @@ export function TierPricingComparison({
 
               {/* Header */}
               <div className={`bg-gradient-to-br ${tier.gradient} p-6 border-b border-border`}>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div className={`p-2 bg-card rounded-lg`}>
                     <Icon className={`w-6 h-6 ${tier.iconColor}`} strokeWidth={2} />
                   </div>
-                  <h3 className="text-xl font-bold">{tier.name}</h3>
+                  <div>
+                    <h3 className="text-xl font-bold">{tier.name}</h3>
+                    {tier.subtitle && (
+                      <p className="text-xs text-muted-foreground">{tier.subtitle}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="mb-1">
                   <span className="text-3xl font-bold">{tier.price}</span>
@@ -306,9 +335,14 @@ export function TierPricingComparison({
                           {!architectSubmitting && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                         </button>
 
-                        <p className="text-xs text-muted-foreground text-center">
-                          Request onboarding — billing after activation.
-                        </p>
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground text-center">
+                            Request onboarding — billing after activation.
+                          </p>
+                          <p className="text-[10px] text-muted-foreground/70 text-center italic">
+                            Executors are listed for operational convenience; not investment advice. Relationship status is disclosed per executor.
+                          </p>
+                        </div>
                       </form>
                     )}
                   </>
@@ -342,6 +376,22 @@ export function TierPricingComparison({
           );
         })}
       </div>
+
+      {/* Other access levels for Architect users */}
+      {isArchitectUser && !showTeamTiers && (
+        <div className="text-center mt-6 px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => setShowTeamTiers(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-muted/50 hover:bg-muted border border-border rounded-lg transition-all text-sm font-medium text-foreground"
+          >
+            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            View Other Access Levels
+          </button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Operator ($599) and Observer ($199) also available
+          </p>
+        </div>
+      )}
 
       {/* Bottom note - Purpose-driven mission */}
       <div className="text-center mt-8 px-4 sm:px-6 lg:px-8">
