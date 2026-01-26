@@ -1297,52 +1297,70 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
               </View>
             )}
 
-            {/* Estate Tax by Heir Type */}
-            {heirManagement.estate_tax_by_heir_type && (
-              <View style={{ marginBottom: 24 }}>
-                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Estate Tax Impact by Heir Relationship</Text>
-                <View style={styles.table}>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.tableCellHeader, { flex: 2 }]}>Heir Type</Text>
-                    <Text style={styles.tableCellHeader}>Tax Rate</Text>
-                    <Text style={[styles.tableCellHeader, { flex: 2 }]}>Exemption</Text>
+            {/* Estate Tax by Heir Type - Supports both flat and nested formats */}
+            {heirManagement.estate_tax_by_heir_type && (() => {
+              const estateTax = heirManagement.estate_tax_by_heir_type;
+              // Check for flat format (backend response) vs nested format
+              const isFlat = estateTax.spouse_rate !== undefined || estateTax.children_rate !== undefined;
+
+              // Extract values supporting both formats
+              const spouseRate = isFlat ? estateTax.spouse_rate : estateTax.spouse?.rate;
+              const spouseSummary = isFlat ? estateTax.spouse_summary : estateTax.spouse?.exemption;
+              const childrenRate = isFlat ? estateTax.children_rate : estateTax.children?.rate;
+              const childrenSummary = isFlat ? estateTax.children_summary : estateTax.children?.exemption;
+              const nonLinealRate = isFlat ? estateTax.non_lineal_rate : estateTax.non_lineal?.rate;
+              const nonLinealSummary = isFlat ? estateTax.non_lineal_summary : estateTax.non_lineal?.exemption;
+              const headline = estateTax.headline;
+
+              return (
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Estate Tax Impact by Heir Relationship</Text>
+                  {headline && (
+                    <Text style={{ fontSize: 9, color: colors.emerald[600], fontFamily: 'Helvetica-Bold', marginBottom: 12 }}>{headline}</Text>
+                  )}
+                  <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                      <Text style={[styles.tableCellHeader, { flex: 2 }]}>Heir Type</Text>
+                      <Text style={styles.tableCellHeader}>Tax Rate</Text>
+                      <Text style={[styles.tableCellHeader, { flex: 2 }]}>Status / Exemption</Text>
+                    </View>
+                    {(spouseRate !== undefined || spouseSummary) && (
+                      <View style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Spouse</Text>
+                        <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: spouseRate === 0 ? colors.emerald[600] : colors.gray[700] }]}>
+                          {spouseRate != null ? (spouseRate === 0 ? 'TAX-FREE' : `${spouseRate}%`) : 'Exempt'}
+                        </Text>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                          {spouseSummary || 'Unlimited marital deduction'}
+                        </Text>
+                      </View>
+                    )}
+                    {(childrenRate !== undefined || childrenSummary) && (
+                      <View style={styles.tableRowAlt}>
+                        <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Children (Lineal)</Text>
+                        <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: childrenRate === 0 ? colors.emerald[600] : colors.gray[700] }]}>
+                          {childrenRate != null ? (childrenRate === 0 ? 'TAX-FREE' : `${childrenRate}%`) : 'N/A'}
+                        </Text>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                          {childrenSummary || 'Standard exemption applies'}
+                        </Text>
+                      </View>
+                    )}
+                    {(nonLinealRate !== undefined || nonLinealSummary) && (
+                      <View style={styles.tableRow}>
+                        <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Non-Lineal Heirs</Text>
+                        <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: nonLinealRate === 0 ? colors.emerald[600] : colors.red[600] }]}>
+                          {nonLinealRate != null ? (nonLinealRate === 0 ? 'TAX-FREE' : `${nonLinealRate}%`) : 'N/A'}
+                        </Text>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                          {nonLinealSummary || 'Generation-skipping tax may apply'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  {heirManagement.estate_tax_by_heir_type.spouse && (
-                    <View style={styles.tableRow}>
-                      <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Spouse</Text>
-                      <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: colors.emerald[600] }]}>
-                        {heirManagement.estate_tax_by_heir_type.spouse.rate != null ? `${heirManagement.estate_tax_by_heir_type.spouse.rate}%` : 'Exempt'}
-                      </Text>
-                      <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
-                        {heirManagement.estate_tax_by_heir_type.spouse.exemption || 'Unlimited marital deduction'}
-                      </Text>
-                    </View>
-                  )}
-                  {heirManagement.estate_tax_by_heir_type.children && (
-                    <View style={styles.tableRowAlt}>
-                      <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Children (Lineal)</Text>
-                      <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold' }]}>
-                        {heirManagement.estate_tax_by_heir_type.children.rate != null ? `${heirManagement.estate_tax_by_heir_type.children.rate}%` : 'N/A'}
-                      </Text>
-                      <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
-                        {heirManagement.estate_tax_by_heir_type.children.exemption || 'Standard exemption applies'}
-                      </Text>
-                    </View>
-                  )}
-                  {heirManagement.estate_tax_by_heir_type.non_lineal && (
-                    <View style={styles.tableRow}>
-                      <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Non-Lineal Heirs</Text>
-                      <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: colors.red[600] }]}>
-                        {heirManagement.estate_tax_by_heir_type.non_lineal.rate != null ? `${heirManagement.estate_tax_by_heir_type.non_lineal.rate}%` : 'N/A'}
-                      </Text>
-                      <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
-                        {heirManagement.estate_tax_by_heir_type.non_lineal.exemption || 'Generation-skipping tax may apply'}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              </View>
-            )}
+              );
+            })()}
 
             {/* Heir allocations - Premium Layout */}
             {heirManagement.heir_allocations && heirManagement.heir_allocations.length > 0 && (

@@ -5,6 +5,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+// Force dynamic rendering - this route uses request.nextUrl.searchParams
+export const dynamic = 'force-dynamic';
+
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 // Helper to extract user ID from session_user cookie or JWT

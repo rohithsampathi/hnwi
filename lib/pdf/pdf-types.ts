@@ -293,7 +293,9 @@ export interface HughesFramework {
 }
 
 // Estate tax rates by heir relationship type
+// Supports both nested format and flat format from backend
 export interface EstateTaxByHeirType {
+  // Nested format (original design)
   spouse?: {
     rate?: number;
     exemption?: string;
@@ -309,6 +311,16 @@ export interface EstateTaxByHeirType {
     exemption?: string;
     notes?: string;
   };
+  // Flat format (actual backend response)
+  spouse_rate?: number;
+  children_rate?: number;
+  non_lineal_rate?: number;
+  spouse_summary?: string;
+  children_summary?: string;
+  non_lineal_summary?: string;
+  headline?: string;
+  note?: string;
+  source?: string;
 }
 
 export interface GenerationData {
