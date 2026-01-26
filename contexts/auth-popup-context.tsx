@@ -40,19 +40,27 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
       return;
     }
 
-    // ROOT FIX: Never show auth popup on simulation pages (public access allowed)
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
-      return;
+    // ROOT FIX: Never show auth popup on public routes (simulation, decision-memo)
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname
+      if (pathname.includes('/simulation') || pathname.includes('/decision-memo')) {
+        return;
+      }
     }
 
-    // ROOT FIX: Don't show auth popup if user recently logged in (within 5 minutes)
-    // This prevents false "session expired" popups in incognito mode where cookies may be slow
+    // PWA FIX: Only skip popup if BOTH conditions are true:
+    // 1. User logged in within 2 minutes (reduced from 5 for PWA reliability)
+    // 2. We're NOT in PWA standalone mode (PWA has cookie persistence issues)
     if (typeof window !== 'undefined') {
-      // Check localStorage for loginTimestamp (persists across hard refresh)
       const loginTimestamp = localStorage.getItem('loginTimestamp')
-      const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 300000 // 5 minutes
+      const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 120000 // 2 minutes
 
-      if (recentlyLoggedIn) {
+      // Detect PWA standalone mode - always allow popup in PWA
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                    (window.navigator as any).standalone === true
+
+      // Only skip if recently logged in AND not in PWA mode
+      if (recentlyLoggedIn && !isPWA) {
         return
       }
     }

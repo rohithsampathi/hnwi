@@ -285,7 +285,6 @@ class UnifiedAuthManager {
     // This prevents hard refresh logout when backend cookies are slow to propagate
     const existingUser = getCurrentUser()
     if (existingUser && (existingUser.id || existingUser.user_id)) {
-      console.log('[Unified Auth] Using cached user from localStorage, skipping backend check')
       this.updateAuthState({
         isAuthenticated: true,
         user: existingUser,
@@ -318,7 +317,6 @@ class UnifiedAuthManager {
         // Only clear if localStorage is also empty (prevents race conditions)
         const finalCheck = getCurrentUser()
         if (finalCheck && (finalCheck.id || finalCheck.user_id)) {
-          console.warn('[Unified Auth] Backend returned no user but localStorage has user - trusting localStorage')
           this.updateAuthState({
             isAuthenticated: true,
             user: finalCheck,
@@ -327,7 +325,6 @@ class UnifiedAuthManager {
           })
         } else {
           // No user anywhere - safe to clear
-          console.log('[Unified Auth] No user in backend or localStorage - clearing auth')
           await this.clearAuthSystems()
 
           this.updateAuthState({
@@ -343,14 +340,12 @@ class UnifiedAuthManager {
       // Session check failed - might be network issue, keep existing state if user exists
       const fallbackUser = getCurrentUser()
       if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
-        console.warn('[Unified Auth] Session check failed but localStorage has user - trusting localStorage')
         this.updateAuthState({
           isAuthenticated: true,
           user: fallbackUser,
           isLoading: false
         })
       } else {
-        console.log('[Unified Auth] Session check failed and no localStorage user - clearing auth')
         await this.clearAuthSystems()
         this.updateAuthState({
           isAuthenticated: false,

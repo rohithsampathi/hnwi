@@ -29,7 +29,8 @@ function getCookieDomain(): string | undefined {
 // POST handler for token refresh
 async function handlePost(request: NextRequest) {
   try {
-    const cookieStore = cookies();
+    // Note: In Next.js 15+, cookies() returns a Promise
+    const cookieStore = await cookies();
     const refreshToken = cookieStore.get('refresh_token')?.value;
     const rememberMe = cookieStore.get('remember_me')?.value === 'true';
 

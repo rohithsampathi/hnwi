@@ -70,7 +70,8 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   useEffect(() => {
     async function fetchOpportunities() {
       try {
-        const response = await fetch('/api/public/assessment/preview-opportunities');
+        // VaultEntrySequence background map needs ALL opportunities for visual effect
+        const response = await fetch('/api/public/assessment/preview-opportunities?show_all=true');
         if (response.ok) {
           const data = await response.json();
           let opps = [];

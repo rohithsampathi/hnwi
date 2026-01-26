@@ -53,8 +53,8 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
 
     async function fetchGenericOpportunities() {
       try {
-        // Use assessment preview endpoint for consistent counts
-        const response = await fetch('/api/public/assessment/preview-opportunities');
+        // MapIntroduction background map needs ALL opportunities for visual effect
+        const response = await fetch('/api/public/assessment/preview-opportunities?show_all=true');
 
         if (!response.ok) {
           setLoadingMap(false);

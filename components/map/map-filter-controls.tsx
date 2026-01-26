@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Crown, Gem, TrendingUp, ZoomOut } from "lucide-react"
 import Slider from "rc-slider"
 import "rc-slider/assets/index.css"
+import { GRADIENT_COLORS, getGradientColorFromPercent } from "@/lib/map-color-utils"
 
 interface MapFilterControlsProps {
   selectedPriceRange: { min: number; max: number }
@@ -25,55 +26,16 @@ interface MapFilterControlsProps {
 }
 
 const MIN = 0
-const MAX = 1000000
+const MAX = 2000000 // $2M+ maximum for slider
 
 function formatCurrency(value: number): string {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(0)}M+`
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M${value === MAX ? '+' : ''}`
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`
   return `$${value}`
 }
 
-// Color stops for the gradient
-// Green: 0-100K (0-10%), Yellow/Gold: 100K-800K (10-80%), Red: 800K-1M (80-100%)
-const GRADIENT_COLORS = [
-  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // 0K - Deep dark emerald
-  { pos: 5, color: [23, 165, 97], hex: '#17a561' },     // 50K - Vibrant emerald
-  { pos: 10, color: [45, 209, 127], hex: '#2dd17f' },   // 100K - Bright emerald green
-  { pos: 20, color: [80, 233, 145], hex: '#50e991' },   // 200K - Light emerald
-  { pos: 30, color: [120, 240, 160], hex: '#78f0a0' },  // 300K - Lighter emerald
-  { pos: 40, color: [255, 215, 0], hex: '#ffd700' },    // 400K - Pure golden topaz
-  { pos: 50, color: [255, 200, 0], hex: '#ffc800' },    // 500K - Bright gold
-  { pos: 60, color: [255, 176, 0], hex: '#ffb000' },    // 600K - Rich golden amber
-  { pos: 70, color: [255, 150, 0], hex: '#ff9600' },    // 700K - Deep amber
-  { pos: 80, color: [230, 57, 70], hex: '#e63946' },    // 800K - Bright ruby red (RED STARTS HERE)
-  { pos: 90, color: [193, 18, 31], hex: '#c1121f' },    // 900K - Rich ruby
-  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // 1M - Deep dark burgundy ruby
-]
-
-// Get color from gradient based on percentage (0-100)
-function getGradientColor(percent: number): string {
-  // Find the two colors to interpolate between
-  let lowerColor = GRADIENT_COLORS[0]
-  let upperColor = GRADIENT_COLORS[GRADIENT_COLORS.length - 1]
-
-  for (let i = 0; i < GRADIENT_COLORS.length - 1; i++) {
-    if (percent >= GRADIENT_COLORS[i].pos && percent <= GRADIENT_COLORS[i + 1].pos) {
-      lowerColor = GRADIENT_COLORS[i]
-      upperColor = GRADIENT_COLORS[i + 1]
-      break
-    }
-  }
-
-  // Interpolate between the two colors
-  const range = upperColor.pos - lowerColor.pos
-  const rangePct = range === 0 ? 0 : (percent - lowerColor.pos) / range
-
-  const r = Math.round(lowerColor.color[0] + (upperColor.color[0] - lowerColor.color[0]) * rangePct)
-  const g = Math.round(lowerColor.color[1] + (upperColor.color[1] - lowerColor.color[1]) * rangePct)
-  const b = Math.round(lowerColor.color[2] + (upperColor.color[2] - lowerColor.color[2]) * rangePct)
-
-  return `rgb(${r}, ${g}, ${b})`
-}
+// NOTE: GRADIENT_COLORS and getGradientColorFromPercent are now imported from @/lib/map-color-utils
+// This ensures colors stay in sync between map markers and the price slider
 
 // Generate gradient CSS with proper color stops for a specific range
 function getGradientForRange(minPercent: number, maxPercent: number): string {
@@ -84,9 +46,9 @@ function getGradientForRange(minPercent: number, maxPercent: number): string {
 
   // Always include the start and end colors
   const stops = [
-    { pos: minPercent, color: getGradientColor(minPercent) },
+    { pos: minPercent, color: getGradientColorFromPercent(minPercent) },
     ...relevantStops.map(stop => ({ pos: stop.pos, color: stop.hex })),
-    { pos: maxPercent, color: getGradientColor(maxPercent) }
+    { pos: maxPercent, color: getGradientColorFromPercent(maxPercent) }
   ]
 
   // Remove duplicates and sort
@@ -116,8 +78,8 @@ function DualRangeSlider({ min, max, step, value, onChange, theme }: {
   const getPercent = (val: number) => Math.round(((val - min) / (max - min)) * 100);
 
   // Get colors for thumbs based on position
-  const minThumbColor = useMemo(() => getGradientColor(getPercent(value[0])), [value[0]]);
-  const maxThumbColor = useMemo(() => getGradientColor(getPercent(value[1])), [value[1]]);
+  const minThumbColor = useMemo(() => getGradientColorFromPercent(getPercent(value[0])), [value[0]]);
+  const maxThumbColor = useMemo(() => getGradientColorFromPercent(getPercent(value[1])), [value[1]]);
 
   // Get gradient for the active range
   const rangeGradient = useMemo(() => {
@@ -134,7 +96,7 @@ function DualRangeSlider({ min, max, step, value, onChange, theme }: {
       <div
         className="absolute w-full h-[3px] rounded-full opacity-30 top-1/2 -translate-y-1/2"
         style={{
-          background: 'linear-gradient(to right, #0d5c3a 0%, #17a561 5%, #2dd17f 10%, #50e991 20%, #78f0a0 30%, #ffd700 40%, #ffc800 50%, #ffb000 60%, #ff9600 70%, #e63946 80%, #c1121f 90%, #800020 100%)'
+          background: 'linear-gradient(to right, #0d5c3a 0%, #0f6941 1%, #127d4b 2%, #148c55 3%, #179b5c 4%, #19a562 5%, #1baf69 6%, #1eb96e 7%, #ffd700 7%, #ffd200 9%, #ffcd00 11%, #ffc800 13%, #ffc300 15%, #ffbe00 17%, #ffbb00 18%, #ffb900 20%, #e63946 20%, #dc3241 28%, #d22d3c 36%, #cd2a39 44%, #c82837 52%, #c1121f 60%, #b9101d 68%, #af0e1b 76%, #a50c19 84%, #960816 92%, #800020 100%)'
         }}
       />
 
@@ -225,7 +187,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
     >
       <div className="flex flex-col items-center gap-1">
         {/* Ultra-compact slider for mobile */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-md px-3 py-1.5 shadow-lg min-w-[220px] flex flex-col items-center gap-1">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-md px-3 py-1.5 shadow-lg min-w-[240px] flex flex-col items-center gap-1">
           <div className="text-[9px] font-medium text-muted-foreground text-center">
             {formatCurrency(props.selectedPriceRange.min)} — {formatCurrency(props.selectedPriceRange.max)}
           </div>
@@ -234,7 +196,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
             <DualRangeSlider
               min={MIN}
               max={MAX}
-              step={10000}
+              step={50000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
               onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
               theme={props.theme}
@@ -314,7 +276,7 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
     <div className={`hidden lg:block ${props.useAbsolutePositioning ? 'absolute bottom-[40px]' : 'fixed bottom-16'} left-1/2 -translate-x-1/2 z-[9999] pointer-events-auto`}>
       <div className="flex flex-col items-center gap-3">
         {/* Ultra-lean slider */}
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-4 py-2 shadow-lg min-w-[320px] flex flex-col items-center gap-1.5">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg px-4 py-2 shadow-lg min-w-[360px] flex flex-col items-center gap-1.5">
           <div className="text-[10px] font-medium text-muted-foreground text-center">
             {formatCurrency(props.selectedPriceRange.min)} — {formatCurrency(props.selectedPriceRange.max)}
           </div>
@@ -323,7 +285,7 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
             <DualRangeSlider
               min={MIN}
               max={MAX}
-              step={10000}
+              step={50000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
               onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
               theme={props.theme}

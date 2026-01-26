@@ -1,0 +1,43 @@
+{
+  "thesis": {
+    "move_description": "Establish Singapore Family Office (13O structure) to manage $15M PE exit proceeds, with focus on Asian venture and growth equity allocation",
+    "expected_outcome": "Tax exemption on qualifying investments, institutional access to Asian PE deals, succession planning framework, and professional fund management infrastructure",
+    "move_type": "entity_restructure",
+    "target_amount": "$10M-25M",
+    "target_locations": ["Singapore"],
+    "timeline": "12 months"
+  },
+  "constraints": {
+    "liquidity_horizon": "6 months",
+    "liquidity_amount_needed": "$2M",
+    "liquidity_events": ["PE distribution Q2 2025 ($8M)", "Founder secondary Q3 2025 ($7M)"],
+    "current_jurisdictions": ["United States", "Singapore"],
+    "prohibited_jurisdictions": ["China mainland (direct)", "Myanmar"],
+    "prohibitions": ["No crypto exposure above 5%", "No single-name concentration above 15%", "No illiquid commitments beyond 40%"],
+    "deal_breakers": ["FATCA reporting complexity", "Loss of US tax treaty benefits"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "family_committee",
+    "decision_makers_count": 3,
+    "veto_holders": ["Founder", "Spouse", "Family Advisor"],
+    "approval_required_above": "$1M requires committee approval",
+    "advisors": [
+      {"type": "tax", "name": "PwC Singapore", "jurisdiction": "Singapore"},
+      {"type": "legal", "name": "Rajah & Tann", "jurisdiction": "Singapore"},
+      {"type": "wealth", "name": "Credit Suisse", "jurisdiction": "Singapore"},
+      {"type": "tax", "name": "KPMG US", "jurisdiction": "United States"}
+    ],
+    "existing_entities": [
+      {"type": "LLC", "jurisdiction": "Delaware", "purpose": "Operating company"},
+      {"type": "Revocable Trust", "jurisdiction": "California", "purpose": "Estate planning"}
+    ],
+    "banking_rails": [
+      {"bank": "Silicon Valley Bank", "jurisdiction": "United States", "status": "active"},
+      {"bank": "DBS Private Bank", "jurisdiction": "Singapore", "status": "pending"},
+      {"bank": "Credit Suisse", "jurisdiction": "Singapore", "status": "planned"}
+    ],
+    "has_formal_ips": false,
+    "ips_notes": "Need to establish formal IPS as part of 13O application"
+  },
+  "urgency": "urgent"
+}

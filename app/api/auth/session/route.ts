@@ -31,7 +31,8 @@ function getCookieDomain(): string | undefined {
 export async function GET() {
   try {
     // Read backend cookies (FastAPI sets these directly)
-    const cookieStore = cookies();
+    // Note: In Next.js 15+, cookies() returns a Promise
+    const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;
     const sessionUser = cookieStore.get('session_user')?.value;
@@ -47,32 +48,24 @@ export async function GET() {
       accessTokenLength: accessToken?.length || 0
     });
 
-    // CRITICAL FIX: Check session_user cookie first (set by login endpoint)
-    // This provides immediate session recovery after login before backend cookies propagate
-    if (sessionUser && !accessToken) {
-      try {
-        const userData = JSON.parse(sessionUser);
-        // Validate timestamp - session_user should be recent (within 24 hours)
-        if (userData.timestamp && (Date.now() - userData.timestamp < 24 * 60 * 60 * 1000)) {
-          logger.info('Session recovered from session_user cookie', {
-            userId: userData.id,
-            email: userData.email
+    // If we have access_token, validate it
+    // If no access_token but session_user exists, use session_user as fallback
+    // This allows quick session recovery while secure-api handles actual API auth
+    if (!accessToken) {
+      // No access_token - try session_user fallback for quick recovery
+      if (sessionUser) {
+        try {
+          const userData = JSON.parse(sessionUser);
+          logger.info('Using session_user fallback (no access_token)', {
+            userId: userData.id || userData.user_id
           });
           return NextResponse.json({ user: userData });
-        } else {
-          logger.info('session_user cookie expired', {
-            timestamp: userData.timestamp,
-            age: Date.now() - userData.timestamp
-          });
+        } catch (parseError) {
+          logger.warn('Failed to parse session_user cookie', { error: parseError });
         }
-      } catch (parseError) {
-        logger.warn('Failed to parse session_user cookie', { error: parseError });
       }
-    }
 
-    // Only check backend cookies - no frontend session management
-    if (!accessToken) {
-      logger.info('No access_token cookie found and no valid session_user');
+      logger.info('No access_token or valid session_user found - session invalid');
       return NextResponse.json({ user: null }, { status: 200 });
     }
     

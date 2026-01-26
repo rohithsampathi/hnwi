@@ -1,0 +1,41 @@
+{
+  "thesis": {
+    "move_description": "Acquire $10M luxury penthouse in Singapore prime district (Orchard/Marina Bay) from NYC-based Single Family Office. High-yield residential play targeting Singapore's stable regulatory environment and premier real estate market.",
+    "expected_outcome": "9% annual rental yield with 18% annual capital appreciation, generating combined 27% gross returns. Strategic positioning in APAC's most stable jurisdiction with potential residency pathway.",
+    "move_type": "real_estate",
+    "target_amount": "$10M-25M",
+    "target_locations": ["Singapore"],
+    "timeline": "6 months"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["United States"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No developer leverage above 60%", "No uncompleted developments"],
+    "deal_breakers": ["Title encumbrance", "Regulatory red flags on building"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "",
+    "advisors": [
+      { "type": "tax", "name": "US Tax Counsel", "jurisdiction": "United States" },
+      { "type": "tax", "name": "Singapore Tax Advisor", "jurisdiction": "Singapore" },
+      { "type": "legal", "name": "US Legal Counsel", "jurisdiction": "United States" },
+      { "type": "legal", "name": "Singapore Property Counsel", "jurisdiction": "Singapore" }
+    ],
+    "existing_entities": [
+      { "type": "LLC", "jurisdiction": "Delaware", "purpose": "Family Office holding company" }
+    ],
+    "banking_rails": [
+      { "bank": "JP Morgan Private Bank", "jurisdiction": "United States", "status": "active" },
+      { "bank": "DBS Private Banking", "jurisdiction": "Singapore", "status": "planned" }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "Family office has established IPS with 15% allocation to international real estate. Singapore acquisition fits within mandate."
+  },
+  "urgency": "standard"
+}

@@ -1,0 +1,300 @@
+// =============================================================================
+// CONSTRAINTS INPUT
+// Section 2: Constraints - What cannot change?
+// =============================================================================
+
+"use client";
+
+import React, { useState } from 'react';
+import { X, Plus } from 'lucide-react';
+import {
+  Constraints,
+  LIQUIDITY_HORIZONS,
+  JURISDICTIONS
+} from '@/lib/decision-memo/pattern-audit-types';
+
+interface ConstraintsInputProps {
+  value: Partial<Constraints> | undefined;
+  onChange: (data: Partial<Constraints>) => void;
+}
+
+export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
+  const [prohibitionInput, setProhibitionInput] = useState('');
+  const [dealBreakerInput, setDealBreakerInput] = useState('');
+  const [liquidityEventInput, setLiquidityEventInput] = useState('');
+
+  // Add prohibition
+  const addProhibition = () => {
+    if (!prohibitionInput.trim()) return;
+    onChange({
+      prohibitions: [...(value?.prohibitions || []), prohibitionInput.trim()]
+    });
+    setProhibitionInput('');
+  };
+
+  // Remove prohibition
+  const removeProhibition = (index: number) => {
+    onChange({
+      prohibitions: (value?.prohibitions || []).filter((_, i) => i !== index)
+    });
+  };
+
+  // Add deal breaker
+  const addDealBreaker = () => {
+    if (!dealBreakerInput.trim()) return;
+    onChange({
+      dealBreakers: [...(value?.dealBreakers || []), dealBreakerInput.trim()]
+    });
+    setDealBreakerInput('');
+  };
+
+  // Remove deal breaker
+  const removeDealBreaker = (index: number) => {
+    onChange({
+      dealBreakers: (value?.dealBreakers || []).filter((_, i) => i !== index)
+    });
+  };
+
+  // Add liquidity event
+  const addLiquidityEvent = () => {
+    if (!liquidityEventInput.trim()) return;
+    onChange({
+      liquidityEvents: [...(value?.liquidityEvents || []), liquidityEventInput.trim()]
+    });
+    setLiquidityEventInput('');
+  };
+
+  // Remove liquidity event
+  const removeLiquidityEvent = (index: number) => {
+    onChange({
+      liquidityEvents: (value?.liquidityEvents || []).filter((_, i) => i !== index)
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Liquidity Horizon */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          When might you need access to this capital?
+        </label>
+        <select
+          value={value?.liquidityHorizon || '12+ months'}
+          onChange={(e) => onChange({ liquidityHorizon: e.target.value })}
+          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
+                     text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          {LIQUIDITY_HORIZONS.map(h => (
+            <option key={h.id} value={h.id}>{h.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Liquidity Events */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Forcing events (with deadlines)
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={liquidityEventInput}
+            onChange={(e) => setLiquidityEventInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addLiquidityEvent()}
+            placeholder="DTAA benefit deadline Q2 2025, Trust restructuring before FY end..."
+            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
+                       text-foreground placeholder:text-muted-foreground/50
+                       focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            type="button"
+            onClick={addLiquidityEvent}
+            className="px-3 py-2 bg-muted border border-border rounded-lg
+                       text-foreground hover:bg-muted/80 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Event Tags */}
+        {(value?.liquidityEvents?.length || 0) > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {value?.liquidityEvents?.map((event, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10
+                           text-amber-700 dark:text-amber-400 text-sm rounded-full"
+              >
+                {event}
+                <button
+                  type="button"
+                  onClick={() => removeLiquidityEvent(i)}
+                  className="hover:text-amber-900 dark:hover:text-amber-200"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          These create hard constraints on timing.
+        </p>
+      </div>
+
+      {/* Hard Prohibitions */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          What will you NOT do? (Hard prohibitions)
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={prohibitionInput}
+            onChange={(e) => setProhibitionInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addProhibition()}
+            placeholder="No crypto/DeFi exposure, No unregulated counterparties..."
+            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
+                       text-foreground placeholder:text-muted-foreground/50
+                       focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            type="button"
+            onClick={addProhibition}
+            className="px-3 py-2 bg-muted border border-border rounded-lg
+                       text-foreground hover:bg-muted/80 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Prohibition Tags */}
+        {(value?.prohibitions?.length || 0) > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {value?.prohibitions?.map((p, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500/10
+                           text-red-700 dark:text-red-400 text-sm rounded-full"
+              >
+                {p}
+                <button
+                  type="button"
+                  onClick={() => removeProhibition(i)}
+                  className="hover:text-red-900 dark:hover:text-red-200"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Deal Breakers */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Deal breakers (if discovered, walk away)
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={dealBreakerInput}
+            onChange={(e) => setDealBreakerInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addDealBreaker()}
+            placeholder="Counterparty with regulatory issues, Unverified fund sources..."
+            className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
+                       text-foreground placeholder:text-muted-foreground/50
+                       focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <button
+            type="button"
+            onClick={addDealBreaker}
+            className="px-3 py-2 bg-muted border border-border rounded-lg
+                       text-foreground hover:bg-muted/80 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {/* Deal Breaker Tags */}
+        {(value?.dealBreakers?.length || 0) > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {value?.dealBreakers?.map((db, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-500/10
+                           text-orange-700 dark:text-orange-400 text-sm rounded-full"
+              >
+                {db}
+                <button
+                  type="button"
+                  onClick={() => removeDealBreaker(i)}
+                  className="hover:text-orange-900 dark:hover:text-orange-200"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Current Jurisdictions */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Where does your capital currently sit?
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {JURISDICTIONS.slice(0, 12).map(j => {
+            const isSelected = value?.currentJurisdictions?.includes(j);
+            return (
+              <button
+                key={j}
+                type="button"
+                onClick={() => {
+                  const current = value?.currentJurisdictions || [];
+                  if (isSelected) {
+                    onChange({ currentJurisdictions: current.filter(c => c !== j) });
+                  } else {
+                    onChange({ currentJurisdictions: [...current, j] });
+                  }
+                }}
+                className={`
+                  px-3 py-1.5 rounded-full text-xs font-medium border transition-all
+                  ${isSelected
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border text-muted-foreground hover:border-primary/50'
+                  }
+                `}
+              >
+                {j}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Prohibited Jurisdictions */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Jurisdictions you want to avoid
+        </label>
+        <input
+          type="text"
+          value={value?.prohibitedJurisdictions?.join(', ') || ''}
+          onChange={(e) => onChange({
+            prohibitedJurisdictions: e.target.value
+              .split(',')
+              .map(s => s.trim())
+              .filter(Boolean)
+          })}
+          placeholder="Russia, Belarus, North Korea..."
+          className="w-full px-3 py-2 bg-background border border-border rounded-lg
+                     text-foreground placeholder:text-muted-foreground/50
+                     focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <p className="text-xs text-muted-foreground mt-1">Comma-separated</p>
+      </div>
+    </div>
+  );
+}
+
+export default ConstraintsInput;

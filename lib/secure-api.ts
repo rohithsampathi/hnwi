@@ -320,8 +320,8 @@ export const ensureClientCsrfToken = async (): Promise<string | null> => ensureC
 // Try to refresh token before showing auth error
 const tryRefreshToken = async (): Promise<boolean> => {
   try {
-    // ROOT FIX: Never attempt refresh on simulation pages (public access)
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
+    // ROOT FIX: Never attempt refresh on public pages (public access)
+    if (typeof window !== 'undefined' && (window.location.pathname.includes('/simulation') || window.location.pathname.includes('/decision-memo'))) {
       return false;
     }
 
@@ -365,8 +365,8 @@ const tryRefreshToken = async (): Promise<boolean> => {
 
 // Clear auth state (no redirect - let the layout handle it)
 const handleAuthError = async (): Promise<boolean> => {
-  // ROOT FIX: Never handle auth errors on simulation pages (public access)
-  if (typeof window !== 'undefined' && window.location.pathname.includes('/simulation')) {
+  // ROOT FIX: Never handle auth errors on public pages (public access)
+  if (typeof window !== 'undefined' && (window.location.pathname.includes('/simulation') || window.location.pathname.includes('/decision-memo'))) {
     return false;
   }
 

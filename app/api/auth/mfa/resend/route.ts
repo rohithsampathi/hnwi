@@ -36,8 +36,9 @@ async function handlePost(request: NextRequest) {
 
     try {
       // Retrieve the proxy MFA session from cookies (serverless-safe)
-      const cookieStore = cookies();
-      
+      // Note: In Next.js 15+, cookies() returns a Promise
+      const cookieStore = await cookies();
+
       // Try to get session from token-specific cookie first
       let encryptedSession = cookieStore.get(`mfa_token_${sessionToken.substring(0, 8)}`)?.value;
       

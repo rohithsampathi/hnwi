@@ -1,6 +1,121 @@
 // types/executor.ts
 // TypeScript interfaces for Trusted Network Directory
 
+// ============================================================================
+// REVIEW SYSTEM TYPES
+// ============================================================================
+
+export type ReviewSource =
+  | "chambers_hnw"      // Chambers High Net Worth - Highest credibility
+  | "legal_500"         // Legal 500 - High credibility
+  | "trustpilot"        // Trustpilot - Medium credibility
+  | "google_reviews"    // Google Reviews - Medium credibility
+  | "platform_verified" // HNWI Chronicles verified - High credibility
+  | "client_referral";  // Direct client referral - Medium credibility
+
+export type ReviewCredibility = "high" | "medium" | "low";
+
+export interface ReviewSourceMetadata {
+  id: ReviewSource;
+  name: string;
+  credibility: ReviewCredibility;
+  color: string;
+  description: string;
+}
+
+export const REVIEW_SOURCE_METADATA: Record<ReviewSource, ReviewSourceMetadata> = {
+  chambers_hnw: {
+    id: "chambers_hnw",
+    name: "Chambers HNW",
+    credibility: "high",
+    color: "#059669", // Emerald
+    description: "Chambers High Net Worth Guide - Premier legal directory"
+  },
+  legal_500: {
+    id: "legal_500",
+    name: "Legal 500",
+    credibility: "high",
+    color: "#7C3AED", // Purple
+    description: "The Legal 500 - Leading legal directory"
+  },
+  trustpilot: {
+    id: "trustpilot",
+    name: "Trustpilot",
+    credibility: "medium",
+    color: "#00B67A", // Trustpilot green
+    description: "Trustpilot verified reviews"
+  },
+  google_reviews: {
+    id: "google_reviews",
+    name: "Google",
+    credibility: "medium",
+    color: "#4285F4", // Google blue
+    description: "Google Business reviews"
+  },
+  platform_verified: {
+    id: "platform_verified",
+    name: "Verified",
+    credibility: "high",
+    color: "#D4AF37", // Gold
+    description: "HNWI Chronicles platform verified"
+  },
+  client_referral: {
+    id: "client_referral",
+    name: "Referral",
+    credibility: "medium",
+    color: "#6B7280", // Gray
+    description: "Direct client referral"
+  }
+};
+
+export interface ExecutorReview {
+  review_id: string;
+  source: ReviewSource;
+  rating: number; // 1-5, supports half stars (e.g., 4.5)
+  title?: string;
+  text: string;
+  reviewer_name?: string; // May be anonymous
+  reviewer_title?: string; // e.g., "Family Office Principal"
+  reviewer_verified: boolean;
+  date: string; // ISO date
+  helpful_count?: number;
+  response?: {
+    text: string;
+    date: string;
+  };
+}
+
+export interface ExecutorReviewSummary {
+  average_rating: number;
+  total_reviews: number;
+  rating_distribution: {
+    five: number;
+    four: number;
+    three: number;
+    two: number;
+    one: number;
+  };
+  sources: {
+    source: ReviewSource;
+    count: number;
+    average: number;
+  }[];
+  highlights?: string[]; // Key positive themes
+  concerns?: string[]; // Key negative themes (if any)
+}
+
+export interface ExecutorFlag {
+  type: "warning" | "severe";
+  reason: string;
+  details?: string;
+  source?: string;
+  date?: string;
+}
+
+// ============================================================================
+// EXECUTOR CATEGORY TYPES
+// ============================================================================
+
 export type ExecutorCategory =
   | "wealth_planning"
   | "tax_optimization"
@@ -76,6 +191,11 @@ export interface Executor {
   accepting_clients: boolean;
   response_time_commitment?: string;
   platform_join_date?: string;
+  // Review system fields
+  reviews?: ExecutorReview[];
+  review_summary?: ExecutorReviewSummary;
+  flags?: ExecutorFlag[];
+  is_flagged?: boolean; // Quick check for warning display
 }
 
 export interface ExecutorListResponse {

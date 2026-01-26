@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, useLayoutEffect, ReactNode, useRef } from "react"
+import { useState, useEffect, useLayoutEffect, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
@@ -15,13 +15,27 @@ import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
 import { NotificationProvider } from "@/contexts/notification-context"
 import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
 import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
+import { CitationPanelProvider } from "@/contexts/elite-citation-panel-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
-import { getCurrentUser, isAuthenticated as checkAuth, refreshUser } from "@/lib/auth-manager"
+import { getCurrentUser, authManager } from "@/lib/auth-manager"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import BackgroundSyncInitializer from "@/components/background-sync-initializer"
 import '@/lib/auth/debug-helper' // Load debug helper
+
+// Helper to detect PWA standalone mode
+const isPWAStandalone = (): boolean => {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         (window.navigator as any).standalone === true ||
+         document.referrer.includes('android-app://')
+}
+
+// Helper to check if this is a public route
+const isPublicRoute = (pathname: string): boolean => {
+  return pathname?.includes('/simulation') || pathname?.includes('/decision-memo')
+}
 
 interface AuthenticatedLayoutProps {
   children: ReactNode
@@ -108,83 +122,149 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     setMounted(true)
   }, [])
 
+  // Track if we've validated the session with backend (for PWA)
+  const [sessionValidated, setSessionValidated] = useState(false)
+
   // CRITICAL: Synchronous localStorage check BEFORE first paint to prevent loading flash
   // useLayoutEffect runs synchronously after DOM updates but before browser paint
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || !pathname) return
     if (isAuthenticated !== null) return // Already checked
 
-    // Quick synchronous check of localStorage
+    // PUBLIC ROUTES: /simulation and /decision-memo - allow access without login
+    if (isPublicRoute(pathname)) {
+      const authUser = getCurrentUser()
+      setUser(authUser) // Will be null for non-authenticated users
+      setIsAuthenticated(true) // Allow access regardless
+      setIsInitialLoad(false)
+      setMounted(true)
+      return
+    }
+
+    // AUTHENTICATED ROUTES: Check localStorage first for quick access
+    // secure-api will handle 401/403 on actual API calls
     const cachedUser = getCurrentUser()
     if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
       setUser(cachedUser)
       setIsAuthenticated(true)
       setIsInitialLoad(false)
       setMounted(true)
+
+      // PWA FIX: Schedule background session validation
+      // This ensures cookies are still valid without blocking render
+      // Critical for PWA where cookies may expire independently of localStorage
     }
   }, [pathname, isAuthenticated])
 
-  // SINGLE AUTH CHECK - Prevents race conditions
+  // PWA SESSION VALIDATION: Verify cookies are still valid after localStorage-based auth
+  // This runs AFTER the page renders to avoid blocking, but catches stale sessions
+  useEffect(() => {
+    // Skip if not authenticated from localStorage or already validated
+    if (!isAuthenticated || sessionValidated) return
+    // Skip for public routes
+    if (isPublicRoute(pathname)) return
+
+    const validateSession = async () => {
+      try {
+        // Quick session check - if this fails, cookies are gone
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json()
+          if (data.user) {
+            // Session is valid - update user data if changed
+            setUser(data.user)
+            authManager.login(data.user)
+            setSessionValidated(true)
+            return
+          }
+        }
+
+        // Session invalid - try to refresh token
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (refreshResponse.ok) {
+          // Token refreshed - get new session
+          const newSessionResponse = await fetch('/api/auth/session', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+
+          if (newSessionResponse.ok) {
+            const data = await newSessionResponse.json()
+            if (data.user) {
+              setUser(data.user)
+              authManager.login(data.user)
+              setSessionValidated(true)
+              return
+            }
+          }
+        }
+
+        // PWA FIX: Cookies are gone and refresh failed
+        // Clear localStorage to stay in sync and redirect to login
+        console.log('[Auth] Session validation failed - clearing stale localStorage')
+        authManager.logout()
+        setIsAuthenticated(false)
+        setUser(null)
+
+        // Clear loginTimestamp so auth popup can show
+        localStorage.removeItem('loginTimestamp')
+
+        // Redirect to login
+        router.push("/")
+      } catch (error) {
+        // Network error - don't logout, let user continue with cached data
+        // secure-api will handle 401/403 on actual API calls
+        console.log('[Auth] Session validation network error - continuing with cached auth')
+        setSessionValidated(true)
+      }
+    }
+
+    // Run validation after a short delay to not block initial render
+    const validationTimeout = setTimeout(validateSession, 500)
+    return () => clearTimeout(validationTimeout)
+  }, [isAuthenticated, sessionValidated, pathname, router])
+
+  // SINGLE AUTH CHECK - Only runs if useLayoutEffect didn't find cached user
   useEffect(() => {
     // Wait for component to mount
     if (!mounted || !pathname) return
 
-    // Prevent multiple auth checks
+    // Already authenticated from localStorage check
     if (isAuthenticated !== null) return
 
     const checkAuthStatus = async () => {
       try {
-        // Special handling for simulation pages (public access allowed)
-        if (pathname.includes('/simulation')) {
-          console.log('[Auth Layout] Simulation page - allowing public access')
+        // PUBLIC ROUTES: /simulation and /decision-memo - allow access without login
+        if (pathname.includes('/simulation') || pathname.includes('/decision-memo')) {
           const authUser = getCurrentUser()
-          setUser(authUser) // Will be null for non-authenticated users
-          setIsAuthenticated(true) // Allow access regardless
-          setIsInitialLoad(false)
-          return
-        }
-
-        // CRITICAL: Initialize auth manager and wait for it to load localStorage
-        const { authManager } = await import('@/lib/auth-manager')
-        await authManager.waitForInitialization()
-        console.log('[Auth Layout] Auth manager initialized')
-
-        // Check localStorage FIRST - this is our source of truth
-        const cachedUser = getCurrentUser()
-        console.log('[Auth Layout] Checked localStorage:', {
-          hasUser: !!cachedUser,
-          userId: cachedUser?.id || cachedUser?.user_id,
-          email: cachedUser?.email
-        })
-
-        // TRUST LOCALSTORAGE: If we have valid user data, use it
-        // Backend will validate on API calls and handle 401s if invalid
-        if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
-          console.log('[Auth Layout] ✅ Using cached user from localStorage')
-          setUser(cachedUser)
+          setUser(authUser)
           setIsAuthenticated(true)
           setIsInitialLoad(false)
           return
         }
 
-        console.log('[Auth Layout] No cached user - checking backend')
+        // No cached user - check with backend
+        const { authManager } = await import('@/lib/auth-manager')
+        await authManager.waitForInitialization()
 
-        // No localStorage data - check backend as fallback
+        // Try session check
         const sessionResponse = await fetch('/api/auth/session', {
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         })
-
-        console.log('[Auth Layout] Session response:', sessionResponse.status)
 
         if (sessionResponse.ok) {
           const data = await sessionResponse.json()
-          console.log('[Auth Layout] Session data:', { hasUser: !!data.user })
           if (data.user) {
-            // Backend has user - save to localStorage
-            console.log('[Auth Layout] ✅ Backend session valid - saving to localStorage')
             authManager.login(data.user)
             setUser(data.user)
             setIsAuthenticated(true)
@@ -193,32 +273,22 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           }
         }
 
-        console.log('[Auth Layout] Session check failed - trying refresh token')
-
-        // Try refresh token as last resort
+        // Session invalid - try refresh token
         const refreshResponse = await fetch('/api/auth/refresh', {
           method: 'POST',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         })
 
-        console.log('[Auth Layout] Refresh response:', refreshResponse.status)
-
         if (refreshResponse.ok) {
-          // Refresh succeeded, check session again
           const newSessionResponse = await fetch('/api/auth/session', {
             credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
           })
 
           if (newSessionResponse.ok) {
             const data = await newSessionResponse.json()
             if (data.user) {
-              console.log('[Auth Layout] ✅ Refresh succeeded - saving to localStorage')
               authManager.login(data.user)
               setUser(data.user)
               setIsAuthenticated(true)
@@ -228,25 +298,18 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           }
         }
 
-        // No auth found anywhere - redirect to login
-        console.log('[Auth Layout] ❌ No auth found - redirecting to login')
+        // No valid session - redirect to login
         setIsAuthenticated(false)
         setIsInitialLoad(false)
         router.push("/")
       } catch (error) {
-        console.error('[Auth Layout] Error during auth check:', error)
         // Network error - check localStorage as fallback
         const fallbackUser = getCurrentUser()
-        console.log('[Auth Layout] Fallback check:', { hasFallbackUser: !!fallbackUser })
         if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
-          // Allow access with cached data during network issues
-          console.log('[Auth Layout] ✅ Using fallback user from localStorage')
           setUser(fallbackUser)
           setIsAuthenticated(true)
           setIsInitialLoad(false)
         } else {
-          // No cached data and can't reach backend - redirect to login
-          console.log('[Auth Layout] ❌ No fallback user - redirecting to login')
           setIsAuthenticated(false)
           setIsInitialLoad(false)
           router.push("/")
@@ -257,10 +320,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     checkAuthStatus()
   }, [mounted, pathname, router])
 
-  // Listen for logout events
+  // Listen for logout events (but ignore on public routes)
   useEffect(() => {
     const handleLogout = () => {
-      console.log('[Auth Layout] 🚨 Logout event detected')
+      // Ignore logout events on public routes
+      if (pathname?.includes('/simulation') || pathname?.includes('/decision-memo')) {
+        return
+      }
+
       setUser(null)
       setIsAuthenticated(false)
       router.push("/")
@@ -268,7 +335,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
     window.addEventListener('auth:logout', handleLogout)
     return () => window.removeEventListener('auth:logout', handleLogout)
-  }, [router])
+  }, [router, pathname])
 
   // Listen for auth updates to refresh user data
   useEffect(() => {
@@ -282,6 +349,62 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     window.addEventListener('auth:login', handleAuthUpdate)
     return () => window.removeEventListener('auth:login', handleAuthUpdate)
   }, [])
+
+  // PWA FIX: Re-validate session when app comes to foreground
+  // Critical for iOS where cookies may be cleared in background
+  useEffect(() => {
+    // Skip for public routes
+    if (isPublicRoute(pathname)) return
+
+    const handleVisibilityChange = async () => {
+      // Only check when app becomes visible
+      if (document.visibilityState !== 'visible') return
+      // Skip if not authenticated
+      if (!isAuthenticated) return
+      // Only do this in PWA standalone mode
+      if (!isPWAStandalone()) return
+
+      console.log('[PWA] App became visible - validating session')
+
+      try {
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (sessionResponse.ok) {
+          const data = await sessionResponse.json()
+          if (data.user) {
+            // Session still valid
+            return
+          }
+        }
+
+        // Session invalid - try refresh
+        const refreshResponse = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        if (!refreshResponse.ok) {
+          // Refresh failed - session is truly lost
+          console.log('[PWA] Session lost while in background - clearing state')
+          authManager.logout()
+          setIsAuthenticated(false)
+          setUser(null)
+          localStorage.removeItem('loginTimestamp')
+          router.push("/")
+        }
+      } catch (error) {
+        // Network error - continue with cached state
+        console.log('[PWA] Visibility check network error - continuing')
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isAuthenticated, pathname, router])
 
   // Only show elite loading for initial page load, not internal navigation
   if (isAuthenticated === null) {
@@ -300,9 +423,10 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             <OnboardingProvider>
               <AppDataProvider>
                 <PageDataCacheProvider>
-                  <ElitePulseErrorBoundary>
-                    <ElitePulseProvider>
-                      <NotificationProvider
+                  <CitationPanelProvider>
+                    <ElitePulseErrorBoundary>
+                      <ElitePulseProvider>
+                        <NotificationProvider
                         enablePolling={false}
                         pollInterval={30000}
                         enableSounds={true}
@@ -328,8 +452,9 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                           </Layout>
                         </IntelligenceNotificationProvider>
                       </NotificationProvider>
-                    </ElitePulseProvider>
-                  </ElitePulseErrorBoundary>
+                      </ElitePulseProvider>
+                    </ElitePulseErrorBoundary>
+                  </CitationPanelProvider>
                 </PageDataCacheProvider>
               </AppDataProvider>
             </OnboardingProvider>

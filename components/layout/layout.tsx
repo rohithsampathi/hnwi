@@ -38,6 +38,10 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
   const router = useRouter()
   const pathname = usePathname()
+
+  // Decision-memo pages need header/sidebar hidden in print for PDF export
+  const isDecisionMemoRoute = pathname?.includes('/decision-memo')
+
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [user, setUser] = useState<any>(propUser || null)
   const [headerHeight, setHeaderHeight] = useState(0)
@@ -155,11 +159,12 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
         showBackButton={showBackButton}
         currentPage={currentPage}
         isUserAuthenticated={isUserAuthenticated}
+        hideInPrint={isDecisionMemoRoute}
       />
       
       <header
         ref={headerRef}
-        className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300`}
+        className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${isDecisionMemoRoute ? 'print:hidden' : ''}`}
         style={{
           left: isDesktop
             ? (sidebarState ? '64px' : '256px') : '0',

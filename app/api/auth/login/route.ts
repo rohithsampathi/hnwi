@@ -400,6 +400,47 @@ async function handlePost(request: NextRequest) {
           });
         }
 
+        // CRITICAL: Also explicitly set access_token cookie if backend returned it in body
+        // This ensures session validation works even if backend doesn't set it via Set-Cookie header
+        if (backendResponse.access_token) {
+          const isProd = process.env.NODE_ENV === 'production';
+          const cookieDomain = getCookieDomain();
+
+          const accessTokenOptions: any = {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? ('none' as const) : ('lax' as const),
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/'
+          };
+          if (cookieDomain) accessTokenOptions.domain = cookieDomain;
+          if (isProd) accessTokenOptions.partitioned = true;
+
+          response.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
+
+          logger.info('Set access_token cookie from response body', {
+            tokenLength: backendResponse.access_token.length
+          });
+        }
+
+        // Also set refresh_token if provided
+        if (backendResponse.refresh_token) {
+          const isProd = process.env.NODE_ENV === 'production';
+          const cookieDomain = getCookieDomain();
+
+          const refreshTokenOptions: any = {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? ('none' as const) : ('lax' as const),
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/'
+          };
+          if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
+          if (isProd) refreshTokenOptions.partitioned = true;
+
+          response.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
+        }
+
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
         return ApiAuth.addSecurityHeaders(response);
       } else {

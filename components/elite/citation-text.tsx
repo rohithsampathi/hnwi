@@ -10,7 +10,7 @@ interface CitationTextProps {
   text: string | undefined | null
   onCitationClick?: (citationId: string) => void
   className?: string
-  citationMap?: Map<string, number> // Map of citation ID to global number
+  citationMap?: Map<string, number> | Record<string, any> // Map or object of citation data
   options?: {
     convertMarkdownBold?: boolean
     preserveLineBreaks?: boolean
@@ -181,14 +181,19 @@ export function CitationText({
 
         if (citationMatch) {
         const [, citationId, citationNumber] = citationMatch
-        // Use global citation number from citationMap if available, otherwise use parsed number
-        const displayNumber = citationMap?.get(citationId) ?? citationNumber
+        // Use parsed number (citationMap is metadata, not number mapping)
+        const displayNumber = citationNumber
           return (
             <button
               key={index}
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
+                console.log('🔗 CITATION CLICKED:', {
+                  citationId,
+                  displayNumber,
+                  citationNumber
+                })
                 onCitationClick(citationId)
               }}
               className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 rounded transition-colors mx-0.5 align-baseline cursor-pointer"

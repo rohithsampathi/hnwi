@@ -9,7 +9,7 @@ import { CitationText } from "./citation-text"
 interface FormattedAnalysisProps {
   text: string
   onCitationClick?: (citationId: string) => void
-  citationMap?: Map<string, number>
+  citationMap?: Map<string, number> | Record<string, any>
   className?: string
 }
 

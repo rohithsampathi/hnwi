@@ -64,7 +64,8 @@ import {
   Palette,
   Sparkles,
   Settings,
-  BookOpen
+  BookOpen,
+  Star,
 } from "lucide-react";
 import { getMetallicCardStyle } from "@/lib/colors";
 import { cn } from "@/lib/utils";
@@ -83,6 +84,15 @@ import type {
   ExecutorSubcategory
 } from "@/types/executor";
 import { CATEGORY_METADATA, SUBCATEGORY_NAMES } from "@/types/executor";
+import {
+  StarRating,
+  ReviewBadge,
+  WarningIndicator,
+  WarningBanner,
+  ExecutorReviews,
+  ReviewsPreview,
+  TrustScore,
+} from "@/components/executor";
 
 interface TrustedNetworkPageProps {
   onNavigate?: (route: string) => void;
@@ -116,6 +126,8 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   const [languageFilter, setLanguageFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<"all" | "trusted_partner" | "general_listing">("all");
+  const [ratingFilter, setRatingFilter] = useState<"all" | "4+" | "3+" | "any">("all");
+  const [sortBy, setSortBy] = useState<"rating" | "reviews" | "experience" | "name">("rating");
 
   // Introduction request form
   const [needDescription, setNeedDescription] = useState("");
@@ -137,12 +149,12 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   useEffect(() => {
     loadExecutors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, subcategoryFilter, jurisdictionFilter, languageFilter, searchQuery, tierFilter, getCachedData, setCachedData]);
+  }, [categoryFilter, subcategoryFilter, jurisdictionFilter, languageFilter, searchQuery, tierFilter, ratingFilter, sortBy, getCachedData, setCachedData]);
 
   const loadExecutors = async () => {
     try {
       // Create dynamic cache key based on all filters
-      const cacheKey = `trusted-network-${categoryFilter}-${subcategoryFilter}-${jurisdictionFilter}-${languageFilter}-${searchQuery}-${tierFilter}`;
+      const cacheKey = `trusted-network-${categoryFilter}-${subcategoryFilter}-${jurisdictionFilter}-${languageFilter}-${searchQuery}-${tierFilter}-${ratingFilter}-${sortBy}`;
 
       // Check if we have valid cached data (skip API call entirely)
       const cached = getCachedData(cacheKey);
@@ -172,11 +184,38 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
 
       const response = await getExecutors(filters);
 
-      // Sort executors: trusted partners first, then general listings
-      const sortedExecutors = response.executors.sort((a, b) => {
+      // Filter by rating
+      let filteredExecutors = response.executors;
+      if (ratingFilter !== "all" && ratingFilter !== "any") {
+        const minRating = ratingFilter === "4+" ? 4 : 3;
+        filteredExecutors = filteredExecutors.filter(
+          (e) => e.review_summary && e.review_summary.average_rating >= minRating
+        );
+      }
+
+      // Sort executors based on selected sort option
+      const sortedExecutors = filteredExecutors.sort((a, b) => {
+        // Always prioritize trusted partners
         if (a.tier === 'trusted_partner' && b.tier !== 'trusted_partner') return -1;
         if (a.tier !== 'trusted_partner' && b.tier === 'trusted_partner') return 1;
-        return 0;
+
+        // Then apply secondary sort
+        switch (sortBy) {
+          case "rating":
+            const ratingA = a.review_summary?.average_rating || 0;
+            const ratingB = b.review_summary?.average_rating || 0;
+            return ratingB - ratingA;
+          case "reviews":
+            const reviewsA = a.review_summary?.total_reviews || 0;
+            const reviewsB = b.review_summary?.total_reviews || 0;
+            return reviewsB - reviewsA;
+          case "experience":
+            return b.years_experience - a.years_experience;
+          case "name":
+            return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
+          default:
+            return 0;
+        }
       });
 
       setExecutors(sortedExecutors);
@@ -440,6 +479,40 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
           </Select>
         </div>
 
+        {/* Rating and Sort Row */}
+        <div className="flex flex-wrap gap-4 items-center">
+          {/* Rating Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Rating:</span>
+            <Select value={ratingFilter} onValueChange={(val) => setRatingFilter(val as any)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Any rating" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any rating</SelectItem>
+                <SelectItem value="4+">4+ Stars</SelectItem>
+                <SelectItem value="3+">3+ Stars</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sort By */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sort:</span>
+            <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="rating">Highest Rated</SelectItem>
+                <SelectItem value="reviews">Most Reviews</SelectItem>
+                <SelectItem value="experience">Experience</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -452,7 +525,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
         </div>
 
         {/* Active Filters */}
-        {(categoryFilter !== "all" || jurisdictionFilter !== "all" || tierFilter !== "all" || searchQuery) && (
+        {(categoryFilter !== "all" || jurisdictionFilter !== "all" || tierFilter !== "all" || ratingFilter !== "all" || searchQuery) && (
           <div className="flex flex-wrap gap-2">
             {categoryFilter !== "all" && (
               <Badge variant="secondary" className="gap-1">
@@ -470,6 +543,13 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
               <Badge variant="secondary" className="gap-1">
                 {tierFilter === "trusted_partner" ? "Verified Partners" : "General Listing"}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setTierFilter("all")} />
+              </Badge>
+            )}
+            {ratingFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {ratingFilter}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => setRatingFilter("all")} />
               </Badge>
             )}
           </div>
@@ -523,12 +603,25 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
-                      {/* Category Badge in top-right corner */}
+                      {/* Category Badge and Rating in top-right corner */}
                       <div className="absolute top-4 right-4 flex flex-col gap-2 items-end max-w-[200px] z-10">
                         <div className={`px-3 py-1 rounded-full text-xs font-semibold ${theme === 'dark' ? 'bg-black/40 text-white' : 'bg-black/70 text-white'} backdrop-blur-sm text-center whitespace-nowrap`}>
                           {getCategoryDisplayName(executor)}
                         </div>
+                        {/* Review Rating Badge */}
+                        {executor.review_summary && (
+                          <ReviewBadge
+                            summary={executor.review_summary}
+                            flags={executor.flags}
+                          />
+                        )}
                       </div>
+                      {/* Warning indicator for flagged executors */}
+                      {executor.flags && executor.flags.length > 0 && (
+                        <div className="absolute top-4 left-4 z-10">
+                          <WarningIndicator flags={executor.flags} size="lg" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Card Content */}
@@ -553,9 +646,20 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                             <p className={`text-xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
                               {executor.firm_name}
                             </p>
-                            <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'} mt-1`}>
-                              {executor.years_experience} years experience
-                            </p>
+                            <div className="flex items-center gap-3 mt-1">
+                              <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
+                                {executor.years_experience} years experience
+                              </p>
+                              {executor.review_summary && (
+                                <StarRating
+                                  rating={executor.review_summary.average_rating}
+                                  size="sm"
+                                  showValue
+                                  showCount
+                                  count={executor.review_summary.total_reviews}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -790,6 +894,26 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                               </div>
                             )}
 
+                            {/* Trust Score */}
+                            {(executor.review_summary || executor.tier === "strategic_partner") && (
+                              <div className="pt-4 border-t border-border/30">
+                                <TrustScore executor={executor} />
+                              </div>
+                            )}
+
+                            {/* Reviews Section */}
+                            {(executor.reviews && executor.reviews.length > 0) || executor.review_summary ? (
+                              <div className="pt-4 border-t border-border/30">
+                                <h4 className="text-sm font-semibold mb-4">Client Reviews</h4>
+                                <ExecutorReviews
+                                  executor={executor}
+                                  initialVisible={2}
+                                  showFilters={executor.reviews && executor.reviews.length > 3}
+                                  showSummary={true}
+                                />
+                              </div>
+                            ) : null}
+
                             {/* Request Introduction Button */}
                             <Button
                               className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
@@ -833,6 +957,8 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                   setSubcategoryFilter("all");
                   setJurisdictionFilter("all");
                   setTierFilter("all");
+                  setRatingFilter("all");
+                  setSortBy("rating");
                   setSearchQuery("");
                 }}
               >

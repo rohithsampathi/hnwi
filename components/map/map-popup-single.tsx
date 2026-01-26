@@ -28,7 +28,7 @@ interface MapPopupSingleProps {
   clusterId: string
   onExpand: () => void
   onCitationClick?: (citationId: string) => void
-  citationMap?: Map<string, number>
+  citationMap?: Map<string, number> | Record<string, any>
   onNavigate?: (route: string) => void
   scrollPosition?: number // Optional - no longer used but kept for compatibility
   onScrollPositionChange?: (clusterId: string, position: number) => void // Optional
@@ -178,7 +178,7 @@ export function MapPopupSingle({
 
         {/* Expand/Collapse Button */}
         <button
-          onClick={onExpand}
+          onClick={() => onExpand()}
           className="w-full mt-3 px-3 py-1.5 text-xs font-medium rounded transition-colors bg-primary/10 text-primary hover:bg-primary/20"
         >
           {isExpanded ? "Collapse ▲" : "View Details ▼"}
@@ -271,7 +271,7 @@ export function MapPopupSingle({
                     </p>
                     <div className="text-xs leading-relaxed text-foreground">
                       <FormattedAnalysis
-                        text={getFirstParagraph((city as any).katherine_analysis)}
+                        text={(city as any).katherine_analysis}
                         onCitationClick={onCitationClick}
                         citationMap={citationMap}
                         className="text-xs"
@@ -288,7 +288,7 @@ export function MapPopupSingle({
                 <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
                 <div className="text-xs leading-relaxed">
                   <FormattedAnalysis
-                    text={getFirstParagraph(city.analysis)}
+                    text={city.analysis}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
                     className="text-xs"
@@ -303,7 +303,7 @@ export function MapPopupSingle({
                 <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
                 <div className="text-xs leading-relaxed">
                   <FormattedAnalysis
-                    text={getFirstParagraph(city.elite_pulse_analysis)}
+                    text={city.elite_pulse_analysis}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
                     className="text-xs"

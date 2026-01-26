@@ -683,6 +683,17 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
     // Auto-refresh disabled - handled by AppDataProvider
   }, [])
 
+  // Listen for cache clearing events
+  useEffect(() => {
+    const handleClearCache = () => {
+      console.log('[Elite Pulse] Clearing in-memory dashboard cache')
+      dispatch({ type: 'CLEAR_CACHE' })
+    }
+
+    window.addEventListener('dashboard:clear-cache', handleClearCache)
+    return () => window.removeEventListener('dashboard:clear-cache', handleClearCache)
+  }, [])
+
   // ================== CONTEXT VALUE ==================
 
   const contextValue: ElitePulseContextValue = {

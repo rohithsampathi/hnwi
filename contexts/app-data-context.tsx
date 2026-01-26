@@ -253,6 +253,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return
   }, [])
 
+  // Listen for cache clearing events
+  useEffect(() => {
+    const handleClearIntelligence = () => {
+      console.log('[App Data] Clearing intelligence cache')
+      clearCache('intelligence')
+    }
+
+    window.addEventListener('app-data:clear-intelligence', handleClearIntelligence)
+    return () => window.removeEventListener('app-data:clear-intelligence', handleClearIntelligence)
+  }, [clearCache])
+
   const value: AppDataContextValue = {
     state,
     fetchCrownVaultData,

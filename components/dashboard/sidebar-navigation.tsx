@@ -22,6 +22,7 @@ export function SidebarNavigation({
   showBackButton = false,
   currentPage = "",
   isUserAuthenticated = false,
+  hideInPrint = false,
 }: {
   onNavigate: (route: string) => void
   headerHeight?: number
@@ -29,24 +30,55 @@ export function SidebarNavigation({
   showBackButton?: boolean
   currentPage?: string
   isUserAuthenticated?: boolean
+  hideInPrint?: boolean
 }) {
   const router = useRouter()
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [showHeartbeat, setShowHeartbeat] = useState(false)
-  const [isMoreExpanded, setIsMoreExpanded] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar-more-expanded') === 'true'
-    }
-    return false
-  })
+  const [isMoreExpanded, setIsMoreExpanded] = useState(false) // Always start false on server
+  const [isMounted, setIsMounted] = useState(false)
   const [isTabletSize, setIsTabletSize] = useState(false)
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
   const [isLandscape, setIsLandscape] = useState(false)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean | null>(null)
   const [isCheckingAssessment, setIsCheckingAssessment] = useState(true)
   const [completedSessionId, setCompletedSessionId] = useState<string | null>(null)
+  const [isDecisionMemoActive, setIsDecisionMemoActive] = useState(false)
+  const [isSimulationActive, setIsSimulationActive] = useState(false)
+
+  // Hydration fix: Load localStorage state after mount
+  useEffect(() => {
+    setIsMounted(true)
+    if (typeof window !== 'undefined') {
+      const savedExpanded = localStorage.getItem('sidebar-more-expanded') === 'true'
+      setIsMoreExpanded(savedExpanded)
+    }
+  }, [])
+
+  // Check if Decision Memo or Simulation flow is active
+  useEffect(() => {
+    const checkFlowStatus = () => {
+      if (typeof window !== 'undefined') {
+        // Check Decision Memo
+        const dmFlowStage = localStorage.getItem('decision_memo_flow_stage')
+        const isDMActive = dmFlowStage && dmFlowStage !== 'landing' && dmFlowStage !== 'success'
+        setIsDecisionMemoActive(!!isDMActive)
+
+        // Check Simulation
+        const simFlowStage = localStorage.getItem('assessment_flow_stage')
+        const isSimActive = simFlowStage && simFlowStage !== 'landing' && simFlowStage !== 'digital_twin'
+        setIsSimulationActive(!!isSimActive)
+      }
+    }
+
+    checkFlowStatus()
+
+    // Check periodically in case it changes
+    const interval = setInterval(checkFlowStatus, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Check if user has completed assessment - controls whether Assessment menu item is shown
   useEffect(() => {
@@ -70,9 +102,11 @@ export function SidebarNavigation({
           return
         }
 
-        const response = await fetch(`/api/assessment/history/${userId}`)
+        const response = await fetch(`/api/assessment/history/${userId}`, {
+          credentials: 'include'
+        }).catch(() => null) // Silently catch network errors
 
-        if (response.ok) {
+        if (response && response.ok) {
           const data = await response.json()
 
           const assessments = data?.assessments || data || []
@@ -85,7 +119,7 @@ export function SidebarNavigation({
             setCompletedSessionId(null)
           }
         } else {
-          // On error, assume no assessment to be safe
+          // On API error (including 404), assume no assessment to prevent blocking
           setHasCompletedAssessment(false)
           setCompletedSessionId(null)
         }
@@ -224,6 +258,14 @@ export function SidebarNavigation({
       isNew: true,
       businessOnly: false
     },
+    {
+      name: "Decision Memo",
+      icon: Shield,
+      route: "decision-memo",
+      description: "$1,000 stress test. Expose allocation blind spots before they cost you six figures.",
+      isNew: true,
+      businessOnly: false
+    },
     // War Room - Hidden for now
     // {
     //   name: "War Room",
@@ -263,6 +305,7 @@ export function SidebarNavigation({
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
     { name: "Simulation", icon: ClipboardCheck, route: "assessment", isNew: true },
+    { name: "Decision Memo", icon: Shield, route: "decision-memo", isNew: true },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
@@ -295,6 +338,8 @@ export function SidebarNavigation({
       router.push("/profile")
     } else if (route === "playbooks") {
       router.push("/playbooks")
+    } else if (route === "decision-memo") {
+      router.push("/decision-memo")
     } else {
       // For other routes, try direct navigation
       router.push(`/${route}`)
@@ -307,6 +352,34 @@ export function SidebarNavigation({
     onSidebarToggle?.(newState)
   }
 
+  // Don't render until mounted to avoid hydration mismatch
+  if (!isMounted) {
+    return (
+      <aside
+        className={`hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 flex-col w-16 ${hideInPrint ? 'print:hidden' : ''}`}
+        style={{
+          height: '100vh',
+          minHeight: '100vh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          zIndex: 9999
+        }}
+      >
+        {/* Minimal placeholder during SSR */}
+        <div className="flex items-center justify-center px-4 py-4 border-b border-border bg-background flex-shrink-0">
+          <Image
+            src="/logo.png"
+            alt="HNWI Chronicles Globe"
+            width={32}
+            height={32}
+            className="w-8 h-8"
+            priority
+          />
+        </div>
+      </aside>
+    )
+  }
+
   return (
     <>
       {/* iPad overlay when sidebar is expanded - only for tablet view */}
@@ -317,11 +390,12 @@ export function SidebarNavigation({
         />
       )}
 
-      {/* Desktop Sidebar - Hidden on mobile */}
+      {/* Desktop Sidebar - Hidden on mobile, optionally hidden in print */}
       <aside
         className={cn(
           "hidden md:flex fixed left-0 top-0 bg-background border-r border-border shadow-xl transition-all duration-300 flex-col",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
+          hideInPrint && "print:hidden"
         )}
         style={{
           height: '100vh',
@@ -412,7 +486,11 @@ export function SidebarNavigation({
                 {/* Main navigation items */}
                 {mainNavItems.map((item) => {
                   const isActive = currentPage === item.route;
-                  const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
+                  // Allow both simulation and decision-memo when either is active
+                  const allowedRoutes = ['assessment', 'decision-memo'];
+                  const isFlowActive = isDecisionMemoActive || isSimulationActive;
+                  const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
+                    (isFlowActive && !allowedRoutes.includes(item.route));
                   return (
                   <div key={item.route} className="relative">
                     <Button
@@ -484,7 +562,10 @@ export function SidebarNavigation({
                   <div className="space-y-2 mt-2">
                     {additionalNavItems.map((item) => {
                       const isActive = currentPage === item.route;
-                      const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
+                      const allowedRoutes = ['assessment', 'decision-memo'];
+                      const isFlowActive = isDecisionMemoActive || isSimulationActive;
+                      const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
+                        (isFlowActive && !allowedRoutes.includes(item.route));
                       return (
                       <div key={item.route} className="relative">
                         <Button
@@ -645,12 +726,15 @@ export function SidebarNavigation({
         />
       )}
 
-      {/* Mobile Bottom Navigation - Only visible on mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-xl">
+      {/* Mobile Bottom Navigation - Only visible on mobile, optionally hidden in print */}
+      <div className={cn("md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-xl", hideInPrint && "print:hidden")}>
         <div className="flex items-center justify-between px-4 py-3 safe-area-pb">
           {mobileNavItems.map((item) => {
             const isActive = currentPage === item.route;
-            const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
+            const allowedRoutes = ['assessment', 'decision-memo'];
+            const isFlowActive = isDecisionMemoActive || isSimulationActive;
+            const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
+              (isFlowActive && !allowedRoutes.includes(item.route));
             return (
               <Button
                 key={item.route}
@@ -711,7 +795,10 @@ export function SidebarNavigation({
             <DropdownMenuContent align="end" className="w-48 mb-2">
               {moreMenuItems.map((item) => {
                 const isActive = currentPage === item.route;
-                const isItemDisabled = !isUserAuthenticated && item.route !== 'assessment';
+                const allowedRoutes = ['assessment', 'decision-memo'];
+                const isFlowActive = isDecisionMemoActive || isSimulationActive;
+                const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
+                  (isFlowActive && !allowedRoutes.includes(item.route));
                 return (
                   <DropdownMenuItem
                     key={item.route}

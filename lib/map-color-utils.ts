@@ -5,28 +5,46 @@ import chroma from "chroma-js"
 import type { City } from "@/components/interactive-world-map"
 import { parseValueToNumber } from "@/lib/map-utils"
 
-// Gradient color stops - matches the slider exactly
-// Green: 0-100K (0-10%), Yellow/Gold: 100K-800K (10-80%), Red: 800K-1M (80-100%)
-const GRADIENT_COLORS = [
-  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // 0K - Deep dark emerald
-  { pos: 5, color: [23, 165, 97], hex: '#17a561' },     // 50K - Vibrant emerald
-  { pos: 10, color: [45, 209, 127], hex: '#2dd17f' },   // 100K - Bright emerald green
-  { pos: 20, color: [80, 233, 145], hex: '#50e991' },   // 200K - Light emerald
-  { pos: 30, color: [120, 240, 160], hex: '#78f0a0' },  // 300K - Lighter emerald
-  { pos: 40, color: [255, 215, 0], hex: '#ffd700' },    // 400K - Pure golden topaz
-  { pos: 50, color: [255, 200, 0], hex: '#ffc800' },    // 500K - Bright gold
-  { pos: 60, color: [255, 176, 0], hex: '#ffb000' },    // 600K - Rich golden amber
-  { pos: 70, color: [255, 150, 0], hex: '#ff9600' },    // 700K - Deep amber
-  { pos: 80, color: [230, 57, 70], hex: '#e63946' },    // 800K - Bright ruby red (RED STARTS HERE)
-  { pos: 90, color: [193, 18, 31], hex: '#c1121f' },    // 900K - Rich ruby
-  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // 1M - Deep dark burgundy ruby
-]
+// Gradient color stops - SINGLE SOURCE OF TRUTH for all map colors
+// Green: $0-$350K (0-17.5%), Yellow/Gold: $350K-$900K (17.5-45%), Red: $900K-$2M+ (45-100%)
+// EXPORTED for use in both map markers AND price range slider
+export const GRADIENT_COLORS = [
+  // 🟢 GREEN (Emerald) - $0 to $350K (0-17.5%)
+  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // $0 - Deep dark emerald
+  { pos: 3, color: [15, 105, 65], hex: '#0f6941' },     // $50K - Rich emerald
+  { pos: 5, color: [18, 125, 75], hex: '#127d4b' },     // $100K - Deep emerald
+  { pos: 8, color: [20, 140, 85], hex: '#148c55' },     // $150K - Vibrant emerald
+  { pos: 10, color: [23, 155, 92], hex: '#179b5c' },    // $200K - Bright emerald
+  { pos: 12.5, color: [25, 165, 98], hex: '#19a562' },  // $250K - Medium emerald
+  { pos: 15, color: [27, 175, 105], hex: '#1baf69' },   // $300K - Light emerald
+  { pos: 17.5, color: [30, 185, 110], hex: '#1eb96e' }, // $350K - Lighter emerald (GREEN ENDS)
+
+  // 🟡 YELLOW/GOLD (Topaz) - $350K to $900K (17.5-45%)
+  { pos: 17.5, color: [255, 215, 0], hex: '#ffd700' },  // $350K - Pure golden topaz (YELLOW STARTS)
+  { pos: 22, color: [255, 210, 0], hex: '#ffd200' },    // $450K - Rich gold
+  { pos: 27, color: [255, 205, 0], hex: '#ffcd00' },    // $550K - Bright gold
+  { pos: 32, color: [255, 200, 0], hex: '#ffc800' },    // $650K - Deep gold
+  { pos: 38, color: [255, 195, 0], hex: '#ffc300' },    // $750K - Rich golden amber
+  { pos: 42, color: [255, 190, 0], hex: '#ffbe00' },    // $850K - Golden amber
+  { pos: 45, color: [255, 185, 0], hex: '#ffb900' },    // $900K - Rich amber (GOLD ENDS)
+
+  // 🔴 RED (Ruby) - $900K to $2M+ (45-100%)
+  { pos: 45, color: [230, 57, 70], hex: '#e63946' },    // $900K - Bright ruby red (RED STARTS)
+  { pos: 52, color: [220, 50, 65], hex: '#dc3241' },    // $1.05M - Rich ruby
+  { pos: 60, color: [210, 45, 60], hex: '#d22d3c' },    // $1.2M - Deep ruby
+  { pos: 68, color: [205, 42, 57], hex: '#cd2a39' },    // $1.36M - Deeper ruby
+  { pos: 76, color: [200, 40, 55], hex: '#c82837' },    // $1.52M - Deep red ruby
+  { pos: 84, color: [193, 18, 31], hex: '#c1121f' },    // $1.68M - Dark ruby
+  { pos: 92, color: [185, 16, 29], hex: '#b9101d' },    // $1.84M - Darker ruby
+  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // $2M+ - Deep dark burgundy ruby
+] as const
 
 /**
  * Get color from gradient based on percentage (0-100)
  * This matches the exact logic used in the slider
+ * EXPORTED for use in price range slider
  */
-function getGradientColorFromPercent(percent: number): string {
+export function getGradientColorFromPercent(percent: number): string {
   // Find the two colors to interpolate between
   let lowerColor = GRADIENT_COLORS[0]
   let upperColor = GRADIENT_COLORS[GRADIENT_COLORS.length - 1]
@@ -53,22 +71,33 @@ function getGradientColorFromPercent(percent: number): string {
 /**
  * Create a color scale with 1000 smooth shades
  * Emerald → Topaz → Ruby gradient
- * Green: 0-100K (0-10%), Yellow/Gold: 100K-800K (10-80%), Red: 800K-1M (80-100%)
+ * Green: $0-$350K (0-17.5%), Yellow/Gold: $350K-$900K (17.5-45%), Red: $900K-$2M+ (45-100%)
  */
 export function createColorScale(): string[] {
   const scale = chroma.scale([
-    '#0d5c3a', // 0K - Deep dark emerald
-    '#17a561', // 50K - Vibrant emerald
-    '#2dd17f', // 100K - Bright emerald green
-    '#50e991', // 200K - Light emerald
-    '#78f0a0', // 300K - Lighter emerald
-    '#ffd700', // 400K - Pure golden topaz
-    '#ffc800', // 500K - Bright gold
-    '#ffb000', // 600K - Rich golden amber
-    '#ff9600', // 700K - Deep amber
-    '#e63946', // 800K - Bright ruby red (RED STARTS HERE)
-    '#c1121f', // 900K - Rich ruby
-    '#800020'  // 1M - Deep dark burgundy ruby
+    '#0d5c3a', // $0 - Deep dark emerald
+    '#0f6941', // $50K - Rich emerald
+    '#127d4b', // $100K - Deep emerald
+    '#148c55', // $150K - Vibrant emerald
+    '#179b5c', // $200K - Bright emerald
+    '#19a562', // $250K - Medium emerald
+    '#1baf69', // $300K - Light emerald
+    '#1eb96e', // $350K - Lighter emerald (GREEN ENDS)
+    '#ffd700', // $350K - Pure golden topaz (YELLOW STARTS)
+    '#ffd200', // $450K - Rich gold
+    '#ffcd00', // $550K - Bright gold
+    '#ffc800', // $650K - Deep gold
+    '#ffc300', // $750K - Rich golden amber
+    '#ffbe00', // $850K - Golden amber
+    '#ffb900', // $900K - Rich amber (GOLD ENDS)
+    '#e63946', // $900K - Bright ruby red (RED STARTS)
+    '#dc3241', // $1.05M - Rich ruby
+    '#d22d3c', // $1.2M - Deep ruby
+    '#cd2a39', // $1.36M - Deeper ruby
+    '#c82837', // $1.52M - Deep red ruby
+    '#c1121f', // $1.68M - Dark ruby
+    '#b9101d', // $1.84M - Darker ruby
+    '#800020'  // $2M+ - Deep dark burgundy ruby
   ])
   .mode('lch') // LCH color space for vibrant, perceptually uniform gradients
 
@@ -211,14 +240,14 @@ export function clusterCities(
 
 /**
  * Check if a city matches the selected price range
- * CRITICAL: When max is at 1M (slider at maximum), include ALL values >= 1M
+ * CRITICAL: When max is at 2M (slider at maximum), include ALL values >= 2M
  */
 export function createPriceRangeMatcher(selectedPriceRange: { min: number; max: number }) {
   return (city: City): boolean => {
     const value = parseValueToNumber(city.value || city.population)
 
-    // When slider is at max (1M+), include all values >= 1M
-    const MAX_VALUE = 1000000
+    // When slider is at max (2M+), include all values >= 2M
+    const MAX_VALUE = 2000000
     if (selectedPriceRange.max === MAX_VALUE) {
       return value >= selectedPriceRange.min
     }

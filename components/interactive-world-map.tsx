@@ -91,7 +91,7 @@ interface InteractiveWorldMapProps {
   showControls?: boolean
   cities?: City[]
   onCitationClick?: (citationId: string) => void
-  citationMap?: Map<string, number>
+  citationMap?: Map<string, number> | Record<string, any>
   onNavigate?: (route: string) => void
   // Filter controls
   showCrownAssets?: boolean
@@ -132,7 +132,7 @@ export function InteractiveWorldMap({
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
   const [forceRender, setForceRender] = useState(0)
-  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
+  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 2000000 })
   const markerRefs = React.useRef<Map<string, any>>(new Map())
 
   // Wrapper to prevent unnecessary price range updates (prevents infinite loop in rc-slider)
@@ -186,9 +186,9 @@ export function InteractiveWorldMap({
   )
 
   // Get color from value (memoized callback)
-  // Use fixed range (0-1000000) for consistent coloring, not dataset min/max
+  // Use fixed range (0-2000000) for consistent coloring, not dataset min/max
   const getColor = useCallback(
-    (value: string | undefined) => getColorFromValue(value, 0, 1000000),
+    (value: string | undefined) => getColorFromValue(value, 0, 2000000),
     []
   )
 
@@ -288,47 +288,47 @@ export function InteractiveWorldMap({
         const aspectRatio = screenWidth / screenHeight
 
         // Calculate zoom based on both width and aspect ratio
-        // More aggressive zoom to ensure map ALWAYS fills viewport
-        let zoom = 2.5 // Default higher zoom
+        // More zoomed out default view to show full global context
+        let zoom = 1.8 // Default more zoomed out
 
         // Portrait modes (taller than wide) - need higher zoom to fill
         if (aspectRatio < 0.6) {
           // Very tall portrait (phone portrait)
-          zoom = 3.5
+          zoom = 2.5
         }
         else if (aspectRatio < 0.75) {
           // Standard portrait
-          zoom = 3.0
+          zoom = 2.2
         }
         else if (aspectRatio < 1.0) {
           // Square-ish to mild portrait
-          zoom = 2.8
+          zoom = 2.0
         }
         // Landscape modes
         else if (aspectRatio > 2.3) {
           // Ultra-wide screens (21:9 or wider)
-          zoom = 1.5
+          zoom = 1.2
         }
         else if (aspectRatio > 1.7) {
           // Wide screens (16:9 to 21:9)
-          zoom = 1.8
+          zoom = 1.5
         }
         else if (aspectRatio > 1.5) {
           // Standard widescreen (3:2, 16:10)
-          zoom = 2.2
+          zoom = 1.7
         }
         else {
           // Standard screens (4:3, 5:4)
-          zoom = 2.5
+          zoom = 1.8
         }
 
         // Additional adjustments based on actual dimensions
-        // For very small heights, increase zoom to prevent vertical gaps
+        // For very small heights, increase zoom slightly to prevent vertical gaps
         if (screenHeight < 600) {
-          zoom = Math.max(zoom + 0.5, 3.0)
+          zoom = Math.max(zoom + 0.3, 2.2)
         }
         else if (screenHeight < 800) {
-          zoom = Math.max(zoom + 0.3, 2.5)
+          zoom = Math.max(zoom + 0.2, 1.8)
         }
 
         setMinZoomLevel(zoom)
@@ -349,11 +349,11 @@ export function InteractiveWorldMap({
     }
   }, [])
 
-  // Define map bounds - more restrictive latitude to prevent any gaps
+  // Define map bounds - allow full latitude range for global view
   // Extended longitude to allow horizontal wrapping on wide screens
   const maxBounds: [[number, number], [number, number]] = [
-    [-50, -360], // Southwest - more restricted latitude, extended longitude
-    [65, 360]     // Northeast - more restricted latitude, extended longitude
+    [-85, -360], // Southwest - full latitude range, extended longitude
+    [85, 360]     // Northeast - full latitude range, extended longitude
   ]
 
   return (

@@ -85,11 +85,16 @@ export function EliteCitationPanel({
       setLoading(true)
 
       try {
+        console.log('📡 FETCHING DEVELOPMENT:', citationId)
+
         // First check if development exists to avoid 404 console errors
-        const existsResponse = await fetch(`/api/developments/public/${citationId}/exists`)
+        const existsUrl = `/api/developments/public/${citationId}/exists`
+        console.log('  → Exists check:', existsUrl)
+        const existsResponse = await fetch(existsUrl)
         const { exists } = await existsResponse.json()
 
         if (!exists) {
+          console.log('  ❌ Development does not exist')
           // Mark as not found without triggering 404 error
           setDevelopments(prev => new Map(prev).set(citationId, null as any))
           setLoading(false)
@@ -98,7 +103,9 @@ export function EliteCitationPanel({
         }
 
         // Development exists, fetch full data
-        const response = await fetch(`/api/developments/public/${citationId}`)
+        const fetchUrl = `/api/developments/public/${citationId}`
+        console.log('  → Fetching:', fetchUrl)
+        const response = await fetch(fetchUrl)
 
         if (response.ok) {
           const dev = await response.json()
@@ -212,7 +219,7 @@ export function EliteCitationPanel({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 z-40"
+        className="fixed inset-0 bg-black/50 z-[10001]"
         onClick={onClose}
       />
 
@@ -222,7 +229,7 @@ export function EliteCitationPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden md:flex fixed right-0 top-0 bottom-0 w-[380px] flex-col bg-background border-l border-border z-50 shadow-xl"
+        className="hidden md:flex fixed right-0 top-0 bottom-0 w-[380px] flex-col bg-background border-l border-border z-[10002] shadow-xl"
       >
         {/* Desktop Header with Close Button */}
         <div className="px-4 py-4 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0">
@@ -321,7 +328,7 @@ export function EliteCitationPanel({
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: "100%", opacity: 0 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="md:hidden fixed inset-0 w-full z-50 h-full bg-background flex flex-col overflow-hidden shadow-xl"
+        className="md:hidden fixed inset-0 w-full z-[10002] h-full bg-background flex flex-col overflow-hidden shadow-xl"
       >
         {/* Mobile Header with Close Button */}
         <div className="px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">

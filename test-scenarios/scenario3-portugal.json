@@ -1,0 +1,41 @@
+{
+  "thesis": {
+    "move_description": "Execute Portugal Golden Visa via EUR 500K venture capital fund investment, combined with NHR tax regime application for 10-year flat 20% income tax on foreign-source income",
+    "expected_outcome": "EU residency and eventual citizenship pathway, favorable tax treatment on global income, Schengen access, and diversification away from Brexit uncertainty",
+    "move_type": "relocation",
+    "target_amount": "$500K-1M",
+    "target_locations": ["Portugal", "EU"],
+    "timeline": "6 months"
+  },
+  "constraints": {
+    "liquidity_horizon": "90 days",
+    "liquidity_amount_needed": "$800K",
+    "liquidity_events": ["Annual bonus Mar 2025 ($400K)", "RSU vest Jun 2025 ($600K)", "Property sale completion Sep 2025 ($1.2M)"],
+    "current_jurisdictions": ["United Kingdom"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No fund with less than 3-year track record", "No single fund exposure", "No funds without quarterly liquidity windows"],
+    "deal_breakers": ["Loss of UK pension benefits", "Double taxation on employment income"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": null,
+    "advisors": [
+      {"type": "tax", "name": "EY Portugal", "jurisdiction": "Portugal"},
+      {"type": "immigration", "name": "Fragomen", "jurisdiction": "Portugal"},
+      {"type": "legal", "name": "PLMJ", "jurisdiction": "Portugal"}
+    ],
+    "existing_entities": [
+      {"type": "ISA", "jurisdiction": "United Kingdom", "purpose": "Tax-free savings"},
+      {"type": "SIPP", "jurisdiction": "United Kingdom", "purpose": "Pension"}
+    ],
+    "banking_rails": [
+      {"bank": "Barclays Premier", "jurisdiction": "United Kingdom", "status": "active"},
+      {"bank": "Millennium BCP", "jurisdiction": "Portugal", "status": "planned"}
+    ],
+    "has_formal_ips": false,
+    "ips_notes": null
+  },
+  "urgency": "priority"
+}

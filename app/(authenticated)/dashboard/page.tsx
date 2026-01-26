@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { HomeDashboardElite } from "@/components/home-dashboard-elite"
 import { getCurrentUser } from "@/lib/auth-manager"
 import { usePageTitle } from "@/hooks/use-page-title"
+import "@/lib/utils/clear-dashboard-cache" // Load cache clearing utilities
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -66,9 +67,9 @@ export default function DashboardPage() {
         // No need to check auth state - fetch will send cookies automatically
         const response = await fetch(`/api/assessment/history/${userId}`, {
           credentials: 'include' // Ensure cookies are sent
-        })
+        }).catch(() => null) // Silently catch network errors
 
-        if (response.ok) {
+        if (response && response.ok) {
           const data = await response.json()
           const assessments = data?.assessments || data || []
 
@@ -78,17 +79,17 @@ export default function DashboardPage() {
             // Show dashboard anyway - the P toggle will prompt them to take assessment
             setHasAssessment(false)
           }
-        } else if (response.status === 401 || response.status === 403) {
+        } else if (response && (response.status === 401 || response.status === 403)) {
           // Backend says not authenticated - auth expired during page load
           // Layout will handle redirect on next navigation
           setHasAssessment(false)
         } else {
-          // On other API error, allow access (fail open to prevent blocking)
-          setHasAssessment(true)
+          // On other API error (including 404), allow access (fail open to prevent blocking)
+          setHasAssessment(false)
         }
       } catch (error) {
         // On error, allow access (fail open)
-        setHasAssessment(true)
+        setHasAssessment(false)
       } finally {
         setIsCheckingAccess(false)
       }

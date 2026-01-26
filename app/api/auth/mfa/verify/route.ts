@@ -69,8 +69,9 @@ async function handlePost(request: NextRequest) {
 
     try {
       // Retrieve the proxy MFA session from cookies (serverless-safe)
-      const cookieStore = cookies();
-      
+      // Note: In Next.js 15+, cookies() returns a Promise
+      const cookieStore = await cookies();
+
       // Try to get session from token-specific cookie first
       let encryptedSession = cookieStore.get(`mfa_token_${mfa_token.substring(0, 8)}`)?.value;
       
@@ -282,33 +283,36 @@ async function handlePost(request: NextRequest) {
             });
           }
 
+          // PWA-compatible cookie settings
+          const isProd = process.env.NODE_ENV === 'production';
+
           // Fallback: If no cookies in headers but tokens in body, set them manually
           if (backendResponse.access_token) {
-            const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
+            const accessTokenAge = 7 * 24 * 60 * 60; // Always 7 days to avoid iOS Safari issues
             successResponse.cookies.set('access_token', backendResponse.access_token, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax', // Changed from 'strict' to 'lax' for better compatibility with API calls
+              secure: isProd,
+              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
               path: '/',
               maxAge: accessTokenAge
             });
             logger.info('access_token cookie set from response body', {
               tokenLength: backendResponse.access_token.length,
-              secure: process.env.NODE_ENV === 'production'
+              secure: isProd
             });
           }
 
           if (backendResponse.refresh_token) {
             successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
+              secure: isProd,
+              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days
             });
             logger.info('refresh_token cookie set from response body', {
               tokenLength: backendResponse.refresh_token.length,
-              secure: process.env.NODE_ENV === 'production'
+              secure: isProd
             });
           }
 
@@ -326,8 +330,8 @@ async function handlePost(request: NextRequest) {
 
           successResponse.cookies.set('session_user', sessionUserData, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure: isProd,
+            sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
             path: '/',
             maxAge: 7 * 24 * 60 * 60 // 7 days
           });
@@ -341,8 +345,8 @@ async function handlePost(request: NextRequest) {
           if (rememberMe) {
             successResponse.cookies.set('remember_me', 'true', {
               httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
+              secure: isProd,
+              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token
             });

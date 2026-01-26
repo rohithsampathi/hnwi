@@ -220,6 +220,17 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
   const [totalCount, setTotalCount] = useState(0);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
+  // TEMPORARY: Always bust cache for debugging
+  // TODO: Re-enable caching after verifying data is fresh
+  const TEMPORARILY_DISABLE_CACHE = false; // ✅ Re-enabled caching to prevent rapid refetches
+
+  // CRITICAL FIX: Check URL parameter to trigger cache busting on mount
+  // This solves the timing issue where events are dispatched before component mounts
+  const initialBustCache = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
+    (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
+
+  const [bustCache, setBustCache] = useState(initialBustCache);
+
   const fetchOpportunities = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -258,8 +269,8 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
 
-        // Use secureApi for authenticated requests
-        response = await secureApi.get(apiUrl, true, false);
+        // Use secureApi for authenticated requests with cache busting when needed
+        response = await secureApi.get(apiUrl, true, bustCache);
 
         // Handle wrapped response from backend
         opportunities = response?.opportunities ||
@@ -267,6 +278,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         // CLIENT-SIDE FILTERING: Apply timeframe and expiry filters
         const now = new Date();
+        const beforeFilterCount = opportunities.length;
 
         opportunities = opportunities.filter(opp => {
           // 1. Filter out expired MOEv4 opportunities (180 days after DEVID brief creation)
@@ -276,7 +288,9 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
               const expiryDate = new Date(startDate.getTime() + (180 * 24 * 60 * 60 * 1000)); // +180 days
 
               // Filter out expired opportunities
-              if (expiryDate < now) return false;
+              if (expiryDate < now) {
+                return false;
+              }
             } catch {
               // Keep if date parsing fails
             }
@@ -388,22 +402,53 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
       setError(errorMessage);
     } finally {
       setLoading(false);
+      // Reset bust cache flag after fetching
+      if (bustCache) {
+        setBustCache(false);
+
+        // Clean up URL parameter to prevent continuous cache busting
+        if (typeof window !== 'undefined' && window.location.search.includes('refresh=')) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('refresh');
+          // Use replaceState to avoid adding to browser history
+          window.history.replaceState({}, '', url.toString());
+        }
+      }
     }
   }, [
     isPublic,
     timeframe,
     isPersonalMode,
-    hasCompletedAssessment,
+    // CRITICAL FIX: Don't refetch when hasCompletedAssessment changes in "all" mode
+    // hasCompletedAssessment only matters when isPersonalMode is true
+    // Removing this prevents unnecessary double-fetches on assessment status load
+    // hasCompletedAssessment,
     includeCrownVault,
     publicEndpoint,
     filterCrownVault,
-    cleanCategories
+    cleanCategories,
+    bustCache
   ]);
 
   // Fetch opportunities on mount and when config changes
   useEffect(() => {
     fetchOpportunities();
   }, [fetchOpportunities]);
+
+  // Listen for cache clearing events and force refetch with cache busting
+  useEffect(() => {
+    const handleClearCache = () => {
+      setBustCache(true) // This will trigger fetchOpportunities via dependency
+    }
+
+    window.addEventListener('dashboard:clear-cache', handleClearCache)
+    window.addEventListener('app-data:clear-intelligence', handleClearCache)
+
+    return () => {
+      window.removeEventListener('dashboard:clear-cache', handleClearCache)
+      window.removeEventListener('app-data:clear-intelligence', handleClearCache)
+    }
+  }, [])
 
   return {
     cities,

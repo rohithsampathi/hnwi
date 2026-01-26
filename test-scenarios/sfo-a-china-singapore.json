@@ -1,0 +1,35 @@
+{
+  "thesis": {
+    "move_type": "family_office_setup",
+    "move_description": "Liquidate Shanghai QDII position and establish Singapore family office via GIP pathway",
+    "target_amount": "$8M",
+    "target_locations": ["Singapore"],
+    "source_jurisdiction": "China",
+    "timeline": "6-9 months (SAFE approval dependent)",
+    "expected_outcome": "Geographic diversification from CNY exposure with tax-efficient holding structure"
+  },
+  "control_and_rails": {
+    "veto_holders": ["Father (Shanghai)", "Elder Brother"],
+    "approval_required_above": "$2M",
+    "final_decision_maker": "Principal (subject to family consultation)",
+    "has_formal_ips": false,
+    "banking_rails": [
+      {"bank": "DBS Singapore", "jurisdiction": "Singapore", "status": "pending"},
+      {"bank": "ICBC Shanghai", "jurisdiction": "China", "status": "active"}
+    ],
+    "existing_entities": [
+      {"type": "WFOE", "jurisdiction": "Shanghai", "purpose": "Operating company"},
+      {"type": "Holding Co", "jurisdiction": "Hong Kong", "purpose": "Investment holding"}
+    ],
+    "advisors": [
+      {"type": "tax", "name": "PwC Shanghai (Chen)", "jurisdiction": "China"},
+      {"type": "legal", "name": "Rajah & Tann Singapore", "jurisdiction": "Singapore"}
+    ]
+  },
+  "constraints": {
+    "current_jurisdictions": ["China", "Shanghai", "Hong Kong"],
+    "prohibitions": [],
+    "deal_breakers": ["SAFE rejection", "GIP application denial"],
+    "liquidity_events": ["Daughter's university fees (Sept 2025)"]
+  }
+}

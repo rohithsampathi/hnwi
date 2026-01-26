@@ -1,0 +1,1386 @@
+// =============================================================================
+// SFO PATTERN AUDIT - SHAREABLE PREVIEW PAGE
+// For SFO internal approval before payment
+// Route: /decision-memo/audit/[intakeId]
+// =============================================================================
+
+"use client";
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  FileText,
+  Clock,
+  Lock,
+  CheckCircle,
+  Share2,
+  Download,
+  ArrowRight,
+  ArrowLeft,
+  Shield,
+  Copy,
+  Check,
+  Loader2,
+  AlertTriangle
+} from 'lucide-react';
+import { CrownLoader } from '@/components/ui/crown-loader';
+import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
+import { ArtifactDisplay } from '@/components/decision-memo/pattern-audit/ArtifactDisplay';
+import { PatternAuditWaitingInteractive } from '@/components/decision-memo/PatternAuditWaitingInteractive';
+import { usePatternAudit } from '@/lib/hooks/usePatternAudit';
+import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
+import {
+  AuditSession,
+  PreviewArtifact,
+  ICArtifact
+} from '@/lib/decision-memo/pattern-audit-types';
+import Link from 'next/link';
+
+// Simulation template components (premium UI)
+import { MemoHeader } from '@/components/decision-memo/memo/MemoHeader';
+import { Page1TaxDashboard } from '@/components/decision-memo/memo/Page1TaxDashboard';
+import { Page2AuditVerdict } from '@/components/decision-memo/memo/Page2AuditVerdict';
+import { Page3PeerIntelligence } from '@/components/decision-memo/memo/Page3PeerIntelligence';
+import { TransparencyRegimeSection } from '@/components/decision-memo/memo/TransparencyRegimeSection';
+import { CrisisResilienceSection } from '@/components/decision-memo/memo/CrisisResilienceSection';
+import { RegimeIntelligenceSection } from '@/components/decision-memo/memo/RegimeIntelligenceSection';
+// SFO-Grade Expert Sections (Experts 13-15)
+import { WealthProjectionSection } from '@/components/decision-memo/memo/WealthProjectionSection';
+import { ScenarioTreeSection } from '@/components/decision-memo/memo/ScenarioTreeSection';
+import { HeirManagementSection } from '@/components/decision-memo/memo/HeirManagementSection';
+// Golden Visa / Investment Migration Section
+import { GoldenVisaSection } from '@/components/decision-memo/memo/GoldenVisaSection';
+// Enhanced Golden Visa Intelligence (from KGv3)
+import { GoldenVisaIntelligenceSection } from '@/components/decision-memo/memo/GoldenVisaIntelligenceSection';
+// HNWI Migration Trends Section
+import { HNWITrendsSection } from '@/components/decision-memo/memo/HNWITrendsSection';
+// PDF Cover and Last Pages
+import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
+import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
+import { transformICArtifactToMemoData } from '@/lib/decision-memo/sfo-to-memo-transformer';
+import { Opportunity } from '@/lib/decision-memo/memo-types';
+import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
+import { parseDevCitations, CitationMap } from '@/lib/parse-dev-citations';
+
+interface PageProps {
+  params: {
+    intakeId: string;
+  };
+}
+
+type AuditTier = 'single' | 'annual';
+
+const TIER_CONFIG = {
+  single: {
+    name: 'Single Audit',
+    price: 2500,
+    priceDisplay: '$2,500',
+    description: 'One-time decision posture audit',
+    features: [
+      'Full IC-ready artifact',
+      'PDF export',
+      'Pattern matching against 1,875 developments',
+      '24-hour SLA'
+    ]
+  },
+  annual: {
+    name: 'Annual Architect',
+    price: 25000,
+    priceDisplay: '$25,000',
+    description: '10 audits + HNWI Chronicles Architect Tier',
+    features: [
+      '10 Decision Posture Audits',
+      'HNWI Chronicles Architect Tier access',
+      'Priority 12-hour SLA',
+      'Dedicated intelligence analyst',
+      'Quarterly strategy calls'
+    ],
+    savings: 'Save $12,500 vs single audits + Architect access'
+  }
+};
+
+// Helper to format countdown
+function formatCountdown(ms: number): { hours: number; minutes: number; seconds: number } {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { hours, minutes, seconds };
+}
+
+export default function PatternAuditPreviewPage({ params }: PageProps) {
+  const { intakeId } = params;
+  const router = useRouter();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [session, setSession] = useState<AuditSession | null>(null);
+  const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifact | null>(null);
+  const [fullArtifact, setFullArtifact] = useState<ICArtifact | null>(null);
+  const [backendData, setBackendData] = useState<any>(null);  // Raw backend response with preview_data
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<AuditTier>('single');
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [isUnlockReady, setIsUnlockReady] = useState(false);
+  const [isWaitingForPreview, setIsWaitingForPreview] = useState(false);
+  const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
+
+  const {
+    getSession,
+    getPreviewArtifact,
+    getFullArtifact,
+    initiatePayment,
+    checkPaymentStatus,
+    exportPDF,
+    shareArtifact
+  } = usePatternAudit();
+
+  // SSE connection for real-time updates
+  const {
+    isConnected: sseConnected,
+    previewReady: ssePreviewReady
+  } = useDecisionMemoSSE(isWaitingForPreview ? intakeId : null);
+
+  // Citation panel for expanding citations when clicked
+  const { openPanel: openCitationPanel } = useCitationPanel();
+
+  // Fetch session and artifact data
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Get session status (now returns full_artifact when unlocked)
+        const sessionData = await getSession(intakeId) as any;
+
+        // Check if session includes full artifact (unlocked state)
+        if (sessionData.fullArtifact) {
+          setSession({ ...sessionData, status: 'PAID' });
+          setFullArtifact(sessionData.fullArtifact);
+
+          // Also store preview_data if session includes it (for peer_cohort_stats, capital_flow_data)
+          if (sessionData.preview_data) {
+            setBackendData({
+              preview_data: sessionData.preview_data,
+              memo_data: sessionData.memo_data
+            });
+          }
+          setIsWaitingForPreview(false);
+          return;
+        }
+
+        // Check if paid/unlocked
+        const isPaid = sessionData.status === 'PAID' || sessionData.status === 'FULL_READY' || sessionData.isUnlocked;
+
+        if (isPaid) {
+          setSession({ ...sessionData, status: 'PAID' });
+
+          // Try fetching from artifact endpoint - get raw response for preview_data
+          try {
+            const response = await fetch(`/api/decision-memo/artifact/${intakeId}`);
+            if (response.ok) {
+              const data = await response.json();
+              setBackendData(data);  // Store raw response with preview_data
+              const full = await getFullArtifact(intakeId);
+              setFullArtifact(full);
+            } else {
+              throw new Error('Artifact fetch failed');
+            }
+          } catch (artifactErr) {
+            console.error('Failed to fetch full artifact:', artifactErr);
+            setError('Payment confirmed but artifact not available. Please contact support.');
+          }
+          setIsWaitingForPreview(false);
+        } else if (sessionData.status === 'PREVIEW_READY') {
+          // Preview is ready - fetch it
+          setSession(sessionData);
+          try {
+            const preview = await getPreviewArtifact(intakeId);
+            setPreviewArtifact(preview);
+            setIsWaitingForPreview(false);
+          } catch (previewErr) {
+            // Preview fetch failed despite status being PREVIEW_READY
+            console.error('Preview fetch failed:', previewErr);
+            setError('Failed to load preview. Please refresh the page.');
+            setIsWaitingForPreview(false);
+          }
+        } else if (sessionData.status === 'PAID' || sessionData.status === 'FULL_READY') {
+          setSession(sessionData);
+          const full = await getFullArtifact(intakeId);
+          setFullArtifact(full);
+          setIsWaitingForPreview(false);
+        } else {
+          // Status is PROCESSING, SUBMITTED, or IN_REVIEW - wait for SSE
+          setSession(sessionData);
+          setIsWaitingForPreview(true);
+        }
+      } catch (err) {
+        console.error('Error fetching audit data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load audit');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [intakeId, getSession, getPreviewArtifact, getFullArtifact]);
+
+  // When SSE signals preview is ready, fetch from backend
+  // Always fetch to ensure proper snake_case → camelCase transformation
+  // IMPORTANT: Only set isWaitingForPreview(false) AFTER preview is fetched successfully
+  useEffect(() => {
+    if (ssePreviewReady && isWaitingForPreview && !isFetchingPreviewRef.current) {
+      isFetchingPreviewRef.current = true; // Prevent duplicate fetches
+
+      getPreviewArtifact(intakeId)
+        .then((preview) => {
+          setPreviewArtifact(preview);
+          setSession(prev => prev ? { ...prev, status: 'PREVIEW_READY' } : null);
+          setIsWaitingForPreview(false); // Only set after successful fetch
+        })
+        .catch((err) => {
+          console.error('Failed to fetch preview after SSE signal:', err);
+          setError('Failed to load preview');
+          setIsWaitingForPreview(false); // Also set on error to show error state
+        })
+        .finally(() => {
+          isFetchingPreviewRef.current = false;
+        });
+    }
+  }, [ssePreviewReady, isWaitingForPreview, intakeId, getPreviewArtifact]);
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  // Countdown timer for 24-hour SLA
+  // Uses backend-provided unlockAt and isUnlocked - no fallbacks
+  useEffect(() => {
+    // If backend says already unlocked, skip countdown
+    if (session?.isUnlocked) {
+      setTimeRemaining(0);
+      setIsUnlockReady(true);
+      return;
+    }
+
+    // Must have unlockAt from backend
+    if (!session?.unlockAt) {
+      return; // No unlock time from backend yet
+    }
+
+    const unlockTime = new Date(session.unlockAt).getTime();
+
+    const updateCountdown = () => {
+      const now = Date.now();
+      const remaining = unlockTime - now;
+
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setIsUnlockReady(true);
+      } else {
+        setTimeRemaining(remaining);
+        setIsUnlockReady(false);
+      }
+    };
+
+    // Initial update
+    updateCountdown();
+
+    // Update every second
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [session?.unlockAt, session?.isUnlocked]);
+
+  // Handle payment
+  const handlePayment = useCallback(async () => {
+    setIsProcessingPayment(true);
+
+    try {
+      // Pass selected tier to payment initiation
+      const data = await initiatePayment(intakeId, {
+        tier: selectedTier,
+        amount: TIER_CONFIG[selectedTier].price
+      }) as any;
+
+      // Handle already paid case - fetch full artifact directly
+      if (data.already_paid) {
+        try {
+          const artifact = await getFullArtifact(intakeId);
+          setFullArtifact(artifact);
+          setSession(prev => prev ? { ...prev, status: 'PAID' } : null);
+          setIsProcessingPayment(false);
+        } catch (artifactErr) {
+          console.error('Failed to fetch full artifact:', artifactErr);
+          // Fallback to reload
+          window.location.reload();
+        }
+        return;
+      }
+
+      const { order_id, amount, currency, key } = data;
+
+      if (!key) {
+        throw new Error(`Missing Razorpay key in response. Got: ${JSON.stringify(data)}`);
+      }
+
+      const tierName = selectedTier === 'annual' ? 'Annual Architect Package' : 'Single Audit';
+      const options = {
+        key: key,
+        amount: amount,
+        currency: currency,
+        name: 'HNWI Chronicles',
+        description: `SFO Pattern Audit - ${tierName}`,
+        order_id: order_id,
+        handler: async function (response: any) {
+          // Verify payment
+          const verifyResponse = await fetch('/api/decision-memo/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              intake_id: intakeId,
+              product: 'sfo_pattern_audit',
+              payment_id: response.razorpay_payment_id,
+              order_id: response.razorpay_order_id,
+              signature: response.razorpay_signature
+            }),
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            // Refresh to show full artifact
+            window.location.reload();
+          } else {
+            alert('Payment verification failed. Please contact support.');
+            setIsProcessingPayment(false);
+          }
+        },
+        theme: {
+          color: '#000000'
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessingPayment(false);
+          }
+        }
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ [Payment] Failed:', errorMessage, error);
+      alert(`Payment error: ${errorMessage}`);
+      setIsProcessingPayment(false);
+    }
+  }, [intakeId, initiatePayment, selectedTier]);
+
+  // Copy share link
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  // Export PDF - Uses native PDF generation via @react-pdf/renderer
+  // Uses the EXACT same memoData building logic as the web UI (lines 834-900)
+  const handleExportPDF = async () => {
+    if (!fullArtifact) return;
+
+    try {
+      setIsExportingPDF(true);
+
+      // Build COMPLETE memoData exactly like the web UI does (same as lines 834-900)
+      // This ensures PDF shows the same data as web UI
+      let pdfMemoData;
+
+      if (backendData?.preview_data) {
+        // Merge expert analysis sections from memo_data into preview_data if not already present
+        const previewData = { ...backendData.preview_data };
+
+        // Check root level of backendData for expert sections
+        if (!previewData.transparency_regime_impact) {
+          previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
+                                                    (backendData as any).transparency_regime_impact;
+        }
+        if (!previewData.crisis_resilience_stress_test) {
+          previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
+                                                       (backendData as any).crisis_resilience_stress_test;
+        }
+
+        // SFO-Grade Expert Data (Experts 13-15)
+        if (!previewData.heir_management_data || Object.keys(previewData.heir_management_data || {}).length === 0) {
+          previewData.heir_management_data = backendData.memo_data?.heir_management_data ||
+                                              backendData.full_artifact?.heir_management_data ||
+                                              (backendData as any).heir_management_data;
+          previewData.heir_management_analysis = backendData.memo_data?.heir_management_analysis ||
+                                                  backendData.full_artifact?.heir_management_analysis ||
+                                                  (backendData as any).heir_management_analysis;
+        }
+        if (!previewData.wealth_projection_data || Object.keys(previewData.wealth_projection_data || {}).length === 0) {
+          previewData.wealth_projection_data = backendData.memo_data?.wealth_projection_data ||
+                                                backendData.full_artifact?.wealth_projection_data ||
+                                                (backendData as any).wealth_projection_data;
+          previewData.wealth_projection_analysis = backendData.memo_data?.wealth_projection_analysis ||
+                                                    backendData.full_artifact?.wealth_projection_analysis ||
+                                                    (backendData as any).wealth_projection_analysis;
+        }
+        if (!previewData.scenario_tree_data || Object.keys(previewData.scenario_tree_data || {}).length === 0) {
+          previewData.scenario_tree_data = backendData.memo_data?.scenario_tree_data ||
+                                            backendData.full_artifact?.scenario_tree_data ||
+                                            (backendData as any).scenario_tree_data;
+          previewData.scenario_tree_analysis = backendData.memo_data?.scenario_tree_analysis ||
+                                                backendData.full_artifact?.scenario_tree_analysis ||
+                                                (backendData as any).scenario_tree_analysis;
+        }
+
+        // Golden Visa / Destination Drivers (from KGv3)
+        if (!previewData.destination_drivers || !previewData.destination_drivers?.visa_programs) {
+          previewData.destination_drivers = backendData.memo_data?.destination_drivers ||
+                                             backendData.full_artifact?.destination_drivers ||
+                                             (backendData as any).destination_drivers;
+        }
+
+        // HNWI Trends Analysis
+        if (!previewData.hnwi_trends_analysis) {
+          previewData.hnwi_trends_analysis = backendData.memo_data?.hnwi_trends_analysis ||
+                                              backendData.full_artifact?.hnwi_trends_analysis ||
+                                              (backendData as any).hnwi_trends_analysis;
+        }
+
+        // Create memo_data if it doesn't exist
+        const memoDataObj = backendData.memo_data || {
+          kgv3_intelligence_used: {
+            precedents: fullArtifact.intelligenceSources?.developmentsMatched || 0,
+            failure_modes: fullArtifact.intelligenceSources?.failurePatternsMatched || 0,
+            sequencing_rules: fullArtifact.intelligenceSources?.sequencingRulesApplied || 0,
+            jurisdictions: 2
+          }
+        };
+
+        pdfMemoData = {
+          success: true,
+          intake_id: intakeId,
+          generated_at: backendData.generated_at || fullArtifact.generatedAt,
+          preview_data: previewData,
+          memo_data: memoDataObj,
+          full_memo_url: backendData.full_memo_url || ''
+        };
+      } else {
+        // Fallback to transformation if no backend data
+        pdfMemoData = transformICArtifactToMemoData(fullArtifact, intakeId);
+      }
+
+      console.log('[PDF Export] Using complete memoData with merged expert sections');
+
+      // Call the exportPDF hook with complete memoData
+      await exportPDF(pdfMemoData as any);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to export PDF. Please try again.');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  // Share
+  const handleShare = async () => {
+    if (fullArtifact) {
+      await shareArtifact(intakeId, { copyLink: true });
+    }
+  };
+
+  // Memoized callback for preview ready - MUST be before conditional returns (React hooks rule)
+  const handlePreviewReady = useCallback(() => {
+    // Check if already fetching to prevent duplicates
+    if (isFetchingPreviewRef.current) {
+      return;
+    }
+
+    isFetchingPreviewRef.current = true;
+
+    // Fetch the preview when ready
+    getPreviewArtifact(intakeId)
+      .then((preview) => {
+        setPreviewArtifact(preview);
+        setSession(prev => prev ? { ...prev, status: 'PREVIEW_READY' } : null);
+        setIsWaitingForPreview(false);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch preview:', err);
+        setError('Failed to load preview');
+        setIsWaitingForPreview(false);
+      })
+      .finally(() => {
+        isFetchingPreviewRef.current = false;
+      });
+  }, [intakeId, getPreviewArtifact]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <CrownLoader
+          size="lg"
+          text="Loading Audit"
+          subtext="Fetching your decision posture analysis..."
+        />
+      </div>
+    );
+  }
+
+  // Waiting for preview - show interactive loader with SSE connection
+  if (isWaitingForPreview) {
+    return (
+      <PatternAuditWaitingInteractive
+        intakeId={intakeId}
+        onPreviewReady={handlePreviewReady}
+        sseConnected={sseConnected}
+        ssePreviewReady={ssePreviewReady}
+      />
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-4 text-foreground">Audit Not Found</h1>
+          <p className="text-muted-foreground mb-6">{error}</p>
+          <Link
+            href="/decision-memo"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Start New Audit
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Processing state (SUBMITTED, IN_REVIEW, or PROCESSING)
+  if (session?.status === 'SUBMITTED' || session?.status === 'IN_REVIEW' || session?.status === 'PROCESSING') {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">HC</span>
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">Pattern Audit</p>
+                  <p className="text-muted-foreground text-xs">In Progress</p>
+                </div>
+              </div>
+              <button
+                onClick={handleCopyLink}
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted flex items-center gap-2"
+              >
+                {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {linkCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Processing Content */}
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="relative w-24 h-24 mx-auto mb-8">
+              <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+              <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <Clock className="absolute inset-0 m-auto w-10 h-10 text-primary" />
+            </div>
+
+            <h1 className="text-3xl font-bold text-foreground mb-4">
+              Decision Posture Audit in Progress
+            </h1>
+            <p className="text-lg text-muted-foreground mb-8">
+              Our intelligence systems are analyzing your decision thesis against 1,875 wealth developments and failure patterns.
+            </p>
+
+            <div className="bg-card border border-border rounded-2xl p-6 mb-8">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="text-left">
+                  <p className="text-muted-foreground">Status</p>
+                  <p className="text-foreground font-medium flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    {session.status === 'IN_REVIEW' ? 'Under Expert Review' : 'Processing'}
+                  </p>
+                </div>
+                <div className="text-left">
+                  <p className="text-muted-foreground">Submitted</p>
+                  <p className="text-foreground font-medium">
+                    {new Date(session.submittedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="text-left">
+                  <p className="text-muted-foreground">Expected Completion</p>
+                  <p className="text-foreground font-medium">Within 24 hours</p>
+                </div>
+                <div className="text-left">
+                  <p className="text-muted-foreground">Price</p>
+                  <p className="text-foreground font-medium">${session.price?.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <p className="text-sm text-foreground mb-2">
+                <span className="font-semibold">Share this link for internal approval</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Forward to your family office or advisors. They'll see the preview once generated.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Preview Ready state
+  if (session?.status === 'PREVIEW_READY' && previewArtifact) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Processing Payment Overlay */}
+        {isProcessingPayment && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <CrownLoader
+              size="lg"
+              text="Processing Payment"
+              subtext="Please complete the payment..."
+            />
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-sm">HC</span>
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">Pattern Audit</p>
+                  <p className="text-muted-foreground text-xs">Preview Ready</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium rounded-full flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Preview Mode
+                </span>
+                <button
+                  onClick={handleCopyLink}
+                  className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted flex items-center gap-2"
+                >
+                  {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                  Share
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview Content */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {/* Preview Artifact Display */}
+            <div className="bg-card border border-border rounded-2xl p-6 sm:p-8">
+              <PreviewArtifactDisplay preview={previewArtifact} />
+            </div>
+
+            {/* Payment CTA with Tier Selection */}
+            <div className="mt-8 bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/30 rounded-2xl p-6 sm:p-8">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-foreground mb-2">
+                  Unlock Full IC Artifact
+                </h3>
+                <p className="text-muted-foreground">
+                  Select your tier to unlock complete sequence details, failure mechanisms, and pattern analysis
+                </p>
+              </div>
+
+              {/* Tier Selection */}
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                {/* Single Audit Tier */}
+                <button
+                  onClick={() => setSelectedTier('single')}
+                  className={`
+                    relative p-5 rounded-xl border-2 text-left transition-all
+                    ${selectedTier === 'single'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:border-primary/50'
+                    }
+                  `}
+                >
+                  {selectedTier === 'single' && (
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <p className="font-semibold text-foreground mb-1">{TIER_CONFIG.single.name}</p>
+                  <p className="text-2xl font-bold text-foreground mb-2">{TIER_CONFIG.single.priceDisplay}</p>
+                  <p className="text-xs text-muted-foreground mb-3">{TIER_CONFIG.single.description}</p>
+                  <div className="space-y-1.5">
+                    {TIER_CONFIG.single.features.slice(0, 3).map((feature, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <CheckCircle className="w-3 h-3 text-primary flex-shrink-0" />
+                        <span className="text-muted-foreground">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+
+                {/* Annual Architect Tier */}
+                <button
+                  onClick={() => setSelectedTier('annual')}
+                  className={`
+                    relative p-5 rounded-xl border-2 text-left transition-all
+                    ${selectedTier === 'annual'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:border-primary/50'
+                    }
+                  `}
+                >
+                  {selectedTier === 'annual' && (
+                    <div className="absolute top-3 right-3">
+                      <CheckCircle className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <div className="absolute -top-2 left-4">
+                    <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded">
+                      Best Value
+                    </span>
+                  </div>
+                  <p className="font-semibold text-foreground mb-1">{TIER_CONFIG.annual.name}</p>
+                  <p className="text-2xl font-bold text-foreground mb-2">{TIER_CONFIG.annual.priceDisplay}</p>
+                  <p className="text-xs text-muted-foreground mb-3">{TIER_CONFIG.annual.description}</p>
+                  <div className="space-y-1.5">
+                    {TIER_CONFIG.annual.features.slice(0, 3).map((feature, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <CheckCircle className="w-3 h-3 text-primary flex-shrink-0" />
+                        <span className="text-muted-foreground">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {TIER_CONFIG.annual.savings && (
+                    <p className="mt-3 text-[10px] text-primary font-medium">{TIER_CONFIG.annual.savings}</p>
+                  )}
+                </button>
+              </div>
+
+              {/* What's Included */}
+              <div className="bg-card/50 rounded-lg p-4 mb-6">
+                <p className="text-xs font-medium text-foreground mb-3">Full artifact includes:</p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {[
+                    'Executive verdict with rationale',
+                    'Execution sequence with owners',
+                    'Failure mode mechanisms',
+                    'Pattern anchors with confidence',
+                    'Concrete next steps (7-21 days)',
+                    'Exportable PDF for IC'
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-3 h-3 text-primary flex-shrink-0" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Countdown Timer or Unlock Button */}
+              {!isUnlockReady ? (
+                <div className="text-center">
+                  {/* Countdown Display */}
+                  <div className="bg-muted/50 rounded-xl p-6 mb-4">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <Clock className="w-5 h-5 text-primary" />
+                      <span className="text-sm font-medium text-foreground">Full Artifact Available In</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
+                      {(() => {
+                        const { hours, minutes, seconds } = formatCountdown(timeRemaining);
+                        return (
+                          <>
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-foreground tabular-nums">
+                                {String(hours).padStart(2, '0')}
+                              </div>
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Hours</div>
+                            </div>
+                            <div className="text-2xl font-bold text-muted-foreground">:</div>
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-foreground tabular-nums">
+                                {String(minutes).padStart(2, '0')}
+                              </div>
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min</div>
+                            </div>
+                            <div className="text-2xl font-bold text-muted-foreground">:</div>
+                            <div className="text-center">
+                              <div className="text-3xl font-bold text-foreground tabular-nums">
+                                {String(seconds).padStart(2, '0')}
+                              </div>
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Sec</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      Our intelligence systems are analyzing your decision thesis against 1,875 wealth developments.
+                    </p>
+                  </div>
+
+                  {/* Disabled Button */}
+                  <button
+                    disabled
+                    className="w-full py-4 px-6 bg-muted text-muted-foreground
+                               font-bold text-lg rounded-xl flex items-center justify-center gap-2
+                               cursor-not-allowed"
+                  >
+                    <Lock className="w-5 h-5" />
+                    Unlock Available After Analysis
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handlePayment}
+                    disabled={isProcessingPayment}
+                    className="w-full py-4 px-6 bg-primary hover:bg-primary/90 text-primary-foreground
+                               font-bold text-lg rounded-xl flex items-center justify-center gap-2
+                               shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                  >
+                    Unlock Full Memo • {TIER_CONFIG[selectedTier].priceDisplay}
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+
+                  <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+                    <Shield className="w-4 h-4" />
+                    Secure payment via Razorpay
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full Artifact state (PAID or FULL_READY) - Uses simulation template UI
+  if ((session?.status === 'PAID' || session?.status === 'FULL_READY') && fullArtifact) {
+    // Use backend preview_data directly if available (has real command_centre opportunities)
+    // Fall back to transformation only if backendData not available
+    let memoData;
+    // Check if we have preview_data (memo_data may not exist, that's okay)
+    if (backendData?.preview_data) {
+      // Merge expert analysis sections from memo_data into preview_data if not already present
+      const previewData = { ...backendData.preview_data };
+
+      // Also check root level of backendData for expert sections
+      if (!previewData.transparency_regime_impact) {
+        previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
+                                                  backendData.transparency_regime_impact;
+      }
+      if (!previewData.crisis_resilience_stress_test) {
+        previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
+                                                     backendData.crisis_resilience_stress_test;
+      }
+
+      // SFO-Grade Expert Data (Experts 13-15)
+      // Merge from memo_data, full_artifact, or root level if not in preview_data
+      // Backend may store in different locations depending on response format
+      if (!previewData.heir_management_data || Object.keys(previewData.heir_management_data).length === 0) {
+        previewData.heir_management_data = backendData.memo_data?.heir_management_data ||
+                                            backendData.full_artifact?.heir_management_data ||
+                                            backendData.heir_management_data;
+        previewData.heir_management_analysis = backendData.memo_data?.heir_management_analysis ||
+                                                backendData.full_artifact?.heir_management_analysis ||
+                                                backendData.heir_management_analysis;
+      }
+      if (!previewData.wealth_projection_data || Object.keys(previewData.wealth_projection_data).length === 0) {
+        previewData.wealth_projection_data = backendData.memo_data?.wealth_projection_data ||
+                                              backendData.full_artifact?.wealth_projection_data ||
+                                              backendData.wealth_projection_data;
+        previewData.wealth_projection_analysis = backendData.memo_data?.wealth_projection_analysis ||
+                                                  backendData.full_artifact?.wealth_projection_analysis ||
+                                                  backendData.wealth_projection_analysis;
+      }
+      if (!previewData.scenario_tree_data || Object.keys(previewData.scenario_tree_data).length === 0) {
+        previewData.scenario_tree_data = backendData.memo_data?.scenario_tree_data ||
+                                          backendData.full_artifact?.scenario_tree_data ||
+                                          backendData.scenario_tree_data;
+        previewData.scenario_tree_analysis = backendData.memo_data?.scenario_tree_analysis ||
+                                              backendData.full_artifact?.scenario_tree_analysis ||
+                                              backendData.scenario_tree_analysis;
+      }
+
+      // Golden Visa / Destination Drivers (from KGv3)
+      if (!previewData.destination_drivers || !previewData.destination_drivers.visa_programs) {
+        previewData.destination_drivers = backendData.memo_data?.destination_drivers ||
+                                           backendData.full_artifact?.destination_drivers ||
+                                           backendData.destination_drivers;
+      }
+
+      // Create memo_data if it doesn't exist
+      const memoDataObj = backendData.memo_data || {
+        kgv3_intelligence_used: {
+          precedents: fullArtifact.intelligenceSources?.developmentsMatched || 0,
+          failure_modes: fullArtifact.intelligenceSources?.failurePatternsMatched || 0,
+          sequencing_rules: fullArtifact.intelligenceSources?.sequencingRulesApplied || 0,
+          jurisdictions: 2
+        }
+      };
+
+      memoData = {
+        success: true,
+        intake_id: intakeId,
+        generated_at: backendData.generated_at || fullArtifact.generatedAt,
+        preview_data: previewData,
+        memo_data: memoDataObj,
+        full_memo_url: backendData.full_memo_url || ''
+      };
+    } else {
+      memoData = transformICArtifactToMemoData(fullArtifact, intakeId);
+    }
+
+    // Build citation map from opportunities
+    const citationMap: CitationMap = {};
+    (memoData.preview_data.all_opportunities || []).forEach((opp: Opportunity) => {
+      if (opp.dev_id) {
+        citationMap[opp.dev_id] = {
+          dev_id: opp.dev_id,
+          title: opp.title,
+          summary: opp.expected_return,
+          source: 'Pattern Intelligence',
+          date: memoData.generated_at
+        };
+      }
+    });
+
+    // Handle citation clicks - opens the citation panel
+    const handleCitationClick = (citationId: string) => {
+      // Look up citation details from citationMap
+      const citationDetails = citationMap[citationId];
+
+      openCitationPanel(
+        [citationId],
+        {
+          title: citationDetails?.title || `Development ${citationId}`,
+          description: citationDetails?.summary || 'Intelligence from HNWI World knowledge graph',
+          source: 'Pattern Intelligence Analysis'
+        }
+      );
+    };
+
+    return (
+      <div className="min-h-screen bg-background">
+        {/* PDF Export Loading Overlay */}
+        {isExportingPDF && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+            <CrownLoader
+              size="lg"
+              text="Generating PDF"
+              subtext="Creating institutional-grade document..."
+            />
+          </div>
+        )}
+
+        {/* Premium Sticky Header - Hidden in PDF export */}
+        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border print:hidden">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
+                  <span className="text-primary-foreground font-bold text-sm">HC</span>
+                </div>
+                <div>
+                  <p className="text-foreground font-semibold">HNWI Chronicles</p>
+                  <p className="text-muted-foreground text-xs">
+                    Ref: {intakeId.slice(7, 19).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleShare}
+                  className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted flex items-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Export PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Premium Simulation Template Content */}
+        <div id="artifact-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 print:max-w-[210mm] print:px-0 print:py-0">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            className="space-y-12 sm:space-y-20"
+          >
+            {/* ═══════════════════════════════════════════════════════════════════════ */}
+            {/* HARVARD WEALTH MANAGEMENT PSYCHOLOGY FLOW                               */}
+            {/* Hook → Value → Social Proof → Risk → Opportunity → Projection → Legacy → Action */}
+            {/* ═══════════════════════════════════════════════════════════════════════ */}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PDF COVER PAGE - HNWI Chronicles Branding                                       */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            <MemoCoverPage
+              intakeId={intakeId}
+              sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+              destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+              generatedAt={memoData.generated_at}
+              exposureClass={memoData.preview_data.exposure_class}
+              totalSavings={memoData.preview_data.total_savings}
+            />
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 1: EXECUTIVE SUMMARY (Stanford BLUF - Bottom Line Up Front)              */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 1. MemoHeader - Premium Header with Key Metrics (The Hook) */}
+            <MemoHeader
+              intakeId={intakeId}
+              generatedAt={memoData.generated_at}
+              exposureClass={memoData.preview_data.exposure_class}
+              totalSavings={memoData.preview_data.total_savings}
+              precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+              sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+              destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+              sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+              destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+              taxDifferential={memoData.preview_data.tax_differential}
+              valueCreation={memoData.preview_data.value_creation}
+            />
+
+            {/* 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
+            <section>
+              <Page2AuditVerdict
+                mistakes={memoData.preview_data.all_mistakes}
+                opportunitiesCount={memoData.preview_data.opportunities_count}
+                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                ddChecklist={memoData.preview_data.dd_checklist}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
+                dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
+                riskAssessment={memoData.preview_data.risk_assessment}
+              />
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 2: VALUE PROPOSITION (Tax Analysis & Projections)                        */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 3. Tax Jurisdiction Analysis - Immediate Value Proposition */}
+            <section>
+              <Page1TaxDashboard
+                totalSavings={memoData.preview_data.total_savings}
+                exposureClass={memoData.preview_data.exposure_class}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                executionSequence={memoData.preview_data.execution_sequence}
+                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+                taxDifferential={memoData.preview_data.tax_differential}
+                sections={['tax']}
+              />
+            </section>
+
+            {/* 3. Regime Intelligence (NHR, 13O, Special Tax Regimes) - Part of Tax Analysis */}
+            {memoData.preview_data.peer_cohort_stats?.regime_intelligence?.has_special_regime && (
+              <section>
+                <RegimeIntelligenceSection
+                  regimeIntelligence={memoData.preview_data.peer_cohort_stats.regime_intelligence}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            )}
+
+            {/* 4. 10-Year Wealth Projection - Part of Tax/Value Analysis */}
+            {(memoData.preview_data.wealth_projection_analysis ||
+              (memoData.preview_data.wealth_projection_data &&
+               Object.keys(memoData.preview_data.wealth_projection_data).length > 0)) && (
+              <section>
+                <WealthProjectionSection
+                  data={memoData.preview_data.wealth_projection_data || {}}
+                  rawAnalysis={memoData.preview_data.wealth_projection_analysis}
+                />
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 3: SOCIAL PROOF (Interest - "Others Like You Are Moving")                */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 6. Peer Intelligence - Drivers, Peer Analysis & Corridor (Social Proof) */}
+            <section>
+              <Page3PeerIntelligence
+                opportunities={memoData.preview_data.all_opportunities}
+                peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
+                onCitationClick={handleCitationClick}
+                citationMap={citationMap}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                peerCohortStats={memoData.preview_data.peer_cohort_stats}
+                capitalFlowData={memoData.preview_data.capital_flow_data}
+                sections={['drivers', 'peer', 'corridor']}
+              />
+            </section>
+
+            {/* 7. HNWI Migration Trends - More Social Proof */}
+            {memoData.preview_data.hnwi_trends && memoData.preview_data.hnwi_trends.length > 0 && (
+              <section>
+                <HNWITrendsSection
+                  trends={memoData.preview_data.hnwi_trends}
+                  confidence={memoData.preview_data.hnwi_trends_confidence}
+                  dataQuality={memoData.preview_data.hnwi_trends_data_quality}
+                  citations={memoData.preview_data.hnwi_trends_citations}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            )}
+
+            {/* 8. Geographic Opportunity Distribution - Tied to Migration Trends */}
+            <section>
+              <Page3PeerIntelligence
+                opportunities={memoData.preview_data.all_opportunities}
+                peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
+                onCitationClick={handleCitationClick}
+                citationMap={citationMap}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                peerCohortStats={memoData.preview_data.peer_cohort_stats}
+                capitalFlowData={memoData.preview_data.capital_flow_data}
+                sections={['geographic']}
+              />
+            </section>
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 4: RISK DETAILS (Detailed Risk Analysis)                                 */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 9. Transparency Regime Impact - Specific Risk */}
+            {(memoData.preview_data.transparency_data || memoData.preview_data.transparency_regime_impact) && (
+              <section>
+                <TransparencyRegimeSection
+                  transparencyData={memoData.preview_data.transparency_data}
+                  content={memoData.preview_data.transparency_regime_impact}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            )}
+
+            {/* 10. Crisis Resilience Stress Test - Antifragile Framework */}
+            {(memoData.preview_data.crisis_data || memoData.preview_data.crisis_resilience_stress_test) && (
+              <section>
+                <CrisisResilienceSection
+                  crisisData={memoData.preview_data.crisis_data}
+                  content={memoData.preview_data.crisis_resilience_stress_test}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 5: OPPORTUNITY (Desire - After Risk is Addressed)                        */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 11. Golden Visa / Investment Migration (Single Unified Section) */}
+            {/* Prioritize KGv3 intelligence if available, otherwise show basic visa programs */}
+            {memoData.preview_data.golden_visa_intelligence ? (
+              <section>
+                <GoldenVisaIntelligenceSection
+                  intelligence={memoData.preview_data.golden_visa_intelligence}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            ) : (memoData.preview_data.destination_drivers?.visa_programs &&
+                 memoData.preview_data.destination_drivers.visa_programs.length > 0 && (
+              <section>
+                <GoldenVisaSection
+                  destinationDrivers={memoData.preview_data.destination_drivers}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            ))}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 6: DECISION ANALYSIS (Strategic Decision Support)                        */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 12. Decision Scenario Tree (Expert 15) */}
+            {(memoData.preview_data.scenario_tree_analysis ||
+              (memoData.preview_data.scenario_tree_data &&
+               Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
+              <section>
+                <ScenarioTreeSection
+                  data={memoData.preview_data.scenario_tree_data || {}}
+                  rawAnalysis={memoData.preview_data.scenario_tree_analysis}
+                />
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 7: LEGACY (Emotional Connection - Family & Succession)                   */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 13. Heir Management & Succession (Expert 13 - Hughes Framework) */}
+            {(memoData.preview_data.heir_management_analysis ||
+              (memoData.preview_data.heir_management_data &&
+               Object.keys(memoData.preview_data.heir_management_data).length > 0)) && (
+              <section>
+                <HeirManagementSection
+                  data={memoData.preview_data.heir_management_data || {}}
+                  rawAnalysis={memoData.preview_data.heir_management_analysis}
+                />
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 8: ACTION (Call to Action - Implementation Roadmap at End)               */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 14. Implementation Roadmap - Action Items */}
+            <section>
+              <Page1TaxDashboard
+                totalSavings={memoData.preview_data.total_savings}
+                exposureClass={memoData.preview_data.exposure_class}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                executionSequence={memoData.preview_data.execution_sequence}
+                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+                taxDifferential={memoData.preview_data.tax_differential}
+                sections={['implementation']}
+              />
+            </section>
+
+            {/* Premium Footer */}
+            <motion.div
+              className="relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border border-border rounded-2xl sm:rounded-3xl p-6 sm:p-10"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
+                    Pattern Intelligence Complete
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-xl">
+                    This audit analyzed{' '}
+                    <span className="text-foreground font-medium">
+                      {fullArtifact.intelligenceSources.developmentsMatched.toLocaleString()} developments
+                    </span>
+                    , matched{' '}
+                    <span className="text-foreground font-medium">
+                      {fullArtifact.intelligenceSources.failurePatternsMatched} failure patterns
+                    </span>
+                    , and applied{' '}
+                    <span className="text-foreground font-medium">
+                      {fullArtifact.intelligenceSources.sequencingRulesApplied} sequencing rules
+                    </span>
+                    .
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Reference</p>
+                    <p className="text-sm font-mono font-medium text-primary">
+                      {intakeId.slice(0, 20).toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="mt-8 pt-6 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center max-w-3xl mx-auto">
+                  Pattern & Market Intelligence Report based on {(memoData.memo_data?.kgv3_intelligence_used?.precedents || 0).toLocaleString()}+ analyzed precedents.
+                  This report provides strategic intelligence and pattern analysis for informed decision-making.
+                  For execution and implementation, consult your legal, tax, and financial advisory teams.
+                </p>
+              </div>
+            </motion.div>
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PDF LAST PAGE - HNWI Chronicles Branding & Legal                                */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            <MemoLastPage
+              intakeId={intakeId}
+              precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+              generatedAt={memoData.generated_at}
+            />
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <CrownLoader size="lg" text="Loading..." />
+    </div>
+  );
+}

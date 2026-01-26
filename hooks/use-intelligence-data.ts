@@ -416,6 +416,16 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const fetchInProgressRef = useRef(false)
+
+  // TEMPORARY: Always bust cache for debugging
+  // TODO: Re-enable caching after verifying data is fresh
+  const TEMPORARILY_DISABLE_CACHE = true;
+
+  // CRITICAL FIX: Check URL parameter to trigger cache busting on mount
+  // This solves the timing issue where events are dispatched before component mounts
+  const initialForceRefresh = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
+    (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
+
   const hasFetchedRef = useRef(false)
   const failureCountRef = useRef(0)
   const lastFailureTimeRef = useRef(0)
@@ -478,10 +488,8 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       const fetchWithDelay = async (endpoint: string, cacheDuration: number, delay: number = 250) => {
         try {
           await new Promise(resolve => setTimeout(resolve, delay))
-          return await secureApi.get(endpoint, true, {
-            enableCache: !forceRefresh,
-            cacheDuration: cacheDuration
-          })
+          // CRITICAL: Pass bustCache flag correctly (third param is boolean, not object)
+          return await secureApi.get(endpoint, true, forceRefresh)
         } catch (error) {
           return null
         }
@@ -877,9 +885,33 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
   useEffect(() => {
     // Only fetch if we haven't already
     if (!hasFetchedRef.current) {
-      fetchIntelligence(false) // Use cache on initial load
+      // TEMPORARY: Always bust cache for debugging
+      const TEMPORARILY_DISABLE_CACHE = true;
+
+      // Use cache busting if URL parameter is present (from clear-cache redirect)
+      const shouldBustCache = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
+        (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
+
+      fetchIntelligence(shouldBustCache)
     }
   }, []) // Empty dependency array - only run once on mount
+
+  // Listen for cache clearing events and force refresh
+  useEffect(() => {
+    const handleClearCache = () => {
+      console.log('[Intelligence Data] Force refreshing due to cache clear')
+      hasFetchedRef.current = false // Reset fetched flag
+      fetchIntelligence(true) // Force refresh
+    }
+
+    window.addEventListener('dashboard:clear-cache', handleClearCache)
+    window.addEventListener('app-data:clear-intelligence', handleClearCache)
+
+    return () => {
+      window.removeEventListener('dashboard:clear-cache', handleClearCache)
+      window.removeEventListener('app-data:clear-intelligence', handleClearCache)
+    }
+  }, [fetchIntelligence])
 
   const refresh = useCallback(() => {
     fetchIntelligence(true)

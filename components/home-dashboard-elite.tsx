@@ -79,6 +79,7 @@ export function HomeDashboardElite({
     cities,
     loading,
     availableCategories,
+    totalCount,
     refetch
   } = useOpportunities({
     isPublic: false, // Use authenticated endpoint for dashboard
@@ -314,31 +315,29 @@ export function HomeDashboardElite({
       }
     }
 
+    // Define mutually exclusive categories (priority order: Crown → Privé → HNWI)
     // Crown Assets: ONLY from actual Crown Vault source (user's personal assets)
-    // Must explicitly be from "Crown Vault" source, not just mention "asset" in category
     const isCrownAsset = city.source?.toLowerCase().includes('crown vault') ||
       city.source?.toLowerCase() === 'crown vault'
 
+    // If it's a Crown Asset, only check Crown Assets toggle
+    if (isCrownAsset) {
+      return showCrownAssets
+    }
+
     // Privé Opportunities: Victor-scored opportunities from Privé Exchange
-    const isPriveOpportunity = city.victor_score !== undefined ||
+    const isPriveOpportunity = !!city.victor_score ||
       city.source?.toLowerCase().includes('privé') ||
       city.source?.toLowerCase().includes('prive')
 
-    // HNWI Pattern Opportunities: MOEv4 market intelligence, Live HNWI Data, and other patterns
+    // If it's a Privé Opportunity, only check Privé toggle
+    if (isPriveOpportunity) {
+      return showPriveOpportunities
+    }
+
+    // HNWI Pattern Opportunities: Everything else (MOEv4, Live HNWI Data, patterns, etc.)
     // This is the default category for everything that's not Crown Vault or Privé
-    const isHNWIPattern = city.source === 'MOEv4' ||
-      city.source?.toLowerCase().includes('live hnwi data') ||
-      city.source?.toLowerCase().includes('pattern') ||
-      city.category?.toLowerCase().includes('intelligence') ||
-      city.category?.toLowerCase().includes('trend') ||
-      (!isCrownAsset && !isPriveOpportunity) // Default category
-
-    // Show city if its category toggle is enabled
-    if (isCrownAsset && showCrownAssets) return true
-    if (isPriveOpportunity && showPriveOpportunities) return true
-    if (isHNWIPattern && showHNWIPatterns) return true
-
-    return false
+    return showHNWIPatterns
   })
 
   return (
@@ -524,9 +523,9 @@ export function HomeDashboardElite({
 
         </div>
 
-        {/* Mode Banner - Top Center (Auto-dismisses after 7 seconds) */}
+        {/* Mode Banner - Below Header (Auto-dismisses after 7 seconds) */}
         {showModeBanner && hasCompletedAssessment && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[400] pointer-events-none">
+          <div className="fixed top-[72px] left-1/2 transform -translate-x-1/2 z-[99999] pointer-events-none">
             {isPersonalMode ? (
               // Personal Mode Banner - Blue
               <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl border-2 border-blue-400/50 animate-pulse-slow">
@@ -540,7 +539,7 @@ export function HomeDashboardElite({
                   </div>
                   <div className="h-4 w-px bg-white/30" />
                   <div className="text-xs font-medium">
-                    {filteredCities.length} DNA-Matched Opportunities
+                    {totalCount} Total Opportunities
                   </div>
                 </div>
               </div>
@@ -556,7 +555,7 @@ export function HomeDashboardElite({
                   </div>
                   <div className="h-4 w-px bg-zinc-900/30" />
                   <div className="text-xs font-medium">
-                    {filteredCities.length} Total Opportunities
+                    {totalCount} Total Opportunities
                   </div>
                 </div>
               </div>
