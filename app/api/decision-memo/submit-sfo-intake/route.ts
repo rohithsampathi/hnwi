@@ -8,9 +8,9 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import axios from 'axios';
 
-// Allow longer execution time for audit generation (5 minutes max for Vercel hobby plan)
-// Note: Backend handles long-running MoEv5 processing; this just needs to wait for response
-export const maxDuration = 300;
+// Allow longer execution time for audit generation (15 minutes for MoEv5 processing)
+// Note: Local dev has no timeout limits; Vercel hobby plan caps at 300s
+export const maxDuration = 900;
 
 export async function POST(request: Request) {
   try {
@@ -37,10 +37,10 @@ export async function POST(request: Request) {
 
     try {
       // Use axios instead of fetch to avoid undici's default timeout
-      // Set timeout to 5 minutes (300000ms) - Vercel hobby plan max
+      // Set timeout to 15 minutes (900000ms) for MoEv5 processing
       const response = await axios.post(backendUrl, body, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 300000, // 5 minutes (Vercel hobby plan limit)
+        timeout: 900000, // 15 minutes for local dev
         validateStatus: () => true, // Don't throw on non-2xx status
       });
 

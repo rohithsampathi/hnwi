@@ -1,18 +1,21 @@
 /**
  * WORLD-CLASS COVER PAGE - Native PDF Component
+ * Ultra-Premium SFO/Family Office Institutional Standard
+ *
+ * Design Inspiration: Bridgewater Associates, McKinsey & Co., Goldman Sachs
  * First Impression: Sets the tone for a $2,500+ institutional document
  *
  * Design Principles:
- * - Understated luxury (no cluttered design)
- * - Clear hierarchy with generous whitespace
- * - Strategic gold accents for premium feel
- * - Dark background for sophistication
+ * - Understated luxury with refined elegance
+ * - Dramatic dark aesthetic with strategic gold accents
+ * - Impeccable typography hierarchy
+ * - Generous whitespace for breathing room
  * - Every element serves a purpose
  */
 
 import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
-import { colors, spacing, typography, cleanJurisdiction, formatDate } from '../pdf-styles';
+import { colors, cleanJurisdiction, formatDate } from '../pdf-styles';
 
 const styles = StyleSheet.create({
   page: {
@@ -21,13 +24,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  // === CLEAN BORDERS ===
+  // === PREMIUM GOLD BORDER SYSTEM ===
   topBorder: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     backgroundColor: colors.amber[500],
   },
   bottomBorder: {
@@ -35,40 +38,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     backgroundColor: colors.amber[500],
   },
 
-  // === CORNER ACCENTS - Simplified ===
+  // === REFINED CORNER ACCENTS ===
   cornerTopLeft: {
     position: 'absolute',
-    top: 40,
-    left: 40,
+    top: 48,
+    left: 48,
   },
   cornerTopRight: {
     position: 'absolute',
-    top: 40,
-    right: 40,
+    top: 48,
+    right: 48,
   },
   cornerBottomLeft: {
     position: 'absolute',
-    bottom: 40,
-    left: 40,
+    bottom: 48,
+    left: 48,
   },
   cornerBottomRight: {
     position: 'absolute',
-    bottom: 40,
-    right: 40,
+    bottom: 48,
+    right: 48,
   },
   cornerLineH: {
-    width: 24,
+    width: 32,
     height: 1,
-    backgroundColor: colors.gray[600],
+    backgroundColor: colors.gray[700],
   },
   cornerLineV: {
     width: 1,
-    height: 24,
-    backgroundColor: colors.gray[600],
+    height: 32,
+    backgroundColor: colors.gray[700],
   },
 
   // === MAIN CONTAINER ===
@@ -76,149 +79,192 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 72,
+    paddingHorizontal: 80,
+    paddingVertical: 72,
   },
 
-  // === LOGO - Simplified ===
+  // === PREMIUM MONOGRAM LOGO ===
   logoContainer: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 72,
     borderWidth: 2,
     borderColor: colors.amber[500],
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
+    position: 'relative',
+  },
+  logoInnerBorder: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderWidth: 1,
+    borderColor: colors.amber[600],
   },
   logoText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 28,
+    fontSize: 36,
     color: colors.amber[500],
+    letterSpacing: -1,
   },
 
-  // === BRAND NAME ===
+  // === BRAND TYPOGRAPHY ===
   brandContainer: {
     flexDirection: 'row',
-    marginBottom: 8,
+    alignItems: 'baseline',
+    marginBottom: 10,
   },
   brandGold: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 24,
+    fontSize: 28,
     color: colors.amber[500],
-    letterSpacing: 6,
+    letterSpacing: 8,
   },
   brandWhite: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 24,
-    color: colors.gray[100],
-    letterSpacing: 6,
+    fontSize: 28,
+    color: colors.white,
+    letterSpacing: 8,
   },
   tagline: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Helvetica-Bold',
     fontSize: 8,
     color: colors.gray[500],
-    letterSpacing: 4,
+    letterSpacing: 6,
     textTransform: 'uppercase',
     marginBottom: 56,
   },
 
-  // === DIVIDER - Simplified ===
+  // === PREMIUM DIVIDER ===
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 56,
   },
   dividerLine: {
-    width: 80,
+    width: 60,
     height: 1,
     backgroundColor: colors.gray[700],
   },
   dividerDiamond: {
-    display: 'none', // Remove decorative element
+    width: 8,
+    height: 8,
+    backgroundColor: colors.amber[500],
+    transform: 'rotate(45deg)',
+    marginHorizontal: 20,
   },
 
-  // === DOCUMENT INFO ===
-  documentType: {
-    fontFamily: 'Helvetica',
-    fontSize: 10,
+  // === DOCUMENT CLASSIFICATION ===
+  documentBadge: {
+    borderWidth: 1,
+    borderColor: colors.gray[600],
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginBottom: 16,
+  },
+  documentBadgeText: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8,
     color: colors.gray[400],
     letterSpacing: 3,
     textTransform: 'uppercase',
-    marginBottom: 12,
   },
   title: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 32,
+    fontSize: 42,
     color: colors.white,
-    letterSpacing: 0,
-    marginBottom: 56,
+    letterSpacing: -1,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: 'Times-Roman',
+    fontSize: 13,
+    color: colors.gray[400],
+    letterSpacing: 0.5,
+    marginBottom: 48,
   },
 
-  // === JURISDICTION CORRIDOR - Clean table style ===
+  // === JURISDICTION CORRIDOR - Premium Table ===
   corridorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: 380,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: colors.gray[700],
-    paddingVertical: 24,
-    paddingHorizontal: 40,
-    marginBottom: 40,
+    paddingVertical: 28,
+    marginBottom: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   jurisdictionColumn: {
     alignItems: 'center',
     minWidth: 120,
   },
   jurisdictionLabel: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
-    color: colors.gray[500],
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: colors.gray[600],
     letterSpacing: 2,
     textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   jurisdictionValue: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
+    fontSize: 18,
     color: colors.white,
-    letterSpacing: 0,
+    letterSpacing: 0.5,
   },
   corridorArrow: {
-    marginHorizontal: 40,
+    marginHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   arrowLine: {
-    width: 40,
+    width: 32,
     height: 1,
-    backgroundColor: colors.gray[600],
-    marginBottom: 0,
+    backgroundColor: colors.amber[500],
   },
-  arrowSymbol: {
-    fontFamily: 'Helvetica',
-    fontSize: 12,
-    color: colors.gray[500],
+  arrowHead: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 4,
+    borderBottomWidth: 4,
+    borderLeftWidth: 6,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: colors.amber[500],
   },
 
-  // === KEY METRICS - Clean display ===
-  metricsRow: {
+  // === KEY METRICS - Premium Display ===
+  metricsContainer: {
     flexDirection: 'row',
-    gap: 24,
-    marginBottom: 56,
+    marginBottom: 48,
   },
   metricBox: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    minWidth: 140,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
     alignItems: 'center',
-    borderLeftWidth: 2,
-    borderLeftColor: colors.gray[700],
+    borderLeftWidth: 1,
+    borderLeftColor: colors.gray[800],
+    marginRight: 2,
+  },
+  metricBoxFirst: {
+    borderLeftWidth: 0,
   },
   metricLabel: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
-    color: colors.gray[500],
-    letterSpacing: 1,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
+    color: colors.gray[600],
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   metricValueGold: {
     fontFamily: 'Helvetica-Bold',
@@ -239,58 +285,70 @@ const styles = StyleSheet.create({
   referenceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   referenceLabel: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
-    color: colors.gray[500],
-    letterSpacing: 0.5,
+    fontFamily: 'Times-Roman',
+    fontSize: 9,
+    color: colors.gray[600],
   },
   referenceId: {
     fontFamily: 'Courier-Bold',
-    fontSize: 10,
+    fontSize: 12,
     color: colors.gray[300],
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
   dateText: {
-    fontFamily: 'Helvetica',
-    fontSize: 9,
+    fontFamily: 'Times-Roman',
+    fontSize: 10,
     color: colors.gray[500],
   },
 
-  // === CONFIDENTIAL BADGE - Simple border ===
-  confidentialBadge: {
-    borderWidth: 1,
-    borderColor: colors.amber[500],
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+  // === CONFIDENTIAL BADGE - Premium ===
+  confidentialContainer: {
+    marginTop: 8,
   },
-  confidentialDot: {
-    display: 'none', // Remove decorative dot
+  confidentialBadge: {
+    borderWidth: 1.5,
+    borderColor: colors.amber[500],
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    position: 'relative',
   },
   confidentialText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.amber[500],
-    letterSpacing: 3,
+    letterSpacing: 4,
     textTransform: 'uppercase',
   },
 
   // === FOOTER ===
   footer: {
     position: 'absolute',
-    bottom: 48,
-    left: 72,
-    right: 72,
+    bottom: 56,
+    left: 80,
+    right: 80,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   footerText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 7,
-    color: colors.gray[600],
+    color: colors.gray[700],
     letterSpacing: 0.5,
+  },
+  footerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerDot: {
+    width: 4,
+    height: 4,
+    backgroundColor: colors.amber[600],
+    borderRadius: 2,
+    marginHorizontal: 8,
   },
 });
 
@@ -301,6 +359,10 @@ interface PdfCoverPageProps {
   generatedAt: string;
   exposureClass?: string;
   valueCreation?: string;
+  viaNegativa?: {
+    isActive: boolean;
+    badgeLabel: string;
+  };
 }
 
 export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
@@ -310,6 +372,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
   generatedAt,
   exposureClass,
   valueCreation,
+  viaNegativa,
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -318,7 +381,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
       {/* Premium gold border - top */}
       <View style={styles.topBorder} />
 
-      {/* Subtle corner accents */}
+      {/* Refined corner accents */}
       <View style={styles.cornerTopLeft}>
         <View style={styles.cornerLineH} />
         <View style={styles.cornerLineV} />
@@ -330,8 +393,9 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
 
       {/* Main content */}
       <View style={styles.container}>
-        {/* Logo/Monogram */}
+        {/* Premium Monogram Logo */}
         <View style={styles.logoContainer}>
+          <View style={styles.logoInnerBorder} />
           <Text style={styles.logoText}>H</Text>
         </View>
 
@@ -344,14 +408,19 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         {/* Tagline */}
         <Text style={styles.tagline}>Private Intelligence Division</Text>
 
-        {/* Simple divider */}
+        {/* Premium divider with diamond */}
         <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <View style={styles.dividerDiamond} />
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Document type & title */}
-        <Text style={styles.documentType}>SFO Decision Memorandum</Text>
+        {/* Document classification */}
+        <View style={styles.documentBadge}>
+          <Text style={styles.documentBadgeText}>SFO Decision Memorandum</Text>
+        </View>
         <Text style={styles.title}>Pattern Audit</Text>
+        <Text style={styles.subtitle}>Strategic Intelligence Analysis</Text>
 
         {/* Jurisdiction corridor */}
         {sourceJurisdiction && destinationJurisdiction && (
@@ -363,8 +432,10 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
               </Text>
             </View>
             <View style={styles.corridorArrow}>
-              <View style={styles.arrowLine} />
-              <Text style={styles.arrowSymbol}>▸</Text>
+              <View style={styles.arrowContainer}>
+                <View style={styles.arrowLine} />
+                <View style={styles.arrowHead} />
+              </View>
             </View>
             <View style={styles.jurisdictionColumn}>
               <Text style={styles.jurisdictionLabel}>Destination</Text>
@@ -377,9 +448,9 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
 
         {/* Key metrics */}
         {(exposureClass || valueCreation) && (
-          <View style={styles.metricsRow}>
+          <View style={styles.metricsContainer}>
             {exposureClass && (
-              <View style={styles.metricBox}>
+              <View style={[styles.metricBox, styles.metricBoxFirst]}>
                 <Text style={styles.metricLabel}>Risk Profile</Text>
                 <Text style={styles.metricValueGold}>{exposureClass}</Text>
               </View>
@@ -403,15 +474,22 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         </View>
 
         {/* Confidential badge */}
-        <View style={styles.confidentialBadge}>
-          <Text style={styles.confidentialText}>Confidential</Text>
+        <View style={styles.confidentialContainer}>
+          <View style={styles.confidentialBadge}>
+            <Text style={styles.confidentialText}>Confidential</Text>
+          </View>
         </View>
       </View>
 
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>© {currentYear} HNWI Chronicles</Text>
-        <Text style={styles.footerText}>Private Intelligence Division</Text>
+        <View style={styles.footerCenter}>
+          <View style={styles.footerDot} />
+          <Text style={styles.footerText}>Private Intelligence Division</Text>
+          <View style={styles.footerDot} />
+        </View>
+        <Text style={styles.footerText}>Institutional Grade</Text>
       </View>
 
       {/* Corner accents - bottom */}
@@ -423,6 +501,30 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         <View style={[styles.cornerLineV, { position: 'absolute', right: 0, bottom: 0 }]} />
         <View style={[styles.cornerLineH, { alignSelf: 'flex-end' }]} />
       </View>
+
+      {/* Via Negativa: VETOED watermark overlay */}
+      {viaNegativa?.isActive && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <Text style={{
+            fontFamily: 'Helvetica-Bold',
+            fontSize: 100,
+            color: 'rgba(239, 68, 68, 0.25)',
+            transform: 'rotate(-12deg)',
+            letterSpacing: 20,
+            textTransform: 'uppercase',
+          }}>
+            {viaNegativa.badgeLabel}
+          </Text>
+        </View>
+      )}
 
       {/* Premium gold border - bottom */}
       <View style={styles.bottomBorder} />

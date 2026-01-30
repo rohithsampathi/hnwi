@@ -1,5 +1,8 @@
 /**
  * WORLD-CLASS LAST PAGE - Confidentiality & Legal Notice
+ * Ultra-Premium SFO/Family Office Institutional Standard
+ *
+ * Design Inspiration: Bridgewater Associates, McKinsey & Co., Goldman Sachs
  * The final impression that reinforces institutional credibility
  *
  * Design Philosophy:
@@ -11,7 +14,7 @@
 
 import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
-import { colors, spacing } from '../pdf-styles';
+import { colors } from '../pdf-styles';
 
 const styles = StyleSheet.create({
   page: {
@@ -20,13 +23,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  // === CLEAN BORDERS ===
+  // === PREMIUM GOLD BORDER SYSTEM ===
   topBorder: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     backgroundColor: colors.amber[500],
   },
   bottomBorder: {
@@ -34,40 +37,40 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
     backgroundColor: colors.amber[500],
   },
 
-  // === CORNER ACCENTS - Simplified ===
+  // === REFINED CORNER ACCENTS ===
   cornerTopLeft: {
     position: 'absolute',
-    top: 40,
-    left: 40,
+    top: 48,
+    left: 48,
   },
   cornerTopRight: {
     position: 'absolute',
-    top: 40,
-    right: 40,
+    top: 48,
+    right: 48,
   },
   cornerBottomLeft: {
     position: 'absolute',
-    bottom: 40,
-    left: 40,
+    bottom: 48,
+    left: 48,
   },
   cornerBottomRight: {
     position: 'absolute',
-    bottom: 40,
-    right: 40,
+    bottom: 48,
+    right: 48,
   },
   cornerLineH: {
-    width: 24,
+    width: 32,
     height: 1,
-    backgroundColor: colors.gray[600],
+    backgroundColor: colors.gray[700],
   },
   cornerLineV: {
     width: 1,
-    height: 24,
-    backgroundColor: colors.gray[600],
+    height: 32,
+    backgroundColor: colors.gray[700],
   },
 
   // === MAIN CONTAINER ===
@@ -75,193 +78,238 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 72,
+    paddingHorizontal: 80,
+    paddingVertical: 72,
   },
 
-  // === LOGO - Simplified ===
+  // === PREMIUM MONOGRAM LOGO ===
   logoContainer: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
     borderWidth: 2,
     borderColor: colors.amber[500],
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    position: 'relative',
+  },
+  logoInnerBorder: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderWidth: 1,
+    borderColor: colors.amber[600],
   },
   logoText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 24,
+    fontSize: 32,
     color: colors.amber[500],
+    letterSpacing: -1,
   },
 
-  // === BRAND ===
+  // === BRAND TYPOGRAPHY ===
   brandContainer: {
     flexDirection: 'row',
-    marginBottom: 8,
+    alignItems: 'baseline',
+    marginBottom: 10,
   },
   brandGold: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 20,
+    fontSize: 24,
     color: colors.amber[500],
-    letterSpacing: 6,
+    letterSpacing: 7,
   },
   brandWhite: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 20,
-    color: colors.gray[100],
-    letterSpacing: 6,
+    fontSize: 24,
+    color: colors.white,
+    letterSpacing: 7,
   },
   tagline: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Helvetica-Bold',
     fontSize: 8,
     color: colors.gray[500],
-    letterSpacing: 4,
+    letterSpacing: 5,
     textTransform: 'uppercase',
     marginBottom: 48,
   },
 
-  // === DIVIDER - Simple line ===
+  // === PREMIUM DIVIDER ===
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   dividerLine: {
-    width: 80,
+    width: 48,
     height: 1,
     backgroundColor: colors.gray[700],
+    marginHorizontal: 8,
   },
   dividerDiamond: {
-    display: 'none',
+    width: 6,
+    height: 6,
+    backgroundColor: colors.amber[500],
+    transform: 'rotate(45deg)',
   },
 
   // === COPYRIGHT ===
   copyright: {
-    fontFamily: 'Helvetica',
-    fontSize: 9,
+    fontFamily: 'Times-Roman',
+    fontSize: 10,
     color: colors.gray[400],
-    marginBottom: 32,
+    marginBottom: 40,
   },
 
   // === LEGAL SECTIONS ===
   legalContainer: {
     width: '100%',
-    maxWidth: 420,
-    marginBottom: 32,
+    maxWidth: 440,
+    marginBottom: 40,
   },
 
-  // === CONFIDENTIALITY BOX - Simple border ===
+  // === CONFIDENTIALITY BOX - Premium ===
   confidentialityBox: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.amber[500],
-    padding: 24,
-    marginBottom: 16,
+    padding: 28,
+    marginBottom: 24,
+    position: 'relative',
   },
-  boxIcon: {
-    display: 'none',
-  },
-  boxIconText: {
-    display: 'none',
+  confidentialityCorner: {
+    position: 'absolute',
+    top: -1,
+    left: -1,
+    width: 12,
+    height: 12,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: colors.amber[500],
   },
   boxTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.amber[500],
-    letterSpacing: 2,
+    letterSpacing: 3,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: 16,
     textAlign: 'center',
   },
   boxText: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
+    fontFamily: 'Times-Roman',
+    fontSize: 9,
     color: colors.gray[400],
-    lineHeight: 1.6,
+    lineHeight: 1.7,
     textAlign: 'center',
   },
 
   // === TWO COLUMN NOTICES ===
   twoColumnRow: {
     flexDirection: 'row',
-    gap: 16,
   },
   noticeBox: {
     flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[700],
-    paddingTop: 12,
+    borderTopWidth: 2,
+    borderTopColor: colors.gray[800],
+    paddingTop: 16,
+    marginRight: 24,
   },
   noticeHeader: {
-    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   noticeDot: {
-    display: 'none',
+    width: 6,
+    height: 6,
+    backgroundColor: colors.amber[600],
+    borderRadius: 3,
+    marginRight: 8,
   },
   noticeTitle: {
     fontFamily: 'Helvetica-Bold',
     fontSize: 8,
     color: colors.gray[400],
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   noticeText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 8,
     color: colors.gray[500],
-    lineHeight: 1.5,
+    lineHeight: 1.6,
   },
 
   // === REFERENCE SECTION ===
   referenceSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   referenceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   referenceLabel: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
-    color: colors.gray[500],
+    fontFamily: 'Times-Roman',
+    fontSize: 9,
+    color: colors.gray[600],
   },
   referenceId: {
     fontFamily: 'Courier-Bold',
-    fontSize: 10,
+    fontSize: 12,
     color: colors.gray[300],
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
   generatedDate: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
+    fontFamily: 'Times-Roman',
+    fontSize: 9,
     color: colors.gray[600],
   },
 
-  // === WEBSITE ===
+  // === WEBSITE - Premium ===
   websiteContainer: {
-    marginTop: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: colors.gray[700],
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   website: {
     fontFamily: 'Helvetica-Bold',
     fontSize: 11,
     color: colors.amber[500],
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
 
   // === FOOTER ===
   footer: {
     position: 'absolute',
-    bottom: 48,
-    left: 72,
-    right: 72,
+    bottom: 56,
+    left: 80,
+    right: 80,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   footerText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 7,
-    color: colors.gray[600],
+    color: colors.gray[700],
+    letterSpacing: 0.5,
+  },
+  footerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerDot: {
+    width: 4,
+    height: 4,
+    backgroundColor: colors.amber[600],
+    borderRadius: 2,
+    marginHorizontal: 8,
   },
 });
 
@@ -269,12 +317,18 @@ interface PdfLastPageProps {
   intakeId: string;
   precedentCount?: number;
   generatedAt?: string;
+  viaNegativa?: {
+    isActive: boolean;
+    dayOneLoss: number;
+    ctaBody: string;
+  };
 }
 
 export const PdfLastPage: React.FC<PdfLastPageProps> = ({
   intakeId,
   precedentCount = 0,
   generatedAt,
+  viaNegativa,
 }) => {
   const currentYear = new Date().getFullYear();
   const generatedDate = generatedAt ? new Date(generatedAt).toLocaleDateString('en-US', {
@@ -292,7 +346,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
       {/* Premium gold border - top */}
       <View style={styles.topBorder} />
 
-      {/* Subtle corner accents */}
+      {/* Refined corner accents */}
       <View style={styles.cornerTopLeft}>
         <View style={styles.cornerLineH} />
         <View style={styles.cornerLineV} />
@@ -303,8 +357,9 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
       </View>
 
       <View style={styles.container}>
-        {/* Logo */}
+        {/* Premium Monogram Logo */}
         <View style={styles.logoContainer}>
+          <View style={styles.logoInnerBorder} />
           <Text style={styles.logoText}>H</Text>
         </View>
 
@@ -316,8 +371,10 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
 
         <Text style={styles.tagline}>Private Intelligence Division</Text>
 
-        {/* Simple divider */}
+        {/* Premium divider with diamond */}
         <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <View style={styles.dividerDiamond} />
           <View style={styles.dividerLine} />
         </View>
 
@@ -325,6 +382,85 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
         <Text style={styles.copyright}>
           © {currentYear} HNWI Chronicles. All Rights Reserved.
         </Text>
+
+        {/* Via Negativa: Buy Bridge CTA */}
+        {viaNegativa?.isActive && (
+          <View style={{
+            width: '100%',
+            maxWidth: 440,
+            borderWidth: 2,
+            borderColor: colors.amber[500],
+            padding: 24,
+            marginBottom: 32,
+            alignItems: 'center',
+          }}>
+            <Text style={{
+              fontFamily: 'Helvetica-Bold',
+              fontSize: 13,
+              color: colors.amber[500],
+              letterSpacing: 1,
+              textAlign: 'center',
+              marginBottom: 10,
+            }}>
+              DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?
+            </Text>
+            <Text style={{
+              fontFamily: 'Times-Roman',
+              fontSize: 8,
+              color: colors.gray[400],
+              textAlign: 'center',
+              lineHeight: 1.6,
+              marginBottom: 16,
+              maxWidth: 360,
+            }}>
+              {viaNegativa.ctaBody}
+            </Text>
+
+            <Text style={{
+              fontFamily: 'Helvetica-Bold',
+              fontSize: 8,
+              color: colors.amber[600],
+              letterSpacing: 2,
+              textTransform: 'uppercase',
+              marginBottom: 12,
+            }}>
+              5 Slots Remaining — February Cycle
+            </Text>
+
+            <View style={{
+              backgroundColor: colors.amber[500],
+              paddingVertical: 10,
+              paddingHorizontal: 24,
+              marginBottom: 16,
+            }}>
+              <Text style={{
+                fontFamily: 'Helvetica-Bold',
+                fontSize: 10,
+                color: colors.gray[950],
+                letterSpacing: 1,
+              }}>
+                INITIATE YOUR PATTERN AUDIT — $5,000
+              </Text>
+            </View>
+
+            <View style={{
+              borderTopWidth: 1,
+              borderTopColor: colors.gray[700],
+              paddingTop: 12,
+              width: '100%',
+            }}>
+              <Text style={{
+                fontFamily: 'Times-Roman',
+                fontSize: 7,
+                color: colors.gray[500],
+                textAlign: 'center',
+                lineHeight: 1.5,
+              }}>
+                For Indian Family Offices: This sample analyzes a US → Singapore corridor. The same Pattern Recognition Engine applies to India → Dubai, India → Singapore, India → Portugal, and 50+ other corridors.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Legal sections */}
         <View style={styles.legalContainer}>
@@ -342,6 +478,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
           <View style={styles.twoColumnRow}>
             <View style={styles.noticeBox}>
               <View style={styles.noticeHeader}>
+                <View style={styles.noticeDot} />
                 <Text style={styles.noticeTitle}>Intelligence Base</Text>
               </View>
               <Text style={styles.noticeText}>
@@ -352,6 +489,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
 
             <View style={styles.noticeBox}>
               <View style={styles.noticeHeader}>
+                <View style={styles.noticeDot} />
                 <Text style={styles.noticeTitle}>Important Notice</Text>
               </View>
               <Text style={styles.noticeText}>
@@ -390,7 +528,12 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>© {currentYear} HNWI Chronicles</Text>
-        <Text style={styles.footerText}>End of Document</Text>
+        <View style={styles.footerCenter}>
+          <View style={styles.footerDot} />
+          <Text style={styles.footerText}>End of Document</Text>
+          <View style={styles.footerDot} />
+        </View>
+        <Text style={styles.footerText}>Institutional Grade</Text>
       </View>
 
       {/* Premium gold border - bottom */}

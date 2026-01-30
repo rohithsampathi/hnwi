@@ -85,19 +85,21 @@ export function CitationPanelProvider({ children }: { children: React.ReactNode 
           <div className="flex-1 overflow-y-auto p-6">
             <div className="space-y-4">
               {/* Dev IDs */}
-              <div>
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Development IDs
-                </h4>
-                {devIds.map((id, index) => (
-                  <div
-                    key={index}
-                    className="bg-muted/30 rounded p-3 mb-2 font-mono text-xs text-muted-foreground"
-                  >
-                    {id}
-                  </div>
-                ))}
-              </div>
+              {Array.isArray(devIds) && devIds.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Development IDs
+                  </h4>
+                  {devIds.map((id, index) => (
+                    <div
+                      key={index}
+                      className="bg-muted/30 rounded p-3 mb-2 font-mono text-xs text-muted-foreground"
+                    >
+                      {id}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Source */}
               {options.source && (

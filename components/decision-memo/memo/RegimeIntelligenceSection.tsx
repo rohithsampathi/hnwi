@@ -91,7 +91,7 @@ interface RegimeScenario {
   successor_regime?: string;
   action_required?: string;
   // NEW: Enhanced Golden Visa fields
-  key_benefits?: string[];
+  key_benefits?: (string | { benefit: string; detail?: string })[];
   qualification_routes?: QualificationRoute[];
   tax_comparison?: TaxComparison;
   critical_considerations?: CriticalConsideration[];
@@ -246,12 +246,21 @@ export function RegimeIntelligenceSection({
                 Key Benefits
               </h4>
               <div className="grid sm:grid-cols-2 gap-2">
-                {regime_scenario.key_benefits.map((benefit, i) => (
-                  <div key={i} className="flex items-start gap-2 p-3 bg-primary/5 rounded-lg">
-                    <CheckIcon className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-foreground">{benefit}</span>
-                  </div>
-                ))}
+                {regime_scenario.key_benefits.map((benefit, i) => {
+                  const benefitText = typeof benefit === 'string' ? benefit : benefit.benefit;
+                  const detailText = typeof benefit === 'object' ? benefit.detail : undefined;
+                  return (
+                    <div key={i} className="flex items-start gap-2 p-3 bg-primary/5 rounded-lg">
+                      <CheckIcon className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="text-sm text-foreground">{benefitText}</span>
+                        {detailText && (
+                          <p className="text-xs text-muted-foreground mt-1">{detailText}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}

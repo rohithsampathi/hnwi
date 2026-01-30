@@ -64,6 +64,22 @@ function formatLargeCurrency(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+// Urgency color based on mitigation timeline days
+function getUrgencyColor(days: number | undefined): string {
+  if (days === undefined) return 'text-muted-foreground';
+  if (days <= 45) return 'text-red-600';      // Urgent - needs immediate attention
+  if (days <= 60) return 'text-yellow-600';   // Moderate urgency
+  return 'text-green-600';                     // Standard timeline
+}
+
+// Urgency badge styling based on days
+function getUrgencyBadgeStyle(days: number | undefined): string {
+  if (days === undefined) return 'bg-muted text-muted-foreground';
+  if (days <= 45) return 'bg-red-100 text-red-700 border-red-200';      // Urgent
+  if (days <= 60) return 'bg-yellow-100 text-yellow-700 border-yellow-200';  // Moderate
+  return 'bg-green-100 text-green-700 border-green-200';                 // Standard
+}
+
 // Heir icon by relationship
 function HeirIcon({ relationship, className = "w-6 h-6" }: { relationship: HeirRelationship; className?: string }) {
   switch (relationship) {
@@ -372,19 +388,40 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const heirAllocations = typedData.heir_allocations;
 
     // Hughes Framework: Third Generation Problem + Governance Insurance
-    const thirdGenProblem = typedData.third_generation_problem;
-    const humanCapitalProvisions = typedData.human_capital_provisions;
-    const governanceInsurance = typedData.governance_insurance;
+    // NEW: Backend now sends at hughes_framework.third_generation_problem
+    // Fallback to legacy flat structure for backwards compatibility
+    const hughesFramework = typedData.hughes_framework;
+    const thirdGenProblem = hughesFramework?.third_generation_problem ?? typedData.third_generation_problem;
+    const humanCapitalProvisions = hughesFramework?.human_capital_provisions ?? typedData.human_capital_provisions;
+    const governanceInsurance = hughesFramework?.governance_insurance ?? typedData.governance_insurance;
     const structureProvisions = typedData.structure_specific_provisions;
 
     // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
     const estateTaxByHeirType = typedData.estate_tax_by_heir_type;
 
-    // Calculate third gen risk for gauge display
-    const thirdGenCurrentRisk = 70; // Default high risk without structure
-    const thirdGenImprovedRisk = withStructure
-      ? Math.round((1 - normalizePercentage(withStructure.preservation_percentage)) * 100)
-      : 28;
+    // Use explicit backend fields for third generation risk display
+    // IMPORTANT: Values are JURISDICTION-SPECIFIC (e.g., Dubai=61% behavioral, UK=40% estate tax)
+    // DO NOT hardcode fallback values - use backend data only
+    // Backend provides: loss_without_structure_pct, loss_with_structure_pct
+    // Backend provides: preservation_without_structure_pct, preservation_with_structure_pct
+    // Backend provides: improvement_pts, display_loss_arrow, display_preservation_arrow
+
+    // Preservation metrics - prefer explicit backend values
+    const preservationWithoutStructure = thirdGenProblem?.preservation_without_structure_pct;
+    const preservationWithStructure = thirdGenProblem?.preservation_with_structure_pct;
+
+    // Loss risk metrics - use explicit backend values (jurisdiction-specific)
+    const thirdGenCurrentRisk = thirdGenProblem?.loss_without_structure_pct ??
+      (preservationWithoutStructure !== undefined ? (100 - preservationWithoutStructure) : undefined);
+    const thirdGenImprovedRisk = thirdGenProblem?.loss_with_structure_pct ??
+      (preservationWithStructure !== undefined ? (100 - preservationWithStructure) : undefined);
+
+    // Improvement points (backend-calculated)
+    const improvementPts = thirdGenProblem?.improvement_pts;
+
+    // Pre-formatted display strings from backend
+    const displayLossArrow = thirdGenProblem?.display_loss_arrow;
+    const displayPreservationArrow = thirdGenProblem?.display_preservation_arrow;
 
     return (
       <div ref={sectionRef}>
@@ -426,25 +463,58 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
               </div>
 
               <div className="flex flex-col md:flex-row items-center gap-8">
-                <RiskGauge
-                  current={thirdGenCurrentRisk}
-                  improved={thirdGenImprovedRisk}
-                  label="Probability of Wealth Loss"
-                />
+                {thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined && (
+                  <RiskGauge
+                    current={thirdGenCurrentRisk}
+                    improved={thirdGenImprovedRisk}
+                    label="Probability of Wealth Loss"
+                  />
+                )}
 
                 <div className="flex-1 w-full">
-                  <div className="grid grid-cols-3 gap-4">
+                  {/* Loss Risk Metrics */}
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="bg-muted/30 rounded-lg p-4 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Current Risk</p>
-                      <p className="text-xl font-bold text-foreground">{thirdGenCurrentRisk}%</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Loss Risk</p>
+                      <p className="text-xl font-bold text-foreground">{thirdGenCurrentRisk !== undefined ? `${thirdGenCurrentRisk}%` : '—'}</p>
                     </div>
                     <div className="bg-muted/30 rounded-lg p-4 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
-                      <p className="text-xl font-bold text-primary">{thirdGenImprovedRisk}%</p>
+                      <p className="text-xl font-bold text-primary">{thirdGenImprovedRisk !== undefined ? `${thirdGenImprovedRisk}%` : '—'}</p>
                     </div>
                     <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/30">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Improvement</p>
-                      <p className="text-xl font-bold text-primary">{thirdGenCurrentRisk - thirdGenImprovedRisk} pts</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Risk Reduction</p>
+                      {displayLossArrow ? (
+                        <p className="text-lg font-bold text-primary">{displayLossArrow}</p>
+                      ) : improvementPts !== undefined ? (
+                        <p className="text-xl font-bold text-primary">↓{improvementPts} pts</p>
+                      ) : thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined ? (
+                        <p className="text-xl font-bold text-primary">↓{thirdGenCurrentRisk - thirdGenImprovedRisk} pts</p>
+                      ) : (
+                        <p className="text-xl font-bold text-muted-foreground">—</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preservation Metrics - Show when data available */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/20">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Preservation</p>
+                      <p className="text-xl font-bold text-muted-foreground">{preservationWithoutStructure !== undefined ? `${preservationWithoutStructure}%` : '—'}</p>
+                    </div>
+                    <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/20">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
+                      <p className="text-xl font-bold text-primary">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '—'}</p>
+                    </div>
+                    <div className="bg-primary/15 rounded-lg p-4 text-center border border-primary/40">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Protection Gain</p>
+                      {displayPreservationArrow ? (
+                        <p className="text-lg font-bold text-primary">{displayPreservationArrow}</p>
+                      ) : preservationWithStructure !== undefined && preservationWithoutStructure !== undefined ? (
+                        <p className="text-xl font-bold text-primary">↑{preservationWithStructure - preservationWithoutStructure} pts</p>
+                      ) : (
+                        <p className="text-xl font-bold text-muted-foreground">—</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -467,7 +537,9 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                     Recommended Structure
                   </h3>
                 </div>
-                <PreservationIndicator percentage={withStructure.preservation_percentage} />
+                {preservationWithStructure !== undefined && (
+                  <PreservationIndicator percentage={preservationWithStructure} />
+                )}
               </div>
               <p className="text-lg font-bold text-foreground">{withStructure.recommended_structure}</p>
             </motion.div>
@@ -600,7 +672,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                   </div>
                   <div className="bg-muted/30 rounded-lg p-4 text-center">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Preservation Rate</p>
-                    <p className="text-lg font-bold text-foreground">{(normalizePercentage(withStructure.preservation_percentage) * 100).toFixed(0)}%</p>
+                    <p className="text-lg font-bold text-foreground">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '—'}</p>
                   </div>
                 </div>
               </div>
@@ -712,11 +784,19 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="w-5 h-5 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Top Succession Risk
-                </h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                    Top Succession Risk
+                  </h3>
+                </div>
+                {/* Urgency Badge */}
+                {topRisk.mitigation_timeline_days !== undefined && (
+                  <span className={`px-2 py-1 rounded text-[10px] font-bold border ${getUrgencyBadgeStyle(topRisk.mitigation_timeline_days)}`}>
+                    {topRisk.mitigation_timeline_days <= 45 ? 'URGENT' : topRisk.mitigation_timeline_days <= 60 ? 'MODERATE' : 'STANDARD'}
+                  </span>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -733,6 +813,19 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                   <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2">Mitigation</p>
                   <p className="text-sm text-muted-foreground">{parseMarkdownBold(topRisk.mitigation)}</p>
+
+                  {/* Mitigation Timeline */}
+                  {topRisk.mitigation_timeline && (
+                    <div className="mt-3 pt-3 border-t border-primary/10">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-primary" />
+                        <p className="text-[10px] uppercase tracking-wider text-primary font-bold">Timeline</p>
+                      </div>
+                      <p className={`text-sm font-medium mt-1 ${getUrgencyColor(topRisk.mitigation_timeline_days)}`}>
+                        {topRisk.mitigation_timeline}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -974,21 +1067,29 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     return metrics;
   };
 
-  // Extract 3rd generation risk data
+  // Extract 3rd generation risk data from narrative text
+  // NOTE: This is a FALLBACK only - prefer structured data from backend
+  // DO NOT use hardcoded defaults (the "70% rule" is academically discredited)
   const extractThirdGenRisk = (text: string): {
-    currentRisk: number;
-    improvedRisk: number;
+    currentRisk: number | undefined;
+    improvedRisk: number | undefined;
     improvement: string;
   } => {
     const riskMatch = text.match(/(?:3rd|third)\s*(?:gen|generation)[^0-9]*(\d+)%/i) ||
                      text.match(/probability[^0-9]*(\d+)%/i) ||
                      text.match(/risk[^0-9]*(\d+)%/i);
-    const currentRisk = riskMatch ? parseInt(riskMatch[1]) : 70;
+    // DO NOT hardcode fallback - return undefined if not found
+    const currentRisk = riskMatch ? parseInt(riskMatch[1]) : undefined;
 
     const improvedMatch = text.match(/(?:improved|with\s*structure|reduced)[^0-9]*(\d+)%/i);
-    const improvedRisk = improvedMatch ? parseInt(improvedMatch[1]) : Math.round(currentRisk * 0.4);
+    // Only calculate improved if we have a current risk value
+    const improvedRisk = improvedMatch
+      ? parseInt(improvedMatch[1])
+      : (currentRisk !== undefined ? Math.round(currentRisk * 0.4) : undefined);
 
-    const improvement = `${currentRisk - improvedRisk} pts`;
+    const improvement = (currentRisk !== undefined && improvedRisk !== undefined)
+      ? `${currentRisk - improvedRisk} pts`
+      : '—';
 
     return { currentRisk, improvedRisk, improvement };
   };

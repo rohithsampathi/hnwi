@@ -166,6 +166,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
     const validateSession = async () => {
       try {
+        // CRITICAL FIX: Check if user JUST logged in (within last 30 seconds)
+        // If so, trust localStorage and skip aggressive backend validation
+        // This prevents the race condition where cookies haven't fully propagated yet
+        const loginTimestamp = localStorage.getItem('loginTimestamp')
+        const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000 // 30 seconds
+
         // Quick session check - if this fails, cookies are gone
         const sessionResponse = await fetch('/api/auth/session', {
           credentials: 'include',
@@ -181,6 +187,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             setSessionValidated(true)
             return
           }
+        }
+
+        // Session check returned no user - if this is a recent login,
+        // trust localStorage and retry later instead of logging out immediately
+        if (isRecentLogin) {
+          console.log('[Auth] Session check returned no user but login was recent - trusting localStorage')
+          setSessionValidated(true)
+          return
         }
 
         // Session invalid - try to refresh token
@@ -208,7 +222,16 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           }
         }
 
-        // PWA FIX: Cookies are gone and refresh failed
+        // FINAL CHECK: Before logging out, verify localStorage one more time
+        // This prevents race conditions where auth state was updated between checks
+        const currentUser = getCurrentUser()
+        if (currentUser && (currentUser.id || currentUser.user_id)) {
+          console.log('[Auth] Session validation failed but localStorage has user - trusting localStorage')
+          setSessionValidated(true)
+          return
+        }
+
+        // PWA FIX: Cookies are gone and refresh failed and no localStorage user
         // Clear localStorage to stay in sync and redirect to login
         console.log('[Auth] Session validation failed - clearing stale localStorage')
         authManager.logout()
@@ -229,7 +252,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
 
     // Run validation after a short delay to not block initial render
-    const validationTimeout = setTimeout(validateSession, 500)
+    // Use longer delay for fresh logins to allow cookie propagation
+    const loginTimestamp = localStorage.getItem('loginTimestamp')
+    const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000
+    const validationDelay = isRecentLogin ? 2000 : 500 // 2 seconds for fresh login, 500ms otherwise
+    const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
   }, [isAuthenticated, sessionValidated, pathname, router])
 

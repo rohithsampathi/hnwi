@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Mistake } from '@/lib/decision-memo/memo-types';
+import { Mistake, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 
 interface DDChecklistItem {
   category: string;
@@ -37,6 +37,8 @@ interface Page2Props {
     verdict?: string;          // e.g., "APPROVED", "CONDITIONAL APPROVAL"
     recommendation?: string;
   };
+  // Via Negativa "Autopsy" mode
+  viaNegativa?: ViaNegativaContext;
 }
 
 // Animated radial gauge for confidence/risk score
@@ -273,7 +275,8 @@ export function Page2AuditVerdict({
   dataQuality,
   dataQualityNote,
   mitigationTimeline,
-  riskAssessment
+  riskAssessment,
+  viaNegativa
 }: Page2Props) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -314,7 +317,7 @@ export function Page2AuditVerdict({
   }, [mistakes]);
 
   const getVerdict = () => {
-    // PRIORITY: Use backend-provided risk assessment if available
+    // Only use backend-provided risk assessment - no frontend fallback calculations
     if (riskAssessment?.risk_level) {
       const riskLevel = riskAssessment.risk_level.toUpperCase();
       const colorMap: Record<string, 'emerald' | 'primary' | 'amber' | 'red'> = {
@@ -335,40 +338,22 @@ export function Page2AuditVerdict({
       };
 
       return {
-        decision: riskAssessment.verdict || (riskLevel.includes('HIGH') || riskLevel === 'CRITICAL' ? 'CONDITIONAL APPROVAL' : 'APPROVED'),
-        riskScore: riskScoreMap[riskLevel] || 50,
+        decision: riskAssessment.verdict || '—',
+        riskScore: riskScoreMap[riskLevel] || 0,
         riskLevel: riskLevel,
-        recommendation: riskAssessment.recommendation || `Risk level: ${riskLevel}. Proceed with appropriate monitoring.`,
+        recommendation: riskAssessment.recommendation || '—',
         color: colorMap[riskLevel] || 'primary'
       };
     }
 
-    // Fallback: Calculate from mistakes if no backend data
-    if (riskMetrics.criticalCount > 0) {
-      return {
-        decision: 'CONDITIONAL APPROVAL',
-        riskScore: 65,
-        riskLevel: 'MODERATE-HIGH',
-        recommendation: 'Proceed with enhanced risk mitigation protocols. Critical items require immediate attention.',
-        color: 'amber' as const
-      };
-    } else if (mistakes.length > 2) {
-      return {
-        decision: 'CONDITIONAL APPROVAL',
-        riskScore: 45,
-        riskLevel: 'LOW-MODERATE',
-        recommendation: 'Proceed with standard risk management. Monitor flagged items through implementation.',
-        color: 'primary' as const
-      };
-    } else {
-      return {
-        decision: 'APPROVED',
-        riskScore: 25,
-        riskLevel: 'LOW',
-        recommendation: 'Proceed with implementation as structured. Standard monitoring protocols apply.',
-        color: 'emerald' as const
-      };
-    }
+    // No backend data - show blanks
+    return {
+      decision: '—',
+      riskScore: 0,
+      riskLevel: '—',
+      recommendation: '—',
+      color: 'primary' as const
+    };
   };
 
   const verdict = getVerdict();
@@ -411,10 +396,76 @@ export function Page2AuditVerdict({
         transition={{ duration: 0.6 }}
       >
         <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-2 sm:mb-3 tracking-wide">
-          RISK ASSESSMENT & INVESTMENT VERDICT
+          {viaNegativa?.isActive ? viaNegativa.verdictHeader : 'RISK ASSESSMENT & INVESTMENT VERDICT'}
         </h2>
-        <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
+        <div className={`w-16 sm:w-24 h-1 bg-gradient-to-r ${viaNegativa?.isActive ? 'from-red-500 to-red-500/30' : 'from-primary to-primary/30'}`} />
       </motion.div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          VIA NEGATIVA: PASS/FAIL GRID (Autopsy Mode Only)
+          ═══════════════════════════════════════════════════════════════════ */}
+      {viaNegativa?.isActive && (
+        <motion.div
+          className="mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.15 }}
+        >
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            {/* Tax Efficiency */}
+            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+              viaNegativa.taxEfficiencyPassed
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-red-500/5 border-red-500/20'
+            }`}>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Tax Efficiency</p>
+              <p className={`text-2xl sm:text-4xl font-black ${
+                viaNegativa.taxEfficiencyPassed ? 'text-emerald-500' : 'text-red-500'
+              }`}>
+                {viaNegativa.taxEfficiencyPassed ? 'PASS' : 'FAIL'}
+              </p>
+            </div>
+
+            {/* Liquidity */}
+            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+              viaNegativa.liquidityPassed
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-red-500/5 border-red-500/20'
+            }`}>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Liquidity</p>
+              <p className={`text-2xl sm:text-4xl font-black ${
+                viaNegativa.liquidityPassed ? 'text-emerald-500' : 'text-red-500'
+              }`}>
+                {viaNegativa.liquidityPassed ? 'PASS' : 'FAIL'}
+              </p>
+            </div>
+
+            {/* Structure Viability */}
+            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+              viaNegativa.structurePassed
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-red-500/5 border-red-500/20'
+            }`}>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Structure Viability</p>
+              <p className={`text-2xl sm:text-4xl font-black ${
+                viaNegativa.structurePassed ? 'text-emerald-500' : 'text-red-500'
+              }`}>
+                {viaNegativa.structurePassed ? 'PASS' : 'FAIL'}
+              </p>
+            </div>
+          </div>
+
+          {/* CAPITAL ALLOCATION DENIED stamp */}
+          <div className="mt-6 p-4 sm:p-6 bg-red-950/40 border-2 border-red-500/30 rounded-xl text-center">
+            <p className="text-xl sm:text-3xl font-black text-red-500 tracking-wider">
+              {viaNegativa.stampText.toUpperCase()}
+            </p>
+            <p className="text-xs sm:text-sm text-red-400/60 mt-2">
+              {viaNegativa.stampSubtext}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════
           EXECUTIVE SUMMARY PANEL
@@ -437,16 +488,18 @@ export function Page2AuditVerdict({
               <div className="lg:col-span-7">
                 <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-6">
                   <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
+                    viaNegativa?.isActive ? 'bg-red-500' :
                     verdict.color === 'emerald' ? 'bg-emerald-500' :
                     verdict.color === 'amber' ? 'bg-amber-500' : 'bg-primary'
                   } animate-pulse`} />
                   <span className="text-[8px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                    Investment Committee Decision
+                    {viaNegativa?.isActive ? 'Capital Allocation Review' : 'Investment Committee Decision'}
                   </span>
                 </div>
 
                 <motion.h3
                   className={`text-xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight mb-2 sm:mb-4 ${
+                    viaNegativa?.isActive ? 'text-red-500' :
                     verdict.color === 'emerald' ? 'text-emerald-500' :
                     verdict.color === 'amber' ? 'text-amber-500' : 'text-primary'
                   }`}
@@ -454,7 +507,9 @@ export function Page2AuditVerdict({
                   animate={isVisible ? { opacity: 1, x: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  {verdict.decision}
+                  {viaNegativa?.isActive
+                    ? (viaNegativa.stampText?.toUpperCase() || 'NOT RECOMMENDED')
+                    : verdict.decision}
                 </motion.h3>
 
                 <motion.p
@@ -463,7 +518,9 @@ export function Page2AuditVerdict({
                   animate={isVisible ? { opacity: 1, x: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.5 }}
                 >
-                  {verdict.recommendation}
+                  {viaNegativa?.isActive
+                    ? (viaNegativa.stampSubtext || 'Key viability thresholds not met — review alternative corridors and strategies')
+                    : verdict.recommendation}
                 </motion.p>
 
                 {/* Key Metrics Row */}
@@ -508,10 +565,10 @@ export function Page2AuditVerdict({
                     dataQuality === 'limited' ? 'text-amber-500' :
                     'text-muted-foreground'
                   }`}>
-                    {dataQuality || 'Pending'}
+                    {dataQuality || '—'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-3">
-                    {dataQualityNote || `Based on ${precedentCount > 0 ? precedentCount.toLocaleString() : '0'} precedents`}
+                    {dataQualityNote || '—'}
                   </p>
                 </div>
               </div>
@@ -523,34 +580,34 @@ export function Page2AuditVerdict({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
           <ExecutiveMetric
             label="Total Exposure"
-            value={riskAssessment?.total_exposure_formatted || `$${(riskMetrics.totalExposure / 1000000).toFixed(1)}M`}
+            value={riskAssessment?.total_exposure_formatted || '—'}
             sublabel="Aggregate risk value"
             icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            trend={riskMetrics.totalExposure > 5000000 ? 'negative' : 'neutral'}
+            trend={riskAssessment?.total_exposure_formatted ? 'negative' : 'neutral'}
             delay={0.3}
             isVisible={isVisible}
           />
           <ExecutiveMetric
             label="Critical Items"
-            value={riskAssessment?.critical_items ?? riskMetrics.criticalCount}
+            value={riskAssessment?.critical_items ?? '—'}
             sublabel="Require immediate action"
             icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
-            trend={(riskAssessment?.critical_items ?? riskMetrics.criticalCount) > 0 ? 'negative' : 'positive'}
+            trend={(riskAssessment?.critical_items ?? 0) > 0 ? 'negative' : 'neutral'}
             delay={0.4}
             isVisible={isVisible}
           />
           <ExecutiveMetric
             label="High Priority"
-            value={riskMetrics.highCount}
+            value={riskAssessment?.high_priority ?? '—'}
             sublabel="Priority mitigation needed"
             icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-            trend={riskMetrics.highCount > 2 ? 'negative' : 'neutral'}
+            trend={(riskAssessment?.high_priority ?? 0) > 2 ? 'negative' : 'neutral'}
             delay={0.5}
             isVisible={isVisible}
           />
           <ExecutiveMetric
             label="Mitigation Timeline"
-            value={mitigationTimeline || '—'}
+            value={mitigationTimeline}
             sublabel="Recommended resolution window"
             icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             delay={0.6}
@@ -574,11 +631,11 @@ export function Page2AuditVerdict({
               IDENTIFIED RISK FACTORS
             </h3>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>{riskMetrics.criticalCount} Critical</span>
+              <span>{riskAssessment?.critical_items ?? '—'} Critical</span>
               <span className="text-border">|</span>
-              <span>{riskMetrics.highCount} High</span>
+              <span>{riskAssessment?.high_priority ?? '—'} High</span>
               <span className="text-border">|</span>
-              <span className="font-medium text-foreground">${(riskMetrics.totalExposure / 1000000).toFixed(1)}M Total</span>
+              <span className="font-medium text-foreground">{riskAssessment?.total_exposure_formatted || '—'} Total</span>
             </div>
           </div>
 

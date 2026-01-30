@@ -1,0 +1,39 @@
+{
+  "thesis": {
+    "move_description": "NYC-based Single Family Office acquiring $4.5M commercial real estate in Singapore. Targeting prime district Grade-A office or retail space for APAC diversification and stable income generation. Seeking shelter from US regulatory uncertainty and tax optimization through Singapore's favorable tax regime.",
+    "expected_outcome": "4% annual rental yield with 7% annual capital appreciation, generating combined 11% gross returns. Strategic positioning in APAC's most stable jurisdiction with established commercial tenant base and zero capital gains tax.",
+    "move_type": "real_estate",
+    "target_amount": "$4.5M",
+    "target_locations": ["Singapore"],
+    "timeline": "6 months"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["United States", "New York"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No developer leverage above 50%", "No uncompleted developments", "No single-tenant risk above 60%"],
+    "deal_breakers": ["Title encumbrance", "Regulatory red flags on building", "Vacancy rate above 15%", "Structural issues"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$5M",
+    "advisors": [
+      { "type": "tax", "name": "NYC Tax Counsel", "jurisdiction": "United States" },
+      { "type": "legal", "name": "NYC Legal Counsel", "jurisdiction": "United States" }
+    ],
+    "existing_entities": [
+      { "type": "LLC", "jurisdiction": "Delaware", "purpose": "Family Office holding company" }
+    ],
+    "banking_rails": [
+      { "bank": "JP Morgan Private Bank", "jurisdiction": "United States", "status": "active" },
+      { "bank": "DBS Private Banking", "jurisdiction": "Singapore", "status": "planned" }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "NYC Family Office with established IPS. 20% allocation to international real estate, 15% to APAC exposure. Singapore commercial acquisition fits within mandate as APAC hedge against US market concentration. Income-generating focus with 4% rental yield and 7% appreciation targets align with wealth preservation strategy."
+  },
+  "urgency": "standard"
+}

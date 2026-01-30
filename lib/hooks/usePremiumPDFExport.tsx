@@ -48,7 +48,6 @@ function safeString(value: any, fallback: string = ''): string {
     if (value.total) return formatCurrencyValue(value.total);
     if (value.annual) return formatCurrencyValue(value.annual);
     // Don't render complex objects as text
-    console.warn('[PDF Export] Object passed where string expected:', value);
     return fallback;
   }
   return fallback;
@@ -111,7 +110,9 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
 
     // Expert sections (these may contain JSON strings or parsed objects)
     transparency_regime_impact: previewData.transparency_regime_impact,
+    transparency_data: previewData.transparency_data,
     crisis_resilience_stress_test: previewData.crisis_resilience_stress_test,
+    crisis_data: previewData.crisis_data,
     wealth_projection_data: previewData.wealth_projection_data,
     wealth_projection_analysis: previewData.wealth_projection_analysis,
     scenario_tree_data: previewData.scenario_tree_data,
@@ -119,20 +120,90 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
     heir_management_data: previewData.heir_management_data,
     heir_management_analysis: previewData.heir_management_analysis,
     destination_drivers: previewData.destination_drivers,
+    golden_visa_intelligence: previewData.golden_visa_intelligence,
     hnwi_trends_analysis: previewData.hnwi_trends_analysis,
+    hnwi_trends: previewData.hnwi_trends,
+    hnwi_trends_confidence: previewData.hnwi_trends_confidence,
+    hnwi_trends_data_quality: previewData.hnwi_trends_data_quality,
+    hnwi_trends_citations: previewData.hnwi_trends_citations,
+
+    // Expert 9-12
+    peer_intelligence_analysis: previewData.peer_intelligence_analysis,
+    peer_intelligence_data: previewData.peer_intelligence_data,
+    market_dynamics_analysis: previewData.market_dynamics_analysis,
+    market_dynamics_data: previewData.market_dynamics_data,
+    implementation_roadmap_data: previewData.implementation_roadmap_data,
+    due_diligence_data: previewData.due_diligence_data,
+
+    // Risk assessment (MCP fields)
+    risk_assessment: previewData.risk_assessment,
+    all_mistakes: previewData.all_mistakes,
+    dd_checklist: previewData.dd_checklist,
+
+    // Real Asset Audit
+    real_asset_audit: previewData.real_asset_audit,
+    deal_overview: previewData.deal_overview,
 
     // Raw values
     value_creation_raw: previewData.value_creation_raw,
+    total_savings: previewData.total_savings,
   };
 
-  // Build memo metadata
+  // Build memo metadata (includes all expert data from memo_data)
   const memo: PdfMemoMetadata = {
+    // Core
+    memo_text: memoData.memo_text,
+    generated_at: memoData.generated_at,
+
+    // Executive Summary
+    executive_verdict: memoData.executive_verdict,
+    definitive_verdict: memoData.definitive_verdict,
+    risk_synthesis: memoData.risk_synthesis,
+
+    // Expert 1: Exposure
+    exposure_summary: memoData.exposure_summary,
+
+    // Expert 2: Corrected Sequence
+    corrected_sequence: memoData.corrected_sequence,
+
+    // Expert 4: Stop List
+    stop_list: memoData.stop_list,
+
+    // Expert 5: Next Move Matrix
+    next_move_matrix: memoData.next_move_matrix,
+
+    // Implementation needs
+    implementation_needs: memoData.implementation_needs,
+
+    // Evidence anchors
+    evidence_anchors: memoData.evidence_anchors,
+
+    // KGv3 Intelligence
     kgv3_intelligence_used: memoData.kgv3_intelligence_used || {
       precedents: previewData.precedent_count || 21,
       failure_modes: 2,
       sequencing_rules: 2,
       jurisdictions: 2,
     },
+
+    // Expert 7: Transparency
+    transparency_regime_impact: memoData.transparency_regime_impact,
+    transparency_data: memoData.transparency_data,
+
+    // Expert 8: Crisis
+    crisis_resilience_stress_test: memoData.crisis_resilience_stress_test,
+    crisis_data: memoData.crisis_data,
+
+    // Expert 13-15
+    heir_management_analysis: memoData.heir_management_analysis,
+    heir_management_data: memoData.heir_management_data,
+    wealth_projection_analysis: memoData.wealth_projection_analysis,
+    wealth_projection_data: memoData.wealth_projection_data,
+    scenario_tree_analysis: memoData.scenario_tree_analysis,
+    scenario_tree_data: memoData.scenario_tree_data,
+
+    // 10-Year Projections
+    ten_year_projections: memoData.ten_year_projections,
   };
 
   return {
@@ -141,6 +212,10 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
     generated_at: artifact.timestamp || new Date().toISOString(),
     preview_data: preview,
     memo_data: memo,
+    // MCP fields from artifact (if present at top level or in risk_assessment)
+    mitigationTimeline: (artifact as any).mitigationTimeline || (artifact as any).risk_assessment?.mitigation_timeline,
+    risk_assessment: (artifact as any).risk_assessment,
+    all_mistakes: (artifact as any).all_mistakes,
   };
 }
 
@@ -188,8 +263,6 @@ export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoDa
   error?: string;
 }> {
   try {
-    console.log('[PDF Export] Starting native PDF generation...');
-
     // Check if input is already complete memoData (from page.tsx with merged expert sections)
     // or if we need to transform an artifact
     let memoData: PdfMemoData;
@@ -197,24 +270,16 @@ export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoDa
 
     if (isCompleteMemoData(input)) {
       // Input is already complete memoData - use directly (PREFERRED)
-      console.log('[PDF Export] Using complete memoData directly (same as web UI)');
       memoData = input;
       intakeId = input.intake_id;
     } else {
       // Input is an artifact - transform it (LEGACY)
-      console.log('[PDF Export] Transforming artifact to memoData');
       memoData = transformArtifactToMemoData(input);
       intakeId = input.intakeId || `intake_${Date.now()}`;
     }
 
-    console.log('[PDF Export] Data ready, preview_data keys:', Object.keys(memoData.preview_data));
-    console.log('[PDF Export] Has wealth_projection_data:', !!memoData.preview_data.wealth_projection_data);
-    console.log('[PDF Export] Has heir_management_data:', !!memoData.preview_data.heir_management_data);
-
     // Generate PDF blob using @react-pdf/renderer
-    console.log('[PDF Export] Generating native PDF...');
     const blob = await pdf(<PatternAuditDocument memoData={memoData} />).toBlob();
-    console.log('[PDF Export] PDF blob generated, size:', blob.size);
 
     // Generate filename
     const fileName = `HNWI-Decision-Audit-${intakeId.slice(10, 22) || 'export'}.pdf`;
@@ -228,8 +293,6 @@ export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoDa
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    console.log(`[PDF Export] Complete! File: ${fileName}`);
 
     return {
       success: true,

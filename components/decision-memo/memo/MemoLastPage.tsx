@@ -6,17 +6,20 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 
 interface MemoLastPageProps {
   intakeId: string;
   precedentCount?: number;
   generatedAt?: string;
+  viaNegativa?: ViaNegativaContext;
 }
 
 export function MemoLastPage({
   intakeId,
   precedentCount = 0,
-  generatedAt
+  generatedAt,
+  viaNegativa
 }: MemoLastPageProps) {
   const currentYear = new Date().getFullYear();
 
@@ -86,6 +89,41 @@ export function MemoLastPage({
         <p className="text-sm font-medium text-gray-400 tracking-wide mb-12">
           © {currentYear} HNWI Chronicles. All Rights Reserved.
         </p>
+
+        {/* Via Negativa: Buy Bridge CTA */}
+        {viaNegativa?.isActive && (
+          <div className="mb-10 p-6 sm:p-8 border-2 border-amber-500/40 rounded-xl bg-amber-500/[0.03]">
+            <h3 className="text-xl sm:text-2xl font-bold text-amber-500 tracking-wide text-center mb-3">
+              {viaNegativa.ctaHeadline}
+            </h3>
+            <p className="text-xs text-gray-400 text-center mb-6 max-w-md mx-auto leading-relaxed">
+              {viaNegativa.ctaBody}
+            </p>
+
+            {/* Scarcity */}
+            <p className="text-center text-[11px] font-semibold text-amber-500/80 tracking-wider uppercase mb-4">
+              {viaNegativa.ctaScarcity}
+            </p>
+
+            {/* CTA Button */}
+            <div className="text-center mb-6">
+              <a
+                href={viaNegativa.ctaButtonUrl}
+                className="inline-flex items-center gap-2 px-8 py-3 bg-amber-500 text-black font-bold rounded-lg tracking-wide text-sm hover:bg-amber-400 transition-colors"
+              >
+                {viaNegativa.ctaButtonText}
+              </a>
+            </div>
+
+            {/* Context Note */}
+            <div className="p-4 border border-white/10 rounded-lg bg-white/[0.02]">
+              <p className="text-[10px] text-gray-500 leading-relaxed text-center">
+                {viaNegativa.ctaContextNote}
+                Your specific jurisdiction pair receives identical institutional-grade analysis.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Legal Sections */}
         <div className="space-y-6 mb-12">

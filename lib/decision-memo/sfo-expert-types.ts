@@ -24,7 +24,11 @@ export interface HeirManagementData {
   next_action?: string;
   heir_allocations?: HeirAllocation[];
 
-  // Hughes Framework: Third Generation Problem + Governance Insurance
+  // Hughes Framework (NEW nested structure from backend)
+  // Backend sends: heir_management_data.hughes_framework.third_generation_problem
+  hughes_framework?: HughesFramework;
+
+  // Legacy flat structure (for backwards compatibility)
   third_generation_problem?: ThirdGenerationProblem;
   human_capital_provisions?: HumanCapitalProvision[];
   governance_insurance?: GovernanceInsuranceProvision[];
@@ -32,6 +36,13 @@ export interface HeirManagementData {
 
   // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
   estate_tax_by_heir_type?: EstateTaxByHeirType;
+}
+
+/** Hughes Framework - Nested container for third generation protection data */
+export interface HughesFramework {
+  third_generation_problem?: ThirdGenerationProblem;
+  human_capital_provisions?: HumanCapitalProvision[];
+  governance_insurance?: GovernanceInsuranceProvision[];
 }
 
 /** Granular estate tax rates by heir relationship type */
@@ -108,6 +119,10 @@ export interface TopSuccessionTrigger {
   dollars_at_risk: number;
   /** Recommended action */
   mitigation: string;
+  /** Human-readable mitigation timeline (e.g., "45 days (DIFC Foundation registration)") */
+  mitigation_timeline?: string;
+  /** Numeric days for sorting/urgency calculation */
+  mitigation_timeline_days?: number;
 }
 
 // NEW: Per-Heir Allocation
@@ -146,6 +161,40 @@ export interface ThirdGenerationProblem {
   causes: string[];
   /** Why this family is at risk */
   risk_factors: string[];
+  /** Explicit loss percentage without structure (e.g., 61 for Dubai) */
+  loss_without_structure_pct?: number;
+  /** Explicit loss percentage with structure (e.g., 40) */
+  loss_with_structure_pct?: number;
+  /** Explicit preservation percentage without structure (e.g., 39) */
+  preservation_without_structure_pct?: number;
+  /** Explicit preservation percentage with structure (e.g., 60) */
+  preservation_with_structure_pct?: number;
+  /** Improvement in percentage points (e.g., 21 = 61% - 40%) */
+  improvement_pts?: number;
+  /** Display string for loss arrow (e.g., "61%→40%") */
+  display_loss_arrow?: string;
+  /** Display string for preservation arrow (e.g., "39%→60%") */
+  display_preservation_arrow?: string;
+  /** Headline summary (e.g., "61% wealth erosion by G3 (tax: 0% + behavioral: 61%)") */
+  headline?: string;
+  /** Methodology used (e.g., "institutional_v2_jurisdiction_specific") */
+  methodology?: string;
+  /** Source citation (e.g., "UAE Family Business Council - 61% lack succession plan") */
+  citation?: string;
+  /** Component breakdown of estate tax vs behavioral factors */
+  components?: {
+    estate_tax?: {
+      rate_used: number;
+      retained_without_structure: number;
+      retained_with_structure: number;
+    };
+    behavioral?: {
+      jurisdiction: string;
+      base_failure_rate: number;
+      governance_mitigation: number;
+      source: string;
+    };
+  };
 }
 
 /** Human Capital Provisions - Financial education requirements */
@@ -264,6 +313,8 @@ export interface StartingPosition {
   current_net_worth: number;
   /** Amount being deployed in this transaction */
   transaction_amount: number;
+  /** Transaction value in USD (alias for transaction_amount) */
+  transaction_value?: number;
   /** Remaining liquid assets after transaction */
   remaining_liquid: number;
   /** Annual income in USD */
@@ -272,6 +323,131 @@ export interface StartingPosition {
   current_tax_rate: number;
   /** Target tax rate after move (e.g., 0 for 0%) */
   target_tax_rate: number;
+  /** Appreciation rate percentage (e.g., 3.4 for 3.4%) */
+  appreciation_rate_pct?: number;
+  /** Rental yield percentage (e.g., 3.3 for 3.3%) */
+  rental_yield_pct?: number;
+  /** Cross-border tax audit summary (for non-relocation purchases) */
+  cross_border_audit?: CrossBorderAuditSummary;
+  /** Backend uses this key name */
+  cross_border_audit_summary?: CrossBorderAuditSummary;
+}
+
+// =============================================================================
+// CROSS-BORDER TAX AUDIT (For non-relocation property purchases)
+// Aligned with backend field names from programmatic_sfo_calculator.py
+// =============================================================================
+
+/** Cross-border tax audit summary showing source/destination tax treatment */
+export interface CrossBorderAuditSummary {
+  /** Executive summary of the cross-border tax situation */
+  executive_summary: string;
+  /** Acquisition cost breakdown (Property + BSD + ABSD = Total) */
+  acquisition_audit: AcquisitionAudit;
+  /** Rental income tax treatment */
+  rental_income_audit: RentalIncomeAudit;
+  /** Capital gains tax treatment */
+  capital_gains_audit: CapitalGainsAudit;
+  /** Estate tax treatment */
+  estate_tax_audit: EstateTaxAudit;
+  /** Net yield calculation */
+  net_yield_audit: NetYieldAudit;
+  /** Total tax savings percentage (0 for non-relocating) */
+  total_tax_savings_pct?: number;
+  /** Compliance flags */
+  compliance_flags?: string[];
+  /** Important warnings (PFIC, worldwide taxation, etc.) */
+  warnings?: string[];
+  /** Data sources used for tax rates */
+  data_sources?: string[];
+}
+
+/** Acquisition cost breakdown */
+export interface AcquisitionAudit {
+  /** Base property value */
+  property_value: number;
+  /** Buyer's Stamp Duty amount */
+  bsd_stamp_duty: number;
+  /** Additional Buyer's Stamp Duty amount */
+  absd_additional_stamp_duty: number;
+  /** Total stamp duties (BSD + ABSD) */
+  total_stamp_duties?: number;
+  /** Total acquisition cost (property + BSD + ABSD) */
+  total_acquisition_cost: number;
+  /** Day-one loss percentage from stamp duties */
+  day_one_loss_pct?: number;
+  /** Whether FTA benefit was applied (e.g., US-Singapore FTA) */
+  fta_benefit_applied?: boolean;
+  /** Buyer category (foreigner, pr, citizen, us_national_fta) */
+  buyer_category?: string;
+}
+
+/** Rental income tax treatment */
+export interface RentalIncomeAudit {
+  /** Gross rental yield percentage */
+  gross_yield_pct: number;
+  /** Destination country tax rate on rental income */
+  destination_tax_rate_pct: number;
+  /** Source country tax rate on rental income (e.g., US worldwide taxation) */
+  source_tax_rate_pct: number;
+  /** Whether Foreign Tax Credit (FTC) is available */
+  ftc_available: boolean;
+  /** Net tax rate after FTC (backend field name) */
+  net_tax_rate_pct?: number;
+  /** Tax savings percentage (0 if worldwide taxation applies) */
+  tax_savings_pct?: number;
+  /** Human-readable explanation of tax treatment */
+  explanation: string;
+}
+
+/** Capital gains tax treatment */
+export interface CapitalGainsAudit {
+  /** Destination country capital gains tax rate (backend: destination_cgt_pct) */
+  destination_cgt_pct: number;
+  /** Source country capital gains tax rate (backend: source_cgt_pct) */
+  source_cgt_pct: number;
+  /** Whether Foreign Tax Credit (FTC) is available */
+  ftc_available: boolean;
+  /** Net CGT rate after FTC (backend: net_cgt_rate_pct) */
+  net_cgt_rate_pct?: number;
+  /** Tax savings percentage */
+  tax_savings_pct?: number;
+  /** Human-readable explanation */
+  explanation: string;
+}
+
+/** Estate tax treatment */
+export interface EstateTaxAudit {
+  /** Destination country estate tax rate (backend: destination_estate_pct) */
+  destination_estate_pct: number;
+  /** Source country estate tax rate (backend: source_estate_pct) */
+  source_estate_pct: number;
+  /** Whether worldwide taxation applies */
+  worldwide_applies?: boolean;
+  /** Net estate tax rate (backend: net_estate_rate_pct) */
+  net_estate_rate_pct?: number;
+  /** Tax savings percentage */
+  tax_savings_pct?: number;
+  /** Human-readable explanation */
+  explanation: string;
+}
+
+/** Net yield calculation */
+export interface NetYieldAudit {
+  /** Gross rental yield */
+  gross_yield_pct: number;
+  /** Tax rate applied (backend: tax_rate_applied_pct) */
+  tax_rate_applied_pct?: number;
+  /** Net yield after taxes */
+  net_yield_pct: number;
+  /** Annual gross income */
+  annual_gross_income?: number;
+  /** Annual tax paid */
+  annual_tax_paid?: number;
+  /** Annual net income */
+  annual_net_income?: number;
+  /** Human-readable explanation */
+  explanation: string;
 }
 
 export interface ProjectionScenario {
@@ -322,6 +498,8 @@ export interface TenYearOutcome {
 }
 
 export interface CostOfInaction {
+  /** Via Negativa doctrine label */
+  doctrine_label?: string;
   /** Cost of not proceeding - Year 1 */
   year_1: number;
   /** Cost of not proceeding - Year 5 */
@@ -331,7 +509,13 @@ export interface CostOfInaction {
   /** Primary driver of cost (e.g., "Tax arbitrage") */
   primary_driver: string;
   /** Secondary driver (e.g., "Appreciation differential") */
-  secondary_driver: string;
+  secondary_driver?: string;
+  /** Via Negativa framing: what exposure remains from inaction */
+  via_negativa_framing?: string;
+  /** Whether structure is blocked (DO_NOT_PROCEED) */
+  structure_blocked?: boolean;
+  /** Context note when structure is blocked */
+  context_note?: string;
 }
 
 export interface ProbabilityWeightedOutcome {
@@ -362,8 +546,16 @@ export interface ScenarioTreeData {
   expiry: TreeExpiry;
   /** Summary matrix for quick reference */
   decision_matrix: DecisionMatrixEntry[];
-  /** Market validation - Expected vs Reality */
+  /** Market validation - Expected vs Reality (legacy) */
   market_validation?: MarketValidation;
+  /** Kahneman Delusion Buster: Expected vs Base Rate Reality */
+  hallucination_gap?: HallucinationGap;
+  /** 6-Book Doctrine metadata (stress calibration, antifragility, failure modes) */
+  doctrine_metadata?: DoctrineMetadata;
+  /** Conditional Yes: "Reject at $X. Approve at $Y." — negotiation leverage */
+  conditional_verdict?: ConditionalVerdict;
+  /** External Veto: "My auditors killed it" — relationship insurance */
+  external_veto?: ExternalVeto;
 }
 
 // =============================================================================
@@ -419,13 +611,35 @@ export type ConditionStatus = "MET" | "PENDING" | "BLOCKED";
 
 export interface BranchOutcome {
   /** Which scenario this outcome is for */
-  scenario: ScenarioName;
+  scenario: ScenarioName | "CAPITAL_PRESERVED" | "COST_OF_VULNERABILITY";
+  /** 6-Book Doctrine label for this outcome */
+  doctrine_label?: string;
   /** Probability of this scenario */
   probability: number;
   /** Net financial outcome in USD */
   net_outcome: number;
   /** Description of outcome */
   description: string;
+  /** Base rate data source citation */
+  base_rate_source?: string;
+  /** Stress calibration citation (for STRESS_CASE) */
+  stress_calibration?: string;
+  /** Survival advantage (for DO_NOT_PROCEED: capital preserved) */
+  survival_advantage?: {
+    survives_2008_scenario: boolean;
+    survives_regulatory_shock: boolean;
+    zero_ruin_probability: boolean;
+    key_advantage: string;
+  };
+  /** Unmitigated exposure (Via Negativa: cost of NOT acting) */
+  unmitigated_exposure?: {
+    estate_tax_cliff: number;
+    estate_tax_cliff_note: string;
+    inflation_erosion_10yr: number;
+    inflation_erosion_note: string;
+    foregone_structuring: number;
+    foregone_structuring_note: string;
+  };
 }
 
 export interface DecisionGate {
@@ -473,6 +687,195 @@ export interface SFOExpertData {
   heir_management_data?: HeirManagementData | null;
   wealth_projection_data?: WealthProjectionData | null;
   scenario_tree_data?: ScenarioTreeData | null;
+}
+
+// =============================================================================
+// KAHNEMAN DELUSION BUSTER: Hallucination Gap (Jan 2026)
+// User Expectation vs Market Base Rate
+// =============================================================================
+
+/** Kahneman Delusion Buster: User Expectation vs Market Base Rate */
+export interface HallucinationGap {
+  doctrine_label: string;
+  hallucination_gap: {
+    appreciation: HallucinationGapEntry;
+    rental_yield: HallucinationGapEntry;
+  };
+  /** Legacy field for backwards compatibility */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  expected_vs_reality?: Record<string, any>;
+  overall_confidence: string;
+  antifragility_assessment: string;
+  recommendation?: string;
+  data_sources_used: string[];
+}
+
+export interface HallucinationGapEntry {
+  user_expectation: string;
+  user_expectation_raw: number | null;
+  market_base_rate: string | null;
+  market_base_rate_raw: number | null;
+  base_rate_source: string | null;
+  deviation_pct: number | null;
+  /** ALIGNED = within 25%, CAUTION = 25-50%, OUTSIDE_COMPETENCE_CIRCLE = >50% */
+  hallucination_flag: "ALIGNED" | "CAUTION" | "OUTSIDE_COMPETENCE_CIRCLE" | null;
+}
+
+// =============================================================================
+// 6-BOOK DOCTRINE METADATA (Jan 2026)
+// =============================================================================
+
+/** 6-Book Doctrine Metadata */
+export interface DoctrineMetadata {
+  /** Historical stress calibration source (e.g., "Dubai 2009 crisis -56%") */
+  stress_calibration: string;
+  /** Stress multipliers used */
+  stress_multipliers: {
+    appreciation: number;
+    income: number;
+  };
+  /** Dalio Machine Stress-Test score (0-100) */
+  antifragility_score: number | null;
+  /** ANTIFRAGILE (>=70), FRAGILE (50-69), RUIN_EXPOSED (<50) */
+  antifragility_assessment: "ANTIFRAGILE" | "FRAGILE" | "RUIN_EXPOSED" | "NOT_SCORED";
+  /** Detected failure modes per Taleb Antifragility Filter */
+  failure_modes: DoctrineFailureMode[];
+  failure_mode_count: number;
+  risk_flags_total: number;
+  /** Which doctrine books were applied */
+  doctrine_books_applied: string[];
+}
+
+export type FailureModeSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "ADVISORY";
+
+export interface DoctrineFailureMode {
+  /** Doctrine failure mode name (e.g., LIQUIDITY_PRISON, BEHAVIORAL_EROSION) */
+  mode: string;
+  /** Which doctrine book detected this (e.g., "Game Theory (Exit Mapper)") */
+  doctrine_book: string;
+  description: string;
+  severity: FailureModeSeverity;
+  /** How this failure mode was detected */
+  detection_type?: "DETERMINISTIC" | "ADVISORY" | "CONFIRMED";
+  /** Human-readable nightmare name (e.g., "The Dragnet", "Genealogy Risk") */
+  nightmare_name?: string;
+}
+
+// =============================================================================
+// CONDITIONAL VERDICT & EXTERNAL VETO (Jan 2026)
+// =============================================================================
+
+/** Conditional Yes: "Reject at $X. Approve at $Y." — negotiation leverage */
+export interface ConditionalVerdict {
+  type: "CONDITIONAL_YES";
+  /** Current ask price (transaction_value) */
+  reject_at: number;
+  /** Stress-case threshold at which the deal becomes acceptable */
+  approve_at: number;
+  /** Human-readable statement: "Reject at $10M. Approve at $7M." */
+  statement: string;
+  /** Calculation basis (e.g., "Stress-case expected value (Dalio Machine Test)") */
+  basis: string;
+  /** Discount percentage from ask to threshold */
+  discount_pct: number;
+}
+
+/** External Veto: Relationship insurance statement for CIO to use verbatim */
+export interface ExternalVeto {
+  /** Ready-to-use statement: "My independent auditors flagged structural risks..." */
+  statement: string;
+  /** Context explaining the purpose of this statement */
+  context: string;
+  /** Usage instructions */
+  usage: string;
+}
+
+// =============================================================================
+// VIA NEGATIVA DATA CONTRACT (Jan 2026)
+// Only present when structure_optimization.verdict === "DO_NOT_PROCEED"
+// Contains all labels, computed values, and tone-shifted copy.
+// Frontend reads from via_negativa.* instead of hardcoding ~45 strings.
+// =============================================================================
+
+export interface ViaNegativaMetric {
+  label: string;
+  /** Field name to resolve from via_negativa computed values */
+  value_field?: string;
+  /** Static value (used when no dynamic field) */
+  value?: string;
+  value_prefix?: string;
+  value_fallback?: string;
+  /** Template string with {variable} placeholders */
+  description_template?: string;
+  description?: string;
+  highlight: boolean;
+  is_destructive: boolean;
+}
+
+export interface ViaNegativaCheck {
+  label: string;
+  /** Boolean field name to resolve from via_negativa computed values */
+  field: string;
+}
+
+export interface ViaNegativaData {
+  verdict_label: string;
+  /** Via Negativa posture statement: strengths acknowledged, weaknesses stated without qualification */
+  analysis_posture: string;
+
+  // Computed values for template substitution
+  day_one_loss_pct: number;
+  day_one_loss_amount: number;
+  total_regulatory_exposure: number;
+  precedent_count: number;
+  tax_efficiency_passed: boolean;
+  liquidity_passed: boolean;
+  structure_passed: boolean;
+
+  header: {
+    badge_label: string;
+    title_prefix: string;
+    title_highlight: string;
+    notice_title: string;
+    /** Template with {dayOneLoss}, {precedentCount} placeholders */
+    notice_body: string;
+  };
+
+  metrics: ViaNegativaMetric[];
+
+  scenario_section: {
+    header: string;
+    expectation_label: string;
+    actual_label: string;
+    commentary_title: string;
+    commentary_body: string;
+  };
+
+  tax_section: {
+    badge_label: string;
+    title_line1: string;
+    title_line2: string;
+    compliance_prefix: string;
+    warning_prefix: string;
+  };
+
+  verdict_section: {
+    header: string;
+    badge_label: string;
+    checks: ViaNegativaCheck[];
+    stamp_text: string;
+    stamp_subtext: string;
+  };
+
+  cta: {
+    headline: string;
+    /** Template with {dayOneLoss} placeholder */
+    body_template: string;
+    scarcity_text: string;
+    button_text: string;
+    button_url: string;
+    context_note: string;
+  };
 }
 
 // =============================================================================

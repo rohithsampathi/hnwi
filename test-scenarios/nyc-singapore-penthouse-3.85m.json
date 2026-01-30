@@ -1,0 +1,72 @@
+{
+  "thesis": {
+    "move_description": "Acquire luxury penthouse in Singapore for US $3.85M from NYC-based Single Family Office. Premium residential investment targeting strong rental yields and capital appreciation. Leveraging Singapore's favorable tax environment and stable regulatory framework for strategic APAC positioning.",
+    "expected_outcome": "10% annual rental yield with 15% annual capital appreciation, generating combined 25% gross returns. Tax-efficient wealth preservation in Singapore jurisdiction with long-term residency pathway benefits.",
+    "move_type": "real_estate",
+    "target_amount": "$3.85M",
+    "target_locations": ["Singapore", "Orchard", "Marina Bay", "Sentosa Cove"],
+    "timeline": "3-6 months",
+    "source_jurisdiction": "United States"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["United States", "New York"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No off-plan purchases", "No developer financing above 50%"],
+    "deal_breakers": ["Title disputes", "Developer insolvency risk", "FATCA reporting failures"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$1M",
+    "advisors": [
+      { "type": "tax", "name": "NYC Tax Counsel", "jurisdiction": "United States" },
+      { "type": "legal", "name": "NYC Legal Counsel", "jurisdiction": "United States" }
+    ],
+    "existing_entities": [
+      { "type": "LLC", "jurisdiction": "Delaware", "purpose": "Family Office holding company" },
+      { "type": "Trust", "jurisdiction": "New York", "purpose": "Revocable living trust" }
+    ],
+    "banking_rails": [
+      { "bank": "JP Morgan Private Bank", "jurisdiction": "United States", "status": "active" },
+      { "bank": "Goldman Sachs Private Wealth", "jurisdiction": "United States", "status": "active" },
+      { "bank": "DBS Private Bank", "jurisdiction": "Singapore", "status": "planned" }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "NYC-based family office with established IPS framework. 20% allocation to international real estate, seeking APAC exposure. Singapore penthouse acquisition aligns with diversification mandate - targeting 10% rental yield + 15% appreciation = 25% combined returns. Singapore's stable regulatory environment provides strategic optionality. Tax advisor in NYC to manage FATCA/FBAR compliance.",
+    "heirs": [
+      {
+        "name": "Victoria",
+        "relationship": "daughter",
+        "age": 42,
+        "allocation_pct": 0.4
+      },
+      {
+        "name": "Michael",
+        "relationship": "son",
+        "age": 32,
+        "allocation_pct": 0.4
+      },
+      {
+        "name": "James",
+        "relationship": "grandchild",
+        "age": 8,
+        "allocation_pct": 0.2,
+        "notes": "Minor - grandson through Victoria, needs trustee structure"
+      }
+    ]
+  },
+  "urgency": "standard",
+  "asset_details": {
+    "property_type": "penthouse",
+    "estimated_value": 3850000,
+    "rental_yield_pct": 10,
+    "appreciation_pct": 15,
+    "location_preference": ["Orchard Road", "Marina Bay", "Sentosa Cove", "River Valley"],
+    "size_sqft": "2500-3500",
+    "bedrooms": "3-4"
+  }
+}

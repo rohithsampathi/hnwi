@@ -7,6 +7,26 @@ import { secureApi } from "@/lib/secure-api"
 import { SessionEncryption } from "@/lib/session-encryption"
 import { CSRFProtection } from "@/lib/csrf-protection"
 
+// Helper to get cookie domain for PWA cross-subdomain support
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') return undefined;
+
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
+  if (!productionUrl) return undefined;
+
+  try {
+    const url = new URL(productionUrl);
+    const hostParts = url.hostname.split('.');
+    if (hostParts.length >= 2) {
+      return `.${hostParts.slice(-2).join('.')}`;
+    }
+  } catch (e) {
+    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
+  }
+
+  return undefined;
+}
+
 function getJWTSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET
   if (!secret) {
@@ -283,19 +303,24 @@ async function handlePost(request: NextRequest) {
             });
           }
 
-          // PWA-compatible cookie settings
+          // PWA-compatible cookie settings (must match login/refresh routes)
           const isProd = process.env.NODE_ENV === 'production';
+          const cookieDomain = getCookieDomain();
 
           // Fallback: If no cookies in headers but tokens in body, set them manually
           if (backendResponse.access_token) {
             const accessTokenAge = 7 * 24 * 60 * 60; // Always 7 days to avoid iOS Safari issues
-            successResponse.cookies.set('access_token', backendResponse.access_token, {
+            const accessTokenOptions: any = {
               httpOnly: true,
               secure: isProd,
-              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
+              sameSite: isProd ? 'none' as const : 'lax' as const,
               path: '/',
               maxAge: accessTokenAge
-            });
+            };
+            if (cookieDomain) accessTokenOptions.domain = cookieDomain;
+            if (isProd) accessTokenOptions.partitioned = true;
+
+            successResponse.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
             logger.info('access_token cookie set from response body', {
               tokenLength: backendResponse.access_token.length,
               secure: isProd
@@ -303,13 +328,17 @@ async function handlePost(request: NextRequest) {
           }
 
           if (backendResponse.refresh_token) {
-            successResponse.cookies.set('refresh_token', backendResponse.refresh_token, {
+            const refreshTokenOptions: any = {
               httpOnly: true,
               secure: isProd,
-              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
+              sameSite: isProd ? 'none' as const : 'lax' as const,
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days
-            });
+            };
+            if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
+            if (isProd) refreshTokenOptions.partitioned = true;
+
+            successResponse.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
             logger.info('refresh_token cookie set from response body', {
               tokenLength: backendResponse.refresh_token.length,
               secure: isProd
@@ -328,13 +357,17 @@ async function handlePost(request: NextRequest) {
             timestamp: Date.now()
           });
 
-          successResponse.cookies.set('session_user', sessionUserData, {
+          const sessionUserOptions: any = {
             httpOnly: true,
             secure: isProd,
-            sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
+            sameSite: isProd ? 'none' as const : 'lax' as const,
             path: '/',
             maxAge: 7 * 24 * 60 * 60 // 7 days
-          });
+          };
+          if (cookieDomain) sessionUserOptions.domain = cookieDomain;
+          if (isProd) sessionUserOptions.partitioned = true;
+
+          successResponse.cookies.set('session_user', sessionUserData, sessionUserOptions);
 
           logger.info('session_user cookie set for immediate session recovery', {
             userId: normalizedUser.id,
@@ -343,13 +376,17 @@ async function handlePost(request: NextRequest) {
 
           // Store remember me preference for future token refreshes
           if (rememberMe) {
-            successResponse.cookies.set('remember_me', 'true', {
+            const rememberOptions: any = {
               httpOnly: true,
               secure: isProd,
-              sameSite: isProd ? 'none' : 'lax', // 'none' for PWA in production
+              sameSite: isProd ? 'none' as const : 'lax' as const,
               path: '/',
               maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token
-            });
+            };
+            if (cookieDomain) rememberOptions.domain = cookieDomain;
+            if (isProd) rememberOptions.partitioned = true;
+
+            successResponse.cookies.set('remember_me', 'true', rememberOptions);
           } else {
             // Ensure the cookie is cleared if not remembering
             successResponse.cookies.delete('remember_me');

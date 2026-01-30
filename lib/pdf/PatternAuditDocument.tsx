@@ -17,6 +17,10 @@ import { PdfCoverPage } from './components/PdfCoverPage';
 import { PdfVerdictSection } from './components/PdfVerdictSection';
 import { PdfTaxAnalysis } from './components/PdfTaxAnalysis';
 import { PdfLastPage } from './components/PdfLastPage';
+import { PdfRealAssetAuditSection } from './components/PdfRealAssetAuditSection';
+import { PdfGoldenVisaSection } from './components/PdfGoldenVisaSection';
+import { PdfHNWITrendsSection } from './components/PdfHNWITrendsSection';
+import { PdfRegimeIntelligenceSection, RegimeIntelligence } from './components/PdfRegimeIntelligenceSection';
 
 /**
  * Safe text helper - ensures all values passed to Text components are strings
@@ -54,7 +58,6 @@ const safeText = (value: any, fallback: string = ''): string => {
     }
 
     // Don't render complex objects as text - return fallback
-    console.warn('[PDF] Object passed to safeText:', JSON.stringify(value)?.slice(0, 200));
     return fallback;
   }
 
@@ -74,7 +77,7 @@ const safeText = (value: any, fallback: string = ''): string => {
 const styles = StyleSheet.create({
   // === PAGE LAYOUTS ===
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 9,
     paddingTop: 56,
     paddingBottom: 72,
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   sectionBadgeText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Helvetica-Bold',
     fontSize: 7,
     color: colors.gray[600],
     textTransform: 'uppercase',
@@ -164,7 +167,6 @@ const styles = StyleSheet.create({
   // === METRICS GRID - Clean data display ===
   metricsGrid: {
     flexDirection: 'row',
-    gap: 16,
     marginBottom: 24,
   },
   metricBox: {
@@ -172,6 +174,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: colors.gray[200],
     paddingBottom: 12,
+    marginRight: 16,
   },
   metricBoxPremium: {
     flex: 1,
@@ -179,19 +182,19 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   metricLabel: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
     color: colors.gray[500],
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     marginBottom: 6,
   },
   metricLabelLight: {
-    fontFamily: 'Helvetica',
-    fontSize: 8,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7,
     color: colors.gray[400],
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
     marginBottom: 6,
   },
   metricValue: {
@@ -205,13 +208,13 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   metricSubtext: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 8,
     color: colors.gray[500],
     marginTop: 4,
   },
   metricSubtextLight: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 8,
     color: colors.gray[400],
     marginTop: 4,
@@ -245,13 +248,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardTitle: {
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Times-Bold',
     fontSize: 11,
     color: colors.gray[900],
     marginBottom: 8,
   },
   cardText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 9,
     color: colors.gray[600],
     lineHeight: 1.6,
@@ -264,13 +267,13 @@ const styles = StyleSheet.create({
   },
   listBullet: {
     width: 12,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 9,
     color: colors.gray[400],
   },
   listText: {
     flex: 1,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 9,
     color: colors.gray[700],
     lineHeight: 1.5,
@@ -308,7 +311,7 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 9,
     color: colors.gray[700],
   },
@@ -335,7 +338,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.gray[200],
   },
   footerText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Roman',
     fontSize: 7,
     color: colors.gray[400],
     letterSpacing: 0.5,
@@ -359,10 +362,9 @@ const styles = StyleSheet.create({
     display: 'none', // Remove decorative dot
   },
   groundedText: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Times-Italic',
     fontSize: 7,
     color: colors.gray[400],
-    fontStyle: 'italic',
   },
 
   // === BADGES - Simple text-based ===
@@ -439,46 +441,16 @@ const PageFooter: React.FC<{ intakeId: string; pageNumber?: number }> = ({ intak
 export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memoData }) => {
   const { preview_data, memo_data, intake_id, generated_at } = memoData;
 
-  // === DEBUG: Log actual data structure to understand what we're receiving ===
-  console.log('[PDF Debug] ========== DATA STRUCTURE ANALYSIS ==========');
-  console.log('[PDF Debug] wealth_projection_data:', JSON.stringify(preview_data.wealth_projection_data, null, 2)?.slice(0, 500));
-  console.log('[PDF Debug] heir_management_data:', JSON.stringify(preview_data.heir_management_data, null, 2)?.slice(0, 500));
-  console.log('[PDF Debug] scenario_tree_data:', JSON.stringify(preview_data.scenario_tree_data, null, 2)?.slice(0, 300));
-
-  // Check wealth projection structure specifically
-  const wp = preview_data.wealth_projection_data;
-  if (wp) {
-    console.log('[PDF Debug] WP Keys:', Object.keys(wp));
-    console.log('[PDF Debug] WP.starting_position:', wp.starting_position);
-    console.log('[PDF Debug] WP.scenarios type:', Array.isArray(wp.scenarios) ? 'ARRAY' : typeof wp.scenarios);
-    console.log('[PDF Debug] WP.scenarios:', wp.scenarios);
-    if (Array.isArray(wp.scenarios) && wp.scenarios.length > 0) {
-      console.log('[PDF Debug] First scenario:', wp.scenarios[0]);
-    }
-  }
-
-  // Check heir management structure
-  const hm = preview_data.heir_management_data;
-  if (hm) {
-    console.log('[PDF Debug] HM Keys:', Object.keys(hm));
-    console.log('[PDF Debug] HM.heir_allocations:', hm.heir_allocations);
-    if (hm.heir_allocations && hm.heir_allocations.length > 0) {
-      console.log('[PDF Debug] First heir:', hm.heir_allocations[0]);
-    }
-  }
-  console.log('[PDF Debug] ================================================');
-
   // Extract key data - use safeText to ensure all values are strings
   const sourceJurisdiction = safeText(preview_data.source_jurisdiction, 'Unknown');
   const destJurisdiction = safeText(preview_data.destination_jurisdiction, 'Unknown');
-  const verdict = safeText(preview_data.verdict, 'CONDITIONAL');
-  const riskLevel = safeText(preview_data.risk_level, 'MODERATE');
+  // Verdict and risk level: frontend uses risk_assessment object, fallback to top-level fields
+  const riskAssessment = (preview_data as any).risk_assessment;
+  const verdict = safeText(riskAssessment?.verdict || preview_data.verdict, 'CONDITIONAL');
+  const riskLevel = safeText(riskAssessment?.risk_level || preview_data.risk_level, 'MODERATE');
 
   // Handle value_creation which can be a string, number, or complex nested object
   const extractValueCreation = (vc: any): string => {
-    // Debug log to understand the actual structure
-    console.log('[PDF Debug] value_creation raw:', JSON.stringify(vc)?.slice(0, 300));
-
     if (!vc) return '$1.5M';
     if (typeof vc === 'string') return vc;
     if (typeof vc === 'number') return formatCurrency(vc);
@@ -527,14 +499,22 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       }
 
       // Absolute fallback - NEVER return [object Object]
-      console.warn('[PDF] Could not extract value from value_creation object:', Object.keys(vc).join(', '));
       return '$1.5M';
     }
 
     return '$1.5M';
   };
-  const valueCreation = extractValueCreation(preview_data.value_creation);
-  const totalTaxBenefit = safeText(preview_data.total_tax_benefit, '+29%');
+  // Value Creation: Use total_savings (same as UI MemoHeader) with fallback to value_creation
+  const valueCreation = preview_data.total_savings
+    ? String(preview_data.total_savings)
+    : extractValueCreation(preview_data.value_creation);
+
+  // Tax Savings: Use cumulative_tax_differential_pct (same as UI Page1TaxDashboard)
+  const taxDiff = preview_data.tax_differential as any;
+  const cumulativeTaxDiff = taxDiff?.cumulative_tax_differential_pct;
+  const totalTaxBenefit = cumulativeTaxDiff !== undefined && cumulativeTaxDiff !== null
+    ? `${cumulativeTaxDiff >= 0 ? '+' : ''}${Math.round(cumulativeTaxDiff)}%`
+    : safeText(preview_data.total_tax_benefit, '+0%');
   const precedentCount = typeof preview_data.precedent_count === 'number' ? preview_data.precedent_count : (memo_data.kgv3_intelligence_used?.precedents || 21);
   const exposureClass = safeText(preview_data.exposure_class, 'Strategic Investor');
   const dataQuality = safeText(preview_data.data_quality, 'Strong');
@@ -545,6 +525,88 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
   // Risk and opportunities
   const riskFactors = preview_data.risk_factors || [];
+  const allMistakes = (preview_data as any).all_mistakes || [];  // Same data as UI uses for total exposure
+
+  // Helper function to extract dollar amount from cost string
+  // Handles formats like: "60% of property value = $2,700,000", "$1.35M", "$450K", "$2.7M"
+  const parseDollarAmount = (costString: string): number => {
+    if (!costString || typeof costString !== 'string') return 0;
+
+    // First try to find dollar amount after "=" (e.g., "60% of property value = $2,700,000")
+    const afterEquals = costString.split('=').pop()?.trim();
+    if (afterEquals) {
+      // Check M/K suffix FIRST before comma patterns (prevents $50K matching as just $50)
+      const suffixMatch = afterEquals.match(/\$([\d.]+)([MK])/i);
+      if (suffixMatch) {
+        let val = parseFloat(suffixMatch[1]);
+        if (suffixMatch[2].toUpperCase() === 'M') val *= 1000000;
+        if (suffixMatch[2].toUpperCase() === 'K') val *= 1000;
+        return val;
+      }
+      // Match dollar amounts with commas: $2,700,000 or $1,350,000
+      const commaMatch = afterEquals.match(/\$([\d,]+)/);
+      if (commaMatch) {
+        return parseFloat(commaMatch[1].replace(/,/g, ''));
+      }
+    }
+
+    // Fallback: find any dollar amount with M/K suffix in the string (with $)
+    const mMatch = costString.match(/\$([\d.]+)M/i);
+    if (mMatch) return parseFloat(mMatch[1]) * 1000000;
+
+    const kMatch = costString.match(/\$([\d.]+)K/i);
+    if (kMatch) return parseFloat(kMatch[1]) * 1000;
+
+    // Fallback: find any dollar amount with commas (with $)
+    const anyCommaMatch = costString.match(/\$([\d,]+)/);
+    if (anyCommaMatch) return parseFloat(anyCommaMatch[1].replace(/,/g, ''));
+
+    // Try M/K suffix without $ sign (e.g., "10M penalty", "50K fee")
+    const mNoSignMatch = costString.match(/\b([\d.]+)M\b/i);
+    if (mNoSignMatch) return parseFloat(mNoSignMatch[1]) * 1000000;
+
+    const kNoSignMatch = costString.match(/\b([\d.]+)K\b/i);
+    if (kNoSignMatch) return parseFloat(kNoSignMatch[1]) * 1000;
+
+    // Last resort: simple number (but NOT if it looks like a percentage or has M/K suffix)
+    if (!costString.includes('%') && !/[MK]\b/i.test(costString)) {
+      const simpleMatch = costString.match(/\$?([\d.]+)/);
+      if (simpleMatch) return parseFloat(simpleMatch[1]);
+    }
+
+    return 0;
+  };
+
+  // Map allMistakes to RiskFactor format for PDF severity breakdown (matches UI)
+  // Frontend displays raw cost string, so include it for display
+  const mistakesAsRiskFactors = allMistakes.map((m: any) => {
+    // Parse the exposure amount for calculations
+    let exposureAmount = 0;
+    if (m.cost && typeof m.cost === 'string') {
+      exposureAmount = parseDollarAmount(m.cost);
+    }
+    if (exposureAmount === 0 && m.cost_numeric && m.cost_numeric > 1000) {
+      exposureAmount = m.cost_numeric;
+    }
+
+    // Determine severity from urgency field (frontend uses urgency)
+    let severity: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+    const urgency = (m.urgency || '').toUpperCase();
+    if (urgency.includes('CRITICAL')) severity = 'critical';
+    else if (urgency.includes('HIGH')) severity = 'high';
+    else if (urgency.includes('MEDIUM')) severity = 'medium';
+    else if (urgency.includes('LOW')) severity = 'low';
+
+    return {
+      title: m.title || 'Unspecified Risk',
+      description: m.fix || '',
+      severity,
+      exposure_amount: exposureAmount,
+      // Include raw cost string for display (matches frontend which shows {risk.cost})
+      cost_display: m.cost || '',
+      mitigation: m.fix || '',
+    };
+  });
   const opportunities = preview_data.all_opportunities || [];
   const dueDiligence = preview_data.due_diligence || [];
   const executionSequence = preview_data.execution_sequence || [];
@@ -553,14 +615,29 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
   const peerStats = preview_data.peer_cohort_stats;
   const capitalFlow = preview_data.capital_flow_data;
 
-  // Parse expert sections
-  const crisisData = parseCrisisData(preview_data.crisis_resilience_stress_test);
-  const transparencyData = parseTransparencyData(preview_data.transparency_regime_impact);
+  // Parse expert sections - use structured data first, fallback to parsing string (matches frontend)
+  const crisisData = (preview_data as any).crisis_data || parseCrisisData(preview_data.crisis_resilience_stress_test);
+  const transparencyData = (preview_data as any).transparency_data || parseTransparencyData(preview_data.transparency_regime_impact);
 
   // Wealth projection - match browser UI field names
   const wealthProjection = preview_data.wealth_projection_data;
   const scenarioTree = preview_data.scenario_tree_data;
   const heirManagement = preview_data.heir_management_data;
+  const realAssetAudit = preview_data.real_asset_audit;
+  const destinationDrivers = preview_data.destination_drivers;
+  // Golden Visa: frontend prefers golden_visa_intelligence over destination_drivers
+  const goldenVisaIntelligence = (preview_data as any).golden_visa_intelligence;
+  // HNWI Trends: frontend uses hnwi_trends (array of strings), PDF needs object with insights array
+  // Transform array format to object format if needed
+  const rawHnwiTrends = (preview_data as any).hnwi_trends;
+  const hnwiTrendsData = preview_data.hnwi_trends_analysis || (
+    Array.isArray(rawHnwiTrends) ? {
+      insights: rawHnwiTrends.map((t: string) => ({ content: t })),
+      confidence: (preview_data as any).hnwi_trends_confidence,
+    } : rawHnwiTrends
+  );
+  // Regime Intelligence: frontend uses peer_cohort_stats.regime_intelligence
+  const regimeIntelligence = (preview_data.peer_cohort_stats as any)?.regime_intelligence || preview_data.regime_intelligence as RegimeIntelligence | undefined;
 
   // Extract wealth projection scenarios correctly (browser UI uses array with name property)
   const wpScenarios = wealthProjection?.scenarios;
@@ -608,10 +685,81 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
   // Cost of inaction
   const costOfInaction = wealthProjection?.cost_of_inaction;
 
-  // Calculate totals
-  const totalExposure = riskFactors.reduce((sum, r) => sum + (r.exposure_amount || 0), 0);
+  // Calculate totals - use risk_assessment.total_exposure_formatted (same as frontend Page2AuditVerdict)
+  // Frontend uses: riskAssessment?.total_exposure_formatted || calculated value
+  let totalExposure = 0;
+  if (riskAssessment?.total_exposure_formatted) {
+    // Parse the formatted string like "$968K" or "$2.5M"
+    totalExposure = parseDollarAmount(riskAssessment.total_exposure_formatted);
+  }
+  // Fallback: calculate from mistakes (same logic as frontend)
+  if (totalExposure === 0) {
+    totalExposure = allMistakes.reduce((sum: number, m: any) => {
+      // Frontend uses cost_numeric directly if available
+      if (m.cost_numeric && typeof m.cost_numeric === 'number') {
+        return sum + m.cost_numeric;
+      }
+      // Fallback: parse from cost string
+      if (m.cost && typeof m.cost === 'string') {
+        const parsed = parseDollarAmount(m.cost);
+        if (parsed > 0) return sum + parsed;
+      }
+      return sum;
+    }, 0);
+  }
   const opportunityCount = opportunities.length;
-  const riskFactorCount = riskFactors.length;
+  // Risk Factor Count: Use allMistakes.length (same as UI Page2AuditVerdict shows mistakes)
+  const riskFactorCount = allMistakes.length > 0 ? allMistakes.length : riskFactors.length;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIA NEGATIVA: Compute context for PDF components (mirrors page.tsx logic)
+  // ══════════════════════════════════════════════════════════════════════════
+  const structureVerdict = (preview_data as any).structure_optimization?.verdict;
+  const isViaNegativa = structureVerdict === 'DO_NOT_PROCEED';
+  const crossBorderAudit = wealthProjection?.starting_position?.cross_border_audit_summary as any;
+  const hasUSWorldwideTax = sourceJurisdiction?.toLowerCase().includes('united_states') ||
+    sourceJurisdiction?.toLowerCase().includes('usa') ||
+    sourceJurisdiction?.toLowerCase().includes('us');
+  const showTaxSavings = (preview_data as any).show_tax_savings !== false && !hasUSWorldwideTax;
+
+  let pdfViaNegativa: {
+    isActive: boolean;
+    badgeLabel: string;
+    dayOneLoss: number;
+    dayOneLossAmount: number;
+    taxEfficiencyPassed: boolean;
+    liquidityPassed: boolean;
+    structurePassed: boolean;
+    verdictHeader: string;
+    verdictBadgeLabel: string;
+    stampText: string;
+    stampSubtext: string;
+    ctaBody: string;
+  } | undefined;
+  if (isViaNegativa) {
+    const backendVN = (preview_data as any)?.via_negativa;
+    const acqAudit = crossBorderAudit?.acquisition_audit;
+    const propValue = acqAudit?.property_value || 0;
+    const totalAcqCost = acqAudit?.total_acquisition_cost || 0;
+    const dayOneLossPct = backendVN?.day_one_loss_pct ?? acqAudit?.day_one_loss_pct ?? 0;
+    const dayOneLossAmount = backendVN?.day_one_loss_amount ?? (totalAcqCost - propValue);
+
+    pdfViaNegativa = {
+      isActive: true,
+      badgeLabel: backendVN?.header?.badge_label || 'ELEVATED RISK',
+      dayOneLoss: dayOneLossPct,
+      dayOneLossAmount,
+      taxEfficiencyPassed: backendVN?.tax_efficiency_passed ?? (showTaxSavings && (crossBorderAudit?.total_tax_savings_pct || 0) > 0),
+      liquidityPassed: backendVN?.liquidity_passed ?? dayOneLossPct < 10,
+      structurePassed: backendVN?.structure_passed ?? false,
+      verdictHeader: backendVN?.verdict_section?.header || 'Structural Review',
+      verdictBadgeLabel: backendVN?.verdict_section?.badge_label || 'Capital Allocation Review',
+      stampText: backendVN?.verdict_section?.stamp_text || 'Allocation Not Recommended',
+      stampSubtext: backendVN?.verdict_section?.stamp_subtext || 'Key viability thresholds not met in this structure — review alternative corridors and strategies below',
+      ctaBody: (backendVN?.cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure. The same engine analyzes any cross-border acquisition across 50+ jurisdictions.')
+        .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
+    };
+  }
 
   return (
     <Document
@@ -628,6 +776,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         generatedAt={generated_at}
         exposureClass={exposureClass}
         valueCreation={valueCreation}
+        viaNegativa={pdfViaNegativa}
       />
 
       {/* === PAGE 2: Pattern Intelligence Header === */}
@@ -678,7 +827,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           </Text>
         </View>
 
-        {/* Verdict Section */}
+        <PageFooter intakeId={intake_id} />
+      </Page>
+
+      {/* === PAGE 2B: Investment Committee Decision === */}
+      <Page size="A4" style={styles.page}>
         <PdfVerdictSection
           verdict={verdict}
           verdictRationale={preview_data.verdict_rationale}
@@ -690,8 +843,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           sourceJurisdiction={cleanJurisdiction(sourceJurisdiction)}
           destinationJurisdiction={cleanJurisdiction(destJurisdiction)}
           totalExposure={totalExposure}
-          riskFactors={riskFactors}
+          totalExposureFormatted={riskAssessment?.total_exposure_formatted}
+          mitigationTimeline={(memoData as any).mitigationTimeline || (memoData as any).risk_assessment?.mitigation_timeline}
+          riskFactors={allMistakes.length > 0 ? mistakesAsRiskFactors : riskFactors}
           dueDiligence={dueDiligence}
+          viaNegativa={pdfViaNegativa}
         />
 
         <PageFooter intakeId={intake_id} />
@@ -804,7 +960,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
             <Text style={styles.sectionTitle}>Market Intelligence & Peer Analysis</Text>
           </View>
 
-          {/* Peer movement stats */}
+          {/* Peer movement stats - supports both UI field names (total_peers, last_6_months, avg_deal_value_m) and PDF field names (total_hnwis, recent_movements, average_value) */}
           {peerStats && (
             <>
               <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 16 }}>Peer Movement Analysis</Text>
@@ -816,18 +972,25 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 </View>
                 <View style={styles.tableRow}>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Total HNWIs Executing Similar Moves</Text>
-                  <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{safeText(peerStats.total_hnwis, '21')}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{safeText((peerStats as any).total_peers ?? peerStats.total_hnwis, '21')}</Text>
                 </View>
                 <View style={styles.tableRowAlt}>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Recent Movements (Last 6 Months)</Text>
-                  <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{safeText(peerStats.recent_movements, '8')}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{safeText((peerStats as any).last_6_months ?? peerStats.recent_movements, '8')}</Text>
                 </View>
                 <View style={styles.tableRow}>
                   <Text style={[styles.tableCell, { flex: 2 }]}>Average Transaction Value</Text>
                   <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
-                    {typeof peerStats.average_value === 'number'
-                      ? formatCurrency(peerStats.average_value)
-                      : safeText(peerStats.average_value, '$17.5M')}
+                    {(() => {
+                      const avgVal = (peerStats as any).avg_deal_value_m ?? peerStats.average_value;
+                      if (typeof avgVal === 'number') {
+                        // If it's avg_deal_value_m, it's in millions, so multiply
+                        return (peerStats as any).avg_deal_value_m !== undefined
+                          ? `$${avgVal}M`
+                          : formatCurrency(avgVal);
+                      }
+                      return safeText(avgVal, '$17.5M');
+                    })()}
                   </Text>
                 </View>
               </View>
@@ -874,62 +1037,125 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
               {cleanJurisdiction(sourceJurisdiction)} → {cleanJurisdiction(destJurisdiction)} compliance analysis (CRS / FATCA / DAC8)
             </Text>
 
-            {/* Triggered regimes table */}
-            <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Triggered Regimes</Text>
-            {(transparencyData.triggered && transparencyData.triggered.length > 0) ? (
-              <View style={styles.table}>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.tableCellHeader, { flex: 2 }]}>Regime</Text>
-                  <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Threshold</Text>
+            {/* Triggered regimes table - handle both frontend format (reporting_triggers) and PDF format (triggered) */}
+            {(() => {
+              // Frontend format: reporting_triggers with status field
+              const triggeredFromFrontend = (transparencyData as any).reporting_triggers?.filter(
+                (t: any) => t.status === 'TRIGGERED'
+              ) || [];
+              // PDF format: triggered array
+              const triggeredFromPdf = transparencyData.triggered || [];
+              const triggeredItems = triggeredFromFrontend.length > 0 ? triggeredFromFrontend : triggeredFromPdf;
+
+              return (
+                <>
+                  <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Triggered Regimes ({triggeredItems.length})</Text>
+                  {triggeredItems.length > 0 ? (
+                    <View style={styles.table}>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableCellHeader, { flex: 2 }]}>Regime</Text>
+                        <Text style={[styles.tableCellHeader, { flex: 1 }]}>Threshold</Text>
+                        <Text style={[styles.tableCellHeader, { flex: 1, textAlign: 'right' }]}>Your Exposure</Text>
+                      </View>
+                      {triggeredItems.map((item: any, i: number) => (
+                        <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                          <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>{item.framework || item.regime}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{item.threshold || '-'}</Text>
+                          <Text style={[styles.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{item.your_exposure || '-'}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 9, color: colors.gray[500], marginBottom: 16 }}>No regimes triggered</Text>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Not triggered summary - handle both formats */}
+            {(() => {
+              // Frontend format: reporting_triggers with NOT_TRIGGERED status
+              const notTriggeredFromFrontend = (transparencyData as any).reporting_triggers?.filter(
+                (t: any) => t.status === 'NOT_TRIGGERED' || t.status === 'NOT TRIGGERED'
+              ) || [];
+              // PDF format: not_triggered array
+              const notTriggeredFromPdf = transparencyData.not_triggered || [];
+              const notTriggeredItems = notTriggeredFromFrontend.length > 0 ? notTriggeredFromFrontend : notTriggeredFromPdf;
+
+              return notTriggeredItems.length > 0 ? (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Not Triggered ({notTriggeredItems.length})</Text>
+                  <View style={styles.table}>
+                    <View style={styles.tableHeader}>
+                      <Text style={[styles.tableCellHeader, { flex: 2 }]}>Regime</Text>
+                      <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Your Exposure</Text>
+                    </View>
+                    {notTriggeredItems.slice(0, 3).map((item: any, i: number) => (
+                      <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                        <Text style={[styles.tableCell, { flex: 2 }]}>{item.framework || item.regime}</Text>
+                        <Text style={[styles.tableCell, { textAlign: 'right' }]}>{item.your_exposure || '-'}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-                {transparencyData.triggered.map((item, i) => (
-                  <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                    <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>{item.regime}</Text>
-                    <Text style={[styles.tableCell, { textAlign: 'right' }]}>{item.threshold}</Text>
+              ) : null;
+            })()}
+
+            {/* Compliance Risks - new section matching frontend */}
+            {(transparencyData as any).compliance_risks && (transparencyData as any).compliance_risks.length > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Top Compliance Risks</Text>
+                {(transparencyData as any).compliance_risks.slice(0, 3).map((risk: any, i: number) => (
+                  <View key={i} style={{ marginBottom: 12, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: colors.amber[500] }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{risk.framework || risk.regime}</Text>
+                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.amber[600] }}>{risk.exposure}</Text>
+                    </View>
+                    <Text style={{ fontSize: 8, color: colors.gray[600], marginBottom: 2 }}>Trigger: {risk.trigger}</Text>
+                    <Text style={{ fontSize: 8, color: colors.gray[700] }}>Fix: {risk.fix}</Text>
                   </View>
                 ))}
               </View>
-            ) : (
-              <Text style={{ fontSize: 9, color: colors.gray[500], marginBottom: 16 }}>No regimes triggered</Text>
             )}
 
-            {/* Not triggered summary */}
-            {transparencyData.not_triggered && transparencyData.not_triggered.length > 0 && (
-              <View style={{ marginTop: 16 }}>
-                <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Not Triggered ({transparencyData.not_triggered.length})</Text>
-                <View style={styles.table}>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.tableCellHeader, { flex: 2 }]}>Regime</Text>
-                    <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Your Exposure</Text>
-                  </View>
-                  {transparencyData.not_triggered.slice(0, 3).map((item, i) => (
-                    <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                      <Text style={[styles.tableCell, { flex: 2 }]}>{item.regime}</Text>
-                      <Text style={[styles.tableCell, { textAlign: 'right' }]}>{item.your_exposure}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Bottom line */}
+            {/* Bottom line - handle both frontend and PDF field names */}
             {transparencyData.bottom_line && (
               <View style={{ marginTop: 20, paddingTop: 16, borderTopWidth: 2, borderTopColor: colors.gray[900] }}>
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Bottom Line Assessment</Text>
-                <View style={{ flexDirection: 'row', gap: 48 }}>
-                  <View>
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ marginRight: 48 }}>
                     <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Exposure</Text>
-                    <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
-                      {safeText(transparencyData.bottom_line.total_exposure, '$0 US penalties')}
+                    <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.amber[600] }}>
+                      {safeText(
+                        (transparencyData.bottom_line as any).total_exposure_if_noncompliant ||
+                        transparencyData.bottom_line.total_exposure,
+                        '$0'
+                      )}
                     </Text>
                   </View>
                   <View>
                     <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Compliance Cost</Text>
                     <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
-                      {safeText(transparencyData.bottom_line.compliance_cost, '$10,000-25,000')}
+                      {safeText(
+                        (transparencyData.bottom_line as any).estimated_compliance_cost ||
+                        transparencyData.bottom_line.compliance_cost,
+                        '$10,000-25,000'
+                      )}
                     </Text>
                   </View>
                 </View>
+                {/* Immediate actions */}
+                {((transparencyData.bottom_line as any).immediate_actions?.length > 0 || transparencyData.immediate_actions?.length) && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Immediate Actions</Text>
+                    {((transparencyData.bottom_line as any).immediate_actions || transparencyData.immediate_actions || []).slice(0, 3).map((action: string, i: number) => (
+                      <View key={i} style={{ flexDirection: 'row', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 8, color: colors.amber[600], marginRight: 6 }}>→</Text>
+                        <Text style={{ fontSize: 8, color: colors.gray[700], flex: 1 }}>{action}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
 
@@ -944,8 +1170,52 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         <PageFooter intakeId={intake_id} />
       </Page>
 
+      {/* === PAGE 4.5: Real Asset Audit Intelligence === */}
+      {realAssetAudit && Object.keys(realAssetAudit).length > 0 && (
+        <PdfRealAssetAuditSection
+          data={realAssetAudit}
+          sourceJurisdiction={sourceJurisdiction}
+          destinationJurisdiction={destJurisdiction}
+          transactionValue={startingValue}
+          intakeId={intake_id}
+        />
+      )}
+
+      {/* === PAGE 4.6: Golden Visa / Investment Migration === */}
+      {destinationDrivers?.visa_programs && destinationDrivers.visa_programs.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <PdfGoldenVisaSection
+            destinationDrivers={destinationDrivers}
+            destinationJurisdiction={destJurisdiction}
+          />
+          <PageFooter intakeId={intake_id} />
+        </Page>
+      )}
+
+      {/* === PAGE 4.7: HNWI Migration Trends === */}
+      {hnwiTrendsData?.insights && hnwiTrendsData.insights.length > 0 && (
+        <Page size="A4" style={styles.page}>
+          <PdfHNWITrendsSection
+            trendsData={hnwiTrendsData}
+            sourceJurisdiction={sourceJurisdiction}
+            destinationJurisdiction={destJurisdiction}
+          />
+          <PageFooter intakeId={intake_id} />
+        </Page>
+      )}
+
+      {/* === PAGE 4.8: Tax Regime Intelligence === */}
+      {regimeIntelligence?.has_special_regime && (
+        <PdfRegimeIntelligenceSection
+          regimeIntelligence={regimeIntelligence}
+          sourceJurisdiction={sourceJurisdiction}
+          destinationJurisdiction={destJurisdiction}
+          intakeId={intake_id}
+        />
+      )}
+
       {/* === PAGE 5: Crisis Resilience === */}
-      {crisisData && (
+      {crisisData && (crisisData.overall_resilience || (crisisData.scenarios && crisisData.scenarios.length > 0)) && (
         <Page size="A4" style={styles.page}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -976,9 +1246,23 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                     <Text style={styles.tableCellHeader}>Buffer Required</Text>
                   </View>
                   <View style={styles.tableRow}>
-                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>{formatCurrency(crisisData.overall_resilience.worst_case_loss || 0)}</Text>
-                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>{safeText(crisisData.overall_resilience.recovery_time, '3 years')}</Text>
-                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>{formatCurrency(crisisData.overall_resilience.buffer_required || 0)}</Text>
+                    {/* Use key_metrics (strings) first, fallback to overall_resilience */}
+                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>
+                      {crisisData.key_metrics?.worst_case_loss ||
+                       (typeof crisisData.overall_resilience.worst_case_loss === 'string'
+                         ? crisisData.overall_resilience.worst_case_loss
+                         : formatCurrency(crisisData.overall_resilience.worst_case_loss || 0))}
+                    </Text>
+                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>
+                      {crisisData.key_metrics?.recovery_time ||
+                       safeText(crisisData.overall_resilience.recovery_time, '3 years')}
+                    </Text>
+                    <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>
+                      {crisisData.key_metrics?.required_buffer ||
+                       (typeof crisisData.overall_resilience.buffer_required === 'string'
+                         ? crisisData.overall_resilience.buffer_required
+                         : formatCurrency(crisisData.overall_resilience.buffer_required || 0))}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -998,8 +1282,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                   {crisisData.scenarios.slice(0, 4).map((scenario, i) => (
                     <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                       <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>{safeText(scenario.name, 'Scenario')}</Text>
-                      <Text style={styles.tableCell}>{safeText(scenario.severity, 'MEDIUM').toUpperCase()}</Text>
-                      <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold' }]}>{formatCurrency(scenario.impact || 0)}</Text>
+                      <Text style={styles.tableCell}>{safeText(scenario.risk_level || scenario.severity, 'MEDIUM').toUpperCase()}</Text>
+                      {/* Impact can be string like "$540,000" or number */}
+                      <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold' }]}>
+                        {typeof scenario.impact === 'string'
+                          ? scenario.impact
+                          : formatCurrency(scenario.impact || 0)}
+                      </Text>
                       <Text style={styles.tableCell}>{safeText(scenario.recovery, 'N/A')}</Text>
                     </View>
                   ))}
@@ -1040,7 +1329,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       )}
 
       {/* === PAGE 6: Decision Scenario Tree === */}
-      {scenarioTree && (scenarioTree.branches || scenarioTree.decision_gates) && (
+      {scenarioTree && ((Array.isArray(scenarioTree.branches) && scenarioTree.branches.length > 0) ||
+       (scenarioTree.branches && typeof scenarioTree.branches === 'object' && Object.keys(scenarioTree.branches).length > 0) ||
+       (scenarioTree.decision_gates && scenarioTree.decision_gates.length > 0)) && (
         <Page size="A4" style={styles.page}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -1048,7 +1339,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
               <Text style={styles.sectionTitle}>Decision Scenario Tree</Text>
             </View>
 
-            {/* Decision branches table */}
+            {/* Decision branches table - handles both array (UI format) and object (legacy) formats */}
             {scenarioTree.branches && (
               <View style={{ marginBottom: 24 }}>
                 <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Decision Pathways</Text>
@@ -1058,21 +1349,54 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                     <Text style={styles.tableCellHeader}>Probability</Text>
                     <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Expected Value</Text>
                   </View>
-                  {scenarioTree.branches.proceed_now && (
+                  {/* Handle array format (from UI/backend) */}
+                  {Array.isArray(scenarioTree.branches) && scenarioTree.branches.map((branch: any, idx: number) => {
+                    const displayName = branch.name === 'PROCEED_NOW' ? 'Proceed Now'
+                      : branch.name === 'PROCEED_MODIFIED' ? 'Proceed Modified'
+                      : branch.name === 'DO_NOT_PROCEED' ? 'Do Not Proceed'
+                      : branch.name || `Pathway ${idx + 1}`;
+                    const isRecommended = branch.name === scenarioTree.recommended_branch ||
+                                          branch.name === 'PROCEED_MODIFIED';
+                    const probability = branch.recommendation_strength
+                      ? Math.round(branch.recommendation_strength * 100)
+                      : branch.probability || 0;
+                    const expectedValue = branch.expected_value || 0;
+                    const isPositive = expectedValue >= 0;
+
+                    return (
+                      <View
+                        key={idx}
+                        style={[
+                          idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt,
+                          isRecommended && { borderLeftWidth: 3, borderLeftColor: colors.amber[500] }
+                        ]}
+                      >
+                        <Text style={[styles.tableCell, { flex: 2, fontFamily: isRecommended ? 'Helvetica-Bold' : 'Helvetica' }]}>
+                          {displayName}{isRecommended ? ' (Recommended)' : ''}
+                        </Text>
+                        <Text style={styles.tableCell}>{probability}%</Text>
+                        <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Courier-Bold' }]}>
+                          {isPositive ? '+' : ''}{formatCurrency(expectedValue)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  {/* Fallback: Handle legacy object format */}
+                  {!Array.isArray(scenarioTree.branches) && scenarioTree.branches.proceed_now && (
                     <View style={styles.tableRow}>
                       <Text style={[styles.tableCell, { flex: 2 }]}>Proceed Now</Text>
                       <Text style={styles.tableCell}>{scenarioTree.branches.proceed_now.probability || 35}%</Text>
                       <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Courier-Bold' }]}>+{formatCurrency(scenarioTree.branches.proceed_now.expected_value || 0)}</Text>
                     </View>
                   )}
-                  {scenarioTree.branches.proceed_modified && (
+                  {!Array.isArray(scenarioTree.branches) && scenarioTree.branches.proceed_modified && (
                     <View style={[styles.tableRowAlt, { borderLeftWidth: 3, borderLeftColor: colors.amber[500] }]}>
                       <Text style={[styles.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>Proceed Modified (Recommended)</Text>
                       <Text style={styles.tableCell}>{scenarioTree.branches.proceed_modified.probability || 42}%</Text>
                       <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Courier-Bold' }]}>+{formatCurrency(scenarioTree.branches.proceed_modified.expected_value || 0)}</Text>
                     </View>
                   )}
-                  {scenarioTree.branches.do_not_proceed && (
+                  {!Array.isArray(scenarioTree.branches) && scenarioTree.branches.do_not_proceed && (
                     <View style={styles.tableRow}>
                       <Text style={[styles.tableCell, { flex: 2 }]}>Do Not Proceed</Text>
                       <Text style={styles.tableCell}>{scenarioTree.branches.do_not_proceed.probability || 23}%</Text>
@@ -1094,12 +1418,16 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                     <Text style={styles.tableCellHeader}>If Pass</Text>
                     <Text style={styles.tableCellHeader}>If Fail</Text>
                   </View>
-                  {scenarioTree.decision_gates.map((gate, i) => (
+                  {scenarioTree.decision_gates.map((gate: any, i: number) => (
                     <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                      <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>{gate.day}</Text>
-                      <Text style={[styles.tableCell, { flex: 2 }]}>{gate.gate}</Text>
-                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_pass}</Text>
-                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_fail}</Text>
+                      <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold' }]}>
+                        {gate.day || gate.gate_number || i + 1}
+                      </Text>
+                      <Text style={[styles.tableCell, { flex: 2 }]}>
+                        {gate.check || gate.gate || `Gate ${i + 1}`}
+                      </Text>
+                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_pass || 'Continue'}</Text>
+                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_fail || 'Review'}</Text>
                     </View>
                   ))}
                 </View>
@@ -1127,19 +1455,25 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
             </View>
 
             {/* Third generation risk */}
-            {(heirManagement.third_generation_risk || heirManagement.with_structure) && (() => {
-              const rawCurrentRisk = heirManagement.third_generation_risk?.current_probability_of_loss
-                || heirManagement.third_generation_risk?.current
-                || 0.70;
-              const currentRisk = rawCurrentRisk < 1 ? Math.round(rawCurrentRisk * 100) : Math.round(rawCurrentRisk);
+            {(heirManagement.third_generation_risk || heirManagement.with_structure || (heirManagement as any).third_generation_problem) && (() => {
+              // Use explicit fields from third_generation_problem (same as UI HeirManagementSection)
+              // Backend provides: loss_without_structure_pct (70), loss_with_structure_pct (7)
+              // Backend provides: preservation_without_structure_pct (30), preservation_with_structure_pct (93)
+              const thirdGenProblem = (heirManagement as any).third_generation_problem || {};
 
-              const preservationPct = heirManagement.with_structure?.preservation_percentage || 0;
-              const normalizedPreservation = preservationPct < 1 ? preservationPct : preservationPct / 100;
+              // Current risk (loss without structure) - use explicit field first
+              const currentRisk = thirdGenProblem.loss_without_structure_pct != null
+                ? thirdGenProblem.loss_without_structure_pct
+                : heirManagement.third_generation_risk?.current_probability_of_loss != null
+                  ? Math.round(heirManagement.third_generation_risk.current_probability_of_loss * 100)
+                  : 70;
 
-              const rawWithStructureRisk = heirManagement.third_generation_risk?.with_structure_probability
-                || heirManagement.third_generation_risk?.with_structure
-                || (1 - normalizedPreservation);
-              const withStructureRisk = rawWithStructureRisk < 1 ? Math.round(rawWithStructureRisk * 100) : Math.round(rawWithStructureRisk);
+              // With structure risk (loss with structure) - use explicit field first
+              const withStructureRisk = thirdGenProblem.loss_with_structure_pct != null
+                ? thirdGenProblem.loss_with_structure_pct
+                : heirManagement.third_generation_risk?.with_structure_probability != null
+                  ? Math.round(heirManagement.third_generation_risk.with_structure_probability * 100)
+                  : 7;
 
               const improvement = currentRisk - withStructureRisk;
 
@@ -1163,21 +1497,25 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
             })()}
 
             {/* Recommended structure */}
-            {(heirManagement.recommended_structure || heirManagement.with_structure?.recommended_structure) && (
-              <View style={{ marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.gray[200] }}>
-                <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Recommended Structure</Text>
-                <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
-                  {heirManagement.with_structure?.recommended_structure || heirManagement.recommended_structure}
-                </Text>
-                {heirManagement.with_structure?.preservation_percentage && (
-                  <Text style={{ fontSize: 10, color: colors.gray[600], marginTop: 4 }}>
-                    Preservation Rate: {Math.round((heirManagement.with_structure.preservation_percentage > 1
-                      ? heirManagement.with_structure.preservation_percentage
-                      : heirManagement.with_structure.preservation_percentage * 100))}%
+            {(heirManagement.recommended_structure || heirManagement.with_structure?.recommended_structure) && (() => {
+              // Use explicit preservation_with_structure_pct from third_generation_problem (same as UI)
+              const thirdGenProblem = (heirManagement as any).third_generation_problem || {};
+              const preservationRate = thirdGenProblem.preservation_with_structure_pct != null
+                ? thirdGenProblem.preservation_with_structure_pct
+                : 93; // Default to 93% (standard Hughes Framework target)
+
+              return (
+                <View style={{ marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.gray[200] }}>
+                  <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Recommended Structure</Text>
+                  <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
+                    {heirManagement.with_structure?.recommended_structure || heirManagement.recommended_structure}
                   </Text>
-                )}
-              </View>
-            )}
+                  <Text style={{ fontSize: 10, color: colors.gray[600], marginTop: 4 }}>
+                    Preservation Rate: {preservationRate}%
+                  </Text>
+                </View>
+              );
+            })()}
 
             {/* Hughes Framework - Wealth Preservation Intelligence */}
             {heirManagement.hughes_framework && (
@@ -1206,9 +1544,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                  heirManagement.hughes_framework.third_generation_problem.causes.length > 0 && (
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Common Wealth Destruction Causes</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                       {heirManagement.hughes_framework.third_generation_problem.causes.slice(0, 5).map((cause: string, i: number) => (
-                        <View key={i} style={{ backgroundColor: colors.gray[50], paddingHorizontal: 10, paddingVertical: 6, borderLeftWidth: 2, borderLeftColor: colors.red[400] }}>
+                        <View key={i} style={{ backgroundColor: colors.gray[50], paddingHorizontal: 10, paddingVertical: 6, borderLeftWidth: 2, borderLeftColor: colors.red[400], marginRight: 8, marginBottom: 8 }}>
                           <Text style={{ fontSize: 7, color: colors.gray[700] }}>{cause}</Text>
                         </View>
                       ))}
@@ -1217,10 +1555,10 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 )}
 
                 {/* Protection Scores - Two Column Layout */}
-                <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', marginBottom: 16 }}>
                   {/* Human Capital Protection */}
                   {heirManagement.hughes_framework.human_capital_protection && (
-                    <View style={{ flex: 1, borderWidth: 1, borderColor: colors.gray[200], padding: 16 }}>
+                    <View style={{ flex: 1, borderWidth: 1, borderColor: colors.gray[200], padding: 16, marginRight: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Human Capital</Text>
                         <View style={{
@@ -1394,8 +1732,8 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       </View>
 
                       {/* Structure & Timing */}
-                      <View style={{ flexDirection: 'row', gap: 24 }}>
-                        <View style={{ flex: 2 }}>
+                      <View style={{ flexDirection: 'row' }}>
+                        <View style={{ flex: 2, marginRight: 24 }}>
                           <Text style={{ fontSize: 7, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Recommended Structure</Text>
                           <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[800] }}>{heirStructure || 'Standard Distribution'}</Text>
                           {heir.structure_rationale && (
@@ -1414,9 +1752,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       {heir.special_considerations && heir.special_considerations.length > 0 && (
                         <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray[100] }}>
                           <Text style={{ fontSize: 7, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Key Considerations</Text>
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                             {heir.special_considerations.slice(0, 4).map((consideration: string, j: number) => (
-                              <View key={j} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View key={j} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6, marginBottom: 6 }}>
                                 <Text style={{ fontSize: 7, color: colors.amber[600], marginRight: 4 }}>→</Text>
                                 <Text style={{ fontSize: 7, color: colors.gray[600] }}>{consideration}</Text>
                               </View>
@@ -1436,14 +1774,43 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
               const riskText = risk.trigger || risk.risk || 'Succession risk identified';
               const atRisk = risk.dollars_at_risk || risk.at_risk_amount || 0;
               const mitigation = risk.mitigation;
+              const mitigationTimeline = risk.mitigation_timeline;
+              const mitigationDays = risk.mitigation_timeline_days;
+
+              // Urgency color based on days
+              const getTimelineColor = (days: number | undefined) => {
+                if (days === undefined) return colors.gray[700];
+                if (days <= 45) return colors.red[600];     // Urgent
+                if (days <= 60) return colors.amber[600];   // Moderate
+                return colors.emerald[600];                  // Standard
+              };
+
+              const getUrgencyLabel = (days: number | undefined) => {
+                if (days === undefined) return '';
+                if (days <= 45) return 'URGENT';
+                if (days <= 60) return 'MODERATE';
+                return 'STANDARD';
+              };
 
               return (
                 <View style={{ marginBottom: 24 }}>
-                  <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Top Succession Risk</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Top Succession Risk</Text>
+                    {mitigationDays !== undefined && (
+                      <View style={{
+                        backgroundColor: mitigationDays <= 45 ? colors.red[100] : mitigationDays <= 60 ? colors.amber[100] : colors.emerald[100],
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 4
+                      }}>
+                        <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: getTimelineColor(mitigationDays) }}>{getUrgencyLabel(mitigationDays)}</Text>
+                      </View>
+                    )}
+                  </View>
                   <View style={styles.card}>
                     <Text style={{ fontSize: 9, color: colors.gray[700], lineHeight: 1.5, marginBottom: 12 }}>{riskText}</Text>
-                    <View style={{ flexDirection: 'row', gap: 24 }}>
-                      <View>
+                    <View style={{ flexDirection: 'row' }}>
+                      <View style={{ marginRight: 24 }}>
                         <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>At Risk</Text>
                         <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{formatCurrency(atRisk)}</Text>
                       </View>
@@ -1454,6 +1821,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                         </View>
                       )}
                     </View>
+                    {/* Mitigation Timeline */}
+                    {mitigationTimeline && (
+                      <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray[200] }}>
+                        <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Timeline</Text>
+                        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: getTimelineColor(mitigationDays) }}>{mitigationTimeline}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               );
@@ -1534,6 +1908,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         intakeId={intake_id}
         precedentCount={precedentCount}
         generatedAt={generated_at}
+        viaNegativa={pdfViaNegativa}
       />
     </Document>
   );

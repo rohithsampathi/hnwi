@@ -84,8 +84,8 @@ export const getSessionState = (): SessionState => {
       return SessionState.UNAUTHENTICATED;
     }
     
-    // If token is invalid/expired, mark as expired
-    if (!isTokenValid(token)) {
+    // If user data is invalid, mark as expired
+    if (!isTokenValid()) {
       try {
         setSessionState(SessionState.EXPIRED);
       } catch {
@@ -93,8 +93,8 @@ export const getSessionState = (): SessionState => {
       }
       return SessionState.EXPIRED;
     }
-    
-    // If we have a valid token but no stored state, set as authenticated
+
+    // If we have a valid user but no stored state, set as authenticated
     if (!storedState) {
       try {
         setSessionState(SessionState.AUTHENTICATED);
@@ -103,14 +103,13 @@ export const getSessionState = (): SessionState => {
       }
       return SessionState.AUTHENTICATED;
     }
-    
+
     // Return stored state or default to authenticated
     return storedState || SessionState.AUTHENTICATED;
   } catch (error) {
-    // If anything fails, fall back to simple token-based check
+    // If anything fails, fall back to user-based check
     try {
-      const token = getValidToken();
-      return token ? SessionState.AUTHENTICATED : SessionState.UNAUTHENTICATED;
+      return isTokenValid() ? SessionState.AUTHENTICATED : SessionState.UNAUTHENTICATED;
     } catch {
       return SessionState.UNAUTHENTICATED;
     }
@@ -121,11 +120,10 @@ export const getSessionState = (): SessionState => {
 export const setSessionState = (state: SessionState): void => {
   if (typeof window === 'undefined') return;
   
-  // Race condition protection: Don't allow setting to unauthenticated if we have a valid token
+  // Race condition protection: Don't allow setting to unauthenticated if we have a valid user
   if (state === SessionState.UNAUTHENTICATED) {
-    const currentToken = getValidToken();
-    if (currentToken && isTokenValid(currentToken)) {
-      // We have a valid token, so we shouldn't be unauthenticated
+    if (isTokenValid()) {
+      // We have a valid user session, so we shouldn't be unauthenticated
       // This might be a race condition - set to authenticated instead
       state = SessionState.AUTHENTICATED;
     }
@@ -204,7 +202,6 @@ export const canAccessFeatures = (): boolean => {
 export const getSessionInfo = (): SessionInfo => {
   return {
     state: getSessionState(),
-    token: getValidToken(),
     lockedAt: getLockedAt(),
     lastActivity: getLastActivity()
   };

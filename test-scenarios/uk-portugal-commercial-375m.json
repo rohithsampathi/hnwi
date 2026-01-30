@@ -1,0 +1,39 @@
+{
+  "thesis": {
+    "move_description": "UK-based Single Family Office acquiring $3.85M commercial real estate in Lisbon, Portugal. Targeting prime district Grade-A office or retail space for European diversification and stable income generation. Seeking shelter from UK tax burden and optimization through Portugal's favorable NHR tax regime.",
+    "expected_outcome": "4% annual rental yield with 7% annual capital appreciation, generating combined 11% gross returns. Strategic positioning in EU's attractive jurisdiction with established commercial tenant base and favorable NHR tax benefits.",
+    "move_type": "real_estate",
+    "target_amount": "$3.85M",
+    "target_locations": ["Portugal"],
+    "timeline": "6 months"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["United Kingdom", "London"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No developer leverage above 50%", "No uncompleted developments", "No single-tenant risk above 60%"],
+    "deal_breakers": ["Title encumbrance", "Regulatory red flags on building", "Vacancy rate above 15%", "Structural issues"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$5M",
+    "advisors": [
+      { "type": "tax", "name": "UK Tax Counsel", "jurisdiction": "United Kingdom" },
+      { "type": "legal", "name": "UK Legal Counsel", "jurisdiction": "United Kingdom" }
+    ],
+    "existing_entities": [
+      { "type": "Ltd", "jurisdiction": "United Kingdom", "purpose": "Family Office holding company" }
+    ],
+    "banking_rails": [
+      { "bank": "Coutts Private Bank", "jurisdiction": "United Kingdom", "status": "active" },
+      { "bank": "Millennium BCP Private", "jurisdiction": "Portugal", "status": "planned" }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "UK Family Office with established IPS. 20% allocation to international real estate, 15% to European exposure. Portugal commercial acquisition fits within mandate as EU hedge against UK market concentration and Brexit uncertainty. Income-generating focus with 4% rental yield and 7% appreciation targets align with wealth preservation strategy."
+  },
+  "urgency": "standard"
+}

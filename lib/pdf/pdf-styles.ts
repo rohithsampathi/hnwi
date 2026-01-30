@@ -106,60 +106,61 @@ export const colors = {
 
 // =============================================================================
 // TYPOGRAPHY SCALE (8pt baseline grid)
+// Premium institutional typography: Times-Roman for body, Helvetica-Bold for headings
 // =============================================================================
 export const typography = {
   // Display - Cover pages, major headings
   display: {
-    fontSize: 32,
+    fontSize: 36,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: -0.5,
     lineHeight: 1.1,
   },
   // H1 - Page titles
   h1: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: -0.3,
     lineHeight: 1.2,
   },
   // H2 - Section headers
   h2: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Helvetica-Bold',
-    letterSpacing: -0.2,
-    lineHeight: 1.25,
+    letterSpacing: 0,
+    lineHeight: 1.3,
   },
   // H3 - Subsection headers
   h3: {
-    fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
-    letterSpacing: -0.1,
-    lineHeight: 1.3,
+    fontSize: 11,
+    fontFamily: 'Times-Bold',
+    letterSpacing: 0,
+    lineHeight: 1.35,
   },
   // H4 - Card titles
   h4: {
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Times-Bold',
     letterSpacing: 0,
-    lineHeight: 1.35,
+    lineHeight: 1.4,
   },
-  // Body - Primary content
+  // Body - Primary content (Times-Roman for premium institutional feel)
   body: {
-    fontSize: 9,
-    fontFamily: 'Helvetica',
-    lineHeight: 1.5,
+    fontSize: 10,
+    fontFamily: 'Times-Roman',
+    lineHeight: 1.6,
   },
   // Small - Secondary content
   small: {
-    fontSize: 8,
-    fontFamily: 'Helvetica',
-    lineHeight: 1.45,
+    fontSize: 9,
+    fontFamily: 'Times-Roman',
+    lineHeight: 1.5,
   },
   // Micro - Labels, captions
   micro: {
     fontSize: 7,
     fontFamily: 'Helvetica-Bold',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase',
     lineHeight: 1.4,
   },
@@ -178,16 +179,16 @@ export const typography = {
 };
 
 // =============================================================================
-// SPACING SCALE (4pt baseline)
+// SPACING SCALE (4pt baseline) - Tighter for more compact layout
 // =============================================================================
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  xxxl: 48,
+  xs: 3,
+  sm: 6,
+  md: 10,
+  lg: 14,
+  xl: 20,
+  xxl: 28,
+  xxxl: 40,
 };
 
 // =============================================================================
@@ -312,7 +313,6 @@ export const pdfStyles = StyleSheet.create({
   // Metrics grid
   metricsGrid: {
     flexDirection: 'row',
-    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   metricBox: {
@@ -323,6 +323,7 @@ export const pdfStyles = StyleSheet.create({
     borderRadius: 10,
     padding: spacing.md,
     alignItems: 'center',
+    marginRight: spacing.sm,
   },
   metricValue: {
     fontSize: 20,

@@ -55,11 +55,17 @@ import { GoldenVisaSection } from '@/components/decision-memo/memo/GoldenVisaSec
 import { GoldenVisaIntelligenceSection } from '@/components/decision-memo/memo/GoldenVisaIntelligenceSection';
 // HNWI Migration Trends Section
 import { HNWITrendsSection } from '@/components/decision-memo/memo/HNWITrendsSection';
+// Real Asset Audit Intelligence Section (KGv3-verified)
+import { RealAssetAuditSection } from '@/components/decision-memo/memo/RealAssetAuditSection';
+// Cross-Border Tax Audit (US Worldwide Taxation Analysis)
+import { CrossBorderTaxAudit } from '@/components/decision-memo/memo/CrossBorderTaxAudit';
+// Structure Comparison Matrix (MCP CORE OUTPUT)
+import { StructureComparisonMatrix } from '@/components/decision-memo/memo/StructureComparisonMatrix';
 // PDF Cover and Last Pages
 import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
 import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
 import { transformICArtifactToMemoData } from '@/lib/decision-memo/sfo-to-memo-transformer';
-import { Opportunity } from '@/lib/decision-memo/memo-types';
+import { Opportunity, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
 import { parseDevCitations, CitationMap } from '@/lib/parse-dev-citations';
 
@@ -163,10 +169,15 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setFullArtifact(sessionData.fullArtifact);
 
           // Also store preview_data if session includes it (for peer_cohort_stats, capital_flow_data)
+          // CRITICAL: Include mitigationTimeline and risk_assessment at top level for Page2AuditVerdict
           if (sessionData.preview_data) {
             setBackendData({
               preview_data: sessionData.preview_data,
-              memo_data: sessionData.memo_data
+              memo_data: sessionData.memo_data,
+              // MCP fields from preview_data OR computed from risk counts
+              mitigationTimeline: sessionData.mitigationTimeline || sessionData.preview_data?.risk_assessment?.mitigation_timeline,
+              risk_assessment: sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
+              all_mistakes: sessionData.all_mistakes || sessionData.preview_data?.all_mistakes
             });
           }
           setIsWaitingForPreview(false);
@@ -179,12 +190,12 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         if (isPaid) {
           setSession({ ...sessionData, status: 'PAID' });
 
-          // Try fetching from artifact endpoint - get raw response for preview_data
+          // Fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
           try {
-            const response = await fetch(`/api/decision-memo/artifact/${intakeId}`);
+            const response = await fetch(`/api/decision-memo/${intakeId}`);
             if (response.ok) {
               const data = await response.json();
-              setBackendData(data);  // Store raw response with preview_data
+              setBackendData(data);  // Store raw response with preview_data + mitigationTimeline
               const full = await getFullArtifact(intakeId);
               setFullArtifact(full);
             } else {
@@ -485,8 +496,6 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         // Fallback to transformation if no backend data
         pdfMemoData = transformICArtifactToMemoData(fullArtifact, intakeId);
       }
-
-      console.log('[PDF Export] Using complete memoData with merged expert sections');
 
       // Call the exportPDF hook with complete memoData
       await exportPDF(pdfMemoData as any);
@@ -911,14 +920,77 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       // Merge expert analysis sections from memo_data into preview_data if not already present
       const previewData = { ...backendData.preview_data };
 
-      // Also check root level of backendData for expert sections
+      // ══════════════════════════════════════════════════════════════════════════
+      // MERGE EXPERT DATA FROM BACKEND (Experts 7-15)
+      // Backend may store in preview_data, memo_data, or at root level
+      // ══════════════════════════════════════════════════════════════════════════
+
+      // Expert 7: Transparency Regime
       if (!previewData.transparency_regime_impact) {
         previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
                                                   backendData.transparency_regime_impact;
       }
+      if (!previewData.transparency_data) {
+        previewData.transparency_data = backendData.memo_data?.transparency_data ||
+                                         backendData.transparency_data;
+      }
+
+      // Expert 8: Crisis Resilience
       if (!previewData.crisis_resilience_stress_test) {
         previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
                                                      backendData.crisis_resilience_stress_test;
+      }
+      if (!previewData.crisis_data) {
+        previewData.crisis_data = backendData.memo_data?.crisis_data ||
+                                   backendData.crisis_data;
+      }
+
+      // Expert 9: Peer Intelligence
+      if (!previewData.peer_intelligence_analysis) {
+        previewData.peer_intelligence_analysis = backendData.memo_data?.peer_intelligence_analysis ||
+                                                  backendData.peer_intelligence_analysis;
+      }
+      if (!previewData.peer_intelligence_data) {
+        previewData.peer_intelligence_data = backendData.memo_data?.peer_intelligence_data ||
+                                              backendData.peer_intelligence_data;
+      }
+
+      // Expert 10: Market Dynamics
+      if (!previewData.market_dynamics_analysis) {
+        previewData.market_dynamics_analysis = backendData.memo_data?.market_dynamics_analysis ||
+                                                backendData.market_dynamics_analysis;
+      }
+      if (!previewData.market_dynamics_data) {
+        previewData.market_dynamics_data = backendData.memo_data?.market_dynamics_data ||
+                                            backendData.market_dynamics_data;
+      }
+
+      // Expert 11: Implementation Roadmap
+      if (!previewData.implementation_roadmap_data) {
+        previewData.implementation_roadmap_data = backendData.memo_data?.implementation_roadmap_data ||
+                                                   backendData.implementation_roadmap_data;
+      }
+
+      // Expert 12: Due Diligence
+      if (!previewData.due_diligence_data) {
+        previewData.due_diligence_data = backendData.memo_data?.due_diligence_data ||
+                                          backendData.due_diligence_data;
+      }
+
+      // HNWI Trends
+      if (!previewData.hnwi_trends_analysis) {
+        previewData.hnwi_trends_analysis = backendData.memo_data?.hnwi_trends_analysis ||
+                                            backendData.hnwi_trends_analysis;
+      }
+
+      // Risk Assessment (MCP fields from unified endpoint)
+      if (!previewData.risk_assessment && backendData.risk_assessment) {
+        previewData.risk_assessment = backendData.risk_assessment;
+      }
+
+      // All Mistakes (with cost_numeric from unified endpoint)
+      if (backendData.all_mistakes && backendData.all_mistakes.length > 0) {
+        previewData.all_mistakes = backendData.all_mistakes;
       }
 
       // SFO-Grade Expert Data (Experts 13-15)
@@ -976,6 +1048,128 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       };
     } else {
       memoData = transformICArtifactToMemoData(fullArtifact, intakeId);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CROSS-BORDER TAX AUDIT: Determine if theoretical tax savings are valid
+    // When US worldwide taxation applies, tax savings are 0% - don't show misleading comparisons
+    // Jan 2026 MCP CORE: Use backend's show_tax_savings flag (driven by structure_optimization)
+    // ══════════════════════════════════════════════════════════════════════════
+    const crossBorderAudit = memoData.preview_data.wealth_projection_data?.starting_position?.cross_border_audit_summary;
+    const hasCrossBorderAudit = !!crossBorderAudit;
+    const hasUSWorldwideTax = crossBorderAudit?.compliance_flags?.includes('US_WORLDWIDE_TAXATION');
+
+    // CRITICAL: Use backend's show_tax_savings flag as primary source of truth
+    // This is set by Structure Optimization Engine when structure is not viable
+    const showTheoreticalTaxSavings = memoData.preview_data.show_tax_savings !== false && !hasUSWorldwideTax;
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // VIA NEGATIVA: "Crime Scene Investigation" overlay for DO_NOT_PROCEED deals
+    // Same backend data, dramatically different presentation framing
+    // ══════════════════════════════════════════════════════════════════════════
+    const structureVerdict = memoData.preview_data.structure_optimization?.verdict;
+    const isViaNegativa = structureVerdict === 'DO_NOT_PROCEED';
+
+    let viaNegativaContext: ViaNegativaContext | undefined;
+    if (isViaNegativa) {
+      // Backend-driven via_negativa object (Jan 2026)
+      // Contains all labels, computed values, and tone-shifted copy.
+      // If absent, fall back to frontend-computed values.
+      const backendVN = memoData.preview_data?.via_negativa || (memoData as any).via_negativa;
+
+      const acquisitionAudit = crossBorderAudit?.acquisition_audit;
+      const propertyValue = acquisitionAudit?.property_value || 0;
+      const totalAcquisitionCost = acquisitionAudit?.total_acquisition_cost || 0;
+
+      // Prefer backend computed values, fall back to frontend computation.
+      // Use || (not ??) so that backend value of 0 falls through to local computation.
+      const dayOneLossPct = backendVN?.day_one_loss_pct || acquisitionAudit?.day_one_loss_pct || 0;
+      const dayOneLossAmount = backendVN?.day_one_loss_amount || (totalAcquisitionCost - propertyValue);
+
+      let totalConfiscationExposure = backendVN?.total_regulatory_exposure ?? 0;
+      if (!totalConfiscationExposure) {
+        // Fallback: parse from warnings
+        const warnings = crossBorderAudit?.warnings || [];
+        warnings.forEach((w: string) => {
+          const match = w.match(/\$[\d,]+(?:\.\d+)?/g);
+          if (match) {
+            match.forEach((m: string) => {
+              const val = parseFloat(m.replace(/[$,]/g, ''));
+              if (!isNaN(val) && val > totalConfiscationExposure) {
+                totalConfiscationExposure = val;
+              }
+            });
+          }
+        });
+      }
+
+      const taxEfficiencyPassed = backendVN?.tax_efficiency_passed ?? (showTheoreticalTaxSavings && (crossBorderAudit?.total_tax_savings_pct || 0) > 0);
+      const liquidityPassed = backendVN?.liquidity_passed ?? dayOneLossPct < 10;
+      const structurePassed = backendVN?.structure_passed ?? false;
+
+      // Read labels from backend, fall back to pessimistic-but-fair defaults
+      const hdr = backendVN?.header;
+      const sc = backendVN?.scenario_section;
+      const tx = backendVN?.tax_section;
+      const vs = backendVN?.verdict_section;
+      const cta = backendVN?.cta;
+      const metrics = backendVN?.metrics;
+
+      viaNegativaContext = {
+        isActive: true,
+
+        // Computed values
+        dayOneLoss: dayOneLossPct,
+        dayOneLossAmount,
+        totalConfiscationExposure,
+        taxEfficiencyPassed,
+        liquidityPassed,
+        structurePassed,
+
+        // Labels — backend → fallback defaults (pessimistic but fair)
+        analysisPosture: backendVN?.analysis_posture || 'Via Negativa: Strengths acknowledged. Weaknesses stated without qualification.',
+        badgeLabel: hdr?.badge_label || 'ELEVATED RISK',
+        titlePrefix: hdr?.title_prefix || 'Capital At',
+        titleHighlight: hdr?.title_highlight || 'Risk',
+        noticeTitle: hdr?.notice_title || 'Elevated Risk Advisory',
+        noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ precedents identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
+          .replace('{dayOneLoss}', dayOneLossPct.toFixed(1))
+          .replace('{precedentCount}', (backendVN?.precedent_count ?? memoData.memo_data?.kgv3_intelligence_used?.precedents ?? 0).toLocaleString()),
+
+        metricLabels: {
+          capitalExposure: metrics?.[0]?.label || 'Day-One Capital Exposure',
+          structureVerdict: metrics?.[1]?.label || 'Structure Verdict',
+          structureVerdictValue: metrics?.[1]?.value || 'Not Recommended',
+          structureVerdictDesc: metrics?.[1]?.description || 'Negative NPV across analyzed structures',
+          regulatoryExposure: metrics?.[2]?.label || 'Regulatory Exposure',
+          regulatoryExposureDesc: metrics?.[2]?.description || 'FBAR + compliance penalties',
+        },
+
+        scenarioHeader: sc?.header || 'Projection Audit',
+        expectationLabel: sc?.expectation_label || 'Your Projection',
+        actualLabel: sc?.actual_label || 'Market Data',
+        commentaryTitle: sc?.commentary_title || 'Reality Gap Analysis',
+        commentaryBody: sc?.commentary_body || 'Your projected returns deviate from verified market data in key areas. Where fundamentals support the thesis, they are noted above. Where projections exceed market benchmarks, the gap is flagged as a risk factor.',
+
+        taxBadgeLabel: tx?.badge_label || 'Regulatory Exposure Analysis',
+        taxTitleLine1: tx?.title_line1 || 'Regulatory',
+        taxTitleLine2: tx?.title_line2 || 'Exposure',
+        compliancePrefix: tx?.compliance_prefix ?? '',
+        warningPrefix: tx?.warning_prefix || 'Regulatory Flag',
+
+        verdictHeader: vs?.header || 'Structural Review',
+        verdictBadgeLabel: vs?.badge_label || 'Capital Allocation Review',
+        stampText: vs?.stamp_text || 'Allocation Not Recommended',
+        stampSubtext: vs?.stamp_subtext || 'Key viability thresholds not met in this structure — review alternative corridors and strategies below',
+
+        ctaHeadline: cta?.headline || 'DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?',
+        ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure. The same engine analyzes any cross-border acquisition across 50+ jurisdictions.')
+          .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
+        ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
+        ctaButtonText: cta?.button_text || 'INITIATE YOUR PATTERN AUDIT — $5,000',
+        ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
+        ctaContextNote: cta?.context_note || 'For Indian Family Offices: This sample analyzes a US → Singapore corridor. The same Pattern Recognition Engine applies to India → Dubai, India → Singapore, India → Portugal, and 50+ other corridors.',
+      };
     }
 
     // Build citation map from opportunities
@@ -1078,6 +1272,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               generatedAt={memoData.generated_at}
               exposureClass={memoData.preview_data.exposure_class}
               totalSavings={memoData.preview_data.total_savings}
+              viaNegativa={viaNegativaContext}
             />
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1093,49 +1288,120 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
               sourceJurisdiction={memoData.preview_data.source_jurisdiction}
               destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-              sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-              destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-              taxDifferential={memoData.preview_data.tax_differential}
-              valueCreation={memoData.preview_data.value_creation}
+              sourceTaxRates={showTheoreticalTaxSavings ? (memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source) : undefined}
+              destinationTaxRates={showTheoreticalTaxSavings ? (memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination) : undefined}
+              taxDifferential={showTheoreticalTaxSavings ? memoData.preview_data.tax_differential : undefined}
+              valueCreation={showTheoreticalTaxSavings ? memoData.preview_data.value_creation : undefined}
+              crossBorderTaxSavingsPct={crossBorderAudit?.total_tax_savings_pct}
+              crossBorderComplianceFlags={crossBorderAudit?.compliance_flags}
+              showTaxSavings={showTheoreticalTaxSavings}
+              optimalStructure={memoData.preview_data.structure_optimization?.optimal_structure}
+              viaNegativa={viaNegativaContext}
             />
 
-            {/* 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
-            <section>
-              <Page2AuditVerdict
-                mistakes={memoData.preview_data.all_mistakes}
-                opportunitiesCount={memoData.preview_data.opportunities_count}
-                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                ddChecklist={memoData.preview_data.dd_checklist}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
-                dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
-                riskAssessment={memoData.preview_data.risk_assessment}
-              />
-            </section>
-
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 2: VALUE PROPOSITION (Tax Analysis & Projections)                        */}
+            {/* STANDARD MODE: Risk Assessment at position 2                                    */}
+            {/* VIA NEGATIVA: Delusion Check (ScenarioTree) at position 2 instead               */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
-            {/* 3. Tax Jurisdiction Analysis - Immediate Value Proposition */}
-            <section>
-              <Page1TaxDashboard
-                totalSavings={memoData.preview_data.total_savings}
-                exposureClass={memoData.preview_data.exposure_class}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                executionSequence={memoData.preview_data.execution_sequence}
-                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-                taxDifferential={memoData.preview_data.tax_differential}
-                sections={['tax']}
-              />
-            </section>
+            {/* STANDARD: 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
+            {!isViaNegativa && (
+              <section>
+                <Page2AuditVerdict
+                  mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
+                  opportunitiesCount={memoData.preview_data.opportunities_count}
+                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                  ddChecklist={memoData.preview_data.dd_checklist}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
+                  dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
+                  mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
+                  riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
+                />
+              </section>
+            )}
 
-            {/* 3. Regime Intelligence (NHR, 13O, Special Tax Regimes) - Part of Tax Analysis */}
+            {/* VIA NEGATIVA: 2. Delusion Check (ScenarioTree moved to position 2) */}
+            {isViaNegativa && (memoData.preview_data.scenario_tree_analysis ||
+              (memoData.preview_data.scenario_tree_data &&
+               Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
+              <section>
+                <ScenarioTreeSection
+                  data={memoData.preview_data.scenario_tree_data || {}}
+                  rawAnalysis={memoData.preview_data.scenario_tree_analysis}
+                  viaNegativa={viaNegativaContext}
+                />
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 2: VALUE PROPOSITION / VIA NEGATIVA: JAIL RISK                            */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+
+            {/* 3. Cross-Border Tax Audit / Confiscation Exposure (renders in both modes) */}
+            {hasCrossBorderAudit && (
+              <section>
+                <CrossBorderTaxAudit
+                  audit={crossBorderAudit}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  viaNegativa={viaNegativaContext}
+                />
+              </section>
+            )}
+
+            {/* VIA NEGATIVA: 4. Autopsy (Page2AuditVerdict moved after Jail Risk) */}
+            {isViaNegativa && (
+              <section>
+                <Page2AuditVerdict
+                  mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
+                  opportunitiesCount={memoData.preview_data.opportunities_count}
+                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                  ddChecklist={memoData.preview_data.dd_checklist}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
+                  dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
+                  mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
+                  riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
+                  viaNegativa={viaNegativaContext}
+                />
+              </section>
+            )}
+
+            {/* 3.5 Structure Comparison Matrix - MCP CORE OUTPUT */}
+            {/* Shows all ownership structures analyzed with net benefit comparison */}
+            {memoData.preview_data.structure_optimization && (
+              <section>
+                <StructureComparisonMatrix
+                  structureOptimization={memoData.preview_data.structure_optimization}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                />
+              </section>
+            )}
+
+            {/* 4. Tax Jurisdiction Analysis - Only show theoretical comparison if savings are real */}
+            {showTheoreticalTaxSavings && (
+              <section>
+                <Page1TaxDashboard
+                  totalSavings={memoData.preview_data.total_savings}
+                  exposureClass={memoData.preview_data.exposure_class}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  sourceCity={memoData.preview_data.source_city}
+                  destinationCity={memoData.preview_data.destination_city}
+                  executionSequence={memoData.preview_data.execution_sequence}
+                  sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+                  destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+                  taxDifferential={memoData.preview_data.tax_differential}
+                  sections={['tax']}
+                />
+              </section>
+            )}
+
+            {/* 5. Regime Intelligence (NHR, 13O, Special Tax Regimes) - Part of Tax Analysis */}
             {memoData.preview_data.peer_cohort_stats?.regime_intelligence?.has_special_regime && (
               <section>
                 <RegimeIntelligenceSection
@@ -1154,6 +1420,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 <WealthProjectionSection
                   data={memoData.preview_data.wealth_projection_data || {}}
                   rawAnalysis={memoData.preview_data.wealth_projection_analysis}
+                  structures={memoData.preview_data.structure_optimization?.structures_analyzed || []}
+                  structureProjections={memoData.preview_data.structure_projections || {}}
+                  optimalStructureName={memoData.preview_data.structure_optimization?.optimal_structure?.name}
                 />
               </section>
             )}
@@ -1226,6 +1495,20 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               </section>
             )}
 
+            {/* 9.5 Real Asset Audit Intelligence - KGv3 Verified */}
+            {memoData.preview_data.real_asset_audit && (
+              <section>
+                <RealAssetAuditSection
+                  data={memoData.preview_data.real_asset_audit}
+                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  transactionValue={memoData.preview_data.deal_overview?.target_size
+                    ? parseFloat(memoData.preview_data.deal_overview.target_size.replace(/[^0-9.]/g, '')) * 1000000
+                    : 0}
+                />
+              </section>
+            )}
+
             {/* 10. Crisis Resilience Stress Test - Antifragile Framework */}
             {(memoData.preview_data.crisis_data || memoData.preview_data.crisis_resilience_stress_test) && (
               <section>
@@ -1266,8 +1549,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* PHASE 6: DECISION ANALYSIS (Strategic Decision Support)                        */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
-            {/* 12. Decision Scenario Tree (Expert 15) */}
-            {(memoData.preview_data.scenario_tree_analysis ||
+            {/* 12. Decision Scenario Tree (Expert 15) - SKIP in Via Negativa (already rendered as Delusion Check) */}
+            {!isViaNegativa && (memoData.preview_data.scenario_tree_analysis ||
               (memoData.preview_data.scenario_tree_data &&
                Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
               <section>
@@ -1370,6 +1653,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               intakeId={intakeId}
               precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
               generatedAt={memoData.generated_at}
+              viaNegativa={viaNegativaContext}
             />
           </motion.div>
         </div>

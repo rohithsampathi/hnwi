@@ -6,13 +6,9 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  DollarSign,
   BarChart3,
-  ArrowRight,
   Target,
-  Clock,
-  Zap,
-  Calendar
+  Zap
 } from 'lucide-react';
 import {
   LineChart,
@@ -29,14 +25,32 @@ import {
 import {
   WealthProjectionData,
   ScenarioName,
-  formatCurrency,
-  formatPercentage,
-  getScenarioDisplayName
+  formatCurrency
 } from '@/lib/decision-memo/sfo-expert-types';
+import { StructureSelector } from './StructureSelector';
+
+interface Structure {
+  name: string;
+  type: string;
+  net_benefit_10yr: number;
+  tax_savings_pct: number;
+  viable: boolean;
+  verdict: string;
+  warnings: string[];
+  setup_cost?: number;
+  annual_cost?: number;
+  rental_income_rate?: number;
+  capital_gains_rate?: number;
+  estate_tax_rate?: number;
+}
 
 interface WealthProjectionSectionProps {
   data?: WealthProjectionData | Record<string, never>;
   rawAnalysis?: string;
+  // STRUCTURE-AWARE PROJECTIONS (Jan 2026)
+  structures?: Structure[];
+  structureProjections?: Record<string, WealthProjectionData>;
+  optimalStructureName?: string;
 }
 
 // Scenario icon component
@@ -77,12 +91,34 @@ function ProbabilityBadge({ probability, label }: { probability: string; label: 
 
 export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = ({
   data,
-  rawAnalysis
+  rawAnalysis,
+  structures = [],
+  structureProjections = {},
+  optimalStructureName
 }) => {
   const [activeScenario, setActiveScenario] = useState<'base' | 'stress' | 'opportunity'>('base');
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+
+  // STRUCTURE-AWARE STATE (Jan 2026 - Document Coherence)
+  // Track which structure the user has selected for projection display
+  const [selectedStructureName, setSelectedStructureName] = useState<string>(
+    optimalStructureName || structures[0]?.name || ''
+  );
+
+  // When structures are loaded, default to optimal structure
+  useEffect(() => {
+    if (optimalStructureName && !selectedStructureName) {
+      setSelectedStructureName(optimalStructureName);
+    }
+  }, [optimalStructureName, selectedStructureName]);
+
+  // Get the projection data for the currently selected structure
+  // Falls back to default data if structure projection not available
+  const currentProjectionData = selectedStructureName && structureProjections[selectedStructureName]
+    ? structureProjections[selectedStructureName]
+    : data;
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -538,7 +574,8 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   }
 
   // Structured data rendering with full visualization
-  const typedData = data as WealthProjectionData;
+  // Use currentProjectionData which reflects the selected structure's projection
+  const typedData = currentProjectionData as WealthProjectionData;
   const baseScenario = typedData.scenarios?.find(s => s.name === 'BASE_CASE');
   const stressScenario = typedData.scenarios?.find(s => s.name === 'STRESS_CASE');
   const opportunityScenario = typedData.scenarios?.find(s => s.name === 'OPPORTUNITY_CASE');
@@ -672,7 +709,23 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       </motion.div>
 
       <div className="space-y-6">
-        {/* Scenario Tabs - FIRST for proper UX (selector before content it affects) */}
+        {/* Structure Selector - FIRST (allows user to choose which structure's projection to view) */}
+        {structures.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.05 }}
+          >
+            <StructureSelector
+              structures={structures}
+              selectedStructureName={selectedStructureName}
+              optimalStructureName={optimalStructureName}
+              onSelect={setSelectedStructureName}
+            />
+          </motion.div>
+        )}
+
+        {/* Scenario Tabs - SECOND (selector before content it affects) */}
         <motion.div
           className="flex flex-wrap gap-2"
           initial={{ opacity: 0, y: 20 }}
@@ -727,7 +780,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {activeScenario === 'base'
-                  ? `${typedData.starting_position?.rental_yield_pct || 5}% rental yield + ${typedData.starting_position?.appreciation_rate_pct || 8}% appreciation`
+                  ? `${Number(typedData.starting_position?.rental_yield_pct || 5).toFixed(1)}% rental yield + ${Number(typedData.starting_position?.appreciation_rate_pct || 8).toFixed(1)}% appreciation`
                   : activeScenario === 'stress'
                   ? 'Conservative scenario with market downturn and yield compression'
                   : 'Bull market scenario with enhanced returns and yield expansion'}
@@ -882,6 +935,11 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 <span className="font-semibold text-foreground">"Do Nothing" Locks Out {formatCurrency(costOfInaction.year_10)}</span>
                 {' '}— Primary: {costOfInaction.primary_driver}
               </p>
+              {costOfInaction.structure_blocked && costOfInaction.context_note && (
+                <p className="text-[10px] text-amber-500 mt-2 leading-relaxed">
+                  {costOfInaction.context_note}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

@@ -95,13 +95,14 @@ export function usePatternAudit() {
 
   // ==========================================================================
   // GET PREVIEW ARTIFACT
-  // Fetch the preview artifact (available after PREVIEW_READY status)
+  // Fetch from unified endpoint - returns preview data + MCP fields
   // ==========================================================================
 
   const getPreviewArtifact = useCallback(async (
     intakeId: string
   ): Promise<PreviewArtifact> => {
-    const response = await fetch(`${API_BASE}/preview/${intakeId}`);
+    // Use unified endpoint
+    const response = await fetch(`${API_BASE}/${intakeId}`);
 
     if (!response.ok) {
       throw new Error('Preview not ready');
@@ -109,7 +110,7 @@ export function usePatternAudit() {
 
     const data = await response.json();
 
-    // Handle different response formats
+    // Handle unified endpoint response format
     const previewData = data.preview || data;
 
     if (!previewData || !previewData.intake_id) {
@@ -343,13 +344,14 @@ export function usePatternAudit() {
 
   // ==========================================================================
   // GET FULL ARTIFACT
-  // Fetch complete artifact (available after PAID/FULL_READY status)
+  // Fetch from unified endpoint - returns full artifact when unlocked + MCP fields
   // ==========================================================================
 
   const getFullArtifact = useCallback(async (
     intakeId: string
   ): Promise<ICArtifact> => {
-    const response = await fetch(`${API_BASE}/artifact/${intakeId}`);
+    // Use unified endpoint
+    const response = await fetch(`${API_BASE}/${intakeId}`);
 
     if (!response.ok) {
       throw new Error('Artifact not available');

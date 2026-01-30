@@ -28,10 +28,12 @@ import {
   getBranchDisplayName,
   MarketValidation
 } from '@/lib/decision-memo/sfo-expert-types';
+import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 
 interface ScenarioTreeSectionProps {
   data?: ScenarioTreeData | Record<string, never>;
   rawAnalysis?: string;
+  viaNegativa?: ViaNegativaContext;
 }
 
 // Helper function to parse markdown bold (**text**) and render as bold spans
@@ -207,7 +209,8 @@ function GateItem({ gate, index, total }: { gate: ScenarioTreeData['decision_gat
 
 export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
   data,
-  rawAnalysis
+  rawAnalysis,
+  viaNegativa
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -1048,9 +1051,9 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             <div className="p-4 border-b border-border bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <BarChart3 className={`w-5 h-5 ${viaNegativa?.isActive ? 'text-red-500' : 'text-primary'}`} />
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Expected vs Reality
+                    {viaNegativa?.isActive ? viaNegativa.scenarioHeader : 'Expected vs Reality'}
                   </h3>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -1068,8 +1071,14 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             <div className="p-5 space-y-4">
               {/* Appreciation Comparison */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <div className="bg-muted/30 rounded-lg p-4 text-center border border-border">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Your Expectation</p>
+                <div className={`rounded-lg p-4 text-center border ${
+                  viaNegativa?.isActive
+                    ? 'bg-red-500/10 border-red-500/20'
+                    : 'bg-muted/30 border-border'
+                }`}>
+                  <p className={`text-[10px] uppercase tracking-wider mb-1 ${
+                    viaNegativa?.isActive ? 'text-red-400 font-bold' : 'text-muted-foreground'
+                  }`}>{viaNegativa?.isActive ? viaNegativa.expectationLabel : 'Your Expectation'}</p>
                   <p className="text-xl font-bold text-foreground">
                     {typedData.market_validation.expected_vs_reality.appreciation.your_expectation}
                   </p>
@@ -1097,12 +1106,18 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                 </div>
 
                 <div className={`rounded-lg p-4 text-center border-2 ${
-                  typedData.market_validation.expected_vs_reality.appreciation.market_actual
-                    ? 'bg-primary/5 border-primary/30'
-                    : 'bg-muted/30 border-border'
+                  viaNegativa?.isActive
+                    ? (typedData.market_validation.expected_vs_reality.appreciation.market_actual
+                        ? 'bg-emerald-500/10 border-emerald-500/20'
+                        : 'bg-muted/30 border-border')
+                    : (typedData.market_validation.expected_vs_reality.appreciation.market_actual
+                        ? 'bg-primary/5 border-primary/30'
+                        : 'bg-muted/30 border-border')
                 }`}>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Market Actual</p>
-                  <p className="text-xl font-bold text-primary">
+                  <p className={`text-[10px] uppercase tracking-wider mb-1 ${
+                    viaNegativa?.isActive ? 'text-emerald-400 font-bold' : 'text-muted-foreground'
+                  }`}>{viaNegativa?.isActive ? viaNegativa.actualLabel : 'Market Actual'}</p>
+                  <p className={`text-xl font-bold ${viaNegativa?.isActive ? 'text-emerald-400' : 'text-primary'}`}>
                     {typedData.market_validation.expected_vs_reality.appreciation.market_actual || 'N/A'}
                   </p>
                   {typedData.market_validation.expected_vs_reality.appreciation.market_source && (
@@ -1141,8 +1156,14 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                 <>
                   <div className="border-t border-border pt-4 mt-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      <div className="bg-muted/30 rounded-lg p-4 text-center border border-border">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Your Expectation</p>
+                      <div className={`rounded-lg p-4 text-center border ${
+                        viaNegativa?.isActive
+                          ? 'bg-red-500/10 border-red-500/20'
+                          : 'bg-muted/30 border-border'
+                      }`}>
+                        <p className={`text-[10px] uppercase tracking-wider mb-1 ${
+                          viaNegativa?.isActive ? 'text-red-400 font-bold' : 'text-muted-foreground'
+                        }`}>{viaNegativa?.isActive ? viaNegativa.expectationLabel : 'Your Expectation'}</p>
                         <p className="text-xl font-bold text-foreground">
                           {typedData.market_validation.expected_vs_reality.rental_yield.your_expectation}
                         </p>
@@ -1170,12 +1191,18 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                       </div>
 
                       <div className={`rounded-lg p-4 text-center border-2 ${
-                        typedData.market_validation.expected_vs_reality.rental_yield.market_actual
-                          ? 'bg-primary/5 border-primary/30'
-                          : 'bg-muted/30 border-border'
+                        viaNegativa?.isActive
+                          ? (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
+                              ? 'bg-emerald-500/10 border-emerald-500/20'
+                              : 'bg-muted/30 border-border')
+                          : (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
+                              ? 'bg-primary/5 border-primary/30'
+                              : 'bg-muted/30 border-border')
                       }`}>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Market Actual</p>
-                        <p className="text-xl font-bold text-primary">
+                        <p className={`text-[10px] uppercase tracking-wider mb-1 ${
+                          viaNegativa?.isActive ? 'text-emerald-400 font-bold' : 'text-muted-foreground'
+                        }`}>{viaNegativa?.isActive ? viaNegativa.actualLabel : 'Market Actual'}</p>
+                        <p className={`text-xl font-bold ${viaNegativa?.isActive ? 'text-emerald-400' : 'text-primary'}`}>
                           {typedData.market_validation.expected_vs_reality.rental_yield.market_actual || 'N/A'}
                         </p>
                         {typedData.market_validation.expected_vs_reality.rental_yield.market_source && (
@@ -1221,6 +1248,16 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                       {typedData.market_validation.recommendation}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Deviation Commentary - Via Negativa */}
+              {viaNegativa?.isActive && typedData.market_validation && (
+                <div className="mt-4 p-4 bg-red-950/30 border border-red-500/20 rounded-lg">
+                  <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">{viaNegativa.commentaryTitle}</p>
+                  <p className="text-sm text-red-300/80 leading-relaxed">
+                    {viaNegativa.commentaryBody}
+                  </p>
                 </div>
               )}
 

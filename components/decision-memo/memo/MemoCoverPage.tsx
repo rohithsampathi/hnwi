@@ -6,6 +6,7 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 
 interface MemoCoverPageProps {
   intakeId: string;
@@ -14,6 +15,7 @@ interface MemoCoverPageProps {
   generatedAt: string;
   exposureClass?: string;
   totalSavings?: string;
+  viaNegativa?: ViaNegativaContext;
 }
 
 export function MemoCoverPage({
@@ -22,7 +24,8 @@ export function MemoCoverPage({
   destinationJurisdiction,
   generatedAt,
   exposureClass,
-  totalSavings
+  totalSavings,
+  viaNegativa
 }: MemoCoverPageProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -174,6 +177,18 @@ export function MemoCoverPage({
           </span>
         </div>
       </div>
+
+      {/* Via Negativa: watermark overlay */}
+      {viaNegativa?.isActive && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div
+            className="text-red-500/30 text-[120px] sm:text-[160px] font-black tracking-[0.2em] uppercase select-none"
+            style={{ transform: 'rotate(-12deg)' }}
+          >
+            {viaNegativa.badgeLabel}
+          </div>
+        </div>
+      )}
 
       {/* Bottom gold accent line */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-600" />
