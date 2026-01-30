@@ -8,9 +8,9 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import axios from 'axios';
 
-// Allow longer execution time for audit generation (15 minutes for MoEv5 processing)
-// Note: Local dev has no timeout limits; Vercel hobby plan caps at 300s
-export const maxDuration = 900;
+// Allow longer execution time for audit generation
+// Vercel hobby plan caps at 300s
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
