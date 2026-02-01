@@ -12,7 +12,9 @@ import {
   MOVE_TYPES,
   AMOUNT_RANGES,
   TIMELINES,
-  JURISDICTIONS
+  JURISDICTIONS,
+  CITIZENSHIP_OPTIONS,
+  FTA_ELIGIBLE_COUNTRIES
 } from '@/lib/decision-memo/pattern-audit-types';
 
 interface ThesisInputProps {
@@ -151,6 +153,38 @@ export function ThesisInput({ value, onChange }: ThesisInputProps) {
                   <option key={t.id} value={t.id}>{t.label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Buyer Citizenship */}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Buyer Citizenship (Passport Nationality)
+              </label>
+              <select
+                value={value?.buyerCitizenship || ''}
+                onChange={(e) => onChange({ buyerCitizenship: e.target.value || undefined })}
+                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                           text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Select nationality...</option>
+                <optgroup label="FTA-Eligible (stamp duty remission)">
+                  {FTA_ELIGIBLE_COUNTRIES.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} — {c.fta} ({c.note})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Other Nationalities">
+                  {CITIZENSHIP_OPTIONS
+                    .filter(c => !FTA_ELIGIBLE_COUNTRIES.some(f => f.id === (c.id as string)))
+                    .map(c => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                </optgroup>
+              </select>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Affects FTA stamp duty benefits. Green Card holders: select actual passport nationality, not US.
+              </p>
             </div>
           </div>
         )}

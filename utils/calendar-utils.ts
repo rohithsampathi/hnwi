@@ -70,21 +70,17 @@ export function formatDateRange(start: Date, end?: Date): string {
           ${new Date(end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
-// Function to submit event reservation to formspree
+// Function to submit event reservation via server-side proxy
 export async function reserveEvent(event: any, email: string, name: string): Promise<boolean> {
   try {
-    // Use environment variable for formspree endpoint - NO hardcoded URLs
-    const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT;
-    if (!formspreeEndpoint) {
-      return false;
-    }
-    
-    const response = await fetch(formspreeEndpoint, {
+    const response = await fetch('/api/concierge', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
+        source: 'calendar',
         eventId: event.id,
         eventTitle: event.title,
         eventCategory: event.category,
@@ -93,10 +89,12 @@ export async function reserveEvent(event: any, email: string, name: string): Pro
         eventVenue: event.venue,
         attendeeEmail: email,
         attendeeName: name,
-        reservationTime: new Date(),
+        reservationTime: new Date().toISOString(),
+        _subject: `Event Reservation: ${event.title}`,
+        message: `${name} (${email}) reserved a spot for: ${event.title}`,
       }),
     });
-    
+
     return response.ok;
   } catch (error) {
     return false;

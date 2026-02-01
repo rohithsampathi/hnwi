@@ -64,7 +64,12 @@ import { StructureComparisonMatrix } from '@/components/decision-memo/memo/Struc
 // PDF Cover and Last Pages
 import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
 import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
+// Awe Visual Elements — Risk Radar, Liquidity Trap, Peer Benchmarking
+import { RiskRadarChart } from '@/components/decision-memo/memo/RiskRadarChart';
+import { LiquidityTrapFlowchart } from '@/components/decision-memo/memo/LiquidityTrapFlowchart';
+import { PeerBenchmarkTicker } from '@/components/decision-memo/memo/PeerBenchmarkTicker';
 import { transformICArtifactToMemoData } from '@/lib/decision-memo/sfo-to-memo-transformer';
+import { assembleCrossBorderAudit } from '@/lib/decision-memo/assemble-cross-border-audit';
 import { Opportunity, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
 import { parseDevCitations, CitationMap } from '@/lib/parse-dev-citations';
@@ -509,9 +514,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
   // Share
   const handleShare = async () => {
-    if (fullArtifact) {
-      await shareArtifact(intakeId, { copyLink: true });
-    }
+    await handleCopyLink();
   };
 
   // Memoized callback for preview ready - MUST be before conditional returns (React hooks rule)
@@ -1051,6 +1054,26 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    // CROSS-BORDER TAX AUDIT: Assemble from scattered data if backend returns null
+    // The backend may return cross_border_audit_summary: null while all raw tax data
+    // exists in source_tax_rates, destination_tax_rates, selected_structure, real_asset_audit.
+    // This normalization ensures every corridor renders the full CrossBorderTaxAudit UI.
+    // ══════════════════════════════════════════════════════════════════════════
+    if (
+      memoData.preview_data?.wealth_projection_data?.starting_position &&
+      !memoData.preview_data.wealth_projection_data.starting_position.cross_border_audit_summary
+    ) {
+      const assembled = assembleCrossBorderAudit(
+        memoData.preview_data,
+        memoData.preview_data.wealth_projection_data.starting_position,
+        memoData.preview_data.real_asset_audit,
+      );
+      if (assembled) {
+        memoData.preview_data.wealth_projection_data.starting_position.cross_border_audit_summary = assembled;
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     // CROSS-BORDER TAX AUDIT: Determine if theoretical tax savings are valid
     // When US worldwide taxation applies, tax savings are 0% - don't show misleading comparisons
     // Jan 2026 MCP CORE: Use backend's show_tax_savings flag (driven by structure_optimization)
@@ -1288,55 +1311,178 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
               sourceJurisdiction={memoData.preview_data.source_jurisdiction}
               destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-              sourceTaxRates={showTheoreticalTaxSavings ? (memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source) : undefined}
-              destinationTaxRates={showTheoreticalTaxSavings ? (memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination) : undefined}
-              taxDifferential={showTheoreticalTaxSavings ? memoData.preview_data.tax_differential : undefined}
-              valueCreation={showTheoreticalTaxSavings ? memoData.preview_data.value_creation : undefined}
+              sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+              destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+              taxDifferential={memoData.preview_data.tax_differential}
+              valueCreation={memoData.preview_data.value_creation}
               crossBorderTaxSavingsPct={crossBorderAudit?.total_tax_savings_pct}
               crossBorderComplianceFlags={crossBorderAudit?.compliance_flags}
               showTaxSavings={showTheoreticalTaxSavings}
               optimalStructure={memoData.preview_data.structure_optimization?.optimal_structure}
+              verdict={memoData.preview_data.structure_optimization?.verdict}
               viaNegativa={viaNegativaContext}
             />
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* STANDARD MODE: Risk Assessment at position 2                                    */}
-            {/* VIA NEGATIVA: Delusion Check (ScenarioTree) at position 2 instead               */}
+            {/* AWE ELEMENT 1: SFO Capital Allocation Risk Profile (Spider Chart)                   */}
+            {/* Shows the "broken shape" — asset is fine, structure is broken                     */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {(() => {
+              const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
+              if (!doctrineMetadata) return null;
+
+              // Build 6-axis scores from doctrine metadata + failure modes.
+              // Scores are DERIVED from real backend failure_modes data.
+              // Each failure mode is mapped to the dimension(s) it affects.
+              const failureModes = doctrineMetadata.failure_modes || [];
+              const totalFailures = failureModes.length;
+              const assessment = doctrineMetadata.antifragility_assessment || '';
+
+              // Baseline: for vetoed deals (RUIN_EXPOSED / FRAGILE) start lower.
+              // For passing deals start at 7. This ensures the shape looks broken for vetoed deals.
+              const isRuinExposed = assessment === 'RUIN_EXPOSED';
+              const isFrag = assessment === 'FRAGILE';
+              const baseline = isViaNegativa ? (isRuinExposed ? 3 : isFrag ? 4 : 5) : 7;
+
+              // Score calculation: start at baseline, deduct for matching failure modes,
+              // but also boost slightly for non-matching (max +1) to create the "jagged" shape
+              function calcScore(keywords: string[]): number {
+                let score = baseline;
+                let matched = false;
+                failureModes.forEach((f: any) => {
+                  const mode = (f.mode || '').toUpperCase();
+                  const desc = (f.description || '').toUpperCase();
+                  const book = (f.doctrine_book || '').toUpperCase();
+                  const sev = (f.severity || '').toUpperCase();
+                  const allText = `${mode} ${desc} ${book}`;
+                  if (keywords.some(k => allText.includes(k))) {
+                    matched = true;
+                    score -= sev === 'CRITICAL' ? 4 : sev === 'HIGH' ? 3 : sev === 'MEDIUM' ? 2 : 1;
+                  }
+                });
+                // Unmatched dimensions get a slight bump to create contrast
+                if (!matched && isViaNegativa) score += 1;
+                return Math.max(0, Math.min(10, score));
+              }
+
+              // Antifragility: use backend score if available, else derive
+              const antifragilityScore = doctrineMetadata.antifragility_score != null
+                ? Math.round(doctrineMetadata.antifragility_score / 10)
+                : calcScore(['ANTIFRAGIL', 'FRAGIL', 'RUIN', 'STRESS', 'CRISIS', 'RESILIEN', 'SHOCK']);
+
+              // Liquidity: ABSD, stamp duty, exit barriers, lock-in
+              const liquidityScore = calcScore(['LIQUID', 'PRISON', 'TRAP', 'LOCK', 'EXIT', 'ABSD', 'STAMP', 'BARRIER', 'FROZEN', 'ILLIQUID', 'FOREIGN_OWNER', 'ACQUISITION']);
+
+              // Regulatory: compliance, FBAR, FATCA, PFIC, tax drag, penalties
+              const regulatoryScore = calcScore(['REGULAT', 'COMPLIANCE', 'FBAR', 'FATCA', 'PFIC', 'TAX_DRAG', 'PENALTY', 'REPORT', 'FILING', 'SANCTION', 'WORLDWIDE', 'DRAGNET']);
+
+              // Asset quality: only deduct if the asset itself is problematic
+              // If no asset-specific failures, score stays HIGH — "the asset is fine"
+              const assetKeywords = ['ASSET_QUALITY', 'OVERVAL', 'BUBBLE', 'DEPRECIAT', 'DEFECT', 'TITLE'];
+              const assetRaw = calcScore(assetKeywords);
+              const hasAssetFailures = failureModes.some((f: any) =>
+                assetKeywords.some(k => ((f.mode || '') + ' ' + (f.description || '')).toUpperCase().includes(k))
+              );
+              const finalAssetScore = hasAssetFailures ? assetRaw : Math.min(10, Math.max(8, baseline + 3));
+
+              // Operator alignment: behavioral bias, decision quality, hallucination
+              const operatorScore = calcScore(['OPERATOR', 'BEHAVIO', 'DECISION', 'BIAS', 'KAHNEMAN', 'HALLUCIN', 'DELUSION', 'EXPECT', 'PROJEC', 'OVERCONFID']);
+
+              // Valuation reality: NPV, cost destruction, day-one loss, pricing
+              const valuationScore = calcScore(['VALUATION', 'PRICE', 'COST', 'NPV', 'NEGATIVE', 'OVERVAL', 'DAY_ONE', 'CAPITAL_DESTROY', 'LOSS', 'PREMIUM', 'SURCHARGE', 'OVERPAY']);
+
+              const scores = [
+                { label: 'Antifragility', shortLabel: 'Antifragile', score: antifragilityScore, maxScore: 10 },
+                { label: 'Liquidity', shortLabel: 'Liquidity', score: liquidityScore, maxScore: 10 },
+                { label: 'Regulatory', shortLabel: 'Regulatory', score: regulatoryScore, maxScore: 10 },
+                { label: 'Asset Quality', shortLabel: 'Asset', score: finalAssetScore, maxScore: 10 },
+                { label: 'Operator', shortLabel: 'Operator', score: operatorScore, maxScore: 10 },
+                { label: 'Valuation', shortLabel: 'Valuation', score: valuationScore, maxScore: 10 },
+              ];
+
+              return (
+                <section>
+                  <RiskRadarChart
+                    scores={scores}
+                    antifragilityAssessment={doctrineMetadata.antifragility_assessment}
+                    failureModeCount={doctrineMetadata.failure_mode_count}
+                    totalRiskFlags={doctrineMetadata.risk_flags_total}
+                    isVetoed={isViaNegativa}
+                  />
+                </section>
+              );
+            })()}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 1B: RISK ASSESSMENT (Position 2 — always shown)                           */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
-            {/* STANDARD: 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
-            {!isViaNegativa && (
-              <section>
-                <Page2AuditVerdict
-                  mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
-                  opportunitiesCount={memoData.preview_data.opportunities_count}
-                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                  ddChecklist={memoData.preview_data.dd_checklist}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
-                  dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
-                  mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
-                  riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
-                />
-              </section>
-            )}
-
-            {/* VIA NEGATIVA: 2. Delusion Check (ScenarioTree moved to position 2) */}
-            {isViaNegativa && (memoData.preview_data.scenario_tree_analysis ||
-              (memoData.preview_data.scenario_tree_data &&
-               Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
-              <section>
-                <ScenarioTreeSection
-                  data={memoData.preview_data.scenario_tree_data || {}}
-                  rawAnalysis={memoData.preview_data.scenario_tree_analysis}
-                  viaNegativa={viaNegativaContext}
-                />
-              </section>
-            )}
+            {/* 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
+            <section>
+              <Page2AuditVerdict
+                mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
+                opportunitiesCount={memoData.preview_data.opportunities_count}
+                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                ddChecklist={memoData.preview_data.dd_checklist}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
+                dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
+                mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
+                riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
+                viaNegativa={isViaNegativa ? viaNegativaContext : undefined}
+              />
+            </section>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 2: VALUE PROPOSITION / VIA NEGATIVA: JAIL RISK                            */}
+            {/* AWE ELEMENT 2: Liquidity Trap Flowchart (The Prison Diagram)                     */}
+            {/* Visualizes capital being destroyed by acquisition barriers                       */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {(() => {
+              const acqAudit = crossBorderAudit?.acquisition_audit;
+              if (!acqAudit) return null;
+
+              const propertyValue = acqAudit.property_value || 0;
+              const totalCost = acqAudit.total_acquisition_cost || 0;
+              const absd = acqAudit.absd_additional_stamp_duty || 0;
+              const bsd = acqAudit.bsd_stamp_duty || 0;
+              const otherCosts = totalCost - propertyValue - absd - bsd;
+
+              // Primary barrier: ABSD if present, else total stamp duties
+              const hasMajorABSD = absd > 0;
+              const primaryBarrierLabel = hasMajorABSD
+                ? `ABSD (${((absd / propertyValue) * 100).toFixed(0)}%)`
+                : `Stamp Duties`;
+              const primaryBarrierCost = hasMajorABSD ? absd : (absd + bsd);
+
+              // Secondary: US tax drag / BSD / other
+              const secondaryLabel = hasMajorABSD
+                ? (bsd > 0 ? `BSD + Transfer Taxes` : (hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined))
+                : (hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined);
+              const secondaryCost = hasMajorABSD
+                ? (bsd > 0 ? bsd + Math.max(0, otherCosts) : 0)
+                : 0;
+
+              const capitalOut = propertyValue; // recoverable = property value only
+
+              return (
+                <section>
+                  <LiquidityTrapFlowchart
+                    capitalIn={totalCost}
+                    capitalOut={capitalOut}
+                    primaryBarrier={primaryBarrierLabel}
+                    primaryBarrierCost={primaryBarrierCost}
+                    secondaryBarrier={secondaryLabel}
+                    secondaryBarrierCost={secondaryCost}
+                    dayOneLossPct={acqAudit.day_one_loss_pct || viaNegativaContext?.dayOneLoss || 0}
+                    assetLabel={`${memoData.preview_data.destination_jurisdiction || 'Destination'} Residential Property`}
+                  />
+                </section>
+              );
+            })()}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* PHASE 2: CROSS-BORDER TAX ANALYSIS                                              */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
             {/* 3. Cross-Border Tax Audit / Confiscation Exposure (renders in both modes) */}
@@ -1351,24 +1497,37 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               </section>
             )}
 
-            {/* VIA NEGATIVA: 4. Autopsy (Page2AuditVerdict moved after Jail Risk) */}
-            {isViaNegativa && (
-              <section>
-                <Page2AuditVerdict
-                  mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
-                  opportunitiesCount={memoData.preview_data.opportunities_count}
-                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                  ddChecklist={memoData.preview_data.dd_checklist}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
-                  dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
-                  mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
-                  riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
-                  viaNegativa={viaNegativaContext}
-                />
-              </section>
-            )}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* AWE ELEMENT 3: Peer Benchmarking Ticker (The FOMO Killer)                        */}
+            {/* Weaponizes precedent data to invoke "God View" of the market                     */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {(() => {
+              const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
+              const precedentCount = memoData.memo_data?.kgv3_intelligence_used?.precedents || 0;
+              if (!doctrineMetadata || !doctrineMetadata.failure_modes?.length || precedentCount === 0) return null;
+
+              const failurePatterns = (doctrineMetadata.failure_modes || []).map((f: any) => ({
+                mode: f.mode || '',
+                doctrinBook: f.doctrine_book || '',
+                severity: f.severity || 'MEDIUM',
+                description: f.description || '',
+                nightmareName: f.nightmare_name,
+              }));
+
+              return (
+                <section>
+                  <PeerBenchmarkTicker
+                    precedentCount={precedentCount}
+                    failurePatterns={failurePatterns}
+                    failureModeCount={doctrineMetadata.failure_mode_count || failurePatterns.length}
+                    totalRiskFlags={doctrineMetadata.risk_flags_total || 0}
+                    sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                    destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                    antifragilityAssessment={doctrineMetadata.antifragility_assessment}
+                  />
+                </section>
+              );
+            })()}
 
             {/* 3.5 Structure Comparison Matrix - MCP CORE OUTPUT */}
             {/* Shows all ownership structures analyzed with net benefit comparison */}
@@ -1549,8 +1708,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* PHASE 6: DECISION ANALYSIS (Strategic Decision Support)                        */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
-            {/* 12. Decision Scenario Tree (Expert 15) - SKIP in Via Negativa (already rendered as Delusion Check) */}
-            {!isViaNegativa && (memoData.preview_data.scenario_tree_analysis ||
+            {/* 12. Decision Scenario Tree (Expert 15) */}
+            {(memoData.preview_data.scenario_tree_analysis ||
               (memoData.preview_data.scenario_tree_data &&
                Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
               <section>
@@ -1643,6 +1802,82 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   This report provides strategic intelligence and pattern analysis for informed decision-making.
                   For execution and implementation, consult your legal, tax, and financial advisory teams.
                 </p>
+              </div>
+            </motion.div>
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* SHARE + NEXT AUDIT CTA (Web Only — hidden in print)                             */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            <motion.div
+              className="print:hidden space-y-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              {/* Share Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={handleShare}
+                  className={`inline-flex items-center gap-2.5 px-8 py-3 border-2 rounded-xl text-sm font-medium transition-colors ${
+                    linkCopied
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Link Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4" />
+                      Share This Audit
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Next Audit CTA */}
+              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/10 p-8 sm:p-12">
+                {/* Decorative corner */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
+
+                <div className="relative z-10 text-center max-w-2xl mx-auto">
+                  <p className="text-xs sm:text-sm font-bold text-primary uppercase tracking-widest mb-4">
+                    Pattern Recognition Engine
+                  </p>
+
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
+                    DOES YOUR NEXT DEAL SURVIVE THE RED TEAM?
+                  </h3>
+
+                  <p className="text-sm text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
+                    The same engine that produced this veto analyzes any cross-border acquisition across 50+ jurisdictions. Result: Certainty. Turnaround: 48 Hours.
+                  </p>
+
+                  {/* Scarcity line — next month cycle */}
+                  <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-6">
+                    {(() => {
+                      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                      return `5 Slots Remaining — ${monthNames[(new Date().getMonth() + 1) % 12]} Cycle`;
+                    })()}
+                  </p>
+
+                  {/* Single CTA Button */}
+                  <div className="flex justify-center">
+                    <a
+                      href="/decision-memo"
+                      className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl text-sm tracking-wide hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                    >
+                      {(() => {
+                        const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+                        return `SECURE ${monthNames[(new Date().getMonth() + 1) % 12]} AUDIT SLOT ($5,000)`;
+                      })()}
+                      <ArrowRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
               </div>
             </motion.div>
 

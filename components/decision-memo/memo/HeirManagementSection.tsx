@@ -141,24 +141,22 @@ function PreservationIndicator({ percentage }: { percentage: number }) {
 // Risk gauge component (semi-circular) - using primary colors only
 function RiskGauge({ current, improved, label }: { current: number; improved: number; label: string }) {
   const reduction = current - improved;
+  const r = 50;
+  const strokeW = 8;
+  const halfC = Math.PI * r;
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-32 h-16 overflow-hidden mb-2">
-        {/* Background arc */}
-        <div className="absolute inset-0 border-[8px] border-muted rounded-t-full" />
-        {/* Current risk arc */}
-        <div
-          className="absolute inset-0 border-[8px] border-muted-foreground/50 rounded-t-full origin-bottom transition-all"
-          style={{ clipPath: `polygon(0 100%, 0 0, ${current}% 0, ${current}% 100%)` }}
-        />
-        {/* Improved risk arc */}
-        <div
-          className="absolute inset-0 border-[8px] border-primary rounded-t-full origin-bottom transition-all"
-          style={{ clipPath: `polygon(0 100%, 0 0, ${improved}% 0, ${improved}% 100%)` }}
-        />
-        {/* Center display */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+      <div className="relative w-36 h-[76px] mb-2">
+        <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
+          {/* Background arc */}
+          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} className="text-muted" />
+          {/* Current risk arc */}
+          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} strokeDasharray={halfC} strokeDashoffset={halfC - (halfC * current / 100)} strokeLinecap="round" className="text-muted-foreground/50" />
+          {/* Improved risk arc */}
+          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} strokeDasharray={halfC} strokeDashoffset={halfC - (halfC * improved / 100)} strokeLinecap="round" className="text-primary" />
+        </svg>
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
           <span className="text-2xl font-bold text-foreground">{Math.round(current)}%</span>
           <span className="text-xs text-muted-foreground ml-1">→</span>
           <span className="text-lg font-bold text-primary ml-1">{Math.round(improved)}%</span>

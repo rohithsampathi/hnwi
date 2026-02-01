@@ -36,6 +36,19 @@ export interface HeirManagementData {
 
   // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
   estate_tax_by_heir_type?: EstateTaxByHeirType;
+
+  // NEW: Simplified generational transfers (alternative to g1_to_g2_transfer / g2_to_g3_transfer)
+  generational_transfers?: GenerationalTransfer[];
+  // NEW: Structure impact (alternative to with_structure)
+  structure_impact?: StructureImpact;
+
+  // NEW: State-level estate tax (e.g., New York, Washington, Oregon)
+  /** State estate tax rate (e.g., 0.16 for NY 16%) */
+  state_estate_tax_rate?: number;
+  /** Whether a state estate tax applies in the source jurisdiction */
+  state_estate_tax_applies?: boolean;
+  /** State name (e.g., "New York") */
+  state_estate_tax_jurisdiction?: string;
 }
 
 /** Hughes Framework - Nested container for third generation protection data */
@@ -99,7 +112,39 @@ export interface G2ToG3Transfer {
   net_to_g3_without_structure: number;
 }
 
-// NEW: With Structure (Recommended)
+// NEW: Simplified Generational Transfer (unified G1→G2 and G2→G3)
+export interface GenerationalTransfer {
+  /** Label (e.g., "G1→G2", "G2→G3") */
+  label: string;
+  /** Years until transfer */
+  years_out: number;
+  /** Future value at appreciation rate */
+  projected_value: number;
+  /** $ lost to estate tax */
+  estate_tax_hit: number;
+  /** $ lost to state estate tax (if applicable) */
+  state_estate_tax_hit?: number;
+  /** What heir actually receives */
+  net_to_heir: number;
+}
+
+// NEW: Structure Impact (replaces WithStructure for new backend)
+export interface StructureImpact {
+  /** Structure type (e.g., "DIFC Foundation", "Family Trust") */
+  recommended_structure: string;
+  /** What G3 receives WITH structure */
+  net_to_g3_with_structure: number;
+  /** Difference vs unstructured */
+  wealth_preserved: number;
+  /** % wealth preserved */
+  preservation_percentage: number;
+  /** Setup cost estimate */
+  setup_cost?: string;
+  /** Annual maintenance cost estimate */
+  annual_cost?: string;
+}
+
+// NEW: With Structure (Recommended) - legacy interface
 export interface WithStructure {
   /** Structure type (e.g., "DIFC Foundation", "Family Trust") */
   recommended_structure: string;
@@ -327,6 +372,18 @@ export interface StartingPosition {
   appreciation_rate_pct?: number;
   /** Rental yield percentage (e.g., 3.3 for 3.3%) */
   rental_yield_pct?: number;
+  /** Net rental yield after taxes (e.g., 4.83 for 4.83%) */
+  net_rental_yield_pct?: number;
+  /** Annual rental income in USD */
+  annual_rental?: number;
+  /** Selected ownership structure and its tax rates */
+  selected_structure?: {
+    structure_name?: string;
+    net_rental_rate_pct?: number;
+    net_cgt_rate_pct?: number;
+    net_estate_rate_pct?: number;
+    stamp_duty_rate_pct?: number;
+  };
   /** Cross-border tax audit summary (for non-relocation purchases) */
   cross_border_audit?: CrossBorderAuditSummary;
   /** Backend uses this key name */
@@ -352,6 +409,8 @@ export interface CrossBorderAuditSummary {
   estate_tax_audit: EstateTaxAudit;
   /** Net yield calculation */
   net_yield_audit: NetYieldAudit;
+  /** PFIC audit (US taxpayers investing in foreign passive entities) */
+  pfic_audit?: PFICAudit;
   /** Total tax savings percentage (0 for non-relocating) */
   total_tax_savings_pct?: number;
   /** Compliance flags */
@@ -446,8 +505,36 @@ export interface NetYieldAudit {
   annual_tax_paid?: number;
   /** Annual net income */
   annual_net_income?: number;
+  /** Property tax rate percentage (e.g., Singapore 10-20% for non-occupied) */
+  property_tax_rate_pct?: number;
+  /** Annual property tax amount */
+  property_tax_annual?: number;
   /** Human-readable explanation */
   explanation: string;
+}
+
+// =============================================================================
+// PFIC AUDIT (Passive Foreign Investment Company - US taxpayers)
+// =============================================================================
+
+/** PFIC audit for US taxpayers investing in foreign REITs/funds */
+export interface PFICAudit {
+  /** Whether PFIC rules apply */
+  pfic_applies: boolean;
+  /** Type of entity triggering PFIC (e.g., "Singapore REIT", "Foreign Fund") */
+  entity_type?: string;
+  /** PFIC tax regime (e.g., "Excess Distribution", "QEF", "Mark-to-Market") */
+  tax_regime?: string;
+  /** Effective tax rate under PFIC rules */
+  effective_rate_pct?: number;
+  /** Whether QEF election is available */
+  qef_election_available?: boolean;
+  /** Whether Mark-to-Market election is available */
+  mtm_election_available?: boolean;
+  /** Human-readable explanation */
+  explanation: string;
+  /** Warning text for the investor */
+  warning?: string;
 }
 
 export interface ProjectionScenario {
@@ -592,6 +679,8 @@ export interface DecisionBranch {
   outcomes: BranchOutcome[];
   /** Expected value of this branch */
   expected_value: number;
+  /** Hypothetical expected value note (shown when structure is blocked) */
+  expected_value_note?: string;
   /** Brief verdict */
   verdict: string;
   /** When to choose this branch */
@@ -607,7 +696,7 @@ export interface BranchCondition {
   status: ConditionStatus;
 }
 
-export type ConditionStatus = "MET" | "PENDING" | "BLOCKED";
+export type ConditionStatus = "MET" | "PENDING" | "BLOCKED" | "CONDITIONAL" | "CONFIRMED" | "MODELED";
 
 export interface BranchOutcome {
   /** Which scenario this outcome is for */
@@ -843,6 +932,9 @@ export interface ViaNegativaData {
 
   metrics: ViaNegativaMetric[];
 
+  /** Reality Gap visualization: expected vs actual side-by-side */
+  reality_gap_visual?: RealityGapVisual;
+
   scenario_section: {
     header: string;
     expectation_label: string;
@@ -875,7 +967,394 @@ export interface ViaNegativaData {
     button_text: string;
     button_url: string;
     context_note: string;
+    /** Structured actions (new backend format) */
+    actions?: CTAAction[];
+    /** Form fields for consultation booking */
+    form_fields?: CTAFormField[];
   };
+}
+
+// =============================================================================
+// VIA NEGATIVA THEME (WCAG AA Compliant)
+// =============================================================================
+
+/** Via Negativa theme colors for light and dark mode */
+export interface ViaNegativaTheme {
+  /** Background colors */
+  bg: {
+    primary: string;
+    secondary: string;
+    card: string;
+    badge: string;
+  };
+  /** Text colors */
+  text: {
+    primary: string;
+    secondary: string;
+    muted: string;
+    badge: string;
+  };
+  /** Border colors */
+  border: {
+    primary: string;
+    card: string;
+    accent: string;
+  };
+  /** Accent/highlight colors */
+  accent: {
+    glow: string;
+    highlight: string;
+    destructive: string;
+  };
+}
+
+/** Get Via Negativa theme for current color mode */
+export function getViaNegativaTheme(isDark: boolean): ViaNegativaTheme {
+  if (isDark) {
+    return {
+      bg: {
+        primary: "bg-red-950/30",
+        secondary: "bg-red-950/20",
+        card: "bg-red-950/40",
+        badge: "bg-red-500/20",
+      },
+      text: {
+        primary: "text-red-400",
+        secondary: "text-red-300",
+        muted: "text-red-400/60",
+        badge: "text-red-300",
+      },
+      border: {
+        primary: "border-red-500/30",
+        card: "border-red-500/20",
+        accent: "border-red-500/40",
+      },
+      accent: {
+        glow: "shadow-red-500/10",
+        highlight: "bg-red-500/10",
+        destructive: "text-red-500",
+      },
+    };
+  }
+  return {
+    bg: {
+      primary: "bg-red-50",
+      secondary: "bg-red-100/50",
+      card: "bg-red-100",
+      badge: "bg-red-200",
+    },
+    text: {
+      primary: "text-red-700",
+      secondary: "text-red-600",
+      muted: "text-red-600/70",
+      badge: "text-red-800",
+    },
+    border: {
+      primary: "border-red-200",
+      card: "border-red-200",
+      accent: "border-red-300",
+    },
+    accent: {
+      glow: "shadow-red-200/30",
+      highlight: "bg-red-200/50",
+      destructive: "text-red-600",
+    },
+  };
+}
+
+// =============================================================================
+// REALITY GAP VISUAL (Via Negativa)
+// =============================================================================
+
+/** Reality gap row: expected vs actual for a metric */
+export interface RealityGapRow {
+  /** Metric label (e.g., "Appreciation", "Rental Yield") */
+  label: string;
+  /** What the user expects (e.g., "16%") */
+  expected: string;
+  /** Market base rate (e.g., "3.4%") */
+  actual: string;
+  /** Deviation description (e.g., "-78%") */
+  deviation: string;
+  /** Warning level */
+  severity: "none" | "moderate" | "high" | "extreme";
+}
+
+/** Reality gap visualization container */
+export interface RealityGapVisual {
+  /** Section title */
+  title: string;
+  /** Rows of expected vs actual comparisons */
+  rows: RealityGapRow[];
+  /** Overall assessment */
+  overall_assessment: string;
+  /** Data sources used */
+  data_sources: string[];
+}
+
+// =============================================================================
+// CTA ACTIONS & FORM FIELDS (Via Negativa / Consultation)
+// =============================================================================
+
+/** Structured CTA action */
+export interface CTAAction {
+  /** Action type */
+  type: "primary" | "secondary" | "link";
+  /** Button/link text */
+  label: string;
+  /** URL or action identifier */
+  url: string;
+  /** Additional context */
+  description?: string;
+}
+
+/** Form field for consultation booking CTA */
+export interface CTAFormField {
+  /** Field name */
+  name: string;
+  /** Field label */
+  label: string;
+  /** Input type */
+  type: "text" | "email" | "tel" | "select" | "textarea";
+  /** Whether field is required */
+  required: boolean;
+  /** Placeholder text */
+  placeholder?: string;
+  /** Options (for select type) */
+  options?: string[];
+}
+
+// =============================================================================
+// RADAR CHART CONFIG (Layout Contract)
+// =============================================================================
+
+/** Radar chart axis definition */
+export interface RadarAxis {
+  /** Axis key (e.g., "tax_efficiency", "liquidity") */
+  key: string;
+  /** Display label */
+  label: string;
+  /** Maximum value for this axis */
+  max: number;
+}
+
+/** Radar chart layout configuration */
+export const RADAR_CHART_CONFIG = {
+  /** SVG viewBox dimensions */
+  viewBox: { width: 380, height: 380 },
+  /** Center point */
+  center: { x: 190, y: 190 },
+  /** Maximum radius for the polygon */
+  maxRadius: 120,
+  /** Padding for labels beyond polygon edge */
+  labelPadding: 40,
+  /** Number of concentric grid rings */
+  gridRings: 5,
+  /** Default axes for Capital Allocation Risk Profile */
+  defaultAxes: [
+    { key: "tax_efficiency", label: "Tax Efficiency", max: 100 },
+    { key: "liquidity", label: "Liquidity", max: 100 },
+    { key: "structure", label: "Structure", max: 100 },
+    { key: "estate_planning", label: "Estate Planning", max: 100 },
+    { key: "regulatory", label: "Regulatory", max: 100 },
+    { key: "market_alignment", label: "Market Alignment", max: 100 },
+  ] as RadarAxis[],
+} as const;
+
+/**
+ * Calculate label position for radar chart axis
+ * Returns {x, y, anchor} for SVG text positioning
+ */
+export function getRadarLabelPosition(
+  index: number,
+  total: number,
+  center: { x: number; y: number },
+  radius: number,
+  padding: number = 40
+): { x: number; y: number; anchor: "start" | "middle" | "end" } {
+  const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
+  const r = radius + padding;
+  const x = center.x + r * Math.cos(angle);
+  const y = center.y + r * Math.sin(angle);
+
+  // Determine text anchor based on position
+  let anchor: "start" | "middle" | "end" = "middle";
+  if (Math.cos(angle) > 0.1) anchor = "start";
+  else if (Math.cos(angle) < -0.1) anchor = "end";
+
+  return { x, y, anchor };
+}
+
+/**
+ * Calculate polygon points for radar chart
+ * Returns SVG points string for <polygon>
+ */
+export function getRadarPolygonPoints(
+  values: number[],
+  maxValues: number[],
+  center: { x: number; y: number },
+  maxRadius: number
+): string {
+  return values
+    .map((val, i) => {
+      const angle = (Math.PI * 2 * i) / values.length - Math.PI / 2;
+      const ratio = Math.min(val / (maxValues[i] || 100), 1);
+      const r = ratio * maxRadius;
+      const x = center.x + r * Math.cos(angle);
+      const y = center.y + r * Math.sin(angle);
+      return `${x},${y}`;
+    })
+    .join(" ");
+}
+
+// =============================================================================
+// JURISDICTION TAX RATES & TAX DIFFERENTIAL (Centralized)
+// =============================================================================
+
+/** Tax rates for a single jurisdiction (source or destination) */
+export interface JurisdictionTaxRates {
+  income_tax?: number;
+  cgt?: number;
+  wealth_tax?: number;
+  estate_tax?: number;
+  effective?: number;
+}
+
+/** Which tax category drives the most value in the corridor */
+export interface PrimaryValueDriver {
+  /** Tax category (e.g., "Income Tax", "CGT", "Estate Tax") */
+  category: string;
+  /** Differential percentage */
+  differential_pct: number;
+  /** Impact direction */
+  impact: "saved" | "cost" | "neutral";
+}
+
+/** Full tax differential between source and destination jurisdictions */
+export interface TaxDifferentialFull {
+  source: JurisdictionTaxRates;
+  destination: JurisdictionTaxRates;
+  /** Income tax differential (source - destination) */
+  income_tax_differential_pct: number;
+  /** Capital gains tax differential */
+  cgt_differential_pct: number;
+  /** Estate tax differential */
+  estate_tax_differential_pct: number;
+  /** Weighted differential (by HNWI exposure: 60% estate, 25% income, 15% CGT) */
+  weighted_tax_differential_pct?: number;
+  /** Methodology for weighting */
+  weighting_methodology?: string;
+  /** Cumulative (sum of all differentials) */
+  cumulative_tax_differential_pct?: number;
+  /** Cumulative impact: "saved" | "cost" | "none_without_relocation" */
+  cumulative_impact?: "saved" | "cost" | "none_without_relocation";
+  /** Which tax category drives the most value */
+  primary_value_driver?: PrimaryValueDriver;
+  /** Headline savings string (e.g., "N/A (Requires Relocation)") */
+  headline_tax_savings?: string;
+  /** Whether the buyer is relocating to the destination */
+  is_relocating?: boolean;
+  /** Note explaining tax savings context */
+  tax_savings_note?: string;
+}
+
+// =============================================================================
+// STRUCTURE OPTIMIZATION (Centralized)
+// =============================================================================
+
+/** Structure optimization verdict */
+export type StructureVerdict =
+  | "PROCEED"
+  | "PROCEED_MODIFIED"
+  | "PROCEED_DIVERSIFICATION_ONLY"
+  | "DO_NOT_PROCEED";
+
+/** Individual structure in structures_analyzed[] */
+export interface StructureAnalysisItem {
+  name: string;
+  type: string;
+  verdict: string;
+  net_benefit_10yr: number;
+  tax_savings_pct: number;
+  viable: boolean;
+  warnings: (string | Record<string, unknown>)[];
+  setup_cost?: number;
+  annual_cost?: number;
+  rental_income_rate?: number;
+  capital_gains_rate?: number;
+  estate_tax_rate?: number;
+}
+
+/** Optimal structure recommendation (extends StructureAnalysisItem with anti-avoidance) */
+export interface OptimalStructure {
+  name: string;
+  type: string;
+  net_benefit_10yr: number;
+  tax_savings_pct: number;
+  warnings: (string | Record<string, unknown>)[];
+  setup_cost?: number;
+  annual_cost?: number;
+  rental_income_rate?: number;
+  capital_gains_rate?: number;
+  estate_tax_rate?: number;
+  anti_avoidance_flags?: string[];
+}
+
+/** Full structure optimization output from MCP engine */
+export interface StructureOptimization {
+  verdict: StructureVerdict;
+  verdict_reason: string;
+  optimal_structure?: OptimalStructure;
+  structures_analyzed: StructureAnalysisItem[];
+  alternative_corridors: (string | Record<string, unknown>)[];
+  alternative_strategies: (string | Record<string, unknown>)[];
+  confidence_level?: string;
+}
+
+// =============================================================================
+// VALUE CREATION (Centralized)
+// =============================================================================
+
+/** Value creation breakdown — supports both relocation (tax savings) and non-relocation (rental/appreciation) */
+export interface ValueCreation {
+  /** Non-relocation format: rental + appreciation */
+  annual?: {
+    rental?: number;
+    rental_formatted?: string;
+    appreciation?: number;
+    appreciation_formatted?: string;
+    tax_savings?: number;
+    total?: number;
+    total_formatted?: string;
+  };
+  /** Five-year projection */
+  five_year?: {
+    rental?: number;
+    rental_formatted?: string;
+    appreciation?: number;
+    appreciation_formatted?: string;
+    tax_savings?: number;
+    total?: number;
+    total_formatted?: string;
+  };
+  /** Relocation format: tax savings breakdown */
+  annual_tax_savings?: number;
+  annual_cgt_savings?: number;
+  annual_estate_benefit?: number;
+  total_annual?: number;
+  formatted?: {
+    annual_tax_savings?: string;
+    annual_cgt_savings?: string;
+    annual_estate_benefit?: string;
+    total_annual?: string;
+  };
+  /** Delta between user projections and market rates */
+  user_vs_market_delta?: number;
+  /** Warnings about projection assumptions */
+  warnings?: string[];
+  /** Legacy flat format */
+  amount?: number;
+  description?: string;
 }
 
 // =============================================================================
@@ -931,6 +1410,9 @@ export function getBranchColorClass(branch: BranchName): string {
 export function getConditionStatusIcon(status: ConditionStatus): string {
   switch (status) {
     case "MET": return "✓";
+    case "CONFIRMED": return "✓";
+    case "CONDITIONAL": return "⟳";
+    case "MODELED": return "◎";
     case "PENDING": return "⚠";
     case "BLOCKED": return "✗";
     default: return "?";
@@ -943,6 +1425,9 @@ export function getConditionStatusIcon(status: ConditionStatus): string {
 export function getConditionStatusClass(status: ConditionStatus): string {
   switch (status) {
     case "MET": return "text-green-600 dark:text-green-400";
+    case "CONFIRMED": return "text-green-600 dark:text-green-400";
+    case "CONDITIONAL": return "text-blue-600 dark:text-blue-400";
+    case "MODELED": return "text-purple-600 dark:text-purple-400";
     case "PENDING": return "text-yellow-600 dark:text-yellow-400";
     case "BLOCKED": return "text-red-600 dark:text-red-400";
     default: return "text-muted-foreground";

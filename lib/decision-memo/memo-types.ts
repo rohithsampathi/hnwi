@@ -1,6 +1,27 @@
 // lib/decision-memo/memo-types.ts
 // TypeScript interfaces for Decision Memo data structure
 
+import type {
+  JurisdictionTaxRates,
+  TaxDifferentialFull,
+  StructureOptimization,
+  ValueCreation,
+} from './sfo-expert-types';
+
+/** Regulatory citation backing a specific calculation or assertion */
+export interface RegulatoryCitation {
+  citation_id: string;
+  source_type: string;     // "statute", "regulatory", "market_data", "publication"
+  title: string;
+  jurisdiction: string;
+  statute_section?: string;
+  effective_date?: string;
+  publisher?: string;
+  data_point?: string;
+  url?: string;
+  verified?: boolean;
+}
+
 export interface DecisionMemoData {
   success: boolean;
   intake_id: string;
@@ -381,20 +402,32 @@ export interface PreviewData {
   hnwi_trends_analysis?: string;
 
   // ═══════════════════════════════════════════════════════════════════════
-  // TAX DATA
+  // TAX DATA & STRUCTURE OPTIMIZATION (MCP Core)
   // ═══════════════════════════════════════════════════════════════════════
-  source_tax_rates?: TaxRates;
-  destination_tax_rates?: TaxRates;
-  tax_differential?: {
-    source: TaxRates;
-    destination: TaxRates;
-    savings: string;
-  };
-  value_creation?: {
-    amount: number;
-    formatted: string;
-    description: string;
-  };
+  source_tax_rates?: JurisdictionTaxRates;
+  destination_tax_rates?: JurisdictionTaxRates;
+  tax_differential?: TaxDifferentialFull;
+  value_creation?: ValueCreation;
+
+  // Structure Optimization Engine output
+  structure_optimization?: StructureOptimization | null;
+  /** Backend flag: false for non-relocation cross-border purchases */
+  show_tax_savings?: boolean;
+
+  // Transaction metadata
+  transaction_value?: number;
+  transaction_value_formatted?: string;
+
+  // Regulatory Citations (institutional-grade footnotes: IRAS, USSFTA, IRC, FinCEN)
+  regulatory_citations?: RegulatoryCitation[];
+
+  // Via Negativa (DO_NOT_PROCEED overlay)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  via_negativa?: any;
+
+  // MCP decision context
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mcp_decision?: any;
 
   // ═══════════════════════════════════════════════════════════════════════
   // RISK ASSESSMENT (MCP Fields)

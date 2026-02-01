@@ -52,15 +52,14 @@ export function EventDetailsSection({ event, hideHeading = false }: EventDetails
     const userName = user?.name || "Unknown User"
     
     try {
-      // Use environment variable for formspree endpoint - NO hardcoded URLs
-      const formspreeEndpoint = process.env.NEXT_PUBLIC_FORMSPREE_ENDPOINT || "https://formspree.io/f/xwpvjjpz";
-      
-      const response = await fetch(formspreeEndpoint, {
+      const response = await fetch("/api/concierge", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
+          source: "calendar",
           eventTitle: event.title,
           userName: userName,
           userId: userId,
@@ -72,6 +71,8 @@ export function EventDetailsSection({ event, hideHeading = false }: EventDetails
           eventVenue: event.venue,
           eventAttendees: event.attendees,
           timestamp: new Date().toISOString(),
+          _subject: `Event Reservation: ${event.title}`,
+          message: `User ${userName} (${userEmail}) reserved a spot for event: ${event.title}.`,
         }),
       });
       

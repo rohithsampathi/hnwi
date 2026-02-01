@@ -132,8 +132,8 @@ function FTCBadge({ available }: { available: boolean }) {
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${
       available
-        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-        : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+        ? 'bg-primary/10 text-primary border border-primary/20'
+        : 'bg-secondary/50 text-secondary-foreground border border-secondary'
     }`}>
       {available ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
       {available ? 'FTC CREDIT' : 'NO FTC'}
@@ -185,7 +185,7 @@ function TaxComparison({
           <span className="text-[10px] sm:text-xs text-muted-foreground w-20 flex-shrink-0">Destination</span>
           <div className="flex-1 h-2.5 bg-muted/40 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full"
+              className="h-full bg-gradient-to-r from-secondary to-secondary/80 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${(destRate / maxRate) * 100}%` }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -197,7 +197,7 @@ function TaxComparison({
           <span className="text-[10px] sm:text-xs text-muted-foreground w-20 flex-shrink-0">Source</span>
           <div className="flex-1 h-2.5 bg-muted/40 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full"
+              className="h-full bg-gradient-to-r from-primary/50 to-primary/70 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${(sourceRate / maxRate) * 100}%` }}
               transition={{ duration: 0.8, delay: 0.3 }}
@@ -221,14 +221,14 @@ function TaxComparison({
 
       {/* Savings indicator */}
       <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${
-        savingsPct > 0 ? 'bg-emerald-500/5 border border-emerald-500/10' :
-        savingsPct < 0 ? 'bg-red-500/5 border border-red-500/10' :
+        savingsPct > 0 ? 'bg-primary/5 border border-primary/10' :
+        savingsPct < 0 ? 'bg-secondary/30 border border-secondary' :
         'bg-muted/30 border border-border'
       }`}>
         <span className="text-[10px] sm:text-xs text-muted-foreground">Tax Savings</span>
         <span className={`text-sm font-bold ${
-          savingsPct > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-          savingsPct < 0 ? 'text-red-600 dark:text-red-400' :
+          savingsPct > 0 ? 'text-primary' :
+          savingsPct < 0 ? 'text-secondary-foreground' :
           'text-muted-foreground'
         }`}>
           {savingsPct > 0 ? '+' : ''}{savingsPct.toFixed(0)}%
@@ -604,11 +604,11 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   <div className="bg-background/60 rounded-lg p-2.5 text-center">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Gross</p>
-                    <p className="text-lg font-bold text-foreground">{audit.net_yield_audit.gross_yield_pct}%</p>
+                    <p className="text-lg font-bold text-foreground">{Number(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%</p>
                   </div>
                   <div className="bg-background/60 rounded-lg p-2.5 text-center">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Tax Rate</p>
-                    <p className="text-lg font-bold text-red-500">{audit.net_yield_audit.tax_rate_applied_pct}%</p>
+                    <p className="text-lg font-bold text-secondary-foreground">{Number(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
                   </div>
                   <div className="bg-primary/10 rounded-lg p-2.5 text-center border border-primary/20">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-primary font-semibold">Net Yield</p>
@@ -624,7 +624,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Annual Tax Paid</span>
-                    <span className="font-medium text-red-500 font-mono">-{formatCurrency(audit.net_yield_audit.annual_tax_paid)}</span>
+                    <span className="font-medium text-secondary-foreground font-mono">-{formatCurrency(audit.net_yield_audit.annual_tax_paid)}</span>
                   </div>
                   <div className="flex justify-between text-xs pt-2 border-t border-primary/15">
                     <span className="font-semibold text-foreground">Annual Net Income</span>

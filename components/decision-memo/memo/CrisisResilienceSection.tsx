@@ -163,20 +163,18 @@ function ResilienceGauge({ score, rating }: { score: number; rating: string }) {
 
   const config = ratingConfig[rating] || ratingConfig.MODERATE;
 
+  const r = 50;
+  const strokeW = 8;
+  const halfC = Math.PI * r;
+
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-32 h-16 overflow-hidden">
-        {/* Background arc */}
-        <div className="absolute inset-0 border-[8px] border-muted rounded-t-full" />
-        {/* Colored arc */}
-        <div
-          className="absolute inset-0 border-[8px] border-primary rounded-t-full origin-bottom"
-          style={{
-            clipPath: `polygon(0 100%, 0 0, ${score}% 0, ${score}% 100%)`,
-          }}
-        />
-        {/* Score display */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+      <div className="relative w-36 h-[76px]">
+        <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
+          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} className="text-muted" />
+          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} strokeDasharray={halfC} strokeDashoffset={halfC - (halfC * score / 100)} strokeLinecap="round" className="text-primary" />
+        </svg>
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
           <span className="text-2xl font-bold text-foreground">{score}</span>
           <span className="text-xs text-muted-foreground">/100</span>
         </div>

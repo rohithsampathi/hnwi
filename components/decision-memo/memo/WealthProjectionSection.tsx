@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
 import {
   TrendingUp,
@@ -114,10 +114,85 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
     }
   }, [optimalStructureName, selectedStructureName]);
 
-  // Get the projection data for the currently selected structure
-  // Falls back to default data if structure projection not available
-  const currentProjectionData = selectedStructureName && structureProjections[selectedStructureName]
-    ? structureProjections[selectedStructureName]
+  // Compute derived per-structure projections when backend doesn't provide them.
+  // Uses each structure's net_benefit_10yr delta to adjust the base projection's
+  // year-by-year values, 10-year outcomes, cost of inaction, and probability-weighted outcomes.
+  const derivedProjections = useMemo(() => {
+    if (!data || !('scenarios' in data) || !Array.isArray((data as WealthProjectionData).scenarios) || !structures.length) {
+      return {};
+    }
+    const typedBase = data as WealthProjectionData;
+    // Reference structure = the one the backend projection was computed for
+    const refStructure = structures.find(s => s.name === optimalStructureName) || structures[0];
+    if (!refStructure) return {};
+
+    const projections: Record<string, WealthProjectionData> = {};
+    const startingValue = typedBase.starting_position?.transaction_value
+      || typedBase.starting_position?.transaction_amount || 0;
+
+    for (const structure of structures) {
+      if (structure.name === refStructure.name) {
+        projections[structure.name] = typedBase;
+        continue;
+      }
+
+      const delta = structure.net_benefit_10yr - refStructure.net_benefit_10yr;
+
+      projections[structure.name] = {
+        ...typedBase,
+        scenarios: typedBase.scenarios.map(scenario => ({
+          ...scenario,
+          year_by_year: scenario.year_by_year.map(yp => {
+            const yearFrac = yp.year / 10;
+            const adj = delta * yearFrac;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ypAny = yp as any;
+            return {
+              ...yp,
+              net_worth: yp.net_worth + adj,
+              // Backend sends total_value/rental_income as extra fields
+              ...(ypAny.total_value !== undefined ? { total_value: ypAny.total_value + adj } : {}),
+            };
+          }),
+          ten_year_outcome: {
+            ...scenario.ten_year_outcome,
+            total_value_creation: scenario.ten_year_outcome.total_value_creation + delta,
+            final_value: (scenario.ten_year_outcome.final_value
+              ?? (scenario.ten_year_outcome as Record<string, number>).final_total_value ?? 0) + delta,
+            final_total_value: ((scenario.ten_year_outcome as Record<string, number>).final_total_value
+              ?? scenario.ten_year_outcome.final_value ?? 0) + delta,
+            percentage_gain: startingValue > 0
+              ? ((scenario.ten_year_outcome.total_value_creation + delta) / startingValue) * 100
+              : scenario.ten_year_outcome.percentage_gain,
+          }
+        })),
+        cost_of_inaction: {
+          ...typedBase.cost_of_inaction,
+          year_1: typedBase.cost_of_inaction.year_1 + delta * 0.1,
+          year_5: typedBase.cost_of_inaction.year_5 + delta * 0.5,
+          year_10: typedBase.cost_of_inaction.year_10 + delta,
+        },
+        probability_weighted_outcome: {
+          ...typedBase.probability_weighted_outcome,
+          expected_value_creation: typedBase.probability_weighted_outcome.expected_value_creation + delta,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          expected_total_value: ((typedBase.probability_weighted_outcome as any).expected_total_value || 0) + delta,
+          expected_net_worth: typedBase.probability_weighted_outcome.expected_net_worth + delta,
+          net_benefit_of_move: typedBase.probability_weighted_outcome.net_benefit_of_move + delta,
+        }
+      };
+    }
+
+    return projections;
+  }, [data, structures, optimalStructureName]);
+
+  // Get the projection data for the currently selected structure.
+  // Priority: backend per-structure projections > frontend-derived projections > default data
+  const effectiveProjections = Object.keys(structureProjections).length > 0
+    ? structureProjections
+    : derivedProjections;
+  const currentProjectionData = selectedStructureName && effectiveProjections[selectedStructureName]
+    ? effectiveProjections[selectedStructureName]
     : data;
 
   useEffect(() => {
@@ -345,14 +420,16 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="flex flex-col md:flex-row items-center gap-6">
               {/* Value Gauge */}
               <div className="flex flex-col items-center">
-                <div className="relative w-32 h-16 overflow-hidden">
-                  <div className="absolute inset-0 border-[8px] border-muted rounded-t-full" />
-                  <div className="absolute inset-0 border-[8px] border-primary rounded-t-full origin-bottom"
-                    style={{ clipPath: `polygon(0 100%, 0 0, ${Math.min(85, percentGain / 3)}% 0, ${Math.min(85, percentGain / 3)}% 100%)` }} />
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+                {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.min(95, percentGain / 3); return (
+                <div className="relative w-36 h-[76px]">
+                  <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
+                    <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
+                    <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={hc} strokeDashoffset={hc - (hc * fill / 100)} strokeLinecap="round" className="text-primary" />
+                  </svg>
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
                     <span className="text-2xl font-bold text-foreground">{dynamicMetrics.percentGain}</span>
                   </div>
-                </div>
+                </div>); })()}
                 <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full bg-primary/20 text-primary">
                   10-YEAR GROWTH
                 </span>
@@ -761,14 +838,16 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           <div className="flex flex-col md:flex-row items-center gap-6">
             {/* Value Gauge */}
             <div className="flex flex-col items-center">
-              <div className="relative w-32 h-16 overflow-hidden">
-                <div className="absolute inset-0 border-[8px] border-muted rounded-t-full" />
-                <div className="absolute inset-0 border-[8px] border-primary rounded-t-full origin-bottom"
-                  style={{ clipPath: `polygon(0 100%, 0 0, ${Math.min(95, structuredDynamicMetrics.percentGain / 3)}% 0, ${Math.min(95, structuredDynamicMetrics.percentGain / 3)}% 100%)` }} />
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+              {(() => { const r = 50, sw = 8, hc = Math.PI * r, fill = Math.min(95, structuredDynamicMetrics.percentGain / 3); return (
+              <div className="relative w-36 h-[76px]">
+                <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
+                  <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
+                  <path d={`M ${60-r} 60 A ${r} ${r} 0 0 1 ${60+r} 60`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={hc} strokeDashoffset={hc - (hc * fill / 100)} strokeLinecap="round" className="text-primary" />
+                </svg>
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
                   <span className="text-2xl font-bold text-foreground">+{structuredDynamicMetrics.percentGain.toFixed(0)}%</span>
                 </div>
-              </div>
+              </div>); })()}
               <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full bg-primary/20 text-primary">
                 10-YEAR GROWTH
               </span>

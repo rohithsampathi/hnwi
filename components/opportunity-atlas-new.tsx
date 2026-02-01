@@ -1464,14 +1464,15 @@ export function OpportunityAtlasNew({
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const response = await fetch("https://formspree.io/f/xldgwozd", {
+      const response = await fetch("/api/concierge", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         signal: controller.signal,
         body: JSON.stringify({
+          source: "prive_exchange",
           opportunityTitle: opportunity.title,
           userName,
           userId,
@@ -1480,7 +1481,6 @@ export function OpportunityAtlasNew({
           opportunityType: opportunity.type,
           opportunityValue: opportunity.value,
           region: opportunity.region,
-          source: "Privé Exchange",
           timestamp: new Date().toISOString(),
           _subject: `Concierge Request: ${opportunity.title}`,
           message: `User ${userName} (${userEmail}) requests concierge assistance for: ${opportunity.title}. Type: ${opportunity.type}, Value: ${opportunity.value}, Region: ${opportunity.region}`

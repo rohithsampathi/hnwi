@@ -323,9 +323,13 @@ body {
     border-radius: 0 !important;
   }
   
-  /* Override any border settings */
+  /* Base border reset - Tailwind Preflight already sets border-width: 0.
+     This reinforces it for non-Tailwind elements.
+     NOTE: Do NOT add !important here — it prevents Tailwind border utility
+     classes (border, border-2, border-b, etc.) from working, which makes
+     cards invisible in light mode where bg-card (94%) blends into bg-background (100%). */
   *:not(html, body, head) {
-    border-width: 0 !important;
+    border-width: 0;
   }
   
   /* Desktop page margins and padding */

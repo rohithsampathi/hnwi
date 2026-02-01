@@ -17,6 +17,9 @@ export interface DecisionThesis {
   targetAmount?: string;          // "$1M-5M"
   targetLocations?: string[];     // ["Dubai", "UAE"]
   timeline?: string;              // "6 months"
+  // Buyer citizenship (passport nationality) — determines FTA stamp duty benefits
+  // USSFTA: US citizens get 0% ABSD in Singapore. Green Card ≠ US Citizen.
+  buyerCitizenship?: string;      // "United States", "India", "Switzerland"
 }
 
 export interface Constraints {
@@ -390,6 +393,7 @@ export interface PatternAuditAPIPayload {
     target_amount?: string;
     target_locations?: string[];
     timeline?: string;
+    buyer_citizenship?: string;
   };
   constraints: {
     liquidity_horizon: string;
@@ -485,4 +489,44 @@ export const JURISDICTIONS = [
   'Hong Kong', 'Cayman Islands', 'BVI', 'Luxembourg', 'Netherlands',
   'India', 'Australia', 'Canada', 'Germany', 'France', 'Portugal',
   'Malta', 'Cyprus', 'Mauritius', 'Bahamas', 'Dubai'
+] as const;
+
+// FTA-eligible countries for Singapore stamp duty remission (USSFTA, ESFTA, EFTA)
+export const FTA_ELIGIBLE_COUNTRIES = [
+  { id: 'United States', label: 'United States', fta: 'USSFTA', note: '0% ABSD (1st property)' },
+  { id: 'Switzerland', label: 'Switzerland', fta: 'ESFTA', note: '0% ABSD (1st property)' },
+  { id: 'Liechtenstein', label: 'Liechtenstein', fta: 'EFTA', note: '0% ABSD (1st property)' },
+  { id: 'Norway', label: 'Norway', fta: 'EFTA', note: '0% ABSD (1st property)' },
+  { id: 'Iceland', label: 'Iceland', fta: 'EFTA', note: '0% ABSD (1st property)' },
+] as const;
+
+// Full citizenship options for intake form
+export const CITIZENSHIP_OPTIONS = [
+  { id: 'India', label: 'India' },
+  { id: 'United Kingdom', label: 'United Kingdom' },
+  { id: 'China', label: 'China' },
+  { id: 'Australia', label: 'Australia' },
+  { id: 'Canada', label: 'Canada' },
+  { id: 'Germany', label: 'Germany' },
+  { id: 'France', label: 'France' },
+  { id: 'Japan', label: 'Japan' },
+  { id: 'South Korea', label: 'South Korea' },
+  { id: 'Indonesia', label: 'Indonesia' },
+  { id: 'Malaysia', label: 'Malaysia' },
+  { id: 'Singapore', label: 'Singapore' },
+  { id: 'Thailand', label: 'Thailand' },
+  { id: 'Philippines', label: 'Philippines' },
+  { id: 'Saudi Arabia', label: 'Saudi Arabia' },
+  { id: 'Brazil', label: 'Brazil' },
+  { id: 'Mexico', label: 'Mexico' },
+  { id: 'Russia', label: 'Russia' },
+  { id: 'South Africa', label: 'South Africa' },
+  { id: 'Nigeria', label: 'Nigeria' },
+  { id: 'Italy', label: 'Italy' },
+  { id: 'Spain', label: 'Spain' },
+  { id: 'Netherlands', label: 'Netherlands' },
+  { id: 'Sweden', label: 'Sweden' },
+  { id: 'Israel', label: 'Israel' },
+  { id: 'Taiwan', label: 'Taiwan' },
+  { id: 'Hong Kong', label: 'Hong Kong (SAR)' },
 ] as const;

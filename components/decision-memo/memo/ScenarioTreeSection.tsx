@@ -73,6 +73,8 @@ function StrengthIndicator({ strength }: { strength: number }) {
 function ConditionBadge({ status }: { status: ConditionStatus }) {
   const config: Record<ConditionStatus, { icon: React.ReactNode; color: string; label: string }> = {
     MET: { icon: <CheckCircle className="w-3 h-3" />, color: 'text-primary bg-primary/10', label: 'Met' },
+    CONFIRMED: { icon: <CheckCircle className="w-3 h-3" />, color: 'text-primary bg-primary/10', label: 'Confirmed' },
+    CONDITIONAL: { icon: <RefreshCw className="w-3 h-3" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', label: 'Conditional' },
     PENDING: { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-muted-foreground bg-muted', label: 'Pending' },
     BLOCKED: { icon: <XCircle className="w-3 h-3" />, color: 'text-muted-foreground bg-muted/70', label: 'Blocked' }
   };
@@ -110,7 +112,7 @@ function BranchCard({
       transition={{ delay: index * 0.1, duration: 0.5 }}
       className={`
         relative bg-gradient-to-br ${isRecommended ? 'from-primary/5 to-primary/10' : 'from-muted/5 to-muted/10'}
-        border-2 ${isRecommended ? 'border-primary/60' : 'border-border'} rounded-xl p-5
+        border-2 ${isRecommended ? 'border-primary/60' : 'border-border'} rounded-xl p-3 sm:p-5
         ${isRecommended ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' : ''}
       `}
     >
@@ -153,6 +155,11 @@ function BranchCard({
         <p className={`text-xl font-bold ${branch.expected_value >= 0 ? 'text-primary' : 'text-muted-foreground'}`}>
           {branch.expected_value >= 0 ? '+' : ''}{formatCurrency(branch.expected_value)}
         </p>
+        {branch.expected_value_note && (
+          <p className="text-xs text-muted-foreground italic mt-1.5 leading-relaxed">
+            {branch.expected_value_note}
+          </p>
+        )}
       </div>
 
       {/* Verdict */}
@@ -891,25 +898,25 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
       <div className="space-y-6">
         {/* Visual Decision Tree */}
         <motion.div
-          className="bg-card border border-border rounded-xl p-5"
+          className="bg-card border border-border rounded-xl p-3 sm:p-5"
           initial={{ opacity: 0, y: 20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <div className="flex flex-col items-center">
             {/* Root Node */}
-            <div className="w-48 p-4 bg-primary/10 border-2 border-primary rounded-xl text-center mb-4">
-              <Target className="w-6 h-6 mx-auto mb-2 text-primary" />
-              <p className="font-semibold text-foreground text-sm">Decision Point</p>
-              <p className="text-[10px] text-muted-foreground">Choose Your Path</p>
+            <div className="w-40 sm:w-48 p-3 sm:p-4 bg-primary/10 border-2 border-primary rounded-xl text-center mb-4">
+              <Target className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-primary" />
+              <p className="font-semibold text-foreground text-xs sm:text-sm">Decision Point</p>
+              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Choose Your Path</p>
             </div>
 
             {/* Connector */}
-            <div className="w-px h-6 bg-border" />
-            <div className="w-full max-w-4xl h-px bg-border" />
+            <div className="w-px h-4 sm:h-6 bg-border" />
+            <div className="hidden md:block w-full max-w-4xl h-px bg-border" />
 
             {/* Branch Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 w-full mt-3 sm:mt-4">
               {typedData.branches.map((branch, index) => (
                 <BranchCard
                   key={branch.name}
@@ -1007,7 +1014,25 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile: Card layout */}
+            <div className="md:hidden space-y-3 p-4">
+              {typedData.decision_matrix.map((entry, i) => (
+                <div key={i} className="bg-muted/20 rounded-lg p-3 space-y-2 border border-border">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{entry.branch}</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
+                      {entry.risk_level}
+                    </span>
+                  </div>
+                  <p className={`text-lg font-bold ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {entry.expected_value}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{entry.recommended_if}</p>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: Table layout */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
@@ -1020,14 +1045,14 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                 <tbody className="divide-y divide-border">
                   {typedData.decision_matrix.map((entry, i) => (
                     <tr key={i} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-foreground">{entry.branch}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">{entry.branch}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`text-sm font-bold ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground'}`}>
                           {entry.expected_value}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-muted text-muted-foreground">
+                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
                           {entry.risk_level}
                         </span>
                       </td>
@@ -1068,10 +1093,10 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               </div>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-3 sm:p-5 space-y-4">
               {/* Appreciation Comparison */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                <div className={`rounded-lg p-4 text-center border ${
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 items-center">
+                <div className={`rounded-lg p-3 sm:p-4 text-center border ${
                   viaNegativa?.isActive
                     ? 'bg-red-500/10 border-red-500/20'
                     : 'bg-muted/30 border-border'
@@ -1105,7 +1130,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                   </div>
                 </div>
 
-                <div className={`rounded-lg p-4 text-center border-2 ${
+                <div className={`rounded-lg p-3 sm:p-4 text-center border-2 ${
                   viaNegativa?.isActive
                     ? (typedData.market_validation.expected_vs_reality.appreciation.market_actual
                         ? 'bg-emerald-500/10 border-emerald-500/20'
@@ -1121,7 +1146,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                     {typedData.market_validation.expected_vs_reality.appreciation.market_actual || 'N/A'}
                   </p>
                   {typedData.market_validation.expected_vs_reality.appreciation.market_source && (
-                    <p className="text-[9px] text-muted-foreground mt-1 truncate">
+                    <p className="text-[9px] text-muted-foreground mt-1 break-words">
                       {typedData.market_validation.expected_vs_reality.appreciation.market_source}
                     </p>
                   )}
@@ -1155,7 +1180,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               {typedData.market_validation.expected_vs_reality.rental_yield?.your_expectation && (
                 <>
                   <div className="border-t border-border pt-4 mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 items-center">
                       <div className={`rounded-lg p-4 text-center border ${
                         viaNegativa?.isActive
                           ? 'bg-red-500/10 border-red-500/20'
@@ -1190,7 +1215,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                         </div>
                       </div>
 
-                      <div className={`rounded-lg p-4 text-center border-2 ${
+                      <div className={`rounded-lg p-3 sm:p-4 text-center border-2 ${
                         viaNegativa?.isActive
                           ? (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
                               ? 'bg-emerald-500/10 border-emerald-500/20'
@@ -1206,7 +1231,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
                           {typedData.market_validation.expected_vs_reality.rental_yield.market_actual || 'N/A'}
                         </p>
                         {typedData.market_validation.expected_vs_reality.rental_yield.market_source && (
-                          <p className="text-[9px] text-muted-foreground mt-1 truncate">
+                          <p className="text-[9px] text-muted-foreground mt-1 break-words">
                             {typedData.market_validation.expected_vs_reality.rental_yield.market_source}
                           </p>
                         )}
@@ -1253,9 +1278,9 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
               {/* Deviation Commentary - Via Negativa */}
               {viaNegativa?.isActive && typedData.market_validation && (
-                <div className="mt-4 p-4 bg-red-950/30 border border-red-500/20 rounded-lg">
-                  <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2">{viaNegativa.commentaryTitle}</p>
-                  <p className="text-sm text-red-300/80 leading-relaxed">
+                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-500/20 rounded-lg">
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">{viaNegativa.commentaryTitle}</p>
+                  <p className="text-sm text-red-600/80 dark:text-red-300/80 leading-relaxed">
                     {viaNegativa.commentaryBody}
                   </p>
                 </div>

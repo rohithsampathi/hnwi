@@ -102,13 +102,14 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
     
     try {
-      const response = await fetch("https://formspree.io/f/xwpvjjpz", {
+      const response = await fetch("/api/concierge", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         body: JSON.stringify({
+          source: "social_hub",
           eventName: event.name,
           userName,
           userId,

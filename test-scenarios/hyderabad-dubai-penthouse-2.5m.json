@@ -1,0 +1,72 @@
+{
+  "thesis": {
+    "move_description": "Acquire luxury penthouse in Dubai for US $2.5M from Hyderabad-based Single Family Office. First international property purchase through the family vehicle. Premium residential investment targeting 11% rental yields and 16% capital appreciation. IPS and bank rails in place. Tax and legal advisors in Hyderabad.",
+    "expected_outcome": "11% annual rental yield with 16% annual capital appreciation, generating combined 27% gross returns. Tax-efficient wealth preservation in Dubai's zero-income-tax jurisdiction with long-term capital growth.",
+    "move_type": "real_estate",
+    "target_amount": "$2.5M",
+    "target_locations": ["Dubai", "Palm Jumeirah", "Downtown Dubai", "Dubai Marina"],
+    "timeline": "3-6 months",
+    "source_jurisdiction": "India"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["India", "Telangana"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": ["No off-plan purchases", "No developer financing above 50%"],
+    "deal_breakers": ["Title disputes", "Developer insolvency risk", "RBI LRS non-compliance"]
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$500K",
+    "advisors": [
+      { "type": "tax", "name": "Hyderabad Tax Counsel", "jurisdiction": "India" },
+      { "type": "legal", "name": "Hyderabad Legal Counsel", "jurisdiction": "India" }
+    ],
+    "existing_entities": [
+      { "type": "LLP", "jurisdiction": "India", "purpose": "Family Office holding company" },
+      { "type": "Trust", "jurisdiction": "India", "purpose": "Family trust" }
+    ],
+    "banking_rails": [
+      { "bank": "HDFC Private Banking", "jurisdiction": "India", "status": "active" },
+      { "bank": "ICICI Wealth Management", "jurisdiction": "India", "status": "active" },
+      { "bank": "Emirates NBD Private Banking", "jurisdiction": "UAE", "status": "planned" }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "Hyderabad-based family office with established IPS framework. First international real estate acquisition — targeting Dubai penthouse. 25% allocation to international real estate per IPS mandate. Targeting 11% rental yield + 16% appreciation = 27% combined returns. Dubai's zero income tax provides structural advantage over Indian taxation. Tax advisor in Hyderabad to manage RBI LRS compliance and FEMA reporting.",
+    "heirs": [
+      {
+        "name": "Mia",
+        "relationship": "daughter",
+        "age": 42,
+        "allocation_pct": 0.4
+      },
+      {
+        "name": "Michael",
+        "relationship": "son",
+        "age": 42,
+        "allocation_pct": 0.4
+      },
+      {
+        "name": "Grandson",
+        "relationship": "grandchild",
+        "age": 8,
+        "allocation_pct": 0.2,
+        "notes": "Minor - needs trustee structure"
+      }
+    ]
+  },
+  "urgency": "standard",
+  "asset_details": {
+    "property_type": "penthouse",
+    "estimated_value": 2500000,
+    "rental_yield_pct": 11,
+    "appreciation_pct": 16,
+    "location_preference": ["Palm Jumeirah", "Downtown Dubai", "Dubai Marina", "Business Bay"],
+    "size_sqft": "2000-3000",
+    "bedrooms": "3-4"
+  }
+}

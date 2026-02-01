@@ -47,7 +47,6 @@ export async function middleware(request: NextRequest) {
     "https://*.vercel.app",
     "wss://*.vercel.app",
     "https://api-js.mixpanel.com",
-    "https://formspree.io",
     "https://hnwi-uwind-p8oqb.ondigitalocean.app", // Backend API URL
   ];
 

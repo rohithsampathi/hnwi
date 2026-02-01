@@ -8,8 +8,8 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import axios from 'axios';
 
-// Allow longer execution time for audit generation
-// Vercel hobby plan caps at 300s
+// Allow longer execution time for MoEv5 audit generation
+// Vercel Pro: 300s max | Enterprise: 900s max
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
@@ -37,10 +37,10 @@ export async function POST(request: Request) {
 
     try {
       // Use axios instead of fetch to avoid undici's default timeout
-      // Set timeout to 15 minutes (900000ms) for MoEv5 processing
+      // 5 minutes (300000ms) for MoEv5 processing — matches Vercel maxDuration
       const response = await axios.post(backendUrl, body, {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 900000, // 15 minutes for local dev
+        timeout: 300000, // 5 minutes
         validateStatus: () => true, // Don't throw on non-2xx status
       });
 

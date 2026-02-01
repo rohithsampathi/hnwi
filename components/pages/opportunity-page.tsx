@@ -157,17 +157,14 @@ export function OpportunityPage({
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
     
     try {
-      // Use Express Interest endpoint for all opportunities
-      const formspreeEndpoint = "https://formspree.io/f/xldgwozd"  // Express Interest endpoint for all opportunities
-        
-      
-      const response = await fetch(formspreeEndpoint, {
+      const response = await fetch("/api/concierge", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
         body: JSON.stringify({
+          source: "prive_exchange",
           opportunityTitle: opportunity?.title,
           userName,
           userId,
@@ -176,7 +173,6 @@ export function OpportunityPage({
           opportunityType: opportunity?.type,
           opportunityValue: opportunity?.value,
           region: opportunity?.region,
-          source: region ? "Privé Exchange" : "General Opportunity",
           timestamp: new Date().toISOString(),
           _subject: `Express Interest: ${opportunity?.title}`,
           message: `User ${userName} (${userEmail}) has expressed interest in the investment opportunity: ${opportunity?.title}. Source: ${region ? "Privé Exchange" : "General Opportunity"}. Details: Type: ${opportunity?.type}, Value: ${opportunity?.value}, Region: ${opportunity?.region}`

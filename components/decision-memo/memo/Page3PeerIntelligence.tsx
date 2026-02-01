@@ -461,7 +461,7 @@ export function Page3PeerIntelligence({
                   {/* Animated flow line */}
                   <div className="w-16 sm:w-32 h-1 bg-gradient-to-r from-red-500 via-primary to-primary rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full w-8 bg-white/40 rounded-full"
+                      className="h-full w-8 bg-foreground/40 rounded-full"
                       animate={{ x: ['-100%', '400%'] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
                     />

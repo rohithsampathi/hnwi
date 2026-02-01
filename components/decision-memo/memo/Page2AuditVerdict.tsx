@@ -456,11 +456,11 @@ export function Page2AuditVerdict({
           </div>
 
           {/* CAPITAL ALLOCATION DENIED stamp */}
-          <div className="mt-6 p-4 sm:p-6 bg-red-950/40 border-2 border-red-500/30 rounded-xl text-center">
-            <p className="text-xl sm:text-3xl font-black text-red-500 tracking-wider">
+          <div className="mt-6 p-4 sm:p-6 bg-red-100 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-500/30 rounded-xl text-center">
+            <p className="text-xl sm:text-3xl font-black text-red-600 dark:text-red-500 tracking-wider">
               {viaNegativa.stampText.toUpperCase()}
             </p>
-            <p className="text-xs sm:text-sm text-red-400/60 mt-2">
+            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400/60 mt-2">
               {viaNegativa.stampSubtext}
             </p>
           </div>

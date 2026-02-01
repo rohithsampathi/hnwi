@@ -439,7 +439,8 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
       move_type: intake.thesis.moveType,
       target_amount: intake.thesis.targetAmount,
       target_locations: intake.thesis.targetLocations,
-      timeline: intake.thesis.timeline
+      timeline: intake.thesis.timeline,
+      buyer_citizenship: intake.thesis.buyerCitizenship
     },
     constraints: {
       liquidity_horizon: intake.constraints.liquidityHorizon,

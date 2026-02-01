@@ -496,25 +496,82 @@ export function StructureComparisonMatrix({
           </h3>
         </div>
 
-        {/* Responsive table container */}
-        <div className="rounded-xl border-2 border-border overflow-hidden">
+        {/* Mobile: Card layout */}
+        <div className="md:hidden space-y-3">
+          {top5.map((structure, index) => {
+            const isOptimal = structure.name === optimal_structure?.name;
+            const isPositive = structure.net_benefit_10yr >= 0;
+            return (
+              <div
+                key={structure.name}
+                className={`rounded-xl border-2 p-3 ${
+                  isOptimal ? 'border-primary/60 bg-primary/5' : 'border-border bg-card'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-xs font-bold flex-shrink-0 ${isOptimal ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {isOptimal ? <Sparkles className="w-4 h-4 text-primary" /> : `#${index + 1}`}
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-semibold ${isOptimal ? 'text-primary' : 'text-foreground'} line-clamp-2`}>
+                        {structure.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{structure.type}</p>
+                    </div>
+                  </div>
+                  <VerdictBadge verdict={structure.verdict} compact />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted/30 rounded-lg p-2">
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">10yr Benefit</p>
+                    <p className={`font-bold font-mono ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                      {formatBenefit(structure.net_benefit_10yr)}
+                    </p>
+                  </div>
+                  {!allIdenticalRates && (
+                    <div className="bg-muted/30 rounded-lg p-2">
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Tax Rates</p>
+                      <p className="font-mono text-foreground">
+                        R:{formatRate(structure.rental_income_rate)} C:{formatRate(structure.capital_gains_rate)}
+                      </p>
+                    </div>
+                  )}
+                  <div className="bg-muted/30 rounded-lg p-2">
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Setup / Annual</p>
+                    <p className="font-mono text-muted-foreground">{formatCost(structure.setup_cost)} / {formatCost(structure.annual_cost)}</p>
+                  </div>
+                  {!allIdenticalRates && (
+                    <div className="bg-muted/30 rounded-lg p-2">
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Estate Tax</p>
+                      <p className="font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop: Table layout */}
+        <div className="hidden md:block rounded-xl border-2 border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/40 border-b-2 border-border">
-                  <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
-                  <th className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Structure</th>
-                  <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">10yr Benefit</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
+                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Structure</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">10yr Benefit</th>
                   {!allIdenticalRates && (
                     <>
-                      <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rental</th>
-                      <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CGT</th>
-                      <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estate</th>
+                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rental</th>
+                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CGT</th>
+                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estate</th>
                     </>
                   )}
-                  <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Setup</th>
-                  <th className="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Annual</th>
-                  <th className="text-center px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verdict</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Setup</th>
+                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Annual</th>
+                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verdict</th>
                 </tr>
               </thead>
               <tbody>
@@ -533,7 +590,7 @@ export function StructureComparisonMatrix({
                           : 'bg-muted/10 hover:bg-muted/25'
                       }`}
                     >
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-3.5">
                         <span className={`text-xs font-bold ${isOptimal ? 'text-primary' : 'text-muted-foreground'}`}>
                           {isOptimal ? (
                             <Sparkles className="w-4 h-4 text-primary" />
@@ -542,7 +599,7 @@ export function StructureComparisonMatrix({
                           )}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-3.5">
                         <div>
                           <p className={`text-sm font-semibold ${isOptimal ? 'text-primary' : 'text-foreground'}`}>
                             {structure.name}
@@ -550,31 +607,31 @@ export function StructureComparisonMatrix({
                           <p className="text-[10px] text-muted-foreground mt-0.5">{structure.type}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-3 py-3.5 text-right">
                         <span className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
                           {formatBenefit(structure.net_benefit_10yr)}
                         </span>
                       </td>
                       {!allIdenticalRates && (
                         <>
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-3 py-3.5 text-right">
                             <span className="text-xs font-mono text-foreground">{formatRate(structure.rental_income_rate)}</span>
                           </td>
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-3 py-3.5 text-right">
                             <span className="text-xs font-mono text-foreground">{formatRate(structure.capital_gains_rate)}</span>
                           </td>
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-3 py-3.5 text-right">
                             <span className="text-xs font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</span>
                           </td>
                         </>
                       )}
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-3 py-3.5 text-right">
                         <span className="text-xs font-mono text-muted-foreground">{formatCost(structure.setup_cost)}</span>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-3 py-3.5 text-right">
                         <span className="text-xs font-mono text-muted-foreground">{formatCost(structure.annual_cost)}</span>
                       </td>
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-3 py-3.5 text-center">
                         <VerdictBadge verdict={structure.verdict} compact />
                       </td>
                     </tr>

@@ -535,7 +535,7 @@ export function Page1TaxDashboard({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                          <span className="text-[11px] sm:text-sm font-semibold text-foreground line-clamp-2 sm:line-clamp-1">
                             {phase.name}
                           </span>
                           <span className="text-[10px] sm:text-xs text-muted-foreground ml-2 flex-shrink-0">
@@ -546,7 +546,7 @@ export function Page1TaxDashboard({
                     </div>
 
                     {/* Gantt Bar */}
-                    <div className="relative h-7 sm:h-10 ml-8 sm:ml-12">
+                    <div className="relative h-7 sm:h-10 ml-6 sm:ml-12">
                       <div className="absolute inset-y-0 left-0 right-0 bg-muted/30 rounded-md sm:rounded-lg" />
                       <motion.div
                         className={`absolute inset-y-0 bg-gradient-to-r ${phase.color} rounded-md sm:rounded-lg shadow-sm cursor-pointer group`}

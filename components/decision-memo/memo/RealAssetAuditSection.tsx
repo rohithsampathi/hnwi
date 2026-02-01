@@ -444,7 +444,7 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
                                 </div>
 
                                 {/* Threshold */}
-                                <p className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight truncate">
+                                <p className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight break-words">
                                   {tier.threshold || tier.description || `Bracket ${idx + 1}`}
                                 </p>
                               </div>

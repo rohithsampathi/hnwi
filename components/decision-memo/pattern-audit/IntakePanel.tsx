@@ -78,8 +78,8 @@ export function IntakePanel({
         </div>
       </div>
 
-      {/* Collapsible Sections */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+      {/* Collapsible Sections — pointer-events disabled during submission to freeze form state */}
+      <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-4 ${isSubmitting ? 'opacity-60 pointer-events-none' : ''}`}>
         {/* Section 1: Decision Thesis */}
         <CollapsibleSection
           number={1}

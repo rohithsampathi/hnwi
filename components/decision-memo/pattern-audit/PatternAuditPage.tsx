@@ -58,6 +58,11 @@ export function PatternAuditPage() {
   // Ref to prevent double submission (guards against React strict mode and fast clicks)
   const hasSubmittedRef = useRef(false);
   const submittedIntakeIdRef = useRef<string | null>(null);
+  // Stable ref for intake — reads current value at call time, not closure capture time
+  const intakeRef = useRef(intake);
+  intakeRef.current = intake;
+  // AbortController to cancel in-flight requests on unmount or re-submit
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const { submitIntake } = usePatternAudit();
 
@@ -76,7 +81,8 @@ export function PatternAuditPage() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    // Guard against double submission
+    // Guard against double submission — ref is read (not captured) so
+    // this works regardless of which closure instance calls it
     if (hasSubmittedRef.current) {
       console.log('⏭️ [PatternAuditPage] Already submitted, skipping duplicate');
       return;
@@ -86,9 +92,15 @@ export function PatternAuditPage() {
     setIsSubmitting(true);
     setError(null);
 
+    // Cancel any prior in-flight request
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+
     try {
+      // Read intake from ref — always gets the latest value
+      const currentIntake = intakeRef.current;
       // Submit intake to backend - returns { session, preview }
-      const { session: newSession } = await submitIntake(intake as SFOPatternAuditIntake);
+      const { session: newSession } = await submitIntake(currentIntake as SFOPatternAuditIntake);
       setSession(newSession);
 
       // Track the submitted intake ID
@@ -103,7 +115,7 @@ export function PatternAuditPage() {
       // Reset ref on error to allow retry
       hasSubmittedRef.current = false;
     }
-  }, [intake, submitIntake, router]);
+  }, [submitIntake, router]); // ← intake removed from deps — read from intakeRef instead
 
   // ==========================================================================
   // VALIDATION

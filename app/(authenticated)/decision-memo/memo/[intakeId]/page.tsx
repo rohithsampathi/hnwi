@@ -4,7 +4,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { DecisionMemoData } from '@/lib/decision-memo/memo-types';
+import type { DecisionMemoData, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { ArrowLeft, Download, FileText } from 'lucide-react';
@@ -19,6 +19,7 @@ import { MemoHeader } from '@/components/decision-memo/memo/MemoHeader';
 import { Page1TaxDashboard } from '@/components/decision-memo/memo/Page1TaxDashboard';
 import { Page2AuditVerdict } from '@/components/decision-memo/memo/Page2AuditVerdict';
 import { Page3PeerIntelligence } from '@/components/decision-memo/memo/Page3PeerIntelligence';
+import { RegulatorySourcesSection } from '@/components/decision-memo/memo/RegulatorySourcesSection';
 
 interface PageProps {
   params: {
@@ -180,6 +181,87 @@ export default function DecisionMemoPage({ params }: PageProps) {
 
   const { preview_data, memo_data, full_memo_url, generated_at } = data;
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIA NEGATIVA: Construct context when structure verdict is DO_NOT_PROCEED
+  // Same pattern as audit page — backend-driven labels with frontend fallbacks
+  // ══════════════════════════════════════════════════════════════════════════
+  const structureVerdict = preview_data.structure_optimization?.verdict;
+  const isViaNegativa = structureVerdict === 'DO_NOT_PROCEED';
+
+  let viaNegativaContext: ViaNegativaContext | undefined;
+  if (isViaNegativa) {
+    const backendVN = preview_data?.via_negativa;
+
+    const dayOneLossPct = backendVN?.day_one_loss_pct || 0;
+    const dayOneLossAmount = backendVN?.day_one_loss_amount || 0;
+    const totalConfiscationExposure = backendVN?.total_regulatory_exposure ?? 0;
+
+    const taxEfficiencyPassed = backendVN?.tax_efficiency_passed ?? (preview_data.show_tax_savings !== false);
+    const liquidityPassed = backendVN?.liquidity_passed ?? dayOneLossPct < 10;
+    const structurePassed = backendVN?.structure_passed ?? false;
+
+    const hdr = backendVN?.header;
+    const sc = backendVN?.scenario_section;
+    const tx = backendVN?.tax_section;
+    const vs = backendVN?.verdict_section;
+    const cta = backendVN?.cta;
+    const metrics = backendVN?.metrics;
+    const precedents = memo_data?.kgv3_intelligence_used?.precedents ?? 0;
+
+    viaNegativaContext = {
+      isActive: true,
+      dayOneLoss: dayOneLossPct,
+      dayOneLossAmount,
+      totalConfiscationExposure,
+      taxEfficiencyPassed,
+      liquidityPassed,
+      structurePassed,
+
+      analysisPosture: backendVN?.analysis_posture || 'Via Negativa: Strengths acknowledged. Weaknesses stated without qualification.',
+      badgeLabel: hdr?.badge_label || 'ELEVATED RISK',
+      titlePrefix: hdr?.title_prefix || 'Capital At',
+      titleHighlight: hdr?.title_highlight || 'Risk',
+      noticeTitle: hdr?.notice_title || 'Elevated Risk Advisory',
+      noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ precedents identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
+        .replace('{dayOneLoss}', dayOneLossPct.toFixed(1))
+        .replace('{precedentCount}', precedents.toLocaleString()),
+
+      metricLabels: {
+        capitalExposure: metrics?.[0]?.label || 'Day-One Capital Exposure',
+        structureVerdict: metrics?.[1]?.label || 'Structure Verdict',
+        structureVerdictValue: metrics?.[1]?.value || 'Not Recommended',
+        structureVerdictDesc: metrics?.[1]?.description || 'Negative NPV across analyzed structures',
+        regulatoryExposure: metrics?.[2]?.label || 'Regulatory Exposure',
+        regulatoryExposureDesc: metrics?.[2]?.description || 'FBAR + compliance penalties',
+      },
+
+      scenarioHeader: sc?.header || 'Projection Audit',
+      expectationLabel: sc?.expectation_label || 'Your Projection',
+      actualLabel: sc?.actual_label || 'Market Data',
+      commentaryTitle: sc?.commentary_title || 'Reality Gap Analysis',
+      commentaryBody: sc?.commentary_body || 'Your projected returns deviate from verified market data in key areas.',
+
+      taxBadgeLabel: tx?.badge_label || 'Regulatory Exposure Analysis',
+      taxTitleLine1: tx?.title_line1 || 'Regulatory',
+      taxTitleLine2: tx?.title_line2 || 'Exposure',
+      compliancePrefix: tx?.compliance_prefix ?? '',
+      warningPrefix: tx?.warning_prefix || 'Regulatory Flag',
+
+      verdictHeader: vs?.header || 'Structural Review',
+      verdictBadgeLabel: vs?.badge_label || 'Capital Allocation Review',
+      stampText: vs?.stamp_text || 'Allocation Not Recommended',
+      stampSubtext: vs?.stamp_subtext || 'Key viability thresholds not met in this structure — review alternative corridors and strategies below',
+
+      ctaHeadline: cta?.headline || 'DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?',
+      ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure.')
+        .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
+      ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
+      ctaButtonText: cta?.button_text || 'INITIATE YOUR PATTERN AUDIT — $5,000',
+      ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
+      ctaContextNote: cta?.context_note || 'The same Pattern Recognition Engine applies to 50+ corridors.',
+    };
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
@@ -220,6 +302,16 @@ export default function DecisionMemoPage({ params }: PageProps) {
           generatedAt={generated_at}
           exposureClass={preview_data.exposure_class}
           totalSavings={preview_data.total_savings}
+          precedentCount={memo_data?.kgv3_intelligence_used?.precedents}
+          sourceJurisdiction={preview_data.source_jurisdiction}
+          destinationJurisdiction={preview_data.destination_jurisdiction}
+          sourceTaxRates={preview_data.source_tax_rates as any}
+          destinationTaxRates={preview_data.destination_tax_rates as any}
+          taxDifferential={preview_data.tax_differential as any}
+          valueCreation={preview_data.value_creation as any}
+          showTaxSavings={preview_data.show_tax_savings}
+          optimalStructure={preview_data.structure_optimization?.optimal_structure}
+          viaNegativa={viaNegativaContext}
         />
 
         {/* Elegant Section Divider */}
@@ -264,6 +356,18 @@ export default function DecisionMemoPage({ params }: PageProps) {
             citationMap={citationMap}
           />
         </section>
+
+        {/* Section 4: Regulatory Citations */}
+        {preview_data.regulatory_citations && preview_data.regulatory_citations.length > 0 && (
+          <>
+            <div className="my-12 flex items-center">
+              <div className="flex-1 h-px bg-border opacity-30" />
+            </div>
+            <section className="mb-10 sm:mb-16">
+              <RegulatorySourcesSection citations={preview_data.regulatory_citations} />
+            </section>
+          </>
+        )}
 
         {/* Premium Footer Section */}
         <motion.div
