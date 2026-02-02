@@ -118,7 +118,7 @@ interface PreviewData {
 // Pricing configuration
 const PRICING = {
   single: {
-    price: 2500,
+    price: 5000,
     currency: 'USD',
     memos: 1,
     features: [
@@ -877,9 +877,9 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
             <div className="flex items-center justify-center gap-4 text-2xl sm:text-3xl font-bold flex-wrap">
               <span className="text-primary">${savingsInMillions}M prevented</span>
               <span className="text-muted-foreground">/</span>
-              <span className="text-foreground">$2,500</span>
+              <span className="text-foreground">$5,000</span>
               <span className="text-muted-foreground">=</span>
-              <span className="text-primary text-4xl">{Math.round(totalSavings / 2500).toLocaleString()}x ROI</span>
+              <span className="text-primary text-4xl">{Math.round(totalSavings / 5000).toLocaleString()}x ROI</span>
             </div>
           </div>
         </div>
@@ -906,7 +906,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
             </div>
 
             <div className="mb-6">
-              <span className="text-5xl font-bold text-foreground">$2,500</span>
+              <span className="text-5xl font-bold text-foreground">$5,000</span>
               <span className="text-muted-foreground ml-2">one-time</span>
             </div>
 

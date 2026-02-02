@@ -1,12 +1,12 @@
 // =============================================================================
 // INTAKE PANEL
-// Left side of split view - 3 collapsible input sections
+// Flowing form — no sticky header/footer, everything scrolls with page
 // =============================================================================
 
 "use client";
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   ChevronDown,
   Check,
@@ -15,11 +15,17 @@ import {
   Lock,
   Users,
   ArrowRight,
-  Clock
+  Clock,
+  Mail,
+  Globe,
+  FileCheck,
+  Shield,
+  Building
 } from 'lucide-react';
 import { ThesisInput } from './ThesisInput';
 import { ConstraintsInput } from './ConstraintsInput';
 import { RailsInput } from './RailsInput';
+import { AssetDetailsInput } from './AssetDetailsInput';
 import {
   SFOPatternAuditIntake,
   IntakeSection
@@ -28,6 +34,7 @@ import {
 interface IntakePanelProps {
   intake: Partial<SFOPatternAuditIntake>;
   onChange: (section: IntakeSection, data: any) => void;
+  onTopLevelChange: (field: string, value: any) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
   isValid: boolean;
@@ -37,146 +44,237 @@ interface IntakePanelProps {
 export function IntakePanel({
   intake,
   onChange,
+  onTopLevelChange,
   onSubmit,
   isSubmitting,
   isValid,
   error
 }: IntakePanelProps) {
-  const [expandedSection, setExpandedSection] = useState<1 | 2 | 3>(1);
+  const [expandedSection, setExpandedSection] = useState<1 | 2 | 3 | 4>(1);
+  const [patternCount, setPatternCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/developments/counts')
+      .then(res => res.json())
+      .then(data => {
+        const count = data.developments?.total_count || data.total || data.count || data.total_count;
+        if (count) setPatternCount(count);
+      })
+      .catch(() => {});
+  }, []);
 
   // Check completion status for each section
   const section1Complete = Boolean(
     intake.thesis?.moveDescription &&
     intake.thesis.moveDescription.length >= 20 &&
     intake.thesis?.expectedOutcome &&
-    intake.thesis.expectedOutcome.length >= 10
+    intake.thesis.expectedOutcome.length >= 10 &&
+    intake.thesis?.moveType &&
+    (intake.thesis?.targetLocations?.length || 0) > 0 &&
+    intake.thesis?.timeline &&
+    intake.thesis?.sourceJurisdiction &&
+    intake.thesis?.destinationJurisdiction
   );
   const section2Complete = Boolean(
     intake.constraints?.liquidityHorizon &&
     (intake.constraints?.currentJurisdictions?.length || 0) > 0
   );
   const section3Complete = Boolean(intake.controlAndRails?.finalDecisionMaker);
-
-  const allComplete = section1Complete && section2Complete && section3Complete;
+  const section4Complete = Boolean(
+    (intake.assetDetails?.estimatedValue || 0) > 0
+  );
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border bg-card sticky top-0 z-10">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">HC</span>
+    <div className={`space-y-4 ${isSubmitting ? 'opacity-60 pointer-events-none' : ''}`}>
+
+      {/* Identity Fields */}
+      <div className="border rounded-xl border-border bg-card/50 p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Mail className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">Contact & Identity</span>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Email to receive final report & credentials *
+            </label>
+            <input
+              type="email"
+              placeholder="client@familyoffice.com"
+              value={intake.email || ''}
+              onChange={(e) => onTopLevelChange('email', e.target.value)}
+              className="w-full px-3 py-2.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground tracking-tight">
-              Decision Posture Audit
-            </h1>
-            <p className="text-xs text-muted-foreground tracking-wider uppercase">
-              SFO Pattern Intelligence
-            </p>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Primary Benefactor Tax Jurisdiction *
+            </label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="e.g. United States"
+                value={intake.nationality || ''}
+                onChange={(e) => onTopLevelChange('nationality', e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Collapsible Sections — pointer-events disabled during submission to freeze form state */}
-      <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-4 ${isSubmitting ? 'opacity-60 pointer-events-none' : ''}`}>
-        {/* Section 1: Decision Thesis */}
-        <CollapsibleSection
-          number={1}
-          title="Decision Thesis"
-          subtitle="What move? What outcome?"
-          icon={Target}
-          isExpanded={expandedSection === 1}
-          onToggle={() => setExpandedSection(1)}
-          isComplete={section1Complete}
-        >
-          <ThesisInput
-            value={intake.thesis}
-            onChange={(data) => onChange('thesis', data)}
-          />
-        </CollapsibleSection>
+      {/* Section 1: Decision Thesis */}
+      <CollapsibleSection
+        number={1}
+        title="Decision Thesis"
+        subtitle="What move? What outcome?"
+        icon={Target}
+        isExpanded={expandedSection === 1}
+        onToggle={() => setExpandedSection(1)}
+        isComplete={section1Complete}
+      >
+        <ThesisInput
+          value={intake.thesis}
+          onChange={(data) => onChange('thesis', data)}
+        />
+      </CollapsibleSection>
 
-        {/* Section 2: Constraints */}
-        <CollapsibleSection
-          number={2}
-          title="Constraints"
-          subtitle="What cannot change?"
-          icon={Lock}
-          isExpanded={expandedSection === 2}
-          onToggle={() => setExpandedSection(2)}
-          isComplete={section2Complete}
-        >
-          <ConstraintsInput
-            value={intake.constraints}
-            onChange={(data) => onChange('constraints', data)}
-          />
-        </CollapsibleSection>
+      {/* Section 2: Constraints */}
+      <CollapsibleSection
+        number={2}
+        title="Constraints"
+        subtitle="What cannot change?"
+        icon={Lock}
+        isExpanded={expandedSection === 2}
+        onToggle={() => setExpandedSection(2)}
+        isComplete={section2Complete}
+      >
+        <ConstraintsInput
+          value={intake.constraints}
+          onChange={(data) => onChange('constraints', data)}
+        />
+      </CollapsibleSection>
 
-        {/* Section 3: Control & Rails */}
-        <CollapsibleSection
-          number={3}
-          title="Control & Rails"
-          subtitle="Who decides? What exists?"
-          icon={Users}
-          isExpanded={expandedSection === 3}
-          onToggle={() => setExpandedSection(3)}
-          isComplete={section3Complete}
-        >
-          <RailsInput
-            value={intake.controlAndRails}
-            onChange={(data) => onChange('controlAndRails', data)}
+      {/* Section 3: Control & Rails */}
+      <CollapsibleSection
+        number={3}
+        title="Control & Rails"
+        subtitle="Who decides? What exists?"
+        icon={Users}
+        isExpanded={expandedSection === 3}
+        onToggle={() => setExpandedSection(3)}
+        isComplete={section3Complete}
+      >
+        <RailsInput
+          value={intake.controlAndRails}
+          onChange={(data) => onChange('controlAndRails', data)}
+        />
+      </CollapsibleSection>
+
+      {/* Section 4: Asset Details (optional) */}
+      <CollapsibleSection
+        number={4}
+        title="Asset Details"
+        subtitle="Specifics about the asset (optional)"
+        icon={Building}
+        isExpanded={expandedSection === 4}
+        onToggle={() => setExpandedSection(4)}
+        isComplete={section4Complete}
+      >
+        <AssetDetailsInput
+          value={intake.assetDetails}
+          onChange={(data) => onChange('assetDetails', data)}
+          moveType={intake.thesis?.moveType}
+        />
+      </CollapsibleSection>
+
+      {/* NDA & Privacy Consent — inline card */}
+      <div className="border rounded-xl border-primary/20 bg-primary/5 p-5 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Shield className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">Engagement Terms</span>
+        </div>
+        <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+          <input
+            type="checkbox"
+            checked={intake.ndaConsent || false}
+            onChange={(e) => onTopLevelChange('ndaConsent', e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/30 shrink-0"
           />
-        </CollapsibleSection>
+          <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+            <FileCheck className="w-3 h-3 inline mr-1 -mt-0.5" />
+            I acknowledge this is a confidential engagement and agree to the <a href="/decision-memo/nda" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline underline-offset-2 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Non-Disclosure Agreement</a>.
+          </span>
+        </label>
+        <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+          <input
+            type="checkbox"
+            checked={intake.privacyConsent || false}
+            onChange={(e) => onTopLevelChange('privacyConsent', e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/30 shrink-0"
+          />
+          <span className="text-xs text-muted-foreground leading-relaxed group-hover:text-foreground transition-colors">
+            <Shield className="w-3 h-3 inline mr-1 -mt-0.5" />
+            I consent to processing of the information provided under the <a href="/decision-memo/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline underline-offset-2 hover:text-primary/80" onClick={(e) => e.stopPropagation()}>Privacy &amp; Data Processing Policy</a>.
+          </span>
+        </label>
       </div>
 
-      {/* Action Bar */}
-      <div className="px-6 py-5 border-t border-border bg-card sticky bottom-0">
-        {error && (
-          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
-            {error}
-          </div>
+      {/* Error */}
+      {error && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <button
+        onClick={onSubmit}
+        disabled={!isValid || isSubmitting}
+        className={`
+          w-full py-3.5 px-4 rounded-xl font-semibold
+          flex items-center justify-center gap-2 transition-all
+          ${isValid && !isSubmitting
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20'
+            : 'bg-muted text-muted-foreground cursor-not-allowed'
+          }
+        `}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Preparing Review...</span>
+          </>
+        ) : (
+          <>
+            <span>Review & Proceed to Payment</span>
+            <ArrowRight className="w-5 h-5" />
+          </>
         )}
+      </button>
 
-        <button
-          onClick={onSubmit}
-          disabled={!isValid || isSubmitting}
-          className={`
-            w-full py-3.5 px-4 rounded-xl font-semibold
-            flex items-center justify-center gap-2 transition-all
-            ${isValid && !isSubmitting
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20'
-              : 'bg-muted text-muted-foreground cursor-not-allowed'
-            }
-          `}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Submitting Audit...</span>
-            </>
-          ) : (
-            <>
-              <span>Submit for Audit</span>
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
-        </button>
-
-        {/* SLA Info */}
-        <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
+      {/* SLA Info + Completion Progress */}
+      <div className="space-y-3 pb-4">
+        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            24-hour SLA
+            48-hour SLA
           </span>
           <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-          <span>1,875 pattern library</span>
+          <span>{patternCount ? patternCount.toLocaleString() : '...'} pattern library</span>
           <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
           <span>IC-ready output</span>
         </div>
 
-        {/* Completion Progress */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          {[section1Complete, section2Complete, section3Complete].map((complete, i) => (
+        <div className="flex items-center justify-center gap-2">
+          {[
+            Boolean(intake.email),
+            section1Complete,
+            section2Complete,
+            section3Complete,
+            section4Complete
+          ].map((complete, i) => (
             <div
               key={i}
               className={`
@@ -240,8 +338,8 @@ function CollapsibleSection({
               ${isComplete
                 ? 'bg-primary text-primary-foreground'
                 : isExpanded
-                ? 'bg-primary/10 text-primary border border-primary/30'
-                : 'bg-muted text-muted-foreground'
+                  ? 'bg-primary/10 text-primary border border-primary/30'
+                  : 'bg-muted text-muted-foreground'
               }
             `}
           >
@@ -273,22 +371,20 @@ function CollapsibleSection({
         </motion.div>
       </button>
 
-      {/* Section Content */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-5 pt-1">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Section Content — always mounted to preserve form state */}
+      <motion.div
+        animate={{
+          height: isExpanded ? 'auto' : 0,
+          opacity: isExpanded ? 1 : 0
+        }}
+        initial={false}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden"
+      >
+        <div className="px-4 pb-5 pt-1">
+          {children}
+        </div>
+      </motion.div>
     </div>
   );
 }

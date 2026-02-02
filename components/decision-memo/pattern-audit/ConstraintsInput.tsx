@@ -10,7 +10,8 @@ import { X, Plus } from 'lucide-react';
 import {
   Constraints,
   LIQUIDITY_HORIZONS,
-  JURISDICTIONS
+  JURISDICTIONS,
+  PURCHASE_VEHICLES
 } from '@/lib/decision-memo/pattern-audit-types';
 
 interface ConstraintsInputProps {
@@ -79,13 +80,56 @@ export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
           When might you need access to this capital?
         </label>
         <select
-          value={value?.liquidityHorizon || '12+ months'}
+          value={value?.liquidityHorizon || ''}
           onChange={(e) => onChange({ liquidityHorizon: e.target.value })}
           className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
                      text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
+          <option value="">Select horizon...</option>
           {LIQUIDITY_HORIZONS.map(h => (
             <option key={h.id} value={h.id}>{h.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Destination Property Count */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Properties already owned at destination (optional)
+        </label>
+        <select
+          value={value?.destinationPropertyCount ?? ''}
+          onChange={(e) => onChange({
+            destinationPropertyCount: e.target.value ? parseInt(e.target.value, 10) : undefined
+          })}
+          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
+                     text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Not specified</option>
+          <option value="0">0 (first property)</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3+</option>
+        </select>
+        <p className="text-xs text-muted-foreground mt-1">
+          Affects stamp duty / ABSD tier calculations.
+        </p>
+      </div>
+
+      {/* Purchase Vehicle */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Purchase vehicle
+        </label>
+        <select
+          value={value?.purchaseVehicle || ''}
+          onChange={(e) => onChange({ purchaseVehicle: e.target.value || undefined })}
+          className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
+                     text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          <option value="">Not specified</option>
+          {PURCHASE_VEHICLES.map(pv => (
+            <option key={pv.id} value={pv.id}>{pv.label}</option>
           ))}
         </select>
       </div>
@@ -101,7 +145,7 @@ export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
             value={liquidityEventInput}
             onChange={(e) => setLiquidityEventInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addLiquidityEvent()}
-            placeholder="DTAA benefit deadline Q2 2025, Trust restructuring before FY end..."
+            placeholder="ABSD remission window Q2 2026, Trust restructuring before US tax year end..."
             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
                        text-foreground placeholder:text-muted-foreground/50
                        focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -152,7 +196,7 @@ export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
             value={prohibitionInput}
             onChange={(e) => setProhibitionInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addProhibition()}
-            placeholder="No crypto/DeFi exposure, No unregulated counterparties..."
+            placeholder="No off-plan purchases, No developer financing above 50%..."
             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
                        text-foreground placeholder:text-muted-foreground/50
                        focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -200,7 +244,7 @@ export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
             value={dealBreakerInput}
             onChange={(e) => setDealBreakerInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addDealBreaker()}
-            placeholder="Counterparty with regulatory issues, Unverified fund sources..."
+            placeholder="Title disputes, Developer insolvency risk, FATCA reporting failures..."
             className="flex-1 px-3 py-2 bg-background border border-border rounded-lg
                        text-foreground placeholder:text-muted-foreground/50
                        focus:outline-none focus:ring-2 focus:ring-primary/40"

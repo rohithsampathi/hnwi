@@ -847,9 +847,11 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                 </span>
               </div>
 
-              <div className="bg-card rounded-lg p-4 border border-border mb-4">
-                <p className="text-lg font-bold text-foreground">{thirdGenProblem.statistic}</p>
-              </div>
+              {thirdGenProblem.statistic && (
+                <div className="bg-card rounded-lg p-4 border border-border mb-4">
+                  <p className="text-lg font-bold text-foreground">{thirdGenProblem.statistic}</p>
+                </div>
+              )}
 
               {thirdGenProblem.causes && thirdGenProblem.causes.length > 0 && (
                 <div className="mb-4">
@@ -1262,11 +1264,13 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
             <div className="flex flex-col md:flex-row items-center gap-8">
               {/* Risk Gauge */}
-              <RiskGauge
-                current={thirdGenRisk.currentRisk}
-                improved={thirdGenRisk.improvedRisk}
-                label="Probability of Wealth Loss"
-              />
+              {thirdGenRisk.currentRisk !== undefined && thirdGenRisk.improvedRisk !== undefined && (
+                <RiskGauge
+                  current={thirdGenRisk.currentRisk}
+                  improved={thirdGenRisk.improvedRisk}
+                  label="Probability of Wealth Loss"
+                />
+              )}
 
               {/* Risk Metrics */}
               <div className="flex-1 w-full">

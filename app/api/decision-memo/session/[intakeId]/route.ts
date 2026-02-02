@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 
+export const maxDuration = 300; // 5 minutes
+
 interface RouteParams {
   params: {
     intakeId: string;
@@ -247,10 +249,26 @@ export async function GET(
     // Backend uses /preview endpoint which returns session status AND artifact when unlocked
     const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
 
+    // Forward Authorization header from client to backend (report auth tokens)
+    const authHeader = request.headers.get('Authorization');
+    const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
+    if (authHeader) {
+      backendHeaders['Authorization'] = authHeader;
+    }
+
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: backendHeaders,
+      signal: AbortSignal.timeout(300000), // 5 minutes
     });
+
+    // Pass through 401 directly so frontend can show auth popup
+    if (response.status === 401) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

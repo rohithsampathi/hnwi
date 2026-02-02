@@ -29,11 +29,11 @@ interface VaultEntrySequenceProps {
 }
 
 const loadingSteps = [
-  { text: 'Verifying credentials', duration: 1200 },
-  { text: 'Accessing intelligence vault', duration: 1400 },
-  { text: 'Loading pattern library', duration: 1300 },
-  { text: 'Calibrating opportunity scanner', duration: 1200 },
-  { text: 'Initializing', duration: 800 },
+  { text: 'Verifying credentials', duration: 2000 },
+  { text: 'Accessing intelligence vault', duration: 2400 },
+  { text: 'Loading pattern library', duration: 2200 },
+  { text: 'Calibrating opportunity scanner', duration: 2000 },
+  { text: 'Initializing', duration: 1400 },
 ];
 
 // Module-level flag - prevents animation restart on remounts
@@ -85,7 +85,10 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
           }
 
           const elapsed = Date.now() - startTime;
-          const stepProgress = Math.min((elapsed / stepDuration) * 100, 100);
+          const linear = Math.min(elapsed / stepDuration, 1);
+          // Ease-out curve: fast start, gentle deceleration
+          const eased = 1 - Math.pow(1 - linear, 2.5);
+          const stepProgress = eased * 100;
           const totalProgress = ((stepIndex * 100) + stepProgress) / loadingSteps.length;
           setProgress(totalProgress);
 
@@ -95,12 +98,12 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
               setCurrentStep(stepIndex + 1);
               const timeout = setTimeout(() => {
                 if (isMounted) runStep(stepIndex + 1);
-              }, 50);
+              }, 300);
               timeouts.push(timeout);
             } else {
               const unlockTimeout = setTimeout(() => {
                 if (isMounted) setIsUnlocking(true);
-              }, 200);
+              }, 500);
               timeouts.push(unlockTimeout);
 
               const completeTimeout = setTimeout(() => {
@@ -108,10 +111,10 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                   setIsComplete(true);
                   const finalTimeout = setTimeout(() => {
                     if (isMounted) onCompleteRef.current();
-                  }, 600);
+                  }, 800);
                   timeouts.push(finalTimeout);
                 }
-              }, 1200);
+              }, 2000);
               timeouts.push(completeTimeout);
             }
           }
@@ -121,7 +124,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
       };
 
       runStep(0);
-    }, 100);
+    }, 400);
 
     return () => {
       clearTimeout(startDelay);
@@ -137,7 +140,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 1, ease: "easeInOut" }}
           className="fixed inset-0 z-[9999] bg-background flex items-center justify-center overflow-hidden"
         >
           {/* World Map Background with Opportunities */}
@@ -157,7 +160,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
             <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background/40" />
           </motion.div>
 
-          {/* Minimal Elegant Loader */}
+          {/* Vault Loader */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -166,32 +169,32 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
           >
             {/* Monogram Seal */}
             <motion.div
-              className="relative mb-10"
-              style={{ width: 120, height: 120 }}
+              className="relative mb-2"
+              style={{ width: 140, height: 140 }}
               animate={isUnlocking ? { scale: [1, 1.1, 1] } : {}}
               transition={{ duration: 0.6 }}
             >
-              {/* Outer decorative ring - subtle rotation */}
-              <motion.div
-                className="absolute rounded-full"
+              {/* Solid circular backdrop — only behind inner circle, blocks map */}
+              <div
                 style={{
-                  width: 140,
-                  height: 140,
-                  left: -10,
-                  top: -10,
-                  border: '1px solid',
-                  borderColor: 'hsl(var(--primary) / 0.15)'
+                  position: 'absolute',
+                  left: 22, top: 22,
+                  width: 96, height: 96,
+                  borderRadius: '50%',
+                  background: 'hsl(var(--background))',
                 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
               />
 
-              {/* Main monogram circle - matches progress arc size */}
+              {/* White circle — bounded to inner progress arc only */}
               <motion.div
-                className="relative w-[120px] h-[120px] rounded-full flex items-center justify-center"
+                className="flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%)',
-                  boxShadow: '0 4px 30px hsl(var(--primary) / 0.1), inset 0 1px 0 hsl(var(--primary) / 0.1)'
+                  position: 'absolute',
+                  left: 22, top: 22,
+                  width: 96, height: 96,
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 4px 30px hsl(var(--primary) / 0.1), inset 0 1px 0 hsl(var(--primary) / 0.1)',
                 }}
                 animate={isUnlocking ? {
                   boxShadow: [
@@ -202,16 +205,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                 } : {}}
                 transition={{ duration: 0.8 }}
               >
-                {/* Inner decorative border */}
-                <div
-                  className="absolute rounded-full"
-                  style={{
-                    inset: 8,
-                    border: '1px solid hsl(var(--primary) / 0.2)'
-                  }}
-                />
-
-                {/* HC Monogram */}
+                {/* HC Monogram — original font */}
                 <motion.span
                   className="text-2xl font-bold tracking-[0.2em] text-foreground"
                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
@@ -221,47 +215,83 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                 </motion.span>
               </motion.div>
 
-              {/* Progress arc - wraps exactly around the circle */}
-              <svg
-                className="absolute inset-0"
-                width="120"
-                height="120"
+              {/* Outer orbit ring + traveling dot */}
+              <motion.div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                }}
+                animate={{ rotate: -360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
               >
-                {/* Background track */}
+                {/* The orbiting dot — positioned at top-center of the ring path */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: 10,
+                    width: 8,
+                    height: 8,
+                    marginLeft: -4,
+                    borderRadius: '50%',
+                    background: 'hsl(var(--primary))',
+                    boxShadow: '0 0 8px 2px hsl(var(--primary) / 0.5)',
+                  }}
+                />
+              </motion.div>
+
+              {/* Static thin orbit track */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 12, top: 12,
+                  width: 116, height: 116,
+                  borderRadius: '50%',
+                  border: '1px solid hsl(var(--primary) / 0.1)',
+                  pointerEvents: 'none',
+                }}
+              />
+
+              {/* SVG — progress on inner circle */}
+              <svg
+                style={{ position: 'absolute', inset: 0 }}
+                width="140"
+                height="140"
+                viewBox="0 0 140 140"
+              >
+                {/* Inner progress track */}
                 <circle
-                  cx="60"
-                  cy="60"
-                  r="56"
+                  cx="70" cy="70" r="48"
                   fill="none"
                   stroke="hsl(var(--primary) / 0.1)"
                   strokeWidth="2"
                 />
-                {/* Progress indicator */}
+
+                {/* Inner progress arc */}
                 <motion.circle
-                  cx="60"
-                  cy="60"
-                  r="56"
+                  cx="70" cy="70" r="48"
                   fill="none"
                   stroke="hsl(var(--primary))"
                   strokeWidth="2"
                   strokeLinecap="round"
-                  strokeDasharray={352}
-                  strokeDashoffset={352 - (352 * progress) / 100}
+                  strokeDasharray={301.6}
+                  strokeDashoffset={301.6 - (301.6 * progress) / 100}
                   style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}
                   transition={{ duration: 0.1 }}
                 />
               </svg>
             </motion.div>
 
-            {/* Status Text - Minimal Typography */}
+            {/* Status Text */}
             <div className="text-center">
               <AnimatePresence mode="wait">
                 <motion.p
                   key={isUnlocking ? 'unlocked' : currentStep}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
                   className="text-sm tracking-[0.3em] uppercase text-foreground/80 font-medium"
                 >
                   {isUnlocking ? 'Access Granted' : loadingSteps[currentStep]?.text}
@@ -279,7 +309,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-1 h-1 rounded-full bg-primary/60"
+                      style={{ width: 4, height: 4, borderRadius: '50%', background: 'hsl(var(--primary) / 0.6)' }}
                       animate={{
                         opacity: [0.3, 1, 0.3],
                         scale: [0.8, 1, 0.8]
@@ -294,7 +324,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                 </motion.div>
               )}
 
-              {/* Brief count - appears during loading */}
+              {/* Brief count */}
               {currentStep >= 2 && !isUnlocking && (
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -306,7 +336,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
               )}
             </div>
 
-            {/* Unlocking animation - elegant fade */}
+            {/* Unlocking animation */}
             {isUnlocking && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -333,7 +363,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
             )}
           </motion.div>
 
-          {/* Subtle corner accents - Old Money touch */}
+          {/* Corner accents */}
           <div className="absolute top-8 left-8 w-12 h-12 pointer-events-none">
             <div className="absolute top-0 left-0 w-8 h-[1px] bg-gradient-to-r from-primary/30 to-transparent" />
             <div className="absolute top-0 left-0 w-[1px] h-8 bg-gradient-to-b from-primary/30 to-transparent" />
@@ -351,7 +381,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
             <div className="absolute bottom-0 right-0 w-[1px] h-8 bg-gradient-to-t from-primary/30 to-transparent" />
           </div>
 
-          {/* Bottom security note - minimal */}
+          {/* Bottom security note */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

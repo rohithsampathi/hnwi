@@ -1,24 +1,25 @@
 // =============================================================================
 // DECISION MEMO PAGE
-// SFO Pattern Audit flow with Vault Entry Sequence
+// Vault Entry Sequence → Landing Page
+// Intake form lives at /decision-memo/intake (separate route for refresh safety)
 // =============================================================================
 
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DecisionMemoLanding } from '@/components/decision-memo/DecisionMemoLanding';
-import { PatternAuditPage } from '@/components/decision-memo/pattern-audit/PatternAuditPage';
 import { VaultEntrySequence } from '@/components/assessment/VaultEntrySequence';
 import { usePageTitle } from '@/hooks/use-page-title';
 
-type FlowStage = 'vault' | 'landing' | 'intake';
+type FlowStage = 'vault' | 'landing';
 
 // Module-level flag to prevent vault from showing multiple times in session
 let vaultShownThisSession = false;
 
 export default function DecisionMemoPage() {
+  const router = useRouter();
   const [flowStage, setFlowStage] = useState<FlowStage>(() => {
-    // Check if vault has already been shown this session
     if (vaultShownThisSession) {
       return 'landing';
     }
@@ -28,7 +29,7 @@ export default function DecisionMemoPage() {
   const [briefCount, setBriefCount] = useState<number>(1875);
 
   usePageTitle(
-    flowStage === 'intake' ? 'Pattern Audit - Intake' : 'Decision Posture Audit',
+    'Decision Posture Audit',
     'IC-ready artifact for high-stakes allocation decisions'
   );
 
@@ -64,9 +65,9 @@ export default function DecisionMemoPage() {
     setFlowStage('landing');
   };
 
-  // Handle start audit from landing
+  // Handle start audit — navigate to dedicated intake route
   const handleStartAudit = () => {
-    setFlowStage('intake');
+    router.push('/decision-memo/intake');
   };
 
   // Vault Entry Sequence
@@ -81,16 +82,7 @@ export default function DecisionMemoPage() {
   }
 
   // Landing Page
-  if (flowStage === 'landing') {
-    return (
-      <DecisionMemoLanding onContinue={handleStartAudit} />
-    );
-  }
-
-  // Pattern Audit Intake (split view)
-  if (flowStage === 'intake') {
-    return <PatternAuditPage />;
-  }
-
-  return null;
+  return (
+    <DecisionMemoLanding onContinue={handleStartAudit} />
+  );
 }

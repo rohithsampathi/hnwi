@@ -1,30 +1,35 @@
 // =============================================================================
 // SFO PATTERN AUDIT PAGE
-// Split view: Left = 3 Inputs, Right = Preview/Status
-// Submits intake → Redirects to audit preview page
+// Single-scroll layout: sticky sidebar preview, flowing form
+// Form only — review lives at /decision-memo/review (separate route)
 // =============================================================================
 
 "use client";
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { IntakePanel } from './IntakePanel';
 import { PreviewPanel } from './PreviewPanel';
-import { usePatternAudit } from '@/lib/hooks/usePatternAudit';
 import {
   SFOPatternAuditIntake,
   AuditSession,
   IntakeSection
 } from '@/lib/decision-memo/pattern-audit-types';
 
+const STORAGE_KEY = 'hc-audit-intake';
+
 // Default initial state
 const DEFAULT_INTAKE: Partial<SFOPatternAuditIntake> = {
+  email: '',
+  nationality: '',
+  ndaConsent: false,
+  privacyConsent: false,
   thesis: {
     moveDescription: '',
     expectedOutcome: ''
   },
   constraints: {
-    liquidityHorizon: '12+ months',
+    liquidityHorizon: '',
     liquidityEvents: [],
     currentJurisdictions: [],
     prohibitedJurisdictions: [],
@@ -32,15 +37,19 @@ const DEFAULT_INTAKE: Partial<SFOPatternAuditIntake> = {
     dealBreakers: []
   },
   controlAndRails: {
-    finalDecisionMaker: 'principal',
-    decisionMakersCount: 1,
+    finalDecisionMaker: '' as any,
+    decisionMakersCount: 0,
     vetoHolders: [],
     advisors: [],
     existingEntities: [],
     bankingRails: [],
     hasFormalIPS: false
   },
-  urgency: 'standard'
+  assetDetails: {
+    estimatedValue: 0,
+  },
+  urgency: '' as any,
+  format: undefined
 };
 
 export function PatternAuditPage() {
@@ -50,21 +59,25 @@ export function PatternAuditPage() {
   // STATE
   // ==========================================================================
 
-  const [intake, setIntake] = useState<Partial<SFOPatternAuditIntake>>(DEFAULT_INTAKE);
-  const [session, setSession] = useState<AuditSession | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [intake, setIntake] = useState<Partial<SFOPatternAuditIntake>>(() => {
+    // Restore from localStorage if available (e.g. user navigated back from review)
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return DEFAULT_INTAKE;
+  });
+  const [session] = useState<AuditSession | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Ref to prevent double submission (guards against React strict mode and fast clicks)
-  const hasSubmittedRef = useRef(false);
-  const submittedIntakeIdRef = useRef<string | null>(null);
-  // Stable ref for intake — reads current value at call time, not closure capture time
-  const intakeRef = useRef(intake);
-  intakeRef.current = intake;
-  // AbortController to cancel in-flight requests on unmount or re-submit
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const { submitIntake } = usePatternAudit();
+  // Auto-save to localStorage on intake change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(intake));
+    } catch { /* ignore */ }
+  }, [intake]);
 
   // ==========================================================================
   // HANDLERS
@@ -80,52 +93,39 @@ export function PatternAuditPage() {
     }));
   }, []);
 
-  const handleSubmit = useCallback(async () => {
-    // Guard against double submission — ref is read (not captured) so
-    // this works regardless of which closure instance calls it
-    if (hasSubmittedRef.current) {
-      console.log('⏭️ [PatternAuditPage] Already submitted, skipping duplicate');
-      return;
-    }
+  /** Update top-level fields (email, nationality, consents) */
+  const handleTopLevelChange = useCallback((field: string, value: any) => {
+    setIntake(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
 
-    hasSubmittedRef.current = true;
-    setIsSubmitting(true);
+  /** Navigate to review page — data persists via localStorage */
+  const handleReviewSubmit = useCallback(() => {
     setError(null);
-
-    // Cancel any prior in-flight request
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
-
-    try {
-      // Read intake from ref — always gets the latest value
-      const currentIntake = intakeRef.current;
-      // Submit intake to backend - returns { session, preview }
-      const { session: newSession } = await submitIntake(currentIntake as SFOPatternAuditIntake);
-      setSession(newSession);
-
-      // Track the submitted intake ID
-      submittedIntakeIdRef.current = newSession.intakeId;
-
-      // Redirect to the audit preview page
-      router.push(`/decision-memo/audit/${newSession.intakeId}`);
-    } catch (err) {
-      console.error('Submission failed:', err);
-      setError(err instanceof Error ? err.message : 'Failed to submit audit request');
-      setIsSubmitting(false);
-      // Reset ref on error to allow retry
-      hasSubmittedRef.current = false;
-    }
-  }, [submitIntake, router]); // ← intake removed from deps — read from intakeRef instead
+    router.push('/decision-memo/review');
+  }, [router]);
 
   // ==========================================================================
   // VALIDATION
   // ==========================================================================
 
   const isValid = Boolean(
+    intake.email &&
+    intake.email.includes('@') &&
+    intake.nationality &&
+    intake.ndaConsent &&
+    intake.privacyConsent &&
     intake.thesis?.moveDescription &&
     intake.thesis?.expectedOutcome &&
     intake.thesis.moveDescription.length >= 20 &&
-    intake.thesis.expectedOutcome.length >= 10
+    intake.thesis.expectedOutcome.length >= 10 &&
+    intake.thesis?.moveType &&
+    (intake.thesis?.targetLocations?.length || 0) > 0 &&
+    intake.thesis?.timeline &&
+    intake.thesis?.sourceJurisdiction &&
+    intake.thesis?.destinationJurisdiction
   );
 
   // ==========================================================================
@@ -133,28 +133,55 @@ export function PatternAuditPage() {
   // ==========================================================================
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Left Panel: Intake */}
-      <div className="w-full lg:w-1/2 border-r border-border overflow-y-auto">
-        <IntakePanel
-          intake={intake}
-          onChange={handleIntakeChange}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          isValid={isValid}
-          error={error}
-        />
+    <div className="min-h-screen bg-background">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-3">
+          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-primary-foreground font-bold text-sm">HC</span>
+          </div>
+          <div>
+            <h1 className="text-base font-semibold text-foreground tracking-tight">
+              Decision Posture Audit
+            </h1>
+            <p className="text-xs text-muted-foreground tracking-wider uppercase">
+              SFO Pattern Intelligence
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Right Panel: Preview (hidden on mobile) */}
-      <div className="hidden lg:block lg:w-1/2 overflow-y-auto bg-muted/30">
-        <PreviewPanel
-          session={session}
-          isSubmitting={isSubmitting}
-        />
+      {/* Content: Form + Sticky Preview */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex gap-8 items-start">
+          {/* Left column: Form */}
+          <div className="flex-1 min-w-0">
+            <IntakePanel
+              intake={intake}
+              onChange={handleIntakeChange}
+              onTopLevelChange={handleTopLevelChange}
+              onSubmit={handleReviewSubmit}
+              isSubmitting={false}
+              isValid={isValid}
+              error={error}
+            />
+          </div>
+
+          {/* Right column: Sticky Preview (hidden on mobile) */}
+          <div className="hidden lg:block w-[400px] shrink-0">
+            <div className="sticky top-24">
+              <PreviewPanel
+                intake={intake}
+                session={session}
+                isSubmitting={false}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+export { STORAGE_KEY };
 export default PatternAuditPage;

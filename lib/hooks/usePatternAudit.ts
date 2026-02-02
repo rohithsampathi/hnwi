@@ -22,6 +22,23 @@ import { exportInstitutionalPDF } from './usePremiumPDFExport';
 
 const API_BASE = '/api/decision-memo';
 
+/** Thrown when the backend returns 401 — caller should show ReportAuthPopup */
+export class ReportAuthRequiredError extends Error {
+  constructor() {
+    super('Report authentication required')
+    this.name = 'ReportAuthRequiredError'
+  }
+}
+
+/** Build headers with optional report auth token */
+function buildHeaders(authToken?: string | null, extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { ...extra }
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+  return headers
+}
+
 export function usePatternAudit() {
   // ==========================================================================
   // SUBMIT INTAKE
@@ -75,8 +92,14 @@ export function usePatternAudit() {
   // Check current status of an audit
   // ==========================================================================
 
-  const getSession = useCallback(async (intakeId: string): Promise<AuditSession> => {
-    const response = await fetch(`${API_BASE}/session/${intakeId}`);
+  const getSession = useCallback(async (intakeId: string, authToken?: string | null): Promise<AuditSession> => {
+    const response = await fetch(`${API_BASE}/session/${intakeId}`, {
+      headers: buildHeaders(authToken)
+    });
+
+    if (response.status === 401) {
+      throw new ReportAuthRequiredError();
+    }
 
     if (!response.ok) {
       throw new Error('Failed to fetch session');
@@ -99,10 +122,17 @@ export function usePatternAudit() {
   // ==========================================================================
 
   const getPreviewArtifact = useCallback(async (
-    intakeId: string
+    intakeId: string,
+    authToken?: string | null
   ): Promise<PreviewArtifact> => {
     // Use unified endpoint
-    const response = await fetch(`${API_BASE}/${intakeId}`);
+    const response = await fetch(`${API_BASE}/${intakeId}`, {
+      headers: buildHeaders(authToken)
+    });
+
+    if (response.status === 401) {
+      throw new ReportAuthRequiredError();
+    }
 
     if (!response.ok) {
       throw new Error('Preview not ready');
@@ -348,10 +378,17 @@ export function usePatternAudit() {
   // ==========================================================================
 
   const getFullArtifact = useCallback(async (
-    intakeId: string
+    intakeId: string,
+    authToken?: string | null
   ): Promise<ICArtifact> => {
     // Use unified endpoint
-    const response = await fetch(`${API_BASE}/${intakeId}`);
+    const response = await fetch(`${API_BASE}/${intakeId}`, {
+      headers: buildHeaders(authToken)
+    });
+
+    if (response.status === 401) {
+      throw new ReportAuthRequiredError();
+    }
 
     if (!response.ok) {
       throw new Error('Artifact not available');
@@ -433,6 +470,12 @@ export function usePatternAudit() {
 
 function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPayload {
   return {
+    // Top-level identity & consent
+    email: intake.email,
+    nationality: intake.nationality,
+    nda_consent: intake.ndaConsent,
+    privacy_consent: intake.privacyConsent,
+
     thesis: {
       move_description: intake.thesis.moveDescription,
       expected_outcome: intake.thesis.expectedOutcome,
@@ -440,7 +483,11 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
       target_amount: intake.thesis.targetAmount,
       target_locations: intake.thesis.targetLocations,
       timeline: intake.thesis.timeline,
-      buyer_citizenship: intake.thesis.buyerCitizenship
+      buyer_citizenship: intake.thesis.buyerCitizenship,
+      source_jurisdiction: intake.thesis.sourceJurisdiction,
+      source_state: intake.thesis.sourceState,
+      destination_jurisdiction: intake.thesis.destinationJurisdiction,
+      destination_state: intake.thesis.destinationState,
     },
     constraints: {
       liquidity_horizon: intake.constraints.liquidityHorizon,
@@ -449,7 +496,9 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
       current_jurisdictions: intake.constraints.currentJurisdictions,
       prohibited_jurisdictions: intake.constraints.prohibitedJurisdictions,
       prohibitions: intake.constraints.prohibitions,
-      deal_breakers: intake.constraints.dealBreakers
+      deal_breakers: intake.constraints.dealBreakers,
+      destination_property_count: intake.constraints.destinationPropertyCount,
+      purchase_vehicle: intake.constraints.purchaseVehicle,
     },
     control_and_rails: {
       final_decision_maker: intake.controlAndRails.finalDecisionMaker,
@@ -472,9 +521,26 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
         status: b.status
       })),
       has_formal_ips: intake.controlAndRails.hasFormalIPS,
-      ips_notes: intake.controlAndRails.ipsNotes
+      ips_notes: intake.controlAndRails.ipsNotes,
+      heirs: intake.controlAndRails.heirs?.map(h => ({
+        name: h.name,
+        relationship: h.relationship,
+        age: h.age,
+        allocation_pct: h.allocationPct,
+        notes: h.notes,
+      })),
     },
-    urgency: intake.urgency
+    asset_details: intake.assetDetails ? {
+      property_type: intake.assetDetails.propertyType,
+      estimated_value: intake.assetDetails.estimatedValue,
+      rental_yield_pct: intake.assetDetails.rentalYieldPct,
+      appreciation_pct: intake.assetDetails.appreciationPct,
+      location_preference: intake.assetDetails.locationPreference,
+      size_sqft: intake.assetDetails.sizeSqft,
+      bedrooms: intake.assetDetails.bedrooms,
+    } : undefined,
+    urgency: intake.urgency,
+    format: intake.format
   };
 }
 

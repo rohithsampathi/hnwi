@@ -202,6 +202,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
                 width={28}
                 height={28}
                 className="w-7 h-7"
+                style={{ width: 'auto', height: 'auto' }}
                 priority
               />
             </motion.div>

@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
+export const maxDuration = 300; // 5 minutes
+
 interface RouteParams {
   params: {
     intakeId: string;
@@ -28,16 +30,30 @@ export async function GET(
       `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`,
     ];
 
+    // Forward Authorization header from client to backend (report auth tokens)
+    const authHeader = request.headers.get('Authorization');
+    const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
+    if (authHeader) {
+      backendHeaders['Authorization'] = authHeader;
+    }
+
     for (const backendUrl of endpoints) {
       console.log('📥 [Artifact] Trying backend:', backendUrl);
 
       try {
         const response = await fetch(backendUrl, {
           method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
+          headers: backendHeaders,
+          signal: AbortSignal.timeout(300000), // 5 minutes
         });
+
+        // Pass through 401 directly so frontend can show auth popup
+        if (response.status === 401) {
+          return NextResponse.json(
+            { error: 'Authentication required' },
+            { status: 401 }
+          );
+        }
 
         if (response.ok) {
           const data = await response.json();

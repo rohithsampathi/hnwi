@@ -10,6 +10,8 @@ import { X, Plus } from 'lucide-react';
 import {
   ControlAndRails,
   Advisor,
+  BankingRail,
+  Heir,
   DECISION_MAKERS,
   ADVISOR_TYPES,
   JURISDICTIONS
@@ -50,19 +52,21 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
           Who makes the final decision?
         </label>
         <select
-          value={value?.finalDecisionMaker || 'principal'}
+          value={value?.finalDecisionMaker || ''}
           onChange={(e) => {
-            const maker = e.target.value as ControlAndRails['finalDecisionMaker'];
+            const maker = e.target.value;
             onChange({
-              finalDecisionMaker: maker,
+              finalDecisionMaker: maker as ControlAndRails['finalDecisionMaker'],
               decisionMakersCount:
                 maker === 'principal' ? 1 :
-                maker === 'spouse_partner' ? 2 : 3
+                maker === 'spouse_partner' ? 2 :
+                !maker ? 0 : 3
             });
           }}
           className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
                      text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
+          <option value="">Select...</option>
           {DECISION_MAKERS.map(dm => (
             <option key={dm.id} value={dm.id}>{dm.label}</option>
           ))}
@@ -84,7 +88,7 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
                 .map(s => s.trim())
                 .filter(Boolean)
             })}
-            placeholder="Spouse, Parents..."
+            placeholder="Board of Directors, Investment Committee..."
             className="w-full px-3 py-2 bg-background border border-border rounded-lg
                        text-foreground placeholder:text-muted-foreground/50
                        focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -102,7 +106,7 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
           type="text"
           value={value?.approvalRequiredAbove || ''}
           onChange={(e) => onChange({ approvalRequiredAbove: e.target.value })}
-          placeholder="$500K requires spouse approval..."
+          placeholder="$1M+ requires Investment Committee approval..."
           className="w-full px-3 py-2 bg-background border border-border rounded-lg
                      text-foreground placeholder:text-muted-foreground/50
                      focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -134,7 +138,7 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
                 type="text"
                 value={advisor.name || ''}
                 onChange={(e) => updateAdvisor(i, 'name', e.target.value)}
-                placeholder="Name (optional)"
+                placeholder="e.g. NYC Tax Counsel"
                 className="w-28 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
                            text-foreground placeholder:text-muted-foreground/50
                            focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -203,44 +207,59 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
           {(value?.existingEntities?.length || 0) > 0 && (
             <div className="pl-6 space-y-2">
               {value?.existingEntities?.map((entity, i) => (
-                <div key={i} className="flex gap-2 items-center">
+                <div key={i} className="space-y-1.5">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={entity.type}
+                      onChange={(e) => {
+                        const updated = [...(value?.existingEntities || [])];
+                        updated[i] = { ...updated[i], type: e.target.value };
+                        onChange({ existingEntities: updated });
+                      }}
+                      placeholder="LLC, Trust, Family LP..."
+                      className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                                 text-foreground placeholder:text-muted-foreground/50
+                                 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <input
+                      type="text"
+                      value={entity.jurisdiction}
+                      onChange={(e) => {
+                        const updated = [...(value?.existingEntities || [])];
+                        updated[i] = { ...updated[i], jurisdiction: e.target.value };
+                        onChange({ existingEntities: updated });
+                      }}
+                      placeholder="Jurisdiction"
+                      className="w-28 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                                 text-foreground placeholder:text-muted-foreground/50
+                                 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange({
+                          existingEntities: (value?.existingEntities || []).filter((_, idx) => idx !== i)
+                        });
+                      }}
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                   <input
                     type="text"
-                    value={entity.type}
+                    value={entity.purpose || ''}
                     onChange={(e) => {
                       const updated = [...(value?.existingEntities || [])];
-                      updated[i] = { ...updated[i], type: e.target.value };
+                      updated[i] = { ...updated[i], purpose: e.target.value };
                       onChange({ existingEntities: updated });
                     }}
-                    placeholder="Type (LLC, Trust...)"
-                    className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                    placeholder="Family Office holding, Asset protection, Estate planning..."
+                    className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
                                text-foreground placeholder:text-muted-foreground/50
                                focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
-                  <input
-                    type="text"
-                    value={entity.jurisdiction}
-                    onChange={(e) => {
-                      const updated = [...(value?.existingEntities || [])];
-                      updated[i] = { ...updated[i], jurisdiction: e.target.value };
-                      onChange({ existingEntities: updated });
-                    }}
-                    placeholder="Jurisdiction"
-                    className="w-28 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                               text-foreground placeholder:text-muted-foreground/50
-                               focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange({
-                        existingEntities: (value?.existingEntities || []).filter((_, idx) => idx !== i)
-                      });
-                    }}
-                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
               ))}
               <button
@@ -265,7 +284,7 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
               onChange={(e) => {
                 if (e.target.checked) {
                   onChange({
-                    bankingRails: [{ bank: '', jurisdiction: '', status: 'active' }]
+                    bankingRails: [{ bank: '', jurisdiction: '', status: 'active' as const }]
                   });
                 } else {
                   onChange({ bankingRails: [] });
@@ -278,6 +297,78 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
               Banking rails in target jurisdiction
             </span>
           </label>
+
+          {/* Banking Rail Details (if checked) */}
+          {(value?.bankingRails?.length || 0) > 0 && (
+            <div className="pl-6 space-y-2">
+              {value?.bankingRails?.map((rail, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={rail.bank}
+                    onChange={(e) => {
+                      const updated = [...(value?.bankingRails || [])];
+                      updated[i] = { ...updated[i], bank: e.target.value };
+                      onChange({ bankingRails: updated });
+                    }}
+                    placeholder="JP Morgan, Goldman Sachs, DBS..."
+                    className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                               text-foreground placeholder:text-muted-foreground/50
+                               focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <input
+                    type="text"
+                    value={rail.jurisdiction}
+                    onChange={(e) => {
+                      const updated = [...(value?.bankingRails || [])];
+                      updated[i] = { ...updated[i], jurisdiction: e.target.value };
+                      onChange({ bankingRails: updated });
+                    }}
+                    placeholder="Jurisdiction"
+                    className="w-24 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                               text-foreground placeholder:text-muted-foreground/50
+                               focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <select
+                    value={rail.status}
+                    onChange={(e) => {
+                      const updated = [...(value?.bankingRails || [])];
+                      updated[i] = { ...updated[i], status: e.target.value as BankingRail['status'] };
+                      onChange({ bankingRails: updated });
+                    }}
+                    className="w-24 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                               text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="planned">Planned</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange({
+                        bankingRails: (value?.bankingRails || []).filter((_, idx) => idx !== i)
+                      });
+                    }}
+                    className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  onChange({
+                    bankingRails: [...(value?.bankingRails || []), { bank: '', jurisdiction: '', status: 'active' as const }]
+                  });
+                }}
+                className="text-xs text-primary hover:text-primary/80 transition-colors"
+              >
+                + Add another banking rail
+              </button>
+            </div>
+          )}
 
           {/* IPS */}
           <label className="flex items-center gap-2 cursor-pointer">
@@ -299,7 +390,7 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
               <textarea
                 value={value?.ipsNotes || ''}
                 onChange={(e) => onChange({ ipsNotes: e.target.value })}
-                placeholder="Key points from your IPS..."
+                placeholder="NYC-based family office IPS: 60/40 allocation, 15% alternatives target, APAC diversification mandate..."
                 rows={2}
                 className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
                            text-foreground placeholder:text-muted-foreground/50
@@ -308,6 +399,121 @@ export function RailsInput({ value, onChange }: RailsInputProps) {
             </div>
           )}
         </div>
+      </div>
+      {/* Heirs / Succession */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Heirs / Succession planning (optional)
+        </label>
+
+        <div className="space-y-3">
+          {(value?.heirs || []).map((heir, i) => (
+            <div key={i} className="border border-border rounded-lg p-3 space-y-2">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={heir.name}
+                  onChange={(e) => {
+                    const updated = [...(value?.heirs || [])];
+                    updated[i] = { ...updated[i], name: e.target.value };
+                    onChange({ heirs: updated });
+                  }}
+                  placeholder="Name"
+                  className="flex-1 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                             text-foreground placeholder:text-muted-foreground/50
+                             focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <input
+                  type="text"
+                  value={heir.relationship}
+                  onChange={(e) => {
+                    const updated = [...(value?.heirs || [])];
+                    updated[i] = { ...updated[i], relationship: e.target.value };
+                    onChange({ heirs: updated });
+                  }}
+                  placeholder="Relationship"
+                  className="w-28 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                             text-foreground placeholder:text-muted-foreground/50
+                             focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({
+                      heirs: (value?.heirs || []).filter((_, idx) => idx !== i)
+                    });
+                  }}
+                  className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    value={heir.age || ''}
+                    onChange={(e) => {
+                      const updated = [...(value?.heirs || [])];
+                      updated[i] = { ...updated[i], age: parseInt(e.target.value, 10) || 0 };
+                      onChange({ heirs: updated });
+                    }}
+                    placeholder="Age"
+                    min={0}
+                    max={120}
+                    className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                               text-foreground placeholder:text-muted-foreground/50
+                               focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    value={heir.allocationPct ? Math.round(heir.allocationPct * 10000) / 100 : ''}
+                    onChange={(e) => {
+                      const updated = [...(value?.heirs || [])];
+                      updated[i] = { ...updated[i], allocationPct: (parseFloat(e.target.value) || 0) / 100 };
+                      onChange({ heirs: updated });
+                    }}
+                    placeholder="Allocation %"
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                               text-foreground placeholder:text-muted-foreground/50
+                               focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+              <input
+                type="text"
+                value={heir.notes || ''}
+                onChange={(e) => {
+                  const updated = [...(value?.heirs || [])];
+                  updated[i] = { ...updated[i], notes: e.target.value };
+                  onChange({ heirs: updated });
+                }}
+                placeholder="Minor — requires trustee, Active in family business..."
+                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                           text-foreground placeholder:text-muted-foreground/50
+                           focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            onChange({
+              heirs: [...(value?.heirs || []), { name: '', relationship: '', age: 0, allocationPct: 0 }]
+            });
+          }}
+          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 mt-2 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add heir
+        </button>
       </div>
     </div>
   );

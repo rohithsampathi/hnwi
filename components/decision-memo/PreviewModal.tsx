@@ -12,7 +12,7 @@ import type { Opportunity, Mistake, IntelligenceMatch, PreviewData } from '@/lib
 // Pricing configuration
 const PRICING = {
   single: {
-    price: 2500,
+    price: 5000,
     currency: 'USD',
     memos: 1,
     architectAccess: false,
@@ -32,9 +32,9 @@ const PRICING = {
     memos: 10,
     architectAccess: true,
     architectValue: 17988, // $1,499/mo × 12
-    memosValue: 25000, // $2,500 × 10
-    totalValue: 42988,
-    savings: 17988,
+    memosValue: 50000, // $5,000 × 10
+    totalValue: 67988,
+    savings: 42988,
     features: [
       '10 Decision Memos',
       'Architect Tier Access ($1,499/mo value)',
@@ -378,9 +378,9 @@ export function PreviewModal({
                 <div className="flex items-center justify-center gap-2 sm:gap-4 md:gap-6 text-base sm:text-xl md:text-3xl font-bold flex-wrap">
                   <span className="text-primary">${savingsInMillions}M prevented</span>
                   <span className="text-muted-foreground">÷</span>
-                  <span className="text-foreground">$2,500</span>
+                  <span className="text-foreground">$5,000</span>
                   <span className="text-muted-foreground">=</span>
-                  <span className="text-primary text-2xl sm:text-4xl md:text-5xl">{Math.round(totalSavings / 2500).toLocaleString()}x ROI</span>
+                  <span className="text-primary text-2xl sm:text-4xl md:text-5xl">{Math.round(totalSavings / 5000).toLocaleString()}x ROI</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4 px-2">
                   This doesn't include upside from {opportunities.length} opportunities matched to your profile
@@ -410,7 +410,7 @@ export function PreviewModal({
                 </div>
 
                 <div className="mb-4 sm:mb-6">
-                  <span className="text-3xl sm:text-5xl font-bold text-foreground">$2,500</span>
+                  <span className="text-3xl sm:text-5xl font-bold text-foreground">$5,000</span>
                   <span className="text-muted-foreground ml-2 text-sm">one-time</span>
                 </div>
 

@@ -5,16 +5,12 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React from 'react';
 import {
   DecisionThesis,
   MOVE_TYPES,
-  AMOUNT_RANGES,
   TIMELINES,
-  JURISDICTIONS,
-  CITIZENSHIP_OPTIONS,
-  FTA_ELIGIBLE_COUNTRIES
+  JURISDICTIONS
 } from '@/lib/decision-memo/pattern-audit-types';
 
 interface ThesisInputProps {
@@ -23,8 +19,6 @@ interface ThesisInputProps {
 }
 
 export function ThesisInput({ value, onChange }: ThesisInputProps) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
   return (
     <div className="space-y-4">
       {/* Move Description - Primary Input */}
@@ -35,7 +29,7 @@ export function ThesisInput({ value, onChange }: ThesisInputProps) {
         <textarea
           value={value?.moveDescription || ''}
           onChange={(e) => onChange({ moveDescription: e.target.value })}
-          placeholder="Acquire $2M apartment in Dubai Marina for Golden Visa eligibility..."
+          placeholder="Acquire luxury penthouse in Singapore for US $6.16M from NYC-based Single Family Office..."
           rows={3}
           className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
                      text-foreground placeholder:text-muted-foreground/50
@@ -55,7 +49,7 @@ export function ThesisInput({ value, onChange }: ThesisInputProps) {
         <textarea
           value={value?.expectedOutcome || ''}
           onChange={(e) => onChange({ expectedOutcome: e.target.value })}
-          placeholder="8-12% annual rental yield with tax-free income, plus UAE residency for family..."
+          placeholder="9% annual rental yield with 16% capital appreciation, APAC portfolio diversification..."
           rows={2}
           className="w-full px-3 py-2.5 bg-background border border-border rounded-lg
                      text-foreground placeholder:text-muted-foreground/50
@@ -64,128 +58,177 @@ export function ThesisInput({ value, onChange }: ThesisInputProps) {
         />
       </div>
 
-      {/* Optional: Structured Fields */}
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+      {/* Structural Details */}
+      <div className="space-y-3 pt-1">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Structural Details
+        </p>
+
+        {/* Move Type */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Move Type *
+          </label>
+          <select
+            value={value?.moveType || ''}
+            onChange={(e) => onChange({ moveType: e.target.value as any })}
+            className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                       text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="">Select type...</option>
+            {MOVE_TYPES.map(type => (
+              <option key={type.id} value={type.id}>{type.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Target Locations */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Target Locations *
+          </label>
+          <input
+            type="text"
+            value={value?.targetLocations?.join(', ') || ''}
+            onChange={(e) => onChange({
+              targetLocations: e.target.value
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean)
+            })}
+            placeholder="Singapore, Orchard Road, Marina Bay, Sentosa Cove"
+            className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                       text-foreground placeholder:text-muted-foreground/50
+                       focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
-          Add structured details (optional)
-        </button>
+          <p className="text-xs text-muted-foreground mt-0.5">Comma-separated</p>
+        </div>
 
-        {showAdvanced && (
-          <div className="mt-3 space-y-3 pl-4 border-l-2 border-border">
-            {/* Move Type */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Move Type
-              </label>
-              <select
-                value={value?.moveType || ''}
-                onChange={(e) => onChange({ moveType: e.target.value as any })}
-                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                           text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select type...</option>
-                {MOVE_TYPES.map(type => (
-                  <option key={type.id} value={type.id}>{type.label}</option>
-                ))}
-              </select>
-            </div>
+        {/* Timeline */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Timeline *
+          </label>
+          <select
+            value={value?.timeline || ''}
+            onChange={(e) => onChange({ timeline: e.target.value })}
+            className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                       text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="">Select...</option>
+            {TIMELINES.map(t => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        </div>
 
-            {/* Target Amount */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Target Amount
-              </label>
-              <select
-                value={value?.targetAmount || ''}
-                onChange={(e) => onChange({ targetAmount: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                           text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select range...</option>
-                {AMOUNT_RANGES.map(range => (
-                  <option key={range.id} value={range.id}>{range.label}</option>
-                ))}
-              </select>
-            </div>
+        {/* Source Jurisdiction */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Source Jurisdiction (where capital sits) *
+          </label>
+          <select
+            value={JURISDICTIONS.includes(value?.sourceJurisdiction as any) ? value?.sourceJurisdiction || '' : value?.sourceJurisdiction ? '__other__' : ''}
+            onChange={(e) => {
+              if (e.target.value === '__other__') {
+                onChange({ sourceJurisdiction: '' });
+              } else {
+                onChange({ sourceJurisdiction: e.target.value || undefined });
+              }
+            }}
+            className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                       text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="">Select...</option>
+            {JURISDICTIONS.map(j => (
+              <option key={j} value={j}>{j}</option>
+            ))}
+            <option value="__other__">Other</option>
+          </select>
+          {value?.sourceJurisdiction !== undefined && !JURISDICTIONS.includes(value?.sourceJurisdiction as any) && (
+            <input
+              type="text"
+              value={value?.sourceJurisdiction || ''}
+              onChange={(e) => onChange({ sourceJurisdiction: e.target.value })}
+              placeholder="Enter jurisdiction..."
+              className="w-full mt-1.5 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                         text-foreground placeholder:text-muted-foreground/50
+                         focus:outline-none focus:ring-2 focus:ring-primary/40"
+              autoFocus
+            />
+          )}
+        </div>
 
-            {/* Target Locations */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Target Locations
-              </label>
-              <input
-                type="text"
-                value={value?.targetLocations?.join(', ') || ''}
-                onChange={(e) => onChange({
-                  targetLocations: e.target.value
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean)
-                })}
-                placeholder="Dubai, UAE"
-                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                           text-foreground placeholder:text-muted-foreground/50
-                           focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-              <p className="text-xs text-muted-foreground mt-0.5">Comma-separated</p>
-            </div>
+        {/* Source State (if US) */}
+        {value?.sourceJurisdiction === 'United States' && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Source State *
+            </label>
+            <input
+              type="text"
+              value={value?.sourceState || ''}
+              onChange={(e) => onChange({ sourceState: e.target.value })}
+              placeholder="New York"
+              className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                         text-foreground placeholder:text-muted-foreground/50
+                         focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+        )}
 
-            {/* Timeline */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Timeline
-              </label>
-              <select
-                value={value?.timeline || ''}
-                onChange={(e) => onChange({ timeline: e.target.value })}
-                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                           text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select...</option>
-                {TIMELINES.map(t => (
-                  <option key={t.id} value={t.id}>{t.label}</option>
-                ))}
-              </select>
-            </div>
+        {/* Destination Jurisdiction */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Destination Jurisdiction (where capital is going) *
+          </label>
+          <select
+            value={JURISDICTIONS.includes(value?.destinationJurisdiction as any) ? value?.destinationJurisdiction || '' : value?.destinationJurisdiction !== undefined ? '__other__' : ''}
+            onChange={(e) => {
+              if (e.target.value === '__other__') {
+                onChange({ destinationJurisdiction: '' });
+              } else {
+                onChange({ destinationJurisdiction: e.target.value || undefined });
+              }
+            }}
+            className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                       text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="">Select...</option>
+            {JURISDICTIONS.map(j => (
+              <option key={j} value={j}>{j}</option>
+            ))}
+            <option value="__other__">Other</option>
+          </select>
+          {value?.destinationJurisdiction !== undefined && !JURISDICTIONS.includes(value?.destinationJurisdiction as any) && (
+            <input
+              type="text"
+              value={value?.destinationJurisdiction || ''}
+              onChange={(e) => onChange({ destinationJurisdiction: e.target.value })}
+              placeholder="Enter jurisdiction..."
+              className="w-full mt-1.5 px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                         text-foreground placeholder:text-muted-foreground/50
+                         focus:outline-none focus:ring-2 focus:ring-primary/40"
+              autoFocus
+            />
+          )}
+        </div>
 
-            {/* Buyer Citizenship */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
-                Buyer Citizenship (Passport Nationality)
-              </label>
-              <select
-                value={value?.buyerCitizenship || ''}
-                onChange={(e) => onChange({ buyerCitizenship: e.target.value || undefined })}
-                className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
-                           text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <option value="">Select nationality...</option>
-                <optgroup label="FTA-Eligible (stamp duty remission)">
-                  {FTA_ELIGIBLE_COUNTRIES.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.label} — {c.fta} ({c.note})
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Other Nationalities">
-                  {CITIZENSHIP_OPTIONS
-                    .filter(c => !FTA_ELIGIBLE_COUNTRIES.some(f => f.id === (c.id as string)))
-                    .map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                </optgroup>
-              </select>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Affects FTA stamp duty benefits. Green Card holders: select actual passport nationality, not US.
-              </p>
-            </div>
+        {/* Destination State (if US) */}
+        {value?.destinationJurisdiction === 'United States' && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Destination State *
+            </label>
+            <input
+              type="text"
+              value={value?.destinationState || ''}
+              onChange={(e) => onChange({ destinationState: e.target.value })}
+              placeholder="Texas, Florida..."
+              className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg
+                         text-foreground placeholder:text-muted-foreground/50
+                         focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
           </div>
         )}
       </div>

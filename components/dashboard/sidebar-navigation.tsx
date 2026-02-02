@@ -7,13 +7,20 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network, ClipboardCheck } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network, ClipboardCheck, Lock } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { getMemberAnalytics, type MemberAnalytics } from "@/lib/api"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 export function SidebarNavigation({
   onNavigate,
@@ -33,8 +40,14 @@ export function SidebarNavigation({
   hideInPrint?: boolean
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const { theme } = useTheme()
   const { isBusinessMode } = useBusinessMode()
+  const [showRequestAccess, setShowRequestAccess] = useState(false)
+
+  // On decision memo audit pages, all nav items should show Request Access popup
+  const isAuditPage = pathname?.startsWith("/decision-memo/audit/") ?? false
+
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [isMoreExpanded, setIsMoreExpanded] = useState(false) // Always start false on server
@@ -310,6 +323,12 @@ export function SidebarNavigation({
   ]
 
   const handleNavigate = (route: string) => {
+    // On audit pages, intercept all navigation and show Request Access popup
+    if (isAuditPage) {
+      setShowRequestAccess(true)
+      return
+    }
+
     // Direct Next.js navigation for new route structure
     if (route === "dashboard") {
       router.push("/dashboard")
@@ -373,6 +392,7 @@ export function SidebarNavigation({
             width={32}
             height={32}
             className="w-8 h-8"
+            style={{ width: 'auto', height: 'auto' }}
             priority
           />
         </div>
@@ -431,13 +451,14 @@ export function SidebarNavigation({
               }
             }}
           >
-            <Image 
-              src="/logo.png" 
-              alt="HNWI Chronicles Globe" 
-              width={32} 
-              height={32} 
-              className="w-8 h-8" 
-              priority 
+            <Image
+              src="/logo.png"
+              alt="HNWI Chronicles Globe"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+              style={{ width: 'auto', height: 'auto' }}
+              priority
             />
           </motion.div>
           {!isCollapsed && (
@@ -491,6 +512,9 @@ export function SidebarNavigation({
                   const isFlowActive = isDecisionMemoActive || isSimulationActive;
                   const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
                     (isFlowActive && !allowedRoutes.includes(item.route));
+                  // On audit pages: look disabled but still clickable (to show popup)
+                  const visuallyDisabled = isAuditPage || isItemDisabled;
+                  const actuallyDisabled = isItemDisabled && !isAuditPage;
                   return (
                   <div key={item.route} className="relative">
                     <Button
@@ -498,13 +522,13 @@ export function SidebarNavigation({
                       className={cn(
                         "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
                         isCollapsed && "justify-center px-0 gap-0",
-                        isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
-                        isActive
+                        visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                        isActive && !isAuditPage
                           ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
-                      onClick={() => !isItemDisabled && handleNavigate(item.route)}
-                      disabled={isItemDisabled}
+                      onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                      disabled={actuallyDisabled}
                     >
                       <item.icon className={cn(
                         "h-5 w-5 flex-shrink-0",
@@ -566,6 +590,8 @@ export function SidebarNavigation({
                       const isFlowActive = isDecisionMemoActive || isSimulationActive;
                       const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
                         (isFlowActive && !allowedRoutes.includes(item.route));
+                      const visuallyDisabled = isAuditPage || isItemDisabled;
+                      const actuallyDisabled = isItemDisabled && !isAuditPage;
                       return (
                       <div key={item.route} className="relative">
                         <Button
@@ -573,13 +599,13 @@ export function SidebarNavigation({
                           className={cn(
                             "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
                             isCollapsed && "justify-center px-0 gap-0",
-                            isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
-                            isActive
+                            visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                            isActive && !isAuditPage
                               ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
-                          onClick={() => !isItemDisabled && handleNavigate(item.route)}
-                          disabled={isItemDisabled}
+                          onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                          disabled={actuallyDisabled}
                         >
                           <item.icon className={cn(
                             "h-5 w-5 flex-shrink-0",
@@ -735,6 +761,8 @@ export function SidebarNavigation({
             const isFlowActive = isDecisionMemoActive || isSimulationActive;
             const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
               (isFlowActive && !allowedRoutes.includes(item.route));
+            const mobileVisuallyDisabled = isAuditPage || isItemDisabled;
+            const mobileActuallyDisabled = isItemDisabled && !isAuditPage;
             return (
               <Button
                 key={item.route}
@@ -742,11 +770,11 @@ export function SidebarNavigation({
                 size="sm"
                 className={cn(
                   "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative group",
-                  isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                  mobileVisuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
                   theme === 'dark' && "hover:text-white"
                 )}
-                onClick={() => !isItemDisabled && handleNavigate(item.route)}
-                disabled={isItemDisabled}
+                onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                disabled={mobileActuallyDisabled}
               >
                 {item.isNew && (
                   <span className="absolute -top-1 -right-1 text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold z-10">
@@ -799,14 +827,16 @@ export function SidebarNavigation({
                 const isFlowActive = isDecisionMemoActive || isSimulationActive;
                 const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
                   (isFlowActive && !allowedRoutes.includes(item.route));
+                const dropdownVisuallyDisabled = isAuditPage || isItemDisabled;
+                const dropdownActuallyDisabled = isItemDisabled && !isAuditPage;
                 return (
                   <DropdownMenuItem
                     key={item.route}
-                    onClick={() => !isItemDisabled && handleNavigate(item.route)}
-                    disabled={isItemDisabled}
+                    onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                    disabled={dropdownActuallyDisabled}
                     className={cn(
                       "flex items-center space-x-3 py-3 group relative",
-                      isItemDisabled && "opacity-50 cursor-not-allowed hover:bg-background"
+                      dropdownVisuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background"
                     )}
                   >
                     <item.icon className={cn(
@@ -831,6 +861,52 @@ export function SidebarNavigation({
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Request Access Popup — shown on decision memo audit pages */}
+      <Dialog open={showRequestAccess} onOpenChange={setShowRequestAccess}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+              Request Access
+            </DialogTitle>
+            <DialogDescription>
+              Full platform access is available to verified members only. Request clearance to unlock all features.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              You are viewing a shared Decision Memo. To access the full HNWI Chronicles platform — including the Dashboard, Crown Vault, and Simulation Engine — you need verified clearance.
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowRequestAccess(false)}
+                className="flex-1"
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  window.open("https://www.hnwichronicles.com/clearance", "_blank")
+                  setShowRequestAccess(false)
+                }}
+                className={`flex-1 h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+                  theme === "dark"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-black text-white hover:bg-black/90"
+                }`}
+              >
+                Request Access
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

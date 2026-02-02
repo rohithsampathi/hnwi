@@ -28,8 +28,9 @@ import { CrownLoader } from '@/components/ui/crown-loader';
 import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
 import { ArtifactDisplay } from '@/components/decision-memo/pattern-audit/ArtifactDisplay';
 import { PatternAuditWaitingInteractive } from '@/components/decision-memo/PatternAuditWaitingInteractive';
-import { usePatternAudit } from '@/lib/hooks/usePatternAudit';
+import { usePatternAudit, ReportAuthRequiredError } from '@/lib/hooks/usePatternAudit';
 import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
+import { ReportAuthPopup } from '@/components/report-auth-popup';
 import {
   AuditSession,
   PreviewArtifact,
@@ -85,14 +86,14 @@ type AuditTier = 'single' | 'annual';
 const TIER_CONFIG = {
   single: {
     name: 'Single Audit',
-    price: 2500,
-    priceDisplay: '$2,500',
+    price: 5000,
+    priceDisplay: '$5,000',
     description: 'One-time decision posture audit',
     features: [
       'Full IC-ready artifact',
       'PDF export',
       'Pattern matching against 1,875 developments',
-      '24-hour SLA'
+      '48-hour SLA'
     ]
   },
   annual: {
@@ -139,6 +140,24 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const [isWaitingForPreview, setIsWaitingForPreview] = useState(false);
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
 
+  // Report-scoped authentication
+  const [showReportAuth, setShowReportAuth] = useState(false);
+  const [reportToken, setReportToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    // Check localStorage first (remembered device), then sessionStorage
+    const remembered = localStorage.getItem(`report_token_${intakeId}`);
+    if (remembered) {
+      const expiresAt = localStorage.getItem(`report_token_exp_${intakeId}`);
+      if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
+        localStorage.removeItem(`report_token_${intakeId}`);
+        localStorage.removeItem(`report_token_exp_${intakeId}`);
+        return null;
+      }
+      return remembered;
+    }
+    return sessionStorage.getItem(`report_token_${intakeId}`);
+  });
+
   const {
     getSession,
     getPreviewArtifact,
@@ -158,92 +177,105 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   // Citation panel for expanding citations when clicked
   const { openPanel: openCitationPanel } = useCitationPanel();
 
-  // Fetch session and artifact data
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Fetch session and artifact data (with report auth token)
+  const fetchData = useCallback(async (token?: string | null) => {
+    const authToken = token || reportToken;
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        // Get session status (now returns full_artifact when unlocked)
-        const sessionData = await getSession(intakeId) as any;
+      // Get session status (now returns full_artifact when unlocked)
+      const sessionData = await getSession(intakeId, authToken) as any;
 
-        // Check if session includes full artifact (unlocked state)
-        if (sessionData.fullArtifact) {
-          setSession({ ...sessionData, status: 'PAID' });
-          setFullArtifact(sessionData.fullArtifact);
+      // Check if session includes full artifact (unlocked state)
+      if (sessionData.fullArtifact) {
+        setSession({ ...sessionData, status: 'PAID' });
+        setFullArtifact(sessionData.fullArtifact);
 
-          // Also store preview_data if session includes it (for peer_cohort_stats, capital_flow_data)
-          // CRITICAL: Include mitigationTimeline and risk_assessment at top level for Page2AuditVerdict
-          if (sessionData.preview_data) {
-            setBackendData({
-              preview_data: sessionData.preview_data,
-              memo_data: sessionData.memo_data,
-              // MCP fields from preview_data OR computed from risk counts
-              mitigationTimeline: sessionData.mitigationTimeline || sessionData.preview_data?.risk_assessment?.mitigation_timeline,
-              risk_assessment: sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
-              all_mistakes: sessionData.all_mistakes || sessionData.preview_data?.all_mistakes
-            });
-          }
-          setIsWaitingForPreview(false);
-          return;
+        // Also store preview_data if session includes it (for peer_cohort_stats, capital_flow_data)
+        // CRITICAL: Include mitigationTimeline and risk_assessment at top level for Page2AuditVerdict
+        if (sessionData.preview_data) {
+          setBackendData({
+            preview_data: sessionData.preview_data,
+            memo_data: sessionData.memo_data,
+            // MCP fields from preview_data OR computed from risk counts
+            mitigationTimeline: sessionData.mitigationTimeline || sessionData.preview_data?.risk_assessment?.mitigation_timeline,
+            risk_assessment: sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
+            all_mistakes: sessionData.all_mistakes || sessionData.preview_data?.all_mistakes
+          });
         }
-
-        // Check if paid/unlocked
-        const isPaid = sessionData.status === 'PAID' || sessionData.status === 'FULL_READY' || sessionData.isUnlocked;
-
-        if (isPaid) {
-          setSession({ ...sessionData, status: 'PAID' });
-
-          // Fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
-          try {
-            const response = await fetch(`/api/decision-memo/${intakeId}`);
-            if (response.ok) {
-              const data = await response.json();
-              setBackendData(data);  // Store raw response with preview_data + mitigationTimeline
-              const full = await getFullArtifact(intakeId);
-              setFullArtifact(full);
-            } else {
-              throw new Error('Artifact fetch failed');
-            }
-          } catch (artifactErr) {
-            console.error('Failed to fetch full artifact:', artifactErr);
-            setError('Payment confirmed but artifact not available. Please contact support.');
-          }
-          setIsWaitingForPreview(false);
-        } else if (sessionData.status === 'PREVIEW_READY') {
-          // Preview is ready - fetch it
-          setSession(sessionData);
-          try {
-            const preview = await getPreviewArtifact(intakeId);
-            setPreviewArtifact(preview);
-            setIsWaitingForPreview(false);
-          } catch (previewErr) {
-            // Preview fetch failed despite status being PREVIEW_READY
-            console.error('Preview fetch failed:', previewErr);
-            setError('Failed to load preview. Please refresh the page.');
-            setIsWaitingForPreview(false);
-          }
-        } else if (sessionData.status === 'PAID' || sessionData.status === 'FULL_READY') {
-          setSession(sessionData);
-          const full = await getFullArtifact(intakeId);
-          setFullArtifact(full);
-          setIsWaitingForPreview(false);
-        } else {
-          // Status is PROCESSING, SUBMITTED, or IN_REVIEW - wait for SSE
-          setSession(sessionData);
-          setIsWaitingForPreview(true);
-        }
-      } catch (err) {
-        console.error('Error fetching audit data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load audit');
-      } finally {
-        setIsLoading(false);
+        setIsWaitingForPreview(false);
+        return;
       }
-    }
 
+      // Check if paid/unlocked
+      const isPaid = sessionData.status === 'PAID' || sessionData.status === 'FULL_READY' || sessionData.isUnlocked;
+
+      if (isPaid) {
+        setSession({ ...sessionData, status: 'PAID' });
+
+        // Fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
+        try {
+          const headers: Record<string, string> = {};
+          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+          const response = await fetch(`/api/decision-memo/${intakeId}`, { headers });
+          if (response.status === 401) throw new ReportAuthRequiredError();
+          if (response.ok) {
+            const data = await response.json();
+            setBackendData(data);  // Store raw response with preview_data + mitigationTimeline
+            const full = await getFullArtifact(intakeId, authToken);
+            setFullArtifact(full);
+          } else {
+            throw new Error('Artifact fetch failed');
+          }
+        } catch (artifactErr) {
+          if (artifactErr instanceof ReportAuthRequiredError) throw artifactErr;
+          console.error('Failed to fetch full artifact:', artifactErr);
+          setError('Payment confirmed but artifact not available. Please contact support.');
+        }
+        setIsWaitingForPreview(false);
+      } else if (sessionData.status === 'PREVIEW_READY') {
+        // Preview is ready - fetch it
+        setSession(sessionData);
+        try {
+          const preview = await getPreviewArtifact(intakeId, authToken);
+          setPreviewArtifact(preview);
+          setIsWaitingForPreview(false);
+        } catch (previewErr) {
+          if (previewErr instanceof ReportAuthRequiredError) throw previewErr;
+          // Preview fetch failed despite status being PREVIEW_READY
+          console.error('Preview fetch failed:', previewErr);
+          setError('Failed to load preview. Please refresh the page.');
+          setIsWaitingForPreview(false);
+        }
+      } else if (sessionData.status === 'PAID' || sessionData.status === 'FULL_READY') {
+        setSession(sessionData);
+        const full = await getFullArtifact(intakeId, authToken);
+        setFullArtifact(full);
+        setIsWaitingForPreview(false);
+      } else {
+        // Status is PROCESSING, SUBMITTED, or IN_REVIEW - wait for SSE
+        setSession(sessionData);
+        setIsWaitingForPreview(true);
+      }
+    } catch (err) {
+      if (err instanceof ReportAuthRequiredError) {
+        // Report requires authentication — show the login popup
+        setShowReportAuth(true);
+        setIsLoading(false);
+        return;
+      }
+      console.error('Error fetching audit data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load audit');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [intakeId, reportToken, getSession, getPreviewArtifact, getFullArtifact]);
+
+  // Initial fetch
+  useEffect(() => {
     fetchData();
-  }, [intakeId, getSession, getPreviewArtifact, getFullArtifact]);
+  }, [fetchData]);
 
   // When SSE signals preview is ready, fetch from backend
   // Always fetch to ensure proper snake_case → camelCase transformation
@@ -252,13 +284,17 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     if (ssePreviewReady && isWaitingForPreview && !isFetchingPreviewRef.current) {
       isFetchingPreviewRef.current = true; // Prevent duplicate fetches
 
-      getPreviewArtifact(intakeId)
+      getPreviewArtifact(intakeId, reportToken)
         .then((preview) => {
           setPreviewArtifact(preview);
           setSession(prev => prev ? { ...prev, status: 'PREVIEW_READY' } : null);
           setIsWaitingForPreview(false); // Only set after successful fetch
         })
         .catch((err) => {
+          if (err instanceof ReportAuthRequiredError) {
+            setShowReportAuth(true);
+            return;
+          }
           console.error('Failed to fetch preview after SSE signal:', err);
           setError('Failed to load preview');
           setIsWaitingForPreview(false); // Also set on error to show error state
@@ -283,7 +319,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     };
   }, []);
 
-  // Countdown timer for 24-hour SLA
+  // Countdown timer for 48-hour SLA
   // Uses backend-provided unlockAt and isUnlocked - no fallbacks
   useEffect(() => {
     // If backend says already unlocked, skip countdown
@@ -543,6 +579,49 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       });
   }, [intakeId, getPreviewArtifact]);
 
+  // Report authentication popup (encrypted document access)
+  const handleReportAuthSuccess = useCallback((token: string, rememberDevice: boolean) => {
+    setReportToken(token);
+    if (typeof window !== 'undefined') {
+      if (rememberDevice) {
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+        localStorage.setItem(`report_token_${intakeId}`, token);
+        localStorage.setItem(`report_token_exp_${intakeId}`, String(Date.now() + sevenDaysMs));
+        sessionStorage.removeItem(`report_token_${intakeId}`);
+      } else {
+        sessionStorage.setItem(`report_token_${intakeId}`, token);
+        localStorage.removeItem(`report_token_${intakeId}`);
+        localStorage.removeItem(`report_token_exp_${intakeId}`);
+      }
+    }
+    setShowReportAuth(false);
+    // Retry fetch with the new token
+    fetchData(token);
+  }, [intakeId, fetchData]);
+
+  // Show auth popup if needed (render before all other states)
+  if (showReportAuth && !isLoading) {
+    return (
+      <>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="max-w-md w-full bg-card border border-border rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2 text-foreground">Encrypted Document</h1>
+            <p className="text-muted-foreground mb-6">This document is protected. Login to continue.</p>
+          </div>
+        </div>
+        <ReportAuthPopup
+          isOpen={showReportAuth}
+          onClose={() => setShowReportAuth(false)}
+          onSuccess={handleReportAuthSuccess}
+          intakeId={intakeId}
+        />
+      </>
+    );
+  }
+
   // Loading state
   if (isLoading) {
     return (
@@ -654,7 +733,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 </div>
                 <div className="text-left">
                   <p className="text-muted-foreground">Expected Completion</p>
-                  <p className="text-foreground font-medium">Within 24 hours</p>
+                  <p className="text-foreground font-medium">Within 48 hours</p>
                 </div>
                 <div className="text-left">
                   <p className="text-muted-foreground">Price</p>
@@ -1189,7 +1268,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure. The same engine analyzes any cross-border acquisition across 50+ jurisdictions.')
           .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
         ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
-        ctaButtonText: cta?.button_text || 'INITIATE YOUR PATTERN AUDIT — $5,000',
+        ctaButtonText: cta?.button_text || 'INITIATE RED TEAM AUDIT ($5,000)',
         ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
         ctaContextNote: cta?.context_note || 'For Indian Family Offices: This sample analyzes a US → Singapore corridor. The same Pattern Recognition Engine applies to India → Dubai, India → Singapore, India → Portugal, and 50+ other corridors.',
       };
@@ -1852,15 +1931,18 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     DOES YOUR NEXT DEAL SURVIVE THE RED TEAM?
                   </h3>
 
-                  <p className="text-sm text-muted-foreground mb-8 max-w-lg mx-auto leading-relaxed">
-                    The same engine that produced this veto analyzes any cross-border acquisition across 50+ jurisdictions. Result: Certainty. Turnaround: 48 Hours.
+                  <p className="text-sm text-muted-foreground mb-4 max-w-lg mx-auto leading-relaxed">
+                    The same system that produced this analysis stress-tests high-value Alternative Asset acquisitions (Art, Real Estate, Collectibles) across 50+ jurisdictions.
                   </p>
 
-                  {/* Scarcity line — next month cycle */}
+                  <p className="text-sm text-foreground font-medium mb-2">Result: Certainty.</p>
+                  <p className="text-sm text-foreground font-medium mb-8">Turnaround: 48 Hours.</p>
+
+                  {/* Allocation line — current month */}
                   <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-6">
                     {(() => {
                       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                      return `5 Slots Remaining — ${monthNames[(new Date().getMonth() + 1) % 12]} Cycle`;
+                      return `${monthNames[new Date().getMonth()]} Allocation: Accepting Mandates`;
                     })()}
                   </p>
 
@@ -1868,12 +1950,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   <div className="flex justify-center">
                     <a
                       href="/decision-memo"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl text-sm tracking-wide hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                     >
-                      {(() => {
-                        const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-                        return `SECURE ${monthNames[(new Date().getMonth() + 1) % 12]} AUDIT SLOT ($5,000)`;
-                      })()}
+                      INITIATE RED TEAM AUDIT ($5,000)
                       <ArrowRight className="w-4 h-4" />
                     </a>
                   </div>

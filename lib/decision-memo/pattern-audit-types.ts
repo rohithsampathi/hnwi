@@ -13,13 +13,19 @@ export interface DecisionThesis {
   expectedOutcome: string;        // "8-12% annual returns with tax-free income"
 
   // Optional structured fields (auto-inferred if not provided)
-  moveType?: 'real_estate' | 'relocation' | 'private_equity' | 'entity_restructure' | 'crypto' | 'exit_liquidity' | 'other';
+  moveType?: 'real_estate' | 'art' | 'jewellery' | 'metals' | 'collectibles' | 'automotive';
   targetAmount?: string;          // "$1M-5M"
   targetLocations?: string[];     // ["Dubai", "UAE"]
   timeline?: string;              // "6 months"
   // Buyer citizenship (passport nationality) — determines FTA stamp duty benefits
   // USSFTA: US citizens get 0% ABSD in Singapore. Green Card ≠ US Citizen.
   buyerCitizenship?: string;      // "United States", "India", "Switzerland"
+
+  // Jurisdiction detail fields (backend uses for tax corridor analysis)
+  sourceJurisdiction?: string;       // Where capital currently sits
+  sourceState?: string;              // US state if applicable
+  destinationJurisdiction?: string;  // Where capital is going
+  destinationState?: string;         // US state if applicable
 }
 
 export interface Constraints {
@@ -35,6 +41,10 @@ export interface Constraints {
   // Hard prohibitions
   prohibitions: string[];         // ["No off-plan", "No leverage >60%"]
   dealBreakers: string[];         // ["Developer with incomplete projects"]
+
+  // Property-specific (backend uses for ABSD tier calculations)
+  destinationPropertyCount?: number;  // How many properties at destination
+  purchaseVehicle?: string;           // "personal" | "entity" | "optimize"
 }
 
 export interface Advisor {
@@ -55,6 +65,14 @@ export interface BankingRail {
   status: 'active' | 'pending' | 'planned';
 }
 
+export interface Heir {
+  name: string;
+  relationship: string;   // "daughter", "son", "grandchild"
+  age: number;
+  allocationPct: number;  // 0-1 (e.g. 0.4 = 40%)
+  notes?: string;
+}
+
 export interface ControlAndRails {
   // Decision authority
   finalDecisionMaker: 'principal' | 'spouse_partner' | 'family_committee' | 'board';
@@ -71,6 +89,54 @@ export interface ControlAndRails {
 
   hasFormalIPS: boolean;
   ipsNotes?: string;
+
+  // Succession planning
+  heirs?: Heir[];
+}
+
+export interface AssetDetails {
+  // Common to all asset types
+  estimatedValue: number;           // 6160000
+
+  // Real Estate
+  propertyType?: string;            // "residential_apartment", "villa", "commercial"
+  locationPreference?: string;      // "Dubai Marina", "Downtown"
+  sizeSqft?: number;                // 1500
+  bedrooms?: number;                // 2
+  rentalYieldPct?: number;          // 6.5
+  appreciationPct?: number;         // 4.0
+
+  // Art
+  artCategory?: string;             // "painting", "sculpture", "photography"
+  artist?: string;                  // "Anish Kapoor"
+  medium?: string;                  // "oil_on_canvas", "bronze"
+  period?: string;                  // "contemporary", "modern"
+
+  // Jewellery
+  jewelleryType?: string;           // "ring", "necklace", "watch"
+  primaryMaterial?: string;         // "gold", "platinum", "diamond"
+  certification?: string;           // "GIA", "HRD"
+
+  // Precious Metals
+  metalType?: string;               // "gold", "silver", "platinum"
+  metalForm?: string;               // "bars", "coins", "etf_backed"
+  weight?: string;                  // "100 oz", "5 kg"
+  storageMethod?: string;           // "self", "vault", "allocated"
+
+  // Collectibles
+  collectibleCategory?: string;     // "wine", "watches", "stamps"
+  description?: string;             // Free text
+
+  // Automotive
+  vehicleType?: string;             // "classic_car", "supercar", "vintage_motorcycle"
+  makeModel?: string;               // "1963 Ferrari 250 GTO"
+  year?: number;                    // 1963
+  mileage?: string;                 // "12,000 miles"
+
+  // Shared across types
+  condition?: string;               // "mint", "excellent", "good", "fair"
+  provenance?: string;              // "known", "partial", "unknown"
+  brand?: string;                   // "Cartier", "Ferrari" — jewellery, automotive
 }
 
 export interface SFOPatternAuditIntake {
@@ -78,12 +144,23 @@ export interface SFOPatternAuditIntake {
   principalId?: string;
   submittedAt?: string;
 
+  // Identity & consent (required by backend)
+  email: string;
+  nationality?: string;
+  ndaConsent: boolean;
+  privacyConsent: boolean;
+
   thesis: DecisionThesis;
   constraints: Constraints;
   controlAndRails: ControlAndRails;
+  assetDetails?: AssetDetails;
 
   urgency: 'standard' | 'urgent' | 'priority';
+  format?: 'full_audit' | 'executive_summary';
 }
+
+// Flow phase for the intake page
+export type IntakeFlowPhase = 'form' | 'summary' | 'processing';
 
 // =============================================================================
 // STATUS FLOW (SFO Motion: 48-hour audit → preview → payment → full artifact)
@@ -371,7 +448,7 @@ export interface ICArtifact {
 // FORM STATE TYPES
 // =============================================================================
 
-export type IntakeSection = 'thesis' | 'constraints' | 'controlAndRails';
+export type IntakeSection = 'thesis' | 'constraints' | 'controlAndRails' | 'assetDetails';
 
 export interface PatternAuditFormState {
   intake: Partial<SFOPatternAuditIntake>;
@@ -386,6 +463,12 @@ export interface PatternAuditFormState {
 // =============================================================================
 
 export interface PatternAuditAPIPayload {
+  // Top-level identity & consent
+  email: string;
+  nationality?: string;
+  nda_consent: boolean;
+  privacy_consent: boolean;
+
   thesis: {
     move_description: string;
     expected_outcome: string;
@@ -394,6 +477,10 @@ export interface PatternAuditAPIPayload {
     target_locations?: string[];
     timeline?: string;
     buyer_citizenship?: string;
+    source_jurisdiction?: string;
+    source_state?: string;
+    destination_jurisdiction?: string;
+    destination_state?: string;
   };
   constraints: {
     liquidity_horizon: string;
@@ -403,6 +490,8 @@ export interface PatternAuditAPIPayload {
     prohibited_jurisdictions: string[];
     prohibitions: string[];
     deal_breakers: string[];
+    destination_property_count?: number;
+    purchase_vehicle?: string;
   };
   control_and_rails: {
     final_decision_maker: string;
@@ -426,8 +515,52 @@ export interface PatternAuditAPIPayload {
     }>;
     has_formal_ips: boolean;
     ips_notes?: string;
+    heirs?: Array<{
+      name: string;
+      relationship: string;
+      age: number;
+      allocation_pct: number;
+      notes?: string;
+    }>;
+  };
+  asset_details?: {
+    estimated_value: number;
+    // Real Estate
+    property_type?: string;
+    location_preference?: string;
+    size_sqft?: number;
+    bedrooms?: number;
+    rental_yield_pct?: number;
+    appreciation_pct?: number;
+    // Art
+    art_category?: string;
+    artist?: string;
+    medium?: string;
+    period?: string;
+    // Jewellery
+    jewellery_type?: string;
+    primary_material?: string;
+    certification?: string;
+    // Metals
+    metal_type?: string;
+    metal_form?: string;
+    weight?: string;
+    storage_method?: string;
+    // Collectibles
+    collectible_category?: string;
+    description?: string;
+    // Automotive
+    vehicle_type?: string;
+    make_model?: string;
+    year?: number;
+    mileage?: string;
+    // Shared
+    condition?: string;
+    provenance?: string;
+    brand?: string;
   };
   urgency: string;
+  format?: string;
 }
 
 // =============================================================================
@@ -435,13 +568,12 @@ export interface PatternAuditAPIPayload {
 // =============================================================================
 
 export const MOVE_TYPES = [
-  { id: 'real_estate', label: 'Real Estate Acquisition' },
-  { id: 'relocation', label: 'Residency/Tax Relocation' },
-  { id: 'private_equity', label: 'Private Equity Investment' },
-  { id: 'entity_restructure', label: 'Entity Restructuring' },
-  { id: 'crypto', label: 'Crypto/Digital Assets' },
-  { id: 'exit_liquidity', label: 'Exit/Liquidity Event' },
-  { id: 'other', label: 'Other' }
+  { id: 'real_estate', label: 'Real Estate' },
+  { id: 'art', label: 'Art' },
+  { id: 'jewellery', label: 'Jewellery' },
+  { id: 'metals', label: 'Precious Metals' },
+  { id: 'collectibles', label: 'Collectibles' },
+  { id: 'automotive', label: 'Automotive' },
 ] as const;
 
 export const AMOUNT_RANGES = [
@@ -498,6 +630,120 @@ export const FTA_ELIGIBLE_COUNTRIES = [
   { id: 'Liechtenstein', label: 'Liechtenstein', fta: 'EFTA', note: '0% ABSD (1st property)' },
   { id: 'Norway', label: 'Norway', fta: 'EFTA', note: '0% ABSD (1st property)' },
   { id: 'Iceland', label: 'Iceland', fta: 'EFTA', note: '0% ABSD (1st property)' },
+] as const;
+
+export const PROPERTY_TYPES = [
+  { id: 'residential_apartment', label: 'Residential Apartment' },
+  { id: 'villa', label: 'Villa / House' },
+  { id: 'commercial', label: 'Commercial Property' },
+  { id: 'land', label: 'Land / Plot' },
+  { id: 'mixed_use', label: 'Mixed Use' },
+  { id: 'hospitality', label: 'Hospitality / Hotel' },
+  { id: 'other', label: 'Other' }
+] as const;
+
+export const ART_CATEGORIES = [
+  { id: 'painting', label: 'Painting' },
+  { id: 'sculpture', label: 'Sculpture' },
+  { id: 'photography', label: 'Photography' },
+  { id: 'mixed_media', label: 'Mixed Media' },
+  { id: 'print', label: 'Print / Edition' },
+  { id: 'installation', label: 'Installation' },
+] as const;
+
+export const ART_PERIODS = [
+  { id: 'contemporary', label: 'Contemporary' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'post_war', label: 'Post-War' },
+  { id: 'impressionist', label: 'Impressionist' },
+  { id: 'old_masters', label: 'Old Masters' },
+] as const;
+
+export const ART_MEDIUMS = [
+  { id: 'oil_on_canvas', label: 'Oil on Canvas' },
+  { id: 'acrylic', label: 'Acrylic' },
+  { id: 'watercolor', label: 'Watercolor' },
+  { id: 'bronze', label: 'Bronze' },
+  { id: 'marble', label: 'Marble' },
+  { id: 'mixed', label: 'Mixed Media' },
+  { id: 'digital', label: 'Digital' },
+] as const;
+
+export const JEWELLERY_TYPES = [
+  { id: 'ring', label: 'Ring' },
+  { id: 'necklace', label: 'Necklace' },
+  { id: 'bracelet', label: 'Bracelet' },
+  { id: 'watch', label: 'Watch' },
+  { id: 'brooch', label: 'Brooch' },
+  { id: 'earrings', label: 'Earrings' },
+  { id: 'set', label: 'Complete Set' },
+] as const;
+
+export const JEWELLERY_MATERIALS = [
+  { id: 'gold', label: 'Gold' },
+  { id: 'platinum', label: 'Platinum' },
+  { id: 'diamond', label: 'Diamond' },
+  { id: 'emerald', label: 'Emerald' },
+  { id: 'ruby', label: 'Ruby' },
+  { id: 'sapphire', label: 'Sapphire' },
+] as const;
+
+export const METAL_TYPES = [
+  { id: 'gold', label: 'Gold' },
+  { id: 'silver', label: 'Silver' },
+  { id: 'platinum', label: 'Platinum' },
+  { id: 'palladium', label: 'Palladium' },
+] as const;
+
+export const METAL_FORMS = [
+  { id: 'bars', label: 'Bars / Ingots' },
+  { id: 'coins', label: 'Coins' },
+  { id: 'rounds', label: 'Rounds' },
+  { id: 'etf_backed', label: 'ETF-Backed' },
+] as const;
+
+export const STORAGE_METHODS = [
+  { id: 'self', label: 'Self-Stored' },
+  { id: 'vault', label: 'Private Vault' },
+  { id: 'allocated', label: 'Allocated (Third Party)' },
+  { id: 'unallocated', label: 'Unallocated (Pool)' },
+] as const;
+
+export const COLLECTIBLE_CATEGORIES = [
+  { id: 'wine', label: 'Wine / Spirits' },
+  { id: 'watches', label: 'Watches' },
+  { id: 'stamps', label: 'Stamps' },
+  { id: 'coins', label: 'Numismatic Coins' },
+  { id: 'memorabilia', label: 'Memorabilia' },
+  { id: 'rare_books', label: 'Rare Books / Manuscripts' },
+  { id: 'other', label: 'Other' },
+] as const;
+
+export const VEHICLE_TYPES = [
+  { id: 'classic_car', label: 'Classic Car' },
+  { id: 'supercar', label: 'Supercar' },
+  { id: 'hypercar', label: 'Hypercar' },
+  { id: 'vintage_motorcycle', label: 'Vintage Motorcycle' },
+  { id: 'limited_edition', label: 'Limited Edition' },
+] as const;
+
+export const ASSET_CONDITIONS = [
+  { id: 'mint', label: 'Mint / Concours' },
+  { id: 'excellent', label: 'Excellent' },
+  { id: 'good', label: 'Good' },
+  { id: 'fair', label: 'Fair' },
+] as const;
+
+export const PROVENANCE_OPTIONS = [
+  { id: 'known', label: 'Fully Documented' },
+  { id: 'partial', label: 'Partially Known' },
+  { id: 'unknown', label: 'Unknown' },
+] as const;
+
+export const PURCHASE_VEHICLES = [
+  { id: 'personal', label: 'Personal Name' },
+  { id: 'entity', label: 'Through Entity (LLC, Trust, etc.)' },
+  { id: 'optimize', label: 'Optimize for me (let audit recommend)' }
 ] as const;
 
 // Full citizenship options for intake form
