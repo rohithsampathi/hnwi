@@ -13,10 +13,14 @@ import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
 // Types
 interface StampDutyData {
   found: boolean;
+  jurisdiction?: string;
+  jurisdiction_code?: string;
+  tax_name?: string;  // e.g., "ABSD", "SDLT", "RPTT"
   foreign_buyer_surcharge?: {
     rate_pct: number;
     effective_date?: string;
     description?: string;
+    tax_name?: string;  // Jurisdiction-specific name
   };
   commercial_rates?: {
     base_rate_pct?: number;
@@ -28,9 +32,20 @@ interface StampDutyData {
     threshold?: string;
     rate_pct: number;
     description?: string;
+    band?: string;
   }>;
   statute_citation?: string;
   official_source_url?: string;
+  // Fix #8: FTA contextualization fields
+  fta_applied?: boolean;
+  fta_name?: string;
+  absd_schedule_rate_pct?: number;  // Generic rate (e.g., 60%)
+  absd_applied_rate_pct?: number;   // After FTA (e.g., 0%)
+  absd_savings_usd?: number;
+  absd_display_note?: string;
+  // Fix #19: Jurisdiction-specific terminology
+  foreign_buyer_tax_name?: string;  // "ABSD" (SG), "Non-Resident Surcharge" (UK), etc.
+  has_foreign_buyer_tax?: boolean;  // false for NYC, Dubai
 }
 
 interface LoopholeStrategy {
@@ -43,6 +58,10 @@ interface LoopholeStrategy {
   timeline?: string;
   official_source_url?: string;
   legal_basis?: string;
+  // Fix #8: FTA contextualization fields
+  status?: 'ALREADY_MITIGATED' | 'NOT_APPLICABLE' | 'APPLICABLE';
+  applicability_note?: string;
+  future_value?: string;
 }
 
 interface DynastyTrustJurisdiction {
@@ -134,33 +153,90 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
     [data]
   );
 
-  // Calculate summary metrics (only from actual jurisdiction data)
+  // Calculate summary metrics - prioritize DESTINATION jurisdiction
   const summaryMetrics = useMemo(() => {
     let totalStrategies = 0;
-    let maxSurcharge = 0;
+    let foreignBuyerRate = 0;
+    let foreignBuyerTaxName = 'Foreign Buyer Tax';
+    let hasForeignBuyerTax = false;
     let hasLoophole = false;
     let trustOptions = 0;
+    let ftaApplied = false;
+    let scheduleRate = 0;
 
-    jurisdictionKeys.forEach(key => {
-      const audit = data[key];
-      const ratePct = audit.stamp_duty?.foreign_buyer_surcharge?.rate_pct;
-      if (typeof ratePct === 'number' && ratePct > 0) {
-        maxSurcharge = Math.max(maxSurcharge, ratePct);
+    // First, try to get destination jurisdiction's data
+    const destKey = jurisdictionKeys.find(k =>
+      destinationJurisdiction &&
+      (k.toLowerCase().includes(destinationJurisdiction.toLowerCase()) ||
+       destinationJurisdiction.toLowerCase().includes(k.toLowerCase()))
+    );
+
+    // If we have destination jurisdiction, use its rates
+    if (destKey) {
+      const destAudit = data[destKey];
+      const stampDuty = destAudit.stamp_duty;
+
+      // Check if FTA applied (Fix #8)
+      if (stampDuty?.fta_applied) {
+        ftaApplied = true;
+        scheduleRate = stampDuty.absd_schedule_rate_pct ?? 0;
+        foreignBuyerRate = stampDuty.absd_applied_rate_pct ?? 0;
+      } else if (stampDuty?.foreign_buyer_surcharge) {
+        foreignBuyerRate = stampDuty.foreign_buyer_surcharge.rate_pct ?? 0;
+        scheduleRate = foreignBuyerRate;
       }
-      const commercialRate = audit.stamp_duty?.commercial_rates?.foreign_surcharge_pct;
-      if (typeof commercialRate === 'number' && commercialRate === 0) {
+
+      // Determine tax name based on jurisdiction (Fix #19)
+      foreignBuyerTaxName = stampDuty?.foreign_buyer_tax_name ||
+        getForeignBuyerTaxName(destKey);
+      hasForeignBuyerTax = stampDuty?.has_foreign_buyer_tax ??
+        (foreignBuyerRate > 0 || stampDuty?.foreign_buyer_surcharge !== undefined);
+
+      if (stampDuty?.commercial_rates?.foreign_surcharge_pct === 0) {
         hasLoophole = true;
       }
+    }
+
+    // Aggregate strategies and trust options across all jurisdictions
+    jurisdictionKeys.forEach(key => {
+      const audit = data[key];
       if (Array.isArray(audit.loophole_strategies)) {
         totalStrategies += audit.loophole_strategies.length;
       }
       if (Array.isArray(audit.dynasty_trusts?.jurisdictions)) {
         trustOptions += audit.dynasty_trusts.jurisdictions.length;
       }
+      // Check for commercial loophole in any jurisdiction
+      if (audit.stamp_duty?.commercial_rates?.foreign_surcharge_pct === 0) {
+        hasLoophole = true;
+      }
     });
 
-    return { totalStrategies, maxSurcharge, hasLoophole, trustOptions };
-  }, [data, jurisdictionKeys]);
+    return {
+      totalStrategies,
+      foreignBuyerRate,
+      foreignBuyerTaxName,
+      hasForeignBuyerTax,
+      hasLoophole,
+      trustOptions,
+      ftaApplied,
+      scheduleRate
+    };
+  }, [data, jurisdictionKeys, destinationJurisdiction]);
+
+  // Helper function to get jurisdiction-specific foreign buyer tax name
+  function getForeignBuyerTaxName(jurisdiction: string): string {
+    const jurLower = jurisdiction.toLowerCase();
+    if (jurLower.includes('singapore')) return 'ABSD';
+    if (jurLower.includes('hong kong')) return 'BSD/SSD';
+    if (jurLower.includes('uk') || jurLower.includes('united kingdom') || jurLower.includes('britain')) return 'Non-Resident Surcharge';
+    if (jurLower.includes('australia')) return 'Foreign Purchaser Duty';
+    if (jurLower.includes('canada') || jurLower.includes('vancouver') || jurLower.includes('toronto')) return 'NRST/Foreign Buyer Tax';
+    if (jurLower.includes('new york') || jurLower.includes('nyc')) return 'N/A'; // NYC has no foreign buyer tax
+    if (jurLower.includes('dubai') || jurLower.includes('uae')) return 'N/A'; // UAE has no foreign buyer tax
+    if (jurLower.includes('switzerland')) return 'Lex Koller Restrictions';
+    return 'Foreign Buyer Surcharge';
+  }
 
   if (!data || jurisdictionKeys.length === 0) {
     return null;
@@ -220,23 +296,57 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-              {/* Foreign Buyer Tax */}
-              <div className="p-3 sm:p-4 bg-muted/30 rounded-xl border border-border/50">
-                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Foreign Buyer Tax</p>
-                <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${summaryMetrics.maxSurcharge >= 50 ? 'text-red-500' : summaryMetrics.maxSurcharge >= 20 ? 'text-primary' : 'text-foreground'}`}>
-                  {summaryMetrics.maxSurcharge}%
+              {/* Foreign Buyer Tax - Fix #19: Jurisdiction-aware display */}
+              <div className={`p-3 sm:p-4 rounded-xl border ${
+                summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0
+                  ? 'bg-green-500/5 border-green-500/30'
+                  : 'bg-muted/30 border-border/50'
+              }`}>
+                <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                  {summaryMetrics.hasForeignBuyerTax ? 'Foreign Buyer Tax' : 'Transfer Tax'}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">ABSD Rate</p>
+                <div>
+                  <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${
+                    summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0 ? 'text-green-600 dark:text-green-400' :
+                    summaryMetrics.foreignBuyerRate >= 50 ? 'text-red-500' :
+                    summaryMetrics.foreignBuyerRate >= 20 ? 'text-primary' : 'text-foreground'
+                  }`}>
+                    {summaryMetrics.hasForeignBuyerTax ? `${summaryMetrics.foreignBuyerRate}%` : 'N/A'}
+                  </p>
+                  {/* Show schedule rate if FTA reduced it */}
+                  {summaryMetrics.ftaApplied && summaryMetrics.scheduleRate !== summaryMetrics.foreignBuyerRate && (
+                    <p className="text-[10px] text-muted-foreground line-through">was {summaryMetrics.scheduleRate}%</p>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0
+                    ? 'FTA Exemption'
+                    : summaryMetrics.foreignBuyerTaxName}
+                </p>
               </div>
 
-              {/* Tax Impact */}
-              {transactionValue > 0 && (
-                <div className="p-3 sm:p-4 bg-primary/5 rounded-xl border border-primary/20">
-                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Tax Impact</p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary">
-                    {formatCurrency(transactionValue * summaryMetrics.maxSurcharge / 100)}
+              {/* Tax Impact - only show if there's a foreign buyer tax */}
+              {transactionValue > 0 && summaryMetrics.hasForeignBuyerTax && (
+                <div className={`p-3 sm:p-4 rounded-xl border ${
+                  summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0
+                    ? 'bg-green-500/5 border-green-500/30'
+                    : 'bg-primary/5 border-primary/20'
+                }`}>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    {summaryMetrics.ftaApplied ? 'FTA Savings' : 'Tax Impact'}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">on {formatCurrency(transactionValue)}</p>
+                  <p className={`text-xl sm:text-2xl lg:text-3xl font-bold ${
+                    summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-primary'
+                  }`}>
+                    {summaryMetrics.ftaApplied && summaryMetrics.foreignBuyerRate === 0
+                      ? formatCurrency(transactionValue * summaryMetrics.scheduleRate / 100)
+                      : formatCurrency(transactionValue * summaryMetrics.foreignBuyerRate / 100)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {summaryMetrics.ftaApplied ? 'avoided' : `on ${formatCurrency(transactionValue)}`}
+                  </p>
                 </div>
               )}
 
@@ -317,43 +427,73 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
                 </div>
 
                 <div className="divide-y divide-border">
-                  {/* Foreign Buyer Surcharge Row */}
-                  {auditData.stamp_duty.foreign_buyer_surcharge && (
-                    <div className="grid grid-cols-12 items-center">
+                  {/* Foreign Buyer Surcharge Row - Fix #8 + #19: Show FTA context with jurisdiction-aware label */}
+                  {auditData.stamp_duty.foreign_buyer_surcharge && (() => {
+                    const hasFta = auditData.stamp_duty.fta_applied;
+                    const scheduleRate = auditData.stamp_duty.absd_schedule_rate_pct ?? auditData.stamp_duty.foreign_buyer_surcharge.rate_pct;
+                    const appliedRate = hasFta ? (auditData.stamp_duty.absd_applied_rate_pct ?? 0) : scheduleRate;
+                    const displayRate = hasFta ? appliedRate : scheduleRate;
+                    // Fix #19: Use jurisdiction-specific tax name
+                    const taxName = auditData.stamp_duty.foreign_buyer_tax_name ||
+                      auditData.stamp_duty.foreign_buyer_surcharge.tax_name ||
+                      getForeignBuyerTaxName(jurisdiction);
+                    const taxLabel = taxName === 'N/A' ? 'Foreign Buyer Surcharge' : `Foreign Buyer Surcharge (${taxName})`;
+
+                    return (
+                    <div className={`grid grid-cols-12 items-center ${hasFta ? 'bg-green-500/5' : ''}`}>
                       <div className="col-span-6 sm:col-span-5 px-5 py-4">
-                        <p className="text-sm font-medium text-foreground">Foreign Buyer Surcharge (ABSD)</p>
+                        <p className="text-sm font-medium text-foreground">{taxLabel}</p>
                         {auditData.stamp_duty.foreign_buyer_surcharge.effective_date && (
                           <p className="text-[10px] text-muted-foreground mt-0.5">
                             Since {auditData.stamp_duty.foreign_buyer_surcharge.effective_date}
                           </p>
                         )}
+                        {/* Fix #8: Show FTA benefit note */}
+                        {hasFta && auditData.stamp_duty.absd_display_note && (
+                          <p className="text-[10px] text-green-600 dark:text-green-400 mt-1">
+                            {auditData.stamp_duty.absd_display_note}
+                          </p>
+                        )}
                       </div>
                       <div className="col-span-3 sm:col-span-4 px-5 py-4 text-right">
-                        {typeof auditData.stamp_duty.foreign_buyer_surcharge.rate_pct === 'number' ? (
-                          <span className={`text-lg sm:text-xl font-bold ${
-                            auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 50 ? 'text-red-500' :
-                            auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 20 ? 'text-primary' : 'text-foreground'
-                          }`}>
-                            {auditData.stamp_duty.foreign_buyer_surcharge.rate_pct}%
-                          </span>
+                        {typeof displayRate === 'number' ? (
+                          <div>
+                            {/* Fix #8: Show applied rate prominently */}
+                            <span className={`text-lg sm:text-xl font-bold ${
+                              hasFta && appliedRate === 0 ? 'text-green-600 dark:text-green-400' :
+                              displayRate >= 50 ? 'text-red-500' :
+                              displayRate >= 20 ? 'text-primary' : 'text-foreground'
+                            }`}>
+                              {displayRate}%
+                            </span>
+                            {/* Fix #8: Show schedule rate as reference if FTA applied */}
+                            {hasFta && scheduleRate !== appliedRate && (
+                              <p className="text-[10px] text-muted-foreground line-through">
+                                (was {scheduleRate}%)
+                              </p>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-lg sm:text-xl font-bold text-muted-foreground">N/A</span>
                         )}
                       </div>
                       <div className="col-span-3 px-5 py-4 text-right">
-                        {typeof auditData.stamp_duty.foreign_buyer_surcharge.rate_pct === 'number' && (
+                        {typeof displayRate === 'number' && (
                           <span className={`text-[9px] font-bold px-2 py-1 rounded uppercase ${
-                            auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 50 ? 'bg-red-500/10 text-red-500' :
-                            auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 20 ? 'bg-primary/10 text-primary' :
+                            hasFta && appliedRate === 0 ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                            displayRate >= 50 ? 'bg-red-500/10 text-red-500' :
+                            displayRate >= 20 ? 'bg-primary/10 text-primary' :
                             'bg-muted text-muted-foreground'
                           }`}>
-                            {auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 50 ? 'Prohibitive' :
-                             auditData.stamp_duty.foreign_buyer_surcharge.rate_pct >= 20 ? 'High' : 'Moderate'}
+                            {hasFta && appliedRate === 0 ? `FTA: ${auditData.stamp_duty.fta_name || 'Applied'}` :
+                             displayRate >= 50 ? 'Prohibitive' :
+                             displayRate >= 20 ? 'High' : 'Moderate'}
                           </span>
                         )}
                       </div>
                     </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Commercial Rates Row */}
                   {auditData.stamp_duty.commercial_rates && (
@@ -493,29 +633,76 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
               </div>
 
               <div className="space-y-3">
-                {auditData.loophole_strategies.map((strategy, idx) => (
-                  <div key={idx} className="bg-card border border-border rounded-xl p-4 sm:p-5">
+                {auditData.loophole_strategies.map((strategy, idx) => {
+                  // Fix #8: Determine styling based on strategy status
+                  const isMitigated = strategy.status === 'ALREADY_MITIGATED';
+                  const isNotApplicable = strategy.status === 'NOT_APPLICABLE';
+                  const isDisabled = isMitigated || isNotApplicable;
+
+                  return (
+                  <div key={idx} className={`rounded-xl p-4 sm:p-5 ${
+                    isDisabled
+                      ? 'bg-muted/30 border border-border/50 opacity-75'
+                      : 'bg-card border border-border'
+                  }`}>
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-primary">{idx + 1}</span>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isDisabled ? 'bg-muted' : 'bg-primary/10'
+                        }`}>
+                          <span className={`text-xs font-bold ${isDisabled ? 'text-muted-foreground' : 'text-primary'}`}>{idx + 1}</span>
                         </div>
                         <div>
-                          <h5 className="text-sm font-semibold text-foreground">{strategy.name}</h5>
+                          <div className="flex items-center gap-2">
+                            <h5 className={`text-sm font-semibold ${isDisabled ? 'text-muted-foreground' : 'text-foreground'}`}>
+                              {strategy.name}
+                            </h5>
+                            {/* Fix #8: Status badge */}
+                            {isMitigated && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-green-500/10 text-green-600 dark:text-green-400 uppercase">
+                                Already Mitigated
+                              </span>
+                            )}
+                            {isNotApplicable && (
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 uppercase">
+                                Not Applicable
+                              </span>
+                            )}
+                          </div>
                           {(strategy.mechanism || strategy.description) && (
                             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                               {strategy.mechanism || strategy.description}
                             </p>
                           )}
+                          {/* Fix #8: Show applicability note */}
+                          {strategy.applicability_note && (
+                            <div className={`mt-2 p-2 rounded-lg text-xs ${
+                              isMitigated
+                                ? 'bg-green-500/5 text-green-700 dark:text-green-300 border border-green-500/20'
+                                : 'bg-amber-500/5 text-amber-700 dark:text-amber-300 border border-amber-500/20'
+                            }`}>
+                              {strategy.applicability_note}
+                            </div>
+                          )}
+                          {/* Fix #8: Show future value note for mitigated strategies */}
+                          {strategy.future_value && (
+                            <p className="text-[10px] text-muted-foreground mt-1 italic">
+                              {strategy.future_value}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-bold text-primary">{strategy.tax_savings_potential}</p>
-                        <p className="text-[10px] text-muted-foreground">potential savings</p>
+                        <p className={`text-lg font-bold ${isDisabled ? 'text-muted-foreground line-through' : 'text-primary'}`}>
+                          {strategy.tax_savings_potential}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {isDisabled ? 'not applicable' : 'potential savings'}
+                        </p>
                       </div>
                     </div>
 
-                    {(Array.isArray(strategy.requirements) && strategy.requirements.length > 0) || strategy.timeline ? (
+                    {!isDisabled && ((Array.isArray(strategy.requirements) && strategy.requirements.length > 0) || strategy.timeline) ? (
                       <div className="grid sm:grid-cols-2 gap-3 pt-3 border-t border-border">
                         {Array.isArray(strategy.requirements) && strategy.requirements.length > 0 && (
                           <div>
@@ -539,7 +726,8 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
                       </div>
                     ) : null}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           )}

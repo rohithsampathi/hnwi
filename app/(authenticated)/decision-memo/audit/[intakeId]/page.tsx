@@ -444,7 +444,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
   // Copy share link
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // Fallback for browsers/contexts where clipboard API is unavailable
+      const textarea = document.createElement('textarea');
+      textarea.value = window.location.href;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
@@ -675,7 +687,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       <div className="min-h-screen bg-background">
         {/* Header */}
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto px-1 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -773,7 +785,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
         {/* Header */}
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto px-1 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -802,7 +814,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         </div>
 
         {/* Preview Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-4xl mx-auto px-1 sm:px-6 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1318,7 +1330,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
         {/* Premium Sticky Header - Hidden in PDF export */}
         <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border print:hidden">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto px-1 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
@@ -1334,17 +1346,22 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleShare}
-                  className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted flex items-center gap-2"
+                  className={`px-3 py-1.5 text-sm border rounded-lg flex items-center gap-2 transition-colors ${
+                    linkCopied
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-muted'
+                  }`}
                 >
-                  <Share2 className="w-4 h-4" />
-                  Share
+                  {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
+                  {linkCopied ? 'Copied!' : 'Share'}
                 </button>
                 <button
                   onClick={handleExportPDF}
-                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+                  disabled={isExportingPDF}
+                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" />
-                  Export PDF
+                  {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {isExportingPDF ? 'Exporting...' : 'Export PDF'}
                 </button>
               </div>
             </div>
@@ -1352,7 +1369,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         </div>
 
         {/* Premium Simulation Template Content */}
-        <div id="artifact-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 print:max-w-[210mm] print:px-0 print:py-0">
+        <div id="artifact-content" className="max-w-6xl mx-auto px-1 sm:px-6 py-8 sm:py-12 print:max-w-[210mm] print:px-0 print:py-0">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1603,6 +1620,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                     destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                     antifragilityAssessment={doctrineMetadata.antifragility_assessment}
+                    // FIX #24: Pass REAL pattern intelligence from KGv3
+                    patternIntelligence={memoData.preview_data.pattern_intelligence}
                   />
                 </section>
               );
@@ -1678,11 +1697,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 citationMap={citationMap}
                 sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                 destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCountry={memoData.preview_data.source_country}
+                destinationCountry={memoData.preview_data.destination_country}
                 sourceCity={memoData.preview_data.source_city}
                 destinationCity={memoData.preview_data.destination_city}
                 peerCohortStats={memoData.preview_data.peer_cohort_stats}
                 capitalFlowData={memoData.preview_data.capital_flow_data}
                 sections={['drivers', 'peer', 'corridor']}
+                isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
               />
             </section>
 
@@ -1696,6 +1718,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   citations={memoData.preview_data.hnwi_trends_citations}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                  sourceCountry={memoData.preview_data.source_country}
+                  destinationCountry={memoData.preview_data.destination_country}
                 />
               </section>
             )}
@@ -1709,11 +1733,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 citationMap={citationMap}
                 sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                 destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCountry={memoData.preview_data.source_country}
+                destinationCountry={memoData.preview_data.destination_country}
                 sourceCity={memoData.preview_data.source_city}
                 destinationCity={memoData.preview_data.destination_city}
                 peerCohortStats={memoData.preview_data.peer_cohort_stats}
                 capitalFlowData={memoData.preview_data.capital_flow_data}
                 sections={['geographic']}
+                isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
               />
             </section>
 

@@ -98,11 +98,10 @@ function HeirIcon({ relationship, className = "w-6 h-6" }: { relationship: HeirR
 // Generation badge component
 function GenerationBadge({ gen, isActive = false }: { gen: string; isActive?: boolean }) {
   return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-      isActive
-        ? 'bg-primary text-primary-foreground'
-        : 'bg-muted text-muted-foreground'
-    }`}>
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isActive
+      ? 'bg-primary text-primary-foreground'
+      : 'bg-muted text-muted-foreground'
+      }`}>
       {gen}
     </div>
   );
@@ -128,41 +127,47 @@ function PreservationIndicator({ percentage }: { percentage: number }) {
   const isModerate = normalized >= 0.50 && normalized < 0.70;
 
   return (
-    <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-      isGood ? 'bg-primary/20 text-primary' :
+    <div className={`px-3 py-1 rounded-full text-xs font-bold ${isGood ? 'bg-primary/20 text-primary' :
       isModerate ? 'bg-muted text-muted-foreground' :
-      'bg-muted text-muted-foreground'
-    }`}>
+        'bg-muted text-muted-foreground'
+      }`}>
       {(normalized * 100).toFixed(0)}% Preserved
     </div>
   );
 }
 
 // Risk gauge component (semi-circular) - using primary colors only
+// Arc fills clockwise: gold = improved risk (kept), grey gap = reduction achieved
 function RiskGauge({ current, improved, label }: { current: number; improved: number; label: string }) {
   const reduction = current - improved;
-  const r = 50;
-  const strokeW = 8;
-  const halfC = Math.PI * r;
+  const cx = 80;
+  const cy = 70;
+  const arcR = 65;
+  const sw = 10;
+  const arcHalfC = Math.PI * arcR;
+  const arcCurrentLen = arcHalfC * current / 100;
+  const arcImprovedLen = arcHalfC * improved / 100;
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-36 h-[76px] mb-2">
-        <svg viewBox="0 0 120 68" className="w-full h-full overflow-visible">
-          {/* Background arc */}
-          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} className="text-muted" />
-          {/* Current risk arc */}
-          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} strokeDasharray={halfC} strokeDashoffset={halfC - (halfC * current / 100)} strokeLinecap="round" className="text-muted-foreground/50" />
-          {/* Improved risk arc */}
-          <path d={`M ${60 - r} 60 A ${r} ${r} 0 0 1 ${60 + r} 60`} fill="none" stroke="currentColor" strokeWidth={strokeW} strokeDasharray={halfC} strokeDashoffset={halfC - (halfC * improved / 100)} strokeLinecap="round" className="text-primary" />
+      <div className="relative w-56 h-[120px]">
+        <svg viewBox="0 0 160 90" className="w-full h-full">
+          {/* Background arc (full track) */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
+          {/* Current risk arc (grey — shows total risk zone) */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcCurrentLen} ${arcHalfC}`} strokeLinecap="round" className="text-muted-foreground/30" />
+          {/* Improved risk arc (gold — shows remaining risk after structure) */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcImprovedLen} ${arcHalfC}`} strokeLinecap="round" className="text-primary" />
+          {/* Current % — top line inside arc */}
+          <text x={cx} y={cy - 26} textAnchor="middle" className="fill-foreground" style={{ fontSize: '22px', fontWeight: 700 }}>{Math.round(current)}%</text>
+          {/* Arrow + Improved % — second line inside arc */}
+          <text x={cx} y={cy - 6} textAnchor="middle">
+            <tspan className="fill-muted-foreground" style={{ fontSize: '11px' }}>→ </tspan>
+            <tspan className="fill-primary" style={{ fontSize: '17px', fontWeight: 700 }}>{Math.round(improved)}%</tspan>
+          </text>
         </svg>
-        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
-          <span className="text-2xl font-bold text-foreground">{Math.round(current)}%</span>
-          <span className="text-xs text-muted-foreground ml-1">→</span>
-          <span className="text-lg font-bold text-primary ml-1">{Math.round(improved)}%</span>
-        </div>
       </div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{label}</p>
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold -mt-3">{label}</p>
       <p className="text-sm font-bold text-primary">↓ {Math.round(reduction)} pts</p>
     </div>
   );
@@ -235,11 +240,10 @@ function HeirCard({ heir, index }: { heir: NonNullable<HeirManagementData['heirs
             <p className="text-xs text-muted-foreground">{heir.role}</p>
           </div>
         </div>
-        <span className={`px-2 py-1 rounded text-[9px] font-bold ${
-          heir.risk_level === 'HIGH' ? 'bg-primary/20 text-primary' :
+        <span className={`px-2 py-1 rounded text-[9px] font-bold ${heir.risk_level === 'HIGH' ? 'bg-primary/20 text-primary' :
           heir.risk_level === 'MEDIUM' ? 'bg-primary/10 text-primary' :
-          'bg-muted text-muted-foreground'
-        }`}>
+            'bg-muted text-muted-foreground'
+          }`}>
           {heir.risk_level} RISK
         </span>
       </div>
@@ -946,12 +950,11 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                 {governanceInsurance.map((provision, i) => (
                   <div key={i} className="bg-muted/30 rounded-lg p-4 border border-border">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        provision.type === 'spendthrift_clause' ? 'bg-primary' :
+                      <div className={`w-2 h-2 rounded-full ${provision.type === 'spendthrift_clause' ? 'bg-primary' :
                         provision.type === 'distribution_gate' ? 'bg-primary' :
-                        provision.type === 'lifestyle_cap' ? 'bg-muted-foreground' :
-                        'bg-primary'
-                      }`} />
+                          provision.type === 'lifestyle_cap' ? 'bg-muted-foreground' :
+                            'bg-primary'
+                        }`} />
                       <p className="text-xs font-bold text-foreground">{provision.name}</p>
                     </div>
                     <p className="text-[10px] text-muted-foreground mb-2">{provision.description}</p>
@@ -1076,8 +1079,8 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     improvement: string;
   } => {
     const riskMatch = text.match(/(?:3rd|third)\s*(?:gen|generation)[^0-9]*(\d+)%/i) ||
-                     text.match(/probability[^0-9]*(\d+)%/i) ||
-                     text.match(/risk[^0-9]*(\d+)%/i);
+      text.match(/probability[^0-9]*(\d+)%/i) ||
+      text.match(/risk[^0-9]*(\d+)%/i);
     // DO NOT hardcode fallback - return undefined if not found
     const currentRisk = riskMatch ? parseInt(riskMatch[1]) : undefined;
 
@@ -1102,7 +1105,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     triggers: string[];
   } => {
     const councilMatch = text.match(/council[^,.\n]*(?:meet|frequency)[:\s]+([^\n,]+)/i) ||
-                        text.match(/(quarterly|monthly|annually|bi-annually)\s*(?:meeting|council)/i);
+      text.match(/(quarterly|monthly|annually|bi-annually)\s*(?:meeting|council)/i);
     const councilFrequency = councilMatch ? councilMatch[1].trim() : 'Quarterly';
 
     const thresholdMatch = text.match(/(?:threshold|majority|consensus)[:\s]+([^\n,]+)/i);
@@ -1164,7 +1167,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     protection: 'HIGH' | 'MODERATE' | 'LOW';
   } => {
     const typeMatch = text.match(/(?:recommend|structure)[:\s]*([A-Z][^.\n]+(?:Trust|LLC|Foundation|Office))/i) ||
-                     text.match(/(Family\s*(?:Trust|Office|LLC|Foundation)[^.\n]*)/i);
+      text.match(/(Family\s*(?:Trust|Office|LLC|Foundation)[^.\n]*)/i);
     const type = typeMatch ? typeMatch[1].trim() : 'Family Trust with Governance Charter';
 
     const benefits: string[] = [];
@@ -1181,11 +1184,11 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const annualCost = annualMatch ? `$${annualMatch[1]}` : '$5-10K';
 
     const timelineMatch = text.match(/timeline[:\s]+([^\n,]+)/i) ||
-                         text.match(/(\d+[-–]\d+\s*(?:months|weeks))/i);
+      text.match(/(\d+[-–]\d+\s*(?:months|weeks))/i);
     const timeline = timelineMatch ? timelineMatch[1].trim() : '60-90 days';
 
     const protectionLevel = text.match(/high\s*protection/i) ? 'HIGH' :
-                           text.match(/low\s*protection/i) ? 'LOW' : 'MODERATE';
+      text.match(/low\s*protection/i) ? 'LOW' : 'MODERATE';
 
     return {
       type,

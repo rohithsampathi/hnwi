@@ -1,0 +1,70 @@
+{
+  "email": "hnwi@montaigne.co",
+  "nationality": "United States",
+  "nda_consent": true,
+  "privacy_consent": true,
+  "thesis": {
+    "move_description": "Acquire apartment in Singapore for $7.12M from NYC-based Single Family Office. Premium residential investment targeting 9% rental yields and 16% capital appreciation.",
+    "expected_outcome": "9% annual rental yield with 16% annual capital appreciation, generating combined 25% gross returns. Tax-efficient wealth preservation in Singapore jurisdiction with long-term residency pathway benefits.",
+    "move_type": "real_estate",
+    "target_amount": "$7.12M",
+    "target_locations": ["Singapore"],
+    "timeline": "30 days",
+    "source_jurisdiction": "United States",
+    "source_state": "New York",
+    "destination_jurisdiction": "Singapore"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": ["United States", "United Kingdom", "Singapore"],
+    "prohibited_jurisdictions": [],
+    "prohibitions": [],
+    "deal_breakers": [],
+    "destination_property_count": 0,
+    "purchase_vehicle": "optimize"
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "",
+    "advisors": [
+      { "type": "tax", "name": "", "jurisdiction": "United States" },
+      { "type": "legal", "name": "", "jurisdiction": "New York" }
+    ],
+    "existing_entities": [
+      { "type": "Family Office", "jurisdiction": "New York", "purpose": "" }
+    ],
+    "banking_rails": [
+      { "bank": "JP Morgan", "jurisdiction": "New York", "status": "active" }
+    ],
+    "has_formal_ips": false,
+    "ips_notes": "",
+    "heirs": [
+      {
+        "name": "Michael",
+        "relationship": "son",
+        "age": 21,
+        "allocation_pct": 0.35
+      },
+      {
+        "name": "Natalie",
+        "relationship": "daughter",
+        "age": 23,
+        "allocation_pct": 0.65
+      }
+    ]
+  },
+  "urgency": "high",
+  "asset_details": {
+    "property_type": "residential_apartment",
+    "estimated_value": 7120000,
+    "rental_yield_pct": 9,
+    "appreciation_pct": 16,
+    "location_preference": ["Orchard Road"],
+    "size_sqft": "3000",
+    "bedrooms": "4"
+  }
+}

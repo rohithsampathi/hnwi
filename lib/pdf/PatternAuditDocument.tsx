@@ -599,12 +599,12 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
     return {
       title: m.title || 'Unspecified Risk',
-      description: m.fix || '',
+      description: m.fix || undefined,
       severity,
       exposure_amount: exposureAmount,
       // Include raw cost string for display (matches frontend which shows {risk.cost})
-      cost_display: m.cost || '',
-      mitigation: m.fix || '',
+      cost_display: m.cost || undefined,
+      mitigation: m.fix || undefined,
     };
   });
   const opportunities = preview_data.all_opportunities || [];

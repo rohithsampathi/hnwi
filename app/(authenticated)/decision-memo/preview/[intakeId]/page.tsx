@@ -346,7 +346,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
 
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-1 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -385,7 +385,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
       </div>
 
       {/* Stats Grid */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-6">
+      <div className="max-w-5xl mx-auto px-1 sm:px-6 -mt-6">
         <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -428,7 +428,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-6"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-6"
         >
           <div className="flex flex-wrap justify-center gap-4 text-sm">
             <div className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-full">
@@ -456,7 +456,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.38 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="grid md:grid-cols-2 gap-4">
             {/* Data Quality & Profile Card */}
@@ -568,7 +568,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-card border-2 border-primary/30 rounded-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-4 border-b border-primary/20">
@@ -596,7 +596,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-transparent px-6 py-4 border-b border-border">
@@ -648,7 +648,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-gradient-to-br from-red-500/5 to-amber-500/5 border-2 border-red-500/20 rounded-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-red-500/10 to-amber-500/10 px-6 py-4 border-b border-red-500/20">
@@ -697,7 +697,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.55 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-transparent px-6 py-4 border-b border-border">
@@ -751,7 +751,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-transparent px-6 py-4 border-b border-border">
@@ -795,7 +795,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.65 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/20 rounded-2xl p-6">
             <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
@@ -817,7 +817,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className="max-w-5xl mx-auto px-4 sm:px-6 mt-8"
+          className="max-w-5xl mx-auto px-1 sm:px-6 mt-8"
         >
           <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 rounded-2xl p-8 sm:p-12 text-primary-foreground text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
@@ -837,7 +837,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
       )}
 
       {/* What's Locked */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-12">
+      <div className="max-w-5xl mx-auto px-1 sm:px-6 mt-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -871,7 +871,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
 
       {/* ROI Banner */}
       {totalSavings > 0 && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-8">
+        <div className="max-w-5xl mx-auto px-1 sm:px-6 mt-8">
           <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 sm:p-8 text-center">
             <div className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">Your Return on Investment</div>
             <div className="flex items-center justify-center gap-4 text-2xl sm:text-3xl font-bold flex-wrap">
@@ -886,7 +886,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
       )}
 
       {/* Pricing Section */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+      <div className="max-w-5xl mx-auto px-1 sm:px-6 py-12 sm:py-16">
         <div className="text-center mb-10">
           <h3 className="text-2xl sm:text-3xl font-bold mb-3">Choose Your Access Level</h3>
           <p className="text-muted-foreground">Unlock your complete Decision Memo with actionable intelligence</p>

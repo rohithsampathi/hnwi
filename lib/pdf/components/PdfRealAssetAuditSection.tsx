@@ -605,7 +605,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                       <Text style={styles.stampDutyLabel}>
                         Foreign Buyer Surcharge (ABSD)
                       </Text>
-                      {auditData.stamp_duty.foreign_buyer_surcharge.effective_date && (
+                      {!!auditData.stamp_duty.foreign_buyer_surcharge.effective_date && (
                         <Text style={styles.stampDutyEffective}>
                           Effective: {auditData.stamp_duty.foreign_buyer_surcharge.effective_date}
                         </Text>
@@ -636,7 +636,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                       <Text style={styles.stampDutyLabel}>
                         Commercial Property
                       </Text>
-                      {auditData.stamp_duty.commercial_rates.note && (
+                      {!!auditData.stamp_duty.commercial_rates.note && (
                         <Text style={styles.stampDutyEffective}>
                           {auditData.stamp_duty.commercial_rates.note}
                         </Text>
@@ -690,7 +690,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
               </View>
 
               {/* Source Citation */}
-              {auditData.stamp_duty.statute_citation && (
+              {!!auditData.stamp_duty.statute_citation && (
                 <View style={styles.sourceCitation}>
                   <View style={styles.sourceIcon} />
                   <Text style={styles.sourceText}>
@@ -717,7 +717,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                     </View>
                     <Text style={styles.loopholeSavings}>{strategy.tax_savings_potential}</Text>
                   </View>
-                  {(strategy.mechanism || strategy.description) && (
+                  {!!(strategy.mechanism || strategy.description) && (
                     <Text style={styles.loopholeDescription}>
                       {strategy.mechanism || strategy.description}
                     </Text>
@@ -731,7 +731,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                       ))}
                     </View>
                   )}
-                  {strategy.timeline && (
+                  {!!strategy.timeline && (
                     <Text style={styles.loopholeTimeline}>
                       Timeline: {strategy.timeline}
                     </Text>
@@ -771,7 +771,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
               </View>
 
               {/* Premium Recommendation */}
-              {(auditData.dynasty_trusts.recommended || auditData.dynasty_trusts.best_for_perpetuity) && (
+              {!!(auditData.dynasty_trusts.recommended || auditData.dynasty_trusts.best_for_perpetuity) && (
                 <View style={styles.recommendationBox}>
                   <View style={styles.recommendationHeader}>
                     <View style={styles.recommendationIcon}>
@@ -782,7 +782,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                   <Text style={styles.recommendationText}>
                     {auditData.dynasty_trusts.recommended || auditData.dynasty_trusts.best_for_perpetuity}
                   </Text>
-                  {auditData.dynasty_trusts.rationale && (
+                  {!!auditData.dynasty_trusts.rationale && (
                     <Text style={[styles.recommendationText, { marginTop: 6, fontStyle: 'italic' }]}>
                       {auditData.dynasty_trusts.rationale}
                     </Text>
@@ -831,7 +831,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
                 {auditData.freeport_options.freeports.map((freeport, idx) => (
                   <View key={idx} style={styles.freeportCard}>
                     <Text style={styles.freeportName}>{freeport.name}</Text>
-                    {(freeport.jurisdiction || freeport.location) && (
+                    {!!(freeport.jurisdiction || freeport.location) && (
                       <Text style={styles.freeportLocation}>
                         {freeport.jurisdiction || freeport.location}
                       </Text>
@@ -848,7 +848,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
               <Text style={styles.dataCompletenessText}>
                 Sources: {auditData.data_completeness.total_sources || 0}
               </Text>
-              {auditData.data_completeness.confidence && (
+              {!!auditData.data_completeness.confidence && (
                 <View style={styles.dataCompletenessBadge}>
                   <Text style={styles.dataCompletenessBadgeText}>
                     {auditData.data_completeness.confidence} Confidence

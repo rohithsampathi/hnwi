@@ -24,6 +24,9 @@ interface HNWITrendsSectionProps {
   citations?: HNWITrendsCitation[];
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
+  // Fix #11: Country-level for corridor display (resolves US states → "United States")
+  sourceCountry?: string;
+  destinationCountry?: string;
 }
 
 // Confidence indicator component
@@ -149,7 +152,9 @@ export function HNWITrendsSection({
   dataQuality,
   citations,
   sourceJurisdiction,
-  destinationJurisdiction
+  destinationJurisdiction,
+  sourceCountry,
+  destinationCountry
 }: HNWITrendsSectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -164,8 +169,11 @@ export function HNWITrendsSection({
     return null;
   }
 
-  const corridorLabel = sourceJurisdiction && destinationJurisdiction
-    ? `${sourceJurisdiction} → ${destinationJurisdiction}`
+  // Fix #11: Use country-level for corridor display (prefers sourceCountry over sourceJurisdiction)
+  const corridorSource = sourceCountry || sourceJurisdiction || '';
+  const corridorDest = destinationCountry || destinationJurisdiction || '';
+  const corridorLabel = corridorSource && corridorDest
+    ? `${corridorSource} → ${corridorDest}`
     : 'Cross-Border';
 
   return (

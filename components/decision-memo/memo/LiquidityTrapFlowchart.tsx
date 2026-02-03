@@ -147,7 +147,7 @@ export function LiquidityTrapFlowchart({
               </div>
 
               {/* Secondary Barrier */}
-              {secondaryBarrier && secondaryBarrierCost && secondaryBarrierCost > 0 && (
+              {secondaryBarrier && !!secondaryBarrierCost && secondaryBarrierCost > 0 && (
                 <div className="flex items-center justify-between px-3 py-2 bg-destructive/5 rounded-lg border border-destructive/20">
                   <span className="text-xs font-semibold text-foreground">{secondaryBarrier}</span>
                   <span className="text-sm font-bold text-destructive font-mono">

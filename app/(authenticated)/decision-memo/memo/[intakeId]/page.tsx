@@ -266,7 +266,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
     <div className="min-h-screen bg-background">
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-card/95 border-b border-border/50 backdrop-blur-md">
-        <div className="max-w-[1400px] mx-auto px-2 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-0.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-2 sm:py-3 gap-2">
             {/* Left: Branding */}
             <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
@@ -295,7 +295,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
       </div>
 
       {/* Main Content Container */}
-      <div className="max-w-[1400px] mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
+      <div className="max-w-[1400px] mx-auto px-0.5 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8">
         {/* Document Header */}
         <MemoHeader
           intakeId={intakeId}
@@ -354,6 +354,13 @@ export default function DecisionMemoPage({ params }: PageProps) {
             peerCount={memo_data?.kgv3_intelligence_used?.precedents || preview_data.opportunities_count || 0}
             onCitationClick={openCitation}
             citationMap={citationMap}
+            sourceJurisdiction={preview_data.source_jurisdiction}
+            destinationJurisdiction={preview_data.destination_jurisdiction}
+            sourceCountry={preview_data.source_country}
+            destinationCountry={preview_data.destination_country}
+            peerCohortStats={preview_data.peer_cohort_stats}
+            capitalFlowData={preview_data.capital_flow_data}
+            isRelocating={preview_data.peer_cohort_stats?.is_relocating ?? preview_data.is_relocating ?? false}
           />
         </section>
 

@@ -39,8 +39,12 @@ interface CalendarItem {
 
 interface BottomLine {
   total_exposure_if_noncompliant: string;
+  total_exposure_raw?: number;  // Fix #3: Raw number for calculations
   immediate_actions: string[];
   estimated_compliance_cost: string;
+  compliance_cost_raw?: number;  // Fix #3: Raw number for calculations
+  protection_ratio?: number;  // Fix #3: Dynamic protection ratio from backend
+  protection_ratio_note?: string;  // Fix #3: Explanation note
 }
 
 export interface TransparencyData {
@@ -378,7 +382,7 @@ export function TransparencyRegimeSection({
                 </div>
                 <div className="bg-card rounded-lg p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">ROI</p>
-                  <p className="text-lg font-bold text-primary">62x</p>
+                  <p className="text-lg font-bold text-primary">{parsedData.bottom_line.protection_ratio ?? 'N/A'}x</p>
                   <p className="text-[10px] text-muted-foreground">protection ratio</p>
                 </div>
               </div>

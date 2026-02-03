@@ -339,12 +339,12 @@ export function PdfGoldenVisaSection({
                 </View>
                 <View>
                   <Text style={styles.visaCardTitle}>{programName}</Text>
-                  {program.investment_type && (
+                  {!!program.investment_type && (
                     <Text style={styles.visaCardType}>{program.investment_type}</Text>
                   )}
                 </View>
               </View>
-              {program.status && (
+              {!!program.status && (
                 <View style={[
                   styles.statusBadge,
                   program.status.toLowerCase().includes('active') && !program.status.toLowerCase().includes('limited')
@@ -365,25 +365,25 @@ export function PdfGoldenVisaSection({
 
             {/* Metrics Grid */}
             <View style={styles.metricsGrid}>
-              {investmentAmount && (
+              {!!investmentAmount && (
                 <View style={styles.metricBox}>
                   <Text style={styles.metricLabel}>Investment</Text>
                   <Text style={styles.metricValue}>{investmentAmount}</Text>
                 </View>
               )}
-              {program.duration && (
+              {!!program.duration && (
                 <View style={styles.metricBox}>
                   <Text style={styles.metricLabel}>Duration</Text>
                   <Text style={styles.metricValue}>{program.duration}</Text>
                 </View>
               )}
-              {program.processing_time && (
+              {!!program.processing_time && (
                 <View style={styles.metricBox}>
                   <Text style={styles.metricLabel}>Processing</Text>
                   <Text style={styles.metricValue}>{program.processing_time}</Text>
                 </View>
               )}
-              {program.physical_presence_required && (
+              {!!program.physical_presence_required && (
                 <View style={styles.metricBox}>
                   <Text style={styles.metricLabel}>Presence</Text>
                   <Text style={styles.metricValue}>{program.physical_presence_required}</Text>
@@ -416,7 +416,7 @@ export function PdfGoldenVisaSection({
             )}
 
             {/* 2025/2026 Changes */}
-            {changes2025 && (
+            {!!changes2025 && (
               <View style={styles.changesNotice}>
                 <View style={styles.changesIcon}>
                   <Text style={styles.changesIconText}>!</Text>
@@ -476,7 +476,7 @@ export function PdfGoldenVisaSection({
       )}
 
       {/* Key Catalyst */}
-      {destinationDrivers?.key_catalyst && (
+      {!!destinationDrivers?.key_catalyst && (
         <View style={styles.changesNotice}>
           <View style={styles.changesIcon}>
             <Text style={styles.changesIconText}>!</Text>

@@ -781,6 +781,23 @@ export interface Opportunity {
   category?: string;
   country?: string;
   minimum_investment?: string;
+  industry?: string;
+  // Rich analysis fields from Command Centre
+  hnwi_analysis?: string;  // Full HNWI-focused analysis with DEVIDs
+  opportunity_narrative?: string;  // Narrative summary
+  key_insights?: string[];  // Key insight bullets
+  risk_level?: string;  // Risk assessment
+  source?: string;  // Source attribution (Command Centre, Privé Exchange, etc.)
+  // Scientific relevance factors
+  relevance_recommendation?: 'highly_relevant' | 'relevant' | 'moderately_relevant' | 'not_relevant';
+  relevance_factors?: {
+    asset_class_match: number;
+    location_match: number;
+    tier_alignment: number;
+    source_credibility: number;
+    data_freshness: number;
+  };
+  relevance_reasoning?: string[];
 }
 
 export interface Mistake {

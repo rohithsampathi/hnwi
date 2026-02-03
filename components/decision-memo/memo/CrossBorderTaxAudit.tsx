@@ -448,7 +448,13 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 {viaNegativa?.isActive && (
                   <span className="text-red-500 font-bold mr-1">{viaNegativa.warningPrefix} #{i + 1}</span>
                 )}
-                {warning}
+                {/^(CRITICAL|HIGH|MEDIUM|LOW):\s/.test(warning) ? (
+                  <>
+                    <span className="font-bold">{warning.split(': ')[0]}:</span> {warning.substring(warning.indexOf(': ') + 2)}
+                  </>
+                ) : (
+                  warning
+                )}
               </div>
             </div>
           ))}

@@ -21,7 +21,9 @@ interface CrisisScenario {
 
 interface OverallResilience {
   score: number;
-  rating: "STRONG" | "MODERATE" | "VULNERABLE" | "AT_RISK";
+  // Fix #20: Match backend rating values from rate_resilience()
+  // Backend returns: EXCELLENT, STRONG, MODERATE, FRAGILE, CRITICAL
+  rating: "EXCELLENT" | "STRONG" | "MODERATE" | "FRAGILE" | "CRITICAL" | "VULNERABLE" | "AT_RISK";
   summary: string;
 }
 
@@ -154,14 +156,29 @@ function ScenarioIcon({ id }: { id: string }) {
 
 // Resilience score gauge
 function ResilienceGauge({ score, rating }: { score: number; rating: string }) {
+  // Fix #20: Match backend rating values from rate_resilience() in programmatic_stress_calculator.py
+  // Backend ratings: EXCELLENT (≥80), STRONG (≥65), MODERATE (≥50), FRAGILE (≥35), CRITICAL (<35)
   const ratingConfig: Record<string, { color: string; bg: string; label: string }> = {
+    // New backend ratings (Fix #20)
+    EXCELLENT: { color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/20', label: 'EXCELLENT' },
     STRONG: { color: 'text-primary', bg: 'bg-primary/20', label: 'STRONG' },
-    MODERATE: { color: 'text-foreground', bg: 'bg-muted', label: 'MODERATE' },
-    VULNERABLE: { color: 'text-primary', bg: 'bg-primary/10', label: 'VULNERABLE' },
-    AT_RISK: { color: 'text-primary', bg: 'bg-primary/20', label: 'AT RISK' }
+    MODERATE: { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/20', label: 'MODERATE' },
+    FRAGILE: { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/20', label: 'FRAGILE' },
+    CRITICAL: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20', label: 'CRITICAL' },
+    // Legacy frontend ratings (backwards compatibility)
+    VULNERABLE: { color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/20', label: 'VULNERABLE' },
+    AT_RISK: { color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/20', label: 'AT RISK' }
   };
 
-  const config = ratingConfig[rating] || ratingConfig.MODERATE;
+  // Use score-based fallback if rating not found (in case of legacy data)
+  const getFallbackRating = (s: number) => {
+    if (s >= 80) return 'EXCELLENT';
+    if (s >= 65) return 'STRONG';
+    if (s >= 50) return 'MODERATE';
+    if (s >= 35) return 'FRAGILE';
+    return 'CRITICAL';
+  };
+  const config = ratingConfig[rating] || ratingConfig[getFallbackRating(score)];
 
   const r = 50;
   const strokeW = 8;

@@ -35,7 +35,8 @@ export async function middleware(request: NextRequest) {
     scriptSources.push("'unsafe-inline'", "'unsafe-eval'");
   } else {
     // In prod: use nonce for security with strict-dynamic
-    scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'");
+    // wasm-unsafe-eval allows WebAssembly compilation (needed by @react-pdf/renderer yoga-wasm)
+    scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'", "'wasm-unsafe-eval'");
   }
 
   const styleSources = ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"];
@@ -48,6 +49,8 @@ export async function middleware(request: NextRequest) {
     "wss://*.vercel.app",
     "https://api-js.mixpanel.com",
     "https://hnwi-uwind-p8oqb.ondigitalocean.app", // Backend API URL
+    "blob:",  // PDF export blob URLs
+    "data:",  // @react-pdf/renderer WASM binary loading
   ];
 
   if (backendOrigin && !connectSources.includes(backendOrigin)) {

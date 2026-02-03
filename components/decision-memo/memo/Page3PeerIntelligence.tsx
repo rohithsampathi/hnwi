@@ -8,7 +8,9 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, useInView } from 'framer-motion';
 import { Opportunity } from '@/lib/decision-memo/memo-types';
-import type { CitationMap } from '@/lib/parse-dev-citations';
+import type { CitationMap, Citation } from '@/lib/parse-dev-citations';
+import { extractDevIds } from '@/lib/parse-dev-citations';
+import type { City } from '@/components/interactive-world-map';
 
 // Dynamic import for map component
 const InteractiveWorldMap = dynamic(
@@ -30,6 +32,17 @@ const InteractiveWorldMap = dynamic(
 
 // Backend-provided peer cohort stats
 interface PeerCohortStats {
+  // Fix #11: Dynamic section labels from backend
+  section_title?: string;  // e.g., "CROSS-BORDER ACQUISITION INTELLIGENCE"
+  section_subtitle?: string;  // e.g., "HNWI real estate acquisitions in Singapore"
+  metric_labels?: {
+    total_peers?: string;
+    total_peers_subtitle?: string;
+    last_6_months?: string;
+    last_6_months_subtitle?: string;
+    avg_deal_value?: string;
+    avg_deal_value_subtitle?: string;
+  };
   total_peers: number;
   last_6_months: number;  // Changed from last_90_days
   avg_deal_value_m: number;
@@ -46,6 +59,19 @@ interface CapitalFlowData {
   destination_flows: Array<{ city: string; volume: number; percentage: number; highlight?: boolean }>;
   flow_intensity_index: number;
   velocity_change: string;
+  // Fix #11: Pattern signal for dynamic badge and narrative
+  pattern_signal?: {
+    title: string;  // "CORRIDOR ACTIVITY PATTERN"
+    subtitle: string;  // "US → Singapore acquisitions"
+    badge: string;  // "DECLINING" | "SLOWING" | "ACCELERATING" | "STABLE"
+    badge_color: string;  // "warning" | "neutral" | "success"
+    narrative: string;  // Dynamic text based on velocity
+  };
+  // Fix #11: Velocity interpretation for conditional styling
+  velocity_interpretation?: {
+    signal: 'caution' | 'monitor' | 'active_window' | 'stable' | 'neutral';
+    narrative: string;
+  };
   trend_data: {
     data_available: boolean;
     q3?: number;
@@ -67,8 +93,11 @@ interface Page3Props {
   peerCount: number;
   onCitationClick: (citationId: string) => void;
   citationMap: CitationMap;
-  sourceJurisdiction?: string;      // For tax calculations - e.g., "India"
-  destinationJurisdiction?: string; // For tax calculations - e.g., "UAE"
+  sourceJurisdiction?: string;      // For tax calculations - e.g., "New York" (US state)
+  destinationJurisdiction?: string; // For tax calculations - e.g., "Singapore"
+  // COUNTRY-LEVEL for corridor display (resolves US states → "United States")
+  sourceCountry?: string;           // For corridor display - e.g., "United States"
+  destinationCountry?: string;      // For corridor display - e.g., "Singapore"
   // CITY-LEVEL for corridor visualization (Hyderabad → Dubai not India → UAE)
   sourceCity?: string;              // For corridor display - e.g., "Hyderabad"
   destinationCity?: string;         // For corridor display - e.g., "Dubai"
@@ -79,6 +108,8 @@ interface Page3Props {
   sections?: ('peer' | 'corridor' | 'geographic' | 'drivers' | 'all')[];
   // Hide section title (for when component is called multiple times)
   hideSectionTitle?: boolean;
+  // Fix #16: Relocation status affects labels (Migration Window vs Acquisition Window)
+  isRelocating?: boolean;
 }
 
 // Animated counter for stats
@@ -134,12 +165,15 @@ export function Page3PeerIntelligence({
   citationMap,
   sourceJurisdiction = '',
   destinationJurisdiction = '',
+  sourceCountry,
+  destinationCountry,
   sourceCity,
   destinationCity,
   peerCohortStats,
   capitalFlowData,
   sections = ['all'],
-  hideSectionTitle = false
+  hideSectionTitle = false,
+  isRelocating = false  // Fix #16: Default to false (cross-border acquisition)
 }: Page3Props) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -160,10 +194,11 @@ export function Page3PeerIntelligence({
     if (isInView) setIsVisible(true);
   }, [isInView]);
 
-  // CORRIDOR DISPLAY: Country-to-Country (e.g., "India → UAE")
-  // Wealth Migration Corridor shows jurisdiction level, not city level
-  const corridorSource = sourceJurisdiction || '—';
-  const corridorDestination = destinationJurisdiction || '—';
+  // CORRIDOR DISPLAY: Country-to-Country (e.g., "United States → Singapore")
+  // Fix #11: Use sourceCountry/destinationCountry which resolves US states to "United States"
+  // Falls back to jurisdiction for non-US cases or backward compatibility
+  const corridorSource = sourceCountry || sourceJurisdiction || '—';
+  const corridorDestination = destinationCountry || destinationJurisdiction || '—';
 
   // Use backend-provided peer cohort stats ONLY - no legacy fallbacks
   const peerData = {
@@ -210,61 +245,100 @@ export function Page3PeerIntelligence({
   const hasTrendData = trendData?.data_available === true && trendData?.q3 !== undefined;
 
   // Transform opportunities to City format for InteractiveWorldMap
+  // MATCHES Home Dashboard structure exactly - just with location filtering applied
   const cities = useMemo(() => {
+    // LOCATION FILTER: Only show opportunities from source and destination jurisdictions
+    // This is the key difference from Home Dashboard - we filter to transaction corridors
+    const locationPatterns = [
+      sourceJurisdiction?.toLowerCase(),
+      destinationJurisdiction?.toLowerCase(),
+      sourceCountry?.toLowerCase(),
+      destinationCountry?.toLowerCase(),
+      sourceCity?.toLowerCase(),
+      destinationCity?.toLowerCase(),
+    ].filter(Boolean);
+
     return opportunities
-      .filter(opp => opp.latitude && opp.longitude)
-      .map(opp => {
-        const tierLower = opp.tier?.toLowerCase() || '';
-        const isPriveOpportunity = tierLower.includes('privé') ||
-                                  tierLower.includes('prive') ||
-                                  opp.tier === '$500K Tier' ||
-                                  opp.tier === '$1M Tier';
+      .filter(opp => {
+        // Must have valid coordinates
+        if (!opp.latitude || !opp.longitude) return false;
+        if (Math.abs(opp.latitude) > 90 || Math.abs(opp.longitude) > 180) return false;
+        if (opp.latitude === 0 && opp.longitude === 0) return false;
 
-        const type = opp.category?.toLowerCase().includes('real estate') ||
-                    opp.category?.toLowerCase().includes('property')
-                      ? 'luxury'
-                      : 'finance';
-
-        let entryValue = '$500K';
-        if (opp.tier?.includes('$100K')) {
-          entryValue = '$100K';
-        } else if (opp.tier?.includes('$500K')) {
-          entryValue = '$500K';
-        } else if (opp.tier?.includes('$1M')) {
-          entryValue = '$1M';
+        // LOCATION FILTER: Only include opportunities from transaction jurisdictions
+        if (locationPatterns.length > 0) {
+          const oppLocation = (opp.location || '').toLowerCase();
+          const oppCountry = (opp.country || '').toLowerCase();
+          const matchesLocation = locationPatterns.some(pattern =>
+            pattern && (oppLocation.includes(pattern) || oppCountry.includes(pattern) ||
+                       pattern.includes(oppLocation) || pattern.includes(oppCountry))
+          );
+          if (!matchesLocation) return false;
         }
 
-        // Use actual backend analysis (expected_return contains historical_behavior/why_relevant)
-        // Format: "Analysis text with actual insights [Dev ID: XXX]"
-        const analysisText = opp.expected_return
-          ? `${opp.expected_return} [Dev ID: ${opp.dev_id}]`
-          : `${opp.tier} opportunity in ${opp.location}. ${opp.dna_match_score ? `DNA match: ${opp.dna_match_score}%` : ''} [Dev ID: ${opp.dev_id}]`;
+        return true;
+      })
+      .map(opp => {
+        const displayName = opp.location || opp.country || opp.title || 'Opportunity';
 
-        const city: any = {
-          name: opp.location,
-          country: opp.country || opp.location,
+        // Extract citations from analysis text (same as Home Dashboard)
+        const devIdsFromAnalysis = extractDevIds(opp.expected_return || '');
+        const devIdsFromHnwi = extractDevIds(opp.hnwi_analysis || '');
+        const devIds = opp.dev_id
+          ? [opp.dev_id, ...devIdsFromAnalysis, ...devIdsFromHnwi]
+          : [...devIdsFromAnalysis, ...devIdsFromHnwi];
+        const uniqueDevIds = Array.from(new Set(devIds));
+
+        // Build rich analysis text (same priority as Home Dashboard)
+        // Priority: hnwi_analysis → opportunity_narrative → expected_return → fallback
+        let analysis = opp.hnwi_analysis || opp.opportunity_narrative || opp.expected_return || '';
+
+        // If analysis is too short, use a descriptive fallback
+        if (!analysis || analysis.length < 30) {
+          analysis = `${opp.tier || 'Investment'} opportunity in ${opp.location}. ` +
+            (opp.dna_match_score ? `DNA match: ${Math.round(opp.dna_match_score)}%. ` : '') +
+            (opp.key_insights?.length ? opp.key_insights.slice(0, 2).join(' • ') : '');
+        }
+
+        // Append dev_id citation if it exists but isn't already referenced in the analysis text
+        // This ensures the citation is clickable even if the analysis doesn't explicitly contain [Dev ID: XXX]
+        if (opp.dev_id && !analysis.includes(opp.dev_id)) {
+          analysis = `${analysis} [Dev ID: ${opp.dev_id}]`;
+        }
+
+        // Determine type based on source (same as Home Dashboard)
+        const type = opp.source === 'MOEv4' ? 'finance' : 'luxury';
+
+        // Build City object matching Home Dashboard structure exactly
+        const city: City = {
+          name: displayName,
+          country: opp.country || 'Unknown',
           latitude: opp.latitude!,
           longitude: opp.longitude!,
+          population: opp.minimum_investment || opp.tier,
+          type: type,
+          _id: opp.dev_id,
+          id: opp.dev_id,
           title: opp.title,
           tier: opp.tier,
-          value: entryValue,
-          analysis: analysisText,
+          value: opp.minimum_investment || opp.tier,
+          risk: opp.risk_level || 'Medium',
+          analysis: analysis,
+          source: opp.source || 'Command Centre',
+          victor_score: opp.dna_match_score ? `${Math.round(opp.dna_match_score)}%` : undefined,
+          elite_pulse_analysis: undefined,  // Don't show separate Elite Pulse - analysis already contains the full content
           category: opp.category,
           industry: opp.industry,
-          type: type,
-          devIds: opp.dev_id ? [opp.dev_id] : [],
-          hasCitations: !!opp.dev_id,
           is_new: false,
-          source: isPriveOpportunity ? 'Privé Exchange' : 'HNWI World Intelligence'
+          devIds: uniqueDevIds,
+          hasCitations: uniqueDevIds.length > 0,
+          // Don't set katherine_analysis for Decision Memo - analysis field already has full content
+          katherine_analysis: undefined,
         };
-
-        if (isPriveOpportunity) {
-          city.victor_score = `${opp.dna_match_score || 0}%`;
-        }
 
         return city;
       });
-  }, [opportunities]);
+  }, [opportunities, sourceJurisdiction, destinationJurisdiction, sourceCountry, destinationCountry, sourceCity, destinationCity]);
 
   return (
     <div ref={sectionRef}>
@@ -294,36 +368,36 @@ export function Page3PeerIntelligence({
         transition={{ duration: 0.8, delay: 0.2 }}
       >
         <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 sm:mb-2 tracking-wide">
-          PEER MOVEMENT ANALYSIS
+          {peerCohortStats?.section_title || 'CROSS-BORDER ACQUISITION INTELLIGENCE'}
         </h3>
         <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
-          Real-time tracking of HNWI wealth repositioning patterns
+          {peerCohortStats?.section_subtitle || `HNWI real estate acquisitions in ${destinationJurisdiction || 'destination'}`}
         </p>
 
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
           {[
             {
-              label: 'Total HNWIs',
+              label: peerCohortStats?.metric_labels?.total_peers || 'Total Acquisitions',
               value: peerData.total,
               suffix: '',
-              description: 'Executing similar moves',
+              description: peerCohortStats?.metric_labels?.total_peers_subtitle || 'Similar corridor transactions',
               highlight: false,
               hasData: peerData.total !== undefined && peerData.total > 0
             },
             {
-              label: 'Last 6 Months',
+              label: peerCohortStats?.metric_labels?.last_6_months || 'Recent Activity',
               value: peerData.last6Months,
               suffix: '',
-              description: 'Recent movements',
+              description: peerCohortStats?.metric_labels?.last_6_months_subtitle || 'Last 6 months',
               highlight: false,
               hasData: peerData.last6Months !== undefined
             },
             {
-              label: 'Average Value',
+              label: peerCohortStats?.metric_labels?.avg_deal_value || 'Average Transaction',
               value: peerData.averageValue,
               suffix: 'M',
               prefix: '$',
-              description: 'Per transaction',
+              description: peerCohortStats?.metric_labels?.avg_deal_value_subtitle || 'Median deal size',
               highlight: true,
               decimals: 1,
               hasData: peerData.averageValue !== undefined
@@ -371,36 +445,101 @@ export function Page3PeerIntelligence({
           ))}
         </div>
 
-        {/* Pattern Alert */}
-        <motion.div
-          className="relative overflow-hidden p-3 sm:p-4 lg:p-6 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-amber-500/10 border border-amber-500/30 rounded-xl sm:rounded-2xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.7 }}
-        >
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-500 to-amber-400" />
+        {/* Pattern Alert - Fix #11: Dynamic based on velocity interpretation */}
+        {(() => {
+          // Determine colors based on velocity signal
+          const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+          const patternSignal = capitalFlowData?.pattern_signal;
 
-          <div className="flex items-start sm:items-center gap-2 sm:gap-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 mb-0.5 sm:mb-1">
-                PATTERN: WEALTH REPOSITIONING DETECTED
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {velocityChange ? (
-                  <>Recent movement velocity increased by <span className="font-semibold text-amber-500">{velocityChange}</span> compared to prior period.</>
-                ) : (
-                  <>Peer movement data analysis in progress.</>
-                )}
-                <span className="hidden sm:inline"> Driven by regulatory changes and tax optimization opportunities.</span>
-              </p>
-            </div>
-          </div>
-        </motion.div>
+          // Color schemes based on signal
+          const colorSchemes = {
+            caution: {
+              bg: 'from-red-500/10 via-red-500/5 to-red-500/10',
+              border: 'border-red-500/30',
+              accent: 'from-red-500 to-red-400',
+              icon: 'bg-red-500/20',
+              iconColor: 'text-red-500',
+              titleColor: 'text-red-600 dark:text-red-400',
+              highlight: 'text-red-500'
+            },
+            monitor: {
+              bg: 'from-amber-500/10 via-amber-500/5 to-amber-500/10',
+              border: 'border-amber-500/30',
+              accent: 'from-amber-500 to-amber-400',
+              icon: 'bg-amber-500/20',
+              iconColor: 'text-amber-500',
+              titleColor: 'text-amber-600 dark:text-amber-400',
+              highlight: 'text-amber-500'
+            },
+            active_window: {
+              bg: 'from-emerald-500/10 via-emerald-500/5 to-emerald-500/10',
+              border: 'border-emerald-500/30',
+              accent: 'from-emerald-500 to-emerald-400',
+              icon: 'bg-emerald-500/20',
+              iconColor: 'text-emerald-500',
+              titleColor: 'text-emerald-600 dark:text-emerald-400',
+              highlight: 'text-emerald-500'
+            },
+            stable: {
+              bg: 'from-primary/10 via-primary/5 to-primary/10',
+              border: 'border-primary/30',
+              accent: 'from-primary to-primary/80',
+              icon: 'bg-primary/20',
+              iconColor: 'text-primary',
+              titleColor: 'text-primary',
+              highlight: 'text-primary'
+            },
+            neutral: {
+              bg: 'from-muted/30 via-muted/20 to-muted/30',
+              border: 'border-border',
+              accent: 'from-muted-foreground to-muted-foreground/80',
+              icon: 'bg-muted',
+              iconColor: 'text-muted-foreground',
+              titleColor: 'text-muted-foreground',
+              highlight: 'text-foreground'
+            }
+          };
+
+          const colors = colorSchemes[signal] || colorSchemes.neutral;
+          const badge = patternSignal?.badge || (signal === 'caution' ? 'DECLINING' : signal === 'active_window' ? 'ACCELERATING' : 'STABLE');
+
+          return (
+            <motion.div
+              className={`relative overflow-hidden p-3 sm:p-4 lg:p-6 bg-gradient-to-r ${colors.bg} border ${colors.border} rounded-xl sm:rounded-2xl`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: 0.7 }}
+            >
+              <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${colors.accent}`} />
+
+              <div className="flex items-start sm:items-center gap-2 sm:gap-4">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${colors.icon} flex items-center justify-center flex-shrink-0`}>
+                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${colors.iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {signal === 'caution' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    ) : signal === 'active_window' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    )}
+                  </svg>
+                </div>
+                <div>
+                  <p className={`text-xs sm:text-sm font-semibold ${colors.titleColor} mb-0.5 sm:mb-1`}>
+                    {patternSignal?.title || 'CORRIDOR ACTIVITY PATTERN'}: <span className="uppercase">{badge}</span>
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {patternSignal?.narrative || capitalFlowData?.velocity_interpretation?.narrative || (
+                      velocityChange
+                        ? `Movement velocity: ${velocityChange}. Analysis in progress.`
+                        : 'Corridor activity data analysis in progress.'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
       </motion.div>
       )}
 
@@ -469,11 +608,22 @@ export function Page3PeerIntelligence({
                   {/* Arrow head */}
                   <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-l-[8px] border-l-primary border-y-[5px] border-y-transparent" />
                 </div>
-                {velocityChange && (
-                  <span className="text-[10px] sm:text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {velocityChange} velocity
-                  </span>
-                )}
+                {velocityChange && (() => {
+                  // Fix #11: Color velocity badge based on signal
+                  const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+                  const badgeColors = signal === 'caution'
+                    ? 'text-red-500 bg-red-500/10'
+                    : signal === 'monitor'
+                    ? 'text-amber-500 bg-amber-500/10'
+                    : signal === 'active_window'
+                    ? 'text-emerald-500 bg-emerald-500/10'
+                    : 'text-primary bg-primary/10';
+                  return (
+                    <span className={`text-[10px] sm:text-xs font-semibold ${badgeColors} px-2 py-0.5 rounded-full`}>
+                      {velocityChange} velocity
+                    </span>
+                  );
+                })()}
               </motion.div>
 
               {/* Destination Jurisdiction */}
@@ -527,12 +677,22 @@ export function Page3PeerIntelligence({
                     )}
                   </div>
 
-                  {/* Velocity Change */}
+                  {/* Velocity Change - Fix #11: Color based on signal */}
                   <div className="text-center sm:text-left">
                     <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Movement Velocity</p>
-                    {velocityChange ? (
-                      <span className="text-lg sm:text-2xl font-bold text-primary">{velocityChange}</span>
-                    ) : (
+                    {velocityChange ? (() => {
+                      const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+                      const velocityColor = signal === 'caution'
+                        ? 'text-red-500'
+                        : signal === 'monitor'
+                        ? 'text-amber-500'
+                        : signal === 'active_window'
+                        ? 'text-emerald-500'
+                        : 'text-primary';
+                      return (
+                        <span className={`text-lg sm:text-2xl font-bold ${velocityColor}`}>{velocityChange}</span>
+                      );
+                    })() : (
                       <span className="text-lg sm:text-2xl font-bold text-muted-foreground">—</span>
                     )}
                   </div>
@@ -646,7 +806,9 @@ export function Page3PeerIntelligence({
               {hasDriverData ? (
                 [
                   {
-                    label: 'Tax optimization',
+                    // Fix #16: "Tax optimization" only valid for relocating
+                    // Non-relocating = cross-border acquisition (tax awareness, not optimization)
+                    label: isRelocating ? 'Tax optimization' : 'Geographic diversification',
                     value: drivers!.tax_optimization,
                     color: 'primary'
                   },
@@ -656,7 +818,7 @@ export function Page3PeerIntelligence({
                     color: 'amber'
                   },
                   {
-                    label: 'Lifestyle upgrade',
+                    label: isRelocating ? 'Lifestyle upgrade' : 'Portfolio allocation',
                     value: drivers!.lifestyle,
                     color: 'muted'
                   }
@@ -698,31 +860,61 @@ export function Page3PeerIntelligence({
           </motion.div>
         </div>
 
-        {/* Key Catalyst Note */}
-        <motion.div
-          className="mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 bg-primary/5 border border-primary/20 rounded-xl sm:rounded-2xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 1.3 }}
-        >
-          <div className="flex items-start gap-2 sm:gap-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm font-semibold text-foreground mb-0.5 sm:mb-1">
-                Key Catalyst: {sourceJurisdiction || 'Source'} → {destinationJurisdiction || 'Destination'} Migration Window
-              </p>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Regulatory changes and tax optimization opportunities driving accelerated wealth repositioning
-                from {sourceJurisdiction || 'source jurisdiction'} to {destinationJurisdiction || 'destination jurisdiction'} among peer cohort.
-                <span className="hidden sm:inline"> Current window represents optimal execution timing before regulatory tightening.</span>
-              </p>
-            </div>
-          </div>
-        </motion.div>
+        {/* Key Catalyst Note - Fix #11: Dynamic based on velocity signal, Fix #16: Relocation-aware labels */}
+        {(() => {
+          const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+          const isCaution = signal === 'caution' || signal === 'monitor';
+
+          // Fix #16: Different labels for relocating vs non-relocating
+          // "Migration Window" implies relocation; "Acquisition Window" for cross-border purchases
+          const windowLabel = isRelocating ? 'Migration Window' : 'Acquisition Window';
+
+          // Different messaging based on velocity signal AND relocation status
+          const catalystTitle = isCaution
+            ? `Market Signal: ${sourceJurisdiction || 'Source'} → ${destinationJurisdiction || 'Destination'} Corridor`
+            : `Key Catalyst: ${sourceJurisdiction || 'Source'} → ${destinationJurisdiction || 'Destination'} ${windowLabel}`;
+
+          // Fix #16: Non-relocating = asset diversification focus, not tax optimization
+          const catalystBody = isCaution
+            ? `Corridor activity is declining. Peer cohort is reducing exposure to ${destinationJurisdiction || 'destination jurisdiction'} residential acquisitions. Exercise due diligence on timing and market conditions.`
+            : isRelocating
+            ? `Regulatory changes and tax optimization opportunities driving wealth repositioning from ${sourceJurisdiction || 'source jurisdiction'} to ${destinationJurisdiction || 'destination jurisdiction'} among peer cohort.`
+            : `Geographic diversification and asset allocation strategies driving cross-border acquisitions from ${sourceJurisdiction || 'source jurisdiction'} to ${destinationJurisdiction || 'destination jurisdiction'} among peer cohort.`;
+
+          const catalystDetail = isCaution
+            ? ' Review market fundamentals before committing capital to this corridor.'
+            : ' Current window represents active execution period based on peer activity patterns.';
+
+          return (
+            <motion.div
+              className={`mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 ${isCaution ? 'bg-amber-500/5 border-amber-500/20' : 'bg-primary/5 border-primary/20'} border rounded-xl sm:rounded-2xl`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: 1.3 }}
+            >
+              <div className="flex items-start gap-2 sm:gap-4">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${isCaution ? 'bg-amber-500/20' : 'bg-primary/20'} flex items-center justify-center flex-shrink-0`}>
+                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${isCaution ? 'text-amber-500' : 'text-primary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {isCaution ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    )}
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold text-foreground mb-0.5 sm:mb-1">
+                    {catalystTitle}
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {catalystBody}
+                    <span className="hidden sm:inline">{catalystDetail}</span>
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
       </motion.div>
       )}
     </div>

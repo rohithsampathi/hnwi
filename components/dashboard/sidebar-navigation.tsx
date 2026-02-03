@@ -754,7 +754,7 @@ export function SidebarNavigation({
 
       {/* Mobile Bottom Navigation - Only visible on mobile, optionally hidden in print */}
       <div className={cn("md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-xl", hideInPrint && "print:hidden")}>
-        <div className="flex items-center justify-between px-4 py-3 safe-area-pb">
+        <div className="flex items-center justify-between px-3 py-1.5 safe-area-pb">
           {mobileNavItems.map((item) => {
             const isActive = currentPage === item.route;
             const allowedRoutes = ['assessment', 'decision-memo'];
@@ -769,7 +769,7 @@ export function SidebarNavigation({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl relative group",
+                  "flex flex-col items-center justify-center min-w-[52px] h-12 px-1.5 py-1 hover:bg-muted rounded-lg relative group",
                   mobileVisuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
                   theme === 'dark' && "hover:text-white"
                 )}
@@ -782,12 +782,12 @@ export function SidebarNavigation({
                   </span>
                 )}
                 <item.icon className={cn(
-                  "h-6 w-6 mb-1 flex-shrink-0",
+                  "h-5 w-5 mb-0.5 flex-shrink-0",
                   isActive && 'text-primary',
                   theme === 'dark' && !isActive && "group-hover:text-white"
                 )} />
                 <span className={cn(
-                  "text-[10px] font-medium leading-tight text-center",
+                  "text-[9px] font-medium leading-tight text-center",
                   isActive && 'text-primary',
                   theme === 'dark' && !isActive && "group-hover:text-white"
                 )}>
@@ -804,16 +804,16 @@ export function SidebarNavigation({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "flex flex-col items-center justify-center min-w-[60px] h-16 px-2 py-2 hover:bg-muted rounded-xl group",
+                  "flex flex-col items-center justify-center min-w-[52px] h-12 px-1.5 py-1 hover:bg-muted rounded-lg group",
                   theme === 'dark' && "hover:text-white"
                 )}
               >
                 <MoreHorizontal className={cn(
-                  "h-6 w-6 mb-1 flex-shrink-0",
+                  "h-5 w-5 mb-0.5 flex-shrink-0",
                   theme === 'dark' && "group-hover:text-white"
                 )} />
                 <span className={cn(
-                  "text-[10px] font-medium leading-tight text-center",
+                  "text-[9px] font-medium leading-tight text-center",
                   theme === 'dark' && "group-hover:text-white"
                 )}>
                   More

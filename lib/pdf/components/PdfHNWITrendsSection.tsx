@@ -451,8 +451,8 @@ export function PdfHNWITrendsSection({
               <View style={styles.citationBullet} />
               <Text style={styles.citationText}>
                 {citation.title}
-                {citation.date && <Text style={styles.citationDate}> ({citation.date})</Text>}
-                {citation.reliability && (
+                {!!citation.date && <Text style={styles.citationDate}> ({citation.date})</Text>}
+                {!!citation.reliability && (
                   <Text style={styles.citationReliability}> • {citation.reliability}</Text>
                 )}
               </Text>

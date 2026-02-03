@@ -139,6 +139,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    if (isDecisionMemoRoute) return
     router.push("/dashboard")
   }
 
@@ -199,10 +200,9 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
               <Image
                 src="/logo.png"
                 alt="HNWI Chronicles Globe"
-                width={28}
-                height={28}
-                className="w-7 h-7"
-                style={{ width: 'auto', height: 'auto' }}
+                width={24}
+                height={24}
+                className="w-6 h-6"
                 priority
               />
             </motion.div>
@@ -280,7 +280,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
             </div>
           )}
           
-          <div className={getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8'} style={{
+          <div className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')} style={{
             paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
             paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
             paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',

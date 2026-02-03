@@ -423,7 +423,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         <Text style={styles.subtitle}>Strategic Intelligence Analysis</Text>
 
         {/* Jurisdiction corridor */}
-        {sourceJurisdiction && destinationJurisdiction && (
+        {!!sourceJurisdiction && !!destinationJurisdiction && (
           <View style={styles.corridorContainer}>
             <View style={styles.jurisdictionColumn}>
               <Text style={styles.jurisdictionLabel}>Origin</Text>
@@ -447,15 +447,15 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
         )}
 
         {/* Key metrics */}
-        {(exposureClass || valueCreation) && (
+        {!!(exposureClass || valueCreation) && (
           <View style={styles.metricsContainer}>
-            {exposureClass && (
+            {!!exposureClass && (
               <View style={[styles.metricBox, styles.metricBoxFirst]}>
                 <Text style={styles.metricLabel}>Risk Profile</Text>
                 <Text style={styles.metricValueGold}>{exposureClass}</Text>
               </View>
             )}
-            {valueCreation && (
+            {!!valueCreation && (
               <View style={styles.metricBox}>
                 <Text style={styles.metricLabel}>Value Creation</Text>
                 <Text style={styles.metricValueGreen}>{valueCreation}</Text>

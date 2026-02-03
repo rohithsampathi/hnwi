@@ -853,7 +853,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
                       </Text>
                     </View>
                   </View>
-                  {(risk.cost_display || (risk.exposure_amount && risk.exposure_amount > 0)) && (
+                  {!!(risk.cost_display || (risk.exposure_amount && risk.exposure_amount > 0)) && (
                     <Text style={styles.riskExposure}>
                       {formatCostDisplay(risk.cost_display) || formatCurrency(risk.exposure_amount || 0)}
                     </Text>
@@ -862,17 +862,17 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
 
                 {/* Risk Content */}
                 <Text style={styles.riskTitle}>{risk.title}</Text>
-                {risk.description && (
+                {!!risk.description && (
                   <Text style={styles.riskDescription}>{risk.description}</Text>
                 )}
 
                 {/* Premium Mitigation Box */}
-                {(risk.mitigation || risk.mitigation_timeline_days) && (
+                {!!(risk.mitigation || risk.mitigation_timeline_days) && (
                   <View style={styles.mitigationBox}>
                     <View style={styles.mitigationHeader}>
                       <Text style={styles.mitigationLabel}>Mitigation Plan</Text>
 
-                      {risk.mitigation_timeline_days && (
+                      {!!risk.mitigation_timeline_days && (
                         <View style={styles.mitigationTimelineBadge}>
                           <Text style={styles.mitigationTimelineText}>
                             {risk.mitigation_timeline_days} DAYS
@@ -880,7 +880,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
                         </View>
                       )}
 
-                      {risk.mitigation_action_type && (
+                      {!!risk.mitigation_action_type && (
                         <View style={styles.mitigationActionBadge}>
                           <Text style={styles.mitigationActionText}>
                             {risk.mitigation_action_type}
@@ -888,14 +888,14 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
                         </View>
                       )}
 
-                      {risk.timeline_source && (
+                      {!!risk.timeline_source && (
                         <Text style={styles.mitigationSourceText}>
                           Source: {risk.timeline_source}
                         </Text>
                       )}
                     </View>
 
-                    {risk.mitigation && (
+                    {!!risk.mitigation && (
                       <Text style={styles.mitigationText}>{risk.mitigation}</Text>
                     )}
                   </View>
@@ -942,7 +942,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
                       <Text style={styles.ddTimelineText}>{item.timeline || timeline}</Text>
                     </View>
                   </View>
-                  {item.responsible && (
+                  {!!item.responsible && (
                     <Text style={styles.ddResponsible}>{item.responsible}</Text>
                   )}
                 </View>
