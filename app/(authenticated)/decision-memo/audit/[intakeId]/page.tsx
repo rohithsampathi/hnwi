@@ -141,9 +141,17 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
 
   // Report-scoped authentication
+  // MFA bypass for specific demo/testing intake IDs
+  const MFA_BYPASS_INTAKE_IDS = ['fo_audit_AijuqwJovDu_'];
+  const isMfaBypassed = MFA_BYPASS_INTAKE_IDS.includes(intakeId);
+
   const [showReportAuth, setShowReportAuth] = useState(false);
   const [reportToken, setReportToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
+    // Bypass MFA for specific intake IDs (demo/testing)
+    if (MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+      return 'mfa_bypass_token';
+    }
     // Check localStorage first (remembered device), then sessionStorage
     const remembered = localStorage.getItem(`report_token_${intakeId}`);
     if (remembered) {
@@ -260,10 +268,13 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       }
     } catch (err) {
       if (err instanceof ReportAuthRequiredError) {
-        // Report requires authentication — show the login popup
-        setShowReportAuth(true);
-        setIsLoading(false);
-        return;
+        // Report requires authentication — show the login popup (unless bypassed)
+        if (!MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+          setShowReportAuth(true);
+          setIsLoading(false);
+          return;
+        }
+        // For bypassed intakes, continue without auth
       }
       console.error('Error fetching audit data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load audit');
@@ -291,7 +302,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setIsWaitingForPreview(false); // Only set after successful fetch
         })
         .catch((err) => {
-          if (err instanceof ReportAuthRequiredError) {
+          if (err instanceof ReportAuthRequiredError && !MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
             setShowReportAuth(true);
             return;
           }
