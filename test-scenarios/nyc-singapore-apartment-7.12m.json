@@ -8,7 +8,9 @@
     "expected_outcome": "9% annual rental yield with 16% annual capital appreciation, generating combined 25% gross returns. Tax-efficient wealth preservation in Singapore jurisdiction with long-term residency pathway benefits.",
     "move_type": "real_estate",
     "target_amount": "$7.12M",
-    "target_locations": ["Singapore"],
+    "target_locations": [
+      "Singapore"
+    ],
     "timeline": "30 days",
     "source_jurisdiction": "United States",
     "source_state": "New York",
@@ -18,7 +20,11 @@
     "liquidity_horizon": "12+ months",
     "liquidity_amount_needed": "",
     "liquidity_events": [],
-    "current_jurisdictions": ["United States", "United Kingdom", "Singapore"],
+    "current_jurisdictions": [
+      "United States",
+      "United Kingdom",
+      "Singapore"
+    ],
     "prohibited_jurisdictions": [],
     "prohibitions": [],
     "deal_breakers": [],
@@ -31,14 +37,30 @@
     "veto_holders": [],
     "approval_required_above": "",
     "advisors": [
-      { "type": "tax", "name": "", "jurisdiction": "United States" },
-      { "type": "legal", "name": "", "jurisdiction": "New York" }
+      {
+        "type": "tax",
+        "name": "",
+        "jurisdiction": "United States"
+      },
+      {
+        "type": "legal",
+        "name": "",
+        "jurisdiction": "New York"
+      }
     ],
     "existing_entities": [
-      { "type": "Family Office", "jurisdiction": "New York", "purpose": "" }
+      {
+        "type": "Family Office",
+        "jurisdiction": "New York",
+        "purpose": ""
+      }
     ],
     "banking_rails": [
-      { "bank": "JP Morgan", "jurisdiction": "New York", "status": "active" }
+      {
+        "bank": "JP Morgan",
+        "jurisdiction": "New York",
+        "status": "active"
+      }
     ],
     "has_formal_ips": false,
     "ips_notes": "",
@@ -63,7 +85,9 @@
     "estimated_value": 7120000,
     "rental_yield_pct": 9,
     "appreciation_pct": 16,
-    "location_preference": ["Orchard Road"],
+    "location_preference": [
+      "Orchard Road"
+    ],
     "size_sqft": "3000",
     "bedrooms": "4"
   }
