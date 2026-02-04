@@ -139,6 +139,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const [isUnlockReady, setIsUnlockReady] = useState(false);
   const [isWaitingForPreview, setIsWaitingForPreview] = useState(false);
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
+  const [hnwiWorldCount, setHnwiWorldCount] = useState<number>(1875); // HNWI World developments count
 
   // Report-scoped authentication
   // MFA bypass for specific demo/testing intake IDs
@@ -287,6 +288,17 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch HNWI World developments count
+  useEffect(() => {
+    fetch('/api/developments/counts')
+      .then(res => res.json())
+      .then(data => {
+        const count = data.developments?.total_count || data.total || data.count || 1875;
+        setHnwiWorldCount(count);
+      })
+      .catch(() => {}); // Silently fail, use default
+  }, []);
 
   // When SSE signals preview is ready, fetch from backend
   // Always fetch to ensure proper snake_case → camelCase transformation
@@ -1406,18 +1418,21 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               viaNegativa={viaNegativaContext}
             />
 
-            {/* INPUT THESIS SUMMARY - Quick context of what's being analyzed */}
-            {fullArtifact?.thesisSummary && (
-              <div className="bg-muted/30 dark:bg-muted/20 border border-border/50 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 mb-3">
-                <div className="flex items-start gap-2">
-                  <FileText className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-2">Decision Under Review:</span>
-                    <span className="text-sm text-foreground">{fullArtifact.thesisSummary}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* MEMO PRELUDE - Hero opener setting the intelligence foundation */}
+            <div className="mb-8">
+              {/* Intelligence Basis - The Hero Opener */}
+              <p className="text-base sm:text-lg text-foreground leading-relaxed mb-4">
+                This audit draws on <span className="font-semibold text-primary">{hnwiWorldCount.toLocaleString()}</span> validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against <span className="font-semibold text-primary">{(memoData.memo_data?.kgv3_intelligence_used?.precedents || 754).toLocaleString()}</span> precedents specific to the {memoData.preview_data.source_jurisdiction || 'Source'}→{memoData.preview_data.destination_jurisdiction || 'Destination'} corridor. All findings are citation-backed.
+              </p>
+
+              {/* Decision Under Review - Smaller, after the prelude */}
+              {fullArtifact?.thesisSummary && (
+                <p className="text-sm text-muted-foreground leading-relaxed pl-4 border-l-2 border-primary/30">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground/70 block mb-1">Decision Under Audit</span>
+                  {fullArtifact.thesisSummary}
+                </p>
+              )}
+            </div>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PHASE 1: EXECUTIVE SUMMARY (Stanford BLUF - Bottom Line Up Front)              */}

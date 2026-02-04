@@ -20,6 +20,7 @@ import { Page1TaxDashboard } from '@/components/decision-memo/memo/Page1TaxDashb
 import { Page2AuditVerdict } from '@/components/decision-memo/memo/Page2AuditVerdict';
 import { Page3PeerIntelligence } from '@/components/decision-memo/memo/Page3PeerIntelligence';
 import { RegulatorySourcesSection } from '@/components/decision-memo/memo/RegulatorySourcesSection';
+import { ReferencesSection } from '@/components/decision-memo/memo/ReferencesSection';
 
 interface PageProps {
   params: {
@@ -407,6 +408,13 @@ export default function DecisionMemoPage({ params }: PageProps) {
               <RegulatorySourcesSection citations={preview_data.regulatory_citations} />
             </section>
           </>
+        )}
+
+        {/* Section 5: Legal References (MFO Audit Requirement - Feb 2026) */}
+        {preview_data.legal_references && preview_data.legal_references.total_count > 0 && (
+          <section className="mb-10 sm:mb-16">
+            <ReferencesSection references={preview_data.legal_references} />
+          </section>
         )}
 
         {/* Premium Footer Section */}

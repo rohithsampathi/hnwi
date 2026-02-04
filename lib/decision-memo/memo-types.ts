@@ -457,6 +457,12 @@ export interface PreviewData {
   // ═══════════════════════════════════════════════════════════════════════
   data_quality?: string;
   data_quality_note?: string;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LEGAL REFERENCES (MFO Audit Requirement - Feb 2026)
+  // All statutes, regulations, and data sources cited in this memo
+  // ═══════════════════════════════════════════════════════════════════════
+  legal_references?: LegalReferences;
 }
 
 // =============================================================================
@@ -1213,4 +1219,42 @@ export interface ViaNegativaContext {
   ctaButtonText: string;
   ctaButtonUrl: string;
   ctaContextNote: string;
+}
+
+// =============================================================================
+// LEGAL REFERENCES & CITATIONS (MFO Audit Requirement - Feb 2026)
+// =============================================================================
+
+/** Individual citation entry for the references section */
+export interface CitationEntry {
+  id: string;
+  short_cite: string;      // e.g., "IRC §61"
+  title: string;           // e.g., "US Worldwide Taxation"
+  reference: string;       // Full legal citation
+  url?: string;            // Source URL if available
+  effective_date?: string; // When the rule took effect
+  data_year?: number;      // Year of market data (for market sources)
+  sections_used?: string[]; // Which memo sections reference this
+}
+
+/** Complete legal references section for end of memo */
+export interface LegalReferences {
+  /** US Tax Code (IRC sections) */
+  tax_statutes: CitationEntry[];
+  /** State tax laws (NY Tax Law, CA Rev & Tax) */
+  state_tax_laws: CitationEntry[];
+  /** Foreign tax authorities (IRAS, HMRC, etc.) */
+  foreign_tax_laws: CitationEntry[];
+  /** Regulations (Treasury, FinCEN) */
+  regulations: CitationEntry[];
+  /** Compliance forms (FBAR, Form 8938) */
+  compliance_forms: CitationEntry[];
+  /** Market data sources (Knight Frank, URA) */
+  market_data_sources: CitationEntry[];
+  /** Treaties and FTAs */
+  treaties: CitationEntry[];
+  /** IRS guidance (notices, revenue procedures) */
+  guidance: CitationEntry[];
+  /** Total count of all citations */
+  total_count: number;
 }
