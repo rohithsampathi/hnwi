@@ -202,11 +202,38 @@ export async function generateDecisionMemoPDF(
 
   // Key metrics row
   yPos += 35;
+
+  // Extract tax data from preview_data
+  const sourceTaxRates = preview_data.source_tax_rates || {};
+  const destTaxRates = preview_data.destination_tax_rates || {};
+  const taxDifferential = preview_data.tax_differential || {};
+  const sourceJurisdiction = preview_data.source_jurisdiction || 'Source';
+  const destJurisdiction = preview_data.destination_jurisdiction || 'Destination';
+
+  // Calculate effective tax rates
+  const sourceEffective = (sourceTaxRates as any).effective ||
+    ((sourceTaxRates as any).income || 0) + ((sourceTaxRates as any).capital_gains || 0);
+  const destEffective = (destTaxRates as any).effective ||
+    ((destTaxRates as any).income || 0) + ((destTaxRates as any).capital_gains || 0);
+
+  // Risk assessment for confidence score
+  const riskAssessment = preview_data.risk_assessment;
+  const riskLevel = (riskAssessment?.risk_level || 'MODERATE').toUpperCase();
+  const confidenceMap: Record<string, string> = {
+    'LOW': '85%',
+    'LOW-MODERATE': '75%',
+    'MODERATE': '65%',
+    'MODERATE-HIGH': '55%',
+    'HIGH': '45%',
+    'CRITICAL': '35%'
+  };
+  const confidenceScore = confidenceMap[riskLevel] || '65%';
+
   const metrics = [
-    { label: 'TOTAL SAVINGS', value: preview_data.total_savings, isGold: true },
-    { label: 'OPPORTUNITIES', value: String(preview_data.opportunities_count), isGold: false },
-    { label: 'RISK CLASS', value: preview_data.exposure_class, isGold: false },
-    { label: 'CONFIDENCE', value: '73%', isGold: false },
+    { label: 'TOTAL SAVINGS', value: preview_data.total_savings || '$0', isGold: true },
+    { label: 'OPPORTUNITIES', value: String(preview_data.opportunities_count || 0), isGold: false },
+    { label: 'RISK CLASS', value: preview_data.exposure_class || 'N/A', isGold: false },
+    { label: 'CONFIDENCE', value: confidenceScore, isGold: false },
   ];
 
   const metricWidth = 40;
@@ -281,36 +308,43 @@ export async function generateDecisionMemoPDF(
   doc.setLineWidth(0.2);
   doc.line(pageWidth / 2 - 30, yPos + 16, pageWidth / 2 + 30, yPos + 16);
 
-  // Before rate with strikethrough
+  // Before rate with strikethrough - use actual source tax rate
+  const sourceRateDisplay = sourceEffective > 0 ? `${sourceEffective.toFixed(1)}%` : '0%';
   doc.setFontSize(32);
   doc.setTextColor(...COLORS.redMuted);
   doc.setFont('helvetica', 'normal');
-  doc.text('62.6%', 55, yPos + 40);
+  doc.text(sourceRateDisplay, 55, yPos + 40);
 
   // Strikethrough line
   doc.setDrawColor(...COLORS.red);
   doc.setLineWidth(1);
   doc.line(40, yPos + 37, 80, yPos + 37);
 
+  // Clean jurisdiction name for display
+  const cleanJurisdiction = (name: string) => {
+    return name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('India', 55, yPos + 50);
+  doc.text(cleanJurisdiction(sourceJurisdiction), 55, yPos + 50);
 
   // Arrow
   doc.setFontSize(20);
   doc.setTextColor(...COLORS.gold);
   doc.text('→', pageWidth / 2, yPos + 40, { align: 'center' });
 
-  // After rate
+  // After rate - use actual destination tax rate
+  const destRateDisplay = destEffective > 0 ? `${destEffective.toFixed(1)}%` : '0%';
   doc.setFontSize(42);
   doc.setTextColor(...COLORS.emerald);
   doc.setFont('helvetica', 'bold');
-  doc.text('0%', pageWidth - 55, yPos + 43, { align: 'center' });
+  doc.text(destRateDisplay, pageWidth - 55, yPos + 43, { align: 'center' });
 
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.textMuted);
   doc.setFont('helvetica', 'normal');
-  doc.text('UAE', pageWidth - 55, yPos + 53, { align: 'center' });
+  doc.text(cleanJurisdiction(destJurisdiction), pageWidth - 55, yPos + 53, { align: 'center' });
 
   // Annual savings badge
   doc.setFillColor(...COLORS.emeraldDark);
@@ -329,17 +363,29 @@ export async function generateDecisionMemoPDF(
   doc.text('Jurisdiction Comparison', 20, yPos);
   yPos += 8;
 
+  // Build tax table from actual data
+  const formatTaxRate = (rate: number | undefined) => rate !== undefined ? `${rate.toFixed(1)}%` : '0%';
+  const calcDiff = (source: number | undefined, dest: number | undefined) => {
+    const s = source || 0;
+    const d = dest || 0;
+    const diff = d - s;
+    return diff !== 0 ? `${diff > 0 ? '+' : ''}${diff.toFixed(1)}%` : '0%';
+  };
+
+  const srcRates = sourceTaxRates as any;
+  const dstRates = destTaxRates as any;
+
   const taxTableData = [
-    ['Income Tax', '42.6%', '0%', '-42.6%'],
-    ['Capital Gains', '20.0%', '0%', '-20.0%'],
-    ['Wealth Tax', '0%', '0%', '0%'],
-    ['Estate Tax', '0%', '0%', '0%'],
-    ['Total Effective', '62.6%', '0%', '-62.6%'],
+    ['Income Tax', formatTaxRate(srcRates.income), formatTaxRate(dstRates.income), calcDiff(srcRates.income, dstRates.income)],
+    ['Capital Gains', formatTaxRate(srcRates.capital_gains), formatTaxRate(dstRates.capital_gains), calcDiff(srcRates.capital_gains, dstRates.capital_gains)],
+    ['Wealth Tax', formatTaxRate(srcRates.wealth_tax), formatTaxRate(dstRates.wealth_tax), calcDiff(srcRates.wealth_tax, dstRates.wealth_tax)],
+    ['Estate Tax', formatTaxRate(srcRates.estate_tax), formatTaxRate(dstRates.estate_tax), calcDiff(srcRates.estate_tax, dstRates.estate_tax)],
+    ['Total Effective', formatTaxRate(sourceEffective), formatTaxRate(destEffective), calcDiff(sourceEffective, destEffective)],
   ];
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Tax Category', 'Current (India)', 'Proposed (UAE)', 'Savings']],
+    head: [['Tax Category', `Current (${cleanJurisdiction(sourceJurisdiction)})`, `Proposed (${cleanJurisdiction(destJurisdiction)})`, 'Savings']],
     body: taxTableData,
     theme: 'plain',
     styles: {
@@ -373,12 +419,24 @@ export async function generateDecisionMemoPDF(
   // Implementation Timeline
   addSectionHeader('IMPLEMENTATION ROADMAP', 'Phased execution with parallel workstreams');
 
-  const phases = [
-    { id: 1, name: 'Foundation', duration: '0-45 days', desc: 'Banking, documentation, regulatory filings', color: COLORS.gold },
-    { id: 2, name: 'Residency', duration: '30-213 days', desc: 'Physical presence, visa, residence permits', color: COLORS.blue },
-    { id: 3, name: 'Entity Formation', duration: '100-160 days', desc: 'DIFC company, substance requirements', color: COLORS.emerald },
-    { id: 4, name: 'Asset Migration', duration: '150-365 days', desc: 'Portfolio transfer, treaty optimization', color: COLORS.amber },
-  ];
+  // Use execution_sequence from data if available, otherwise use defaults
+  const phaseColors = [COLORS.gold, COLORS.blue, COLORS.emerald, COLORS.amber, COLORS.purple];
+  const executionSequence = preview_data.execution_sequence || [];
+
+  const phases = executionSequence.length > 0
+    ? executionSequence.slice(0, 5).map((phase: any, i: number) => ({
+        id: i + 1,
+        name: phase.phase || phase.title || `Phase ${i + 1}`,
+        duration: phase.timeline || phase.duration || 'TBD',
+        desc: phase.description || phase.details || '',
+        color: phaseColors[i % phaseColors.length]
+      }))
+    : [
+        { id: 1, name: 'Foundation', duration: '0-45 days', desc: 'Banking, documentation, regulatory filings', color: COLORS.gold },
+        { id: 2, name: 'Residency', duration: '30-213 days', desc: 'Physical presence, visa, residence permits', color: COLORS.blue },
+        { id: 3, name: 'Entity Formation', duration: '100-160 days', desc: 'Entity setup, substance requirements', color: COLORS.emerald },
+        { id: 4, name: 'Asset Migration', duration: '150-365 days', desc: 'Portfolio transfer, treaty optimization', color: COLORS.amber },
+      ];
 
   phases.forEach((phase, i) => {
     checkPageBreak(18);
@@ -431,22 +489,41 @@ export async function generateDecisionMemoPDF(
   const gaugeHeight = 50;
   addCard(20, yPos, pageWidth - 40, gaugeHeight, true);
 
-  // Big confidence number
+  // Big confidence number - use actual risk-derived confidence
   doc.setFontSize(48);
   doc.setTextColor(...COLORS.gold);
   doc.setFont('helvetica', 'bold');
-  doc.text('73%', 55, yPos + 33);
+  doc.text(confidenceScore, 55, yPos + 33);
 
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.textPrimary);
   doc.setFont('helvetica', 'bold');
   doc.text('SUCCESS CONFIDENCE', 55, yPos + 43);
 
-  // Risk indicator badges
+  // Risk indicator badges - derive from risk assessment
+  const getRiskColor = (level: string) => {
+    const l = level.toUpperCase();
+    if (l === 'LOW') return COLORS.emerald;
+    if (l === 'MEDIUM' || l === 'MODERATE') return COLORS.amber;
+    if (l === 'HIGH' || l === 'CRITICAL') return COLORS.red;
+    return COLORS.amber;
+  };
+
+  const getRiskLabel = (level: string) => {
+    const l = level.toUpperCase();
+    if (l.includes('LOW')) return 'LOW';
+    if (l.includes('HIGH') || l.includes('CRITICAL')) return 'HIGH';
+    return 'MEDIUM';
+  };
+
+  // Determine complexity from number of mistakes/risks
+  const mistakeCount = preview_data.all_mistakes?.length || 0;
+  const complexityLevel = mistakeCount > 5 ? 'HIGH' : mistakeCount > 2 ? 'MEDIUM' : 'LOW';
+
   const indicators = [
-    { label: 'Audit Risk', value: 'LOW', color: COLORS.emerald },
-    { label: 'Complexity', value: 'MEDIUM', color: COLORS.amber },
-    { label: 'Timeline', value: 'LOW', color: COLORS.emerald },
+    { label: 'Audit Risk', value: getRiskLabel(riskLevel), color: getRiskColor(riskLevel) },
+    { label: 'Complexity', value: complexityLevel, color: getRiskColor(complexityLevel) },
+    { label: 'Timeline', value: executionSequence.length > 4 ? 'MEDIUM' : 'LOW', color: executionSequence.length > 4 ? COLORS.amber : COLORS.emerald },
   ];
 
   const indicatorStartX = 115;
@@ -536,13 +613,22 @@ export async function generateDecisionMemoPDF(
   doc.text('Due Diligence Requirements', 20, yPos);
   yPos += 10;
 
-  const ddItems = [
-    { task: 'Engage qualified tax counsel in both jurisdictions', timeline: 'Week 1' },
-    { task: 'Complete substance requirements analysis', timeline: 'Week 2-3' },
-    { task: 'Review exit tax implications and treaty benefits', timeline: 'Week 3-4' },
-    { task: 'Establish banking relationships in UAE', timeline: 'Week 4-6' },
-    { task: 'Document economic substance continuously', timeline: 'Ongoing' },
-  ];
+  // Use DD checklist from data if available
+  const ddChecklist = preview_data.dd_checklist || data.memo_data?.dd_checklist;
+  const ddItems = ddChecklist?.items && ddChecklist.items.length > 0
+    ? ddChecklist.items.slice(0, 5).map((item: any) => ({
+        task: item.item || item.task || item.description || 'Review item',
+        timeline: item.priority === 'critical' ? 'Week 1' :
+                  item.priority === 'high' ? 'Week 2-3' :
+                  item.priority === 'medium' ? 'Week 3-4' : 'Week 4+'
+      }))
+    : [
+        { task: 'Engage qualified tax counsel in both jurisdictions', timeline: 'Week 1' },
+        { task: 'Complete substance requirements analysis', timeline: 'Week 2-3' },
+        { task: 'Review exit tax implications and treaty benefits', timeline: 'Week 3-4' },
+        { task: `Establish banking relationships in ${cleanJurisdiction(destJurisdiction)}`, timeline: 'Week 4-6' },
+        { task: 'Document economic substance continuously', timeline: 'Ongoing' },
+      ];
 
   ddItems.forEach((item) => {
     checkPageBreak(12);
@@ -571,7 +657,9 @@ export async function generateDecisionMemoPDF(
   addDarkBackground();
   yPos = 20;
 
-  addSectionHeader('PEER INTELLIGENCE', `${preview_data.opportunities_count} opportunities matched from 3,427+ HNWI patterns`);
+  // Use actual precedent count from data
+  const precedentCount = data.memo_data?.kgv3_intelligence_used?.precedents || preview_data.precedent_count || 1562;
+  addSectionHeader('PEER INTELLIGENCE', `${preview_data.opportunities_count || 0} opportunities matched from ${precedentCount.toLocaleString()}+ HNWI patterns`);
 
   // Opportunities list
   if (preview_data.all_opportunities && preview_data.all_opportunities.length > 0) {

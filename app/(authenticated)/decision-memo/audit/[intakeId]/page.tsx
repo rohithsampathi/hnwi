@@ -1366,14 +1366,15 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                   {linkCopied ? 'Copied!' : 'Share'}
                 </button>
-                <button
+                {/* PDF export temporarily disabled */}
+                {/* <button
                   onClick={handleExportPDF}
                   disabled={isExportingPDF}
                   className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50"
                 >
                   {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   {isExportingPDF ? 'Exporting...' : 'Export PDF'}
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
@@ -1404,6 +1405,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               totalSavings={memoData.preview_data.total_savings}
               viaNegativa={viaNegativaContext}
             />
+
+            {/* INPUT THESIS SUMMARY - Quick context of what's being analyzed */}
+            {fullArtifact?.thesisSummary && (
+              <div className="bg-muted/30 dark:bg-muted/20 border border-border/50 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3 mb-3">
+                <div className="flex items-start gap-2">
+                  <FileText className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-2">Decision Under Review:</span>
+                    <span className="text-sm text-foreground">{fullArtifact.thesisSummary}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PHASE 1: EXECUTIVE SUMMARY (Stanford BLUF - Bottom Line Up Front)              */}

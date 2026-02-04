@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import type { DecisionMemoData, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { ArrowLeft, Download, FileText } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
@@ -279,8 +279,8 @@ export default function DecisionMemoPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Right: Download */}
-            <button
+            {/* Right: Download - temporarily disabled */}
+            {/* <button
               onClick={async () => {
                 const { generateDecisionMemoPDF } = await import('@/lib/decision-memo/pdf-generator');
                 await generateDecisionMemoPDF(data, intakeId);
@@ -289,7 +289,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
             >
               <Download className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">DOWNLOAD </span><span>PDF</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
@@ -464,7 +464,8 @@ export default function DecisionMemoPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <button
+              {/* PDF download temporarily disabled */}
+              {/* <button
                 onClick={async () => {
                   const { generateDecisionMemoPDF } = await import('@/lib/decision-memo/pdf-generator');
                   await generateDecisionMemoPDF(data, intakeId);
@@ -478,7 +479,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
 
               <p className="mt-4 sm:mt-6 text-[10px] sm:text-xs text-muted-foreground px-2">
                 PDF contains all sections including risk analysis, peer intelligence, and implementation roadmap
-              </p>
+              </p> */}
             </div>
           </div>
         </motion.div>
