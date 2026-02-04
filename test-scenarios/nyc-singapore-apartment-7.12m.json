@@ -29,7 +29,8 @@
     "prohibitions": [],
     "deal_breakers": [],
     "destination_property_count": 0,
-    "purchase_vehicle": "optimize"
+    "purchase_vehicle": "optimize",
+    "is_relocating": false
   },
   "control_and_rails": {
     "final_decision_maker": "principal",

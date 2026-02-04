@@ -34,8 +34,17 @@ interface Page2Props {
     risk_level?: string;       // "LOW", "MODERATE", "HIGH", "CRITICAL"
     total_exposure_formatted?: string;  // e.g., "$2.5M"
     critical_items?: number;
-    verdict?: string;          // e.g., "APPROVED", "CONDITIONAL APPROVAL"
+    high_priority?: number;    // SOTA: High priority items count
+    verdict?: string;          // e.g., "APPROVED", "CONDITIONAL", "REVIEW REQUIRED"
     recommendation?: string;
+    verdict_note?: string;     // SOTA: Additional context for verdict
+    // SOTA Feb 2026: Structure verdict sync from scenario tree
+    structure_verdict?: string; // "PROCEED" | "PROCEED_MODIFIED" | "DO_NOT_PROCEED"
+  };
+  // SOTA Feb 2026: Scenario Tree integration for verdict coherence
+  scenarioTreeData?: {
+    recommended_branch?: string; // "PROCEED_NOW" | "PROCEED_MODIFIED" | "DO_NOT_PROCEED"
+    recommendation_strength?: number; // 0-100 percentage
   };
   // Via Negativa "Autopsy" mode
   viaNegativa?: ViaNegativaContext;
@@ -276,7 +285,8 @@ export function Page2AuditVerdict({
   dataQualityNote,
   mitigationTimeline,
   riskAssessment,
-  viaNegativa
+  viaNegativa,
+  scenarioTreeData
 }: Page2Props) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -317,6 +327,20 @@ export function Page2AuditVerdict({
   }, [mistakes]);
 
   const getVerdict = () => {
+    // SOTA Feb 2026: Use structure_verdict as source of truth for verdict display
+    // This ensures header syncs with scenario tree recommendation
+    const structureVerdict = riskAssessment?.structure_verdict;
+    const scenarioBranch = scenarioTreeData?.recommended_branch;
+    const scenarioStrength = scenarioTreeData?.recommendation_strength;
+
+    // Map structure_verdict to display verdict
+    const structureVerdictMap: Record<string, { verdict: string; color: 'emerald' | 'amber' | 'red' }> = {
+      'PROCEED': { verdict: 'APPROVED', color: 'emerald' },
+      'PROCEED_NOW': { verdict: 'APPROVED', color: 'emerald' },
+      'PROCEED_MODIFIED': { verdict: 'CONDITIONAL', color: 'amber' },
+      'DO_NOT_PROCEED': { verdict: 'REVIEW REQUIRED', color: 'red' }
+    };
+
     // Only use backend-provided risk assessment - no frontend fallback calculations
     if (riskAssessment?.risk_level) {
       const riskLevel = riskAssessment.risk_level.toUpperCase();
@@ -337,12 +361,38 @@ export function Page2AuditVerdict({
         'CRITICAL': 85
       };
 
+      // SOTA: Prefer structure_verdict over risk_assessment.verdict for coherence
+      let finalVerdict = riskAssessment.verdict || '—';
+      let finalColor = colorMap[riskLevel] || 'primary';
+
+      if (structureVerdict && structureVerdictMap[structureVerdict]) {
+        finalVerdict = structureVerdictMap[structureVerdict].verdict;
+        finalColor = structureVerdictMap[structureVerdict].color;
+      } else if (scenarioBranch && structureVerdictMap[scenarioBranch]) {
+        // Fallback to scenario tree recommendation
+        finalVerdict = structureVerdictMap[scenarioBranch].verdict;
+        finalColor = structureVerdictMap[scenarioBranch].color;
+      }
+
+      // Build recommendation with scenario strength context
+      let recommendation = riskAssessment.recommendation || '—';
+      if (riskAssessment.verdict_note) {
+        recommendation = riskAssessment.verdict_note;
+      }
+      if (scenarioStrength && scenarioBranch) {
+        recommendation = `${recommendation} (${scenarioStrength}% confidence in ${scenarioBranch.replace('_', ' ')})`;
+      }
+
       return {
-        decision: riskAssessment.verdict || '—',
+        decision: finalVerdict,
         riskScore: riskScoreMap[riskLevel] || 0,
         riskLevel: riskLevel,
-        recommendation: riskAssessment.recommendation || '—',
-        color: colorMap[riskLevel] || 'primary'
+        recommendation: recommendation,
+        color: finalColor,
+        // SOTA: Expose structure context for advanced display
+        structureVerdict: structureVerdict,
+        scenarioBranch: scenarioBranch,
+        scenarioStrength: scenarioStrength
       };
     }
 
@@ -352,7 +402,10 @@ export function Page2AuditVerdict({
       riskScore: 0,
       riskLevel: '—',
       recommendation: '—',
-      color: 'primary' as const
+      color: 'primary' as const,
+      structureVerdict: undefined,
+      scenarioBranch: undefined,
+      scenarioStrength: undefined
     };
   };
 

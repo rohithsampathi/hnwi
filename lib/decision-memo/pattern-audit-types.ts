@@ -45,6 +45,9 @@ export interface Constraints {
   // Property-specific (backend uses for ABSD tier calculations)
   destinationPropertyCount?: number;  // How many properties at destination
   purchaseVehicle?: string;           // "personal" | "entity" | "optimize"
+
+  // Relocation intent (critical for structure optimization)
+  isRelocating?: boolean;             // Will principal relocate to destination jurisdiction?
 }
 
 export interface Advisor {
@@ -492,6 +495,7 @@ export interface PatternAuditAPIPayload {
     deal_breakers: string[];
     destination_property_count?: number;
     purchase_vehicle?: string;
+    is_relocating?: boolean;
   };
   control_and_rails: {
     final_decision_maker: string;

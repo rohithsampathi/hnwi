@@ -191,11 +191,28 @@ export function MemoHeader({
   }, [isInView]);
 
   // ─── Determine verdict tier ───────────────────────────────────────────────
-  const tier: VerdictTier = viaNegativa?.isActive
-    ? 'vetoed'
-    : optimalStructure
-    ? 'approved'
-    : 'conditional';
+  // FIX: Use actual verdict prop to determine tier, not just optimalStructure existence
+  const tier: VerdictTier = (() => {
+    if (viaNegativa?.isActive) return 'vetoed';
+
+    // Map verdict strings to tiers
+    const verdictUpper = (verdict || '').toUpperCase();
+
+    // Vetoed/Red tier: REVIEW REQUIRED, DO_NOT_PROCEED, NOT_RECOMMENDED
+    if (verdictUpper.includes('REVIEW REQUIRED') ||
+        verdictUpper === 'DO_NOT_PROCEED' ||
+        verdictUpper.includes('NOT_RECOMMENDED')) {
+      return 'vetoed';
+    }
+
+    // Approved/Green tier: APPROVED, PROCEED (without MODIFIED)
+    if (verdictUpper === 'APPROVED' || verdictUpper === 'PROCEED') {
+      return 'approved';
+    }
+
+    // Conditional/Amber tier: CONDITIONAL, PROCEED_MODIFIED, PROCEED_DIVERSIFICATION_ONLY, or unknown
+    return 'conditional';
+  })();
 
   const theme = THEME[tier];
 

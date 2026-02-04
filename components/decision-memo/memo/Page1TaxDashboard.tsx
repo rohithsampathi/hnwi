@@ -28,7 +28,13 @@ interface TaxDifferential {
   income_tax_differential_pct?: number;
   cgt_differential_pct?: number;
   estate_tax_differential_pct?: number;
-  cumulative_tax_differential_pct?: number; // Total combined tax differential
+  cumulative_tax_differential_pct?: number; // Total combined tax differential (for display)
+  // SOTA Feb 2026: US Worldwide Taxation Support
+  cumulative_tax_capturable_pct?: number;   // What's actually capturable (0 if not relocating)
+  cumulative_impact?: 'saved' | 'more' | 'none_without_relocation';
+  cumulative_impact_label?: string | null;  // "US Worldwide Taxation Applies..." when not relocating
+  is_relocating?: boolean;
+  tax_savings_note?: string;
 }
 
 interface ValueCreation {
@@ -185,6 +191,13 @@ export function Page1TaxDashboard({
   // Use cumulative tax differential directly from backend
   const totalTaxDiff = taxDifferential?.cumulative_tax_differential_pct ?? 0;
 
+  // SOTA Feb 2026: US Worldwide Taxation Support
+  // When not relocating, show the differential but explain it's not capturable
+  const isRelocating = taxDifferential?.is_relocating ?? true;
+  const capturableDiff = taxDifferential?.cumulative_tax_capturable_pct ?? totalTaxDiff;
+  const cumulativeImpactLabel = taxDifferential?.cumulative_impact_label;
+  const taxSavingsNote = taxDifferential?.tax_savings_note;
+
   // Parse timeline string to days (e.g., "7-21 days" -> 14, "90 days" -> 90)
   const parseTimelineToDays = (timeline: string): number => {
     if (!timeline) return 30;
@@ -268,6 +281,7 @@ export function Page1TaxDashboard({
             </div>
 
             {/* Total Tax Differential Hero - Show combined tax savings/cost */}
+            {/* SOTA Feb 2026: Enhanced display for US Worldwide Taxation */}
             <motion.div
               className="text-center mb-8 sm:mb-12"
               initial={{ opacity: 0, y: 20 }}
@@ -277,30 +291,66 @@ export function Page1TaxDashboard({
               <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 Cumulative Tax Impact
               </p>
-              <div className={`inline-flex items-center gap-3 px-6 py-4 rounded-2xl ${
-                totalTaxDiff > 0
-                  ? 'bg-green-500/10 border border-green-500/30'
-                  : totalTaxDiff < 0
-                    ? 'bg-red-500/10 border border-red-500/30'
-                    : 'bg-muted/50 border border-border'
+              <div className={`inline-flex flex-col items-center gap-2 px-6 py-4 rounded-2xl ${
+                !isRelocating
+                  ? 'bg-amber-500/10 border border-amber-500/30'
+                  : capturableDiff > 0
+                    ? 'bg-green-500/10 border border-green-500/30'
+                    : capturableDiff < 0
+                      ? 'bg-red-500/10 border border-red-500/30'
+                      : 'bg-muted/50 border border-border'
               }`}>
-                <span className={`text-3xl sm:text-5xl lg:text-6xl font-semibold ${
-                  totalTaxDiff > 0
-                    ? 'text-green-500'
-                    : totalTaxDiff < 0
-                      ? 'text-red-500'
-                      : 'text-muted-foreground'
-                }`}>
-                  {totalTaxDiff > 0 ? '+' : ''}{totalTaxDiff.toFixed(0)}%
-                </span>
-                <div className="text-left">
-                  <p className="text-sm sm:text-lg font-semibold text-foreground">
-                    {totalTaxDiff > 0 ? 'Total Tax Savings' : totalTaxDiff < 0 ? 'Total Tax Cost' : 'Tax Neutral'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {taxComparison.source.displayLabel} → {taxComparison.destination.displayLabel}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <span className={`text-3xl sm:text-5xl lg:text-6xl font-semibold ${
+                    !isRelocating
+                      ? 'text-amber-500'
+                      : capturableDiff > 0
+                        ? 'text-green-500'
+                        : capturableDiff < 0
+                          ? 'text-red-500'
+                          : 'text-muted-foreground'
+                  }`}>
+                    {/* Show actual differential for comparison, but highlight capturable amount */}
+                    {!isRelocating ? (
+                      <>
+                        <span className="text-2xl sm:text-3xl lg:text-4xl line-through opacity-50 mr-2">
+                          {totalTaxDiff > 0 ? '+' : ''}{totalTaxDiff.toFixed(0)}%
+                        </span>
+                        <span>0%</span>
+                      </>
+                    ) : (
+                      <>{capturableDiff > 0 ? '+' : ''}{capturableDiff.toFixed(0)}%</>
+                    )}
+                  </span>
+                  <div className="text-left">
+                    <p className="text-sm sm:text-lg font-semibold text-foreground">
+                      {!isRelocating
+                        ? 'Not Capturable'
+                        : capturableDiff > 0
+                          ? 'Total Tax Savings'
+                          : capturableDiff < 0
+                            ? 'Total Tax Cost'
+                            : 'Tax Neutral'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {taxComparison.source.displayLabel} → {taxComparison.destination.displayLabel}
+                    </p>
+                  </div>
                 </div>
+                {/* SOTA: US Worldwide Taxation Label */}
+                {cumulativeImpactLabel && (
+                  <div className="mt-2 px-4 py-2 bg-amber-500/20 rounded-lg border border-amber-500/30">
+                    <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400">
+                      ⚠️ {cumulativeImpactLabel}
+                    </p>
+                  </div>
+                )}
+                {/* Tax savings note for additional context */}
+                {taxSavingsNote && !cumulativeImpactLabel && (
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 max-w-md">
+                    {taxSavingsNote}
+                  </p>
+                )}
               </div>
             </motion.div>
 

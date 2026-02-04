@@ -326,6 +326,15 @@ export default function DecisionMemoPage({ params }: PageProps) {
           <Page1TaxDashboard
             totalSavings={preview_data.total_savings}
             exposureClass={preview_data.exposure_class}
+            sourceJurisdiction={preview_data.source_jurisdiction}
+            destinationJurisdiction={preview_data.destination_jurisdiction}
+            sourceCity={preview_data.source_city}
+            destinationCity={preview_data.destination_city}
+            sourceTaxRates={preview_data.source_tax_rates as any}
+            destinationTaxRates={preview_data.destination_tax_rates as any}
+            taxDifferential={preview_data.tax_differential as any}
+            valueCreation={preview_data.value_creation as any}
+            executionSequence={preview_data.execution_sequence}
           />
         </section>
 
@@ -339,6 +348,30 @@ export default function DecisionMemoPage({ params }: PageProps) {
           <Page2AuditVerdict
             mistakes={preview_data.all_mistakes}
             opportunitiesCount={preview_data.opportunities_count}
+            precedentCount={memo_data?.kgv3_intelligence_used?.precedents}
+            sourceJurisdiction={preview_data.source_jurisdiction}
+            destinationJurisdiction={preview_data.destination_jurisdiction}
+            ddChecklist={memo_data?.dd_checklist}
+            dataQuality={preview_data.data_quality}
+            dataQualityNote={preview_data.data_quality_note}
+            mitigationTimeline={preview_data.risk_assessment?.mitigation_timeline}
+            riskAssessment={{
+              risk_level: preview_data.risk_assessment?.risk_level,
+              total_exposure_formatted: preview_data.risk_assessment?.total_exposure,
+              critical_items: preview_data.risk_assessment?.critical_items,
+              high_priority: preview_data.risk_assessment?.high_priority,
+              verdict: preview_data.risk_assessment?.verdict,
+              recommendation: preview_data.risk_assessment?.recommendation,
+              verdict_note: preview_data.risk_assessment?.verdict_note,
+              structure_verdict: memo_data?.mcp_decision?.recommended_branch || preview_data.structure_optimization?.verdict
+            }}
+            scenarioTreeData={{
+              recommended_branch: memo_data?.mcp_decision?.recommended_branch,
+              recommendation_strength: memo_data?.mcp_decision?.branches?.find(
+                (b: any) => b.name === memo_data?.mcp_decision?.recommended_branch
+              )?.recommendation_strength
+            }}
+            viaNegativa={viaNegativaContext}
           />
         </section>
 
@@ -353,12 +386,12 @@ export default function DecisionMemoPage({ params }: PageProps) {
             opportunities={preview_data.all_opportunities}
             peerCount={memo_data?.kgv3_intelligence_used?.precedents || preview_data.opportunities_count || 0}
             onCitationClick={openCitation}
-            citationMap={citationMap}
+            citationMap={citationMap as any}
             sourceJurisdiction={preview_data.source_jurisdiction}
             destinationJurisdiction={preview_data.destination_jurisdiction}
             sourceCountry={preview_data.source_country}
             destinationCountry={preview_data.destination_country}
-            peerCohortStats={preview_data.peer_cohort_stats}
+            peerCohortStats={preview_data.peer_cohort_stats as any}
             capitalFlowData={preview_data.capital_flow_data}
             isRelocating={preview_data.peer_cohort_stats?.is_relocating ?? preview_data.is_relocating ?? false}
           />

@@ -608,13 +608,13 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
 
                 {/* Yield metrics */}
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="bg-background/60 rounded-lg p-2.5 text-center">
+                  <div className="bg-muted/50 dark:bg-muted/30 rounded-lg p-2.5 text-center">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Gross</p>
                     <p className="text-lg font-bold text-foreground">{Number(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%</p>
                   </div>
-                  <div className="bg-background/60 rounded-lg p-2.5 text-center">
+                  <div className="bg-muted/50 dark:bg-muted/30 rounded-lg p-2.5 text-center">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Tax Rate</p>
-                    <p className="text-lg font-bold text-secondary-foreground">{Number(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
+                    <p className="text-lg font-bold text-foreground/80">{Number(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
                   </div>
                   <div className="bg-primary/10 rounded-lg p-2.5 text-center border border-primary/20">
                     <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-primary font-semibold">Net Yield</p>
@@ -630,7 +630,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Annual Tax Paid</span>
-                    <span className="font-medium text-secondary-foreground font-mono">-{formatCurrency(audit.net_yield_audit.annual_tax_paid)}</span>
+                    <span className="font-medium text-red-500 dark:text-red-400 font-mono">-{formatCurrency(audit.net_yield_audit.annual_tax_paid)}</span>
                   </div>
                   <div className="flex justify-between text-xs pt-2 border-t border-primary/15">
                     <span className="font-semibold text-foreground">Annual Net Income</span>

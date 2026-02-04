@@ -134,6 +134,42 @@ export function ConstraintsInput({ value, onChange }: ConstraintsInputProps) {
         </select>
       </div>
 
+      {/* Relocation Intent */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer group">
+          <div className="relative">
+            <input
+              type="checkbox"
+              checked={value?.isRelocating || false}
+              onChange={(e) => onChange({ isRelocating: e.target.checked })}
+              className="peer sr-only"
+            />
+            <div className="w-5 h-5 border-2 border-border rounded bg-background
+                          peer-checked:bg-primary peer-checked:border-primary
+                          peer-focus:ring-2 peer-focus:ring-primary/40
+                          transition-all duration-200" />
+            <svg
+              className="absolute top-0.5 left-0.5 w-4 h-4 text-primary-foreground opacity-0
+                        peer-checked:opacity-100 transition-opacity pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={3}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+              Planning to relocate to destination jurisdiction
+            </span>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Critical for structure optimization. If relocating, different tax treatments may apply.
+            </p>
+          </div>
+        </label>
+      </div>
+
       {/* Liquidity Events */}
       <div>
         <label className="block text-sm font-medium text-foreground mb-1.5">

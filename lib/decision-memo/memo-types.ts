@@ -110,6 +110,21 @@ export interface MemoData {
   scenario_tree_analysis?: string;
   scenario_tree_data?: ScenarioTreeData;
 
+  // === MCP DECISION (From Pattern Audit) ===
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  mcp_decision?: any;
+
+  // === DD CHECKLIST (Can also be in PreviewData) ===
+  dd_checklist?: {
+    total_items: number;
+    items: Array<{
+      category: string;
+      item: string;
+      status: string;
+      priority: string;
+    }>;
+  };
+
   // === 10-YEAR EXPLICIT PROJECTIONS (Frontend-ready) ===
   ten_year_projections?: {
     portfolio_trajectory: Array<{ year: number; value: number }>;
@@ -139,6 +154,9 @@ export interface PreviewData {
   destination_jurisdiction?: string;
   source_city?: string;
   destination_city?: string;
+  source_country?: string;
+  destination_country?: string;
+  is_relocating?: boolean;
 
   // Destination drivers (Golden Visa, tax benefits, etc.)
   destination_drivers?: DestinationDrivers;
@@ -433,6 +451,12 @@ export interface PreviewData {
   // RISK ASSESSMENT (MCP Fields)
   // ═══════════════════════════════════════════════════════════════════════
   risk_assessment?: RiskAssessment;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DATA QUALITY METRICS
+  // ═══════════════════════════════════════════════════════════════════════
+  data_quality?: string;
+  data_quality_note?: string;
 }
 
 // =============================================================================
@@ -730,6 +754,10 @@ export interface PeerCohortStats {
   total_peers?: number;
   data_quality?: string;
   data_quality_note?: string;
+  is_relocating?: boolean;
+  last_6_months?: number;
+  avg_deal_value_m?: number;
+  drivers?: string[];
   regime_intelligence?: {
     has_special_regime: boolean;
     regime_name?: string;
@@ -761,10 +789,13 @@ export interface TaxRates {
 export interface RiskAssessment {
   risk_level?: string;
   total_exposure_formatted?: string;
+  total_exposure?: string;  // Alias for total_exposure_formatted (backend sometimes uses this)
   critical_items?: number;
   high_priority?: number;
   verdict?: string;
   recommendation?: string;
+  verdict_note?: string;
+  mitigation_timeline?: string;
   is_mcp?: boolean;
 }
 

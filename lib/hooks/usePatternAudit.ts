@@ -499,6 +499,7 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
       deal_breakers: intake.constraints.dealBreakers,
       destination_property_count: intake.constraints.destinationPropertyCount,
       purchase_vehicle: intake.constraints.purchaseVehicle,
+      is_relocating: intake.constraints.isRelocating,
     },
     control_and_rails: {
       final_decision_maker: intake.controlAndRails.finalDecisionMaker,
