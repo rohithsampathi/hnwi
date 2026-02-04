@@ -65,6 +65,8 @@ import { StructureComparisonMatrix } from '@/components/decision-memo/memo/Struc
 // PDF Cover and Last Pages
 import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
 import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
+// Legal References (MFO Audit Requirement)
+import { ReferencesSection } from '@/components/decision-memo/memo/ReferencesSection';
 // Awe Visual Elements — Risk Radar, Liquidity Trap, Peer Benchmarking
 import { RiskRadarChart } from '@/components/decision-memo/memo/RiskRadarChart';
 import { LiquidityTrapFlowchart } from '@/components/decision-memo/memo/LiquidityTrapFlowchart';
@@ -1338,6 +1340,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       );
     };
 
+    // Legal references — fully backend-driven
+    const legalReferences = memoData.preview_data.legal_references;
+
     return (
       <div className="min-h-screen bg-background">
         {/* PDF Export Loading Overlay */}
@@ -1450,7 +1455,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
               destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
               taxDifferential={memoData.preview_data.tax_differential}
-              valueCreation={memoData.preview_data.value_creation}
+              valueCreation={{
+                ...memoData.preview_data.value_creation,
+                ...(memoData.preview_data.annual_rental_income !== undefined || memoData.preview_data.annual_appreciation !== undefined ? {
+                  annual: {
+                    rental: memoData.preview_data.annual_rental_income,
+                    rental_formatted: memoData.preview_data.annual_rental_income_formatted,
+                    appreciation: memoData.preview_data.annual_appreciation,
+                    appreciation_formatted: memoData.preview_data.annual_appreciation_formatted,
+                    total: memoData.preview_data.annual_value,
+                    total_formatted: memoData.preview_data.annual_value_formatted,
+                  }
+                } : {})
+              }}
               crossBorderTaxSavingsPct={crossBorderAudit?.total_tax_savings_pct}
               crossBorderComplianceFlags={crossBorderAudit?.compliance_flags}
               showTaxSavings={showTheoreticalTaxSavings}
@@ -2028,6 +2045,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 </div>
               </div>
             </motion.div>
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* LEGAL REFERENCES - MFO Audit Requirement (Feb 2026)                             */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {legalReferences && legalReferences.total_count > 0 && (
+              <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
+                <ReferencesSection
+                  references={legalReferences}
+                  developmentsCount={hnwiWorldCount}
+                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                />
+              </section>
+            )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PDF LAST PAGE - HNWI Chronicles Branding & Legal                                */}

@@ -17,6 +17,8 @@ import type { LegalReferences, CitationEntry } from '@/lib/decision-memo/memo-ty
 
 interface ReferencesSectionProps {
   references: LegalReferences;
+  developmentsCount?: number;
+  precedentCount?: number;
 }
 
 interface CitationCategoryProps {
@@ -78,7 +80,7 @@ function CitationCategory({ title, icon, citations, delay }: CitationCategoryPro
   );
 }
 
-export function ReferencesSection({ references }: ReferencesSectionProps) {
+export function ReferencesSection({ references, developmentsCount = 0, precedentCount = 0 }: ReferencesSectionProps) {
   if (!references || references.total_count === 0) {
     return null;
   }
@@ -105,12 +107,14 @@ export function ReferencesSection({ references }: ReferencesSectionProps) {
         </div>
       </div>
 
-      {/* Disclaimer */}
-      <div className="bg-muted/30 border border-border rounded-lg p-4 mb-6">
-        <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Disclaimer:</strong> This memo cites authoritative sources for informational purposes only.
-          Tax laws change frequently. Verify all citations with primary sources and consult qualified legal/tax counsel
-          before making decisions. Data sources reflect publication dates indicated.
+      {/* Intelligence Basis */}
+      <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 mb-6">
+        <p className="text-[10px] sm:text-xs text-foreground/80 leading-relaxed">
+          <strong className="text-foreground">Intelligence Basis:</strong> This analysis is grounded in HNWI Chronicles&apos; 3-year proprietary knowledge base
+          {developmentsCount > 0 && <> spanning <strong className="text-foreground">{developmentsCount.toLocaleString()}</strong> HNWI developments</>}
+          {precedentCount > 0 && <> and <strong className="text-foreground">{precedentCount.toLocaleString()}</strong> cross-jurisdictional precedents</>}.
+          {' '}All statutes, treaty provisions, and tax rates cited below were verified against primary sources as of the generation date.
+          Engage qualified counsel in each cited jurisdiction before executing any transaction.
         </p>
       </div>
 

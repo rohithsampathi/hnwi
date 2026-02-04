@@ -402,7 +402,7 @@ export function MemoHeader({
 
         {/* Value Creation Breakdown */}
         {valueCreation && (() => {
-          const hasTaxFormat = valueCreation.annual_tax_savings !== undefined || valueCreation.annual_cgt_savings !== undefined || valueCreation.annual_estate_benefit !== undefined;
+          const hasTaxFormat = typeof valueCreation.annual_tax_savings === 'number' || typeof valueCreation.annual_cgt_savings === 'number' || typeof valueCreation.annual_estate_benefit === 'number';
           const hasAnnualFormat = valueCreation.annual && (valueCreation.annual.rental !== undefined || valueCreation.annual.appreciation !== undefined);
           if (!hasTaxFormat && !hasAnnualFormat) return null;
 
@@ -414,9 +414,9 @@ export function MemoHeader({
               transition={{ duration: 0.5, delay: 0.95 }}
             >
               <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                {hasAnnualFormat && !hasTaxFormat ? 'Annual Value Creation' : 'Value Creation Breakdown'}
+                {hasAnnualFormat ? 'Annual Value Creation' : 'Value Creation Breakdown'}
               </p>
-              {hasAnnualFormat && !hasTaxFormat ? (
+              {hasAnnualFormat ? (
                 <div className="grid grid-cols-3 gap-3 sm:gap-4">
                   <div className="text-center">
                     <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-green-500">

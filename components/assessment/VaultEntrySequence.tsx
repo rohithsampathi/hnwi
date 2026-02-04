@@ -207,7 +207,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
               >
                 {/* HC Monogram — original font */}
                 <motion.span
-                  className="text-2xl font-bold tracking-[0.2em] text-foreground"
+                  className="text-2xl font-bold tracking-[0.2em] text-zinc-900"
                   style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
                   animate={isUnlocking ? { scale: [1, 1.05, 1] } : {}}
                 >
