@@ -691,7 +691,7 @@ function transformPreviewFromAPI(data: any): PreviewArtifact {
   };
 }
 
-function transformArtifactFromAPI(data: any): ICArtifact {
+export function transformArtifactFromAPI(data: any): ICArtifact {
   // Handle new backend format (preview_data + memo_data at top level)
   // vs old format (artifact fields at top level)
   const hasNewFormat = data.preview_data && data.memo_data;

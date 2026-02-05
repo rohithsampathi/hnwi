@@ -28,7 +28,7 @@ import { CrownLoader } from '@/components/ui/crown-loader';
 import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
 import { ArtifactDisplay } from '@/components/decision-memo/pattern-audit/ArtifactDisplay';
 import { PatternAuditWaitingInteractive } from '@/components/decision-memo/PatternAuditWaitingInteractive';
-import { usePatternAudit, ReportAuthRequiredError } from '@/lib/hooks/usePatternAudit';
+import { usePatternAudit, ReportAuthRequiredError, transformArtifactFromAPI } from '@/lib/hooks/usePatternAudit';
 import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
 import { ReportAuthPopup } from '@/components/report-auth-popup';
 import {
@@ -225,7 +225,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       if (isPaid) {
         setSession({ ...sessionData, status: 'PAID' });
 
-        // Fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
+        // Single fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
         try {
           const headers: Record<string, string> = {};
           if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
@@ -234,8 +234,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           if (response.ok) {
             const data = await response.json();
             setBackendData(data);  // Store raw response with preview_data + mitigationTimeline
-            const full = await getFullArtifact(intakeId, authToken);
-            setFullArtifact(full);
+            // Transform artifact from same response — no duplicate fetch
+            const artifactData = data.artifact || data;
+            setFullArtifact(transformArtifactFromAPI(artifactData));
           } else {
             throw new Error('Artifact fetch failed');
           }
@@ -259,11 +260,6 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setError('Failed to load preview. Please refresh the page.');
           setIsWaitingForPreview(false);
         }
-      } else if (sessionData.status === 'PAID' || sessionData.status === 'FULL_READY') {
-        setSession(sessionData);
-        const full = await getFullArtifact(intakeId, authToken);
-        setFullArtifact(full);
-        setIsWaitingForPreview(false);
       } else {
         // Status is PROCESSING, SUBMITTED, or IN_REVIEW - wait for SSE
         setSession(sessionData);
@@ -284,7 +280,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [intakeId, reportToken, getSession, getPreviewArtifact, getFullArtifact]);
+  }, [intakeId, reportToken, getSession, getPreviewArtifact]);
 
   // Initial fetch
   useEffect(() => {

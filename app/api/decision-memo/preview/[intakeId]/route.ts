@@ -28,9 +28,14 @@ export async function GET(
       console.log('📋 SFO Pattern Audit preview requested');
 
       const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
+      const previewHeaders: Record<string, string> = { 'Accept': 'application/json' };
+      const authHeader = request.headers.get('Authorization');
+      if (authHeader) {
+        previewHeaders['Authorization'] = authHeader;
+      }
       const response = await fetch(backendUrl, {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers: previewHeaders,
       });
 
       if (!response.ok) {
@@ -154,9 +159,14 @@ export async function GET(
     // ==========================================================================
 
     const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
+    const legacyHeaders: Record<string, string> = { 'Accept': 'application/json' };
+    const legacyAuth = request.headers.get('Authorization');
+    if (legacyAuth) {
+      legacyHeaders['Authorization'] = legacyAuth;
+    }
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: legacyHeaders,
     });
 
     if (!response.ok) {
