@@ -20,8 +20,10 @@ interface LiquidityTrapProps {
   secondaryBarrier?: string;
   /** Secondary barrier cost */
   secondaryBarrierCost?: number;
-  /** Day-one loss percentage */
+  /** Day-one loss percentage (stamp duty as % of property value) */
   dayOneLossPct: number;
+  /** Stamp duty methodology note (e.g. "BSD as % of property value — IRAS tiered rates (1–6%)") */
+  dayOneLossNote?: string;
   /** Property/asset label */
   assetLabel?: string;
 }
@@ -44,6 +46,7 @@ export function LiquidityTrapFlowchart({
   secondaryBarrier,
   secondaryBarrierCost,
   dayOneLossPct,
+  dayOneLossNote,
   assetLabel = 'Singapore Residential Property',
 }: LiquidityTrapProps) {
   const totalLoss = capitalIn - capitalOut;
@@ -187,11 +190,13 @@ export function LiquidityTrapFlowchart({
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Recoverable Capital</p>
             <p className="text-2xl sm:text-3xl font-bold text-muted-foreground font-mono">{formatCurrency(capitalOut)}</p>
             <p className="text-xs text-destructive font-semibold mt-1">
-              {lossPct.toFixed(1)}% trapped on Day One
+              {lossPct.toFixed(2)}% trapped on Day One
             </p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">
-              BSD as % of property value — IRAS tiered rates (1–6%)
-            </p>
+            {dayOneLossNote && (
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                {dayOneLossNote}
+              </p>
+            )}
           </motion.div>
         </div>
 

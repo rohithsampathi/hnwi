@@ -370,7 +370,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 <div className="rounded-xl p-3 sm:p-4 text-center bg-muted/30 border border-border">
                   <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-1">Day-One Loss</p>
                   <p className="text-2xl sm:text-3xl font-bold text-red-500">
-                    <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} />
+                    <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} decimals={2} />
                   </p>
                 </div>
 
@@ -514,7 +514,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 </div>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-red-500">
-                <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} />
+                <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} decimals={2} />
               </p>
             </div>
 

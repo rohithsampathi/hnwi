@@ -1353,7 +1353,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         titleHighlight: hdr?.title_highlight || 'Risk',
         noticeTitle: hdr?.notice_title || 'Elevated Risk Advisory',
         noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ precedents identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
-          .replace('{dayOneLoss}', dayOneLossPct.toFixed(1))
+          .replace('{dayOneLoss}', dayOneLossPct.toFixed(2))
           .replace('{precedentCount}', (backendVN?.precedent_count ?? memoData.memo_data?.kgv3_intelligence_used?.precedents ?? 0).toLocaleString()),
 
         metricLabels: {
@@ -1384,7 +1384,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
         ctaHeadline: cta?.headline || 'DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?',
         ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure. The same engine analyzes any cross-border acquisition across 50+ jurisdictions.')
-          .replace('{dayOneLoss}', dayOneLossPct.toFixed(1)),
+          .replace('{dayOneLoss}', dayOneLossPct.toFixed(2)),
         ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
         ctaButtonText: cta?.button_text || 'INITIATE RED TEAM AUDIT ($5,000)',
         ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
@@ -1686,6 +1686,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     secondaryBarrier={secondaryLabel}
                     secondaryBarrierCost={secondaryCost}
                     dayOneLossPct={acqAudit.day_one_loss_pct || viaNegativaContext?.dayOneLoss || 0}
+                    dayOneLossNote={crossBorderAudit?.bsd_note || (acqAudit as any)?.day_one_loss_label}
                     assetLabel={`${memoData.preview_data.destination_jurisdiction || 'Destination'} Residential Property`}
                   />
                 </section>
