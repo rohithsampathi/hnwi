@@ -118,15 +118,15 @@ function BranchCard({
     >
       {/* Recommended Badge */}
       {isRecommended && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg">
+        <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
+          <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg whitespace-nowrap">
             ★ Recommended
           </span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-4 mt-1">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center shadow-sm">
             {icons[branch.name]}
@@ -578,15 +578,15 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
       >
         {/* Recommended Badge */}
         {branch.isRecommended && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-            <span className="px-3 py-1 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg">
+          <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
+            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg whitespace-nowrap">
               ★ Recommended
             </span>
           </div>
         )}
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 mt-1">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center shadow-sm">
               {icons[branch.name]}
