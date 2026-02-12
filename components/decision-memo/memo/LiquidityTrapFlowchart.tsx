@@ -47,7 +47,8 @@ export function LiquidityTrapFlowchart({
   assetLabel = 'Singapore Residential Property',
 }: LiquidityTrapProps) {
   const totalLoss = capitalIn - capitalOut;
-  const lossPct = ((totalLoss / capitalIn) * 100);
+  // Use API-provided BSD % of property value (IRAS tiered), not stamp/total-acq
+  const lossPct = dayOneLossPct > 0 ? dayOneLossPct : ((totalLoss / capitalIn) * 100);
 
   return (
     <div className="space-y-6">
@@ -187,6 +188,9 @@ export function LiquidityTrapFlowchart({
             <p className="text-2xl sm:text-3xl font-bold text-muted-foreground font-mono">{formatCurrency(capitalOut)}</p>
             <p className="text-xs text-destructive font-semibold mt-1">
               {lossPct.toFixed(1)}% trapped on Day One
+            </p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              BSD as % of property value — IRAS tiered rates (1–6%)
             </p>
           </motion.div>
         </div>
