@@ -92,7 +92,7 @@ interface Page3Props {
   opportunities: Opportunity[];
   peerCount: number;
   onCitationClick: (citationId: string) => void;
-  citationMap: CitationMap;
+  citationMap: CitationMap | Map<string, number>;
   sourceJurisdiction?: string;      // For tax calculations - e.g., "New York" (US state)
   destinationJurisdiction?: string; // For tax calculations - e.g., "Singapore"
   // COUNTRY-LEVEL for corridor display (resolves US states → "United States")
@@ -285,7 +285,7 @@ export function Page3PeerIntelligence({
         const devIdsFromAnalysis = extractDevIds(opp.expected_return || '');
         const devIdsFromHnwi = extractDevIds(opp.hnwi_analysis || '');
         const devIds = opp.dev_id
-          ? [opp.dev_id, ...devIdsFromAnalysis, ...devIdsFromHnwi]
+          ? [opp.dev_id!, ...devIdsFromAnalysis, ...devIdsFromHnwi]
           : [...devIdsFromAnalysis, ...devIdsFromHnwi];
         const uniqueDevIds = Array.from(new Set(devIds));
 
@@ -300,10 +300,15 @@ export function Page3PeerIntelligence({
             (opp.key_insights?.length ? opp.key_insights.slice(0, 2).join(' • ') : '');
         }
 
-        // Append dev_id citation if it exists but isn't already referenced in the analysis text
-        // This ensures the citation is clickable even if the analysis doesn't explicitly contain [Dev ID: XXX]
-        if (opp.dev_id && !analysis.includes(opp.dev_id)) {
-          analysis = `${analysis} [Dev ID: ${opp.dev_id}]`;
+        // Append dev_id citation to analysis text so it shows as clickable button
+        if (opp.dev_id) {
+          const devIdCitationPattern = new RegExp(
+            `\\[(?:Dev\\s*ID|DEVID)\\s*[:\\-–—]\\s*${String(opp.dev_id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\]`,
+            'i'
+          );
+          if (!devIdCitationPattern.test(analysis)) {
+            analysis = `${analysis} [Dev ID: ${opp.dev_id}]`;
+          }
         }
 
         // Determine type based on source (same as Home Dashboard)

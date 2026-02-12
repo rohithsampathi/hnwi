@@ -63,6 +63,7 @@ export function parseDevCitations(
     if (devId && !seenIds.has(devId)) {
       seenIds.add(devId)
       // Use global map number if available, otherwise use local counter
+      // Use global map number if available, otherwise use local counter
       const displayNumber = getFromMapOrObject(globalCitationMap, devId) ?? citationNumber++
       citations.push({
         id: devId,

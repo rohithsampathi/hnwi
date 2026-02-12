@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { DecisionMemoData, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
+import { extractDevIds } from '@/lib/parse-dev-citations';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Import memo page components
@@ -93,55 +94,61 @@ export default function DecisionMemoPage({ params }: PageProps) {
     fetchMemo();
   }, [intakeId]);
 
-  // Extract all DEVIDs from opportunities and create citations with unique numbers
-  useEffect(() => {
-    if (!data?.preview_data?.all_opportunities) return;
+  // SYNCHRONOUS citation extraction — available on first render (fixes all-[1] timing bug)
+  const { computedCitations, computedCitationMap } = useMemo(() => {
+    if (!data?.preview_data?.all_opportunities) {
+      return { computedCitations: [] as Citation[], computedCitationMap: new Map<string, number>() };
+    }
 
-    const allDevIds = new Set<string>();
-    const seenIds = new Map<string, boolean>();
+    const allDevIds: string[] = [];
+    const seenNormalized = new Set<string>();
 
-    // Extract DEVIDs from all opportunities
+    const addDevId = (devId: string) => {
+      const trimmed = String(devId).trim();
+      const normalized = trimmed.toLowerCase();
+      if (normalized && !seenNormalized.has(normalized)) {
+        seenNormalized.add(normalized);
+        allDevIds.push(trimmed);
+      }
+    };
+
     data.preview_data.all_opportunities.forEach((opp: any) => {
       if (opp.dev_id) {
-        const normalized = String(opp.dev_id).trim().toLowerCase();
-        if (normalized && !seenIds.has(normalized)) {
-          allDevIds.add(String(opp.dev_id).trim());
-          seenIds.set(normalized, true);
-        }
+        addDevId(String(opp.dev_id));
       }
+      // Also extract from analysis text — these contain [Dev ID: XXX] references
+      const analysisFields = [opp.hnwi_analysis, opp.expected_return, opp.opportunity_narrative];
+      analysisFields.forEach((field: string | undefined) => {
+        if (field) extractDevIds(field).forEach(addDevId);
+      });
     });
 
-    // Also extract from mistakes if they have dev_ids
     if (data.preview_data.all_mistakes) {
       data.preview_data.all_mistakes.forEach((mistake: any) => {
         if (mistake.dev_id) {
-          const normalized = String(mistake.dev_id).trim().toLowerCase();
-          if (normalized && !seenIds.has(normalized)) {
-            allDevIds.add(String(mistake.dev_id).trim());
-            seenIds.set(normalized, true);
-          }
+          addDevId(String(mistake.dev_id));
         }
       });
     }
 
-    // Convert to Citation format with sequential numbering
-    if (allDevIds.size > 0) {
-      const uniqueIds = Array.from(allDevIds);
+    const citationList: Citation[] = allDevIds.map((devId, index) => ({
+      id: devId,
+      number: index + 1,
+      originalText: `[DEVID: ${devId}]`
+    }));
 
-      // Final deduplication pass
-      const finalUniqueIds = uniqueIds.filter((id, index, self) =>
-        self.findIndex(i => i.toLowerCase().trim() === id.toLowerCase().trim()) === index
-      );
+    const citMap = new Map<string, number>();
+    citationList.forEach(c => citMap.set(c.id, c.number));
 
-      const citationList: Citation[] = finalUniqueIds.map((devId, index) => ({
-        id: devId,
-        number: index + 1,
-        originalText: `[DEVID: ${devId}]`
-      }));
+    return { computedCitations: citationList, computedCitationMap: citMap };
+  }, [data]);
 
-      setCitations(citationList);
+  // Sync with useCitationManager for EliteCitationPanel
+  useEffect(() => {
+    if (computedCitations.length > 0) {
+      setCitations(computedCitations);
     }
-  }, [data, setCitations]);
+  }, [computedCitations, setCitations]);
 
   // Loading state
   if (isLoading) {
@@ -387,7 +394,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
             opportunities={preview_data.all_opportunities}
             peerCount={memo_data?.kgv3_intelligence_used?.precedents || preview_data.opportunities_count || 0}
             onCitationClick={openCitation}
-            citationMap={citationMap as any}
+            citationMap={computedCitationMap}
             sourceJurisdiction={preview_data.source_jurisdiction}
             destinationJurisdiction={preview_data.destination_jurisdiction}
             sourceCountry={preview_data.source_country}

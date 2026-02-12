@@ -6,7 +6,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -74,8 +74,11 @@ import { PeerBenchmarkTicker } from '@/components/decision-memo/memo/PeerBenchma
 import { transformICArtifactToMemoData } from '@/lib/decision-memo/sfo-to-memo-transformer';
 import { assembleCrossBorderAudit } from '@/lib/decision-memo/assemble-cross-border-audit';
 import { Opportunity, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
-import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
-import { parseDevCitations, CitationMap } from '@/lib/parse-dev-citations';
+import { useCitationManager } from '@/hooks/use-citation-manager';
+import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
+import type { Citation } from '@/lib/parse-dev-citations';
+import { extractDevIds } from '@/lib/parse-dev-citations';
+import { AnimatePresence } from 'framer-motion';
 
 interface PageProps {
   params: {
@@ -185,8 +188,90 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     previewReady: ssePreviewReady
   } = useDecisionMemoSSE(isWaitingForPreview ? intakeId : null);
 
-  // Citation panel for expanding citations when clicked
-  const { openPanel: openCitationPanel } = useCitationPanel();
+  // Citation management (matching Home Dashboard / Memo page pattern)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
+  const {
+    citations: managedCitations,
+    setCitations: setManagedCitations,
+    citationMap: managedCitationMap,
+    selectedCitationId,
+    setSelectedCitationId,
+    isPanelOpen,
+    openCitation,
+    closePanel
+  } = useCitationManager();
+
+  // Screen size detection for citation panel (matching memo page)
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isLandscapeMobile = isTouchDevice && height < 500;
+      const isMobile = width < 1024 || isLandscapeMobile;
+      setScreenSize(isMobile ? 'mobile' : 'desktop');
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+
+  // SYNCHRONOUS citation extraction using useMemo — available on first render
+  // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
+  // when Leaflet popups first render (causing all citations to show [1])
+  const { computedCitations, computedCitationMap } = useMemo(() => {
+    const opportunities = backendData?.preview_data?.all_opportunities;
+    if (!opportunities) return { computedCitations: [] as Citation[], computedCitationMap: new Map<string, number>() };
+
+    const allDevIds: string[] = [];
+    const seenNormalized = new Set<string>();
+
+    const addDevId = (devId: string) => {
+      const trimmed = String(devId).trim();
+      const normalized = trimmed.toLowerCase();
+      if (normalized && !seenNormalized.has(normalized)) {
+        seenNormalized.add(normalized);
+        allDevIds.push(trimmed);
+      }
+    };
+
+    opportunities.forEach((opp: any) => {
+      if (opp.dev_id) {
+        addDevId(String(opp.dev_id));
+      }
+      // Also extract from analysis text — these contain [Dev ID: XXX] references
+      const analysisFields = [opp.hnwi_analysis, opp.expected_return, opp.opportunity_narrative];
+      analysisFields.forEach((field: string | undefined) => {
+        if (field) extractDevIds(field).forEach(addDevId);
+      });
+    });
+
+    if (backendData?.preview_data?.all_mistakes) {
+      backendData.preview_data.all_mistakes.forEach((mistake: any) => {
+        if (mistake.dev_id) {
+          addDevId(String(mistake.dev_id));
+        }
+      });
+    }
+
+    const citationList: Citation[] = allDevIds.map((devId, index) => ({
+      id: devId,
+      number: index + 1,
+      originalText: `[DEVID: ${devId}]`
+    }));
+
+    const citMap = new Map<string, number>();
+    citationList.forEach(c => citMap.set(c.id, c.number));
+
+    return { computedCitations: citationList, computedCitationMap: citMap };
+  }, [backendData]);
+
+  // Sync computed citations with useCitationManager (for EliteCitationPanel)
+  useEffect(() => {
+    if (computedCitations.length > 0) {
+      setManagedCitations(computedCitations);
+    }
+  }, [computedCitations, setManagedCitations]);
 
   // Fetch session and artifact data (with report auth token)
   const fetchData = useCallback(async (token?: string | null) => {
@@ -1307,39 +1392,16 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       };
     }
 
-    // Build citation map from opportunities
-    const citationMap: CitationMap = {};
-    (memoData.preview_data.all_opportunities || []).forEach((opp: Opportunity) => {
-      if (opp.dev_id) {
-        citationMap[opp.dev_id] = {
-          dev_id: opp.dev_id,
-          title: opp.title,
-          summary: opp.expected_return,
-          source: 'Pattern Intelligence',
-          date: memoData.generated_at
-        };
-      }
-    });
-
-    // Handle citation clicks - opens the citation panel
+    // Handle citation clicks - opens EliteCitationPanel (matching Home Dashboard pattern)
     const handleCitationClick = (citationId: string) => {
-      // Look up citation details from citationMap
-      const citationDetails = citationMap[citationId];
-
-      openCitationPanel(
-        [citationId],
-        {
-          title: citationDetails?.title || `Development ${citationId}`,
-          description: citationDetails?.summary || 'Intelligence from HNWI World knowledge graph',
-          source: 'Pattern Intelligence Analysis'
-        }
-      );
+      openCitation(citationId);
     };
 
     // Legal references — fully backend-driven
     const legalReferences = memoData.preview_data.legal_references;
 
     return (
+      <>
       <div className="min-h-screen bg-background">
         {/* PDF Export Loading Overlay */}
         {isExportingPDF && (
@@ -1747,7 +1809,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 opportunities={memoData.preview_data.all_opportunities}
                 peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
                 onCitationClick={handleCitationClick}
-                citationMap={citationMap}
+                citationMap={computedCitationMap}
                 sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                 destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 sourceCountry={memoData.preview_data.source_country}
@@ -1783,7 +1845,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 opportunities={memoData.preview_data.all_opportunities}
                 peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
                 onCitationClick={handleCitationClick}
-                citationMap={citationMap}
+                citationMap={computedCitationMap}
                 sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                 destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 sourceCountry={memoData.preview_data.source_country}
@@ -2067,6 +2129,33 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           </motion.div>
         </div>
       </div>
+
+      {/* Citation Panel - Desktop Only (matching Home Dashboard / Memo page pattern) */}
+      {isPanelOpen && screenSize === 'desktop' && (
+        <div className="hidden lg:block">
+          <EliteCitationPanel
+            citations={managedCitations}
+            selectedCitationId={selectedCitationId}
+            onClose={closePanel}
+            onCitationSelect={setSelectedCitationId}
+            citationMap={computedCitationMap}
+          />
+        </div>
+      )}
+
+      {/* Mobile Citation Panel - Full screen with AnimatePresence */}
+      {isPanelOpen && screenSize === 'mobile' && (
+        <AnimatePresence>
+          <EliteCitationPanel
+            citations={managedCitations}
+            selectedCitationId={selectedCitationId}
+            onClose={closePanel}
+            onCitationSelect={setSelectedCitationId}
+            citationMap={computedCitationMap}
+          />
+        </AnimatePresence>
+      )}
+      </>
     );
   }
 

@@ -189,11 +189,6 @@ export function CitationText({
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
-                console.log('🔗 CITATION CLICKED:', {
-                  citationId,
-                  displayNumber,
-                  citationNumber
-                })
                 onCitationClick(citationId)
               }}
               className="inline-flex items-center justify-center text-xs font-medium text-primary hover:text-primary/80 hover:bg-primary/10 px-1 rounded transition-colors mx-0.5 align-baseline cursor-pointer"

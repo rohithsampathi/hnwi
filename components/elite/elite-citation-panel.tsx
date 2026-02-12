@@ -85,16 +85,11 @@ export function EliteCitationPanel({
       setLoading(true)
 
       try {
-        console.log('📡 FETCHING DEVELOPMENT:', citationId)
-
         // First check if development exists to avoid 404 console errors
-        const existsUrl = `/api/developments/public/${citationId}/exists`
-        console.log('  → Exists check:', existsUrl)
-        const existsResponse = await fetch(existsUrl)
+        const existsResponse = await fetch(`/api/developments/public/${citationId}/exists`)
         const { exists } = await existsResponse.json()
 
         if (!exists) {
-          console.log('  ❌ Development does not exist')
           // Mark as not found without triggering 404 error
           setDevelopments(prev => new Map(prev).set(citationId, null as any))
           setLoading(false)
@@ -103,9 +98,7 @@ export function EliteCitationPanel({
         }
 
         // Development exists, fetch full data
-        const fetchUrl = `/api/developments/public/${citationId}`
-        console.log('  → Fetching:', fetchUrl)
-        const response = await fetch(fetchUrl)
+        const response = await fetch(`/api/developments/public/${citationId}`)
 
         if (response.ok) {
           const dev = await response.json()
