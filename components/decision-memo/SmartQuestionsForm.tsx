@@ -34,7 +34,7 @@ const SMART_QUESTIONS = [
     subtitle: 'What major allocation or restructuring decisions are you considering?',
     icon: TrendingUp,
     fields: ['q1_primary_move', 'q1_secondary_move', 'q1_asset_focus', 'q1_move_size'],
-    insight: 'Based on 1,562+ HNWI precedents, 73% of allocation mistakes stem from unclear move definition.'
+    insight: 'Based on 1,562+ HNWI intelligence signals, 73% of allocation mistakes stem from unclear move definition.'
   },
   {
     id: 'q2_geography',
@@ -856,7 +856,7 @@ function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingPr
   const [developmentCount, setDevelopmentCount] = useState(1875);
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'intake', label: 'Intake analysis completed', estimatedSeconds: 0, status: 'complete' },
-    { id: 'precedents', label: 'Cross-referencing HNWI precedents', estimatedSeconds: 5, status: 'processing' },
+    { id: 'precedents', label: 'Cross-referencing HNWI corridor signals', estimatedSeconds: 5, status: 'processing' },
     { id: 'opportunities', label: 'Matching opportunities to profile', estimatedSeconds: 8, status: 'pending' },
     { id: 'risks', label: 'Calculating exposure risks', estimatedSeconds: 5, status: 'pending' },
     { id: 'memo', label: 'Generating Decision Memo', estimatedSeconds: 7, status: 'pending' },
@@ -1000,7 +1000,7 @@ function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingPr
             Decision Memo Generation
           </h1>
           <p className="text-primary-foreground/80">
-            Analyzing your wealth profile against {developmentCount.toLocaleString()}+ HNWI precedents
+            Analyzing your wealth profile against {developmentCount.toLocaleString()}+ HNWI corridor signals
           </p>
         </div>
 

@@ -337,7 +337,7 @@ export function ArtifactDisplay({ artifact }: ArtifactDisplayProps) {
         <SectionHeader
           number={4}
           title="Pattern Anchors"
-          subtitle="Historical precedents matched to your strategy"
+          subtitle="Historical corridor signals matched to your strategy"
         />
 
         <div className="space-y-4">

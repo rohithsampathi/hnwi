@@ -1352,7 +1352,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         titlePrefix: hdr?.title_prefix || 'Capital At',
         titleHighlight: hdr?.title_highlight || 'Risk',
         noticeTitle: hdr?.notice_title || 'Elevated Risk Advisory',
-        noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ precedents identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
+        noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ corridor signals identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
           .replace('{dayOneLoss}', dayOneLossPct.toFixed(2))
           .replace('{precedentCount}', (backendVN?.precedent_count ?? memoData.memo_data?.kgv3_intelligence_used?.precedents ?? 0).toLocaleString()),
 
@@ -1485,7 +1485,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             <div className="mb-8">
               {/* Intelligence Basis - The Hero Opener */}
               <p className="text-base sm:text-lg text-foreground leading-relaxed mb-4">
-                This audit draws on <span className="font-semibold text-primary">{hnwiWorldCount.toLocaleString()}</span> validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against <span className="font-semibold text-primary">{(memoData.memo_data?.kgv3_intelligence_used?.precedents || 754).toLocaleString()}</span> precedents specific to the {memoData.preview_data.source_jurisdiction || 'Source'}→{memoData.preview_data.destination_jurisdiction || 'Destination'} corridor. All findings are citation-backed.
+                This audit draws on <span className="font-semibold text-primary">{hnwiWorldCount.toLocaleString()}</span> validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against <span className="font-semibold text-primary">{(memoData.memo_data?.kgv3_intelligence_used?.precedents || 238).toLocaleString()}</span> corridor signals specific to the {memoData.preview_data.source_jurisdiction || 'Source'}→{memoData.preview_data.destination_jurisdiction || 'Destination'} corridor. All findings are citation-backed.
               </p>
 
               {/* Decision Under Review - Smaller, after the prelude */}
@@ -2020,7 +2020,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               {/* Disclaimer */}
               <div className="mt-8 pt-6 border-t border-border">
                 <p className="text-xs text-muted-foreground text-center max-w-3xl mx-auto">
-                  Pattern & Market Intelligence Report based on {(memoData.memo_data?.kgv3_intelligence_used?.precedents || 0).toLocaleString()}+ analyzed precedents.
+                  Pattern & Market Intelligence Report based on {(memoData.memo_data?.kgv3_intelligence_used?.precedents || 0).toLocaleString()}+ analyzed corridor signals.
                   This report provides strategic intelligence and pattern analysis for informed decision-making.
                   For execution and implementation, consult your legal, tax, and financial advisory teams.
                 </p>

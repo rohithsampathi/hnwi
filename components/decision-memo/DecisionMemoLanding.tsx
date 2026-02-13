@@ -99,7 +99,7 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
 
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-8">
             Don&rsquo;t just diligence the asset. Stress-test the structure. We validate your deal against{' '}
-            <span className="text-foreground font-medium">{briefCount.toLocaleString()}+ HNWI precedents</span> to strip out
+            <span className="text-foreground font-medium">{briefCount.toLocaleString()}+ HNWI corridor signals</span> to strip out
             regulatory friction, tax drag, and hidden ruin pathways.
           </p>
 

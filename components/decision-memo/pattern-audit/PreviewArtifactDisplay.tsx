@@ -426,7 +426,7 @@ export function PreviewArtifactDisplay({ preview }: PreviewArtifactDisplayProps)
         <SectionHeader
           number={4}
           title="Pattern Anchors"
-          subtitle="Historical precedents matched to your strategy"
+          subtitle="Historical corridor signals matched to your strategy"
           locked
         />
 

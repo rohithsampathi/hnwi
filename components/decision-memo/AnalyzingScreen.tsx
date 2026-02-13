@@ -11,7 +11,7 @@ const ANALYSIS_STEPS = [
   { id: 'dependencies', label: 'Mapping coordination dependencies...', icon: Activity },
   { id: 'liquidity', label: 'Detecting liquidity mismatches...', icon: TrendingUp },
   { id: 'cascade', label: 'Calculating cascade exposure...', icon: Zap },
-  { id: 'precedents', label: 'Cross-referencing 1,875 precedents...', icon: Globe },
+  { id: 'precedents', label: 'Cross-referencing 1,875 corridor signals...', icon: Globe },
   { id: 'opportunities', label: 'Matching opportunities to your profile...', icon: Brain },
   { id: 'losses', label: 'Quantifying prevented losses...', icon: Shield },
 ];

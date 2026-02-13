@@ -93,7 +93,7 @@ const ANALYSIS_PHASES: AnalysisPhase[] = [
     icon: Database,
     color: 'text-emerald-500',
     subSteps: [
-      'Loading jurisdiction precedents',
+      'Loading jurisdiction signals',
       'Matching regulatory patterns',
       'Calculating correlation scores',
       'Identifying analogous structures'

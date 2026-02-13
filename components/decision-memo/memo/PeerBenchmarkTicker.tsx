@@ -71,21 +71,31 @@ interface PeerBenchmarkTickerProps {
   patternIntelligence?: PatternIntelligence;
 }
 
-// Human-readable failure pattern name (fallback only)
+// Human-readable failure pattern name (fallback only — institutional language)
 function getPatternName(mode: string): string {
   const names: Record<string, string> = {
-    'LIQUIDITY_PRISON': 'The Liquidity Prison',
-    'BEHAVIORAL_EROSION': 'The Behavioral Erosion',
-    'REGULATORY_TRAP': 'The Regulatory Trap',
-    'CURRENCY_EXPOSURE': 'The Currency Exposure',
-    'STAMP_DUTY_TRAP': 'The Stamp Duty Trap',
-    'TAX_DRAG': 'The Tax Drag',
-    'EXPAT_TRAP': 'The Expat Trap',
-    'STRUCTURE_FAILURE': 'The Structure Failure',
-    'PFIC_TRAP': 'The PFIC Trap',
-    'ABSD_BARRIER': 'The ABSD Barrier',
-    'FOREIGN_OWNERSHIP_PREMIUM': 'The Foreign Ownership Premium',
+    'LIQUIDITY_PRISON': 'Liquidity Constraint',
+    'BEHAVIORAL_EROSION': 'Advisor Misalignment',
+    'ILLIQUIDITY_TRAP': 'Illiquidity Trap',
     'CONCENTRATION_RISK': 'Concentration Risk',
+    'FORCED_EXECUTION': 'Compressed Timeline Risk',
+    'CROSS_COLLATERAL': 'Cross-Collateral Exposure',
+    'TITLE_MIRAGE': 'Adverse Title Claim',
+    'REGULATORY_LANDMINE': 'Retroactive Regulatory Risk',
+    'GOVERNANCE_VACUUM': 'Single-Operator Governance Risk',
+    'PHANTOM_SKIN_IN_GAME': 'Promoter Fee Asymmetry',
+    'SLEEPING_POINT_BREACH': 'Capital-at-Risk Threshold',
+    'PRISONERS_DILEMMA': 'Exit Priority Risk',
+    'WATERFALL_TRAP': 'Distribution Waterfall Risk',
+    'REGULATORY_TRAP': 'Regulatory Exposure',
+    'CURRENCY_EXPOSURE': 'Currency Exposure',
+    'STAMP_DUTY_TRAP': 'Stamp Duty Impact',
+    'TAX_DRAG': 'Tax Drag',
+    'EXPAT_TRAP': 'Expatriate Tax Exposure',
+    'STRUCTURE_FAILURE': 'Structure Failure',
+    'PFIC_TRAP': 'PFIC Classification Risk',
+    'ABSD_BARRIER': 'ABSD Cost Barrier',
+    'FOREIGN_OWNERSHIP_PREMIUM': 'Foreign Ownership Premium',
   };
   return names[mode] || mode.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
 }
@@ -162,10 +172,10 @@ export function PeerBenchmarkTicker({
         </div>
         <div>
           <h3 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">
-            Precedent Intelligence Match
+            Corridor Intelligence Match
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Pattern-Matched Against {precedentCount.toLocaleString()}+ Analyzed Precedents
+            Pattern-Matched Against {precedentCount.toLocaleString()}+ Analyzed Corridor Signals
           </p>
         </div>
       </motion.div>
@@ -232,9 +242,14 @@ export function PeerBenchmarkTicker({
                 <>
                   <p className="text-sm text-muted-foreground">
                     <span className="text-foreground font-semibold">HISTORICAL OUTCOME:</span>{' '}
-                    <span className="text-destructive font-bold">{failureRate?.toFixed(0)}%</span>{' '}
-                    of similar structures ({timePeriod}) resulted in negative real returns after accounting
-                    for acquisition barriers and tax drag.
+                    {historicalOutcome?.note ? (
+                      <>{historicalOutcome.note}</>
+                    ) : (
+                      <>
+                        <span className="text-destructive font-bold">{failureRate?.toFixed(0)}%</span>{' '}
+                        regulatory enforcement rate in this corridor ({timePeriod}).
+                      </>
+                    )}
                     {sampleSize > 0 && (
                       <span className="text-xs opacity-70"> (n={sampleSize})</span>
                     )}
@@ -355,7 +370,7 @@ export function PeerBenchmarkTicker({
             <div className="flex items-center gap-2">
               <Database className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] text-muted-foreground">
-                Intelligence Base: {precedentCount.toLocaleString()}+ precedents
+                Intelligence Base: {precedentCount.toLocaleString()}+ corridor signals
               </span>
               {/* SOTA: Confidence indicator */}
               {patternIntelligence?.confidence_level && (

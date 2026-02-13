@@ -348,7 +348,7 @@ export function SummaryReview({
                       'Executive Verdict & Risk Profile',
                       'Regulatory Exposure Analysis',
                       'Structure Optimization',
-                      'Precedent Intelligence Match',
+                      'Corridor Intelligence Match',
                       '10-Year Wealth Projection',
                       'Crisis Stress Test',
                       'Market Intelligence & Peer Analysis',

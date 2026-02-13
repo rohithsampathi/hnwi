@@ -42,7 +42,7 @@ const HNWI_FACTS = [
   { icon: Brain, text: "Matching decision patterns from our library of 159 documented failure modes" },
   { icon: Shield, text: "Identifying liquidity timing conflicts and regulatory window closures" },
   { icon: TrendingUp, text: "Analyzing sequencing dependencies for optimal execution order" },
-  { icon: AlertTriangle, text: "Stress-testing your decision posture against historical precedents" },
+  { icon: AlertTriangle, text: "Stress-testing your decision posture against historical corridor signals" },
   { icon: FileText, text: "Generating IC-ready artifact with actionable next steps" }
 ];
 
@@ -91,7 +91,7 @@ export function PatternAuditWaitingInteractive({
       icon: <AlertTriangle className="w-5 h-5" />,
       estimatedSeconds: 4,
       status: 'pending',
-      metrics: ['159 failure modes', 'Historical precedents']
+      metrics: ['159 failure modes', 'Historical corridor signals']
     },
     {
       id: 'sequencing',

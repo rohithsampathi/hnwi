@@ -112,7 +112,7 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
         <p className="text-[10px] sm:text-xs text-foreground/80 leading-relaxed">
           <strong className="text-foreground">Intelligence Basis:</strong> This analysis is grounded in HNWI Chronicles&apos; 3-year proprietary knowledge base
           {developmentsCount > 0 && <> spanning <strong className="text-foreground">{developmentsCount.toLocaleString()}</strong> HNWI developments</>}
-          {precedentCount > 0 && <> and <strong className="text-foreground">{precedentCount.toLocaleString()}</strong> cross-jurisdictional precedents</>}.
+          {precedentCount > 0 && <> and <strong className="text-foreground">{precedentCount.toLocaleString()}</strong> cross-jurisdictional corridor signals</>}.
           {' '}All statutes, treaty provisions, and tax rates cited below were verified against primary sources as of the generation date.
           Engage qualified counsel in each cited jurisdiction before executing any transaction.
         </p>

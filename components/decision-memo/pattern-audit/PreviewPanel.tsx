@@ -56,7 +56,7 @@ const ARTIFACT_SECTIONS: ArtifactSectionDef[] = [
   { icon: Scale, title: 'Executive Verdict & Risk Profile', description: 'Allocation recommendation + multi-dimensional risk assessment', unlockThreshold: 35 },
   { icon: Shield, title: 'Regulatory Exposure Analysis', description: 'Tax treatment, FBAR/FATCA triggers, compliance calendar', unlockThreshold: 35 },
   { icon: Building, title: 'Structure Optimization', description: 'Ownership structures analyzed + alternative corridors', unlockThreshold: 45 },
-  { icon: Database, title: 'Precedent Intelligence Match', description: 'Pattern-matched against 750+ analyzed precedents', unlockThreshold: 45 },
+  { icon: Database, title: 'Corridor Intelligence Match', description: 'Pattern-matched against 750+ analyzed corridor signals', unlockThreshold: 45 },
   { icon: TrendingUp, title: '10-Year Wealth Projection', description: 'Multi-scenario probability-weighted trajectory', unlockThreshold: 55 },
   { icon: AlertTriangle, title: 'Crisis Stress Test', description: 'Economic scenario resilience + antifragile opportunity', unlockThreshold: 55 },
   { icon: Globe, title: 'Market Intelligence & Peer Analysis', description: 'HNWI migration corridors + geographic opportunities', unlockThreshold: 55 },

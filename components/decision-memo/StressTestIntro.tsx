@@ -65,7 +65,7 @@ export const StressTestIntro: React.FC<StressTestIntroProps> = ({ onStart }) => 
             <div className="grid md:grid-cols-3 gap-8 text-center">
               <div>
                 <div className="text-5xl font-bold text-amber-500 mb-2">1,875</div>
-                <div className="text-sm text-muted-foreground">Precedent Developments</div>
+                <div className="text-sm text-muted-foreground">Wealth Developments</div>
               </div>
               <div>
                 <div className="text-5xl font-bold text-amber-500 mb-2">159</div>

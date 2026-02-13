@@ -145,7 +145,7 @@ export function MemoLastPage({
                 Intelligence Base
               </h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Powered by {precedentCount.toLocaleString()}+ analyzed HNWI developments and regulatory precedents.
+                Powered by {precedentCount.toLocaleString()}+ analyzed HNWI developments and corridor signals.
               </p>
             </div>
 

@@ -49,7 +49,7 @@ export function SuccessConfirmation() {
               />
               <StatusItem
                 icon={FileText}
-                label="Analyzing 1,875 precedents"
+                label="Analyzing 1,875 corridor signals"
                 status="in-progress"
               />
               <StatusItem
@@ -70,7 +70,7 @@ export function SuccessConfirmation() {
             <h3 className="text-xl font-bold mb-4 text-center">Your memo includes:</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>✓ Complete exposure map (all blind spots)</li>
-              <li>✓ 10+ precedents cited (MongoDB dev_ids)</li>
+              <li>✓ 10+ corridor signals cited (MongoDB dev_ids)</li>
               <li>✓ 11 failure modes with evidence</li>
               <li>✓ Corrected sequencing roadmap</li>
               <li>✓ Implementation timeline with advisor SLAs</li>

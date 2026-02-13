@@ -88,7 +88,7 @@ export function PaymentWall({ previewId, preventedLoss, onPaymentSuccess }: Paym
             'Complete exposure map (all 12 blind spots, not just 3)',
             'All failure modes with evidence citations',
             'Corrected sequencing (4-step Before → After roadmap)',
-            '10+ precedents cited (from 1,875 developments)',
+            '10+ corridor signals cited (from 1,875 developments)',
             'Deep dive on matched opportunities with timing analysis',
             'Implementation roadmap with advisor SLAs',
             'Evidence sources (full MongoDB dev_ids)',

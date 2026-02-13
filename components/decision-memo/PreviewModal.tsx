@@ -143,7 +143,7 @@ export function PreviewModal({
                 We Found {mistakes.length} Six-Figure Mistakes
               </h2>
               <p className="text-xl text-muted-foreground max-w-3xl">
-                Based on your 10 questions, our AI analyzed <span className="text-foreground font-semibold">1,562 HNWI precedents</span> and detected critical coordination gaps in your allocation strategy.
+                Based on your 10 questions, our AI analyzed <span className="text-foreground font-semibold">1,562 HNWI corridor signals</span> and detected critical coordination gaps in your allocation strategy.
               </p>
             </motion.div>
           </div>

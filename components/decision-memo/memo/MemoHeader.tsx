@@ -239,7 +239,7 @@ export function MemoHeader({
     {
       label: 'Total Value Creation',
       value: totalSavings,
-      description: 'Annual tax-optimized savings',
+      description: valueCreation?.annual ? 'Projected annual returns' : 'Annual tax-optimized savings',
       highlight: true
     },
     {
@@ -252,7 +252,7 @@ export function MemoHeader({
     {
       label: 'Intelligence Depth',
       value: precedentCount > 0 ? `${precedentCount}` : '—',
-      description: 'Precedents analyzed',
+      description: 'Corridor signals analyzed',
     },
   ];
 
@@ -273,7 +273,7 @@ export function MemoHeader({
   // ─── Notice ───────────────────────────────────────────────────────────────
   // Same notice for all tiers — only color differs via theme
   const noticeTitle = 'Intelligence Advisory';
-  const noticeBody = `Pattern & Market Intelligence Report based on ${precedentCount > 0 ? precedentCount.toLocaleString() : '0'}+ analyzed precedents. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.`;
+  const noticeBody = `Pattern & Market Intelligence Report based on ${precedentCount > 0 ? precedentCount.toLocaleString() : '0'}+ analyzed corridor signals. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.`;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -400,11 +400,66 @@ export function MemoHeader({
           ))}
         </div>
 
-        {/* Value Creation Breakdown */}
+        {/* Value Creation Breakdown — unified: returns + tax savings (shows $0 when no tax savings) */}
         {valueCreation && (() => {
-          const hasTaxFormat = typeof valueCreation.annual_tax_savings === 'number' || typeof valueCreation.annual_cgt_savings === 'number' || typeof valueCreation.annual_estate_benefit === 'number';
           const hasAnnualFormat = valueCreation.annual && (valueCreation.annual.rental !== undefined || valueCreation.annual.appreciation !== undefined);
-          if (!hasTaxFormat && !hasAnnualFormat) return null;
+          const hasTaxFormat = typeof valueCreation.annual_tax_savings === 'number' || typeof valueCreation.annual_cgt_savings === 'number' || typeof valueCreation.annual_estate_benefit === 'number';
+          if (!hasAnnualFormat && !hasTaxFormat) return null;
+
+          // Build all components in one unified grid
+          const components: Array<{ value: string; label: string; color: string }> = [];
+
+          // Annual returns (rental + appreciation)
+          if (hasAnnualFormat) {
+            components.push({
+              value: valueCreation.annual?.rental_formatted || `$${(valueCreation.annual?.rental ?? 0).toLocaleString()}`,
+              label: 'Rental Income',
+              color: (valueCreation.annual?.rental ?? 0) > 0 ? 'text-green-500' : 'text-muted-foreground'
+            });
+            components.push({
+              value: valueCreation.annual?.appreciation_formatted || `$${(valueCreation.annual?.appreciation ?? 0).toLocaleString()}`,
+              label: 'Appreciation',
+              color: (valueCreation.annual?.appreciation ?? 0) > 0 ? 'text-green-500' : 'text-muted-foreground'
+            });
+          }
+
+          // Tax savings — show potential vs actual (like Tax Jurisdiction Analysis section)
+          const taxSavings = valueCreation.annual_tax_savings ?? valueCreation.annual?.tax_savings ?? 0;
+          const isRelocating = taxDifferential?.is_relocating ?? true;
+          const potentialDiff = taxDifferential?.cumulative_tax_differential_pct ?? taxDifferential?.weighted_tax_differential_pct;
+          const hasPotentialCut = !isRelocating && potentialDiff !== undefined && potentialDiff > 0 && taxSavings === 0;
+
+          // Tax savings — single grid cell (paired inline when not capturable)
+          components.push({
+            value: hasPotentialCut ? `__POTENTIAL_CUT__${Math.round(potentialDiff)}` : (valueCreation.formatted?.annual_tax_savings || `$${Math.abs(taxSavings).toLocaleString()}`),
+            label: hasPotentialCut ? 'Tax Savings' : taxSavings < 0 ? 'Tax Cost' : 'Tax Savings',
+            color: taxSavings > 0 ? 'text-green-500' : taxSavings < 0 ? 'text-red-500' : 'text-muted-foreground'
+          });
+
+          // CGT savings — show if backend provides it
+          if (hasTaxFormat && typeof valueCreation.annual_cgt_savings === 'number') {
+            const cgt = valueCreation.annual_cgt_savings;
+            components.push({
+              value: valueCreation.formatted?.annual_cgt_savings || `$${Math.abs(cgt).toLocaleString()}`,
+              label: cgt < 0 ? 'CGT Cost' : 'CGT Savings',
+              color: cgt > 0 ? 'text-green-500' : cgt < 0 ? 'text-red-500' : 'text-muted-foreground'
+            });
+          }
+
+          // Estate benefit — show if backend provides it
+          if (hasTaxFormat && typeof valueCreation.annual_estate_benefit === 'number') {
+            const estate = valueCreation.annual_estate_benefit;
+            components.push({
+              value: valueCreation.formatted?.annual_estate_benefit || `$${Math.abs(estate).toLocaleString()}`,
+              label: estate < 0 ? 'Estate Cost' : 'Estate Benefit',
+              color: estate > 0 ? 'text-green-500' : estate < 0 ? 'text-red-500' : 'text-muted-foreground'
+            });
+          }
+
+          // Determine grid columns based on component count
+          const gridCols = components.length <= 3 ? 'grid-cols-3'
+            : components.length === 4 ? 'grid-cols-2 sm:grid-cols-4'
+            : 'grid-cols-3 sm:grid-cols-5';
 
           return (
             <motion.div
@@ -414,60 +469,39 @@ export function MemoHeader({
               transition={{ duration: 0.5, delay: 0.95 }}
             >
               <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                {hasAnnualFormat ? 'Annual Value Creation' : 'Value Creation Breakdown'}
+                Value Creation Breakdown
               </p>
-              {hasAnnualFormat ? (
-                <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                  <div className="text-center">
-                    <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-green-500">
-                      {valueCreation.annual?.rental_formatted || `+$${(valueCreation.annual?.rental ?? 0).toLocaleString()}`}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Rental Income</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-green-500">
-                      {valueCreation.annual?.appreciation_formatted || `+$${(valueCreation.annual?.appreciation ?? 0).toLocaleString()}`}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Appreciation</p>
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-lg sm:text-xl lg:text-2xl font-semibold ${theme.cardHighlightValue}`}>
-                      {valueCreation.annual?.total_formatted || `$${(valueCreation.annual?.total ?? 0).toLocaleString()}`}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Total Annual</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                  <div className="text-center">
-                    <p className={`text-lg sm:text-xl lg:text-2xl font-semibold ${(valueCreation.annual_tax_savings ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {valueCreation.formatted?.annual_tax_savings ||
-                        ((valueCreation.annual_tax_savings ?? 0) >= 0 ? '+' : '') + '$' + Math.abs(valueCreation.annual_tax_savings ?? 0).toLocaleString()}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
-                      Income Tax {(valueCreation.annual_tax_savings ?? 0) >= 0 ? 'Savings' : 'Cost'}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-lg sm:text-xl lg:text-2xl font-semibold ${(valueCreation.annual_cgt_savings ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {valueCreation.formatted?.annual_cgt_savings ||
-                        ((valueCreation.annual_cgt_savings ?? 0) >= 0 ? '+' : '') + '$' + Math.abs(valueCreation.annual_cgt_savings ?? 0).toLocaleString()}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
-                      CGT {(valueCreation.annual_cgt_savings ?? 0) >= 0 ? 'Savings' : 'Cost'}
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-lg sm:text-xl lg:text-2xl font-semibold ${(valueCreation.annual_estate_benefit ?? 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {valueCreation.formatted?.annual_estate_benefit ||
-                        ((valueCreation.annual_estate_benefit ?? 0) >= 0 ? '+' : '') + '$' + Math.abs(valueCreation.annual_estate_benefit ?? 0).toLocaleString()}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
-                      Estate {(valueCreation.annual_estate_benefit ?? 0) >= 0 ? 'Benefit' : 'Cost'}
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div className={`grid ${gridCols} gap-3 sm:gap-4`}>
+                {components.map((comp, i) => {
+                  // Potential vs Actual paired inline in one cell
+                  const potentialMatch = comp.value.match(/^__POTENTIAL_CUT__(\d+)$/);
+                  if (potentialMatch) {
+                    return (
+                      <div key={i} className="text-center">
+                        <div className="flex items-baseline justify-center gap-1.5 sm:gap-2">
+                          <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-muted-foreground/40 line-through">
+                            +{potentialMatch[1]}%
+                          </span>
+                          <span className="text-muted-foreground/30 text-sm">→</span>
+                          <span className="text-lg sm:text-xl lg:text-2xl font-semibold text-amber-500">
+                            $0
+                          </span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">Tax Savings</p>
+                        <p className="text-[9px] sm:text-[10px] text-amber-500/80 mt-0.5">Requires relocation</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={i} className="text-center">
+                      <p className={`text-lg sm:text-xl lg:text-2xl font-semibold ${comp.color}`}>
+                        {comp.value}
+                      </p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">{comp.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </motion.div>
           );
         })()}
