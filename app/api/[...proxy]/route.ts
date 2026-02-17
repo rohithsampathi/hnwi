@@ -32,6 +32,15 @@ async function getForwardedHeaders(request: NextRequest): Promise<HeadersInit> {
     if (value) headers[header] = value
   })
 
+  // Forward the real client IP to the backend for geolocation.
+  // Use platform-verified sources only (not raw client headers which can be spoofed).
+  // Priority: Vercel's request.ip (trusted) → platform-set x-forwarded-for (first hop)
+  const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  if (clientIp) {
+    headers['x-forwarded-for'] = clientIp
+    headers['x-real-ip'] = clientIp
+  }
+
   return headers
 }
 

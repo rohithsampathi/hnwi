@@ -20,6 +20,9 @@ export async function GET(
   try {
     console.log('📊 Fetching preview for:', intakeId);
 
+    // Platform-verified client IP for backend geolocation (not the Vercel server IP)
+    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+
     // ==========================================================================
     // SFO PATTERN AUDIT PREVIEW
     // ==========================================================================
@@ -32,6 +35,10 @@ export async function GET(
       const authHeader = request.headers.get('Authorization');
       if (authHeader) {
         previewHeaders['Authorization'] = authHeader;
+      }
+      if (clientIp) {
+        previewHeaders['x-forwarded-for'] = clientIp;
+        previewHeaders['x-real-ip'] = clientIp;
       }
       const response = await fetch(backendUrl, {
         method: 'GET',
@@ -163,6 +170,10 @@ export async function GET(
     const legacyAuth = request.headers.get('Authorization');
     if (legacyAuth) {
       legacyHeaders['Authorization'] = legacyAuth;
+    }
+    if (clientIp) {
+      legacyHeaders['x-forwarded-for'] = clientIp;
+      legacyHeaders['x-real-ip'] = clientIp;
     }
     const response = await fetch(backendUrl, {
       method: 'GET',

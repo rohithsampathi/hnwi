@@ -23,9 +23,20 @@ export async function POST(
   try {
     const body = await request.json();
 
+    // Forward real client IP so backend can geolocate the actual user (not the Vercel server).
+    // Use platform-verified sources only (not raw client headers which can be spoofed).
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    if (clientIp) {
+      headers['x-forwarded-for'] = clientIp;
+      headers['x-real-ip'] = clientIp;
+    }
+    const ua = request.headers.get('user-agent');
+    if (ua) headers['user-agent'] = ua;
+
     const response = await fetch(backendUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
 

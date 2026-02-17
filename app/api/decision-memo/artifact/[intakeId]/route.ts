@@ -36,6 +36,12 @@ export async function GET(
     if (authHeader) {
       backendHeaders['Authorization'] = authHeader;
     }
+    // Platform-verified client IP for backend geolocation (not the Vercel server IP)
+    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    if (clientIp) {
+      backendHeaders['x-forwarded-for'] = clientIp;
+      backendHeaders['x-real-ip'] = clientIp;
+    }
 
     for (const backendUrl of endpoints) {
       console.log('📥 [Artifact] Trying backend:', backendUrl);
