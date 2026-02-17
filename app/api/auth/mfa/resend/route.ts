@@ -18,7 +18,7 @@ async function handlePost(request: NextRequest) {
     }
 
     // Stricter rate limiting for resend attempts (3 per hour)
-    const resendRateLimit = await RateLimiter.checkLimit(request, 'MFA_RESEND', 3, 3600)
+    const resendRateLimit = await RateLimiter.checkLimit(request, 'MFA_RESEND')
     if (!resendRateLimit.allowed) {
       const rateLimitError = RateLimiter.getRateLimitError('MFA_RESEND', 
         Math.ceil((resendRateLimit.resetTime - Date.now()) / 1000))

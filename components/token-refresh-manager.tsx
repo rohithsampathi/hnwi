@@ -23,7 +23,7 @@ const isPublicRoute = (): boolean => {
   return pathname.includes('/simulation') || pathname.includes('/decision-memo')
 }
 
-export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: TokenRefreshManagerProps) {
+export default function TokenRefreshManager({ refreshIntervalMinutes = 12 }: TokenRefreshManagerProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
@@ -74,8 +74,9 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
     }
 
     // PWA FIX: Use shorter interval in PWA mode to keep cookies fresh
+    // Production session timeout is 15 min — refresh must happen BEFORE that
     const isPWA = isPWAStandalone()
-    const effectiveIntervalMinutes = isPWA ? Math.min(refreshIntervalMinutes, 30) : refreshIntervalMinutes
+    const effectiveIntervalMinutes = isPWA ? Math.min(refreshIntervalMinutes, 10) : refreshIntervalMinutes
     const refreshIntervalMs = effectiveIntervalMinutes * 60 * 1000
 
     // Start the refresh timer
@@ -83,8 +84,8 @@ export default function TokenRefreshManager({ refreshIntervalMinutes = 45 }: Tok
 
     // Initial refresh timing depends on PWA mode
     // PWA: 5 minutes after mount (cookies may have expired in background)
-    // Browser: 20 minutes after mount (more stable)
-    const initialDelayMs = isPWA ? 5 * 60 * 1000 : 20 * 60 * 1000
+    // Browser: 10 minutes after mount (must be under 15-min session timeout)
+    const initialDelayMs = isPWA ? 5 * 60 * 1000 : 10 * 60 * 1000
     const initialRefreshTimer = setTimeout(() => performBackgroundRefresh(false), initialDelayMs)
 
     return () => {

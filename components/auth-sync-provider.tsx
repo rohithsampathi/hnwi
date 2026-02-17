@@ -7,15 +7,11 @@ interface AuthSyncProviderProps {
   children: React.ReactNode
 }
 
-// Helper to check if auth cookies exist (prevents premature session checks)
-function hasAuthCookies(): boolean {
-  if (typeof document === 'undefined') return false
-
-  const cookies = document.cookie
-  // Check for any of the auth-related cookies
-  return cookies.includes('access_token') ||
-         cookies.includes('session_token') ||
-         cookies.includes('refresh_token')
+// Check if user has an active auth session
+// Auth cookies are httpOnly (invisible to JS), so check localStorage instead
+function hasAuthSession(): boolean {
+  if (typeof window === 'undefined') return false
+  return !!(localStorage.getItem('userId') && localStorage.getItem('userObject'))
 }
 
 export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
@@ -52,7 +48,7 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
         visibilityTimeoutRef.current = setTimeout(() => {
           // Only check session if auth cookies exist
           // Prevents 401 errors when cookies haven't synced yet after PWA wake
-          if (hasAuthCookies()) {
+          if (hasAuthSession()) {
             unifiedAuthManager.checkSession()
           }
         }, 1000) // 1 second delay for cookie propagation

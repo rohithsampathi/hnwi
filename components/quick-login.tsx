@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input"
 import { secureApi } from "@/lib/secure-api"
 
 export function QuickLogin() {
+  // Dev-only component — never render in production builds
+  if (process.env.NODE_ENV === 'production') return null
+
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -29,7 +32,7 @@ export function QuickLogin() {
       const response = await secureApi.post('/api/auth/login', {
         email,
         password
-      }, false, { enableCache: false })
+      }, false)
 
       if (response.token) {
         // Backend sets httpOnly cookies

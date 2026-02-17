@@ -45,7 +45,13 @@ class SecureAuthManager {
   private getMasterKey(): string {
     // In production, this would retrieve from a secure key management service
     // For now, derive from environment variable
-    const baseKey = process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_ENCRYPTION_KEY || "hnwi-chronicles-secure-key-fallback";
+    const baseKey = process.env.ENCRYPTION_KEY;
+    if (!baseKey) {
+      throw new Error(
+        'ENCRYPTION_KEY environment variable is required. ' +
+        'Do not use NEXT_PUBLIC_ prefix — it exposes the key in the client bundle.'
+      );
+    }
     return AES256Encryption.hash(baseKey + navigator.userAgent, { algorithm: "sha512" });
   }
 

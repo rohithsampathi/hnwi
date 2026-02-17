@@ -27,106 +27,99 @@ function getCookieDomain(): string | undefined {
   return undefined;
 }
 
+// Verify JWT signature if secret is available, returns payload or null
+async function verifyJWT(token: string): Promise<Record<string, any> | null> {
+  const secret = process.env.JWT_SECRET || process.env.ACCESS_TOKEN_SECRET;
+  if (!secret) return null;
+
+  try {
+    const { jwtVerify } = await import('jose');
+    const secretKey = new TextEncoder().encode(secret);
+    const { payload } = await jwtVerify(token, secretKey);
+    return payload as Record<string, any>;
+  } catch (error) {
+    logger.warn('JWT signature verification failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return null;
+  }
+}
+
+// Extract user fields from a JWT payload
+function extractUserFromPayload(payload: Record<string, any>) {
+  return {
+    id: payload.user_id || payload.userId || payload.id || payload.sub,
+    user_id: payload.user_id || payload.userId || payload.id || payload.sub,
+    email: payload.email,
+    firstName: payload.firstName || payload.first_name || payload.name?.split(' ')[0],
+    lastName: payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' '),
+    role: payload.role || 'user',
+  };
+}
+
 // GET handler for retrieving the session
 export async function GET() {
   try {
-    // Read backend cookies (FastAPI sets these directly)
     // Note: In Next.js 15+, cookies() returns a Promise
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;
-    const sessionUser = cookieStore.get('session_user')?.value;
 
-    // Log what cookies we're receiving
-    const allCookies = cookieStore.getAll();
-    logger.info('Session check - cookies received', {
+    logger.info('Session check', {
       hasAccessToken: !!accessToken,
       hasRefreshToken: !!refreshToken,
-      hasSessionUser: !!sessionUser,
-      cookieCount: allCookies.length,
-      cookieNames: allCookies.map(c => c.name),
       accessTokenLength: accessToken?.length || 0
     });
 
-    // If we have access_token, validate it
-    // If no access_token but session_user exists, use session_user as fallback
-    // This allows quick session recovery while secure-api handles actual API auth
     if (!accessToken) {
-      // No access_token - try session_user fallback for quick recovery
-      if (sessionUser) {
-        try {
-          const userData = JSON.parse(sessionUser);
-          logger.info('Using session_user fallback (no access_token)', {
-            userId: userData.id || userData.user_id
-          });
-          return NextResponse.json({ user: userData });
-        } catch (parseError) {
-          logger.warn('Failed to parse session_user cookie', { error: parseError });
-        }
-      }
-
-      logger.info('No access_token or valid session_user found - session invalid');
+      // No access_token — session is invalid
+      // NOTE: session_user cookie is NOT trusted as a standalone auth source
+      // because it's unsigned JSON. Only access_token (JWT signed by backend) is authoritative.
+      logger.info('No access_token found - session invalid');
       return NextResponse.json({ user: null }, { status: 200 });
     }
-    
-    // We have an access token - fetch user from backend or decode JWT
+
+    // Strategy: validate with backend first, verified JWT as fallback
+    // 1. Try backend validation (authoritative)
     try {
-      // Try to decode JWT to get user data
-      if (accessToken.includes('.')) {
-        try {
-          const parts = accessToken.split('.');
-          if (parts.length === 3) {
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
+      const userResponse = await fetch(`${backendUrl}/api/auth/session`, {
+        headers: {
+          'Cookie': `access_token=${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-            // Extract user data from JWT payload
-            const user = {
-              id: payload.user_id || payload.userId || payload.id || payload.sub,
-              user_id: payload.user_id || payload.userId || payload.id || payload.sub,
-              email: payload.email,
-              firstName: payload.firstName || payload.first_name || payload.name?.split(' ')[0],
-              lastName: payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' '),
-              role: payload.role || 'user',
-              ...payload // Include any additional fields
-            };
-
-            return NextResponse.json({ user });
-          }
-        } catch (jwtError) {
-          logger.error('Error decoding JWT token', { error: jwtError });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        if (userData && (userData.user || userData.id || userData.user_id)) {
+          const user = userData.user || userData;
+          return NextResponse.json({ user });
         }
       }
-
-      // If we can't decode the JWT, fetch user from backend
-      try {
-        const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-        const userResponse = await fetch(`${backendUrl}/api/auth/session`, {
-          headers: {
-            'Cookie': `access_token=${accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          if (userData) {
-            return NextResponse.json({ user: userData });
-          }
-        }
-      } catch (fetchError) {
-        logger.error('Error fetching user from backend', { error: fetchError });
-      }
-
-      // If we can't get user data, return null
-      return NextResponse.json({ user: null }, { status: 200 });
-    } catch (error) {
-      logger.error('Error in session handler', { error: error instanceof Error ? error.message : String(error) });
-      return NextResponse.json({ user: null }, { status: 200 });
+    } catch (fetchError) {
+      logger.warn('Backend session check unavailable, falling back to JWT verification', {
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError)
+      });
     }
-    
-    // If no valid session found, return null (not demo user)
+
+    // 2. Fallback: verify JWT signature locally (only if we have the secret)
+    if (accessToken.includes('.') && accessToken.split('.').length === 3) {
+      const verifiedPayload = await verifyJWT(accessToken);
+      if (verifiedPayload) {
+        const user = extractUserFromPayload(verifiedPayload);
+        if (user.id) {
+          logger.info('Session validated via verified JWT', { userId: user.id });
+          return NextResponse.json({ user });
+        }
+      }
+    }
+
+    // No valid session could be established
     return NextResponse.json({ user: null }, { status: 200 });
-    
+
   } catch (error) {
+    logger.error('Session GET error', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ user: null }, { status: 200 });
   }
 }

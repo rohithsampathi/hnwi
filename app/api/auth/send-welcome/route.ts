@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendWelcomeEmail } from '@/lib/email/email-templates';
+import { RateLimiter } from '@/lib/rate-limiter';
 
 interface SendWelcomeRequest {
   user_email: string;
@@ -16,6 +17,22 @@ interface SendWelcomeRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit to prevent email spam abuse (5 per hour per IP)
+    if (RateLimiter.isBlocked(request)) {
+      return NextResponse.json(
+        { error: 'Access temporarily blocked' },
+        { status: 429 }
+      );
+    }
+
+    const rateLimitResult = await RateLimiter.checkLimit(request, 'SEND_WELCOME');
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many welcome email requests. Please wait before trying again.' },
+        { status: 429 }
+      );
+    }
+
     const body: SendWelcomeRequest = await request.json();
     const { user_email, user_name, verification_url } = body;
 

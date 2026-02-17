@@ -26,7 +26,15 @@ const getEncryptionKey = (): Buffer => {
     hexBuffer.copy(padded)
     return padded
   }
-  // Fallback to a generated key (not recommended for production)
+  // No fallback — random bytes would break MFA across serverless cold starts
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'FATAL: MFA_SESSION_KEY or MASTER_ENCRYPTION_KEY must be set in production. ' +
+      'MFA sessions will break across serverless invocations without a stable key.'
+    )
+  }
+  // Dev only: generate ephemeral key (acceptable for local development)
+  console.warn('[SessionEncryption] No encryption key set — using ephemeral key (dev only)')
   return crypto.randomBytes(32)
 }
 

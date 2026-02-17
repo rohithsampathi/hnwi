@@ -390,10 +390,15 @@ const handleAuthError = async (): Promise<boolean> => {
   // Token refresh failed, now show auth popup
   authManager.setAuthenticated(false);
 
-  // CRITICAL: Clear old auth state to prevent conflicts during re-login
-  // This ensures the popup login starts fresh without stale cookies interfering
+  // CRITICAL: Clear ALL client-side auth state to prevent ghost sessions
+  // Must clear localStorage too — otherwise authManager.isAuthenticated() still returns true
   if (typeof window !== 'undefined') {
-    // Clear PWA storage (but session storage email preserved for convenience)
+    // Clear localStorage auth data (the primary auth state source)
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userObject');
+    localStorage.removeItem('loginTimestamp');
+
+    // Clear PWA storage
     pwaStorage.removeItemSync('userId');
     pwaStorage.removeItemSync('userObject');
 

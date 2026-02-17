@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmailVerification } from '@/lib/email/email-templates';
 import { generateVerificationToken, getTokenExpiryHours } from '@/lib/email/verification-token';
+import { RateLimiter } from '@/lib/rate-limiter';
 
 interface SendVerificationRequest {
   user_email: string;
@@ -19,6 +20,22 @@ interface SendVerificationRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit to prevent email spam abuse (3 per 15 minutes per IP)
+    if (RateLimiter.isBlocked(request)) {
+      return NextResponse.json(
+        { error: 'Access temporarily blocked' },
+        { status: 429 }
+      );
+    }
+
+    const rateLimitResult = await RateLimiter.checkLimit(request, 'SEND_VERIFICATION');
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many verification email requests. Please wait before trying again.' },
+        { status: 429 }
+      );
+    }
+
     const body: SendVerificationRequest = await request.json();
     const { user_email, user_name, user_id } = body;
 

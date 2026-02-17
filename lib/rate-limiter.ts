@@ -15,60 +15,114 @@ interface RateLimitEntry {
   resetTime: number;
 }
 
-// In-memory store for rate limiting (in production, use Redis)
+// In-memory store for rate limiting
+// NOTE: This store is per serverless instance. In horizontally-scaled deployments,
+// each instance maintains its own counters. For shared rate limiting across
+// instances, replace with Redis/Upstash via RATE_LIMIT_REDIS_URL env var.
 const rateLimitStore = new Map<string, RateLimitEntry>();
+
+// Prevent unbounded memory growth in long-running instances
+const MAX_STORE_SIZE = 10_000;
+
+function evictOldestEntries() {
+  if (rateLimitStore.size <= MAX_STORE_SIZE) return;
+
+  const now = Date.now();
+  // First pass: remove expired entries
+  for (const [key, entry] of rateLimitStore) {
+    if (now > entry.resetTime) {
+      rateLimitStore.delete(key);
+    }
+  }
+
+  // Second pass: if still over limit, remove oldest entries
+  if (rateLimitStore.size > MAX_STORE_SIZE) {
+    const entries = [...rateLimitStore.entries()]
+      .sort((a, b) => a[1].resetTime - b[1].resetTime);
+    const toRemove = entries.slice(0, rateLimitStore.size - MAX_STORE_SIZE);
+    for (const [key] of toRemove) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
 
 // Rate limit configurations - Production-grade security for HNWI platform
 const RATE_LIMITS = {
   LOGIN: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: process.env.NODE_ENV === 'production' ? 5 : 10, // Banking-standard security
-    keyGenerator: (req) => `login:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `login:${getClientIP(req)}`,
     message: 'Too many login attempts. Please try again in 15 minutes for security.'
   },
   API: {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: process.env.NODE_ENV === 'production' ? 30 : 50, // Balanced security/UX
-    keyGenerator: (req) => `api:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `api:${getClientIP(req)}`,
     message: 'API rate limit exceeded. Please slow down your requests.'
   },
   SENSITIVE: {
-    windowMs: 60 * 1000, // 1 minute  
+    windowMs: 60 * 1000, // 1 minute
     maxRequests: process.env.NODE_ENV === 'production' ? 3 : 5, // Enhanced security for critical ops
-    keyGenerator: (req) => `sensitive:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `sensitive:${getClientIP(req)}`,
     message: 'Sensitive operation limit reached. Please wait before trying again.'
   },
   CROWN_VAULT: {
     windowMs: 60 * 1000, // 1 minute
     maxRequests: process.env.NODE_ENV === 'production' ? 15 : 20, // Financial data protection
-    keyGenerator: (req) => `crown:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `crown:${getClientIP(req)}`,
     message: 'Crown Vault access limit reached. Please wait a moment before continuing.'
   },
-  // New: User-based rate limiting (more restrictive)
+  // User-based rate limiting (more restrictive)
   USER_LOGIN: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 3, // Even more restrictive per user account
-    keyGenerator: (req, userId) => `user_login:${userId || getClientIP(req)}`,
+    keyGenerator: (req: NextRequest, userId?: string) => `user_login:${userId || getClientIP(req)}`,
     message: 'Too many login attempts for this account. Please wait 15 minutes.'
   },
   // MFA-specific rate limits
   MFA_VERIFY: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     maxRequests: 10, // Allow multiple verification attempts
-    keyGenerator: (req) => `mfa_verify:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `mfa_verify:${getClientIP(req)}`,
     message: 'Too many verification attempts. Please wait before trying again.'
   },
   MFA_RESEND: {
     windowMs: 60 * 60 * 1000, // 1 hour
     maxRequests: 3, // Strict limit on resend requests
-    keyGenerator: (req) => `mfa_resend:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `mfa_resend:${getClientIP(req)}`,
     message: 'Too many resend requests. Please wait an hour before requesting another code.'
   },
-  // New: Progressive penalties for repeated violations
+  // Password reset rate limits
+  RESET_PASSWORD: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 5, // 5 attempts per 15 minutes
+    keyGenerator: (req: NextRequest) => `reset_pwd:${getClientIP(req)}`,
+    message: 'Too many password reset attempts. Please wait before trying again.'
+  },
+  FORGOT_PASSWORD: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 3, // 3 attempts per 15 minutes (stricter — triggers email sends)
+    keyGenerator: (req: NextRequest) => `forgot_pwd:${getClientIP(req)}`,
+    message: 'Too many password reset requests. Please wait before trying again.'
+  },
+  // Email endpoints (prevent spam abuse)
+  SEND_VERIFICATION: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 3, // 3 verification emails per 15 minutes
+    keyGenerator: (req: NextRequest) => `send_verify:${getClientIP(req)}`,
+    message: 'Too many verification email requests. Please wait before trying again.'
+  },
+  SEND_WELCOME: {
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 5, // 5 welcome emails per hour
+    keyGenerator: (req: NextRequest) => `send_welcome:${getClientIP(req)}`,
+    message: 'Too many welcome email requests. Please wait before trying again.'
+  },
+  // Progressive penalties for repeated violations
   PROGRESSIVE: {
     windowMs: 60 * 60 * 1000, // 1 hour
     maxRequests: 1, // One strike per hour for progressive penalties
-    keyGenerator: (req) => `progressive:${getClientIP(req)}`,
+    keyGenerator: (req: NextRequest) => `progressive:${getClientIP(req)}`,
     message: 'IP temporarily blocked due to repeated violations. Access will be restored automatically.'
   }
 };
@@ -125,6 +179,9 @@ export class RateLimiter {
     const key = config.keyGenerator(request, undefined);
     const now = Date.now();
     const resetTime = now + config.windowMs;
+
+    // Prevent unbounded memory growth
+    evictOldestEntries();
 
     let entry = rateLimitStore.get(key);
 

@@ -24,7 +24,7 @@ async function handlePost(request: NextRequest) {
     }
 
     // Apply rate limiting for password reset (more restrictive)
-    const rateLimitResult = await RateLimiter.checkLimit(request, 'RESET_PASSWORD', 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+    const rateLimitResult = await RateLimiter.checkLimit(request, 'RESET_PASSWORD');
     if (!rateLimitResult.allowed) {
       logger.warn("Reset password rate limit exceeded", {
         ip: ApiAuth.getClientIP(request),
@@ -68,11 +68,11 @@ async function handlePost(request: NextRequest) {
       );
     }
 
-    // Password validation
-    if (body.new_password.length < 6) {
+    // Password validation — must match registration minimum (8 chars)
+    if (body.new_password.length < 8) {
       logger.warn("Reset password validation failed - password too short");
       return NextResponse.json(
-        { success: false, error: 'Password must be at least 6 characters long' },
+        { success: false, error: 'Password must be at least 8 characters long' },
         { status: 400 }
       );
     }

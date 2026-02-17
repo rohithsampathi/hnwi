@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { QuickLogin } from "@/components/quick-login"
 
 export function DebugAuth() {
+  // Dev-only component — never render in production builds
+  if (process.env.NODE_ENV === 'production') return null
+
   const [authStatus, setAuthStatus] = useState<string>("Checking...")
   const [token, setToken] = useState<string | null>(null)
   const [apiTest, setApiTest] = useState<string>("Not tested")

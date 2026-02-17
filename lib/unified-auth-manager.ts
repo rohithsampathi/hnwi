@@ -4,6 +4,7 @@
 
 import { secureApi, setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
 import { authManager, loginUser, logoutUser, getCurrentUser, type User } from '@/lib/auth-manager'
+import { DeviceTrustManager } from '@/lib/device-trust'
 
 export interface AuthState {
   isAuthenticated: boolean
@@ -278,11 +279,8 @@ class UnifiedAuthManager {
 
   // Check session using secure-api
   public async checkSession(): Promise<AuthState> {
-    this.updateAuthState({ isLoading: true, error: null })
-
-    // CRITICAL FIX: Check localStorage FIRST before calling backend
-    // If we have valid user data in localStorage, trust it and skip backend check
-    // This prevents hard refresh logout when backend cookies are slow to propagate
+    // Optimistic render: if localStorage has a user, show them immediately
+    // but ALWAYS validate with backend (don't skip the call)
     const existingUser = getCurrentUser()
     if (existingUser && (existingUser.id || existingUser.user_id)) {
       this.updateAuthState({
@@ -291,7 +289,9 @@ class UnifiedAuthManager {
         isLoading: false,
         error: null
       })
-      return this.authState
+      // Don't return — continue to validate with backend below
+    } else {
+      this.updateAuthState({ isLoading: true, error: null })
     }
 
     try {
@@ -299,8 +299,7 @@ class UnifiedAuthManager {
       const result = await secureApi.get('/api/auth/session')
 
       if (result.user) {
-        // Preserve existing user data and merge with session response
-        // This prevents losing user profile fields like 'name' that might not be in session response
+        // Backend confirmed session — merge with any extra profile fields from localStorage
         const mergedUser = existingUser ? { ...existingUser, ...result.user } : result.user
 
         // Session valid - sync all auth systems with merged user data
@@ -313,18 +312,22 @@ class UnifiedAuthManager {
           error: null
         })
       } else {
-        // Backend says no session - but check localStorage one more time
-        // Only clear if localStorage is also empty (prevents race conditions)
-        const finalCheck = getCurrentUser()
-        if (finalCheck && (finalCheck.id || finalCheck.user_id)) {
+        // Backend explicitly says no session.
+        // Only exception: recent login where cookies may not have propagated yet (PWA/Safari)
+        const loginTimestamp = typeof window !== 'undefined' ? localStorage.getItem('loginTimestamp') : null
+        const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000 // 30s grace
+
+        if (isRecentLogin && existingUser && (existingUser.id || existingUser.user_id)) {
+          // Within 30s of login — trust localStorage, cookies are still propagating
+          // The layout's background validation will catch truly invalid sessions
           this.updateAuthState({
             isAuthenticated: true,
-            user: finalCheck,
+            user: existingUser,
             isLoading: false,
             error: null
           })
         } else {
-          // No user anywhere - safe to clear
+          // Backend says no and it's not a fresh login — respect it
           await this.clearAuthSystems()
 
           this.updateAuthState({
@@ -337,7 +340,8 @@ class UnifiedAuthManager {
       }
 
     } catch (error) {
-      // Session check failed - might be network issue, keep existing state if user exists
+      // Network error — keep existing state (offline resilience for PWA)
+      // secure-api will handle 401/403 on actual data calls
       const fallbackUser = getCurrentUser()
       if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
         this.updateAuthState({
@@ -616,7 +620,10 @@ class UnifiedAuthManager {
     // 3. Clear stored MFA email
     this.mfaEmail = null
 
-    // 4. Clear Service Worker caches (prevents data leakage on shared devices)
+    // 4. Clear device trust (prevents MFA bypass on shared/stolen devices)
+    DeviceTrustManager.removeTrust()
+
+    // 5. Clear Service Worker caches (prevents data leakage on shared devices)
     if (typeof window !== 'undefined' && 'caches' in window) {
       try {
         const cacheNames = await caches.keys()

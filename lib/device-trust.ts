@@ -49,8 +49,14 @@ export class DeviceTrustManager {
     return Math.abs(hash).toString(36);
   }
 
-  // Generate a unique device ID
+  // Generate a unique device ID using cryptographically secure random
   private static generateDeviceId(): string {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      const array = new Uint8Array(12);
+      crypto.getRandomValues(array);
+      const hex = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+      return 'device_' + Date.now() + '_' + hex;
+    }
     return 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 
@@ -75,12 +81,14 @@ export class DeviceTrustManager {
         return null;
       }
       
-      // Verify device fingerprint hasn't changed significantly
+      // Verify device fingerprint hasn't changed — if it has, this trust record
+      // was likely copied from another device. Invalidate it.
       const currentFingerprint = this.generateDeviceFingerprint();
       if (trust.deviceFingerprint !== currentFingerprint) {
-        // Don't remove trust immediately, but flag it
+        localStorage.removeItem(DEVICE_TRUST_KEY);
+        return null;
       }
-      
+
       return trust;
     } catch (error) {
       localStorage.removeItem(DEVICE_TRUST_KEY);

@@ -135,8 +135,8 @@ async function handlePost(request: NextRequest) {
       }
 
       // Set new access token cookie with PWA-compatible configuration
-      // Always use 7 days to avoid iOS Safari auto-clear (7 days if remember me, 1 hour otherwise would cause issues)
-      const accessTokenAge = 7 * 24 * 60 * 60; // 7 days
+      // Remember Me = 7 days, otherwise 1 day (matches production refresh token expiry in security config)
+      const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
       const accessTokenOptions: any = {
         httpOnly: true,
         secure: isProd,
@@ -151,12 +151,13 @@ async function handlePost(request: NextRequest) {
 
       // Update refresh token if provided
       if (tokenData.refresh_token) {
+        const refreshTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
         const refreshTokenOptions: any = {
           httpOnly: true,
           secure: isProd,
           sameSite: isProd ? 'none' as const : 'lax' as const,
           path: '/',
-          maxAge: 7 * 24 * 60 * 60 // 7 days
+          maxAge: refreshTokenAge
         };
         if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
         if (isProd) refreshTokenOptions.partitioned = true;

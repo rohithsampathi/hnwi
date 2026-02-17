@@ -24,7 +24,7 @@ async function handlePost(request: NextRequest) {
     }
 
     // Apply rate limiting for forgot password (more restrictive)
-    const rateLimitResult = await RateLimiter.checkLimit(request, 'FORGOT_PASSWORD', 3, 15 * 60 * 1000); // 3 attempts per 15 minutes
+    const rateLimitResult = await RateLimiter.checkLimit(request, 'FORGOT_PASSWORD');
     if (!rateLimitResult.allowed) {
       logger.warn("Forgot password rate limit exceeded", {
         ip: ApiAuth.getClientIP(request),

@@ -4,7 +4,10 @@
 
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.NEXTAUTH_SECRET || 'default-secret-change-in-production';
+const JWT_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.NEXTAUTH_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('EMAIL_VERIFICATION_SECRET or NEXTAUTH_SECRET must be set. Cannot use a hardcoded default for token signing.');
+}
 const TOKEN_EXPIRY = '24h'; // 24 hours
 
 interface VerificationTokenPayload {

@@ -323,8 +323,8 @@ export function SidebarNavigation({
   ]
 
   const handleNavigate = (route: string) => {
-    // On audit pages, intercept all navigation and show Request Access popup
-    if (isAuditPage) {
+    // On audit pages, intercept navigation for non-authenticated users only
+    if (isAuditPage && !isUserAuthenticated) {
       setShowRequestAccess(true)
       return
     }
@@ -507,13 +507,14 @@ export function SidebarNavigation({
                 {/* Main navigation items */}
                 {mainNavItems.map((item) => {
                   const isActive = currentPage === item.route;
-                  // Allow both simulation and decision-memo when either is active
+                  // Authenticated users: all items accessible. Non-auth: only assessment (+ flow routes during active flows)
                   const allowedRoutes = ['assessment', 'decision-memo'];
                   const isFlowActive = isDecisionMemoActive || isSimulationActive;
-                  const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
-                    (isFlowActive && !allowedRoutes.includes(item.route));
-                  // On audit pages: look disabled but still clickable (to show popup)
-                  const visuallyDisabled = isAuditPage || isItemDisabled;
+                  const isItemDisabled = !isUserAuthenticated && (
+                    item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                  );
+                  // On audit pages for non-auth: look disabled but still clickable (to show popup)
+                  const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
                   const actuallyDisabled = isItemDisabled && !isAuditPage;
                   return (
                   <div key={item.route} className="relative">
@@ -588,9 +589,10 @@ export function SidebarNavigation({
                       const isActive = currentPage === item.route;
                       const allowedRoutes = ['assessment', 'decision-memo'];
                       const isFlowActive = isDecisionMemoActive || isSimulationActive;
-                      const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
-                        (isFlowActive && !allowedRoutes.includes(item.route));
-                      const visuallyDisabled = isAuditPage || isItemDisabled;
+                      const isItemDisabled = !isUserAuthenticated && (
+                        item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                      );
+                      const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
                       const actuallyDisabled = isItemDisabled && !isAuditPage;
                       return (
                       <div key={item.route} className="relative">
@@ -759,9 +761,10 @@ export function SidebarNavigation({
             const isActive = currentPage === item.route;
             const allowedRoutes = ['assessment', 'decision-memo'];
             const isFlowActive = isDecisionMemoActive || isSimulationActive;
-            const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
-              (isFlowActive && !allowedRoutes.includes(item.route));
-            const mobileVisuallyDisabled = isAuditPage || isItemDisabled;
+            const isItemDisabled = !isUserAuthenticated && (
+              item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+            );
+            const mobileVisuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
             const mobileActuallyDisabled = isItemDisabled && !isAuditPage;
             return (
               <Button
@@ -825,9 +828,10 @@ export function SidebarNavigation({
                 const isActive = currentPage === item.route;
                 const allowedRoutes = ['assessment', 'decision-memo'];
                 const isFlowActive = isDecisionMemoActive || isSimulationActive;
-                const isItemDisabled = (!isUserAuthenticated && item.route !== 'assessment') ||
-                  (isFlowActive && !allowedRoutes.includes(item.route));
-                const dropdownVisuallyDisabled = isAuditPage || isItemDisabled;
+                const isItemDisabled = !isUserAuthenticated && (
+                  item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                );
+                const dropdownVisuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
                 const dropdownActuallyDisabled = isItemDisabled && !isAuditPage;
                 return (
                   <DropdownMenuItem

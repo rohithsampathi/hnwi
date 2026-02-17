@@ -309,7 +309,7 @@ async function handlePost(request: NextRequest) {
 
           // Fallback: If no cookies in headers but tokens in body, set them manually
           if (backendResponse.access_token) {
-            const accessTokenAge = 7 * 24 * 60 * 60; // Always 7 days to avoid iOS Safari issues
+            const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60; // Match remember me preference
             const accessTokenOptions: any = {
               httpOnly: true,
               secure: isProd,
@@ -328,12 +328,13 @@ async function handlePost(request: NextRequest) {
           }
 
           if (backendResponse.refresh_token) {
+            const refreshTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
             const refreshTokenOptions: any = {
               httpOnly: true,
               secure: isProd,
               sameSite: isProd ? 'none' as const : 'lax' as const,
               path: '/',
-              maxAge: 7 * 24 * 60 * 60 // 7 days
+              maxAge: refreshTokenAge
             };
             if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
             if (isProd) refreshTokenOptions.partitioned = true;
