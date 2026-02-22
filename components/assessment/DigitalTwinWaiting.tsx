@@ -9,11 +9,10 @@ import { SimulationResult } from '@/lib/hooks/useAssessmentSSE';
 
 interface DigitalTwinWaitingProps {
   sessionId: string;
-  onComplete: (result: SimulationResult, pdfUrl: string) => void;
+  onComplete: (result: SimulationResult) => void;
   testCompletionTime?: Date | null;
   // SSE data passed from parent (to avoid duplicate connections)
   simulationResult: SimulationResult | null;
-  pdfUrl: string | null;
   resultData: any;
 }
 
@@ -29,7 +28,6 @@ export function DigitalTwinWaiting({
   onComplete,
   testCompletionTime,
   simulationResult: sseSimulationResult, // Renamed to avoid conflict
-  pdfUrl: ssePdfUrl, // Renamed to avoid conflict
   resultData: sseResultData // Renamed to avoid conflict
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -157,7 +155,7 @@ export function DigitalTwinWaiting({
 
             // Wait briefly for UI update then redirect
             setTimeout(() => {
-              onComplete(simulationResult, '');
+              onComplete(simulationResult);
             }, 1000);
             return;
           }
@@ -181,7 +179,7 @@ export function DigitalTwinWaiting({
         }
         // Force completion after timeout
         setHasCompleted(true);
-        onComplete({ outcome: 'DAMAGED', tier: 'unknown', cognitive_mri: '', confidence: 0 }, '');
+        onComplete({ outcome: 'DAMAGED', tier: 'unknown', cognitive_mri: '', confidence: 0 });
       }
     };
 
@@ -220,7 +218,7 @@ export function DigitalTwinWaiting({
 
         // Now it's safe to fetch and complete
         setTimeout(() => {
-          onComplete(sseSimulationResult, '');
+          onComplete(sseSimulationResult);
         }, 1000);
       } else {
         // Results not yet available, waiting for result_available flag

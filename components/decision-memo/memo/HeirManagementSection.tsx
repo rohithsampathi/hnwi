@@ -475,16 +475,16 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
                 <div className="flex-1 w-full">
                   {/* Loss Risk Metrics */}
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="bg-muted/30 rounded-lg p-4 text-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4">
+                    <div className="bg-muted/30 rounded-lg p-3 sm:p-4 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Loss Risk</p>
                       <p className="text-xl font-bold text-foreground">{thirdGenCurrentRisk !== undefined ? `${thirdGenCurrentRisk}%` : '—'}</p>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-4 text-center">
+                    <div className="bg-muted/30 rounded-lg p-3 sm:p-4 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
                       <p className="text-xl font-bold text-primary">{thirdGenImprovedRisk !== undefined ? `${thirdGenImprovedRisk}%` : '—'}</p>
                     </div>
-                    <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/30">
+                    <div className="bg-primary/10 rounded-lg p-3 sm:p-4 text-center border border-primary/30">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Risk Reduction</p>
                       {displayLossArrow ? (
                         <p className="text-lg font-bold text-primary">{displayLossArrow}</p>
@@ -499,16 +499,16 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                   </div>
 
                   {/* Preservation Metrics - Show when data available */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                    <div className="bg-primary/5 rounded-lg p-3 sm:p-4 text-center border border-primary/20">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Preservation</p>
                       <p className="text-xl font-bold text-muted-foreground">{preservationWithoutStructure !== undefined ? `${preservationWithoutStructure}%` : '—'}</p>
                     </div>
-                    <div className="bg-primary/5 rounded-lg p-4 text-center border border-primary/20">
+                    <div className="bg-primary/5 rounded-lg p-3 sm:p-4 text-center border border-primary/20">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
                       <p className="text-xl font-bold text-primary">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '—'}</p>
                     </div>
-                    <div className="bg-primary/15 rounded-lg p-4 text-center border border-primary/40">
+                    <div className="bg-primary/15 rounded-lg p-3 sm:p-4 text-center border border-primary/40">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Protection Gain</p>
                       {displayPreservationArrow ? (
                         <p className="text-lg font-bold text-primary">{displayPreservationArrow}</p>

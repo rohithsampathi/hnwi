@@ -1,12 +1,15 @@
 // app/api/decision-memo/sfo-audit/[intakeId]/verify-payment/route.ts
 // Verify Razorpay payment and return full IC Artifact
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
-export async function POST(
-  request: Request,
+async function handlePost(
+  request: NextRequest,
   { params }: { params: { intakeId: string } }
 ) {
   try {
@@ -42,7 +45,7 @@ export async function POST(
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend error verifying payment:', errorText);
+      logger.error('Backend error verifying payment:', errorText);
       return NextResponse.json(
         { success: false, error: 'Payment verification failed' },
         { status: backendResponse.status }
@@ -52,10 +55,8 @@ export async function POST(
     const verificationData = await backendResponse.json();
     return NextResponse.json(verificationData);
   } catch (error) {
-    console.error('Error verifying SFO audit payment:', error);
-    return NextResponse.json(
-      { success: false, error: 'Payment verification failed' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));

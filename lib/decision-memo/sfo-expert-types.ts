@@ -1283,6 +1283,8 @@ export interface StructureAnalysisItem {
   rental_income_rate?: number;
   capital_gains_rate?: number;
   estate_tax_rate?: number;
+  estate_tax_exposure?: number;
+  is_nra?: boolean;
 }
 
 /** Optimal structure recommendation (extends StructureAnalysisItem with anti-avoidance) */
@@ -1297,6 +1299,8 @@ export interface OptimalStructure {
   rental_income_rate?: number;
   capital_gains_rate?: number;
   estate_tax_rate?: number;
+  estate_tax_exposure?: number;
+  is_nra?: boolean;
   anti_avoidance_flags?: string[];
 }
 

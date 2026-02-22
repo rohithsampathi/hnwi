@@ -11,8 +11,16 @@ interface RateLimitStore {
   resetTime: number;
 }
 
+// Persist instances on globalThis to survive Next.js hot module replacement (HMR).
+// In production single-instance Docker this is a no-op; in dev it prevents
+// counters from resetting on every code change.
+// NOTE: For multi-instance scaling, replace with Redis/Upstash.
+const globalRateLimiters: Map<string, RateLimiter> =
+  (globalThis as any).__rateLimiters || new Map<string, RateLimiter>();
+(globalThis as any).__rateLimiters = globalRateLimiters;
+
 export class RateLimiter {
-  private static instances = new Map<string, RateLimiter>();
+  private static instances = globalRateLimiters;
   private store = new Map<string, RateLimitStore>();
   private config: RateLimitConfig;
   private cleanupInterval: NodeJS.Timeout | null = null;

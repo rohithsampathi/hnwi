@@ -18,7 +18,7 @@ import { RiskFactor, DueDiligenceItem } from '../pdf-types';
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 40,
+    marginBottom: 28,
   },
 
   // === PREMIUM SECTION HEADER ===
@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   headerTitle: {
     fontFamily: 'Helvetica-Bold',
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
   },
   verdictBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[300],
     textTransform: 'uppercase',
     letterSpacing: 1.5,
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   },
   verdictMetricLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
   },
   dataQualityLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   },
   dataQualityNote: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     lineHeight: 1.4,
     textAlign: 'center',
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   },
   exposureLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
   },
   exposureSubtext: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
   },
 
@@ -278,7 +279,7 @@ const styles = StyleSheet.create({
   },
   sectionStats: {
     fontFamily: 'Courier',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
   },
 
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
   },
   riskBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -372,9 +373,9 @@ const styles = StyleSheet.create({
   },
   riskDescription: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[600],
-    lineHeight: 1.5,
+    lineHeight: 1.65,
   },
 
   // === PREMIUM MITIGATION BOX ===
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
   },
   mitigationLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -419,19 +420,19 @@ const styles = StyleSheet.create({
   },
   mitigationActionText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.blue[700],
     textTransform: 'uppercase',
   },
   mitigationSourceText: {
     fontFamily: 'Courier',
-    fontSize: 6,
+    fontSize: 8.5,
     color: colors.gray[400],
     marginLeft: 'auto',
   },
   mitigationText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
   },
   ddCategoryText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -499,12 +500,12 @@ const styles = StyleSheet.create({
   },
   ddResponsible: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
   },
   ddTask: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -528,7 +529,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     letterSpacing: 0.5,
   },
@@ -641,7 +642,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       <View style={styles.header}>
         <View style={styles.headerAccentBar} />
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { flexShrink: 1, maxWidth: '70%' }]}>
             {viaNegativa?.isActive ? viaNegativa.verdictHeader : 'Investment Committee Decision'}
           </Text>
           <View style={styles.headerBadge}>
@@ -651,7 +652,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       </View>
 
       {/* Main Verdict + Data Quality */}
-      <View style={styles.verdictContainer}>
+      <View style={styles.verdictContainer} wrap={false}>
         {/* Premium Verdict Box */}
         <View style={styles.verdictBox}>
           <View style={styles.verdictGoldAccent} />
@@ -725,7 +726,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       {viaNegativa?.isActive && (
         <View style={{ marginBottom: 24 }}>
           {/* 3-column PASS/FAIL */}
-          <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', marginBottom: 16 }} wrap={false}>
             {[
               { label: 'Tax Efficiency', passed: viaNegativa.taxEfficiencyPassed },
               { label: 'Liquidity', passed: viaNegativa.liquidityPassed },
@@ -743,7 +744,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
               }}>
                 <Text style={{
                   fontFamily: 'Helvetica-Bold',
-                  fontSize: 7,
+                  fontSize: 8.5,
                   color: colors.gray[500],
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -776,7 +777,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
             }}>{viaNegativa.stampText}</Text>
             <Text style={{
               fontFamily: 'Times-Roman',
-              fontSize: 9,
+              fontSize: 10,
               color: colors.red[400],
               marginTop: 6,
             }}>{viaNegativa.stampSubtext}</Text>
@@ -785,7 +786,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       )}
 
       {/* Premium Exposure Metrics Grid */}
-      <View style={styles.exposureGrid}>
+      <View style={styles.exposureGrid} wrap={false}>
         <View style={[styles.exposureCard, styles.exposureCardHighlight]}>
           <Text style={styles.exposureLabel}>Total Exposure</Text>
           <Text style={styles.exposureValue}>{totalExposureFormatted || '—'}</Text>
@@ -825,7 +826,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
           </View>
 
           {riskFactors.slice(0, 5).map((risk, index) => (
-            <View key={index} style={[
+            <View key={index} wrap={false} style={[
               styles.riskCard,
               risk.severity === 'critical' && styles.riskCardCritical,
               risk.severity === 'high' && styles.riskCardHigh,
@@ -921,7 +922,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
             const timeline = isCritical ? '14 days' : item.priority === 'high' ? '30 days' : '60 days';
 
             return (
-              <View key={index} style={[
+              <View key={index} wrap={false} style={[
                 styles.ddCard,
                 isCritical && styles.ddCardCritical,
               ]}>

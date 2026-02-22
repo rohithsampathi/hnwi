@@ -545,7 +545,7 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
   };
 }
 
-function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICArtifact; preview_data?: any; memo_data?: any } {
+function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICArtifact; preview_data?: any; memo_data?: any; generated_at?: string } {
   // Map backend status to frontend status
   // Backend may return: SUBMITTED, IN_REVIEW, PREVIEW_READY, PAID, FULL_READY
   const status = data.status || data.payment_status || 'PREVIEW_READY';
@@ -571,6 +571,11 @@ function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICA
   // If session includes full_artifact (from unlocked state), transform and include it
   if (data.full_artifact) {
     session.fullArtifact = transformArtifactFromAPI(data.full_artifact);
+  }
+
+  // Pass through generated_at for immutable report date
+  if (data.generated_at) {
+    session.generated_at = data.generated_at;
   }
 
   // Pass through preview_data and memo_data for peer cohort stats, capital flow data

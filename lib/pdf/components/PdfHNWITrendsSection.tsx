@@ -45,14 +45,14 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.amber[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[500],
     marginTop: 6,
   },
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   qualityBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.amber[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   sourcesTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   },
   sourceTagText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
   },
 
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   citationsTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -258,18 +258,18 @@ const styles = StyleSheet.create({
   },
   citationText: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[600],
     flex: 1,
   },
   citationDate: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
   },
   citationReliability: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.amber[600],
     marginLeft: 4,
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
   },
 });
@@ -348,7 +348,7 @@ export function PdfHNWITrendsSection({
       </View>
 
       {/* Confidence Metrics Bar */}
-      <View style={styles.metricsBar}>
+      <View style={styles.metricsBar} wrap={false}>
         <View style={styles.metricsGroup}>
           {/* Confidence */}
           <View style={styles.metricItem}>
@@ -414,7 +414,7 @@ export function PdfHNWITrendsSection({
           };
 
           return (
-            <View key={index} style={[styles.trendItem, itemStyles[trendType]]}>
+            <View key={index} style={[styles.trendItem, itemStyles[trendType]]} wrap={false}>
               <View style={[styles.trendIcon, iconStyles[trendType].bg]}>
                 <Text style={[styles.trendIconText, iconStyles[trendType].text]}>
                   {iconLabel[trendType]}

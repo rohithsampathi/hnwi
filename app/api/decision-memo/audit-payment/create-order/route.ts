@@ -4,18 +4,21 @@
 // Route: POST /api/decision-memo/audit-payment/create-order
 // =============================================================================
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 export const maxDuration = 30; // Order creation should be fast
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
 
     // Forward full intake to backend — backend handles validation + Razorpay
     const backendUrl = `${API_BASE_URL}/api/decision-memo/audit/create-order`;
-    console.log('💳 [Audit] Creating order via backend:', backendUrl);
+    logger.info('💳 [Audit] Creating order via backend:', backendUrl);
 
     const response = await fetch(backendUrl, {
       method: 'POST',
@@ -26,18 +29,16 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ [Audit] Backend create-order error:', response.status, data);
+      logger.error('❌ [Audit] Backend create-order error:', response.status, data);
       return NextResponse.json(data, { status: response.status });
     }
 
-    console.log('✅ [Audit] Order created:', data.order_id, 'intake:', data.intake_id);
+    logger.info('✅ [Audit] Order created:', data.order_id, 'intake:', data.intake_id);
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('💥 [Audit] Create order failed:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create payment order' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));

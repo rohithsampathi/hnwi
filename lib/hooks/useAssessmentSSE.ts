@@ -30,7 +30,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [resultData, setResultData] = useState<any>(null);
@@ -131,17 +130,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
       setEvents(prev => [...prev, {
         type: 'simulation_result',
         data: result,
-        timestamp: new Date().toISOString()
-      }]);
-    });
-
-    // PDF ready
-    eventSource.addEventListener('pdf_ready', (e) => {
-      const data = JSON.parse(e.data);
-      setPdfUrl(data.pdf_url);
-      setEvents(prev => [...prev, {
-        type: 'pdf_ready',
-        data,
         timestamp: new Date().toISOString()
       }]);
     });
@@ -274,7 +262,6 @@ export const useAssessmentSSE = (sessionId: string | null) => {
     calibrationEvents,
     latestTierSignal,
     simulationResult,
-    pdfUrl,
     isComplete,
     redirectUrl,
     resultData,

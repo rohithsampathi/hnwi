@@ -1,9 +1,13 @@
 // app/api/decision-memo/submit-10q/route.ts
 // API route to submit 10Q stress test and generate preview
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, withValidation } from '@/lib/security/api-auth';
+import { decisionMemo10qSchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { user_id, responses } = body;
@@ -30,7 +34,7 @@ export async function POST(request: Request) {
         return NextResponse.json(previewData);
       }
     } catch (backendError) {
-      console.log('Python backend unavailable, using mock data');
+      logger.info('Python backend unavailable, using mock data');
     }
 
     // Fallback: Generate mock instant preview for development
@@ -77,10 +81,8 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error in submit-10q:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withValidation(decisionMemo10qSchema, handlePost));

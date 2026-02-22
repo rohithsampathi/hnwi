@@ -3,6 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 interface RouteParams {
   params: {
@@ -17,7 +19,7 @@ export async function GET(
   const { intakeId } = await Promise.resolve(context.params);
 
   try {
-    console.log('📥 Fetching decision memo:', intakeId);
+    logger.info('Fetching decision memo', { intakeId });
 
     // Call Python backend
     const backendUrl = `${API_BASE_URL}/api/decision-memo/download/${intakeId}`;
@@ -30,7 +32,7 @@ export async function GET(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Backend error:', response.status, errorText);
+      logger.error('Backend error fetching decision memo', { status: response.status });
       return NextResponse.json(
         { success: false, error: `Backend returned ${response.status}` },
         { status: response.status }
@@ -38,19 +40,12 @@ export async function GET(
     }
 
     const data = await response.json();
-    console.log('✅ Decision memo fetched successfully');
+    logger.info('Decision memo fetched successfully', { intakeId });
 
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('💥 Error fetching decision memo:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch decision memo',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error fetching decision memo', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }

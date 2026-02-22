@@ -10,8 +10,12 @@
  */
 
 import React from 'react';
-import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { colors, spacing, cleanJurisdiction, formatDate, formatCurrency, formatPercent } from './pdf-styles';
+
+// Disable auto-hyphenation globally — prevents mid-word breaks like "RE-QUIRED", "CRE-ATION"
+Font.registerHyphenationCallback(word => [word]);
+
 import { PdfMemoData, TaxRates, CrisisData, TransparencyData } from './pdf-types';
 import { PdfCoverPage } from './components/PdfCoverPage';
 import { PdfVerdictSection } from './components/PdfVerdictSection';
@@ -78,7 +82,7 @@ const styles = StyleSheet.create({
   // === PAGE LAYOUTS ===
   page: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     paddingTop: 56,
     paddingBottom: 72,
     paddingHorizontal: 56,
@@ -98,6 +102,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    flexWrap: 'wrap',
   },
   headerBadge: {
     borderWidth: 1,
@@ -108,7 +113,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[900],
     textTransform: 'uppercase',
     letterSpacing: 1.5,
@@ -122,7 +127,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontFamily: 'Courier',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     letterSpacing: 0.5,
   },
@@ -136,6 +141,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[300],
+    flexWrap: 'wrap',
   },
   accentLine: {
     width: 24,
@@ -148,6 +154,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.gray[900],
     letterSpacing: 0,
+    flexShrink: 1,
+    maxWidth: '70%',
   },
   sectionBadge: {
     marginLeft: 12,
@@ -158,7 +166,7 @@ const styles = StyleSheet.create({
   },
   sectionBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -183,7 +191,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -191,7 +199,7 @@ const styles = StyleSheet.create({
   },
   metricLabelLight: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -209,13 +217,13 @@ const styles = StyleSheet.create({
   },
   metricSubtext: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     marginTop: 4,
   },
   metricSubtextLight: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[400],
     marginTop: 4,
   },
@@ -255,9 +263,9 @@ const styles = StyleSheet.create({
   },
   cardText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[600],
-    lineHeight: 1.6,
+    lineHeight: 1.65,
   },
 
   // === LISTS ===
@@ -268,13 +276,13 @@ const styles = StyleSheet.create({
   listBullet: {
     width: 12,
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[400],
   },
   listText: {
     flex: 1,
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -312,13 +320,13 @@ const styles = StyleSheet.create({
   tableCell: {
     flex: 1,
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
   },
   tableCellHeader: {
     flex: 1,
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     color: colors.gray[900],
@@ -339,13 +347,13 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     letterSpacing: 0.5,
   },
   footerBrand: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -363,7 +371,7 @@ const styles = StyleSheet.create({
   },
   groundedText: {
     fontFamily: 'Times-Italic',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
   },
 
@@ -385,7 +393,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -426,14 +434,100 @@ const parseTransparencyData = (content: string | undefined): TransparencyData | 
   return null;
 };
 
-// Page footer component
-const PageFooter: React.FC<{ intakeId: string; pageNumber?: number }> = ({ intakeId, pageNumber }) => (
+// Text-based "HC" monogram watermark — bottom-right on every content page
+// Pure text avoids all react-pdf Image rendering issues
+const LogoWatermark: React.FC = () => (
+  <View fixed style={{
+    position: 'absolute',
+    bottom: 55,
+    right: 36,
+    width: 36,
+    height: 36,
+    borderWidth: 1.5,
+    borderColor: 'rgba(201,162,39,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}>
+    <Text style={{
+      fontFamily: 'Helvetica-Bold',
+      fontSize: 16,
+      color: 'rgba(201,162,39,0.12)',
+      letterSpacing: -0.5,
+    }}>HC</Text>
+  </View>
+);
+
+// CONFIDENTIAL text overlay — separate fixed View
+const ConfidentialText: React.FC = () => (
+  <View style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }} fixed>
+    <Text style={{
+      fontFamily: 'Helvetica-Bold',
+      fontSize: 52,
+      color: 'rgba(0,0,0,0.03)',
+      transform: 'rotate(-35deg)',
+      letterSpacing: 14,
+      textTransform: 'uppercase',
+    }}>CONFIDENTIAL</Text>
+  </View>
+);
+
+// Combined watermark — renders both logo and text as siblings in a Page
+const ConfidentialWatermark: React.FC = () => (
+  <>
+    <LogoWatermark />
+    <ConfidentialText />
+  </>
+);
+
+// Running page header — appears on every content page
+const PageHeader: React.FC = () => (
+  <View style={{
+    position: 'absolute',
+    top: 20,
+    left: 56,
+    right: 56,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.gray[300],
+  }} fixed>
+    <Text style={{
+      fontFamily: 'Helvetica-Bold',
+      fontSize: 7,
+      color: colors.gray[400],
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+    }}>HNWI Chronicles</Text>
+    <Text style={{
+      fontFamily: 'Helvetica-Bold',
+      fontSize: 7,
+      color: colors.gray[400],
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+    }}>SFO Decision Memorandum</Text>
+  </View>
+);
+
+// Enhanced page footer with page numbers
+const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
   <View style={styles.footer} fixed>
     <Text style={styles.footerText}>
       Ref: {intakeId.slice(10, 22).toUpperCase()}
     </Text>
-    <Text style={styles.footerBrand}>HNWI Chronicles</Text>
-    <Text style={styles.footerText}>Confidential</Text>
+    <Text style={[styles.footerBrand, { color: colors.amber[600] }]}>HNWI Chronicles</Text>
+    <Text style={styles.footerText} render={({ pageNumber, totalPages }) =>
+      `CONFIDENTIAL | Page ${pageNumber} of ${totalPages}`
+    } />
   </View>
 );
 
@@ -781,6 +875,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
       {/* === PAGE 2: Pattern Intelligence Header === */}
       <Page size="A4" style={styles.page}>
+        <PageHeader />
         <View style={styles.pageHeader}>
           <View>
             <View style={styles.headerBadge}>
@@ -794,7 +889,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </View>
 
         {/* Key metrics */}
-        <View style={styles.metricsGrid}>
+        <View style={styles.metricsGrid} wrap={false}>
           <View style={styles.metricBox}>
             <Text style={styles.metricLabel}>Total Value Creation</Text>
             <Text style={styles.metricValue}>{valueCreation}</Text>
@@ -818,7 +913,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </View>
 
         {/* Important notice */}
-        <View style={styles.card}>
+        <View style={styles.card} wrap={false}>
           <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Important Notice</Text>
           <Text style={styles.cardText}>
             Pattern & Market Intelligence Report based on {precedentCount}+ analyzed precedents.
@@ -828,10 +923,12 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </View>
 
         <PageFooter intakeId={intake_id} />
+        <ConfidentialWatermark />
       </Page>
 
       {/* === PAGE 2B: Investment Committee Decision === */}
       <Page size="A4" style={styles.page}>
+        <PageHeader />
         <PdfVerdictSection
           verdict={verdict}
           verdictRationale={preview_data.verdict_rationale}
@@ -851,10 +948,12 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         />
 
         <PageFooter intakeId={intake_id} />
+        <ConfidentialWatermark />
       </Page>
 
       {/* === PAGE 3: Tax Jurisdiction Analysis === */}
       <Page size="A4" style={styles.page}>
+        <PageHeader />
         <PdfTaxAnalysis
           sourceJurisdiction={sourceJurisdiction}
           destinationJurisdiction={destJurisdiction}
@@ -866,13 +965,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         {/* Wealth Projection Section */}
         {wealthProjection && (startingValue > 0 || baseYear10 > 0) && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
               <View style={styles.accentLine} />
               <Text style={styles.sectionTitle}>10-Year Wealth Projection</Text>
             </View>
 
             {/* Key figures in table format */}
-            <View style={styles.table}>
+            <View style={styles.table} wrap={false}>
               <View style={styles.tableHeader}>
                 <Text style={[styles.tableCellHeader, { flex: 2 }]}>Metric</Text>
                 <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Value</Text>
@@ -893,7 +992,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
             {/* Scenario Analysis Table */}
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Scenario Analysis</Text>
-            <View style={styles.table}>
+            <View style={styles.table} wrap={false}>
               <View style={styles.tableHeader}>
                 <Text style={[styles.tableCellHeader, { flex: 2 }]}>Scenario</Text>
                 <Text style={styles.tableCellHeader}>Probability</Text>
@@ -950,12 +1049,14 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         )}
 
         <PageFooter intakeId={intake_id} />
+        <ConfidentialWatermark />
       </Page>
 
       {/* === PAGE 4: Peer Analysis & Market Intelligence === */}
       <Page size="A4" style={styles.page}>
+        <PageHeader />
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeader} minPresenceAhead={150}>
             <View style={styles.accentLine} />
             <Text style={styles.sectionTitle}>Market Intelligence & Peer Analysis</Text>
           </View>
@@ -965,7 +1066,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
             <>
               <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 16 }}>Peer Movement Analysis</Text>
 
-              <View style={styles.table}>
+              <View style={styles.table} wrap={false}>
                 <View style={styles.tableHeader}>
                   <Text style={[styles.tableCellHeader, { flex: 2 }]}>Metric</Text>
                   <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Value</Text>
@@ -1001,11 +1102,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           {capitalFlow && (
             <View style={{ marginTop: 24 }}>
               <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Wealth Migration Corridor</Text>
-              <Text style={{ fontSize: 9, color: colors.gray[500], marginBottom: 16 }}>
+              <Text style={{ fontSize: 10, color: colors.gray[500], marginBottom: 16 }}>
                 {cleanJurisdiction(sourceJurisdiction)} → {cleanJurisdiction(destJurisdiction)} capital flow analysis
               </Text>
 
-              <View style={styles.table}>
+              <View style={styles.table} wrap={false}>
                 <View style={styles.tableHeader}>
                   <Text style={styles.tableCellHeader}>Flow Intensity</Text>
                   <Text style={styles.tableCellHeader}>Movement Velocity</Text>
@@ -1025,15 +1126,109 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           )}
         </View>
 
+        {/* Identified Opportunities */}
+        {opportunities.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
+              <View style={styles.accentLine} />
+              <Text style={styles.sectionTitle}>Identified Opportunities</Text>
+            </View>
+
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableCellHeader, { flex: 3 }]}>Opportunity</Text>
+                <Text style={styles.tableCellHeader}>Category</Text>
+                <Text style={styles.tableCellHeader}>Rating</Text>
+                <Text style={[styles.tableCellHeader, { textAlign: 'right' }]}>Potential Value</Text>
+              </View>
+              {opportunities.slice(0, 8).map((opp: any, idx: number) => (
+                <View key={idx} style={idx % 2 === 0 ? styles.tableRow : styles.tableRowAlt} wrap={false}>
+                  <Text style={[styles.tableCell, { flex: 3, fontFamily: 'Helvetica-Bold' }]}>{safeText(opp.title || opp.name, `Opportunity ${idx + 1}`)}</Text>
+                  <Text style={styles.tableCell}>{safeText(opp.category || opp.type, 'Strategic')}</Text>
+                  <Text style={[styles.tableCell, {
+                    fontFamily: 'Helvetica-Bold',
+                    color: (opp.rating || '').toLowerCase() === 'juicy' ? colors.emerald[600]
+                      : (opp.rating || '').toLowerCase() === 'moderate' ? colors.amber[600]
+                      : colors.gray[600],
+                  }]}>{safeText(opp.rating, 'Moderate')}</Text>
+                  <Text style={[styles.tableCell, { textAlign: 'right', fontFamily: 'Courier-Bold' }]}>{safeText(opp.potential_value || opp.value, '—')}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Recommended Execution Sequence */}
+        {executionSequence.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
+              <View style={styles.accentLine} />
+              <Text style={styles.sectionTitle}>Recommended Execution Sequence</Text>
+            </View>
+
+            {executionSequence.slice(0, 6).map((step: any, idx: number) => (
+              <View key={idx} wrap={false} style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                marginBottom: 12,
+                padding: 14,
+                backgroundColor: colors.white,
+                borderWidth: 1,
+                borderColor: colors.gray[200],
+              }}>
+                <View style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.amber[500],
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 14,
+                }}>
+                  <Text style={{
+                    fontFamily: 'Helvetica-Bold',
+                    fontSize: 12,
+                    color: colors.white,
+                  }}>{idx + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontFamily: 'Helvetica-Bold',
+                    fontSize: 11,
+                    color: colors.gray[900],
+                    marginBottom: 4,
+                  }}>{safeText(step.title || step.action || step.step, `Step ${idx + 1}`)}</Text>
+                  {!!(step.description || step.detail) && (
+                    <Text style={{
+                      fontFamily: 'Times-Roman',
+                      fontSize: 10,
+                      color: colors.gray[600],
+                      lineHeight: 1.65,
+                      marginBottom: 4,
+                    }}>{safeText(step.description || step.detail, '')}</Text>
+                  )}
+                  {!!step.timeline && (
+                    <Text style={{
+                      fontFamily: 'Helvetica-Bold',
+                      fontSize: 9,
+                      color: colors.amber[600],
+                    }}>{step.timeline}</Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Transparency Regime Impact */}
         {transparencyData && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
               <View style={styles.accentLine} />
               <Text style={styles.sectionTitle}>2026 Transparency Regime Impact</Text>
             </View>
 
-            <Text style={{ fontSize: 9, color: colors.gray[500], marginBottom: 16 }}>
+            <Text style={{ fontSize: 10, color: colors.gray[500], marginBottom: 16 }}>
               {cleanJurisdiction(sourceJurisdiction)} → {cleanJurisdiction(destJurisdiction)} compliance analysis (CRS / FATCA / DAC8)
             </Text>
 
@@ -1066,7 +1261,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       ))}
                     </View>
                   ) : (
-                    <Text style={{ fontSize: 9, color: colors.gray[500], marginBottom: 16 }}>No regimes triggered</Text>
+                    <Text style={{ fontSize: 10, color: colors.gray[500], marginBottom: 16 }}>No regimes triggered</Text>
                   )}
                 </>
               );
@@ -1108,11 +1303,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 {(transparencyData as any).compliance_risks.slice(0, 3).map((risk: any, i: number) => (
                   <View key={i} style={{ marginBottom: 12, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: colors.amber[500] }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{risk.framework || risk.regime}</Text>
-                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.amber[600] }}>{risk.exposure}</Text>
+                      <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{risk.framework || risk.regime}</Text>
+                      <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.amber[600] }}>{risk.exposure}</Text>
                     </View>
-                    <Text style={{ fontSize: 8, color: colors.gray[600], marginBottom: 2 }}>Trigger: {risk.trigger}</Text>
-                    <Text style={{ fontSize: 8, color: colors.gray[700] }}>Fix: {risk.fix}</Text>
+                    <Text style={{ fontSize: 9, color: colors.gray[600], marginBottom: 2 }}>Trigger: {risk.trigger}</Text>
+                    <Text style={{ fontSize: 9, color: colors.gray[700] }}>Fix: {risk.fix}</Text>
                   </View>
                 ))}
               </View>
@@ -1124,7 +1319,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 12 }}>Bottom Line Assessment</Text>
                 <View style={{ flexDirection: 'row' }}>
                   <View style={{ marginRight: 48 }}>
-                    <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Exposure</Text>
+                    <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Exposure</Text>
                     <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.amber[600] }}>
                       {safeText(
                         (transparencyData.bottom_line as any).total_exposure_if_noncompliant ||
@@ -1134,7 +1329,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                     </Text>
                   </View>
                   <View>
-                    <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Compliance Cost</Text>
+                    <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Compliance Cost</Text>
                     <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
                       {safeText(
                         (transparencyData.bottom_line as any).estimated_compliance_cost ||
@@ -1147,11 +1342,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 {/* Immediate actions */}
                 {((transparencyData.bottom_line as any).immediate_actions?.length > 0 || transparencyData.immediate_actions?.length) && (
                   <View style={{ marginTop: 12 }}>
-                    <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Immediate Actions</Text>
+                    <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Immediate Actions</Text>
                     {((transparencyData.bottom_line as any).immediate_actions || transparencyData.immediate_actions || []).slice(0, 3).map((action: string, i: number) => (
                       <View key={i} style={{ flexDirection: 'row', marginBottom: 4 }}>
-                        <Text style={{ fontSize: 8, color: colors.amber[600], marginRight: 6 }}>→</Text>
-                        <Text style={{ fontSize: 8, color: colors.gray[700], flex: 1 }}>{action}</Text>
+                        <Text style={{ fontSize: 9, color: colors.amber[600], marginRight: 6 }}>→</Text>
+                        <Text style={{ fontSize: 9, color: colors.gray[700], flex: 1 }}>{action}</Text>
                       </View>
                     ))}
                   </View>
@@ -1168,6 +1363,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         )}
 
         <PageFooter intakeId={intake_id} />
+        <ConfidentialWatermark />
       </Page>
 
       {/* === PAGE 4.5: Real Asset Audit Intelligence === */}
@@ -1184,23 +1380,27 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {/* === PAGE 4.6: Golden Visa / Investment Migration === */}
       {destinationDrivers?.visa_programs && destinationDrivers.visa_programs.length > 0 && (
         <Page size="A4" style={styles.page}>
+          <PageHeader />
           <PdfGoldenVisaSection
             destinationDrivers={destinationDrivers}
             destinationJurisdiction={destJurisdiction}
           />
           <PageFooter intakeId={intake_id} />
+          <ConfidentialWatermark />
         </Page>
       )}
 
       {/* === PAGE 4.7: HNWI Migration Trends === */}
       {hnwiTrendsData?.insights && hnwiTrendsData.insights.length > 0 && (
         <Page size="A4" style={styles.page}>
+          <PageHeader />
           <PdfHNWITrendsSection
             trendsData={hnwiTrendsData}
             sourceJurisdiction={sourceJurisdiction}
             destinationJurisdiction={destJurisdiction}
           />
           <PageFooter intakeId={intake_id} />
+          <ConfidentialWatermark />
         </Page>
       )}
 
@@ -1217,8 +1417,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {/* === PAGE 5: Crisis Resilience === */}
       {crisisData && (crisisData.overall_resilience || (crisisData.scenarios && crisisData.scenarios.length > 0)) && (
         <Page size="A4" style={styles.page}>
+          <PageHeader />
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
               <View style={styles.accentLine} />
               <Text style={styles.sectionTitle}>Crisis Resilience Stress Test</Text>
             </View>
@@ -1235,11 +1436,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                     {safeText(crisisData.overall_resilience.rating, 'MODERATE')}
                   </Text>
                 </View>
-                <Text style={{ fontSize: 9, color: colors.gray[600], marginBottom: 16 }}>
+                <Text style={{ fontSize: 10, color: colors.gray[600], marginBottom: 16 }}>
                   {safeText(crisisData.overall_resilience.description, 'Acceptable but monitor closely.')}
                 </Text>
 
-                <View style={styles.table}>
+                <View style={styles.table} wrap={false}>
                   <View style={styles.tableHeader}>
                     <Text style={styles.tableCellHeader}>Worst Case Loss</Text>
                     <Text style={styles.tableCellHeader}>Recovery Time</Text>
@@ -1307,7 +1508,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                   </View>
                   {crisisData.recommendations.slice(0, 3).map((rec, i) => (
                     <View key={i} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                      <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', fontSize: 8 }]}>
+                      <Text style={[styles.tableCell, { fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', fontSize: 9 }]}>
                         {safeText(rec.priority, 'MEDIUM')}
                       </Text>
                       <Text style={[styles.tableCell, { flex: 3 }]}>{safeText(rec.action, '')}</Text>
@@ -1325,6 +1526,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           </View>
 
           <PageFooter intakeId={intake_id} />
+          <ConfidentialWatermark />
         </Page>
       )}
 
@@ -1333,8 +1535,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
        (scenarioTree.branches && typeof scenarioTree.branches === 'object' && Object.keys(scenarioTree.branches).length > 0) ||
        (scenarioTree.decision_gates && scenarioTree.decision_gates.length > 0)) && (
         <Page size="A4" style={styles.page}>
+          <PageHeader />
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
               <View style={styles.accentLine} />
               <Text style={styles.sectionTitle}>Decision Scenario Tree</Text>
             </View>
@@ -1426,8 +1629,8 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       <Text style={[styles.tableCell, { flex: 2 }]}>
                         {gate.check || gate.gate || `Gate ${i + 1}`}
                       </Text>
-                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_pass || 'Continue'}</Text>
-                      <Text style={[styles.tableCell, { fontSize: 8 }]}>{gate.if_fail || 'Review'}</Text>
+                      <Text style={[styles.tableCell, { fontSize: 9 }]}>{gate.if_pass || 'Continue'}</Text>
+                      <Text style={[styles.tableCell, { fontSize: 9 }]}>{gate.if_fail || 'Review'}</Text>
                     </View>
                   ))}
                 </View>
@@ -1442,14 +1645,16 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           </View>
 
           <PageFooter intakeId={intake_id} />
+          <ConfidentialWatermark />
         </Page>
       )}
 
       {/* === PAGE 7: Heir Management === */}
       {heirManagement && (heirManagement.heir_allocations?.length > 0 || heirManagement.third_generation_risk || heirManagement.with_structure || heirManagement.g1_position) && (
         <Page size="A4" style={styles.page}>
+          <PageHeader />
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} minPresenceAhead={150}>
               <View style={styles.accentLine} />
               <Text style={styles.sectionTitle}>Heir Management & Succession</Text>
             </View>
@@ -1506,7 +1711,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
               return (
                 <View style={{ marginBottom: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.gray[200] }}>
-                  <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Recommended Structure</Text>
+                  <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Recommended Structure</Text>
                   <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>
                     {heirManagement.with_structure?.recommended_structure || heirManagement.recommended_structure}
                   </Text>
@@ -1524,17 +1729,17 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 <View style={{ backgroundColor: colors.gray[900], padding: 20, marginBottom: 16 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View>
-                      <Text style={{ fontSize: 8, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 }}>Hughes Family Wealth Framework</Text>
+                      <Text style={{ fontSize: 9, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 }}>Hughes Family Wealth Framework</Text>
                       <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: colors.white }}>
                         {heirManagement.hughes_framework.third_generation_problem?.headline || 'Third-Generation Wealth Protection'}
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 8, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>G3 Loss Rate</Text>
+                      <Text style={{ fontSize: 9, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>G3 Loss Rate</Text>
                       <Text style={{ fontSize: 24, fontFamily: 'Helvetica-Bold', color: colors.amber[500] }}>
                         {Math.round((heirManagement.hughes_framework.third_generation_problem?.loss_rate_without_structure || 0.70) * 100)}%
                       </Text>
-                      <Text style={{ fontSize: 7, color: colors.gray[500] }}>without structure</Text>
+                      <Text style={{ fontSize: 8.5, color: colors.gray[500] }}>without structure</Text>
                     </View>
                   </View>
                 </View>
@@ -1543,11 +1748,11 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 {heirManagement.hughes_framework.third_generation_problem?.causes &&
                  heirManagement.hughes_framework.third_generation_problem.causes.length > 0 && (
                   <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Common Wealth Destruction Causes</Text>
+                    <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Common Wealth Destruction Causes</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                       {heirManagement.hughes_framework.third_generation_problem.causes.slice(0, 5).map((cause: string, i: number) => (
                         <View key={i} style={{ backgroundColor: colors.gray[50], paddingHorizontal: 10, paddingVertical: 6, borderLeftWidth: 2, borderLeftColor: colors.red[400], marginRight: 8, marginBottom: 8 }}>
-                          <Text style={{ fontSize: 7, color: colors.gray[700] }}>{cause}</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.gray[700] }}>{cause}</Text>
                         </View>
                       ))}
                     </View>
@@ -1560,7 +1765,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                   {heirManagement.hughes_framework.human_capital_protection && (
                     <View style={{ flex: 1, borderWidth: 1, borderColor: colors.gray[200], padding: 16, marginRight: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Human Capital</Text>
+                        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Human Capital</Text>
                         <View style={{
                           paddingHorizontal: 8,
                           paddingVertical: 3,
@@ -1570,7 +1775,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                                        heirManagement.hughes_framework.human_capital_protection.score === 'MODERATE' ? colors.amber[500] : colors.red[500]
                         }}>
                           <Text style={{
-                            fontSize: 7,
+                            fontSize: 8.5,
                             fontFamily: 'Helvetica-Bold',
                             color: heirManagement.hughes_framework.human_capital_protection.score === 'EXCELLENT' ? colors.emerald[600] :
                                    heirManagement.hughes_framework.human_capital_protection.score === 'STRONG' ? colors.emerald[500] :
@@ -1582,13 +1787,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 8, color: colors.gray[600], lineHeight: 1.4, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 9, color: colors.gray[600], lineHeight: 1.4, marginBottom: 8 }}>
                         {heirManagement.hughes_framework.human_capital_protection.description || 'Financial education & stewardship training'}
                       </Text>
                       {heirManagement.hughes_framework.human_capital_protection.provisions?.slice(0, 3).map((p: string, i: number) => (
                         <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                          <Text style={{ fontSize: 7, color: colors.emerald[500], width: 10 }}>✓</Text>
-                          <Text style={{ fontSize: 7, color: colors.gray[600], flex: 1 }}>{p}</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.emerald[500], width: 10 }}>✓</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.gray[600], flex: 1 }}>{p}</Text>
                         </View>
                       ))}
                     </View>
@@ -1598,7 +1803,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                   {heirManagement.hughes_framework.governance_insurance && (
                     <View style={{ flex: 1, borderWidth: 1, borderColor: colors.gray[200], padding: 16 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Governance Insurance</Text>
+                        <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Governance Insurance</Text>
                         <View style={{
                           paddingHorizontal: 8,
                           paddingVertical: 3,
@@ -1608,7 +1813,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                                        heirManagement.hughes_framework.governance_insurance.score === 'MODERATE' ? colors.amber[500] : colors.red[500]
                         }}>
                           <Text style={{
-                            fontSize: 7,
+                            fontSize: 8.5,
                             fontFamily: 'Helvetica-Bold',
                             color: heirManagement.hughes_framework.governance_insurance.score === 'EXCELLENT' ? colors.emerald[600] :
                                    heirManagement.hughes_framework.governance_insurance.score === 'STRONG' ? colors.emerald[500] :
@@ -1620,13 +1825,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                           </Text>
                         </View>
                       </View>
-                      <Text style={{ fontSize: 8, color: colors.gray[600], lineHeight: 1.4, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 9, color: colors.gray[600], lineHeight: 1.4, marginBottom: 8 }}>
                         {heirManagement.hughes_framework.governance_insurance.description || 'Structural protections against dissipation'}
                       </Text>
                       {heirManagement.hughes_framework.governance_insurance.provisions?.slice(0, 3).map((p: string, i: number) => (
                         <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                          <Text style={{ fontSize: 7, color: colors.emerald[500], width: 10 }}>✓</Text>
-                          <Text style={{ fontSize: 7, color: colors.gray[600], flex: 1 }}>{p}</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.emerald[500], width: 10 }}>✓</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.gray[600], flex: 1 }}>{p}</Text>
                         </View>
                       ))}
                     </View>
@@ -1654,7 +1859,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                 <View style={{ marginBottom: 24 }}>
                   <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900], marginBottom: 8 }}>Estate Tax Impact by Heir Relationship</Text>
                   {headline && (
-                    <Text style={{ fontSize: 9, color: colors.emerald[600], fontFamily: 'Helvetica-Bold', marginBottom: 12 }}>{headline}</Text>
+                    <Text style={{ fontSize: 10, color: colors.emerald[600], fontFamily: 'Helvetica-Bold', marginBottom: 12 }}>{headline}</Text>
                   )}
                   <View style={styles.table}>
                     <View style={styles.tableHeader}>
@@ -1668,7 +1873,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                         <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: spouseRate === 0 ? colors.emerald[600] : colors.gray[700] }]}>
                           {spouseRate != null ? (spouseRate === 0 ? 'TAX-FREE' : `${spouseRate}%`) : 'Exempt'}
                         </Text>
-                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>
                           {spouseSummary || 'Unlimited marital deduction'}
                         </Text>
                       </View>
@@ -1679,7 +1884,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                         <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: childrenRate === 0 ? colors.emerald[600] : colors.gray[700] }]}>
                           {childrenRate != null ? (childrenRate === 0 ? 'TAX-FREE' : `${childrenRate}%`) : 'N/A'}
                         </Text>
-                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>
                           {childrenSummary || 'Standard exemption applies'}
                         </Text>
                       </View>
@@ -1690,7 +1895,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                         <Text style={[styles.tableCell, { fontFamily: 'Courier-Bold', color: nonLinealRate === 0 ? colors.emerald[600] : colors.red[600] }]}>
                           {nonLinealRate != null ? (nonLinealRate === 0 ? 'TAX-FREE' : `${nonLinealRate}%`) : 'N/A'}
                         </Text>
-                        <Text style={[styles.tableCell, { flex: 2, fontSize: 8 }]}>
+                        <Text style={[styles.tableCell, { flex: 2, fontSize: 9 }]}>
                           {nonLinealSummary || 'Generation-skipping tax may apply'}
                         </Text>
                       </View>
@@ -1705,7 +1910,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
               <View style={{ marginBottom: 24 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>Heir Allocations & Structures</Text>
-                  <Text style={{ fontSize: 8, color: colors.gray[500] }}>{heirManagement.heir_allocations.length} beneficiaries</Text>
+                  <Text style={{ fontSize: 9, color: colors.gray[500] }}>{heirManagement.heir_allocations.length} beneficiaries</Text>
                 </View>
 
                 {/* Individual Heir Cards */}
@@ -1721,7 +1926,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.gray[100] }}>
                         <View>
                           <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{heir.name || `Heir ${i + 1}`}</Text>
-                          <Text style={{ fontSize: 8, color: colors.gray[500], marginTop: 2 }}>
+                          <Text style={{ fontSize: 9, color: colors.gray[500], marginTop: 2 }}>
                             {heir.relationship || 'Beneficiary'} · Age {heir.age || 'N/A'} · {heir.generation || 'G2'}
                           </Text>
                         </View>
@@ -1734,16 +1939,16 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       {/* Structure & Timing */}
                       <View style={{ flexDirection: 'row' }}>
                         <View style={{ flex: 2, marginRight: 24 }}>
-                          <Text style={{ fontSize: 7, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Recommended Structure</Text>
-                          <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.gray[800] }}>{heirStructure || 'Standard Distribution'}</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Recommended Structure</Text>
+                          <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: colors.gray[800] }}>{heirStructure || 'Standard Distribution'}</Text>
                           {heir.structure_rationale && (
-                            <Text style={{ fontSize: 7, color: colors.gray[500], marginTop: 4, fontStyle: 'italic' }}>{heir.structure_rationale}</Text>
+                            <Text style={{ fontSize: 8.5, color: colors.gray[500], marginTop: 4, fontStyle: 'italic' }}>{heir.structure_rationale}</Text>
                           )}
                         </View>
                         {heir.timing && (
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 7, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Transfer Timing</Text>
-                            <Text style={{ fontSize: 9, color: colors.gray[700] }}>{heir.timing}</Text>
+                            <Text style={{ fontSize: 8.5, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Transfer Timing</Text>
+                            <Text style={{ fontSize: 10, color: colors.gray[700] }}>{heir.timing}</Text>
                           </View>
                         )}
                       </View>
@@ -1751,12 +1956,12 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                       {/* Special Considerations */}
                       {heir.special_considerations && heir.special_considerations.length > 0 && (
                         <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray[100] }}>
-                          <Text style={{ fontSize: 7, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Key Considerations</Text>
+                          <Text style={{ fontSize: 8.5, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Key Considerations</Text>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                             {heir.special_considerations.slice(0, 4).map((consideration: string, j: number) => (
                               <View key={j} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6, marginBottom: 6 }}>
-                                <Text style={{ fontSize: 7, color: colors.amber[600], marginRight: 4 }}>→</Text>
-                                <Text style={{ fontSize: 7, color: colors.gray[600] }}>{consideration}</Text>
+                                <Text style={{ fontSize: 8.5, color: colors.amber[600], marginRight: 4 }}>→</Text>
+                                <Text style={{ fontSize: 8.5, color: colors.gray[600] }}>{consideration}</Text>
                               </View>
                             ))}
                           </View>
@@ -1803,28 +2008,28 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
                         paddingVertical: 2,
                         borderRadius: 4
                       }}>
-                        <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: getTimelineColor(mitigationDays) }}>{getUrgencyLabel(mitigationDays)}</Text>
+                        <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: getTimelineColor(mitigationDays) }}>{getUrgencyLabel(mitigationDays)}</Text>
                       </View>
                     )}
                   </View>
                   <View style={styles.card}>
-                    <Text style={{ fontSize: 9, color: colors.gray[700], lineHeight: 1.5, marginBottom: 12 }}>{riskText}</Text>
+                    <Text style={{ fontSize: 10, color: colors.gray[700], lineHeight: 1.5, marginBottom: 12 }}>{riskText}</Text>
                     <View style={{ flexDirection: 'row' }}>
                       <View style={{ marginRight: 24 }}>
-                        <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>At Risk</Text>
+                        <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>At Risk</Text>
                         <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: colors.gray[900] }}>{formatCurrency(atRisk)}</Text>
                       </View>
                       {mitigation && (
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Mitigation</Text>
-                          <Text style={{ fontSize: 9, color: colors.gray[700] }}>{mitigation}</Text>
+                          <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Mitigation</Text>
+                          <Text style={{ fontSize: 10, color: colors.gray[700] }}>{mitigation}</Text>
                         </View>
                       )}
                     </View>
                     {/* Mitigation Timeline */}
                     {mitigationTimeline && (
                       <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.gray[200] }}>
-                        <Text style={{ fontSize: 8, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Timeline</Text>
+                        <Text style={{ fontSize: 9, color: colors.gray[500], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Timeline</Text>
                         <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: getTimelineColor(mitigationDays) }}>{mitigationTimeline}</Text>
                       </View>
                     )}
@@ -1836,7 +2041,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
             {/* Next action */}
             {heirManagement.next_action && (
               <View style={{ backgroundColor: colors.gray[900], padding: 16 }}>
-                <Text style={{ fontSize: 8, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Next Action</Text>
+                <Text style={{ fontSize: 9, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Next Action</Text>
                 <Text style={{ fontSize: 10, color: colors.white, lineHeight: 1.5 }}>{heirManagement.next_action}</Text>
               </View>
             )}
@@ -1849,11 +2054,13 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           </View>
 
           <PageFooter intakeId={intake_id} />
+          <ConfidentialWatermark />
         </Page>
       )}
 
       {/* === SUMMARY PAGE === */}
       <Page size="A4" style={styles.page}>
+        <PageHeader />
         <View style={{ flex: 1, justifyContent: 'center' }}>
           {/* Header */}
           <View style={{ marginBottom: 32 }}>
@@ -1862,7 +2069,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           </View>
 
           {/* Stats table */}
-          <View style={[styles.table, { marginBottom: 32 }]}>
+          <View style={[styles.table, { marginBottom: 32 }]} wrap={false}>
             <View style={styles.tableHeader}>
               <Text style={styles.tableCellHeader}>Precedents Analyzed</Text>
               <Text style={styles.tableCellHeader}>Failure Modes</Text>
@@ -1879,20 +2086,20 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           <View style={{ backgroundColor: colors.gray[900], padding: 24, marginBottom: 32 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View>
-                <Text style={{ fontSize: 8, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Document Reference</Text>
+                <Text style={{ fontSize: 9, color: colors.gray[400], textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Document Reference</Text>
                 <Text style={{ fontSize: 18, fontFamily: 'Courier-Bold', color: colors.white, letterSpacing: 1 }}>
                   SFO_AUDIT_{intake_id.slice(10, 22).toUpperCase()}
                 </Text>
               </View>
               <View style={{ borderWidth: 1, borderColor: colors.amber[500], paddingHorizontal: 12, paddingVertical: 6 }}>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 1 }}>Complete</Text>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 1 }}>Complete</Text>
               </View>
             </View>
           </View>
 
           {/* Disclaimer */}
           <View style={{ paddingTop: 24, borderTopWidth: 1, borderTopColor: colors.gray[200] }}>
-            <Text style={{ fontFamily: 'Helvetica', fontSize: 9, color: colors.gray[500], lineHeight: 1.6 }}>
+            <Text style={{ fontFamily: 'Helvetica', fontSize: 10, color: colors.gray[500], lineHeight: 1.6 }}>
               Pattern & Market Intelligence Report based on {precedentCount}+ analyzed precedents.
               This report provides strategic intelligence and pattern analysis for informed decision-making.
               For execution and implementation, consult your qualified legal, tax, and financial advisory teams.
@@ -1901,6 +2108,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </View>
 
         <PageFooter intakeId={intake_id} />
+        <ConfidentialWatermark />
       </Page>
 
       {/* === LAST PAGE === */}

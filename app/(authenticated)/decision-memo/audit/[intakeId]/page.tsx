@@ -294,6 +294,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setBackendData({
             preview_data: sessionData.preview_data,
             memo_data: sessionData.memo_data,
+            generated_at: sessionData.generated_at || sessionData.submittedAt,
             // MCP fields from preview_data OR computed from risk counts
             mitigationTimeline: sessionData.mitigationTimeline || sessionData.preview_data?.risk_assessment?.mitigation_timeline,
             risk_assessment: sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
@@ -1441,15 +1442,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
                   {linkCopied ? 'Copied!' : 'Share'}
                 </button>
-                {/* PDF export temporarily disabled */}
-                {/* <button
+                <button
                   onClick={handleExportPDF}
                   disabled={isExportingPDF}
                   className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50"
                 >
                   {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   {isExportingPDF ? 'Exporting...' : 'Export PDF'}
-                </button> */}
+                </button>
               </div>
             </div>
           </div>

@@ -2,6 +2,8 @@
 // Fetch full IC artifact for SFO Pattern Audit
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
@@ -20,7 +22,7 @@ export async function GET(
   const { intakeId } = await Promise.resolve(context.params);
 
   try {
-    console.log('📥 [Artifact] Fetching full artifact for:', intakeId);
+    logger.info('Fetching full artifact', { intakeId });
 
     // Try the correct backend endpoints (based on actual backend code)
     // 1. /sfo-audit/{intake_id}/full - Full artifact endpoint (requires payment)
@@ -44,7 +46,7 @@ export async function GET(
     }
 
     for (const backendUrl of endpoints) {
-      console.log('📥 [Artifact] Trying backend:', backendUrl);
+      logger.info('Trying backend endpoint for artifact', { intakeId });
 
       try {
         const response = await fetch(backendUrl, {
@@ -63,8 +65,7 @@ export async function GET(
 
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ [Artifact] Full artifact fetched from:', backendUrl);
-          console.log('📦 [Artifact] Response keys:', Object.keys(data));
+          logger.info('Full artifact fetched successfully', { intakeId });
 
           // Format value_creation into preview_data.total_savings for frontend
           const formatValueCreation = (amount: number): string => {
@@ -114,7 +115,7 @@ export async function GET(
               total_annual: vcTotal,
               five_year_projected: vc.five_year_projected || vcTotal * 5
             };
-            console.log('✅ [Artifact] Mapped value_creation to preview_data.total_savings:', data.preview_data.total_savings);
+            logger.info('Artifact value_creation mapped', { totalSavings: data.preview_data.total_savings });
           }
 
           // Also check for preview.data_quality, principal_profile, tax_differential
@@ -158,11 +159,11 @@ export async function GET(
           // Pass structured data to frontend
           if (transparencyData && typeof transparencyData === 'object') {
             data.preview_data.transparency_data = transparencyData;
-            console.log('✅ [Artifact] Using structured transparency_data JSON');
+            logger.info('Using structured transparency_data JSON');
           }
           if (crisisData && typeof crisisData === 'object') {
             data.preview_data.crisis_data = crisisData;
-            console.log('✅ [Artifact] Using structured crisis_data JSON');
+            logger.info('Using structured crisis_data JSON');
           }
 
           // =====================================================================
@@ -203,29 +204,22 @@ export async function GET(
 
           return NextResponse.json(data);
         } else {
-          console.log(`⚠️ [Artifact] ${backendUrl} returned ${response.status}`);
+          logger.warn('Artifact backend returned non-OK status', { status: response.status });
         }
       } catch (err) {
-        console.log(`⚠️ [Artifact] ${backendUrl} failed:`, err);
+        logger.warn('Artifact backend request failed', { error: err instanceof Error ? err.message : String(err) });
       }
     }
 
     // All endpoints failed
-    console.error('❌ [Artifact] All backend endpoints failed');
+    logger.error('All backend endpoints failed for artifact', { intakeId });
     return NextResponse.json(
       { success: false, error: 'Artifact not available from any endpoint' },
       { status: 404 }
     );
 
   } catch (error) {
-    console.error('💥 [Artifact] Error fetching artifact:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch artifact',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error fetching artifact', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }

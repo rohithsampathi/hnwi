@@ -4,6 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 interface RouteParams {
   params: {
@@ -18,7 +20,7 @@ export async function GET(
   const { intakeId } = await Promise.resolve(context.params);
 
   try {
-    console.log('📊 Fetching preview for:', intakeId);
+    logger.info('Fetching preview', { intakeId });
 
     // Platform-verified client IP for backend geolocation (not the Vercel server IP)
     const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
@@ -28,7 +30,7 @@ export async function GET(
     // ==========================================================================
 
     if (intakeId.startsWith('sfo_')) {
-      console.log('📋 SFO Pattern Audit preview requested');
+      logger.info('SFO Pattern Audit preview requested', { intakeId });
 
       const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
       const previewHeaders: Record<string, string> = { 'Accept': 'application/json' };
@@ -47,15 +49,15 @@ export async function GET(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Backend error:', response.status, errorText);
+        logger.error('Backend error in SFO preview', { status: response.status });
         return NextResponse.json(
-          { success: false, error: `Backend returned ${response.status}`, details: errorText },
+          { success: false, error: `Backend returned ${response.status}` },
           { status: response.status }
         );
       }
 
       const data = await response.json();
-      console.log('✅ Backend SFO preview response:', data);
+      logger.info('Backend SFO preview response received', { intakeId });
 
       // Format value_creation amount to display string
       const formatValueCreation = (amount: number): string => {
@@ -85,7 +87,7 @@ export async function GET(
             annual_cgt_savings: vc.capital_gains_savings?.amount || 0,
             total_annual: vcTotal
           };
-          console.log('✅ [Preview] Mapped value_creation to total_savings:', data.preview_data.total_savings);
+          logger.info('Preview value_creation mapped', { totalSavings: data.preview_data.total_savings });
         }
       }
 
@@ -122,24 +124,15 @@ export async function GET(
                                data.preview?.crisis_resilience_stress_test ||
                                data.preview_data?.crisis_resilience_stress_test;
 
-      // DEBUG: Log what we found for expert sections
-      console.log('🔍 [Preview] Expert sections search:', {
-        'data.memo_data exists': !!data.memo_data,
-        'data.memo_data keys': data.memo_data ? Object.keys(data.memo_data) : [],
-        'data.artifact exists': !!data.artifact,
-        'data.artifact.memo_data exists': !!data.artifact?.memo_data,
-        'data keys': Object.keys(data),
-        'transparency found': !!transparencyRegime,
-        'crisis found': !!crisisResilience
-      });
+      logger.info('Preview expert sections search', { transparencyFound: !!transparencyRegime, crisisFound: !!crisisResilience });
 
       if (transparencyRegime) {
         data.preview_data.transparency_regime_impact = transparencyRegime;
-        console.log('✅ [Preview] Mapped transparency_regime_impact');
+        logger.info('Mapped transparency_regime_impact');
       }
       if (crisisResilience) {
         data.preview_data.crisis_resilience_stress_test = crisisResilience;
-        console.log('✅ [Preview] Mapped crisis_resilience_stress_test');
+        logger.info('Mapped crisis_resilience_stress_test');
       }
 
       // Ensure memo_data exists and includes expert sections for frontend compatibility
@@ -182,7 +175,7 @@ export async function GET(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Backend error:', response.status, errorText);
+      logger.error('Backend error in legacy preview', { status: response.status });
 
       if (response.status === 404) {
         return NextResponse.json(
@@ -192,24 +185,17 @@ export async function GET(
       }
 
       return NextResponse.json(
-        { success: false, error: `Backend returned ${response.status}`, details: errorText },
+        { success: false, error: `Backend returned ${response.status}` },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    console.log('✅ Backend preview response:', data);
+    logger.info('Backend preview response received', { intakeId });
     return NextResponse.json({ success: true, ...data });
 
   } catch (error) {
-    console.error('💥 Error fetching preview:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch preview',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error fetching preview', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }

@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { Download } from 'lucide-react';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 
 interface TaxRates {
@@ -73,6 +74,7 @@ interface MemoHeaderProps {
   };
   verdict?: string;
   viaNegativa?: ViaNegativaContext;
+  onExportPDF?: () => void;
 }
 
 // NOTE: sourceTaxRates, destinationTaxRates, taxDifferential, crossBorderTaxSavingsPct,
@@ -180,7 +182,8 @@ export function MemoHeader({
   showTaxSavings = true,
   optimalStructure,
   verdict,
-  viaNegativa
+  viaNegativa,
+  onExportPDF,
 }: MemoHeaderProps) {
   const [isVisible, setIsVisible] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -359,6 +362,23 @@ export function MemoHeader({
                 {intakeId.slice(7, 19).toUpperCase()}
               </span>
             </motion.div>
+
+            {/* Export PDF */}
+            {onExportPDF && (
+              <>
+                <div className="w-px h-3 sm:h-4 bg-border hidden sm:block" />
+                <motion.button
+                  onClick={onExportPDF}
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg border text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-colors ${theme.badgeBg} hover:opacity-80`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={isVisible ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.8 }}
+                >
+                  <Download className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${theme.badgeText}`} />
+                  <span className={theme.badgeText}>Export PDF</span>
+                </motion.button>
+              </>
+            )}
           </div>
         </motion.div>
 

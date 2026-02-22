@@ -4,15 +4,19 @@
 // Route: POST /api/decision-memo/submit-sfo-intake
 // =============================================================================
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import axios from 'axios';
+import { withAuth, withValidation } from '@/lib/security/api-auth';
+import { sfoIntakeSchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 // Allow longer execution time for MoEv5 audit generation
 // Vercel Pro: 300s max | Enterprise: 900s max
 export const maxDuration = 300;
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { thesis, constraints, control_and_rails, urgency } = body;
@@ -25,7 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('📝 SFO Intake submission received:', {
+    logger.info('📝 SFO Intake submission received:', {
       moveDescription: thesis.move_description.substring(0, 50) + '...',
       hasConstraints: !!constraints,
       hasRails: !!control_and_rails,
@@ -33,7 +37,7 @@ export async function POST(request: Request) {
     });
 
     const backendUrl = `${API_BASE_URL}/api/decision-memo/submit-sfo-intake`;
-    console.log('🔗 Calling backend:', backendUrl);
+    logger.info('🔗 Calling backend:', backendUrl);
 
     try {
       // Use axios instead of fetch to avoid undici's default timeout
@@ -45,14 +49,14 @@ export async function POST(request: Request) {
       });
 
       if (response.status >= 400) {
-        console.error('❌ Backend error:', response.status, response.data);
+        logger.error('❌ Backend error:', response.status, response.data);
         return NextResponse.json(
           { success: false, error: `Backend returned ${response.status}`, details: response.data },
           { status: response.status }
         );
       }
 
-      console.log('✅ Backend response:', response.data);
+      logger.info('✅ Backend response:', response.data);
       return NextResponse.json(response.data);
     } catch (axiosError) {
       // Re-throw to be caught by outer catch
@@ -60,14 +64,8 @@ export async function POST(request: Request) {
     }
 
   } catch (error) {
-    console.error('💥 Error submitting SFO intake:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to submit intake',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withValidation(sfoIntakeSchema, handlePost));

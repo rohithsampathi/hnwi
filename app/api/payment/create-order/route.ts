@@ -2,6 +2,9 @@
 // Create Razorpay order for payment processing
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, withCSRF, withRateLimit, withValidation } from '@/lib/security/api-auth';
+import { paymentCreateOrderSchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -19,7 +22,7 @@ const TIER_PRICING = {
   }
 };
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { tier, session_id, user_email } = body;
@@ -84,12 +87,8 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Failed to create payment order',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', withValidation(paymentCreateOrderSchema, handlePost))));

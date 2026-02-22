@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
   // === PAGE LAYOUT ===
   page: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     paddingTop: 56,
     paddingBottom: 72,
     paddingHorizontal: 56,
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   },
 
   section: {
-    marginBottom: 40,
+    marginBottom: 28,
   },
 
   // === PREMIUM SECTION HEADER ===
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   headerTitle: {
     fontFamily: 'Helvetica-Bold',
@@ -68,14 +69,14 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.amber[700],
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   headerSubtitle: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[500],
     marginTop: 8,
   },
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   stampDutyLabel: {
     flex: 2,
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -184,13 +185,13 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   stampDutyEffective: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     marginTop: 2,
   },
@@ -257,7 +258,7 @@ const styles = StyleSheet.create({
   },
   loopholeDescription: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[600],
     lineHeight: 1.5,
     marginBottom: 10,
@@ -278,12 +279,12 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
   },
   loopholeTimeline: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     marginTop: 8,
     paddingTop: 8,
@@ -320,19 +321,19 @@ const styles = StyleSheet.create({
   },
   trustHeaderCell: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[900],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   trustCell: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
   },
   trustCellBold: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[900],
   },
 
@@ -367,14 +368,14 @@ const styles = StyleSheet.create({
   },
   recommendationLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.amber[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   recommendationText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
   },
   freeportLocation: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
   },
 
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
   },
   sourceText: {
     fontFamily: 'Courier',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
   },
 
@@ -441,7 +442,7 @@ const styles = StyleSheet.create({
   },
   dataCompletenessText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     marginRight: 8,
   },
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   },
   dataCompletenessBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
   },
 
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     letterSpacing: 0.5,
   },
@@ -503,13 +504,13 @@ const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
     borderTopWidth: 1,
     borderTopColor: colors.gray[200],
   }} fixed>
-    <Text style={{ fontFamily: 'Helvetica', fontSize: 7, color: colors.gray[400] }}>
+    <Text style={{ fontFamily: 'Helvetica', fontSize: 8.5, color: colors.gray[400] }}>
       Ref: {intakeId.slice(10, 22).toUpperCase()}
     </Text>
-    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 7, color: colors.gray[600], letterSpacing: 1, textTransform: 'uppercase' }}>
+    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: colors.gray[600], letterSpacing: 1, textTransform: 'uppercase' }}>
       HNWI Chronicles
     </Text>
-    <Text style={{ fontFamily: 'Helvetica', fontSize: 7, color: colors.gray[400] }}>Confidential</Text>
+    <Text style={{ fontFamily: 'Helvetica', fontSize: 8.5, color: colors.gray[400] }}>Confidential</Text>
   </View>
 );
 
@@ -597,7 +598,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
           {auditData.stamp_duty?.found && (
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.subsectionTitle}>Stamp Duty / Transfer Tax</Text>
-              <View style={styles.stampDutyTable}>
+              <View style={styles.stampDutyTable} wrap={false}>
                 {/* Foreign Buyer Surcharge - Critical Warning */}
                 {auditData.stamp_duty.foreign_buyer_surcharge && (
                   <View style={[styles.stampDutyRow, styles.stampDutyRowCritical]}>
@@ -706,7 +707,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.subsectionTitle}>Tax Strategies / Loopholes</Text>
               {auditData.loophole_strategies.slice(0, 4).map((strategy, idx) => (
-                <View key={idx} style={styles.loopholeCard}>
+                <View key={idx} style={styles.loopholeCard} wrap={false}>
                   <View style={styles.loopholeCardAccent} />
                   <View style={styles.loopholeHeader}>
                     <View style={styles.loopholeHeaderLeft}>
@@ -745,7 +746,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
           {auditData.dynasty_trusts?.found && Array.isArray(auditData.dynasty_trusts.jurisdictions) && auditData.dynasty_trusts.jurisdictions.length > 0 && (
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.subsectionTitle}>Dynasty Trust Options</Text>
-              <View style={styles.trustTable}>
+              <View style={styles.trustTable} wrap={false}>
                 <View style={styles.trustTableHeader}>
                   <Text style={[styles.trustHeaderCell, { flex: 2 }]}>Structure</Text>
                   <Text style={[styles.trustHeaderCell, { flex: 1 }]}>Duration</Text>
@@ -796,7 +797,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
           {Array.isArray(auditData.succession_vehicles) && auditData.succession_vehicles.length > 0 && (
             <View style={{ marginBottom: 20 }}>
               <Text style={styles.subsectionTitle}>Succession Vehicles</Text>
-              <View style={styles.trustTable}>
+              <View style={styles.trustTable} wrap={false}>
                 <View style={styles.trustTableHeader}>
                   <Text style={[styles.trustHeaderCell, { flex: 1 }]}>Type</Text>
                   <Text style={[styles.trustHeaderCell, { flex: 2 }]}>Name</Text>

@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     letterSpacing: 5,
     textTransform: 'uppercase',
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   boxText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[400],
     lineHeight: 1.7,
     textAlign: 'center',
@@ -230,14 +230,14 @@ const styles = StyleSheet.create({
   },
   noticeTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[400],
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   noticeText: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     lineHeight: 1.6,
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[700],
     letterSpacing: 0.5,
   },

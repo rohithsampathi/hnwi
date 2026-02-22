@@ -18,7 +18,7 @@ import { TaxRates } from '../pdf-types';
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 40,
+    marginBottom: 28,
   },
 
   // === PREMIUM SECTION HEADER ===
@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   sectionTitle: {
     fontFamily: 'Helvetica-Bold',
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   impactHeroLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 1.5,
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   },
   summarySubtext: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     marginTop: 4,
   },
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
   tableHeaderCell: {
     flex: 1,
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[900],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
   },
   structureLabel: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[600],
   },
   structureValue: {
@@ -359,7 +360,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
     letterSpacing: 0.5,
   },
@@ -437,10 +438,10 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
   return (
     <View style={styles.section}>
       {/* Premium Section Header */}
-      <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeader} minPresenceAhead={150}>
         <View style={styles.accentLine} />
         <View style={styles.headerRow}>
-          <Text style={styles.sectionTitle}>Tax Jurisdiction Analysis</Text>
+          <Text style={[styles.sectionTitle, { flexShrink: 1, maxWidth: '70%' }]}>Tax Jurisdiction Analysis</Text>
           <View style={styles.headerBadge}>
             <Text style={styles.headerBadgeText}>Comparative Assessment</Text>
           </View>
@@ -448,7 +449,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
       </View>
 
       {/* Premium Cumulative Impact Hero */}
-      <View style={styles.impactHero}>
+      <View style={styles.impactHero} wrap={false}>
         <View style={[styles.impactHeroAccent, {
           backgroundColor: isPositive ? colors.emerald[500] : isNeutral ? colors.gray[400] : colors.red[500]
         }]} />
@@ -474,7 +475,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
       </View>
 
       {/* Summary Row */}
-      <View style={styles.summaryRow}>
+      <View style={styles.summaryRow} wrap={false}>
         <View style={[styles.summaryBox, styles.summaryBoxHighlight]}>
           <Text style={styles.summaryLabel}>Migration Corridor</Text>
           <View style={styles.corridorArrow}>
@@ -493,7 +494,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
       </View>
 
       {/* Premium Tax Comparison Table */}
-      <View style={styles.table}>
+      <View style={styles.table} wrap={false}>
         <View style={styles.tableHeader}>
           <Text style={styles.tableHeaderCell}>Tax Category</Text>
           <Text style={[styles.tableHeaderCell, { textAlign: 'center' }]}>{sourceClean}</Text>
@@ -534,7 +535,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
               ]}>
                 {impact.value}
                 {!impact.neutral && (
-                  <Text style={{ fontSize: 7, color: colors.gray[500] }}>
+                  <Text style={{ fontSize: 8.5, color: colors.gray[500] }}>
                     {impact.positive ? ' saved' : ' more'}
                   </Text>
                 )}
@@ -545,7 +546,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
       </View>
 
       {/* Premium Structure Comparison with Visual Bars */}
-      <View style={styles.structureRow}>
+      <View style={styles.structureRow} wrap={false}>
         {/* Current Structure */}
         <View style={styles.structureCard}>
           <View style={styles.structureHeader}>

@@ -40,35 +40,34 @@ export class AuthenticationManager {
       return;
     }
 
-    // CRITICAL: Check both localStorage (primary) and sessionStorage (fallback)
-    // This ensures we recover auth state after hard refresh or new tab
+    // Recovery priority: sessionStorage (full user) > localStorage (userId only)
+    // localStorage no longer stores userObject/userEmail for security
     try {
-      const storedUser = localStorage.getItem('userObject') || sessionStorage.getItem('userObject');
-      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-      const userEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+      // Try sessionStorage first (has full user for same-tab recovery)
+      const storedUser = sessionStorage.getItem('userObject');
+      const sessionUserId = sessionStorage.getItem('userId');
 
-      if (storedUser && userId) {
+      if (storedUser && sessionUserId) {
         try {
           this.user = JSON.parse(storedUser);
-          // If we have valid user data, we're authenticated
-          // The backend cookies will validate on actual API calls
           this.authenticated = true;
-        } catch (error) {
-          // Failed to parse stored user - clear invalid data
+        } catch {
           this.user = null;
           this.authenticated = false;
         }
-      } else if (userId && userEmail) {
-        // Minimal recovery - have ID and email but no full user object
-        this.user = { id: userId, user_id: userId, email: userEmail } as User;
-        this.authenticated = true;
       } else {
-        // No auth data found
-        this.user = null;
-        this.authenticated = false;
+        // Fallback to localStorage (only has userId + loginTimestamp)
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          // Minimal user — profile will be hydrated by refreshAuth()
+          this.user = { id: userId, user_id: userId, email: '' } as User;
+          this.authenticated = true;
+        } else {
+          this.user = null;
+          this.authenticated = false;
+        }
       }
-    } catch (error) {
-      // Storage access failed - clear state
+    } catch {
       this.user = null;
       this.authenticated = false;
     }
@@ -114,13 +113,11 @@ export class AuthenticationManager {
     const userObjectStr = JSON.stringify(userData);
     const timestamp = Date.now().toString();
 
-    // Write to localStorage (primary - persists across hard refresh)
-    localStorage.setItem('userEmail', userEmail);
+    // localStorage: ONLY userId + loginTimestamp (no PII / full profile)
     localStorage.setItem('userId', userId);
-    localStorage.setItem('userObject', userObjectStr);
     localStorage.setItem('loginTimestamp', timestamp);
 
-    // Write to sessionStorage (backup - single session only)
+    // sessionStorage: full user for same-tab recovery (dies with tab close)
     sessionStorage.setItem('userEmail', userEmail);
     sessionStorage.setItem('userId', userId);
     sessionStorage.setItem('userObject', userObjectStr);
@@ -159,12 +156,12 @@ export class AuthenticationManager {
     this.user = null;
     this.authenticated = false;
 
-    // DUAL STORAGE: Clear both localStorage AND sessionStorage
-    // Clear localStorage
-    localStorage.removeItem('userEmail');
+    // Clear localStorage (only stores userId + loginTimestamp)
     localStorage.removeItem('userId');
-    localStorage.removeItem('userObject');
     localStorage.removeItem('loginTimestamp');
+    // Also remove legacy keys that may exist from before hardening
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userObject');
 
     // Clear sessionStorage
     sessionStorage.removeItem('userEmail');
@@ -201,7 +198,7 @@ export class AuthenticationManager {
     if (this.user) {
       // Quick check to ensure storage wasn't cleared externally
       if (typeof window !== 'undefined') {
-        const hasStorageData = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        const hasStorageData = sessionStorage.getItem('userId') || localStorage.getItem('userId');
         if (!hasStorageData) {
           // Storage was cleared externally - clear memory cache
           this.user = null;
@@ -213,35 +210,28 @@ export class AuthenticationManager {
     }
 
     // No user in memory - try to recover from storage
-    // This should only happen on initial load or after logout
     if (typeof window !== 'undefined') {
-      // Check both localStorage (primary) and sessionStorage (fallback)
-      const storedUser = localStorage.getItem('userObject') || sessionStorage.getItem('userObject');
-      const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-      const userEmail = localStorage.getItem('userEmail') || sessionStorage.getItem('userEmail');
+      // sessionStorage has full user (same tab), localStorage only has userId
+      const storedUser = sessionStorage.getItem('userObject');
+      const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
 
       if (storedUser && userId) {
         try {
-          const parsedUser = JSON.parse(storedUser);
-          this.user = parsedUser;
+          this.user = JSON.parse(storedUser);
           this.authenticated = true;
           return this.user;
-        } catch (error) {
-          // Failed to parse - try minimal recovery
-          if (userId && userEmail) {
-            this.user = { id: userId, user_id: userId, email: userEmail } as User;
-            this.authenticated = true;
-            return this.user;
-          }
+        } catch {
+          // Fall through to minimal recovery
         }
-      } else if (userId && userEmail) {
-        // Minimal recovery if we have ID and email but no full object
-        this.user = { id: userId, user_id: userId, email: userEmail } as User;
+      }
+
+      if (userId) {
+        // Minimal user — profile hydrated by refreshAuth()
+        this.user = { id: userId, user_id: userId, email: '' } as User;
         this.authenticated = true;
         return this.user;
       }
 
-      // No user data found
       this.user = null;
       this.authenticated = false;
     }
@@ -260,7 +250,7 @@ export class AuthenticationManager {
     }
 
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('userId');
+      return sessionStorage.getItem('userId') || localStorage.getItem('userId');
     }
 
     return null;

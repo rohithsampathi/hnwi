@@ -52,6 +52,8 @@ interface Structure {
   rental_income_rate?: number;
   capital_gains_rate?: number;
   estate_tax_rate?: number;
+  estate_tax_exposure?: number;
+  is_nra?: boolean;
 }
 
 interface StructureComparisonMatrixProps {
@@ -69,6 +71,8 @@ interface StructureComparisonMatrixProps {
       rental_income_rate?: number;
       capital_gains_rate?: number;
       estate_tax_rate?: number;
+      estate_tax_exposure?: number;
+      is_nra?: boolean;
       anti_avoidance_flags?: string[];
     };
     structures_analyzed: Structure[];
@@ -410,6 +414,33 @@ export function StructureComparisonMatrix({
                   </p>
                 </div>
 
+                {/* Estate Tax Exposure Callout */}
+                {optimal_structure.is_nra && optimal_structure.estate_tax_exposure !== undefined && optimal_structure.estate_tax_exposure > 0 && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+                    <p className="text-[10px] sm:text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      NRA Estate Tax Exposure
+                    </p>
+                    <p className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400 font-mono">
+                      {formatCost(optimal_structure.estate_tax_exposure)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Based on $60,000 NRA exemption &middot; {formatRate(optimal_structure.estate_tax_rate)} effective rate
+                    </p>
+                  </div>
+                )}
+                {optimal_structure.is_nra && (optimal_structure.estate_tax_exposure === 0 || optimal_structure.estate_tax_exposure === undefined) && optimal_structure.estate_tax_rate === 0 && (
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+                    <p className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5" />
+                      Estate Tax Eliminated
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      This structure removes US situs exposure for NRA buyers
+                    </p>
+                  </div>
+                )}
+
                 {optimal_structure.anti_avoidance_flags && optimal_structure.anti_avoidance_flags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {optimal_structure.anti_avoidance_flags.map((flag, i) => (
@@ -543,8 +574,16 @@ export function StructureComparisonMatrix({
                   </div>
                   {!allIdenticalRates && (
                     <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Estate Tax</p>
-                      <p className="font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                        {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? 'Estate Exposure' : 'Estate Tax'}
+                      </p>
+                      {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? (
+                        <p className="font-mono font-bold text-red-600 dark:text-red-400">{formatCost(structure.estate_tax_exposure)}</p>
+                      ) : structure.is_nra && structure.estate_tax_rate === 0 ? (
+                        <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">$0</p>
+                      ) : (
+                        <p className="font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -566,7 +605,9 @@ export function StructureComparisonMatrix({
                     <>
                       <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rental</th>
                       <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CGT</th>
-                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Estate</th>
+                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {structures_analyzed.some(s => s.estate_tax_exposure && s.estate_tax_exposure > 0) ? 'Estate $' : 'Estate'}
+                      </th>
                     </>
                   )}
                   <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Setup</th>
@@ -621,7 +662,13 @@ export function StructureComparisonMatrix({
                             <span className="text-xs font-mono text-foreground">{formatRate(structure.capital_gains_rate)}</span>
                           </td>
                           <td className="px-3 py-3.5 text-right">
-                            <span className="text-xs font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</span>
+                            {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? (
+                              <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400">{formatCost(structure.estate_tax_exposure)}</span>
+                            ) : structure.is_nra && structure.estate_tax_rate === 0 ? (
+                              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">$0</span>
+                            ) : (
+                              <span className="text-xs font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</span>
+                            )}
                           </td>
                         </>
                       )}

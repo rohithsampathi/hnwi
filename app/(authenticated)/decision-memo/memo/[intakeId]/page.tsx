@@ -7,7 +7,8 @@ import { useState, useEffect, useMemo } from 'react';
 import type { DecisionMemoData, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, Download, FileText } from 'lucide-react';
+import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
 import Link from 'next/link';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
@@ -287,17 +288,14 @@ export default function DecisionMemoPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Right: Download - temporarily disabled */}
-            {/* <button
-              onClick={async () => {
-                const { generateDecisionMemoPDF } = await import('@/lib/decision-memo/pdf-generator');
-                await generateDecisionMemoPDF(data, intakeId);
-              }}
+            {/* Right: Download PDF */}
+            <button
+              onClick={() => exportInstitutionalPDF(data as any)}
               className="flex items-center gap-1 sm:gap-2 px-2 sm:px-5 py-1.5 sm:py-2.5 bg-primary text-primary-foreground text-[10px] sm:text-sm font-semibold tracking-wider rounded-md sm:rounded-lg hover:bg-primary/90 flex-shrink-0"
             >
               <Download className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">DOWNLOAD </span><span>PDF</span>
-            </button> */}
+            </button>
           </div>
         </div>
       </div>
@@ -320,6 +318,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
           showTaxSavings={preview_data.show_tax_savings}
           optimalStructure={preview_data.structure_optimization?.optimal_structure}
           viaNegativa={viaNegativaContext}
+          onExportPDF={() => exportInstitutionalPDF(data as any)}
         />
 
         {/* Elegant Section Divider */}
@@ -479,12 +478,8 @@ export default function DecisionMemoPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* PDF download temporarily disabled */}
-              {/* <button
-                onClick={async () => {
-                  const { generateDecisionMemoPDF } = await import('@/lib/decision-memo/pdf-generator');
-                  await generateDecisionMemoPDF(data, intakeId);
-                }}
+              <button
+                onClick={() => exportInstitutionalPDF(data as any)}
                 className="inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-4 bg-primary text-primary-foreground text-sm sm:text-base font-semibold tracking-wider rounded-xl hover:bg-primary/90"
               >
                 <Download className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -494,7 +489,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
 
               <p className="mt-4 sm:mt-6 text-[10px] sm:text-xs text-muted-foreground px-2">
                 PDF contains all sections including risk analysis, peer intelligence, and implementation roadmap
-              </p> */}
+              </p>
             </div>
           </div>
         </motion.div>

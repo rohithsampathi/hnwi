@@ -1,9 +1,12 @@
 // app/api/decision-memo/verify-payment/route.ts
 // Verify Razorpay payment and queue memo generation
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const {
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend error:', errorText);
+      logger.error('Backend error:', errorText);
       return NextResponse.json(
         { success: false, error: 'Payment verification failed' },
         { status: backendResponse.status }
@@ -45,10 +48,8 @@ export async function POST(request: Request) {
     const verificationData = await backendResponse.json();
     return NextResponse.json(verificationData);
   } catch (error) {
-    console.error('Error verifying payment:', error);
-    return NextResponse.json(
-      { success: false, error: 'Payment verification failed' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));

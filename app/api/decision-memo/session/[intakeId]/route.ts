@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -278,9 +280,9 @@ export async function GET(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Backend error:', response.status, errorText);
+      logger.error('Backend error in session endpoint', { status: response.status });
       return NextResponse.json(
-        { success: false, error: `Backend returned ${response.status}`, details: errorText },
+        { success: false, error: `Backend returned ${response.status}` },
         { status: response.status }
       );
     }
@@ -525,14 +527,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('💥 Error fetching session:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch session',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error fetching session', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }

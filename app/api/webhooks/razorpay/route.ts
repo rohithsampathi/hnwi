@@ -3,6 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
@@ -37,10 +39,10 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get('x-razorpay-signature');
 
-    console.log('[Webhook] Received Razorpay webhook');
+    logger.info('Received Razorpay webhook');
 
     if (!RAZORPAY_WEBHOOK_SECRET) {
-      console.error('[Webhook] Webhook secret not configured');
+      logger.error('Webhook secret not configured');
       return NextResponse.json(
         { error: 'Webhook not configured' },
         { status: 500 }
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!signature) {
-      console.error('[Webhook] Missing signature header');
+      logger.error('Webhook missing signature header');
       return NextResponse.json(
         { error: 'Missing signature' },
         { status: 400 }
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
       .digest('hex');
 
     if (signature !== expectedSignature) {
-      console.error('[Webhook] Invalid signature');
+      logger.error('Webhook invalid signature');
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 }
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Parse webhook payload
     const payload: RazorpayWebhookPayload = JSON.parse(body);
-    console.log('[Webhook] Event type:', payload.event);
+    logger.info('Webhook event type', { event: payload.event });
 
     // Handle different webhook events
     switch (payload.event) {
@@ -88,32 +90,21 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log('[Webhook] Unhandled event type:', payload.event);
+        logger.info('Webhook unhandled event type', { event: payload.event });
     }
 
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error('[Webhook] Error processing webhook:', error);
-    return NextResponse.json(
-      {
-        error: 'Webhook processing failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error processing webhook', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }
 
 async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
   const payment = payload.payload.payment.entity;
 
-  console.log('[Webhook] Payment captured:', {
-    payment_id: payment.id,
-    order_id: payment.order_id,
-    amount: payment.amount / 100, // Convert from paise to dollars
-    status: payment.status
-  });
+  logger.info('Webhook payment captured', { paymentId: payment.id, orderId: payment.order_id });
 
   try {
     // Record payment in backend
@@ -138,23 +129,19 @@ async function handlePaymentCaptured(payload: RazorpayWebhookPayload) {
     });
 
     if (!backendResponse.ok) {
-      console.error('[Webhook] Failed to record payment capture in backend');
+      logger.error('Failed to record payment capture in backend');
     } else {
-      console.log('[Webhook] Payment capture recorded successfully');
+      logger.info('Payment capture recorded successfully');
     }
   } catch (error) {
-    console.error('[Webhook] Error recording payment capture:', error);
+    logger.error('Error recording payment capture', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
   const payment = payload.payload.payment.entity;
 
-  console.log('[Webhook] Payment failed:', {
-    payment_id: payment.id,
-    order_id: payment.order_id,
-    status: payment.status
-  });
+  logger.info('Webhook payment failed', { paymentId: payment.id, orderId: payment.order_id });
 
   try {
     // Notify backend of failed payment
@@ -174,20 +161,17 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload) {
     });
 
     if (!backendResponse.ok) {
-      console.error('[Webhook] Failed to record payment failure in backend');
+      logger.error('Failed to record payment failure in backend');
     }
   } catch (error) {
-    console.error('[Webhook] Error recording payment failure:', error);
+    logger.error('Error recording payment failure', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 async function handleOrderPaid(payload: RazorpayWebhookPayload) {
   const payment = payload.payload.payment.entity;
 
-  console.log('[Webhook] Order paid:', {
-    payment_id: payment.id,
-    order_id: payment.order_id
-  });
+  logger.info('Webhook order paid', { paymentId: payment.id, orderId: payment.order_id });
 
   // Additional logic for order paid event if needed
 }

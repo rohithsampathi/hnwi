@@ -1,12 +1,15 @@
 // app/api/decision-memo/sfo-audit/[intakeId]/create-order/route.ts
 // Create Razorpay order for SFO Pattern Audit payment
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
-export async function POST(
-  request: Request,
+async function handlePost(
+  request: NextRequest,
   { params }: { params: { intakeId: string } }
 ) {
   try {
@@ -26,7 +29,7 @@ export async function POST(
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend error creating order:', errorText);
+      logger.error('Backend error creating order:', errorText);
       return NextResponse.json(
         { success: false, error: 'Failed to create payment order' },
         { status: backendResponse.status }
@@ -34,14 +37,12 @@ export async function POST(
     }
 
     const orderData = await backendResponse.json();
-    console.log('📦 [SFO Create Order] Backend response:', JSON.stringify(orderData, null, 2));
-    console.log('📦 [SFO Create Order] Keys present:', Object.keys(orderData));
+    logger.info('📦 [SFO Create Order] Backend response:', JSON.stringify(orderData, null, 2));
+    logger.info('📦 [SFO Create Order] Keys present:', Object.keys(orderData));
     return NextResponse.json(orderData);
   } catch (error) {
-    console.error('Error creating SFO audit order:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create payment order' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));

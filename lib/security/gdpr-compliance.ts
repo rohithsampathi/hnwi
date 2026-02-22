@@ -259,16 +259,23 @@ export class GDPRCompliance {
   }
 
   private static async collectUserData(userId: string): Promise<any> {
-    // Collect all data related to the user
-    const userData = {
-      profile: await GDPRCompliance.getUserProfile(userId),
+    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/gdpr/export/${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Backend unavailable — fall back to local data
+    }
+
+    return {
       consent: GDPRCompliance.getConsent(userId),
       auditLogs: AuditLogger.getLogs({ userId }),
-      preferences: await GDPRCompliance.getUserPreferences(userId),
-      activities: await GDPRCompliance.getUserActivities(userId)
     };
-
-    return userData;
   }
 
   private static formatDataForExport(data: any): any {
@@ -287,9 +294,18 @@ export class GDPRCompliance {
   }
 
   private static async eraseUserData(userId: string): Promise<void> {
-    // Erase all user data from storage
+    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+    try {
+      await fetch(`${API_BASE_URL}/api/gdpr/erase/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch {
+      // Backend unavailable — continue with local cleanup
+    }
+
+    // Clear local data
     if (typeof window !== "undefined") {
-      // Clear from localStorage
       const keys = Object.keys(localStorage);
       keys.forEach(key => {
         if (key.includes(userId)) {
@@ -298,7 +314,6 @@ export class GDPRCompliance {
       });
     }
 
-    // Remove from memory
     GDPRCompliance.consentRecords.delete(userId);
   }
 
@@ -307,21 +322,6 @@ export class GDPRCompliance {
     if (typeof window !== "undefined") {
       localStorage.setItem(`hnwi_restricted_${userId}`, "true");
     }
-  }
-
-  private static async getUserProfile(userId: string): Promise<any> {
-    // Placeholder - would fetch from actual storage
-    return {};
-  }
-
-  private static async getUserPreferences(userId: string): Promise<any> {
-    // Placeholder - would fetch from actual storage
-    return {};
-  }
-
-  private static async getUserActivities(userId: string): Promise<any> {
-    // Placeholder - would fetch from actual storage
-    return {};
   }
 
   private static persistConsent(consent: ConsentRecord): void {

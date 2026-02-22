@@ -5,6 +5,7 @@ import { handleLogin } from '@/lib/auth-actions'
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
+import { withRateLimit } from '@/lib/security/api-auth'
 
 // Helper to get cookie domain for PWA cross-subdomain support
 function getCookieDomain(): string | undefined {
@@ -202,4 +203,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = CSRFProtection.withCSRFProtection(handlePost);
+export const POST = withRateLimit('api', CSRFProtection.withCSRFProtection(handlePost));

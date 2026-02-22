@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/secure-logger';
 
 // Force dynamic rendering - this route uses request.nextUrl.searchParams
 export const dynamic = 'force-dynamic';
@@ -62,13 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Log backend request for debugging
-    console.log('[Command Centre API] Request:', {
-      view,
-      timeframe,
-      includeCrownVault,
-      hasAccessToken: !!accessToken,
-      hasUserId: !!userId
-    });
+    logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId });
 
     // SOTA: Forward ALL cookies to backend for proper session handling
     const allCookies = cookieStore.getAll();
@@ -93,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error('[Command Centre API] Backend returned error:', response.status);
+      logger.error('Command Centre API backend error', { status: response.status });
 
       // Return empty opportunities array on error
       return NextResponse.json({
@@ -106,16 +101,12 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // Log successful response
-    console.log('[Command Centre API] Success:', {
-      opportunities: data.opportunities?.length || 0,
-      view,
-      timeframe
-    });
+    logger.info('Command Centre API success', { count: data.opportunities?.length || 0, view });
 
     // Return backend data
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[Command Centre API] Error:', error);
+    logger.error('Command Centre API error', { error: error instanceof Error ? error.message : String(error) });
 
     // Return empty array on error to prevent frontend crashes
     return NextResponse.json({

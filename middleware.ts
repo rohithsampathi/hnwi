@@ -98,6 +98,11 @@ export async function middleware(request: NextRequest) {
       "max-age=31536000; includeSubDomains; preload";
   }
 
+  // Block debug routes in production
+  if (!isDev && url.pathname.startsWith("/api/debug/")) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const isApiRoute = url.pathname.startsWith("/api/");
   const isStateChanging =
     request.method !== "GET" && request.method !== "HEAD" && request.method !== "OPTIONS";

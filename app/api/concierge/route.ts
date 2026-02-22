@@ -4,6 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { safeError } from '@/lib/security/api-response';
+import { conciergeSchema } from '@/lib/security/validation-schemas';
 
 // Formspree endpoints — loaded from env vars, never hardcoded
 // Fallback to empty string so missing config fails gracefully (400 error)
@@ -75,7 +77,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { source, ...formData } = body;
+
+    // 3b. Validate input with Zod schema
+    const parsed = conciergeSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.issues.map(i => i.message) },
+        { status: 400 }
+      );
+    }
+
+    const { source, ...formData } = parsed.data;
 
     // 4. Honeypot — if _gotcha field is filled, silently reject (bots fill hidden fields)
     if (formData._gotcha) {
@@ -111,9 +123,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
       return NextResponse.json(
-        { error: 'Failed to submit', details: errorText },
+        { error: 'Failed to submit form' },
         { status: response.status }
       );
     }
@@ -121,9 +132,6 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json({ success: true, data });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }

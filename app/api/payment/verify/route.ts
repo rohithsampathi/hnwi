@@ -4,6 +4,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { sendPaymentConfirmation } from '@/lib/email/email-service';
+import { withAuth, withCSRF, withRateLimit, withValidation } from '@/lib/security/api-auth';
+import { paymentVerifySchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
@@ -15,13 +19,13 @@ const TIER_AMOUNTS = {
   observer: 199
 };
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { payment_id, order_id, signature, tier, session_id, user_email } = body;
 
     if (!RAZORPAY_KEY_SECRET) {
-      console.error('[Payment Verify] Razorpay secret not configured');
+      logger.error('[Payment Verify] Razorpay secret not configured');
       return NextResponse.json(
         { error: 'Payment gateway not configured' },
         { status: 500 }
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const isValid = generatedSignature === signature;
 
-    console.log('[Payment Verify] Signature verification:', {
+    logger.info('[Payment Verify] Signature verification:', {
       payment_id,
       order_id,
       verified: isValid
@@ -67,15 +71,15 @@ export async function POST(request: NextRequest) {
         // Extract email from payment details
         if (paymentData.email) {
           customerEmail = paymentData.email;
-          console.log('[Payment Verify] Email fetched from Razorpay:', customerEmail);
+          logger.info('[Payment Verify] Email fetched from Razorpay:', customerEmail);
         } else if (paymentData.contact) {
-          console.log('[Payment Verify] Contact found:', paymentData.contact);
+          logger.info('[Payment Verify] Contact found:', paymentData.contact);
         }
       } else {
-        console.error('[Payment Verify] Failed to fetch payment details from Razorpay');
+        logger.error('[Payment Verify] Failed to fetch payment details from Razorpay');
       }
     } catch (fetchError) {
-      console.error('[Payment Verify] Error fetching payment details:', fetchError);
+      logger.error('[Payment Verify] Error fetching payment details:', fetchError);
       // Continue anyway - we'll use provided email or skip email
     }
 
@@ -98,14 +102,14 @@ export async function POST(request: NextRequest) {
       });
 
       if (!backendResponse.ok) {
-        console.error('[Payment Verify] Failed to record payment in backend');
+        logger.error('[Payment Verify] Failed to record payment in backend');
         // Continue anyway - payment is verified
       } else {
         backendRecorded = true;
-        console.log('[Payment Verify] Payment recorded successfully in backend');
+        logger.info('[Payment Verify] Payment recorded successfully in backend');
       }
     } catch (backendError) {
-      console.error('[Payment Verify] Backend recording error:', backendError);
+      logger.error('[Payment Verify] Backend recording error:', backendError);
       // Continue anyway - payment is verified
     }
 
@@ -122,15 +126,15 @@ export async function POST(request: NextRequest) {
         transaction_date: new Date().toISOString()
       }).then(success => {
         if (success) {
-          console.log('[Payment Verify] Confirmation email sent to:', customerEmail);
+          logger.info('[Payment Verify] Confirmation email sent to:', customerEmail);
         } else {
-          console.error('[Payment Verify] Failed to send confirmation email');
+          logger.error('[Payment Verify] Failed to send confirmation email');
         }
       }).catch(error => {
-        console.error('[Payment Verify] Email error:', error);
+        logger.error('[Payment Verify] Email error:', error);
       });
     } else if (backendRecorded && !customerEmail) {
-      console.log('[Payment Verify] No email available - skipping confirmation email');
+      logger.info('[Payment Verify] No email available - skipping confirmation email');
     }
 
     return NextResponse.json({
@@ -140,14 +144,8 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Payment Verify] Error:', error);
-    return NextResponse.json(
-      {
-        verified: false,
-        error: 'Payment verification failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', withValidation(paymentVerifySchema, handlePost))));

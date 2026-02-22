@@ -8,7 +8,7 @@ import { logger } from '@/lib/secure-logger';
 export async function GET(request: NextRequest) {
   try {
     // Generate or refresh CSRF token
-    const { token, expires } = CSRFProtection.refreshCSRFToken(request);
+    const { token, expires } = await CSRFProtection.refreshCSRFToken(request);
     
     const response = NextResponse.json({
       csrfToken: token,

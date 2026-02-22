@@ -61,18 +61,13 @@ export function sanitizeUserAgent(userAgent: string): string {
 }
 
 /**
- * Create safe error messages for API responses
+ * Create safe error messages for API responses.
+ * ALWAYS returns a sanitized message — even in development — to prevent
+ * stack traces or internal details from leaking to the client.
+ * Full errors are logged server-side instead.
  */
-export function sanitizeErrorMessage(error: unknown, isProduction: boolean = process.env.NODE_ENV === 'production'): string {
-  if (!isProduction) {
-    // In development, show full error details
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return String(error);
-  }
-
-  // In production, return generic messages based on error type
+export function sanitizeErrorMessage(error: unknown, _isProduction?: boolean): string {
+  // Return generic messages based on error type (always sanitized)
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
 

@@ -81,10 +81,10 @@ function RadarSVG({ scores }: { scores: DoctrineScore[] }) {
             cy={cy}
             r={r}
             fill="none"
-            stroke="hsl(var(--border))"
-            strokeWidth="0.5"
-            strokeDasharray={i < levels - 1 ? "3,3" : "none"}
-            opacity={i < levels - 1 ? 0.4 : 0.6}
+            stroke="hsl(var(--muted-foreground))"
+            strokeWidth={i === levels - 1 ? "1.2" : "0.8"}
+            strokeDasharray={i < levels - 1 ? "4,4" : "none"}
+            opacity={i < levels - 1 ? 0.3 : 0.5}
           />
         );
       })}
@@ -99,9 +99,9 @@ function RadarSVG({ scores }: { scores: DoctrineScore[] }) {
             y1={cy}
             x2={x}
             y2={y}
-            stroke="hsl(var(--border))"
-            strokeWidth="0.5"
-            opacity="0.4"
+            stroke="hsl(var(--muted-foreground))"
+            strokeWidth="0.8"
+            opacity="0.35"
           />
         );
       })}

@@ -4,6 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
+import { safeError } from '@/lib/security/api-response';
 
 export const maxDuration = 300; // 5 minutes
 
@@ -20,11 +22,11 @@ export async function GET(
   const { intakeId } = await Promise.resolve(context.params);
 
   try {
-    console.log('📊 Unified endpoint fetch for:', intakeId);
+    logger.info('Unified endpoint fetch', { intakeId });
 
     // Call backend unified endpoint
     const backendUrl = `${API_BASE_URL}/api/decision-memo/${intakeId}`;
-    console.log('🔗 Calling backend:', backendUrl);
+    logger.info('Calling backend unified endpoint', { intakeId });
 
     // Forward Authorization header from client to backend (report auth tokens)
     const authHeader = request.headers.get('Authorization');
@@ -49,21 +51,15 @@ export async function GET(
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Backend error:', response.status, errorText);
+      logger.error('Backend error in unified endpoint', { status: response.status });
       return NextResponse.json(
-        { success: false, error: `Backend returned ${response.status}`, details: errorText },
+        { success: false, error: `Backend returned ${response.status}` },
         { status: response.status }
       );
     }
 
     const data = await response.json();
-    console.log('✅ Backend unified response received:', {
-      intake_id: data.intake_id,
-      is_unlocked: data.is_unlocked,
-      has_mitigationTimeline: !!data.mitigationTimeline,
-      has_risk_assessment: !!data.risk_assessment,
-      has_all_mistakes: !!data.all_mistakes
-    });
+    logger.info('Backend unified response received', { intakeId, isUnlocked: data.is_unlocked });
 
     // Return the unified response directly
     // Backend now provides:
@@ -74,14 +70,7 @@ export async function GET(
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('💥 Error fetching decision memo:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch decision memo',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    logger.error('Error fetching decision memo', { error: error instanceof Error ? error.message : String(error) });
+    return safeError(error);
   }
 }

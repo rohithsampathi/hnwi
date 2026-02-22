@@ -17,7 +17,8 @@ import {
   PeerBenchmarking
 } from '@/components/report';
 import type { EnhancedReportData } from '@/types/assessment-report';
-import { downloadEnhancedPDF } from '@/lib/pdf-generator-enhanced';
+import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
+import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 
 export default function EnhancedReportPage() {
   const params = useParams();
@@ -60,14 +61,50 @@ export default function EnhancedReportPage() {
     router.push(`/simulation/results/${sessionId}`);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!reportData) {
       alert('Report data not loaded yet. Please wait.');
       return;
     }
 
     try {
-      downloadEnhancedPDF(reportData, sessionId);
+      const memoData: PdfMemoData = {
+        success: true,
+        intake_id: `enhanced_${sessionId}`,
+        generated_at: reportData.generated_at || new Date().toISOString(),
+        preview_data: {
+          source_jurisdiction: 'Current Position',
+          destination_jurisdiction: 'Optimized Position',
+          exposure_class: reportData.executive_summary?.tier?.charAt(0).toUpperCase() + reportData.executive_summary?.tier?.slice(1) || 'Strategic Investor',
+          value_creation: `${reportData.executive_summary?.peer_group_size?.toLocaleString() || '1,900'}+ HNWI World developments analyzed`,
+          five_year_projection: '',
+          total_tax_benefit: '',
+          precedent_count: reportData.executive_summary?.peer_group_size || 1900,
+          data_quality: 'Strong',
+          verdict: 'CONDITIONAL',
+          verdict_rationale: '',
+          risk_level: 'MODERATE',
+          risk_factors: [],
+          due_diligence: [],
+          all_opportunities: (reportData.celebrity_opportunities || []).map((opp: any) => ({
+            title: opp.opportunity?.title || '',
+            location: opp.opportunity?.location || '',
+            expected_return: opp.financial_metrics?.avg_roi ? `+${opp.financial_metrics.avg_roi}%` : '',
+            alignment_score: opp.alignment_score || 0,
+          })),
+          execution_sequence: [],
+        },
+        memo_data: {
+          kgv3_intelligence_used: {
+            precedents: reportData.executive_summary?.peer_group_size || 1900,
+            failure_modes: 0,
+            sequencing_rules: 0,
+            jurisdictions: 0,
+          },
+        },
+      };
+
+      await exportInstitutionalPDF(memoData);
     } catch (err) {
       alert('Failed to generate PDF. Please try again.');
     }

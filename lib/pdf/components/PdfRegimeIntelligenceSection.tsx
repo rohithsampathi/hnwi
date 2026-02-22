@@ -11,7 +11,7 @@ import { colors, formatPercent } from '../pdf-styles';
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     paddingTop: 56,
     paddingBottom: 72,
     paddingHorizontal: 56,
@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
   },
   headerTitle: {
     fontFamily: 'Helvetica-Bold',
@@ -49,7 +50,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[500],
     marginTop: 8,
   },
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     flex: 1,
     lineHeight: 1.5,
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
   tableCellHeader: {
     flex: 1,
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.white,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -194,19 +195,19 @@ const styles = StyleSheet.create({
   tableCell: {
     flex: 1,
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
   },
   tableCellBold: {
     flex: 1,
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[900],
   },
   tableCellHighlight: {
     flex: 1,
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.emerald[600],
   },
 
@@ -246,17 +247,17 @@ const styles = StyleSheet.create({
   },
   comparisonLabel: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
   },
   comparisonValue: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[900],
   },
   comparisonValueHighlight: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.emerald[600],
   },
   savingsBadge: {
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
   },
   savingsLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.emerald[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -316,7 +317,7 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 6,
+    fontSize: 8.5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
   },
   considerationDetail: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[600],
     lineHeight: 1.5,
   },
@@ -380,13 +381,13 @@ const styles = StyleSheet.create({
   },
   stepAction: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     flex: 1,
   },
   stepTimeline: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.amber[600],
   },
 
@@ -414,7 +415,7 @@ const styles = StyleSheet.create({
   },
   costLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -463,7 +464,7 @@ const styles = StyleSheet.create({
   },
   scenarioNote: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     marginBottom: 12,
     lineHeight: 1.5,
@@ -475,12 +476,12 @@ const styles = StyleSheet.create({
   },
   scenarioMetricLabel: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
   },
   scenarioMetricValue: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[900],
   },
   scenarioDifferential: {
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[700],
     lineHeight: 1.5,
   },
@@ -560,7 +561,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
   },
 });
@@ -730,13 +731,13 @@ const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
     borderTopWidth: 1,
     borderTopColor: colors.gray[200],
   }} fixed>
-    <Text style={{ fontFamily: 'Helvetica', fontSize: 7, color: colors.gray[400] }}>
+    <Text style={{ fontFamily: 'Helvetica', fontSize: 8.5, color: colors.gray[400] }}>
       Ref: {intakeId.slice(10, 22).toUpperCase()}
     </Text>
-    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 7, color: colors.gray[600], letterSpacing: 1, textTransform: 'uppercase' }}>
+    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 8.5, color: colors.gray[600], letterSpacing: 1, textTransform: 'uppercase' }}>
       HNWI Chronicles
     </Text>
-    <Text style={{ fontFamily: 'Helvetica', fontSize: 7, color: colors.gray[400] }}>Confidential</Text>
+    <Text style={{ fontFamily: 'Helvetica', fontSize: 8.5, color: colors.gray[400] }}>Confidential</Text>
   </View>
 );
 
@@ -777,7 +778,7 @@ export function PdfRegimeIntelligenceSection({
         </View>
 
         {/* Regime Hero Card */}
-        <View style={styles.heroCard}>
+        <View style={styles.heroCard} wrap={false}>
           <Text style={styles.heroTitle}>{regime_scenario.regime_name}</Text>
           <Text style={styles.heroSubtitle}>
             {destinationJurisdiction || 'Destination'} Special Tax Program
@@ -790,7 +791,7 @@ export function PdfRegimeIntelligenceSection({
             <Text style={styles.sectionLabel}>Key Benefits</Text>
             <View style={styles.benefitsGrid}>
               {regime_scenario.key_benefits.slice(0, 6).map((benefit, i) => (
-                <View key={i} style={styles.benefitItem}>
+                <View key={i} style={styles.benefitItem} wrap={false}>
                   <View style={styles.benefitCheck}>
                     <Text style={styles.benefitCheckText}>✓</Text>
                   </View>
@@ -805,7 +806,7 @@ export function PdfRegimeIntelligenceSection({
         {regime_scenario.qualification_routes && regime_scenario.qualification_routes.length > 0 && (
           <View style={{ marginBottom: 24 }}>
             <Text style={styles.sectionLabel}>Qualification Routes</Text>
-            <View style={styles.routesTable}>
+            <View style={styles.routesTable} wrap={false}>
               <View style={styles.tableHeader}>
                 <Text style={[styles.tableCellHeader, { flex: 2 }]}>Route</Text>
                 <Text style={styles.tableCellHeader}>Min. Investment</Text>
@@ -826,7 +827,7 @@ export function PdfRegimeIntelligenceSection({
         {regime_scenario.tax_comparison && (
           <View style={styles.comparisonSection}>
             <Text style={styles.sectionLabel}>Tax Comparison</Text>
-            <View style={styles.comparisonGrid}>
+            <View style={styles.comparisonGrid} wrap={false}>
               {/* Source */}
               <View style={styles.comparisonCard}>
                 <Text style={styles.comparisonTitle}>
@@ -871,7 +872,7 @@ export function PdfRegimeIntelligenceSection({
             {regime_scenario.critical_considerations.slice(0, 4).map((consideration, i) => {
               const priorityStyles = getPriorityStyles(consideration.priority);
               return (
-                <View key={i} style={styles.considerationItem}>
+                <View key={i} style={styles.considerationItem} wrap={false}>
                   <View style={[styles.priorityBadge, priorityStyles.badge]}>
                     <Text style={[styles.priorityText, priorityStyles.text]}>{consideration.priority}</Text>
                   </View>
@@ -1017,7 +1018,7 @@ export function PdfRegimeIntelligenceSection({
                   {warning.critical_dates && warning.critical_dates.length > 0 && (
                     <View style={{ marginTop: 8 }}>
                       {warning.critical_dates.map((cd, j) => (
-                        <Text key={j} style={{ fontSize: 8, color: colors.gray[600], marginBottom: 2 }}>
+                        <Text key={j} style={{ fontSize: 9, color: colors.gray[600], marginBottom: 2 }}>
                           {cd.date}: {cd.event}
                         </Text>
                       ))}

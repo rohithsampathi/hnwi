@@ -44,14 +44,14 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.amber[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontFamily: 'Times-Roman',
-    fontSize: 9,
+    fontSize: 10,
     color: colors.gray[500],
     marginTop: 6,
   },
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   visaCardType: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     marginTop: 2,
   },
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   // === BENEFITS LIST ===
   benefitsTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   benefitText: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[600],
     flex: 1,
   },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   changesTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[700],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   changesText: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[600],
     lineHeight: 1.5,
   },
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   driverText: {
     fontFamily: 'Times-Roman',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[600],
     flex: 1,
     lineHeight: 1.4,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[400],
   },
 });
@@ -330,7 +330,7 @@ export function PdfGoldenVisaSection({
         const changes2025 = program["2025_changes"];
 
         return (
-          <View key={index} style={styles.visaCard}>
+          <View key={index} style={styles.visaCard} wrap={false}>
             {/* Card Header */}
             <View style={styles.visaCardHeader}>
               <View style={styles.visaCardTitleRow}>
@@ -433,7 +433,7 @@ export function PdfGoldenVisaSection({
 
       {/* Destination Drivers Section */}
       {destinationDrivers?.primary_drivers && (
-        <View style={styles.driversGrid}>
+        <View style={styles.driversGrid} wrap={false}>
           {/* Tax Optimization */}
           {destinationDrivers.primary_drivers.tax_optimization !== undefined && (
             <View style={styles.driverCard}>

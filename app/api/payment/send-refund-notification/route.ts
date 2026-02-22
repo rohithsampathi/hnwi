@@ -3,6 +3,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendRefundNotification } from '@/lib/email/email-templates';
+import { withAuth, withCSRF, withRateLimit, withValidation } from '@/lib/security/api-auth';
+import { refundNotificationSchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
 
 interface SendRefundNotificationRequest {
   user_email: string;
@@ -17,7 +20,7 @@ interface SendRefundNotificationRequest {
  * POST /api/payment/send-refund-notification
  * Send refund notification email to user
  */
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body: SendRefundNotificationRequest = await request.json();
     const {
@@ -83,12 +86,8 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', withValidation(refundNotificationSchema, handlePost))));

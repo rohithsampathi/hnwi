@@ -139,7 +139,6 @@ export default function AuthenticatedAssessmentPage() {
     isCalibrating,
     calibrationEvents,
     simulationResult,
-    pdfUrl,
     resultData
   } = useAssessmentSSE(sessionId);
 
@@ -458,7 +457,7 @@ export default function AuthenticatedAssessmentPage() {
   };
 
   // Handle Digital Twin completion
-  const handleDigitalTwinComplete = (result: any, pdfUrlPath: string) => {
+  const handleDigitalTwinComplete = (result: any) => {
     if (sessionId) {
       // Reset module-level flags when navigating to results
       // This ensures clean state if user returns to /simulation page later
@@ -511,7 +510,6 @@ export default function AuthenticatedAssessmentPage() {
           onComplete={handleDigitalTwinComplete}
           testCompletionTime={testCompletionTime}
           simulationResult={simulationResult}
-          pdfUrl={pdfUrl}
           resultData={resultData}
         />
     );

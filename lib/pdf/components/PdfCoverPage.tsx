@@ -80,13 +80,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 80,
-    paddingVertical: 72,
+    paddingVertical: 48,
   },
 
   // === PREMIUM MONOGRAM LOGO ===
   logoContainer: {
-    width: 72,
-    height: 72,
+    width: 84,
+    height: 84,
     borderWidth: 2,
     borderColor: colors.amber[500],
     alignItems: 'center',
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 36,
+    fontSize: 42,
     color: colors.amber[500],
     letterSpacing: -1,
   },
@@ -118,30 +118,30 @@ const styles = StyleSheet.create({
   },
   brandGold: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 28,
+    fontSize: 32,
     color: colors.amber[500],
     letterSpacing: 8,
   },
   brandWhite: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 28,
+    fontSize: 32,
     color: colors.white,
     letterSpacing: 8,
   },
   tagline: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[500],
     letterSpacing: 6,
     textTransform: 'uppercase',
-    marginBottom: 56,
+    marginBottom: 32,
   },
 
   // === PREMIUM DIVIDER ===
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 56,
+    marginBottom: 32,
   },
   dividerLine: {
     width: 60,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   documentBadgeText: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
+    fontSize: 9,
     color: colors.gray[400],
     letterSpacing: 3,
     textTransform: 'uppercase',
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.gray[400],
     letterSpacing: 0.5,
-    marginBottom: 48,
+    marginBottom: 28,
   },
 
   // === JURISDICTION CORRIDOR - Premium Table ===
@@ -202,10 +202,11 @@ const styles = StyleSheet.create({
   jurisdictionColumn: {
     alignItems: 'center',
     minWidth: 120,
+    maxWidth: 150,
   },
   jurisdictionLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -216,6 +217,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.white,
     letterSpacing: 0.5,
+    maxWidth: 150,
+    textAlign: 'center',
   },
   corridorArrow: {
     marginHorizontal: 32,
@@ -245,7 +248,7 @@ const styles = StyleSheet.create({
   // === KEY METRICS - Premium Display ===
   metricsContainer: {
     flexDirection: 'row',
-    marginBottom: 48,
+    marginBottom: 20,
   },
   metricBox: {
     paddingVertical: 20,
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[600],
     letterSpacing: 1.5,
     textTransform: 'uppercase',
@@ -280,7 +283,7 @@ const styles = StyleSheet.create({
   // === REFERENCE & DATE ===
   referenceContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   referenceRow: {
     flexDirection: 'row',
@@ -335,7 +338,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: 'Times-Roman',
-    fontSize: 7,
+    fontSize: 8.5,
     color: colors.gray[700],
     letterSpacing: 0.5,
   },
@@ -417,7 +420,7 @@ export const PdfCoverPage: React.FC<PdfCoverPageProps> = ({
 
         {/* Document classification */}
         <View style={styles.documentBadge}>
-          <Text style={styles.documentBadgeText}>SFO Decision Memorandum</Text>
+          <Text style={styles.documentBadgeText}>SFO Decision Memorandum — Q1 2026</Text>
         </View>
         <Text style={styles.title}>Pattern Audit</Text>
         <Text style={styles.subtitle}>Strategic Intelligence Analysis</Text>

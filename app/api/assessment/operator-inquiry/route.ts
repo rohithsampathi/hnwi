@@ -3,8 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { withRateLimit, withValidation } from '@/lib/security/api-auth';
+import { assessmentInquirySchema } from '@/lib/security/validation-schemas';
+import { safeError } from '@/lib/security/api-response';
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { session_id, email, whatsapp, tier } = body;
@@ -75,13 +78,8 @@ export async function POST(request: NextRequest) {
     // Log the inquiry attempt even on error for recovery
     const bodyStr = await request.text().catch(() => '{}');
 
-    return NextResponse.json(
-      {
-        error: 'Failed to submit inquiry',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        message: 'Please contact us directly at hnwi@montaigne.co'
-      },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withRateLimit('inquiry', withValidation(assessmentInquirySchema, handlePost));

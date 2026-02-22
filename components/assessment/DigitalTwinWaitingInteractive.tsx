@@ -10,10 +10,9 @@ import { Globe, Brain, Shield, TrendingUp, AlertTriangle, Sparkles, Activity, Za
 
 interface DigitalTwinWaitingProps {
   sessionId: string;
-  onComplete: (result: SimulationResult, pdfUrl: string) => void;
+  onComplete: (result: SimulationResult) => void;
   testCompletionTime?: Date | null;
   simulationResult: SimulationResult | null;
-  pdfUrl: string | null;
   resultData: any;
 }
 
@@ -36,7 +35,6 @@ export function DigitalTwinWaitingInteractive({
   onComplete,
   testCompletionTime,
   simulationResult: sseSimulationResult,
-  pdfUrl: ssePdfUrl,
   resultData: sseResultData
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -480,7 +478,7 @@ export function DigitalTwinWaitingInteractive({
             const navigationDelay = remainingTime + 1000;
 
             setTimeout(() => {
-              onComplete(simulationResult, '');
+              onComplete(simulationResult);
             }, navigationDelay);
             return;
           }
@@ -497,7 +495,7 @@ export function DigitalTwinWaitingInteractive({
           clearInterval(pollingIntervalRef.current);
         }
         setHasCompleted(true);
-        onComplete({ outcome: 'DAMAGED', tier: 'unknown', cognitive_mri: '', confidence: 0 }, '');
+        onComplete({ outcome: 'DAMAGED', tier: 'unknown', cognitive_mri: '', confidence: 0 });
       }
     };
 
@@ -563,10 +561,10 @@ export function DigitalTwinWaitingInteractive({
           // Silent fail if sessionStorage is full
         }
 
-        onComplete(simulationResult, ssePdfUrl || '');
+        onComplete(simulationResult);
       }, navigationDelay);
     }
-  }, [sseResultData, sseSimulationResult, ssePdfUrl, hasCompleted, onComplete, sessionId, MINIMUM_DISPLAY_TIME_MS]);
+  }, [sseResultData, sseSimulationResult, hasCompleted, onComplete, sessionId, MINIMUM_DISPLAY_TIME_MS]);
 
   // Calculate progress based on completed steps + progress within current step
   // SCIENTIFIC: Uses actual step completion + time-based estimation within steps

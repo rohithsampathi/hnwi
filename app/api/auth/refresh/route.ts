@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
+import { withRateLimit } from '@/lib/security/api-auth'
 
 // Helper to get cookie domain for PWA cross-subdomain support
 function getCookieDomain(): string | undefined {
@@ -194,6 +195,6 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-// Refresh endpoint doesn't need CSRF protection since it uses httpOnly cookies
-// which are already CSRF-protected by SameSite and browser security
-export const POST = handlePost;
+// Refresh endpoint uses httpOnly cookies (SameSite protected) so CSRF is optional,
+// but we add rate limiting to prevent brute-force token rotation attacks.
+export const POST = withRateLimit('api', handlePost);

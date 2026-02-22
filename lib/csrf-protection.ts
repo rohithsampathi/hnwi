@@ -9,6 +9,7 @@ interface CSRFTokenData {
   token: string;
   timestamp: number;
   userAgent: string;
+  ipHash?: string; // SHA-256 hash of client IP — binds token to network
 }
 
 const CSRF_TOKEN_LIFETIME = 60 * 60 * 1000; // 1 hour
@@ -26,6 +27,38 @@ function getSecureCSRFCookieName(): string {
   }
 }
 
+/**
+ * Hash an IP address using SHA-256 (async, Web Crypto API).
+ * Falls back to a simple hash if crypto.subtle is unavailable.
+ */
+async function hashIP(ip: string): Promise<string> {
+  if (!ip || ip === 'unknown') return '';
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(ip);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    // Fallback: simple deterministic hash
+    let h = 0;
+    for (let i = 0; i < ip.length; i++) {
+      h = ((h << 5) - h + ip.charCodeAt(i)) & 0xffffffff;
+    }
+    return Math.abs(h).toString(16);
+  }
+}
+
+/**
+ * Extract client IP from a NextRequest.
+ */
+function extractClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  const real = request.headers.get('x-real-ip');
+  if (real) return real.trim();
+  return 'unknown';
+}
+
 export class CSRFProtection {
   /**
    * Generate a cryptographically secure CSRF token
@@ -41,20 +74,23 @@ export class CSRFProtection {
   }
 
   /**
-   * Set CSRF token in cookie
+   * Set CSRF token in cookie (includes IP hash for network binding)
    */
-  static setCSRFToken(request: NextRequest): { token: string; cookie: string } {
+  static async setCSRFToken(request: NextRequest): Promise<{ token: string; cookie: string }> {
     const userAgent = request.headers.get('user-agent') || '';
     const token = this.generateToken(userAgent);
-    
+    const clientIP = extractClientIP(request);
+    const ipHashValue = await hashIP(clientIP);
+
     const tokenData: CSRFTokenData = {
       token,
       timestamp: Date.now(),
-      userAgent
+      userAgent,
+      ipHash: ipHashValue
     };
-    
+
     const cookieValue = btoa(JSON.stringify(tokenData));
-    
+
     // Set the cookie with secure prefix
     const cookieStore = cookies();
     const secureCookieName = getSecureCSRFCookieName();
@@ -65,16 +101,16 @@ export class CSRFProtection {
       maxAge: CSRF_TOKEN_LIFETIME / 1000,
       path: '/'
     });
-    
+
     logger.debug('CSRF token generated and set in cookie');
-    
+
     return { token, cookie: cookieValue };
   }
 
   /**
-   * Validate CSRF token from request
+   * Validate CSRF token from request (includes IP binding check)
    */
-  static validateCSRFToken(request: NextRequest): { valid: boolean; error?: string } {
+  static async validateCSRFToken(request: NextRequest): Promise<{ valid: boolean; error?: string }> {
     try {
       // Skip CSRF validation for GET, HEAD, OPTIONS requests
       if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
@@ -170,6 +206,22 @@ export class CSRFProtection {
         return { valid: false, error: 'CSRF token invalid - security check failed' };
       }
 
+      // Validate IP hash (network binding) — skip for legacy tokens without ipHash
+      if (!isLegacyFormat && tokenData.ipHash) {
+        const currentIP = extractClientIP(request);
+        const currentHash = await hashIP(currentIP);
+        if (currentHash !== tokenData.ipHash) {
+          const context = sanitizeLoggingContext({
+            endpoint: new URL(request.url).pathname,
+            ip: currentIP,
+          });
+          logger.warn('CSRF validation failed - IP mismatch (possible token replay)', context);
+          return { valid: false, error: 'CSRF token invalid - security check failed' };
+        }
+      } else if (!isLegacyFormat && !tokenData.ipHash) {
+        logger.warn('CSRF token missing ipHash — legacy token, consider refreshing');
+      }
+
       // Validate the token matches
       if (tokenData.token !== csrfHeader) {
         logger.warn('CSRF validation failed - token mismatch');
@@ -200,7 +252,7 @@ export class CSRFProtection {
     return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
       // For state-changing operations (POST, PUT, DELETE, PATCH)
       if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
-        const validation = this.validateCSRFToken(request);
+        const validation = await this.validateCSRFToken(request);
         
         if (!validation.valid) {
           const context = sanitizeLoggingContext({
@@ -261,10 +313,10 @@ export class CSRFProtection {
   /**
    * Generate new CSRF token for API response
    */
-  static refreshCSRFToken(request: NextRequest): { token: string; expires: number } {
-    const { token } = this.setCSRFToken(request);
+  static async refreshCSRFToken(request: NextRequest): Promise<{ token: string; expires: number }> {
+    const { token } = await this.setCSRFToken(request);
     const expires = Date.now() + CSRF_TOKEN_LIFETIME;
-    
+
     return { token, expires };
   }
 

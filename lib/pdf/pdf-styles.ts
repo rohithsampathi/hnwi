@@ -146,19 +146,19 @@ export const typography = {
   },
   // Body - Primary content (Times-Roman for premium institutional feel)
   body: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: 'Times-Roman',
-    lineHeight: 1.6,
+    lineHeight: 1.65,
   },
   // Small - Secondary content
   small: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: 'Times-Roman',
     lineHeight: 1.5,
   },
   // Micro - Labels, captions
   micro: {
-    fontSize: 7,
+    fontSize: 8.5,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -166,13 +166,13 @@ export const typography = {
   },
   // Mono - Reference numbers, codes
   mono: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: 'Courier',
     letterSpacing: 0.5,
   },
   // Mono small
   monoSmall: {
-    fontSize: 7,
+    fontSize: 8.5,
     fontFamily: 'Courier',
     letterSpacing: 0.3,
   },
@@ -198,7 +198,7 @@ export const pdfStyles = StyleSheet.create({
   // Page layouts
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 9,
+    fontSize: 10,
     paddingTop: 48,
     paddingBottom: 56,
     paddingHorizontal: 48,
@@ -207,7 +207,7 @@ export const pdfStyles = StyleSheet.create({
   },
   pageDark: {
     fontFamily: 'Helvetica',
-    fontSize: 9,
+    fontSize: 10,
     padding: 0,
     backgroundColor: colors.dark,
     color: colors.gray[200],
@@ -462,7 +462,7 @@ export const pdfStyles = StyleSheet.create({
   footerBrand: {
     ...typography.micro,
     color: colors.amber[500],
-    fontSize: 7,
+    fontSize: 8.5,
   },
 
   // Intelligence note (grounded indicator)
@@ -486,7 +486,7 @@ export const pdfStyles = StyleSheet.create({
   groundedText: {
     ...typography.micro,
     color: colors.gray[500],
-    fontSize: 6,
+    fontSize: 8.5,
   },
 });
 

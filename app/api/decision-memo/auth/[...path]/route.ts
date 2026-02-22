@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
 
 interface RouteParams {
   params: {
@@ -44,7 +45,7 @@ export async function POST(
 
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error(`[Report Auth] Error proxying /auth/${subPath}:`, error);
+    logger.error('Report Auth proxy error', { subPath, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { detail: 'Failed to connect to authentication service' },
       { status: 502 }

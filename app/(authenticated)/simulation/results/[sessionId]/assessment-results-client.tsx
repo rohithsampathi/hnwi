@@ -9,8 +9,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Share2, Check, ArrowRight, Download } from 'lucide-react';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
 import { AssessmentResults } from '@/lib/hooks/useAssessmentState';
-import { downloadPDF as generateAndDownloadPDF } from '@/lib/pdf-generator';
-import type { EnhancedReportData } from '@/types/assessment-report';
+import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
+import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 import type { Citation } from '@/lib/parse-dev-citations';
 import dynamic from 'next/dynamic';
 import { useCitationManager } from '@/hooks/use-citation-manager';
@@ -92,7 +92,6 @@ export default function AssessmentResultsClient() {
   // Connect to SSE for real-time processing status when results aren't ready
   const {
     simulationResult: sseSimulationResult,
-    pdfUrl: ssePdfUrl,
     resultData: sseResultData
   } = useAssessmentSSE(sessionId);
 
@@ -464,167 +463,51 @@ export default function AssessmentResultsClient() {
     }
 
     try {
-      // Build enhanced report data structure for PDF
+      // Build PdfMemoData from simulation results for react-pdf export
       const spider = results.enhanced_report?.full_analytics?.strategic_positioning?.spider_graph;
+      const celebrityOpps = results.enhanced_report?.celebrity_opportunities?.celebrity_opportunities || [];
 
-      // Transform celebrity opportunities to match expected format
-      const celebrityOpps = (results.enhanced_report?.celebrity_opportunities?.celebrity_opportunities || []).map((opp: any) => ({
-        opportunity: {
-          id: opp.devid || opp.id || '',
-          title: opp.title || '',
-          category: opp.category || 'alternative_assets',
-          location: opp.location || '',
-          value: opp.value || ''
-        },
-        top_performer_stats: {
-          adopter_count: opp.peer_count || 0,
-          avg_performance_percentile: 0,
-          success_stories: []
-        },
-        financial_metrics: {
-          avg_roi: opp.performance_data?.avg_roi || 0,
-          median_investment: 0,
-          time_horizon: '24 months'
-        },
-        alignment_score: opp.match_score || 0,
-        why_valuable: []
-      }));
-
-      // Transform improvement areas
-      const improvementAreas = spider ? (spider.improvement_areas || []).map((dimName: string) => {
-        const dim = spider.dimensions.find((d: any) => d.name === dimName);
-        if (!dim) return null;
-
-        const gap = dim.top_0_1_percentile - dim.user_score;
-        return {
-          dimension: dimName,
-          current_score: dim.user_score / 10,
-          target_score: dim.top_0_1_percentile / 10,
-          gap: gap / 10,
-          improvement_potential: (gap / dim.top_0_1_percentile) * 100,
-          actionable_steps: []
-        };
-      }).filter((a: any) => a !== null) : [];
-
-      // Extract gap analysis text
-      const gapAnalysisText = (results as any).strategic_analysis?.raw_text ||
-                              results.enhanced_report?.full_analytics?.gap_analysis ||
-                              (results as any).gap_analysis;
-
-      // Extract digital twin data
-      const digitalTwinData = {
-        narrative: (results as any).digital_twin?.narrative || results.simulation?.simulation_narrative,
-        outcome: (results as any).digital_twin?.outcome || results.simulation?.outcome,
-        confidence: (results as any).tier_classification?.confidence || results.simulation?.confidence
-      };
-
-      const enhancedReportData: EnhancedReportData = {
-        session_id: sessionId,
-        user_id: results.user_id || '',
+      const memoData: PdfMemoData = {
+        success: true,
+        intake_id: `simulation_${sessionId}`,
         generated_at: new Date().toISOString(),
-        gap_analysis: gapAnalysisText, // Add gap analysis
-        digital_twin: digitalTwinData, // Add digital twin
-        simulation: results.simulation, // Add full simulation data
-        estimated_opportunity_cost_usd: results.enhanced_report?.celebrity_opportunities?.estimated_opportunity_cost_usd || 0, // Total value from backend
-        executive_summary: {
-          tier: results.tier,
-          percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,
-          net_worth_estimate: '$5-10M',
-          peer_group_size: hnwiWorldCount,
-          opportunities_accessible: opportunities?.length || 0,
-          opportunities_missed: results.enhanced_report?.celebrity_opportunities?.total_missed || 0,
-          optimization_potential: spider ? (spider.dimensions.reduce((acc: number, dim: any) => {
-            return acc + ((dim.top_0_1_percentile - dim.user_score) / dim.top_0_1_percentile);
-          }, 0) / spider.dimensions.length) : 0.17,
-          confidence_score: results.confidence || 8.0,
-          mental_models_applied: null,
-          sophistication_score: null
+        preview_data: {
+          source_jurisdiction: 'Current Position',
+          destination_jurisdiction: 'Optimized Position',
+          exposure_class: results.tier?.charAt(0).toUpperCase() + results.tier?.slice(1) || 'Strategic Investor',
+          value_creation: `${hnwiWorldCount.toLocaleString()}+ HNWI World developments analyzed`,
+          five_year_projection: '',
+          total_tax_benefit: '',
+          precedent_count: hnwiWorldCount,
+          data_quality: 'Strong',
+          verdict: results.simulation?.outcome || 'CONDITIONAL',
+          verdict_rationale: (results as any).digital_twin?.narrative || results.simulation?.simulation_narrative || '',
+          risk_level: results.tier === 'architect' ? 'LOW' : results.tier === 'operator' ? 'MODERATE' : 'HIGH',
+          risk_factors: [],
+          due_diligence: [],
+          all_opportunities: celebrityOpps.map((opp: any) => ({
+            title: opp.title || '',
+            location: opp.location || '',
+            expected_return: opp.performance_data?.avg_roi ? `+${opp.performance_data.avg_roi}%` : '',
+            alignment_score: opp.match_score || 0,
+          })),
+          execution_sequence: [],
+          peer_cohort_stats: spider ? {
+            total_hnwis: hnwiWorldCount,
+            dimensions: spider.dimensions?.map((d: any) => d.name) || [],
+          } : undefined,
         },
-        spider_graphs: {
-          peer_comparison: {
-            dimensions: spider ? spider.dimensions.map((d: any) => d.name) : [],
-            user_scores: spider ? spider.dimensions.map((d: any) => d.user_score / 10) : [],
-            peer_average: spider ? spider.dimensions.map((d: any) => d.peer_average / 10) : [],
-            top_performers: spider ? spider.dimensions.map((d: any) => d.top_0_1_percentile / 10) : [],
-            improvement_areas: improvementAreas,
-            hnwi_world_count: hnwiWorldCount
+        memo_data: {
+          kgv3_intelligence_used: {
+            precedents: hnwiWorldCount,
+            failure_modes: 0,
+            sequencing_rules: 0,
+            jurisdictions: 0,
           },
-          opportunity_alignment: {
-            dimensions: [],
-            user_scores: [],
-            peer_average: [],
-            top_performers: [],
-            improvement_areas: []
-          }
         },
-        missed_opportunities: {
-          top_missed: [],
-          total_missed_value: 0,
-          missed_by_category: {},
-          total_opportunities_analyzed: 0
-        },
-        celebrity_opportunities: celebrityOpps,
-        peer_analysis: {
-          cohort_definition: {
-            size: hnwiWorldCount,
-            tier: results.tier,
-            net_worth_range: '$5-10M',
-            age_range: '35-55',
-            geographic_region: 'Global'
-          },
-          your_percentile: results.enhanced_report?.full_analytics?.strategic_positioning?.peer_rank_percentile || 68,
-          performance_metrics: {},
-          behavioral_insights: {
-            decision_speed: {
-              metric_name: 'Decision Speed',
-              your_value: 0,
-              peer_median: 0,
-              peer_top_quartile: 0,
-              peer_top_decile: 0,
-              percentile: 0,
-              trend: 'at' as const
-            },
-            risk_appetite: {
-              metric_name: 'Risk Appetite',
-              your_value: 0,
-              peer_median: 0,
-              peer_top_quartile: 0,
-              peer_top_decile: 0,
-              percentile: 0,
-              trend: 'at' as const
-            },
-            diversification_index: {
-              metric_name: 'Diversification Index',
-              your_value: 0,
-              peer_median: 0,
-              peer_top_quartile: 0,
-              peer_top_decile: 0,
-              percentile: 0,
-              trend: 'at' as const
-            },
-            network_leverage: {
-              metric_name: 'Network Leverage',
-              your_value: 0,
-              peer_median: 0,
-              peer_top_quartile: 0,
-              peer_top_decile: 0,
-              percentile: 0,
-              trend: 'at' as const
-            }
-          }
-        },
-        visualizations: {
-          performance_timeline: [],
-          geographic_heatmap: {
-            regions: {},
-            recommended_regions: [],
-            underexplored_regions: []
-          }
-        },
-        strategic_insights: []
       };
 
-      await generateAndDownloadPDF(enhancedReportData, sessionId);
+      await exportInstitutionalPDF(memoData);
     } catch (err) {
       alert('Failed to generate PDF. Please try again.');
     }

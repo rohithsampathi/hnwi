@@ -1,10 +1,12 @@
 // app/api/decision-memo/payment/verify/route.ts
 // Verify Razorpay payment signature and trigger memo generation
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
     const { intake_id, payment_id, order_id, signature } = body;
@@ -44,10 +46,8 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('Error verifying payment:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to verify payment. Please contact support.' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));

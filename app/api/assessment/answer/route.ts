@@ -4,8 +4,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { API_BASE_URL } from '@/config/api';
+import { withAuth, withCSRF } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
 
-export async function POST(request: NextRequest) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
 
@@ -44,9 +46,8 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to submit answer' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(handlePost));

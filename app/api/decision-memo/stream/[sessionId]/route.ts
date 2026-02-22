@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { logger } from '@/lib/secure-logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export async function GET(
 ) {
   const { sessionId } = await Promise.resolve(context.params);
 
-  console.log('🔌 Decision Memo SSE Proxy: Connecting for session:', sessionId);
+  logger.info('Decision Memo SSE Proxy connecting', { sessionId });
 
   // Create a ReadableStream for SSE
   const stream = new ReadableStream({
@@ -34,7 +35,7 @@ export async function GET(
 
       // Backend SSE URL for Decision Memo
       const sseUrl = `${API_BASE_URL}/api/decision-memo/stream/${sessionId}`;
-      console.log('🔗 Proxy will connect to backend SSE:', sseUrl);
+      logger.info('Proxy connecting to backend SSE', { sessionId });
 
       try {
         // CRITICAL FIX: Send initial SSE headers immediately to prevent client timeout
@@ -42,7 +43,7 @@ export async function GET(
         controller.enqueue(encoder.encode(': proxy-starting\n\n'));
 
         // Fetch from backend SSE endpoint
-        console.log('🔗 Fetching from backend SSE...');
+        logger.info('Fetching from backend SSE');
         const response = await fetch(sseUrl, {
           headers: {
             'Accept': 'text/event-stream',
@@ -50,24 +51,24 @@ export async function GET(
             'Connection': 'keep-alive',
           },
         }).catch(err => {
-          console.error('❌ Fetch error:', err);
+          logger.error('SSE fetch error', { error: err instanceof Error ? err.message : String(err) });
           throw err;
         });
 
-        console.log('📡 Backend SSE response status:', response.status, 'headers:', Object.fromEntries(response.headers.entries()));
+        logger.info('Backend SSE response received', { status: response.status });
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('❌ Backend SSE failed with status:', response.status, 'body:', errorText);
+          logger.error('Backend SSE failed', { status: response.status });
           throw new Error(`Backend SSE failed: ${response.status} - ${errorText}`);
         }
 
         if (!response.body) {
-          console.error('❌ No response body from backend');
+          logger.error('No response body from backend SSE');
           throw new Error('No response body from backend');
         }
 
-        console.log('✅ Backend SSE connection established, starting to stream...');
+        logger.info('Backend SSE connection established, streaming');
 
         // Stream the backend response to the client
         const reader = response.body.getReader();
@@ -77,13 +78,13 @@ export async function GET(
           const { done, value } = await reader.read();
 
           if (done) {
-            console.log('📭 Backend stream closed');
+            logger.info('Backend SSE stream closed', { sessionId });
             break;
           }
 
           // Decode chunk
           const chunk = decoder.decode(value, { stream: true });
-          console.log('📦 Received chunk from backend:', chunk.substring(0, 200));
+          logger.info('Received SSE chunk from backend', { chunkLength: chunk.length });
 
           // CRITICAL FIX: Forward the raw chunk directly to client
           // This preserves SSE formatting (event:, data:, id:, retry:, comments)

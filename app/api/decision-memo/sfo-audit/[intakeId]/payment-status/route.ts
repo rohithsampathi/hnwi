@@ -2,6 +2,7 @@
 // Check payment status for SFO Pattern Audit
 
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/secure-logger';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
@@ -23,7 +24,7 @@ export async function GET(
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text();
-      console.error('Backend error checking payment status:', errorText);
+      logger.error('Backend error checking payment status', { status: backendResponse.status });
       return NextResponse.json(
         { success: false, error: 'Failed to check payment status' },
         { status: backendResponse.status }
@@ -31,10 +32,10 @@ export async function GET(
     }
 
     const statusData = await backendResponse.json();
-    console.log('💳 [SFO Payment Status] Backend response:', JSON.stringify(statusData, null, 2));
+    logger.info('SFO payment status fetched', { intakeId });
     return NextResponse.json(statusData);
   } catch (error) {
-    console.error('Error checking SFO audit payment status:', error);
+    logger.error('Error checking SFO audit payment status', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { success: false, error: 'Failed to check payment status' },
       { status: 500 }

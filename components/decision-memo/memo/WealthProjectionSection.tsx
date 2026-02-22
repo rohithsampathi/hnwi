@@ -571,24 +571,24 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <span className="text-[10px] text-muted-foreground">(If You Don't Proceed)</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-card rounded-lg p-3 text-center border border-border">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 1</p>
-                <p className="text-lg font-bold text-muted-foreground">-$0.20M</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-$0.20M</p>
               </div>
-              <div className="bg-card rounded-lg p-3 text-center border border-border">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 5</p>
-                <p className="text-lg font-bold text-muted-foreground">-$1.33M</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-$1.33M</p>
               </div>
-              <div className="bg-card rounded-lg p-3 text-center border-2 border-primary/50">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border-2 border-primary/50">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 10</p>
-                <p className="text-xl font-bold text-foreground">-{metrics.costOfInaction}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground">-{metrics.costOfInaction}</p>
               </div>
             </div>
 
             <div className="bg-card rounded-lg p-3">
-              <p className="text-xs text-foreground">
-                <span className="font-semibold text-foreground">"Do Nothing" Locks Out {metrics.costOfInaction}</span>
+              <p className="text-xs text-foreground break-words">
+                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {metrics.costOfInaction}</span>
                 {' '}— Primary: Lost rental yield FV. Secondary: No TX diversification/tax arbitrage.
               </p>
             </div>
@@ -1057,24 +1057,24 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <span className="text-[10px] text-muted-foreground">(If You Don't Proceed)</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-card rounded-lg p-3 text-center border border-border">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 1</p>
-                <p className="text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_1)}</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_1)}</p>
               </div>
-              <div className="bg-card rounded-lg p-3 text-center border border-border">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 5</p>
-                <p className="text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_5)}</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-{formatCurrency(activeCOI.year_5)}</p>
               </div>
-              <div className="bg-card rounded-lg p-3 text-center border-2 border-primary/50">
+              <div className="bg-card rounded-lg p-2 sm:p-3 text-center border-2 border-primary/50">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 10</p>
-                <p className="text-xl font-bold text-foreground">-{formatCurrency(activeCOI.year_10)}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground">-{formatCurrency(activeCOI.year_10)}</p>
               </div>
             </div>
 
             <div className="bg-card rounded-lg p-3">
-              <p className="text-xs text-foreground">
-                <span className="font-semibold text-foreground">"Do Nothing" Locks Out {formatCurrency(activeCOI.year_10)}</span>
+              <p className="text-xs text-foreground break-words">
+                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {formatCurrency(activeCOI.year_10)}</span>
                 {' '}— Primary: {activeCOI.primary_driver}
               </p>
               {activeCOI.structure_blocked && activeCOI.context_note && (

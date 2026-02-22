@@ -1,6 +1,7 @@
 // API route for logout
 import { NextRequest, NextResponse } from 'next/server'
 import { CSRFProtection } from '@/lib/csrf-protection'
+import { withRateLimit } from '@/lib/security/api-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,4 +80,4 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-export const POST = CSRFProtection.withCSRFProtection(handlePost);
+export const POST = withRateLimit('api', CSRFProtection.withCSRFProtection(handlePost));

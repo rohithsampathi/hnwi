@@ -2,6 +2,7 @@
 // API route for member analytics with fallback
 
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/secure-logger';
 
 export async function GET(request: Request) {
   try {
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
         return NextResponse.json(data);
       }
     } catch (backendError) {
-      console.log('Analytics backend unavailable, using fallback data');
+      logger.info('Analytics backend unavailable, using fallback data');
     }
 
     // Fallback: Return mock analytics data
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error in analytics/members:', error);
+    logger.error('Error in analytics/members', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       {
         total_members: 0,

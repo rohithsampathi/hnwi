@@ -5,18 +5,21 @@
 // Route: POST /api/decision-memo/audit-payment/verify
 // =============================================================================
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
+import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
+import { safeError } from '@/lib/security/api-response';
+import { logger } from '@/lib/secure-logger';
 
 export const maxDuration = 30; // Verification should be fast (generation is background)
 
-export async function POST(request: Request) {
+async function handlePost(request: NextRequest) {
   try {
     const body = await request.json();
 
     // Forward to backend for verification + email sending + generation trigger
     const backendUrl = `${API_BASE_URL}/api/decision-memo/audit/verify-payment`;
-    console.log('🔒 [Audit] Verifying payment via backend:', backendUrl);
+    logger.info('🔒 [Audit] Verifying payment via backend:', backendUrl);
 
     const response = await fetch(backendUrl, {
       method: 'POST',
@@ -27,18 +30,16 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ [Audit] Backend verify error:', response.status, data);
+      logger.error('❌ [Audit] Backend verify error:', response.status, data);
       return NextResponse.json(data, { status: response.status });
     }
 
-    console.log('✅ [Audit] Payment verified:', data.payment_id, 'intake:', data.intake_id);
+    logger.info('✅ [Audit] Payment verified:', data.payment_id, 'intake:', data.intake_id);
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('💥 [Audit] Payment verification failed:', error);
-    return NextResponse.json(
-      { success: false, error: 'Payment verification failed' },
-      { status: 500 }
-    );
+    return safeError(error);
   }
 }
+
+export const POST = withAuth(withCSRF(withRateLimit('payment', handlePost)));
