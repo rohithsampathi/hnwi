@@ -28,11 +28,15 @@ export async function GET(
     const backendUrl = `${API_BASE_URL}/api/decision-memo/${intakeId}`;
     logger.info('Calling backend unified endpoint', { intakeId });
 
-    // Forward Authorization header from client to backend (report auth tokens)
+    // Forward auth headers AND session cookies to backend
     const authHeader = request.headers.get('Authorization');
+    const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
     if (authHeader) {
       backendHeaders['Authorization'] = authHeader;
+    }
+    if (cookieHeader) {
+      backendHeaders['Cookie'] = cookieHeader;
     }
 
     const response = await fetch(backendUrl, {

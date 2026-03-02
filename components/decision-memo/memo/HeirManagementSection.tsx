@@ -46,7 +46,7 @@ function parseMarkdownBold(text: string): React.ReactNode {
   return parts.map((part, index) => {
     // Odd indices are the bold parts (captured groups)
     if (index % 2 === 1) {
-      return <span key={index} className="font-bold text-foreground">{part}</span>;
+      return <span key={index} className="font-medium text-foreground">{part}</span>;
     }
     return part;
   });
@@ -66,18 +66,18 @@ function formatLargeCurrency(amount: number): string {
 
 // Urgency color based on mitigation timeline days
 function getUrgencyColor(days: number | undefined): string {
-  if (days === undefined) return 'text-muted-foreground';
-  if (days <= 45) return 'text-red-600';      // Urgent - needs immediate attention
-  if (days <= 60) return 'text-yellow-600';   // Moderate urgency
-  return 'text-green-600';                     // Standard timeline
+  if (days === undefined) return 'text-muted-foreground/60';
+  if (days <= 45) return 'text-red-500/80';      // Urgent - needs immediate attention
+  if (days <= 60) return 'text-amber-500/80';   // Moderate urgency
+  return 'text-emerald-500/80';                     // Standard timeline
 }
 
 // Urgency badge styling based on days
 function getUrgencyBadgeStyle(days: number | undefined): string {
-  if (days === undefined) return 'bg-muted text-muted-foreground';
-  if (days <= 45) return 'bg-red-100 text-red-700 border-red-200';      // Urgent
-  if (days <= 60) return 'bg-yellow-100 text-yellow-700 border-yellow-200';  // Moderate
-  return 'bg-green-100 text-green-700 border-green-200';                 // Standard
+  if (days === undefined) return 'border-border/20 text-muted-foreground/80';
+  if (days <= 45) return 'border-red-500/20 text-red-500/80';      // Urgent
+  if (days <= 60) return 'border-amber-500/20 text-amber-500/80';  // Moderate
+  return 'border-emerald-500/20 text-emerald-500/80';                 // Standard
 }
 
 // Heir icon by relationship
@@ -98,9 +98,9 @@ function HeirIcon({ relationship, className = "w-6 h-6" }: { relationship: HeirR
 // Generation badge component
 function GenerationBadge({ gen, isActive = false }: { gen: string; isActive?: boolean }) {
   return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isActive
-      ? 'bg-primary text-primary-foreground'
-      : 'bg-muted text-muted-foreground'
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs tracking-[0.15em] uppercase font-medium ${isActive
+      ? 'bg-gold/10 text-gold/80 border border-gold/30'
+      : 'border border-border/20 text-muted-foreground/60'
       }`}>
       {gen}
     </div>
@@ -123,20 +123,15 @@ function normalizePercentage(value: number): number {
 // Preservation indicator
 function PreservationIndicator({ percentage }: { percentage: number }) {
   const normalized = normalizePercentage(percentage);
-  const isGood = normalized >= 0.70;
-  const isModerate = normalized >= 0.50 && normalized < 0.70;
 
   return (
-    <div className={`px-3 py-1 rounded-full text-xs font-bold ${isGood ? 'bg-primary/20 text-primary' :
-      isModerate ? 'bg-muted text-muted-foreground' :
-        'bg-muted text-muted-foreground'
-      }`}>
+    <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
       {(normalized * 100).toFixed(0)}% Preserved
-    </div>
+    </span>
   );
 }
 
-// Risk gauge component (semi-circular) - using primary colors only
+// Risk gauge component (semi-circular) - using gold accent
 // Arc fills clockwise: gold = improved risk (kept), grey gap = reduction achieved
 function RiskGauge({ current, improved, label }: { current: number; improved: number; label: string }) {
   const reduction = current - improved;
@@ -153,27 +148,27 @@ function RiskGauge({ current, improved, label }: { current: number; improved: nu
       <div className="relative w-56 h-[120px]">
         <svg viewBox="0 0 160 90" className="w-full h-full">
           {/* Background arc (full track) */}
-          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-muted" />
-          {/* Current risk arc (grey — shows total risk zone) */}
-          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcCurrentLen} ${arcHalfC}`} strokeLinecap="round" className="text-muted-foreground/30" />
-          {/* Improved risk arc (gold — shows remaining risk after structure) */}
-          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcImprovedLen} ${arcHalfC}`} strokeLinecap="round" className="text-primary" />
-          {/* Current % — top line inside arc */}
-          <text x={cx} y={cy - 26} textAnchor="middle" className="fill-foreground" style={{ fontSize: '22px', fontWeight: 700 }}>{Math.round(current)}%</text>
-          {/* Arrow + Improved % — second line inside arc */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} className="text-border/20" />
+          {/* Current risk arc (grey -- shows total risk zone) */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcCurrentLen} ${arcHalfC}`} strokeLinecap="round" className="text-muted-foreground/20" />
+          {/* Improved risk arc (gold -- shows remaining risk after structure) */}
+          <path d={`M ${cx - arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${cx + arcR} ${cy}`} fill="none" stroke="currentColor" strokeWidth={sw} strokeDasharray={`${arcImprovedLen} ${arcHalfC}`} strokeLinecap="round" className="text-gold/70" />
+          {/* Current % -- top line inside arc */}
+          <text x={cx} y={cy - 26} textAnchor="middle" className="fill-foreground" style={{ fontSize: '22px', fontWeight: 400, fontFamily: 'monospace' }}>{Math.round(current)}%</text>
+          {/* Arrow + Improved % -- second line inside arc */}
           <text x={cx} y={cy - 6} textAnchor="middle">
-            <tspan className="fill-muted-foreground" style={{ fontSize: '11px' }}>→ </tspan>
-            <tspan className="fill-primary" style={{ fontSize: '17px', fontWeight: 700 }}>{Math.round(improved)}%</tspan>
+            <tspan className="fill-muted-foreground/60" style={{ fontSize: '12px' }}>→ </tspan>
+            <tspan className="fill-gold/80" style={{ fontSize: '17px', fontWeight: 400, fontFamily: 'monospace' }}>{Math.round(improved)}%</tspan>
           </text>
         </svg>
       </div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold -mt-3">{label}</p>
-      <p className="text-sm font-bold text-primary">↓ {Math.round(reduction)} pts</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 font-medium -mt-3">{label}</p>
+      <p className="text-sm font-medium text-gold/80">↓ {Math.round(reduction)} pts</p>
     </div>
   );
 }
 
-// Involvement level indicator - using primary colors
+// Involvement level indicator
 function InvolvementIndicator({ level }: { level: InvolvementLevel }) {
   const config: Record<InvolvementLevel, { bars: number; label: string }> = {
     HIGH: { bars: 4, label: 'High' },
@@ -188,86 +183,77 @@ function InvolvementIndicator({ level }: { level: InvolvementLevel }) {
     <div className="flex items-center gap-2">
       <div className="flex gap-0.5">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className={`w-1.5 h-4 rounded-sm ${i <= bars ? 'bg-primary' : 'bg-muted'}`} />
+          <div key={i} className={`w-1.5 h-4 rounded-sm ${i <= bars ? 'bg-gold/60' : 'bg-border/20'}`} />
         ))}
       </div>
-      <span className="text-[10px] font-bold text-muted-foreground">{label}</span>
+      <span className="text-xs font-normal text-muted-foreground/60">{label}</span>
     </div>
   );
 }
 
-// Readiness badge - using primary colors
+// Readiness badge
 function ReadinessBadge({ level }: { level: ReadinessLevel }) {
-  const config: Record<ReadinessLevel, { opacity: string; icon: React.ReactNode }> = {
-    HIGH: { opacity: 'bg-primary/20 text-primary', icon: <UserCheck className="w-3 h-3" /> },
-    MODERATE: { opacity: 'bg-primary/10 text-primary', icon: <Scale className="w-3 h-3" /> },
-    LOW: { opacity: 'bg-muted text-muted-foreground', icon: <AlertTriangle className="w-3 h-3" /> }
+  const config: Record<ReadinessLevel, { border: string; text: string; icon: React.ReactNode }> = {
+    HIGH: { border: 'border-gold/20', text: 'text-gold/80', icon: <UserCheck className="w-3 h-3" /> },
+    MODERATE: { border: 'border-border/20', text: 'text-muted-foreground/80', icon: <Scale className="w-3 h-3" /> },
+    LOW: { border: 'border-amber-500/20', text: 'text-amber-500/80', icon: <AlertTriangle className="w-3 h-3" /> }
   };
 
-  const { opacity, icon } = config[level] || config.MODERATE;
+  const { border, text, icon } = config[level] || config.MODERATE;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold ${opacity}`}>
+    <span className={`inline-flex items-center gap-1 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${border} ${text}`}>
       {icon}
       {level}
     </span>
   );
 }
 
-// Legacy Heir card component - using primary colors only
+// Legacy Heir card component
 function HeirCard({ heir, index }: { heir: NonNullable<HeirManagementData['heirs']>[0]; index: number }) {
-  const riskOpacity: Record<RiskLevel, string> = {
-    HIGH: 'border-primary/60 bg-primary/5',
-    MEDIUM: 'border-primary/40 bg-primary/5',
-    LOW: 'border-border bg-card'
-  };
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
-      className={`border-2 rounded-xl p-5 ${riskOpacity[heir.risk_level] || 'border-border bg-card'}`}
+      transition={{ delay: index * 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-xl border border-border/20 bg-card/50 p-6"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-foreground">{heir.name}</h4>
-            <p className="text-xs text-muted-foreground">{heir.role}</p>
-          </div>
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h4 className="text-base font-normal text-foreground">{heir.name}</h4>
+          <p className="text-sm text-muted-foreground/60 font-normal">{heir.role}</p>
         </div>
-        <span className={`px-2 py-1 rounded text-[9px] font-bold ${heir.risk_level === 'HIGH' ? 'bg-primary/20 text-primary' :
-          heir.risk_level === 'MEDIUM' ? 'bg-primary/10 text-primary' :
-            'bg-muted text-muted-foreground'
-          }`}>
+        <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
+          heir.risk_level === 'HIGH' ? 'border-red-500/20 text-red-500/80' :
+          heir.risk_level === 'MEDIUM' ? 'border-amber-500/20 text-amber-500/80' :
+            'border-border/20 text-muted-foreground/80'
+        }`}>
           {heir.risk_level} RISK
         </span>
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-card rounded-lg p-3 border border-border">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Involvement</p>
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Involvement</p>
           <InvolvementIndicator level={heir.involvement_level} />
         </div>
-        <div className="bg-card rounded-lg p-3 border border-border">
-          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Wealth Readiness</p>
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Wealth Readiness</p>
           <ReadinessBadge level={heir.wealth_readiness} />
         </div>
       </div>
 
       {/* Recommended Actions */}
-      <div className="pt-4 border-t border-border">
-        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-3">Recommended Actions</p>
+      <div className="pt-4">
+        <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Recommended Actions</p>
         <div className="space-y-2">
           {heir.recommended_actions.slice(0, 3).map((action, i) => (
             <div key={i} className="flex items-start gap-2">
-              <ArrowRight className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-              <span className="text-xs text-muted-foreground">{action}</span>
+              <ArrowRight className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+              <span className="text-xs text-muted-foreground/60 font-normal">{action}</span>
             </div>
           ))}
         </div>
@@ -280,48 +266,44 @@ function HeirCard({ heir, index }: { heir: NonNullable<HeirManagementData['heirs
 function HeirAllocationCard({ allocation, index }: { allocation: HeirAllocation; index: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
-      className="border border-border bg-card rounded-xl p-5"
+      transition={{ delay: index * 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-xl border border-border/20 bg-card/50 p-6"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <HeirIcon relationship={allocation.relationship} className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-foreground">{allocation.name}</h4>
-            <p className="text-xs text-muted-foreground">Age: {allocation.age}</p>
-          </div>
+      <div className="flex items-start justify-between mb-5">
+        <div>
+          <h4 className="text-base font-normal text-foreground">{allocation.name}</h4>
+          <p className="text-sm text-muted-foreground/60 font-normal">Age: {allocation.age}</p>
         </div>
         <div className="text-right">
-          <p className="text-lg font-bold text-primary">{(allocation.allocation_pct * 100).toFixed(0)}%</p>
-          <p className="text-xs text-muted-foreground">{formatLargeCurrency(allocation.allocation_value)}</p>
+          <p className="text-xl font-bold tabular-nums tracking-tight text-gold/80">{(allocation.allocation_pct * 100).toFixed(0)}%</p>
+          <p className="text-sm text-muted-foreground/60 font-normal">{formatLargeCurrency(allocation.allocation_value)}</p>
         </div>
       </div>
 
       {/* Structure Info */}
-      <div className="bg-muted/30 rounded-lg p-3 mb-4">
-        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Structure</p>
-        <p className="text-sm font-bold text-foreground">{allocation.recommended_structure}</p>
+      <div className="rounded-xl border border-border/20 bg-card/50 p-4 mb-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Structure</p>
+        <p className="text-sm font-normal text-foreground">{allocation.recommended_structure}</p>
       </div>
 
       {/* Timing */}
-      <div className="mb-4">
-        <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Timing</p>
-        <p className="text-xs text-muted-foreground">{allocation.timing}</p>
+      <div className="mb-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Timing</p>
+        <p className="text-xs text-muted-foreground/60 font-normal">{allocation.timing}</p>
       </div>
 
       {/* Special Considerations */}
       {allocation.special_considerations && allocation.special_considerations.length > 0 && (
-        <div className="pt-3 border-t border-border">
+        <div className="pt-4">
+          <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
           <div className="space-y-2">
             {allocation.special_considerations.map((consideration, i) => (
               <div key={i} className="flex items-start gap-2">
-                <CheckCircle className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-xs text-muted-foreground">{consideration}</span>
+                <CheckCircle className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                <span className="text-xs text-muted-foreground/60 font-normal">{consideration}</span>
               </div>
             ))}
           </div>
@@ -331,18 +313,18 @@ function HeirAllocationCard({ allocation, index }: { allocation: HeirAllocation;
   );
 }
 
-// Protection level badge - primary colors only
+// Protection level badge
 function ProtectionBadge({ level }: { level: ProtectionLevel }) {
-  const config: Record<ProtectionLevel, { color: string; label: string }> = {
-    HIGH: { color: 'bg-primary text-primary-foreground', label: 'HIGH PROTECTION' },
-    MODERATE: { color: 'bg-primary/50 text-primary-foreground', label: 'MODERATE' },
-    LOW: { color: 'bg-muted text-muted-foreground', label: 'LOW' }
+  const config: Record<ProtectionLevel, { border: string; text: string; label: string }> = {
+    HIGH: { border: 'border-gold/20', text: 'text-gold/80', label: 'HIGH PROTECTION' },
+    MODERATE: { border: 'border-border/20', text: 'text-muted-foreground/80', label: 'MODERATE' },
+    LOW: { border: 'border-border/20', text: 'text-muted-foreground/60', label: 'LOW' }
   };
 
-  const { color, label } = config[level] || config.MODERATE;
+  const { border, text, label } = config[level] || config.MODERATE;
 
   return (
-    <span className={`px-3 py-1 rounded text-[10px] font-bold ${color}`}>
+    <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${border} ${text}`}>
       {label}
     </span>
   );
@@ -360,7 +342,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     if (isInView) setIsVisible(true);
   }, [isInView]);
 
-  // Check for NEW data structure (G1→G2→G3 transfer flow)
+  // Check for NEW data structure (G1->G2->G3 transfer flow)
   const hasNewDataStructure = data && 'g1_position' in data && data.g1_position;
 
   // Check for legacy structured data
@@ -377,7 +359,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
   };
 
   // ============================================================================
-  // NEW: RENDER G1→G2→G3 TRANSFER FLOW LAYOUT
+  // NEW: RENDER G1->G2->G3 TRANSFER FLOW LAYOUT
   // ============================================================================
   if (hasNewDataStructure) {
     const typedData = data as HeirManagementData;
@@ -390,8 +372,6 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const heirAllocations = typedData.heir_allocations;
 
     // Hughes Framework: Third Generation Problem + Governance Insurance
-    // NEW: Backend now sends at hughes_framework.third_generation_problem
-    // Fallback to legacy flat structure for backwards compatibility
     const hughesFramework = typedData.hughes_framework;
     const thirdGenProblem = hughesFramework?.third_generation_problem ?? typedData.third_generation_problem;
     const humanCapitalProvisions = hughesFramework?.human_capital_provisions ?? typedData.human_capital_provisions;
@@ -400,13 +380,6 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
     // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
     const estateTaxByHeirType = typedData.estate_tax_by_heir_type;
-
-    // Use explicit backend fields for third generation risk display
-    // IMPORTANT: Values are JURISDICTION-SPECIFIC (e.g., Dubai=61% behavioral, UK=40% estate tax)
-    // DO NOT hardcode fallback values - use backend data only
-    // Backend provides: loss_without_structure_pct, loss_with_structure_pct
-    // Backend provides: preservation_without_structure_pct, preservation_with_structure_pct
-    // Backend provides: improvement_pts, display_loss_arrow, display_preservation_arrow
 
     // Preservation metrics - prefer explicit backend values
     const preservationWithoutStructure = thirdGenProblem?.preservation_without_structure_pct;
@@ -429,94 +402,85 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
       <div ref={sectionRef}>
         {/* Premium Header */}
         <motion.div
-          className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="flex items-center gap-3 mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-              HEIR MANAGEMENT & SUCCESSION
-            </h2>
-            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-              3rd Gen Protection
-            </span>
-          </div>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-          <p className="text-sm text-muted-foreground mt-3">
-            Multi-generational wealth preservation with structured governance
-          </p>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Heir Management & Succession
+          </h2>
+          <div className="h-px bg-border" />
         </motion.div>
 
-        <div className="space-y-8">
+        <div className="space-y-8 sm:space-y-12">
           {/* Third Generation Risk Assessment */}
           {withStructure && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-6">
-                <TrendingDown className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                   Third Generation Risk Assessment
-                </h3>
-              </div>
+                </p>
 
-              <div className="flex flex-col md:flex-row items-center gap-8">
-                {thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined && (
-                  <RiskGauge
-                    current={thirdGenCurrentRisk}
-                    improved={thirdGenImprovedRisk}
-                    label="Probability of Wealth Loss"
-                  />
-                )}
+                <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
+                  {thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined && (
+                    <RiskGauge
+                      current={thirdGenCurrentRisk}
+                      improved={thirdGenImprovedRisk}
+                      label="Probability of Wealth Loss"
+                    />
+                  )}
 
-                <div className="flex-1 w-full">
-                  {/* Loss Risk Metrics */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4">
-                    <div className="bg-muted/30 rounded-lg p-3 sm:p-4 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Loss Risk</p>
-                      <p className="text-xl font-bold text-foreground">{thirdGenCurrentRisk !== undefined ? `${thirdGenCurrentRisk}%` : '—'}</p>
+                  <div className="flex-1 w-full">
+                    {/* Loss Risk Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                      <div className="text-center">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Loss Risk</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{thirdGenCurrentRisk !== undefined ? `${thirdGenCurrentRisk}%` : '\u2014'}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">With Structure</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{thirdGenImprovedRisk !== undefined ? `${thirdGenImprovedRisk}%` : '\u2014'}</p>
+                      </div>
+                      <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Risk Reduction</p>
+                        {displayLossArrow ? (
+                          <p className="text-lg font-medium text-gold/80">{displayLossArrow}</p>
+                        ) : improvementPts !== undefined ? (
+                          <p className="text-xl font-medium text-gold/80">↓{improvementPts} pts</p>
+                        ) : thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined ? (
+                          <p className="text-xl font-medium text-gold/80">↓{thirdGenCurrentRisk - thirdGenImprovedRisk} pts</p>
+                        ) : (
+                          <p className="text-xl font-bold text-muted-foreground/60">\u2014</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="bg-muted/30 rounded-lg p-3 sm:p-4 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
-                      <p className="text-xl font-bold text-primary">{thirdGenImprovedRisk !== undefined ? `${thirdGenImprovedRisk}%` : '—'}</p>
-                    </div>
-                    <div className="bg-primary/10 rounded-lg p-3 sm:p-4 text-center border border-primary/30">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Risk Reduction</p>
-                      {displayLossArrow ? (
-                        <p className="text-lg font-bold text-primary">{displayLossArrow}</p>
-                      ) : improvementPts !== undefined ? (
-                        <p className="text-xl font-bold text-primary">↓{improvementPts} pts</p>
-                      ) : thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined ? (
-                        <p className="text-xl font-bold text-primary">↓{thirdGenCurrentRisk - thirdGenImprovedRisk} pts</p>
-                      ) : (
-                        <p className="text-xl font-bold text-muted-foreground">—</p>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Preservation Metrics - Show when data available */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-                    <div className="bg-primary/5 rounded-lg p-3 sm:p-4 text-center border border-primary/20">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Preservation</p>
-                      <p className="text-xl font-bold text-muted-foreground">{preservationWithoutStructure !== undefined ? `${preservationWithoutStructure}%` : '—'}</p>
-                    </div>
-                    <div className="bg-primary/5 rounded-lg p-3 sm:p-4 text-center border border-primary/20">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
-                      <p className="text-xl font-bold text-primary">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '—'}</p>
-                    </div>
-                    <div className="bg-primary/15 rounded-lg p-3 sm:p-4 text-center border border-primary/40">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Protection Gain</p>
-                      {displayPreservationArrow ? (
-                        <p className="text-lg font-bold text-primary">{displayPreservationArrow}</p>
-                      ) : preservationWithStructure !== undefined && preservationWithoutStructure !== undefined ? (
-                        <p className="text-xl font-bold text-primary">↑{preservationWithStructure - preservationWithoutStructure} pts</p>
-                      ) : (
-                        <p className="text-xl font-bold text-muted-foreground">—</p>
-                      )}
+                    {/* Preservation Metrics - Show when data available */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Preservation</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-muted-foreground/60">{preservationWithoutStructure !== undefined ? `${preservationWithoutStructure}%` : '\u2014'}</p>
+                      </div>
+                      <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">With Structure</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '\u2014'}</p>
+                      </div>
+                      <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Protection Gain</p>
+                        {displayPreservationArrow ? (
+                          <p className="text-lg font-medium text-gold/80">{displayPreservationArrow}</p>
+                        ) : preservationWithStructure !== undefined && preservationWithoutStructure !== undefined ? (
+                          <p className="text-xl font-medium text-gold/80">↑{preservationWithStructure - preservationWithoutStructure} pts</p>
+                        ) : (
+                          <p className="text-xl font-bold text-muted-foreground/60">\u2014</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -527,231 +491,234 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Recommended Structure */}
           {withStructure && (
             <motion.div
-              className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.15 }}
+              transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Recommended Structure
-                  </h3>
-                </div>
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                  Recommended Structure
+                </p>
                 {preservationWithStructure !== undefined && (
                   <PreservationIndicator percentage={preservationWithStructure} />
                 )}
               </div>
-              <p className="text-lg font-bold text-foreground">{withStructure.recommended_structure}</p>
+              <p className="text-xl font-normal text-foreground tracking-tight">{withStructure.recommended_structure}</p>
             </motion.div>
           )}
 
-          {/* G1 → G2 → G3 Wealth Transfer Flow */}
+          {/* G1 -> G2 -> G3 Wealth Transfer Flow */}
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-6">
-              <Users className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-8">
                 G1 → G2 → G3 Wealth Transfer
-              </h3>
-            </div>
+              </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* G1 Position */}
-              <div className="relative bg-primary/5 border border-primary/30 rounded-xl p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <GenerationBadge gen="G1" isActive />
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Principal</p>
-                    <p className="text-[10px] text-muted-foreground">Today</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Asset Value</p>
-                    <p className="text-xl font-bold text-foreground">{formatLargeCurrency(g1.asset_value)}</p>
-                  </div>
-                  {g1.estate_tax_rate > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* G1 Position */}
+                <div className="relative rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                  <div className="flex items-center gap-3 mb-5">
+                    <GenerationBadge gen="G1" isActive />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Estate Tax Rate</p>
-                      <p className="text-sm font-bold text-foreground">{(g1.estate_tax_rate * 100).toFixed(0)}%</p>
-                    </div>
-                  )}
-                </div>
-                {/* Arrow */}
-                <div className="hidden md:block absolute -right-4 top-1/2 -translate-y-1/2 z-10">
-                  <ArrowRight className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-
-              {/* G2 Transfer */}
-              {g1ToG2 && (
-                <div className="relative bg-muted/30 border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <GenerationBadge gen="G2" />
-                    <div>
-                      <p className="text-sm font-bold text-foreground">Children</p>
-                      <p className="text-[10px] text-muted-foreground">{g1ToG2.years_out} years</p>
+                      <p className="text-sm font-normal text-foreground">Principal</p>
+                      <p className="text-sm text-muted-foreground/60 font-normal">Today</p>
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Projected Value</p>
-                      <p className="text-xl font-bold text-foreground">{formatLargeCurrency(g1ToG2.projected_value)}</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Asset Value</p>
+                      <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatLargeCurrency(g1.asset_value)}</p>
                     </div>
-                    {g1ToG2.estate_tax_hit > 0 && (
+                    {g1.estate_tax_rate > 0 && (
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tax Hit</p>
-                        <p className="text-sm font-bold text-muted-foreground">-{formatLargeCurrency(g1ToG2.estate_tax_hit)}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Estate Tax Rate</p>
+                        <p className="text-base font-medium tabular-nums text-foreground">{(g1.estate_tax_rate * 100).toFixed(0)}%</p>
                       </div>
                     )}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Net to G2</p>
-                      <p className="text-sm font-bold text-primary">{formatLargeCurrency(g1ToG2.net_to_g2)}</p>
+                  </div>
+                  {/* Arrow connector */}
+                  <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 items-center">
+                    <div className="w-2 h-2 rounded-full bg-gold/40" />
+                    <div className="w-3 h-px bg-gold/20" />
+                    <ArrowRight className="w-4 h-4 text-gold/70" />
+                  </div>
+                </div>
+
+                {/* G2 Transfer */}
+                {g1ToG2 && (
+                  <div className="relative rounded-xl border border-border/20 bg-card/50 p-5">
+                    <div className="flex items-center gap-3 mb-5">
+                      <GenerationBadge gen="G2" />
+                      <div>
+                        <p className="text-sm font-normal text-foreground">Children</p>
+                        <p className="text-sm text-muted-foreground/60 font-normal">{g1ToG2.years_out} years</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Projected Value</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatLargeCurrency(g1ToG2.projected_value)}</p>
+                      </div>
+                      {g1ToG2.estate_tax_hit > 0 && (
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Tax Hit</p>
+                          <p className="text-base font-medium tabular-nums text-muted-foreground/60">-{formatLargeCurrency(g1ToG2.estate_tax_hit)}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Net to G2</p>
+                        <p className="text-base font-medium tabular-nums text-gold/80">{formatLargeCurrency(g1ToG2.net_to_g2)}</p>
+                      </div>
+                    </div>
+                    {/* Arrow connector */}
+                    <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 items-center">
+                      <div className="w-2 h-2 rounded-full bg-gold/40" />
+                      <div className="w-3 h-px bg-gold/20" />
+                      <ArrowRight className="w-4 h-4 text-gold/70" />
                     </div>
                   </div>
-                  {/* Arrow */}
-                  <div className="hidden md:block absolute -right-4 top-1/2 -translate-y-1/2 z-10">
-                    <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                )}
+
+                {/* G3 Transfer */}
+                {g2ToG3 && (
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                    <div className="flex items-center gap-3 mb-5">
+                      <GenerationBadge gen="G3" />
+                      <div>
+                        <p className="text-sm font-normal text-foreground">Grandchildren</p>
+                        <p className="text-sm text-muted-foreground/60 font-normal">{g2ToG3.years_out} years</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Projected Value</p>
+                        <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatLargeCurrency(g2ToG3.projected_value)}</p>
+                      </div>
+                      {g2ToG3.estate_tax_hit > 0 && (
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Tax Hit</p>
+                          <p className="text-base font-medium tabular-nums text-muted-foreground/60">-{formatLargeCurrency(g2ToG3.estate_tax_hit)}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Net to G3</p>
+                        <p className="text-base font-medium tabular-nums text-gold/80">{formatLargeCurrency(g2ToG3.net_to_g3_without_structure)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* With Structure Comparison */}
+              {withStructure && (
+                <div className="mt-8">
+                  <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-8" />
+                  <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <div className="min-w-[500px]">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Without Structure</p>
+                          <p className="text-xl font-bold tabular-nums tracking-tight text-muted-foreground/60">
+                            {g2ToG3 ? formatLargeCurrency(g2ToG3.net_to_g3_without_structure) : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">With Structure</p>
+                          <p className="text-xl font-bold tabular-nums tracking-tight text-gold/80">{formatLargeCurrency(withStructure.net_to_g3_with_structure)}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Wealth Preserved</p>
+                          <p className={`text-xl font-bold tabular-nums tracking-tight ${withStructure.wealth_preserved >= 0 ? 'text-gold/80' : 'text-muted-foreground/60'}`}>
+                            {withStructure.wealth_preserved >= 0 ? '+' : ''}{formatLargeCurrency(withStructure.wealth_preserved)}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Preservation Rate</p>
+                          <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '\u2014'}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
-
-              {/* G3 Transfer */}
-              {g2ToG3 && (
-                <div className="bg-muted/30 border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <GenerationBadge gen="G3" />
-                    <div>
-                      <p className="text-sm font-bold text-foreground">Grandchildren</p>
-                      <p className="text-[10px] text-muted-foreground">{g2ToG3.years_out} years</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Projected Value</p>
-                      <p className="text-xl font-bold text-foreground">{formatLargeCurrency(g2ToG3.projected_value)}</p>
-                    </div>
-                    {g2ToG3.estate_tax_hit > 0 && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Tax Hit</p>
-                        <p className="text-sm font-bold text-muted-foreground">-{formatLargeCurrency(g2ToG3.estate_tax_hit)}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Net to G3</p>
-                      <p className="text-sm font-bold text-primary">{formatLargeCurrency(g2ToG3.net_to_g3_without_structure)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* With Structure Comparison */}
-            {withStructure && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-muted/30 rounded-lg p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Without Structure</p>
-                    <p className="text-lg font-bold text-muted-foreground">
-                      {g2ToG3 ? formatLargeCurrency(g2ToG3.net_to_g3_without_structure) : 'N/A'}
-                    </p>
-                  </div>
-                  <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/30">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">With Structure</p>
-                    <p className="text-lg font-bold text-primary">{formatLargeCurrency(withStructure.net_to_g3_with_structure)}</p>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Wealth Preserved</p>
-                    <p className={`text-lg font-bold ${withStructure.wealth_preserved >= 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {withStructure.wealth_preserved >= 0 ? '+' : ''}{formatLargeCurrency(withStructure.wealth_preserved)}
-                    </p>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Preservation Rate</p>
-                    <p className="text-lg font-bold text-foreground">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '—'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </motion.div>
 
           {/* NEW: Granular Estate Tax by Heir Type */}
           {estateTaxByHeirType && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.22 }}
+              transition={{ duration: 0.7, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Scale className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                   Destination Estate Tax by Heir Type
-                </h3>
-              </div>
-
-              {/* Headline */}
-              {estateTaxByHeirType.headline && (
-                <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                  <p className="text-sm font-medium text-foreground">{estateTaxByHeirType.headline}</p>
-                </div>
-              )}
-
-              {/* Tax Rates Grid */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                {/* Spouse Rate */}
-                <div className="text-center p-4 bg-muted/30 rounded-lg border border-border">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                    <Heart className="w-5 h-5 text-primary" />
-                  </div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Spouse</p>
-                  <p className={`text-xl font-bold ${estateTaxByHeirType.spouse_rate === 0 ? 'text-green-500' : 'text-foreground'}`}>
-                    {estateTaxByHeirType.spouse_summary || `${(estateTaxByHeirType.spouse_rate * 100).toFixed(0)}%`}
-                  </p>
-                </div>
-
-                {/* Children Rate */}
-                <div className="text-center p-4 bg-muted/30 rounded-lg border border-border">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                    <User className="w-5 h-5 text-primary" />
-                  </div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Children</p>
-                  <p className={`text-xl font-bold ${estateTaxByHeirType.children_rate === 0 ? 'text-green-500' : estateTaxByHeirType.children_rate > 0.3 ? 'text-amber-500' : 'text-foreground'}`}>
-                    {estateTaxByHeirType.children_summary || `${(estateTaxByHeirType.children_rate * 100).toFixed(0)}%`}
-                  </p>
-                </div>
-
-                {/* Non-Lineal Rate */}
-                <div className="text-center p-4 bg-muted/30 rounded-lg border border-border">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-muted flex items-center justify-center mb-2">
-                    <Users className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Non-Lineal</p>
-                  <p className={`text-xl font-bold ${estateTaxByHeirType.non_lineal_rate > 0.3 ? 'text-amber-500' : 'text-foreground'}`}>
-                    {(estateTaxByHeirType.non_lineal_rate * 100).toFixed(0)}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Explanatory Note */}
-              {estateTaxByHeirType.note && (
-                <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3 border border-border">
-                  <p>{estateTaxByHeirType.note}</p>
-                </div>
-              )}
-
-              {/* Source Attribution */}
-              <div className="flex items-center justify-center gap-2 pt-4 mt-4 border-t border-border">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <p className="text-[10px] text-muted-foreground">
-                  Source: {estateTaxByHeirType.source || 'HNWI Chronicles KG'}
                 </p>
+
+                {/* Headline */}
+                {estateTaxByHeirType.headline && (
+                  <div className="mb-6 rounded-xl border border-gold/20 bg-gold/[0.03] p-4">
+                    <p className="text-sm font-normal text-foreground">{estateTaxByHeirType.headline}</p>
+                  </div>
+                )}
+
+                {/* Tax Rates Grid */}
+                <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <div className="min-w-[400px]">
+                    <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6">
+                      {/* Spouse Rate */}
+                      <div className="text-center">
+                        <Heart className="w-5 h-5 text-gold/70 mx-auto mb-3" />
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Spouse</p>
+                        <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.spouse_rate === 0 ? 'text-emerald-500/80' : 'text-foreground'}`}>
+                          {estateTaxByHeirType.spouse_summary || `${(estateTaxByHeirType.spouse_rate * 100).toFixed(0)}%`}
+                        </p>
+                      </div>
+
+                      {/* Children Rate */}
+                      <div className="text-center">
+                        <User className="w-5 h-5 text-gold/70 mx-auto mb-3" />
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Children</p>
+                        <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.children_rate === 0 ? 'text-emerald-500/80' : estateTaxByHeirType.children_rate > 0.3 ? 'text-amber-500/80' : 'text-foreground'}`}>
+                          {estateTaxByHeirType.children_summary || `${(estateTaxByHeirType.children_rate * 100).toFixed(0)}%`}
+                        </p>
+                      </div>
+
+                      {/* Non-Lineal Rate */}
+                      <div className="text-center">
+                        <Users className="w-5 h-5 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Non-Lineal</p>
+                        <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${estateTaxByHeirType.non_lineal_rate > 0.3 ? 'text-amber-500/80' : 'text-foreground'}`}>
+                          {(estateTaxByHeirType.non_lineal_rate * 100).toFixed(0)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Explanatory Note */}
+                {estateTaxByHeirType.note && (
+                  <div className="text-sm text-muted-foreground/60 font-normal rounded-xl border border-border/20 bg-card/50 p-4">
+                    <p>{estateTaxByHeirType.note}</p>
+                  </div>
+                )}
+
+                {/* Source Attribution */}
+                <div className="flex items-center justify-center gap-3 pt-6 mt-6">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                    Source: {estateTaxByHeirType.source || 'HNWI Chronicles KG'}
+                  </p>
+                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
+                </div>
               </div>
             </motion.div>
           )}
@@ -759,16 +726,13 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Heir Allocations */}
           {heirAllocations && heirAllocations.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.25 }}
+              transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-5">
-                <Users className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Heir Allocations
-                </h3>
-              </div>
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+                Heir Allocations
+              </p>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {heirAllocations.map((allocation, index) => (
@@ -781,49 +745,42 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Top Succession Risk */}
           {topRisk && (
             <motion.div
-              className="bg-muted/50 border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-6 sm:p-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Top Succession Risk
-                  </h3>
-                </div>
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                  Top Succession Risk
+                </p>
                 {/* Urgency Badge */}
                 {topRisk.mitigation_timeline_days !== undefined && (
-                  <span className={`px-2 py-1 rounded text-[10px] font-bold border ${getUrgencyBadgeStyle(topRisk.mitigation_timeline_days)}`}>
+                  <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${getUrgencyBadgeStyle(topRisk.mitigation_timeline_days)}`}>
                     {topRisk.mitigation_timeline_days <= 45 ? 'URGENT' : topRisk.mitigation_timeline_days <= 60 ? 'MODERATE' : 'STANDARD'}
                   </span>
                 )}
               </div>
 
-              <div className="space-y-4">
-                <div className="bg-card rounded-lg p-4 border border-border">
-                  <p className="text-sm text-foreground font-medium mb-2">{parseMarkdownBold(topRisk.trigger)}</p>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">At Risk</p>
-                      <p className="text-lg font-bold text-foreground">{formatLargeCurrency(topRisk.dollars_at_risk)}</p>
-                    </div>
+              <div className="space-y-5">
+                <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                  <p className="text-sm text-foreground font-normal mb-3">{parseMarkdownBold(topRisk.trigger)}</p>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">At Risk</p>
+                    <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">{formatLargeCurrency(topRisk.dollars_at_risk)}</p>
                   </div>
                 </div>
 
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-2">Mitigation</p>
-                  <p className="text-sm text-muted-foreground">{parseMarkdownBold(topRisk.mitigation)}</p>
+                <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-3">Mitigation</p>
+                  <p className="text-sm text-muted-foreground/60 font-normal">{parseMarkdownBold(topRisk.mitigation)}</p>
 
                   {/* Mitigation Timeline */}
                   {topRisk.mitigation_timeline && (
-                    <div className="mt-3 pt-3 border-t border-primary/10">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <p className="text-[10px] uppercase tracking-wider text-primary font-bold">Timeline</p>
-                      </div>
-                      <p className={`text-sm font-medium mt-1 ${getUrgencyColor(topRisk.mitigation_timeline_days)}`}>
+                    <div className="mt-4 pt-4">
+                      <div className="h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent mb-4" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Timeline</p>
+                      <p className={`text-sm font-normal ${getUrgencyColor(topRisk.mitigation_timeline_days)}`}>
                         {topRisk.mitigation_timeline}
                       </p>
                     </div>
@@ -836,93 +793,93 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Hughes Framework: Third Generation Problem */}
           {thirdGenProblem && (
             <motion.div
-              className="bg-muted/30 border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.35 }}
+              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <AlertTriangle className="w-5 h-5 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Third Generation Problem
-                </h3>
-                <span className="px-2 py-0.5 bg-muted text-muted-foreground text-[9px] font-bold rounded-full">
-                  HUGHES FRAMEWORK
-                </span>
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <div className="flex items-center gap-3 mb-6">
+                  <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                    Third Generation Problem
+                  </p>
+                  <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
+                    HUGHES FRAMEWORK
+                  </span>
+                </div>
+
+                {thirdGenProblem.statistic && (
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5">
+                    <p className="text-xl font-bold text-foreground tracking-tight">{thirdGenProblem.statistic}</p>
+                  </div>
+                )}
+
+                {thirdGenProblem.causes && thirdGenProblem.causes.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Primary Causes</p>
+                    <div className="flex flex-wrap gap-2">
+                      {thirdGenProblem.causes.map((cause, i) => (
+                        <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
+                          {cause}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {thirdGenProblem.risk_factors && thirdGenProblem.risk_factors.length > 0 && (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Your Risk Factors</p>
+                    <div className="space-y-2">
+                      {thirdGenProblem.risk_factors.map((factor, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <AlertTriangle className="w-3 h-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground/60 font-normal">{factor}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {thirdGenProblem.statistic && (
-                <div className="bg-card rounded-lg p-4 border border-border mb-4">
-                  <p className="text-lg font-bold text-foreground">{thirdGenProblem.statistic}</p>
-                </div>
-              )}
-
-              {thirdGenProblem.causes && thirdGenProblem.causes.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Primary Causes</p>
-                  <div className="flex flex-wrap gap-2">
-                    {thirdGenProblem.causes.map((cause, i) => (
-                      <span key={i} className="px-3 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
-                        {cause}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {thirdGenProblem.risk_factors && thirdGenProblem.risk_factors.length > 0 && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Your Risk Factors</p>
-                  <div className="space-y-2">
-                    {thirdGenProblem.risk_factors.map((factor, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="w-3 h-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground">{factor}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </motion.div>
           )}
 
           {/* Hughes Framework: Human Capital Provisions */}
           {humanCapitalProvisions && humanCapitalProvisions.length > 0 && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.4 }}
+              transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-5">
-                <GraduationCap className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
                   Human Capital Provisions
-                </h3>
-              </div>
+                </p>
 
-              <p className="text-xs text-muted-foreground mb-4 italic">
-                Financial education and stewardship requirements to protect wealth across generations
-              </p>
+                <p className="text-xs text-muted-foreground/60 mb-6 font-normal italic">
+                  Financial education and stewardship requirements to protect wealth across generations
+                </p>
 
-              <div className="space-y-3">
-                {humanCapitalProvisions.map((provision, i) => (
-                  <div key={i} className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="text-sm font-bold text-foreground">{provision.name}</p>
-                      {provision.structure_type && (
-                        <span className="px-2 py-0.5 bg-muted text-muted-foreground text-[9px] font-bold rounded">
-                          {provision.structure_type}
-                        </span>
-                      )}
+                <div className="space-y-4">
+                  {humanCapitalProvisions.map((provision, i) => (
+                    <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-sm font-normal text-foreground">{provision.name}</p>
+                        {provision.structure_type && (
+                          <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
+                            {provision.structure_type}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground/60 mb-3 font-normal">{provision.description}</p>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 text-gold/70" />
+                        <span className="text-xs text-gold/80 font-normal">{provision.trigger}</span>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">{provision.description}</p>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-primary" />
-                      <span className="text-[10px] text-primary font-medium">{provision.trigger}</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
@@ -930,37 +887,36 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Hughes Framework: Governance Insurance */}
           {governanceInsurance && governanceInsurance.length > 0 && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.45 }}
+              transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-5">
-                <Shield className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
                   Governance Insurance
-                </h3>
-              </div>
+                </p>
 
-              <p className="text-xs text-muted-foreground mb-4 italic">
-                Structural protections: spendthrift clauses, trustee oversight, distribution gates, lifestyle caps
-              </p>
+                <p className="text-xs text-muted-foreground/60 mb-6 font-normal italic">
+                  Structural protections: spendthrift clauses, trustee oversight, distribution gates, lifestyle caps
+                </p>
 
-              <div className="grid sm:grid-cols-2 gap-3">
-                {governanceInsurance.map((provision, i) => (
-                  <div key={i} className="bg-muted/30 rounded-lg p-4 border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${provision.type === 'spendthrift_clause' ? 'bg-primary' :
-                        provision.type === 'distribution_gate' ? 'bg-primary' :
-                          provision.type === 'lifestyle_cap' ? 'bg-muted-foreground' :
-                            'bg-primary'
-                        }`} />
-                      <p className="text-xs font-bold text-foreground">{provision.name}</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {governanceInsurance.map((provision, i) => (
+                    <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${provision.type === 'spendthrift_clause' ? 'bg-gold/60' :
+                          provision.type === 'distribution_gate' ? 'bg-gold/60' :
+                            provision.type === 'lifestyle_cap' ? 'bg-muted-foreground/40' :
+                              'bg-gold/60'
+                          }`} />
+                        <p className="text-xs font-medium text-foreground">{provision.name}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground/60 mb-2 font-normal">{provision.description}</p>
+                      <p className="text-xs text-gold/70 italic font-normal">{provision.rationale}</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-2">{provision.description}</p>
-                    <p className="text-[9px] text-primary italic">{provision.rationale}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
@@ -968,33 +924,30 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Structure-Specific Provisions (if applicable) */}
           {structureProvisions && (
             <motion.div
-              className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.5 }}
+              transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    {structureProvisions.structure_name} Provisions
-                  </h3>
-                </div>
-                <span className="px-2 py-1 bg-primary/20 text-primary text-[9px] font-bold rounded">
+              <div className="flex items-start justify-between mb-6">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                  {structureProvisions.structure_name} Provisions
+                </p>
+                <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
                   {structureProvisions.jurisdiction}
                 </span>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
                 {/* Human Capital for this structure */}
                 {structureProvisions.human_capital && structureProvisions.human_capital.length > 0 && (
-                  <div className="bg-card rounded-lg p-4 border border-border">
-                    <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-3">Human Capital Requirements</p>
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Human Capital Requirements</p>
                     <div className="space-y-2">
                       {structureProvisions.human_capital.map((provision, i) => (
                         <div key={i} className="flex items-start gap-2">
-                          <GraduationCap className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground">{provision.name}: {provision.description}</span>
+                          <GraduationCap className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground/60 font-normal">{provision.name}: {provision.description}</span>
                         </div>
                       ))}
                     </div>
@@ -1003,13 +956,13 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
                 {/* Governance Insurance for this structure */}
                 {structureProvisions.governance_insurance && structureProvisions.governance_insurance.length > 0 && (
-                  <div className="bg-card rounded-lg p-4 border border-border">
-                    <p className="text-[10px] uppercase tracking-wider text-primary font-bold mb-3">Governance Insurance</p>
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Governance Insurance</p>
                     <div className="space-y-2">
                       {structureProvisions.governance_insurance.map((provision, i) => (
                         <div key={i} className="flex items-start gap-2">
-                          <Shield className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground">{provision.name}: {provision.description}</span>
+                          <Shield className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground/60 font-normal">{provision.name}: {provision.description}</span>
                         </div>
                       ))}
                     </div>
@@ -1022,32 +975,30 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           {/* Next Action */}
           {nextAction && (
             <motion.div
-              className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/30 rounded-xl p-6"
-              initial={{ opacity: 0, y: 20 }}
+              className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.35 }}
+              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-3">
-                <ArrowRight className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Next Action
-                </h3>
-              </div>
-              <p className="text-base text-foreground font-medium">{parseMarkdownBold(nextAction)}</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+                Next Action
+              </p>
+              <p className="text-base text-foreground font-normal">{parseMarkdownBold(nextAction)}</p>
             </motion.div>
           )}
 
           {/* Intelligence Source Footer */}
           <motion.div
-            className="flex items-center justify-center gap-2 pt-6"
+            className="flex items-center justify-center gap-3 pt-6"
             initial={{ opacity: 0 }}
             animate={isVisible ? { opacity: 1 } : {}}
-            transition={{ duration: 0.6, delay: 0.55 }}
+            transition={{ duration: 0.7, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <p className="text-[10px] text-muted-foreground">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
+            <p className="text-xs text-muted-foreground/60 leading-relaxed">
               Grounded in HNWI Chronicles KG Succession Framework + Hughes Family Wealth Framework
             </p>
+            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
           </motion.div>
         </div>
       </div>
@@ -1071,8 +1022,6 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
   };
 
   // Extract 3rd generation risk data from narrative text
-  // NOTE: This is a FALLBACK only - prefer structured data from backend
-  // DO NOT use hardcoded defaults (the "70% rule" is academically discredited)
   const extractThirdGenRisk = (text: string): {
     currentRisk: number | undefined;
     improvedRisk: number | undefined;
@@ -1081,18 +1030,16 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const riskMatch = text.match(/(?:3rd|third)\s*(?:gen|generation)[^0-9]*(\d+)%/i) ||
       text.match(/probability[^0-9]*(\d+)%/i) ||
       text.match(/risk[^0-9]*(\d+)%/i);
-    // DO NOT hardcode fallback - return undefined if not found
     const currentRisk = riskMatch ? parseInt(riskMatch[1]) : undefined;
 
     const improvedMatch = text.match(/(?:improved|with\s*structure|reduced)[^0-9]*(\d+)%/i);
-    // Only calculate improved if we have a current risk value
     const improvedRisk = improvedMatch
       ? parseInt(improvedMatch[1])
       : (currentRisk !== undefined ? Math.round(currentRisk * 0.4) : undefined);
 
     const improvement = (currentRisk !== undefined && improvedRisk !== undefined)
       ? `${currentRisk - improvedRisk} pts`
-      : '—';
+      : '\u2014';
 
     return { currentRisk, improvedRisk, improvement };
   };
@@ -1200,7 +1147,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     };
   };
 
-  // Premium Narrative Fallback with VISUAL dashboard - primary colors only
+  // Premium Narrative Fallback with VISUAL dashboard
   if (!hasLegacyStructuredData && hasNarrativeAnalysis) {
     const cleanedAnalysis = filterJsonFromMarkdown(rawAnalysis);
     const keyMetrics = extractWealthMetrics(cleanedAnalysis);
@@ -1213,39 +1160,31 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
       <div ref={sectionRef}>
         {/* Premium Header */}
         <motion.div
-          className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="flex items-center gap-3 mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-              HEIR MANAGEMENT & SUCCESSION
-            </h2>
-            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-              3rd Gen Protection
-            </span>
-          </div>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-          <p className="text-sm text-muted-foreground mt-3">
-            Multi-generational wealth preservation with structured governance
-          </p>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Heir Management & Succession
+          </h2>
+          <div className="h-px bg-border" />
         </motion.div>
 
-        <div className="space-y-8">
+        <div className="space-y-8 sm:space-y-12">
           {/* Key Wealth Metrics Grid */}
           {keyMetrics.length > 0 && (
             <motion.div
-              className="grid grid-cols-2 sm:grid-cols-3 gap-4"
-              initial={{ opacity: 0, y: 20 }}
+              className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
               {keyMetrics.map((metric, idx) => (
-                <div key={idx} className="rounded-xl p-5 text-center bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">{metric.label}</p>
-                  <p className="text-xl font-bold text-primary">{metric.value}</p>
-                  {metric.subtext && <p className="text-[10px] text-muted-foreground">{metric.subtext}</p>}
+                <div key={idx} className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{metric.label}</p>
+                  <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{metric.value}</p>
+                  {metric.subtext && <p className="text-xs text-muted-foreground/60 font-normal mt-1">{metric.subtext}</p>}
                 </div>
               ))}
             </motion.div>
@@ -1253,42 +1192,41 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
           {/* Third Generation Risk Card */}
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-6">
-              <TrendingDown className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                 Third Generation Risk Assessment
-              </h3>
-            </div>
+              </p>
 
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Risk Gauge */}
-              {thirdGenRisk.currentRisk !== undefined && thirdGenRisk.improvedRisk !== undefined && (
-                <RiskGauge
-                  current={thirdGenRisk.currentRisk}
-                  improved={thirdGenRisk.improvedRisk}
-                  label="Probability of Wealth Loss"
-                />
-              )}
+              <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
+                {/* Risk Gauge */}
+                {thirdGenRisk.currentRisk !== undefined && thirdGenRisk.improvedRisk !== undefined && (
+                  <RiskGauge
+                    current={thirdGenRisk.currentRisk}
+                    improved={thirdGenRisk.improvedRisk}
+                    label="Probability of Wealth Loss"
+                  />
+                )}
 
-              {/* Risk Metrics */}
-              <div className="flex-1 w-full">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-muted/30 rounded-lg p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Current Risk</p>
-                    <p className="text-xl font-bold text-foreground">{thirdGenRisk.currentRisk}%</p>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-4 text-center">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
-                    <p className="text-xl font-bold text-primary">{thirdGenRisk.improvedRisk}%</p>
-                  </div>
-                  <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/30">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Improvement</p>
-                    <p className="text-xl font-bold text-primary">{thirdGenRisk.improvement}</p>
+                {/* Risk Metrics */}
+                <div className="flex-1 w-full">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Current Risk</p>
+                      <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{thirdGenRisk.currentRisk}%</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">With Structure</p>
+                      <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{thirdGenRisk.improvedRisk}%</p>
+                    </div>
+                    <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-3">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Improvement</p>
+                      <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{thirdGenRisk.improvement}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1297,87 +1235,79 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
           {/* Recommended Structure Card */}
           <motion.div
-            className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Recommended Structure
-                </h3>
-              </div>
+            <div className="flex items-start justify-between mb-6">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                Recommended Structure
+              </p>
               <ProtectionBadge level={recommendedStructure.protection} />
             </div>
 
-            <div className="mb-5">
-              <p className="text-lg font-bold text-foreground mb-3">{recommendedStructure.type}</p>
+            <div className="mb-6">
+              <p className="text-xl font-normal text-foreground tracking-tight mb-4">{recommendedStructure.type}</p>
               <div className="flex flex-wrap gap-2">
                 {recommendedStructure.benefits.map((benefit, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 bg-card rounded-lg text-xs text-muted-foreground border border-border">
-                    <CheckCircle className="w-3 h-3 text-primary" />
+                  <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
                     {benefit}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Setup Cost</p>
-                <p className="text-sm font-bold text-foreground">{recommendedStructure.setupCost}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Setup Cost</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{recommendedStructure.setupCost}</p>
               </div>
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <Calendar className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Annual Cost</p>
-                <p className="text-sm font-bold text-foreground">{recommendedStructure.annualCost}</p>
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Annual Cost</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{recommendedStructure.annualCost}</p>
               </div>
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <Clock className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Timeline</p>
-                <p className="text-sm font-bold text-foreground">{recommendedStructure.timeline}</p>
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Timeline</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{recommendedStructure.timeline}</p>
               </div>
             </div>
           </motion.div>
 
           {/* Governance Framework */}
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.25 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Scale className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                 Governance Framework
-              </h3>
-            </div>
+              </p>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Family Council</p>
-                <p className="text-sm font-bold text-foreground">{governance.councilFrequency}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Decision Threshold</p>
-                <p className="text-sm font-bold text-foreground">{governance.decisionThreshold}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Veto Power</p>
-                <p className="text-sm font-bold text-foreground">{governance.vetoPower}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Succession Triggers</p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {governance.triggers.map((trigger, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">
-                      {trigger}
-                    </span>
-                  ))}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Family Council</p>
+                  <p className="text-sm font-normal text-foreground">{governance.councilFrequency}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Threshold</p>
+                  <p className="text-sm font-normal text-foreground">{governance.decisionThreshold}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Veto Power</p>
+                  <p className="text-sm font-normal text-foreground">{governance.vetoPower}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Succession Triggers</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {governance.triggers.map((trigger, i) => (
+                      <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
+                        {trigger}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1385,52 +1315,47 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
           {/* Heir Education Plan */}
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <GraduationCap className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                 Heir Education Plan
-              </h3>
-            </div>
+              </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Generation 2 */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                    G2
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Generation 2 */}
+                <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GenerationBadge gen="G2" isActive />
+                    <p className="text-sm font-normal text-foreground">Generation 2 (Current Heirs)</p>
                   </div>
-                  <p className="text-sm font-bold text-foreground">Generation 2 (Current Heirs)</p>
+                  <div className="space-y-2">
+                    {educationPlan.gen2Actions.map((action, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {educationPlan.gen2Actions.map((action, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">{parseMarkdownBold(action)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Generation 3 */}
-              <div className="bg-muted/30 border border-border rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-muted-foreground text-background flex items-center justify-center text-xs font-bold">
-                    G3
+                {/* Generation 3 */}
+                <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GenerationBadge gen="G3" />
+                    <p className="text-sm font-normal text-foreground">Generation 3 (Grandchildren)</p>
                   </div>
-                  <p className="text-sm font-bold text-foreground">Generation 3 (Grandchildren)</p>
-                </div>
-                <div className="space-y-2">
-                  {educationPlan.gen3Actions.map((action, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">{parseMarkdownBold(action)}</span>
-                    </div>
-                  ))}
+                  <div className="space-y-2">
+                    {educationPlan.gen3Actions.map((action, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle className="w-3 h-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1439,15 +1364,16 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
         {/* Intelligence Source Footer */}
         <motion.div
-          className="flex items-center justify-center gap-2 pt-8"
+          className="flex items-center justify-center gap-3 pt-8"
           initial={{ opacity: 0 }}
           animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <p className="text-[10px] text-muted-foreground">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
+          <p className="text-xs text-muted-foreground/60 leading-relaxed">
             Grounded in HNWI Chronicles KG Succession Framework + Family Office Best Practices
           </p>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
         </motion.div>
       </div>
     );
@@ -1468,60 +1394,51 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     <div ref={sectionRef}>
       {/* Premium Header */}
       <motion.div
-        className="mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 20 }}
+        className="mb-8"
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="flex items-center gap-3 mb-2 sm:mb-3">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-            HEIR MANAGEMENT & SUCCESSION
-          </h2>
-          <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-            3rd Gen Protection
-          </span>
-        </div>
-        <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-        <p className="text-sm text-muted-foreground mt-3">
-          Multi-generational wealth preservation with structured governance
-        </p>
+        <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+          Heir Management & Succession
+        </h2>
+        <div className="h-px bg-border" />
       </motion.div>
 
-      <div className="space-y-8">
+      <div className="space-y-8 sm:space-y-12">
         {/* Third Generation Risk Card */}
         <motion.div
-          className="bg-card border border-border rounded-xl p-6"
-          initial={{ opacity: 0, y: 20 }}
+          className="relative rounded-2xl border border-border/30 overflow-hidden"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingDown className="w-5 h-5 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+          <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
               Third Generation Risk Assessment
-            </h3>
-          </div>
+            </p>
 
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <RiskGauge
-              current={currentRiskPercent}
-              improved={improvedRiskPercent}
-              label="Probability of Wealth Loss"
-            />
+            <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
+              <RiskGauge
+                current={currentRiskPercent}
+                improved={improvedRiskPercent}
+                label="Probability of Wealth Loss"
+              />
 
-            <div className="flex-1 text-center md:text-left">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-muted/30 rounded-lg p-4 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Current Risk</p>
-                  <p className="text-xl font-bold text-foreground">{formatPercentage(typedData.third_generation_risk!.current_probability_of_loss)}</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-4 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">With Structure</p>
-                  <p className="text-xl font-bold text-primary">{formatPercentage(typedData.third_generation_risk!.with_structure_probability)}</p>
-                </div>
-                <div className="bg-primary/10 rounded-lg p-4 text-center border border-primary/30">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Improvement</p>
-                  <p className="text-xl font-bold text-primary">{typedData.third_generation_risk!.improvement}</p>
+              <div className="flex-1 text-center md:text-left">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="text-center">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Current Risk</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatPercentage(typedData.third_generation_risk!.current_probability_of_loss)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">With Structure</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{formatPercentage(typedData.third_generation_risk!.with_structure_probability)}</p>
+                  </div>
+                  <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Improvement</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{typedData.third_generation_risk!.improvement}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1531,16 +1448,13 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         {/* Heir Cards Grid */}
         {typedData.heirs && typedData.heirs.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Users className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                Heir Assessment
-              </h3>
-            </div>
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+              Heir Assessment
+            </p>
 
             <div className="grid md:grid-cols-2 gap-6">
               {typedData.heirs.map((heir, index) => (
@@ -1553,48 +1467,41 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         {/* Recommended Structure Card */}
         {typedData.recommended_structure && (
           <motion.div
-            className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Recommended Structure
-                </h3>
-              </div>
+            <div className="flex items-start justify-between mb-6">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
+                Recommended Structure
+              </p>
               <ProtectionBadge level={typedData.recommended_structure.third_gen_protection} />
             </div>
 
-            <div className="mb-5">
-              <p className="text-lg font-bold text-foreground mb-3">{typedData.recommended_structure.type}</p>
+            <div className="mb-6">
+              <p className="text-xl font-normal text-foreground tracking-tight mb-4">{typedData.recommended_structure.type}</p>
               <div className="flex flex-wrap gap-2">
                 {typedData.recommended_structure.benefits.map((benefit, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 px-3 py-1.5 bg-card rounded-lg text-xs text-muted-foreground border border-border">
-                    <CheckCircle className="w-3 h-3 text-primary" />
+                  <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
                     {benefit}
                   </span>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <DollarSign className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Setup Cost</p>
-                <p className="text-sm font-bold text-foreground">{typedData.recommended_structure.setup_cost}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Setup Cost</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{typedData.recommended_structure.setup_cost}</p>
               </div>
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <Calendar className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Annual Cost</p>
-                <p className="text-sm font-bold text-foreground">{typedData.recommended_structure.annual_cost}</p>
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Annual Cost</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{typedData.recommended_structure.annual_cost}</p>
               </div>
-              <div className="bg-card rounded-lg p-4 text-center border border-border">
-                <Clock className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">Timeline</p>
-                <p className="text-sm font-bold text-foreground">{typedData.recommended_structure.timeline}</p>
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Timeline</p>
+                <p className="text-base font-medium tabular-nums text-foreground">{typedData.recommended_structure.timeline}</p>
               </div>
             </div>
           </motion.div>
@@ -1603,39 +1510,38 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         {/* Governance Framework */}
         {typedData.governance_framework && (
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.25 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <Scale className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                 Governance Framework
-              </h3>
-            </div>
+              </p>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Family Council</p>
-                <p className="text-sm font-bold text-foreground">{typedData.governance_framework.family_council_frequency}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Decision Threshold</p>
-                <p className="text-sm font-bold text-foreground">{typedData.governance_framework.decision_threshold}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Veto Power</p>
-                <p className="text-sm font-bold text-foreground">{typedData.governance_framework.veto_power}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Succession Triggers</p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {typedData.governance_framework.succession_triggers.map((trigger, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">
-                      {trigger}
-                    </span>
-                  ))}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Family Council</p>
+                  <p className="text-sm font-normal text-foreground">{typedData.governance_framework.family_council_frequency}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Threshold</p>
+                  <p className="text-sm font-normal text-foreground">{typedData.governance_framework.decision_threshold}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Veto Power</p>
+                  <p className="text-sm font-normal text-foreground">{typedData.governance_framework.veto_power}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Succession Triggers</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {typedData.governance_framework.succession_triggers.map((trigger, i) => (
+                      <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
+                        {trigger}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1645,52 +1551,47 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         {/* Heir Education Plan */}
         {typedData.heir_education_plan && (
           <motion.div
-            className="bg-card border border-border rounded-xl p-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-5">
-              <GraduationCap className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+            <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
                 Heir Education Plan
-              </h3>
-            </div>
+              </p>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Generation 2 */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                    G2
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Generation 2 */}
+                <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GenerationBadge gen="G2" isActive />
+                    <p className="text-sm font-normal text-foreground">Generation 2 (Current Heirs)</p>
                   </div>
-                  <p className="text-sm font-bold text-foreground">Generation 2 (Current Heirs)</p>
+                  <div className="space-y-2">
+                    {typedData.heir_education_plan.gen_2_actions.map((action, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {typedData.heir_education_plan.gen_2_actions.map((action, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">{parseMarkdownBold(action)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Generation 3 */}
-              <div className="bg-muted/30 border border-border rounded-lg p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-muted-foreground text-background flex items-center justify-center text-xs font-bold">
-                    G3
+                {/* Generation 3 */}
+                <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GenerationBadge gen="G3" />
+                    <p className="text-sm font-normal text-foreground">Generation 3 (Grandchildren)</p>
                   </div>
-                  <p className="text-sm font-bold text-foreground">Generation 3 (Grandchildren)</p>
-                </div>
-                <div className="space-y-2">
-                  {typedData.heir_education_plan.gen_3_actions.map((action, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <CheckCircle className="w-3 h-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-                      <span className="text-xs text-muted-foreground">{parseMarkdownBold(action)}</span>
-                    </div>
-                  ))}
+                  <div className="space-y-2">
+                    {typedData.heir_education_plan.gen_3_actions.map((action, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <CheckCircle className="w-3 h-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1699,15 +1600,16 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
         {/* Intelligence Source Footer */}
         <motion.div
-          className="flex items-center justify-center gap-2 pt-6"
+          className="flex items-center justify-center gap-3 pt-6"
           initial={{ opacity: 0 }}
           animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <p className="text-[10px] text-muted-foreground">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
+          <p className="text-xs text-muted-foreground/60 leading-relaxed">
             Grounded in HNWI Chronicles KG Succession Framework + Family Office Best Practices
           </p>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
         </motion.div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next"
 import type React from "react"
 import { headers } from "next/headers"
+import { Inter, JetBrains_Mono } from "next/font/google"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
 import { OnboardingProvider } from "@/contexts/onboarding-context"
@@ -12,6 +13,18 @@ import { AuthSyncProvider } from "@/components/auth-sync-provider"
 import PWAInstallPrompt from "@/components/pwa-install-prompt"
 import { ServiceWorkerUpdateManager } from "@/components/sw-update-manager"
 import './globals.css'
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+})
 
 const siteUrl = "https://app.hnwichronicles.com"
 // Logo optimized to 650x650 (275KB) with cache-busting for WhatsApp
@@ -124,7 +137,7 @@ export default function RootLayout({
   const nonce = headersList.get('X-CSP-Nonce') || undefined
   
   return (
-    <html lang="en">
+    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         {/* Suppress known Razorpay and service worker errors - load first */}
         <script

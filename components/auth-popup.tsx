@@ -404,7 +404,7 @@ export function AuthPopup({
         onClose()
       }
     }}>
-      <DialogContent className={showMfa ? "sm:max-w-lg" : "sm:max-w-md"}>
+      <DialogContent className={`${showMfa ? "sm:max-w-lg" : "sm:max-w-md"} max-w-[95vw] sm:max-w-[90vw]`}>
         {!showMfa ? (
           // Login Form
           <>

@@ -191,7 +191,11 @@ export default function AuthenticatedAssessmentPage() {
     };
 
     window.addEventListener('auth:login', handleAuthUpdate);
-    return () => window.removeEventListener('auth:login', handleAuthUpdate);
+    window.addEventListener('auth:userUpdated', handleAuthUpdate);
+    return () => {
+      window.removeEventListener('auth:login', handleAuthUpdate);
+      window.removeEventListener('auth:userUpdated', handleAuthUpdate);
+    };
   }, []);
 
   // Scroll to top when assessment starts

@@ -17,7 +17,8 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  Info
+  Info,
+  Star
 } from 'lucide-react';
 import {
   ScenarioTreeData,
@@ -29,6 +30,7 @@ import {
   MarketValidation
 } from '@/lib/decision-memo/sfo-expert-types';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
+import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface ScenarioTreeSectionProps {
   data?: ScenarioTreeData | Record<string, never>;
@@ -42,27 +44,30 @@ function parseMarkdownBold(text: string): React.ReactNode {
   return parts.map((part, index) => {
     // Odd indices are the bold parts (captured groups)
     if (index % 2 === 1) {
-      return <span key={index} className="font-bold text-foreground">{part}</span>;
+      return <span key={index} className="font-medium text-foreground">{part}</span>;
     }
     return part;
   });
 }
 
-// Branch strength indicator (visual bars)
-function StrengthIndicator({ strength }: { strength: number }) {
+// Branch strength indicator (visual bars) — animated stagger fill
+function StrengthIndicator({ strength, animate = false }: { strength: number; animate?: boolean }) {
   const bars = Math.round(strength * 5);
 
   return (
     <div className="flex items-center gap-1">
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map(i => (
-          <div
+          <motion.div
             key={i}
-            className={`w-1.5 h-3 rounded-sm ${i <= bars ? 'bg-primary' : 'bg-muted'}`}
+            className={`w-1 rounded-full ${i <= bars ? 'bg-primary/60' : 'bg-muted/20'}`}
+            initial={animate ? { height: 0 } : { height: 12 }}
+            animate={{ height: 12 }}
+            transition={animate ? { delay: i * 0.08, duration: 0.3, ease: EASE_OUT_EXPO } : {}}
           />
         ))}
       </div>
-      <span className="text-[10px] font-bold text-muted-foreground ml-1">
+      <span className="text-xs font-medium text-muted-foreground/60 ml-1">
         {formatPercentage(strength)}
       </span>
     </div>
@@ -72,24 +77,24 @@ function StrengthIndicator({ strength }: { strength: number }) {
 // Condition status badge
 function ConditionBadge({ status }: { status: ConditionStatus }) {
   const config: Record<ConditionStatus, { icon: React.ReactNode; color: string; label: string }> = {
-    MET: { icon: <CheckCircle className="w-3 h-3" />, color: 'text-primary bg-primary/10', label: 'Met' },
-    CONFIRMED: { icon: <CheckCircle className="w-3 h-3" />, color: 'text-primary bg-primary/10', label: 'Confirmed' },
-    CONDITIONAL: { icon: <RefreshCw className="w-3 h-3" />, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', label: 'Conditional' },
-    PENDING: { icon: <AlertTriangle className="w-3 h-3" />, color: 'text-muted-foreground bg-muted', label: 'Pending' },
-    BLOCKED: { icon: <XCircle className="w-3 h-3" />, color: 'text-muted-foreground bg-muted/70', label: 'Blocked' }
+    MET: { icon: <CheckCircle className="w-3 h-3" />, color: 'border-primary/20 text-primary/80', label: 'Met' },
+    CONFIRMED: { icon: <CheckCircle className="w-3 h-3" />, color: 'border-primary/20 text-primary/80', label: 'Confirmed' },
+    CONDITIONAL: { icon: <RefreshCw className="w-3 h-3" />, color: 'border-amber-500/20 text-amber-500/80', label: 'Conditional' },
+    PENDING: { icon: <AlertTriangle className="w-3 h-3" />, color: 'border-border/20 text-muted-foreground/80', label: 'Pending' },
+    BLOCKED: { icon: <XCircle className="w-3 h-3" />, color: 'border-border/20 text-muted-foreground/60', label: 'Blocked' }
   };
 
   const { icon, color, label } = config[status] || config.PENDING;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold ${color}`}>
+    <span className={`inline-flex items-center gap-1 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${color}`}>
       {icon}
       {label}
     </span>
   );
 }
 
-// Branch card component
+// Branch card component — with hover lift and animated strength bars
 function BranchCard({
   branch,
   isRecommended,
@@ -100,115 +105,146 @@ function BranchCard({
   index: number;
 }) {
   const icons: Record<BranchName, React.ReactNode> = {
-    PROCEED_NOW: <CheckCircle className="w-5 h-5 text-primary" />,
-    PROCEED_MODIFIED: <AlertTriangle className="w-5 h-5 text-muted-foreground" />,
-    DO_NOT_PROCEED: <XCircle className="w-5 h-5 text-muted-foreground" />
+    PROCEED_NOW: <CheckCircle className="w-4 h-4 text-primary/60" />,
+    PROCEED_MODIFIED: <AlertTriangle className="w-4 h-4 text-amber-500/60" />,
+    DO_NOT_PROCEED: <XCircle className="w-4 h-4 text-red-500/60" />
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
+      transition={{ delay: 0.3 + index * 0.12, duration: 0.7, ease: EASE_OUT_EXPO }}
+      whileHover={{ y: -4, transition: { duration: 0.25 } }}
       className={`
-        relative bg-gradient-to-br ${isRecommended ? 'from-primary/5 to-primary/10' : 'from-muted/5 to-muted/10'}
-        border-2 ${isRecommended ? 'border-primary/60' : 'border-border'} rounded-xl p-3 sm:p-5
-        ${isRecommended ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' : ''}
+        relative rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 transition-all duration-300
+        ${isRecommended ? 'border-primary/30' : ''}
       `}
     >
       {/* Recommended Badge */}
       {isRecommended && (
-        <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
-          <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg whitespace-nowrap">
-            ★ Recommended
+        <motion.div
+          className="absolute -top-3 inset-x-0 flex justify-center z-10"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6 + index * 0.12, duration: 0.4, ease: EASE_OUT_EXPO }}
+        >
+          <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-emerald-500/20 text-emerald-500/80 bg-card inline-flex items-center gap-1">
+            <Star className="w-3 h-3 inline" /> Recommended
           </span>
-        </div>
+        </motion.div>
       )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4 mt-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center shadow-sm">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex-shrink-0">
             {icons[branch.name]}
           </div>
-          <div>
-            <h4 className="text-sm font-semibold text-foreground">{getBranchDisplayName(branch.name)}</h4>
-            <StrengthIndicator strength={branch.recommendation_strength} />
+          <div className="min-w-0 flex-1">
+            <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{getBranchDisplayName(branch.name)}</h4>
+            <div className="mt-1">
+              <StrengthIndicator strength={branch.recommendation_strength} animate />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conditions */}
-      <div className="space-y-2 mb-4">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Conditions</p>
-        {branch.conditions.map((condition, i) => (
-          <div key={i} className="flex items-start gap-2 bg-card/50 rounded-lg p-2">
-            <ConditionBadge status={condition.status} />
-            <span className="text-xs text-muted-foreground flex-1">{condition.condition}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Expected Value */}
-      <div className="bg-card rounded-lg p-3 mb-4 border border-border">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Value</p>
-        <p className={`text-xl font-bold ${branch.expected_value >= 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+      {/* Expected Value — hero treatment */}
+      <div className="mb-4 pt-4">
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-4" />
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Expected Value</p>
+        <p className={`text-xl sm:text-2xl font-bold tabular-nums tracking-tight ${branch.expected_value >= 0 ? 'text-primary' : 'text-muted-foreground/60'}`}>
           {branch.expected_value >= 0 ? '+' : ''}{formatCurrency(branch.expected_value)}
         </p>
         {branch.expected_value_note && (
-          <p className="text-xs text-muted-foreground italic mt-1.5 leading-relaxed">
+          <p className="text-sm text-muted-foreground/60 italic mt-2 leading-relaxed">
             {branch.expected_value_note}
           </p>
         )}
       </div>
 
+      {/* Conditions */}
+      <div className="space-y-3 mb-4">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Conditions</p>
+        {branch.conditions.map((condition, i) => (
+          <motion.div
+            key={i}
+            className="flex flex-col sm:flex-row sm:items-start gap-2 rounded-lg p-3 sm:p-2"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 + index * 0.12 + i * 0.06, duration: 0.4 }}
+          >
+            <div className="flex-shrink-0">
+              <ConditionBadge status={condition.status} />
+            </div>
+            <span className="text-sm text-muted-foreground/60 flex-1 leading-loose sm:leading-relaxed break-words pt-0.5">{condition.condition}</span>
+          </motion.div>
+        ))}
+      </div>
+
       {/* Verdict */}
-      <div className="pt-3 border-t border-border/50">
-        <p className="text-xs text-foreground font-medium">{parseMarkdownBold(branch.verdict)}</p>
+      <div className="pt-3">
+        <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-3" />
+        <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(branch.verdict)}</p>
       </div>
     </motion.div>
   );
 }
 
-// Decision gate timeline item
+// Decision gate timeline item — animated connector draw
 function GateItem({ gate, index, total }: { gate: ScenarioTreeData['decision_gates'][0]; index: number; total: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, x: -24 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
+      transition={{ delay: index * 0.12, duration: 0.7, ease: EASE_OUT_EXPO }}
       className="relative flex items-start gap-4"
     >
       {/* Timeline connector */}
       <div className="flex flex-col items-center">
-        <div className="w-10 h-10 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center z-10">
-          <span className="text-sm font-bold text-primary">{gate.gate_number}</span>
-        </div>
+        <motion.div
+          className="w-8 h-8 rounded-full border border-primary/30 flex items-center justify-center z-10"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: index * 0.12, duration: 0.4, ease: EASE_OUT_EXPO }}
+        >
+          <span className="text-xs font-medium text-primary">{gate.gate_number}</span>
+        </motion.div>
         {index < total - 1 && (
-          <div className="w-0.5 h-full bg-border absolute top-10 left-5" />
+          <motion.div
+            className="w-px bg-primary/10 absolute top-8 left-4"
+            initial={{ height: 0 }}
+            animate={{ height: '100%' }}
+            transition={{ delay: index * 0.12 + 0.2, duration: 0.5, ease: EASE_OUT_EXPO }}
+          />
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 pb-6">
-        <div className="bg-card border border-border rounded-lg p-4">
+        <motion.div
+          className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 hover:border-border/30 transition-colors duration-300"
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.2 }}
+        >
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs font-semibold text-foreground">Day {gate.day}</span>
+            <Clock className="w-3.5 h-3.5 text-muted-foreground/60" />
+            <span className="text-xs font-medium text-foreground">Day {gate.day}</span>
           </div>
-          <p className="text-sm text-foreground mb-3">{gate.check}</p>
+          <p className="text-sm text-foreground/60 font-normal mb-3 leading-loose sm:leading-relaxed">{gate.check}</p>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-primary/10 rounded-lg p-2 border border-primary/20">
-              <p className="text-[9px] uppercase tracking-wider text-primary font-bold mb-1">If Pass</p>
-              <p className="text-[11px] text-muted-foreground">{gate.if_pass}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div className="rounded-lg p-3 border border-primary/10">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-1.5">If Pass</p>
+              <p className="text-sm text-muted-foreground/60 leading-relaxed break-words">{gate.if_pass}</p>
             </div>
-            <div className="bg-muted rounded-lg p-2 border border-border">
-              <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">If Fail</p>
-              <p className="text-[11px] text-muted-foreground">{gate.if_fail}</p>
+            <div className="rounded-lg p-3 border border-border/20">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">If Fail</p>
+              <p className="text-sm text-muted-foreground/60 leading-relaxed break-words">{gate.if_fail}</p>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   );
@@ -549,7 +585,7 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
     return { branch, rationale };
   };
 
-  // Visual branch card for narrative fallback
+  // Visual branch card for narrative fallback — with hover lift
   function NarrativeBranchCard({
     branch,
     index
@@ -558,115 +594,124 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
     index: number;
   }) {
     const icons = {
-      PROCEED_NOW: <CheckCircle className="w-5 h-5 text-primary" />,
-      PROCEED_MODIFIED: <AlertTriangle className="w-5 h-5 text-muted-foreground" />,
-      DO_NOT_PROCEED: <XCircle className="w-5 h-5 text-muted-foreground" />
+      PROCEED_NOW: <CheckCircle className="w-4 h-4 text-primary/60" />,
+      PROCEED_MODIFIED: <AlertTriangle className="w-4 h-4 text-amber-500/60" />,
+      DO_NOT_PROCEED: <XCircle className="w-4 h-4 text-red-500/60" />
     };
-
-    const bars = Math.round(branch.strength * 5);
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.1, duration: 0.5 }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={isVisible ? { opacity: 1, y: 0 } : {}}
+        transition={{ delay: 0.3 + index * 0.12, duration: 0.7, ease: EASE_OUT_EXPO }}
+        whileHover={{ y: -4, transition: { duration: 0.25 } }}
         className={`
-          relative bg-gradient-to-br ${branch.isRecommended ? 'from-primary/5 to-primary/10' : 'from-muted/5 to-muted/10'}
-          border-2 ${branch.isRecommended ? 'border-primary/60' : 'border-border'} rounded-xl p-5
-          ${branch.isRecommended ? 'ring-2 ring-primary ring-offset-2 ring-offset-background shadow-lg' : ''}
+          relative rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 transition-all duration-300
+          ${branch.isRecommended ? 'border-primary/30' : ''}
         `}
       >
         {/* Recommended Badge */}
         {branch.isRecommended && (
-          <div className="absolute -top-3 inset-x-0 flex justify-center z-10">
-            <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-primary text-primary-foreground text-[8px] sm:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg whitespace-nowrap">
-              ★ Recommended
+          <motion.div
+            className="absolute -top-3 inset-x-0 flex justify-center z-10"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={isVisible ? { opacity: 1, scale: 1 } : {}}
+            transition={{ delay: 0.6 + index * 0.12, duration: 0.4, ease: EASE_OUT_EXPO }}
+          >
+            <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-emerald-500/20 text-emerald-500/80 bg-card inline-flex items-center gap-1">
+              <Star className="w-3 h-3 inline" /> Recommended
             </span>
-          </div>
+          </motion.div>
         )}
 
         {/* Header */}
         <div className="flex items-start justify-between mb-4 mt-1">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-card flex items-center justify-center shadow-sm">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex-shrink-0">
               {icons[branch.name]}
             </div>
-            <div>
-              <h4 className="text-sm font-semibold text-foreground">{branch.displayName}</h4>
-              <div className="flex items-center gap-1">
-                <div className="flex gap-0.5">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div
-                      key={i}
-                      className={`w-1.5 h-3 rounded-sm ${i <= bars ? 'bg-primary' : 'bg-muted'}`}
-                    />
-                  ))}
-                </div>
-                <span className="text-[10px] font-bold text-muted-foreground ml-1">
-                  {Math.round(branch.strength * 100)}%
-                </span>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm sm:text-base font-medium text-foreground break-words leading-snug">{branch.displayName}</h4>
+              <div className="mt-1">
+                <StrengthIndicator strength={branch.strength} animate />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Expected Value */}
-        <div className="bg-card rounded-lg p-3 mb-4 border border-border">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Value</p>
-          <p className={`text-xl font-bold ${branch.expectedValue.includes('-') ? 'text-muted-foreground' : 'text-primary'}`}>
+        {/* Expected Value — hero treatment */}
+        <div className="mb-4 pt-4">
+          <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-4" />
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Expected Value</p>
+          <p className={`text-xl sm:text-2xl font-bold tabular-nums tracking-tight ${branch.expectedValue.includes('-') ? 'text-muted-foreground/60' : 'text-primary'}`}>
             {branch.expectedValue}
           </p>
         </div>
 
         {/* Verdict */}
         {branch.verdict && (
-          <div className="pt-3 border-t border-border/50">
-            <p className="text-xs text-foreground font-medium">{parseMarkdownBold(branch.verdict)}</p>
+          <div className="pt-3">
+            <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-3" />
+            <p className="text-xs sm:text-sm text-foreground/60 font-normal leading-relaxed">{parseMarkdownBold(branch.verdict)}</p>
           </div>
         )}
       </motion.div>
     );
   }
 
-  // Visual gate item for narrative fallback
+  // Visual gate item for narrative fallback — animated connector draw
   function NarrativeGateItem({ gate, index, total }: { gate: ReturnType<typeof extractGatesFromNarrative>[0]; index: number; total: number }) {
     return (
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: index * 0.1, duration: 0.5 }}
+        initial={{ opacity: 0, x: -24 }}
+        animate={isVisible ? { opacity: 1, x: 0 } : {}}
+        transition={{ delay: index * 0.12, duration: 0.7, ease: EASE_OUT_EXPO }}
         className="relative flex items-start gap-4"
       >
         {/* Timeline connector */}
         <div className="flex flex-col items-center">
-          <div className="w-10 h-10 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center z-10">
-            <span className="text-sm font-bold text-primary">{gate.gateNumber}</span>
-          </div>
+          <motion.div
+            className="w-8 h-8 rounded-full border border-primary/30 flex items-center justify-center z-10"
+            initial={{ scale: 0 }}
+            animate={isVisible ? { scale: 1 } : {}}
+            transition={{ delay: index * 0.12, duration: 0.4, ease: EASE_OUT_EXPO }}
+          >
+            <span className="text-xs font-medium text-primary">{gate.gateNumber}</span>
+          </motion.div>
           {index < total - 1 && (
-            <div className="w-0.5 h-full bg-border absolute top-10 left-5" />
+            <motion.div
+              className="w-px bg-primary/10 absolute top-8 left-4"
+              initial={{ height: 0 }}
+              animate={isVisible ? { height: '100%' } : {}}
+              transition={{ delay: index * 0.12 + 0.2, duration: 0.5, ease: EASE_OUT_EXPO }}
+            />
           )}
         </div>
 
         {/* Content */}
         <div className="flex-1 pb-6">
-          <div className="bg-card border border-border rounded-lg p-4">
+          <motion.div
+            className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 hover:border-border/30 transition-colors duration-300"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.2 }}
+          >
             <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">Day {gate.day}</span>
+              <Clock className="w-3.5 h-3.5 text-muted-foreground/60" />
+              <span className="text-xs font-medium text-foreground">Day {gate.day}</span>
             </div>
-            <p className="text-sm text-foreground mb-3">{gate.check}</p>
+            <p className="text-sm text-foreground/60 font-normal mb-3 leading-loose sm:leading-relaxed">{gate.check}</p>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-primary/10 rounded-lg p-2 border border-primary/20">
-                <p className="text-[9px] uppercase tracking-wider text-primary font-bold mb-1">If Pass</p>
-                <p className="text-[11px] text-muted-foreground">{gate.ifPass}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="rounded-lg p-3 border border-primary/10">
+                <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-1.5">If Pass</p>
+                <p className="text-sm text-muted-foreground/60 leading-relaxed break-words">{gate.ifPass}</p>
               </div>
-              <div className="bg-muted rounded-lg p-2 border border-border">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1">If Fail</p>
-                <p className="text-[11px] text-muted-foreground">{gate.ifFail}</p>
+              <div className="rounded-lg p-3 border border-border/20">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">If Fail</p>
+                <p className="text-sm text-muted-foreground/60 leading-relaxed break-words">{gate.ifFail}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </motion.div>
     );
@@ -684,51 +729,47 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
       <div ref={sectionRef}>
         {/* Premium Header */}
         <motion.div
-          className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="flex items-center gap-3 mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-              DECISION SCENARIO TREE
-            </h2>
-            <span className="px-2 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold rounded-full">
-              Game Theory
-            </span>
-          </div>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-          <p className="text-sm text-muted-foreground mt-3">
-            Strategic decision pathways with conditional outcomes
-          </p>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Decision Scenario Tree
+          </h2>
+          <div className="h-px bg-border" />
         </motion.div>
 
-        <div className="space-y-6">
+        <div className="space-y-8 sm:space-y-12">
           {/* Key Decision Metrics Grid */}
           {keyMetrics.length > 0 && (
             <motion.div
-              className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-              initial={{ opacity: 0, y: 20 }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
               {keyMetrics.map((metric, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-xl p-4 text-center border-2 ${
-                    metric.type === 'good' ? 'bg-primary/5 border-primary/30' :
-                    metric.type === 'bad' ? 'bg-muted border-border' :
-                    'bg-card border-border'
-                  }`}
+                  className={`relative rounded-xl border ${
+                    metric.type === 'good' ? 'border-primary/20' :
+                    'border-border/20'
+                  } bg-card/50 p-5 text-center overflow-hidden`}
                 >
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{metric.label}</p>
-                  <p className={`text-xl font-bold ${
-                    metric.type === 'good' ? 'text-primary' :
-                    metric.type === 'bad' ? 'text-muted-foreground' :
-                    'text-foreground'
-                  }`}>
-                    {metric.value}
-                  </p>
+                  {metric.type === 'good' && (
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+                  )}
+                  <div className="relative">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{metric.label}</p>
+                    <p className={`text-xl md:text-2xl font-bold tabular-nums tracking-tight ${
+                      metric.type === 'good' ? 'text-primary' :
+                      metric.type === 'bad' ? 'text-muted-foreground/60' :
+                      'text-foreground'
+                    }`}>
+                      {metric.value}
+                    </p>
+                  </div>
                 </div>
               ))}
             </motion.div>
@@ -737,31 +778,52 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           {/* Visual Decision Tree with Branch Cards */}
           {branches.length > 0 && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-5"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden px-5 sm:px-8 md:px-12 py-10 md:py-12"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.15 }}
+              transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="flex flex-col items-center">
-                {/* Root Node */}
-                <div className="w-48 p-4 bg-primary/10 border-2 border-primary rounded-xl text-center mb-4">
-                  <Target className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <p className="font-semibold text-foreground text-sm">Decision Point</p>
-                  <p className="text-[10px] text-muted-foreground">Choose Your Path</p>
-                </div>
+                {/* Root Node — with subtle breathing pulse */}
+                <motion.div
+                  className="w-48 p-4 rounded-xl border border-gold/30 text-center mb-4 relative"
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={isVisible ? { opacity: 1, scale: 1 } : {}}
+                  transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+                >
+                  <motion.div
+                    className="absolute inset-0 rounded-xl border border-gold/20"
+                    animate={{ scale: [1, 1.08, 1], opacity: [0.3, 0, 0.3] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <Target className="w-5 h-5 mx-auto mb-2 text-primary/60" />
+                  <p className="font-normal text-foreground text-sm">Decision Point</p>
+                  <p className="text-xs text-muted-foreground/60">Choose Your Path</p>
+                </motion.div>
 
-                {/* Connector */}
-                <div className="w-px h-6 bg-border" />
-                <div className="w-full max-w-4xl h-px bg-border" />
+                {/* Animated connectors */}
+                <motion.div
+                  className="w-px bg-primary/20"
+                  initial={{ height: 0 }}
+                  animate={isVisible ? { height: 24 } : {}}
+                  transition={{ duration: 0.3, delay: 0.5, ease: EASE_OUT_EXPO }}
+                />
+                <motion.div
+                  className="w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+                  initial={{ scaleX: 0 }}
+                  animate={isVisible ? { scaleX: 1 } : {}}
+                  transition={{ duration: 0.6, delay: 0.7, ease: EASE_OUT_EXPO }}
+                />
 
                 {/* Branch Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full mt-4">
                   {branches.map((branch, index) => (
-                    <NarrativeBranchCard
-                      key={branch.name}
-                      branch={branch}
-                      index={index}
-                    />
+                    <div key={branch.name}>
+                      <NarrativeBranchCard
+                        branch={branch}
+                        index={index}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -771,28 +833,27 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           {/* Recommendation Card */}
           {recommendation && (
             <motion.div
-              className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Strategic Recommendation
-                </h3>
-              </div>
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
-              <div className="bg-card rounded-lg p-4 mb-4 border border-border">
-                <p className="text-lg font-bold text-foreground">{parseMarkdownBold(recommendation.branch)}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">
+                Strategic Recommendation
+              </p>
+
+              <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5">
+                <p className="text-lg font-normal text-foreground">{parseMarkdownBold(recommendation.branch)}</p>
               </div>
 
               {recommendation.rationale.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {recommendation.rationale.map((reason, i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-muted-foreground">{parseMarkdownBold(reason)}</p>
+                      <CheckCircle className="w-3.5 h-3.5 text-primary/40 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-muted-foreground/60 font-normal leading-loose sm:leading-relaxed">{parseMarkdownBold(reason)}</p>
                     </div>
                   ))}
                 </div>
@@ -803,17 +864,14 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
           {/* Decision Gates Timeline */}
           {gates.length > 0 && (
             <motion.div
-              className="bg-card border border-border rounded-xl p-5"
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.25 }}
+              transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-center gap-2 mb-6">
-                <Calendar className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Decision Gates Timeline
-                </h3>
-              </div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
+                Decision Gates Timeline
+              </p>
 
               <div className="relative ml-1">
                 {gates.map((gate, index) => (
@@ -830,18 +888,18 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
           {/* Expiry Notice */}
           <motion.div
-            className="flex items-center justify-between p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl"
-            initial={{ opacity: 0, y: 20 }}
+            className="flex items-center justify-between rounded-xl border border-border/20 bg-card/50 px-6 py-4"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="flex items-center gap-3">
-              <RefreshCw className="w-5 h-5 text-muted-foreground" />
+              <RefreshCw className="w-4 h-4 text-muted-foreground/60" />
               <div>
-                <p className="text-sm font-medium text-foreground">
-                  Decision Tree Valid For: <span className="font-bold">30 days</span>
+                <p className="text-sm font-normal text-foreground">
+                  Decision Tree Valid For: <span className="">30 days</span>
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground/60 leading-relaxed">
                   Reassess if: Market shift &gt;10% | New regulations | Counterparty changes
                 </p>
               </div>
@@ -851,13 +909,12 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
         {/* Intelligence Source Footer */}
         <motion.div
-          className="flex items-center justify-center gap-2 pt-6"
+          className="flex items-center justify-center gap-2 pt-8"
           initial={{ opacity: 0 }}
           animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground/60 leading-relaxed">
             Grounded in HNWI Chronicles KG Decision Framework + Game Theory Models
           </p>
         </motion.div>
@@ -874,56 +931,69 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
   return (
     <div ref={sectionRef}>
-      {/* Premium Header */}
-      <motion.div
-        className="mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 20 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="flex items-center gap-3 mb-2 sm:mb-3">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-            DECISION SCENARIO TREE
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Decision Scenario Tree
           </h2>
-          <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-            Game Theory
-          </span>
-        </div>
-        <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-        <p className="text-sm text-muted-foreground mt-3">
-          Strategic decision pathways with conditional outcomes
-        </p>
-      </motion.div>
-
-      <div className="space-y-6">
+          <div className="h-px bg-border" />
+        </motion.div>
+      <div className="space-y-8 sm:space-y-12">
         {/* Visual Decision Tree */}
         <motion.div
-          className="bg-card border border-border rounded-xl p-3 sm:p-5"
-          initial={{ opacity: 0, y: 20 }}
+          className="relative rounded-2xl border border-border/30 overflow-hidden px-4 sm:px-10 md:px-14 py-8 md:py-12"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex flex-col items-center">
-            {/* Root Node */}
-            <div className="w-40 sm:w-48 p-3 sm:p-4 bg-primary/10 border-2 border-primary rounded-xl text-center mb-4">
-              <Target className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-2 text-primary" />
-              <p className="font-semibold text-foreground text-xs sm:text-sm">Decision Point</p>
-              <p className="text-[9px] sm:text-[10px] text-muted-foreground">Choose Your Path</p>
-            </div>
+            {/* Root Node — with subtle breathing pulse */}
+            <motion.div
+              className="w-40 sm:w-48 p-3 sm:p-4 rounded-xl border border-gold/30 text-center mb-4 relative"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={isVisible ? { opacity: 1, scale: 1 } : {}}
+              transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+            >
+              {/* Subtle ring pulse */}
+              <motion.div
+                className="absolute inset-0 rounded-xl border border-gold/20"
+                animate={{ scale: [1, 1.08, 1], opacity: [0.3, 0, 0.3] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <Target className="w-5 h-5 sm:w-5 sm:h-5 mx-auto mb-2 text-primary/60" />
+              <p className="font-normal text-foreground text-xs sm:text-sm">Decision Point</p>
+              <p className="text-xs text-muted-foreground/60">Choose Your Path</p>
+            </motion.div>
 
-            {/* Connector */}
-            <div className="w-px h-4 sm:h-6 bg-border" />
-            <div className="hidden md:block w-full max-w-4xl h-px bg-border" />
+            {/* Animated connector — draws downward */}
+            <motion.div
+              className="w-px bg-primary/20"
+              initial={{ height: 0 }}
+              animate={isVisible ? { height: 24 } : {}}
+              transition={{ duration: 0.3, delay: 0.5, ease: EASE_OUT_EXPO }}
+            />
+            {/* Horizontal spread connector */}
+            <motion.div
+              className="hidden md:block w-full max-w-4xl h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+              initial={{ scaleX: 0 }}
+              animate={isVisible ? { scaleX: 1 } : {}}
+              transition={{ duration: 0.6, delay: 0.7, ease: EASE_OUT_EXPO }}
+            />
 
             {/* Branch Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 w-full mt-3 sm:mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full mt-4">
               {typedData.branches.map((branch, index) => (
-                <BranchCard
-                  key={branch.name}
-                  branch={branch}
-                  isRecommended={branch.name === typedData.recommended_branch}
-                  index={index}
-                />
+                <div key={branch.name}>
+                  <BranchCard
+                    branch={branch}
+                    isRecommended={branch.name === typedData.recommended_branch}
+                    index={index}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -932,34 +1002,34 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         {/* Recommendation Rationale */}
         {recommendedBranch && (
           <motion.div
-            className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.15 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Shield className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                Recommendation: {getBranchDisplayName(typedData.recommended_branch)}
-              </h3>
-            </div>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
-            <div className="space-y-2 mb-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">
+              Recommendation: {getBranchDisplayName(typedData.recommended_branch)}
+            </p>
+
+            <div className="space-y-3 mb-5">
               {typedData.rationale.map((reason, i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{reason}</p>
+                  <CheckCircle className="w-3.5 h-3.5 text-primary/40 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground/60 font-normal leading-relaxed">{reason}</p>
                 </div>
               ))}
             </div>
 
             {/* Verdict Conditions */}
             {recommendedBranch.verdict_conditions.length > 0 && (
-              <div className="pt-4 border-t border-primary/20">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Choose this path if:</p>
+              <div className="pt-5">
+                <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Choose this path if:</p>
                 <div className="flex flex-wrap gap-2">
                   {recommendedBranch.verdict_conditions.map((condition, i) => (
-                    <span key={i} className="px-3 py-1.5 bg-primary/10 text-primary text-xs rounded-full font-medium">
+                    <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-primary/20 text-primary/80">
                       {condition}
                     </span>
                   ))}
@@ -972,17 +1042,14 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         {/* Decision Gates Timeline */}
         {typedData.decision_gates.length > 0 && (
           <motion.div
-            className="bg-card border border-border rounded-xl p-5"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="flex items-center gap-2 mb-6">
-              <Calendar className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                Decision Gates
-              </h3>
-            </div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
+              Decision Gates
+            </p>
 
             <div className="relative ml-1">
               {typedData.decision_gates.map((gate, index) => (
@@ -1000,34 +1067,36 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         {/* Decision Matrix Table */}
         {typedData.decision_matrix.length > 0 && (
           <motion.div
-            className="bg-card border border-border rounded-xl overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.25 }}
+            transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="p-4 border-b border-border bg-muted/30">
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Decision Matrix
-                </h3>
-              </div>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+
+            <div className="px-6 sm:px-10 py-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
+                Decision Matrix
+              </p>
             </div>
 
             {/* Mobile: Card layout */}
-            <div className="md:hidden space-y-3 p-4">
+            <div className="md:hidden space-y-3 px-6 pb-6">
               {typedData.decision_matrix.map((entry, i) => (
-                <div key={i} className="bg-muted/20 rounded-lg p-3 space-y-2 border border-border">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{entry.branch}</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
+                <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5 space-y-3">
+                  <div className="space-y-2">
+                    <h4 className="text-base font-medium text-foreground break-words leading-snug">{entry.branch}</h4>
+                    <span className="inline-flex text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1.5 border border-border/20 text-muted-foreground/80">
                       {entry.risk_level}
                     </span>
                   </div>
-                  <p className={`text-lg font-bold ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {entry.expected_value}
-                  </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{entry.recommended_if}</p>
+                  <div className="pt-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Expected Value</p>
+                    <p className={`text-xl sm:text-2xl font-bold tabular-nums tracking-tight ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground/60'}`}>
+                      {entry.expected_value}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed pt-2">{entry.recommended_if}</p>
                 </div>
               ))}
             </div>
@@ -1035,28 +1104,28 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border bg-muted/20">
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Branch</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Expected Value</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Risk Level</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Recommended If</th>
+                  <tr>
+                    <th className="px-3 sm:px-10 py-3 text-left text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Branch</th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Expected Value</th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Risk Level</th>
+                    <th className="px-4 py-3 text-left text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Recommended If</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {typedData.decision_matrix.map((entry, i) => (
-                    <tr key={i} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">{entry.branch}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`text-sm font-bold ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <tr key={i} className="hover:bg-card/30 transition-colors border-t border-border/20">
+                      <td className="px-3 sm:px-10 py-4 text-sm font-normal text-foreground whitespace-nowrap">{entry.branch}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`text-sm font-medium ${entry.expected_value.startsWith('+') ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           {entry.expected_value}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-muted text-muted-foreground whitespace-nowrap">
+                      <td className="px-4 py-4">
+                        <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80 whitespace-nowrap">
                           {entry.risk_level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{entry.recommended_if}</td>
+                      <td className="px-4 py-4 text-sm text-muted-foreground/60 leading-relaxed">{entry.recommended_if}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1068,85 +1137,85 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
         {/* Market Validation - Expected vs Reality */}
         {typedData.market_validation && (
           <motion.div
-            className="bg-card border border-border rounded-xl overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
+            className="relative rounded-2xl border border-border/30 overflow-hidden"
+            initial={{ opacity: 0, y: 12 }}
             animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="p-4 border-b border-border bg-muted/30">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className={`w-5 h-5 ${viaNegativa?.isActive ? 'text-red-500' : 'text-primary'}`} />
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    {viaNegativa?.isActive ? viaNegativa.scenarioHeader : 'Expected vs Reality'}
-                  </h3>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  typedData.market_validation.overall_confidence === 'high'
-                    ? 'bg-primary/10 text-primary'
-                    : typedData.market_validation.overall_confidence === 'moderate'
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {typedData.market_validation.overall_confidence} confidence
-                </span>
+            <div className="px-6 sm:px-10 py-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <BarChart3 className={`w-4 h-4 ${viaNegativa?.isActive ? 'text-red-500/60' : 'text-primary/60'}`} />
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
+                  {viaNegativa?.isActive ? viaNegativa.scenarioHeader : 'Expected vs Reality'}
+                </p>
               </div>
+              <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
+                typedData.market_validation.overall_confidence === 'high'
+                  ? 'border-primary/20 text-primary/80'
+                  : typedData.market_validation.overall_confidence === 'moderate'
+                  ? 'border-amber-500/20 text-amber-500/80'
+                  : 'border-border/20 text-muted-foreground/80'
+              }`}>
+                {typedData.market_validation.overall_confidence} confidence
+              </span>
             </div>
 
-            <div className="p-3 sm:p-5 space-y-4">
+            <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+
+            <div className="px-6 sm:px-10 py-6 sm:py-8 space-y-6">
               {/* Appreciation Comparison */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 items-center">
-                <div className={`rounded-lg p-3 sm:p-4 text-center border ${
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 items-center">
+                <div className={`rounded-xl p-4 sm:p-5 text-center border ${
                   viaNegativa?.isActive
-                    ? 'bg-red-500/10 border-red-500/20'
-                    : 'bg-muted/30 border-border'
+                    ? 'border-red-500/20'
+                    : 'border-border/20'
                 }`}>
-                  <p className={`text-[10px] uppercase tracking-wider mb-1 ${
-                    viaNegativa?.isActive ? 'text-red-400 font-bold' : 'text-muted-foreground'
+                  <p className={`text-xs uppercase tracking-[0.2em] mb-2 ${
+                    viaNegativa?.isActive ? 'text-red-400/60 font-medium' : 'text-muted-foreground/60'
                   }`}>{viaNegativa?.isActive ? viaNegativa.expectationLabel : 'Your Expectation'}</p>
                   <p className="text-xl font-bold text-foreground">
                     {typedData.market_validation.expected_vs_reality.appreciation.your_expectation}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">Appreciation Rate</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Appreciation Rate</p>
                 </div>
 
                 <div className="hidden md:flex flex-col items-center justify-center">
                   <div className="flex items-center gap-2">
                     {typedData.market_validation.expected_vs_reality.appreciation.deviation?.includes('above') ? (
-                      <TrendingUp className="w-5 h-5 text-amber-500" />
+                      <TrendingUp className="w-4 h-4 text-amber-500/50" />
                     ) : typedData.market_validation.expected_vs_reality.appreciation.deviation?.includes('below') ? (
-                      <TrendingDown className="w-5 h-5 text-primary" />
+                      <TrendingDown className="w-4 h-4 text-primary/50" />
                     ) : (
-                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                      <ArrowRight className="w-4 h-4 text-muted-foreground/60" />
                     )}
-                    <span className={`text-xs font-bold ${
+                    <span className={`text-xs font-medium ${
                       typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'high' ||
                       typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'extreme'
-                        ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-muted-foreground'
+                        ? 'text-amber-500/60'
+                        : 'text-muted-foreground/60'
                     }`}>
                       {typedData.market_validation.expected_vs_reality.appreciation.deviation || 'vs'}
                     </span>
                   </div>
                 </div>
 
-                <div className={`rounded-lg p-3 sm:p-4 text-center border-2 ${
+                <div className={`rounded-xl p-4 sm:p-5 text-center border ${
                   viaNegativa?.isActive
                     ? (typedData.market_validation.expected_vs_reality.appreciation.market_actual
-                        ? 'bg-emerald-500/10 border-emerald-500/20'
-                        : 'bg-muted/30 border-border')
+                        ? 'border-emerald-500/20'
+                        : 'border-border/20')
                     : (typedData.market_validation.expected_vs_reality.appreciation.market_actual
-                        ? 'bg-primary/5 border-primary/30'
-                        : 'bg-muted/30 border-border')
+                        ? 'border-primary/20'
+                        : 'border-border/20')
                 }`}>
-                  <p className={`text-[10px] uppercase tracking-wider mb-1 ${
-                    viaNegativa?.isActive ? 'text-emerald-400 font-bold' : 'text-muted-foreground'
+                  <p className={`text-xs uppercase tracking-[0.2em] mb-2 ${
+                    viaNegativa?.isActive ? 'text-emerald-400/60 font-medium' : 'text-muted-foreground/60'
                   }`}>{viaNegativa?.isActive ? viaNegativa.actualLabel : 'Market Actual'}</p>
                   <p className={`text-xl font-bold ${viaNegativa?.isActive ? 'text-emerald-400' : 'text-primary'}`}>
                     {typedData.market_validation.expected_vs_reality.appreciation.market_actual || 'N/A'}
                   </p>
                   {typedData.market_validation.expected_vs_reality.appreciation.market_source && (
-                    <p className="text-[9px] text-muted-foreground mt-1 break-words">
+                    <p className="text-xs text-muted-foreground/60 mt-1 break-words">
                       {typedData.market_validation.expected_vs_reality.appreciation.market_source}
                     </p>
                   )}
@@ -1156,21 +1225,21 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               {/* Warning for Appreciation */}
               {typedData.market_validation.expected_vs_reality.appreciation.warning &&
                typedData.market_validation.expected_vs_reality.appreciation.warning_level !== 'none' && (
-                <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+                <div className={`flex items-start gap-3 p-4 rounded-xl border ${
                   typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'extreme'
-                    ? 'bg-red-500/10 border-red-500/30'
+                    ? 'border-red-500/20'
                     : typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'high'
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : 'bg-muted border-border'
+                    ? 'border-amber-500/20'
+                    : 'border-border/20'
                 }`}>
-                  <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                  <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
                     typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'extreme'
-                      ? 'text-red-500'
+                      ? 'text-red-500/60'
                       : typedData.market_validation.expected_vs_reality.appreciation.warning_level === 'high'
-                      ? 'text-amber-500'
-                      : 'text-muted-foreground'
+                      ? 'text-amber-500/60'
+                      : 'text-muted-foreground/60'
                   }`} />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed">
                     {typedData.market_validation.expected_vs_reality.appreciation.warning}
                   </p>
                 </div>
@@ -1179,84 +1248,83 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
               {/* Rental Yield Comparison */}
               {typedData.market_validation.expected_vs_reality.rental_yield?.your_expectation && (
                 <>
-                  <div className="border-t border-border pt-4 mt-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 items-center">
-                      <div className={`rounded-lg p-4 text-center border ${
-                        viaNegativa?.isActive
-                          ? 'bg-red-500/10 border-red-500/20'
-                          : 'bg-muted/30 border-border'
-                      }`}>
-                        <p className={`text-[10px] uppercase tracking-wider mb-1 ${
-                          viaNegativa?.isActive ? 'text-red-400 font-bold' : 'text-muted-foreground'
-                        }`}>{viaNegativa?.isActive ? viaNegativa.expectationLabel : 'Your Expectation'}</p>
-                        <p className="text-xl font-bold text-foreground">
-                          {typedData.market_validation.expected_vs_reality.rental_yield.your_expectation}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Rental Yield</p>
-                      </div>
+                  <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 items-center">
+                    <div className={`rounded-xl p-4 text-center border ${
+                      viaNegativa?.isActive
+                        ? 'border-red-500/20'
+                        : 'border-border/20'
+                    }`}>
+                      <p className={`text-xs uppercase tracking-[0.2em] mb-2 ${
+                        viaNegativa?.isActive ? 'text-red-400/60 font-medium' : 'text-muted-foreground/60'
+                      }`}>{viaNegativa?.isActive ? viaNegativa.expectationLabel : 'Your Expectation'}</p>
+                      <p className="text-xl font-bold text-foreground">
+                        {typedData.market_validation.expected_vs_reality.rental_yield.your_expectation}
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">Rental Yield</p>
+                    </div>
 
-                      <div className="hidden md:flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-2">
-                          {typedData.market_validation.expected_vs_reality.rental_yield.deviation?.includes('above') ? (
-                            <TrendingUp className="w-5 h-5 text-amber-500" />
-                          ) : typedData.market_validation.expected_vs_reality.rental_yield.deviation?.includes('below') ? (
-                            <TrendingDown className="w-5 h-5 text-primary" />
-                          ) : (
-                            <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                          )}
-                          <span className={`text-xs font-bold ${
-                            typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'high' ||
-                            typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'extreme'
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-muted-foreground'
-                          }`}>
-                            {typedData.market_validation.expected_vs_reality.rental_yield.deviation || 'vs'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className={`rounded-lg p-3 sm:p-4 text-center border-2 ${
-                        viaNegativa?.isActive
-                          ? (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
-                              ? 'bg-emerald-500/10 border-emerald-500/20'
-                              : 'bg-muted/30 border-border')
-                          : (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
-                              ? 'bg-primary/5 border-primary/30'
-                              : 'bg-muted/30 border-border')
-                      }`}>
-                        <p className={`text-[10px] uppercase tracking-wider mb-1 ${
-                          viaNegativa?.isActive ? 'text-emerald-400 font-bold' : 'text-muted-foreground'
-                        }`}>{viaNegativa?.isActive ? viaNegativa.actualLabel : 'Market Actual'}</p>
-                        <p className={`text-xl font-bold ${viaNegativa?.isActive ? 'text-emerald-400' : 'text-primary'}`}>
-                          {typedData.market_validation.expected_vs_reality.rental_yield.market_actual || 'N/A'}
-                        </p>
-                        {typedData.market_validation.expected_vs_reality.rental_yield.market_source && (
-                          <p className="text-[9px] text-muted-foreground mt-1 break-words">
-                            {typedData.market_validation.expected_vs_reality.rental_yield.market_source}
-                          </p>
+                    <div className="hidden md:flex flex-col items-center justify-center">
+                      <div className="flex items-center gap-2">
+                        {typedData.market_validation.expected_vs_reality.rental_yield.deviation?.includes('above') ? (
+                          <TrendingUp className="w-4 h-4 text-amber-500/50" />
+                        ) : typedData.market_validation.expected_vs_reality.rental_yield.deviation?.includes('below') ? (
+                          <TrendingDown className="w-4 h-4 text-primary/50" />
+                        ) : (
+                          <ArrowRight className="w-4 h-4 text-muted-foreground/60" />
                         )}
+                        <span className={`text-xs font-medium ${
+                          typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'high' ||
+                          typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'extreme'
+                            ? 'text-amber-500/60'
+                            : 'text-muted-foreground/60'
+                        }`}>
+                          {typedData.market_validation.expected_vs_reality.rental_yield.deviation || 'vs'}
+                        </span>
                       </div>
+                    </div>
+
+                    <div className={`rounded-xl p-4 sm:p-5 text-center border ${
+                      viaNegativa?.isActive
+                        ? (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
+                            ? 'border-emerald-500/20'
+                            : 'border-border/20')
+                        : (typedData.market_validation.expected_vs_reality.rental_yield.market_actual
+                            ? 'border-primary/20'
+                            : 'border-border/20')
+                    }`}>
+                      <p className={`text-xs uppercase tracking-[0.2em] mb-2 ${
+                        viaNegativa?.isActive ? 'text-emerald-400/60 font-medium' : 'text-muted-foreground/60'
+                      }`}>{viaNegativa?.isActive ? viaNegativa.actualLabel : 'Market Actual'}</p>
+                      <p className={`text-xl font-bold ${viaNegativa?.isActive ? 'text-emerald-400' : 'text-primary'}`}>
+                        {typedData.market_validation.expected_vs_reality.rental_yield.market_actual || 'N/A'}
+                      </p>
+                      {typedData.market_validation.expected_vs_reality.rental_yield.market_source && (
+                        <p className="text-xs text-muted-foreground/60 mt-1 break-words">
+                          {typedData.market_validation.expected_vs_reality.rental_yield.market_source}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Warning for Rental Yield */}
                   {typedData.market_validation.expected_vs_reality.rental_yield.warning &&
                    typedData.market_validation.expected_vs_reality.rental_yield.warning_level !== 'none' && (
-                    <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+                    <div className={`flex items-start gap-3 p-4 rounded-xl border ${
                       typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'extreme'
-                        ? 'bg-red-500/10 border-red-500/30'
+                        ? 'border-red-500/20'
                         : typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'high'
-                        ? 'bg-amber-500/10 border-amber-500/30'
-                        : 'bg-muted border-border'
+                        ? 'border-amber-500/20'
+                        : 'border-border/20'
                     }`}>
-                      <AlertTriangle className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                      <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
                         typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'extreme'
-                          ? 'text-red-500'
+                          ? 'text-red-500/60'
                           : typedData.market_validation.expected_vs_reality.rental_yield.warning_level === 'high'
-                          ? 'text-amber-500'
-                          : 'text-muted-foreground'
+                          ? 'text-amber-500/60'
+                          : 'text-muted-foreground/60'
                       }`} />
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground/60 leading-relaxed">
                         {typedData.market_validation.expected_vs_reality.rental_yield.warning}
                       </p>
                     </div>
@@ -1266,10 +1334,11 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
               {/* Recommendation */}
               {typedData.market_validation.recommendation && (
-                <div className="bg-primary/5 border border-primary/30 rounded-lg p-4 mt-4">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-foreground">
+                <div className="relative rounded-xl border border-primary/20 p-5 overflow-hidden">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+                  <div className="relative flex items-start gap-3">
+                    <Info className="w-3.5 h-3.5 text-primary/50 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground/60 font-normal leading-relaxed">
                       {typedData.market_validation.recommendation}
                     </p>
                   </div>
@@ -1278,9 +1347,9 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
               {/* Deviation Commentary - Via Negativa */}
               {viaNegativa?.isActive && typedData.market_validation && (
-                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-500/20 rounded-lg">
-                  <p className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-2">{viaNegativa.commentaryTitle}</p>
-                  <p className="text-sm text-red-600/80 dark:text-red-300/80 leading-relaxed">
+                <div className="rounded-xl border border-red-500/20 p-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-red-400/60 font-medium mb-2">{viaNegativa.commentaryTitle}</p>
+                  <p className="text-sm text-red-300/50 font-normal leading-relaxed">
                     {viaNegativa.commentaryBody}
                   </p>
                 </div>
@@ -1288,11 +1357,12 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
               {/* Data Sources */}
               {typedData.market_validation.data_sources_used && typedData.market_validation.data_sources_used.length > 0 && (
-                <div className="pt-3 border-t border-border">
-                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-2">Data Sources</p>
+                <div className="pt-3">
+                  <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Data Sources</p>
                   <div className="flex flex-wrap gap-2">
                     {typedData.market_validation.data_sources_used.map((source, i) => (
-                      <span key={i} className="px-2 py-1 bg-muted rounded text-[10px] text-muted-foreground">
+                      <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
                         {source}
                       </span>
                     ))}
@@ -1305,18 +1375,18 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
         {/* Expiry Notice */}
         <motion.div
-          className="flex items-center justify-between p-4 bg-muted border border-border rounded-xl"
-          initial={{ opacity: 0, y: 20 }}
+          className="flex items-center justify-between rounded-xl border border-border/20 bg-card/50 px-6 py-4"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-center gap-3">
-            <RefreshCw className="w-5 h-5 text-muted-foreground" />
+            <RefreshCw className="w-4 h-4 text-muted-foreground/60" />
             <div>
-              <p className="text-sm font-medium text-foreground">
-                Decision Tree Valid For: <span className="font-bold">{typedData.expiry.days} days</span>
+              <p className="text-sm font-normal text-foreground">
+                Decision Tree Valid For: <span className="">{typedData.expiry.days} days</span>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground/60 leading-relaxed">
                 Reassess if: {typedData.expiry.reassess_triggers.join(' | ')}
               </p>
             </div>
@@ -1325,13 +1395,12 @@ export const ScenarioTreeSection: React.FC<ScenarioTreeSectionProps> = ({
 
         {/* Intelligence Source Footer */}
         <motion.div
-          className="flex items-center justify-center gap-2 pt-4"
+          className="flex items-center justify-center gap-2 pt-6"
           initial={{ opacity: 0 }}
           animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.35 }}
+          transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground/60 leading-relaxed">
             Grounded in HNWI Chronicles KG Decision Framework + Game Theory Models
           </p>
         </motion.div>

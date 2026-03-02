@@ -393,6 +393,148 @@ export class RohithAPI {
 
 
   /**
+   * Send message with JARVIS mode (V5 endpoint with visualizations)
+   * As of Feb 2026: JARVIS mode is now the backend default
+   */
+  async sendMessageJarvis(
+    message: string,
+    conversationId: string,
+    userId?: string
+  ): Promise<any> {
+    try {
+      const targetUserId = userId || getCurrentUserId()
+      if (!targetUserId) {
+        throw new Error("User ID not found")
+      }
+
+      // Clear conversation cache
+      this.clearConversationCache(conversationId)
+
+      const startTime = Date.now()
+
+      // Call V5 endpoint - JARVIS mode is now the default (no need to specify)
+      const response = await secureApi.post(
+        `/api/v5/rohith/message/${conversationId}`,
+        {
+          message: message
+          // jarvis_mode removed - backend defaults to true as of Feb 2026
+        },
+        true,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      const responseTime = Date.now() - startTime
+
+      // Backend response format (Feb 2026):
+      // {
+      //   mode: "jarvis" | "classic",
+      //   response: {
+      //     content: "text narration",
+      //     narration: { text: "...", delivery: "word_by_word" },
+      //     visualizations: [...],
+      //     predictive_prompts: [...],
+      //     tier: "fast",
+      //     processing_time_ms: 1234,
+      //     confidence_score: 0.85,
+      //     citations: [...]
+      //   }
+      // }
+
+      // Log the mode for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Rohith API] Response mode: ${response.mode || 'jarvis (default)'}`)
+      }
+
+      return {
+        mode: response.mode || "jarvis", // Backend should return mode field
+        narration: response.response?.narration || {
+          text: response.response?.content || "I'm sorry, I couldn't process that request.",
+          delivery: "word_by_word"
+        },
+        visualizations: response.response?.visualizations || [],
+        predictive_prompts: response.response?.predictive_prompts || [],
+        // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
+        source_documents: response.response?.citations || response.response?.source_documents || [],
+        conversationId,
+        message_id: response.message_id,
+        // Check both top-level and metadata locations for these fields
+        tier: response.response?.tier || response.response?.metadata?.tier || "fast",
+        processing_time_ms: response.response?.processing_time_ms || response.response?.metadata?.processing_time_ms || responseTime,
+        confidence_score: response.response?.confidence_score || response.response?.metadata?.confidence_score || 0.85,
+        intelligence_sources: response.response?.intelligence_sources || response.response?.metadata?.intelligence_sources || []
+      }
+    } catch (error) {
+      console.error("JARVIS message send error:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Create new conversation with JARVIS mode (V5 endpoint)
+   * As of Feb 2026: Backend defaults to JARVIS mode
+   */
+  async createConversationJarvis(
+    firstMessage: string,
+    userId?: string
+  ): Promise<any> {
+    try {
+      const targetUserId = userId || getCurrentUserId()
+      if (!targetUserId) {
+        throw new Error("User ID not found")
+      }
+
+      const startTime = Date.now()
+
+      // Call V5 start endpoint - JARVIS mode is now the default
+      const response = await secureApi.post(
+        `/api/v5/rohith/start`,
+        {
+          message: firstMessage
+          // jarvis_mode removed - backend defaults to true as of Feb 2026
+        },
+        true,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      const responseTime = Date.now() - startTime
+
+      // Log the mode for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Rohith API] Conversation start mode: ${response.mode || 'jarvis (default)'}`)
+      }
+
+      return {
+        conversationId: response.conversation_id,
+        mode: response.mode || "jarvis", // Backend should return mode field
+        narration: response.response?.narration || {
+          text: response.response?.content || "Hello! I'm Rohith, your AI intelligence ally.",
+          delivery: "word_by_word"
+        },
+        visualizations: response.response?.visualizations || [],
+        predictive_prompts: response.response?.predictive_prompts || [],
+        // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
+        source_documents: response.response?.citations || response.response?.source_documents || [],
+        message_id: response.message_id,
+        // Check both top-level and metadata locations for these fields
+        tier: response.response?.tier || response.response?.metadata?.tier || "instant",
+        processing_time_ms: response.response?.processing_time_ms || response.response?.metadata?.processing_time_ms || responseTime,
+        confidence_score: response.response?.confidence_score || response.response?.metadata?.confidence_score || 0.85
+      }
+    } catch (error) {
+      console.error("JARVIS conversation create error:", error)
+      throw error
+    }
+  }
+
+  /**
    * Delete a conversation
    */
   async deleteConversation(conversationId: string): Promise<boolean> {
@@ -726,14 +868,16 @@ export class RohithAPI {
   static createMessage(
     role: "user" | "assistant",
     content: string,
-    context?: any
+    context?: any,
+    visualizations?: any[]
   ): Message {
     return {
       id: crypto.randomUUID(),
       role,
       content,
       timestamp: new Date(),
-      context
+      context,
+      ...(visualizations && visualizations.length > 0 ? { visualizations } : {})
     }
   }
 }

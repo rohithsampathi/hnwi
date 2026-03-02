@@ -348,12 +348,15 @@ async function handlePost(request: NextRequest) {
 
           // CRITICAL FIX: Set session_user cookie for immediate session recovery
           // This ensures /api/auth/session can validate the user before backend cookies propagate
+          const mfaFirstName = normalizedUser.firstName || normalizedUser.first_name || '';
+          const mfaLastName = normalizedUser.lastName || normalizedUser.last_name || '';
           const sessionUserData = JSON.stringify({
             id: normalizedUser.id,
             user_id: normalizedUser.user_id,
             email: normalizedUser.email,
-            firstName: normalizedUser.firstName || normalizedUser.first_name,
-            lastName: normalizedUser.lastName || normalizedUser.last_name,
+            name: normalizedUser.name || `${mfaFirstName} ${mfaLastName}`.trim() || undefined,
+            firstName: mfaFirstName,
+            lastName: mfaLastName,
             role: normalizedUser.role || 'user',
             timestamp: Date.now()
           });

@@ -5,7 +5,8 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Lock, ArrowDown, AlertTriangle } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
+import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface LiquidityTrapProps {
   /** Capital deployed (e.g. $2.27M) */
@@ -54,146 +55,145 @@ export function LiquidityTrapFlowchart({
   const lossPct = dayOneLossPct > 0 ? dayOneLossPct : ((totalLoss / capitalIn) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 sm:space-y-12">
       {/* Header */}
       <motion.div
-        className="flex items-center gap-4"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.5 }}
+        className="mb-8"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
       >
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center flex-shrink-0">
-          <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
-        </div>
-        <div>
-          <h3 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">
-            The Liquidity Prison
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Capital Flow Analysis: Where Your Money Gets Trapped
-          </p>
-        </div>
+        <h3 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+          The Liquidity Prison
+        </h3>
+        <div className="h-px bg-border" />
       </motion.div>
 
       {/* Flowchart */}
       <motion.div
-        className="bg-card border border-border rounded-2xl p-6 sm:p-8 overflow-hidden"
-        initial={{ opacity: 0, y: 20 }}
+        className="relative rounded-2xl border border-border/30 overflow-hidden px-5 sm:px-8 md:px-12 py-10 md:py-12"
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
       >
-        <div className="max-w-sm mx-auto space-y-0">
+        {/* Ambient glow */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-          {/* ═══ BOX 1: CAPITAL INPUT ═══ */}
+        <div className="relative max-w-sm mx-auto space-y-0">
+
+          {/* BOX 1: CAPITAL INPUT */}
           <motion.div
-            className="relative bg-primary/5 border-2 border-primary/30 rounded-xl p-4 text-center"
+            className="relative rounded-xl border border-emerald-500/20 bg-card/50 p-5 text-center"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.3, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary/70 mb-1">Capital Deployed</p>
-            <p className="text-2xl sm:text-3xl font-bold text-primary font-mono">{formatCurrency(capitalIn)}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Capital Deployed</p>
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-emerald-500">{formatCurrency(capitalIn)}</p>
           </motion.div>
 
-          {/* ═══ ARROW DOWN ═══ */}
+          {/* ARROW DOWN */}
           <motion.div
-            className="flex flex-col items-center py-2"
+            className="flex flex-col items-center py-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.5, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <ArrowDown className="w-5 h-5 text-muted-foreground" />
+            <ArrowDown className="w-4 h-4 text-muted-foreground/60" />
           </motion.div>
 
-          {/* ═══ ASSET BOX ═══ */}
+          {/* ASSET BOX */}
           <motion.div
-            className="relative bg-muted/30 border border-border rounded-xl p-3 text-center"
+            className="relative rounded-xl border border-border/20 bg-card/50 p-3 text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.6, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <p className="text-xs font-medium text-muted-foreground">{assetLabel}</p>
+            <p className="text-xs font-normal text-muted-foreground/60">{assetLabel}</p>
           </motion.div>
 
-          {/* ═══ ARROW DOWN ═══ */}
+          {/* ARROW DOWN */}
           <motion.div
-            className="flex flex-col items-center py-2"
+            className="flex flex-col items-center py-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.7, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <ArrowDown className="w-5 h-5 text-muted-foreground" />
+            <ArrowDown className="w-4 h-4 text-muted-foreground/60" />
           </motion.div>
 
-          {/* ═══ BARRIER WALL (THE RED BAR) ═══ */}
+          {/* BARRIER WALL */}
           <motion.div
             className="relative"
             initial={{ opacity: 0, scaleX: 0 }}
             animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.8, duration: 0.5, ease: "easeOut" }}
+            transition={{ delay: 0.8, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            {/* The red barrier */}
-            <div className="bg-destructive/10 border-2 border-destructive/40 rounded-xl p-4 space-y-3">
+            <div className="rounded-xl border border-destructive/20 bg-card/50 p-5 space-y-3">
+              {/* Gold accent line */}
+              <div className="h-px bg-gradient-to-r from-transparent via-destructive/30 to-transparent mb-4" />
+
               <div className="flex items-center justify-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-destructive" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-destructive">
+                <span className="text-xs tracking-[0.25em] uppercase font-medium text-destructive/80">
                   Barrier Zone
                 </span>
-                <AlertTriangle className="w-4 h-4 text-destructive" />
               </div>
 
               {/* Primary Barrier */}
-              <div className="flex items-center justify-between px-3 py-2 bg-destructive/5 rounded-lg border border-destructive/20">
-                <span className="text-xs font-semibold text-foreground">{primaryBarrier}</span>
-                <span className="text-sm font-bold text-destructive font-mono">
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/15 bg-destructive/[0.03]">
+                <span className="text-xs font-normal text-foreground">{primaryBarrier}</span>
+                <span className="text-base font-medium tabular-nums text-destructive">
                   -{formatCurrency(primaryBarrierCost)}
                 </span>
               </div>
 
               {/* Secondary Barrier */}
               {secondaryBarrier && !!secondaryBarrierCost && secondaryBarrierCost > 0 && (
-                <div className="flex items-center justify-between px-3 py-2 bg-destructive/5 rounded-lg border border-destructive/20">
-                  <span className="text-xs font-semibold text-foreground">{secondaryBarrier}</span>
-                  <span className="text-sm font-bold text-destructive font-mono">
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/15 bg-destructive/[0.03]">
+                  <span className="text-xs font-normal text-foreground">{secondaryBarrier}</span>
+                  <span className="text-base font-medium tabular-nums text-destructive">
                     -{formatCurrency(secondaryBarrierCost)}
                   </span>
                 </div>
               )}
 
+              {/* Divider */}
+              <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+
               {/* Total Destroyed */}
-              <div className="flex items-center justify-between px-3 py-2 bg-destructive/10 rounded-lg border border-destructive/30">
-                <span className="text-xs font-bold text-destructive uppercase tracking-wide">Capital Destroyed</span>
-                <span className="text-base font-bold text-destructive font-mono">
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/25 bg-destructive/[0.05]">
+                <span className="text-xs tracking-[0.15em] uppercase font-medium text-destructive/80">Capital Destroyed</span>
+                <span className="text-xl md:text-2xl font-medium text-destructive">
                   -{formatCurrency(totalLoss)}
                 </span>
               </div>
             </div>
           </motion.div>
 
-          {/* ═══ ARROW DOWN ═══ */}
+          {/* ARROW DOWN */}
           <motion.div
-            className="flex flex-col items-center py-2"
+            className="flex flex-col items-center py-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1.2 }}
+            transition={{ delay: 1.2, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <ArrowDown className="w-5 h-5 text-muted-foreground" />
+            <ArrowDown className="w-4 h-4 text-muted-foreground/60" />
           </motion.div>
 
-          {/* ═══ BOX 2: RECOVERABLE OUTPUT ═══ */}
+          {/* BOX 2: RECOVERABLE OUTPUT */}
           <motion.div
-            className="relative bg-muted/20 border-2 border-muted rounded-xl p-4 text-center"
+            className="relative rounded-xl border border-border/20 bg-card/50 p-5 text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.3 }}
+            transition={{ delay: 1.3, duration: 0.7, ease: EASE_OUT_EXPO }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Recoverable Capital</p>
-            <p className="text-2xl sm:text-3xl font-bold text-muted-foreground font-mono">{formatCurrency(capitalOut)}</p>
-            <p className="text-xs text-destructive font-semibold mt-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Recoverable Capital</p>
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-muted-foreground">{formatCurrency(capitalOut)}</p>
+            <p className="text-xs text-destructive/70 font-normal mt-2">
               {lossPct.toFixed(2)}% trapped on Day One
             </p>
             {dayOneLossNote && (
-              <p className="text-[9px] text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground/60 mt-1 leading-relaxed">
                 {dayOneLossNote}
               </p>
             )}
@@ -202,12 +202,12 @@ export function LiquidityTrapFlowchart({
 
         {/* Bottom label */}
         <motion.div
-          className="mt-6 text-center"
+          className="mt-8 text-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
+          transition={{ delay: 1.5, duration: 0.7, ease: EASE_OUT_EXPO }}
         >
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-destructive/60">
+          <p className="text-xs uppercase tracking-[0.25em] text-destructive/60 font-medium">
             Immediate Equity Destruction Upon Acquisition
           </p>
         </motion.div>

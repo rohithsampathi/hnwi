@@ -17,7 +17,7 @@ import Image from "next/image"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft } from "lucide-react"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { PageHeader } from "@/components/ui/page-header"
 import { getPageHeader } from "@/lib/page-headers"
 
@@ -38,9 +38,18 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Check if in PERSONAL mode — reactive to both path and search param changes
+  const isPersonalMode = searchParams.get('personal') === 'true'
 
   // Decision-memo pages need header/sidebar hidden in print for PDF export
   const isDecisionMemoRoute = pathname?.includes('/decision-memo')
+
+  // In PERSONAL mode, hide sidebar (War Room sidebar will render instead)
+  // But KEEP the header visible
+  const hideSidebar = isPersonalMode && pathname?.includes('/decision-memo/audit/')
+  const hideHeader = false // Always show HC header
 
   const [showHeartbeat, setShowHeartbeat] = useState(false)
   const [user, setUser] = useState<any>(propUser || null)
@@ -105,36 +114,13 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     return () => clearInterval(interval)
   }, [])
 
-  // Update user state when propUser changes, with sessionStorage fallback
+  // Update user state when propUser changes
+  // No auth event listeners here — authenticated layout is the single source of truth
+  // and passes updated user down via propUser. Avoids cascading state updates.
   useEffect(() => {
     if (propUser) {
       setUser(propUser)
-    } else {
-      // Fallback to sessionStorage if no prop user provided
-      const userObject = sessionStorage.getItem("userObject")
-      if (userObject) {
-        try {
-          const parsedUser = JSON.parse(userObject)
-          setUser(parsedUser)
-        } catch (e) {
-        }
-      }
     }
-
-    // Listen for auth updates to refresh user data
-    const handleAuthUpdate = () => {
-      const updatedUserObject = sessionStorage.getItem("userObject")
-      if (updatedUserObject) {
-        try {
-          const parsedUser = JSON.parse(updatedUserObject)
-          setUser(parsedUser)
-        } catch (e) {
-        }
-      }
-    }
-
-    window.addEventListener('auth:login', handleAuthUpdate)
-    return () => window.removeEventListener('auth:login', handleAuthUpdate)
   }, [propUser])
 
   const handleLogoClick = (e: React.MouseEvent) => {
@@ -152,20 +138,24 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
     <div
       className="min-h-screen flex flex-col font-sans bg-background text-foreground p-0 m-0"
     >
-      {/* Sidebar for all devices - mobile only shows bottom nav */}
-      <SidebarNavigation
-        onNavigate={onNavigate}
-        headerHeight={headerHeight}
-        onSidebarToggle={setSidebarState}
-        showBackButton={showBackButton}
-        currentPage={currentPage}
-        isUserAuthenticated={isUserAuthenticated}
-        hideInPrint={isDecisionMemoRoute}
-      />
-      
-      <header
-        ref={headerRef}
-        className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${isDecisionMemoRoute ? 'print:hidden' : ''}`}
+      {/* Sidebar for all devices - hidden when War Room sidebar is active */}
+      {!hideSidebar && (
+        <SidebarNavigation
+          onNavigate={onNavigate}
+          headerHeight={headerHeight}
+          onSidebarToggle={setSidebarState}
+          showBackButton={showBackButton}
+          currentPage={currentPage}
+          isUserAuthenticated={isUserAuthenticated}
+          hideInPrint={isDecisionMemoRoute}
+        />
+      )}
+
+      {/* Header - always visible */}
+      {!hideHeader && (
+        <header
+          ref={headerRef}
+          className={`fixed top-0 z-50 p-0 md:p-1 flex justify-between items-center bg-background border-b border-border transition-all duration-300 ${isDecisionMemoRoute ? 'print:hidden' : ''}`}
         style={{
           left: isDesktop
             ? (sidebarState ? '64px' : '256px') : '0',
@@ -200,9 +190,9 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
               <Image
                 src="/logo.png"
                 alt="HNWI Chronicles Globe"
-                width={24}
-                height={24}
-                className="w-6 h-6"
+                width={32}
+                height={32}
+                className="w-8 h-8"
                 priority
               />
             </motion.div>
@@ -223,12 +213,14 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
           </div>
         </div>
       </header>
+      )}
 
-      <div 
+      <div
         className="transition-all duration-300 absolute w-full"
         style={{
-          left: isDesktop 
-            ? (sidebarState ? '64px' : '256px') : '0',
+          left: isDesktop
+            ? (hideSidebar ? '64px' : (sidebarState ? '64px' : '256px'))
+            : '0',
           right: '0'
         }}
       >
@@ -237,6 +229,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       
       {/* Sticky Page Header */}
       {(() => {
+        if (isPersonalMode) return null
         const pageHeaderConfig = getPageHeader(pathname, user)
         if (pageHeaderConfig) {
           // Remove banner styling for dashboard - just show text
@@ -260,35 +253,44 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
       })()}
 
       <main
-        className={`flex-grow overflow-y-auto scrollbar-hide pb-12 md:pb-1 transition-all duration-300`}
+        className={`flex-grow scrollbar-hide transition-all duration-300 ${
+          isPersonalMode ? 'overflow-hidden' : 'overflow-y-auto pb-12 md:pb-1'
+        }`}
         style={{
           marginLeft: isDesktop
-            ? (sidebarState ? '64px' : '256px') : '0',
+            ? (hideSidebar ? '64px' : (sidebarState ? '64px' : '256px'))
+            : '0',
           paddingTop: `${headerHeight}px`,
-          filter: isDesktop && !sidebarState ? 'blur(2px)' : 'none',
-          opacity: isDesktop && !sidebarState ? 0.6 : 1,
+          height: isPersonalMode ? `calc(100vh)` : undefined,
+          filter: isDesktop && !sidebarState && !isPersonalMode ? 'blur(2px)' : 'none',
+          opacity: isDesktop && !sidebarState && !isPersonalMode ? 0.6 : 1,
           transition: 'all 0.3s ease'
         }}
       >
-        <div className="w-full pb-12 md:pb-0">
-          {/* Legacy title support for existing pages */}
-          {title && !getPageHeader(pathname, user) && (
-            <div className="mb-4 pb-4 border-b border-border" style={{paddingLeft: '0px', paddingRight: '4px'}}>
-              <div className="flex items-center gap-2">
-                {title}
+        {isPersonalMode ? (
+          /* Personal/War Room mode — same outer padding as linear view for pixel-perfect alignment */
+          <div className="h-full px-2 sm:px-6 lg:px-8" style={{ paddingTop: '16px' }}>{children}</div>
+        ) : (
+          <div className="w-full pb-12 md:pb-0">
+            {/* Legacy title support for existing pages */}
+            {title && !getPageHeader(pathname, user) && (
+              <div className="mb-4 pb-4 border-b border-border" style={{paddingLeft: '0px', paddingRight: '4px'}}>
+                <div className="flex items-center gap-2">
+                  {title}
+                </div>
               </div>
+            )}
+
+            <div className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')} style={{
+              paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
+              paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
+              paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
+              marginTop: getPageHeader(pathname, user) ? '' : '0px'
+            }}>
+              {children}
             </div>
-          )}
-          
-          <div className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')} style={{
-            paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
-            paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '', 
-            paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
-            marginTop: getPageHeader(pathname, user) ? '' : '0px'
-          }}>
-            {children}
           </div>
-        </div>
+        )}
       </main>
 
       {/* Notification Center Modal */}

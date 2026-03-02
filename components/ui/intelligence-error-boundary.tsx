@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Construction, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface ElitePulseErrorBoundaryState {
   hasError: boolean;
@@ -53,42 +52,52 @@ export class ElitePulseErrorBoundary extends React.Component<
 
 function DefaultElitePulseErrorFallback({ error, retry }: { error: Error; retry: () => void }) {
   return (
-    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-          <div className="flex-1">
-            <h4 className="font-semibold text-amber-900 dark:text-amber-100">
-              Elite Pulse Intelligence Temporarily Unavailable
-            </h4>
-            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-              Our AI systems are experiencing a brief interruption. Intelligence data will be restored shortly.
-            </p>
-            {process.env.NODE_ENV === 'development' && (
-              <details className="mt-2">
-                <summary className="text-xs text-amber-600 dark:text-amber-400 cursor-pointer">
-                  Technical Details
-                </summary>
-                <pre className="text-xs text-amber-600 dark:text-amber-400 mt-1 whitespace-pre-wrap">
-                  {error.message}
-                </pre>
-              </details>
-            )}
-            <div className="flex items-center gap-2 mt-3">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={retry}
-                className="text-xs h-7 px-3 border-amber-300 dark:border-amber-700"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Retry Intelligence
-              </Button>
+    <div className="min-h-[400px] flex items-center justify-center p-8">
+      <div className="max-w-md w-full text-center space-y-6">
+        {/* Icon */}
+        <div className="flex justify-center">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gold/20 blur-xl rounded-full" />
+            <div className="relative w-16 h-16 rounded-full border border-gold/30 bg-surface flex items-center justify-center">
+              <Construction className="w-8 h-8 text-gold" strokeWidth={1.5} />
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Message */}
+        <div className="space-y-3">
+          <h3 className="text-xl font-medium text-foreground tracking-tight">
+            Something broke.
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            We are fixing this. Will be live shortly.
+          </p>
+        </div>
+
+        {/* Retry Button */}
+        <div className="pt-2">
+          <button
+            onClick={retry}
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg border border-border bg-surface hover:bg-surface-hover transition-colors text-sm font-medium text-foreground"
+          >
+            <RefreshCw className="w-4 h-4 text-gold" strokeWidth={1.5} />
+            Reconnect
+          </button>
+        </div>
+
+        {/* Technical Details (Dev Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <details className="pt-4 text-left">
+            <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors font-mono">
+              Technical Details
+            </summary>
+            <pre className="text-xs text-muted-foreground/60 mt-3 p-4 rounded-lg bg-surface border border-border overflow-x-auto font-mono">
+              {error.message}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
   );
 }
 

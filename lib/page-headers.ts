@@ -73,12 +73,7 @@ export const PAGE_HEADERS: Record<string, PageHeaderConfig> = {
   },
   'ask-rohith': {
     title: 'Ask Rohith',
-    description: 'Your private intelligence ally with full portfolio awareness and memory. Get strategic insights and market intelligence.',
-    showBackButton: true,
-  },
-  'industry-pulse': {
-    title: 'Industry Pulse', 
-    description: 'Real-time insights and trends across key industries.',
+    description: 'Your private intelligence ally with full portfolio awareness and memory.',
     showBackButton: true,
   },
   'profile': {
@@ -100,6 +95,7 @@ export const NO_HEADER_ROUTES = [
   '/register',
   '/onboarding',
   '/dashboard',
+  '/war-room',
 ]
 
 // Generate personalized greeting for dashboard
@@ -138,12 +134,12 @@ export function getPageHeader(pathname: string, user?: any): PageHeaderConfig | 
   // Remove leading slash and get the main route
   const cleanPath = pathname.replace(/^\/+/, '')
   const mainRoute = cleanPath.split('/')[0] || ''
-  
+
   // Check if this route should never show headers
   if (NO_HEADER_ROUTES.includes(pathname) || NO_HEADER_ROUTES.includes('/' + mainRoute)) {
     return null
   }
-  
+
   // Look for exact match first
   const exactMatch = PAGE_HEADERS[cleanPath]
   if (exactMatch) {
@@ -156,7 +152,7 @@ export function getPageHeader(pathname: string, user?: any): PageHeaderConfig | 
     }
     return exactMatch
   }
-  
+
   // Look for main route match
   const mainRouteMatch = PAGE_HEADERS[mainRoute]
   if (mainRouteMatch) {
@@ -169,6 +165,6 @@ export function getPageHeader(pathname: string, user?: any): PageHeaderConfig | 
     }
     return mainRouteMatch
   }
-  
+
   return null
 }

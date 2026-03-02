@@ -161,6 +161,74 @@ export interface PdfPreviewData {
     financing?: string;
     hold_period?: string;
   };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // BACKEND-ONLY FIELDS (not always present — runtime-checked via guards)
+  // ═══════════════════════════════════════════════════════════════════════
+  show_tax_savings?: boolean;
+  structure_optimization?: StructureOptimization;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DOCTRINE / RISK RADAR (from scenario_tree_data.doctrine_metadata)
+  // ═══════════════════════════════════════════════════════════════════════
+  doctrine_metadata?: DoctrineMetadata;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PATTERN INTELLIGENCE (Corridor Match System)
+  // ═══════════════════════════════════════════════════════════════════════
+  pattern_intelligence?: PatternIntelligence;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CROSS-BORDER TAX AUDIT (from wealth_projection_data.starting_position)
+  // ═══════════════════════════════════════════════════════════════════════
+  cross_border_audit?: CrossBorderAuditSummary;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DECISION THESIS & GEO CONTEXT
+  // ═══════════════════════════════════════════════════════════════════════
+  thesis_summary?: string;
+  decision_thesis?: string;
+  decision_context?: string;
+  user_input?: string;
+  thesis?: string;
+  source_city?: string;
+  destination_city?: string;
+  source_country?: string;
+  destination_country?: string;
+  is_relocating?: boolean;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // VALUE CREATION DETAILED (annual breakdown)
+  // ═══════════════════════════════════════════════════════════════════════
+  annual_rental_income?: number;
+  annual_rental_income_formatted?: string;
+  annual_appreciation?: number;
+  annual_appreciation_formatted?: string;
+  annual_value?: string;
+  annual_value_formatted?: string;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LEGAL REFERENCES & REGULATORY CITATIONS
+  // ═══════════════════════════════════════════════════════════════════════
+  legal_references?: LegalReferences;
+  regulatory_citations?: RegulatoryCitation[];
+
+  via_negativa?: {
+    header?: { badge_label?: string };
+    day_one_loss_pct?: number;
+    day_one_loss_amount?: number;
+    tax_efficiency_passed?: boolean;
+    liquidity_passed?: boolean;
+    structure_passed?: boolean;
+    verdict_section?: {
+      header?: string;
+      badge_label?: string;
+      stamp_text?: string;
+      stamp_subtext?: string;
+    };
+    cta?: { body_template?: string };
+  };
+  regime_intelligence?: RegimeIntelligence;
 }
 
 // Mistake type for risk display
@@ -184,6 +252,7 @@ export interface RiskAssessment {
   verdict?: string;
   recommendation?: string;
   is_mcp?: boolean;
+  mitigation_timeline?: string;
 }
 
 // Expert 9: Peer Intelligence
@@ -438,15 +507,86 @@ export interface ExecutionStep {
 }
 
 export interface PeerCohortStats {
+  // Dynamic section labels from backend
+  section_title?: string;
+  section_subtitle?: string;
+  metric_labels?: {
+    total_peers?: string;
+    total_peers_subtitle?: string;
+    last_6_months?: string;
+    last_6_months_subtitle?: string;
+    avg_deal_value?: string;
+    avg_deal_value_subtitle?: string;
+  };
+  // Core metrics
+  total_peers: number;
+  last_6_months: number;
+  avg_deal_value_m: number;
+  // Driver analysis
+  drivers: {
+    tax_optimization: number;
+    asset_protection: number;
+    lifestyle: number;
+  };
+  // Additional fields
+  movement_velocity?: string;
+  flow_intensity?: number;
+  regime_intelligence?: RegimeIntelligence;
+  data_quality?: string;
+  data_quality_note?: string;
+  is_relocating?: boolean;
+
+  // Legacy fields (for backward compatibility with old audits)
   total_hnwis?: number;
   recent_movements?: number;
   average_value?: number | string;
-  movement_velocity?: string;
-  flow_intensity?: number;
 }
 
 export interface CapitalFlowData {
+  data_available: boolean;
+  // Pattern signal for dynamic badge and narrative
+  pattern_signal?: {
+    title: string;
+    subtitle: string;
+    badge: string;
+    badge_color: string;
+    narrative: string;
+  };
+  // Flow data
+  source_flows: Array<{ city: string; volume: number; percentage: number }>;
+  destination_flows: Array<{ city: string; volume: number; percentage: number; highlight?: boolean }>;
+  flow_intensity_index: number;
+  flow_intensity_source?: string;
+  flow_intensity_methodology?: string;
+  // Velocity analysis
+  velocity_change: string;
+  velocity_source?: string;
+  velocity_details?: any;
+  velocity_interpretation?: {
+    signal: 'caution' | 'monitor' | 'active_window' | 'stable' | 'neutral';
+    narrative: string;
+  };
+  // Migration drivers
+  migration_drivers?: any;
   source?: string;
+  // Trend data from KGv3
+  trend_data: {
+    data_available: boolean;
+    q3?: number;
+    q4?: number;
+    q1?: number;
+    q3_label?: string;
+    q4_label?: string;
+    q1_label?: string;
+    q4_change?: string | null;
+    q1_change?: string | null;
+    confidence?: string;
+    source?: string;
+    note?: string;
+  };
+  note?: string;
+
+  // Legacy fields (for backward compatibility)
   destination?: string;
   velocity?: string;
   peers_in_corridor?: number;
@@ -454,11 +594,18 @@ export interface CapitalFlowData {
 
 export interface WealthProjectionData {
   starting_value?: number;
+  transaction_value?: number;
+  starting_position?: {
+    transaction_value?: number;
+    transaction_amount?: number;
+    current_net_worth?: number;
+    cross_border_audit_summary?: Record<string, unknown>;
+  };
   scenarios?: {
     base?: ProjectionScenario;
     stress?: ProjectionScenario;
     opportunity?: ProjectionScenario;
-  };
+  } | ProjectionScenario[];
   cost_of_inaction?: {
     year_1?: number;
     year_5?: number;
@@ -473,10 +620,16 @@ export interface WealthProjectionData {
 }
 
 export interface ProjectionScenario {
+  name?: string;
   probability?: number;
   year_10_value?: number;
   growth_rate?: string;
   verdict?: string;
+  ten_year_outcome?: {
+    final_value?: number;
+    final_total_value?: number;
+    total_value_creation?: number;
+  };
 }
 
 export interface ScenarioTreeData {
@@ -574,6 +727,16 @@ export interface HeirManagementData {
     projected_estate_value?: number;
   };
   next_action?: string;
+  /** Backend sometimes provides this at top level (same shape as hughes_framework.third_generation_problem) */
+  third_generation_problem?: {
+    loss_without_structure_pct?: number;
+    loss_with_structure_pct?: number;
+    preservation_without_structure_pct?: number;
+    preservation_with_structure_pct?: number;
+    headline?: string;
+    causes?: string[];
+    loss_rate_without_structure?: number;
+  };
 }
 
 // Hughes Family Wealth Framework - Third-generation protection
@@ -918,4 +1081,215 @@ export interface Freeport {
   storage_costs?: string;
   insurance_available?: boolean;
   minimum_value?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// REGIME INTELLIGENCE (lightweight shape — full sub-interfaces in component)
+// ═══════════════════════════════════════════════════════════════════════
+export interface RegimeIntelligence {
+  has_special_regime: boolean;
+  detected_regimes?: Array<{
+    regime_key: string;
+    regime_name: string;
+    jurisdiction: string;
+    status: string;
+    rates?: Record<string, unknown>;
+    warning?: string;
+    successor_regime?: string;
+    critical_dates?: Array<{ date: string; event: string; impact?: string }>;
+  }>;
+  regime_scenario?: {
+    regime_name: string;
+    status: string;
+    end_date?: string;
+    with_regime?: Record<string, unknown>;
+    without_regime?: Record<string, unknown>;
+    successor_regime?: string;
+    action_required?: string;
+    key_benefits?: string[];
+    qualification_routes?: Array<Record<string, string>>;
+    tax_comparison?: Record<string, unknown>;
+  };
+  regime_warnings?: Array<{
+    regime: string;
+    status: string;
+    warning: string;
+    critical_dates?: Array<{ date: string; event: string; impact?: string }>;
+  }>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STRUCTURE OPTIMIZATION (MCP Core Output)
+// ═══════════════════════════════════════════════════════════════════════
+export interface StructureOptimization {
+  verdict?: string;
+  verdict_reason?: string;
+  optimal_structure?: OptimalStructure;
+  structures_analyzed?: AnalyzedStructure[];
+  alternative_corridors?: Array<{ destination?: string; reason?: string; benefit?: string } | string>;
+  alternative_strategies?: Array<{ strategy?: string; reason?: string; benefit?: string } | string>;
+}
+
+export interface OptimalStructure {
+  name?: string;
+  type?: string;
+  net_benefit_10yr?: number;
+  tax_savings_pct?: number;
+  warnings?: string[];
+  setup_cost?: number;
+  annual_cost?: number;
+  rental_income_rate?: number;
+  capital_gains_rate?: number;
+  estate_tax_rate?: number;
+  estate_tax_exposure?: number;
+  is_nra?: boolean;
+  anti_avoidance_flags?: string[];
+  key_requirements?: string[];
+}
+
+export interface AnalyzedStructure {
+  name?: string;
+  type?: string;
+  verdict?: string;
+  net_benefit_10yr?: number;
+  tax_savings_pct?: number;
+  viable?: boolean;
+  warnings?: string[];
+  setup_cost?: number;
+  annual_cost?: number;
+  rental_income_rate?: number;
+  capital_gains_rate?: number;
+  estate_tax_rate?: number;
+  estate_tax_exposure?: number;
+  is_nra?: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DOCTRINE METADATA (from scenario_tree_data for Risk Radar)
+// ═══════════════════════════════════════════════════════════════════════
+export interface DoctrineMetadata {
+  failure_modes?: FailureMode[];
+  antifragility_score?: number;
+  antifragility_assessment?: string;
+  failure_mode_count?: number;
+  risk_flags_total?: number;
+}
+
+export interface FailureMode {
+  mode?: string;
+  description?: string;
+  severity?: string;
+  doctrine_book?: string;
+  nightmare_name?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PATTERN INTELLIGENCE (Corridor Match System)
+// ═══════════════════════════════════════════════════════════════════════
+export interface PatternIntelligence {
+  found?: boolean;
+  primary_pattern?: {
+    pattern_id?: string;
+    pattern_name?: string;
+    description?: string;
+    severity?: string;
+  };
+  historical_outcome?: {
+    failure_rate_pct?: number | null;
+    success_rate_pct?: number | null;
+    sample_size?: number;
+    time_period?: string;
+    data_source?: string;
+    provenance?: string;
+    source_citation?: string;
+    confidence_note?: string;
+    note?: string;
+  };
+  peer_movement?: {
+    signal?: string;
+    velocity_pct?: number;
+    narrative?: string;
+    asset_pivot?: string;
+  };
+  confidence_level?: string;
+  data_sources?: string[];
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CROSS-BORDER TAX AUDIT
+// ═══════════════════════════════════════════════════════════════════════
+export interface CrossBorderAuditSummary {
+  executive_summary?: string;
+  acquisition_audit?: {
+    property_value?: number;
+    bsd_stamp_duty?: number;
+    absd_additional_stamp_duty?: number;
+    total_acquisition_cost?: number;
+    day_one_loss_pct?: number;
+    day_one_loss_label?: string;
+    fta_benefit_applied?: boolean;
+    buyer_category?: string;
+  };
+  rental_income_audit?: TaxTreatmentAudit;
+  capital_gains_audit?: TaxTreatmentAudit;
+  estate_tax_audit?: TaxTreatmentAudit;
+  net_yield_audit?: {
+    gross_yield_pct?: number;
+    effective_tax_rate_pct?: number;
+    net_yield_pct?: number;
+    annual_gross_income?: number;
+    annual_tax?: number;
+    annual_net_income?: number;
+    explanation?: string;
+  };
+  total_tax_savings_pct?: number;
+  compliance_flags?: string[];
+  warnings?: string[];
+  bsd_note?: string;
+}
+
+export interface TaxTreatmentAudit {
+  destination_rate?: number;
+  source_rate?: number;
+  net_rate?: number;
+  ftc_available?: boolean;
+  savings_pct?: number;
+  explanation?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LEGAL REFERENCES (8 categories)
+// ═══════════════════════════════════════════════════════════════════════
+export interface LegalReferences {
+  total_count?: number;
+  tax_statutes?: CitationEntry[];
+  state_tax_laws?: CitationEntry[];
+  foreign_tax_laws?: CitationEntry[];
+  treaties?: CitationEntry[];
+  regulations?: CitationEntry[];
+  compliance_forms?: CitationEntry[];
+  market_data_sources?: CitationEntry[];
+  guidance?: CitationEntry[];
+  regulatory_sources?: RegulatoryCitation[];
+}
+
+export interface CitationEntry {
+  id?: string;
+  short_cite?: string;
+  title?: string;
+  reference?: string;
+  url?: string;
+}
+
+export interface RegulatoryCitation {
+  citation_id?: number;
+  source_type?: string;
+  title?: string;
+  statute_section?: string;
+  jurisdiction?: string;
+  publisher?: string;
+  effective_date?: string;
+  data_point?: string;
+  url?: string;
+  verified?: boolean;
 }

@@ -14,6 +14,7 @@ import { cn, parseMessageContent } from "@/lib/utils"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
 import type { Message } from "@/types/rohith"
 import type { Citation } from "@/lib/parse-dev-citations"
+import VisualizationEngine from "@/components/ask-rohith-jarvis/VisualizationEngine"
 
 interface MessageBubbleProps {
   message: Message
@@ -319,6 +320,13 @@ export function MessageBubble({
               </div>
             </div>
           </div>
+
+          {/* JARVIS Visualizations */}
+          {isAssistant && message.visualizations && message.visualizations.length > 0 && (
+            <div className="mt-2 max-w-full">
+              <VisualizationEngine commands={message.visualizations} inline />
+            </div>
+          )}
 
           {/* Message Context (for assistant messages) */}
           {showContext && isAssistant && (

@@ -180,23 +180,15 @@ export function HNWITrendsSection({
     <div ref={sectionRef}>
       {/* Premium Section Header */}
       <motion.div
-        className="mb-8 sm:mb-12"
+        className="mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6 }}
       >
-        <div className="flex items-center gap-3 mb-2 sm:mb-3">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-            HNWI TRENDS
-          </h2>
-          <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-            {corridorLabel}
-          </span>
-        </div>
-        <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-        <p className="text-sm text-muted-foreground mt-3">
-          High-net-worth wealth patterns and capital flow intelligence
-        </p>
+        <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+          HNWI Trends
+        </h2>
+        <div className="h-px bg-border" />
       </motion.div>
 
       <div className="space-y-6">

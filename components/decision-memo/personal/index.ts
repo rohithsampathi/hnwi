@@ -1,0 +1,11 @@
+export { default as PersonalShell } from './PersonalShell';
+export { default as PersonalSidebar } from './PersonalSidebar';
+export { default as PersonalMainPanel } from './PersonalMainPanel';
+export { default as PersonalHeader } from './PersonalHeader';
+export { default as PersonalMobileNav } from './PersonalMobileNav';
+export { default as PersonalStickyControls } from './PersonalStickyControls';
+export { default as AIRecommendations } from './AIRecommendations';
+export { default as IntelligenceFeed } from './IntelligenceFeed';
+export * from './HolographicEffects';
+export { SectionErrorBoundary, withSectionErrorBoundary } from './SectionErrorBoundary';
+export { SectionEmptyState, hasRequiredData } from './SectionEmptyState';

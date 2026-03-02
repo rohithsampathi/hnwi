@@ -18,10 +18,10 @@ const InteractiveWorldMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-[500px] bg-gradient-to-br from-card to-muted/30 border border-border rounded-2xl flex items-center justify-center">
+      <div className="h-[500px] rounded-2xl border border-border/30 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <span className="text-muted-foreground text-sm">Loading opportunities map...</span>
+          <span className="text-muted-foreground/60 text-sm">Loading opportunities map...</span>
         </div>
       </div>
     )
@@ -351,14 +351,17 @@ export function Page3PeerIntelligence({
       {!hideSectionTitle && (showPeer || showCorridor || showDrivers) && (
         <motion.div
           className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-2 sm:mb-3 tracking-wide">
-            MARKET INTELLIGENCE & PEER ANALYSIS
+          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+            Section III
+          </p>
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
+            Market Intelligence & Peer Analysis
           </h2>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
+          <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         </motion.div>
       )}
 
@@ -368,18 +371,18 @@ export function Page3PeerIntelligence({
       {showPeer && (
       <motion.div
         className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 sm:mb-2 tracking-wide">
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
           {peerCohortStats?.section_title || 'CROSS-BORDER ACQUISITION INTELLIGENCE'}
-        </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
+        </p>
+        <p className="text-sm text-muted-foreground/60 mb-8">
           {peerCohortStats?.section_subtitle || `HNWI real estate acquisitions in ${destinationJurisdiction || 'destination'}`}
         </p>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
           {[
             {
               label: peerCohortStats?.metric_labels?.total_peers || 'Total Acquisitions',
@@ -410,25 +413,19 @@ export function Page3PeerIntelligence({
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
-              className={`relative overflow-hidden p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border transition-all ${
-                stat.highlight
-                  ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30'
-                  : 'bg-card border-border hover:border-primary/20'
-              }`}
-              initial={{ opacity: 0, y: 20 }}
+              className="relative rounded-2xl border border-border/20 bg-card/50 overflow-hidden p-4 sm:p-6 lg:p-8 transition-all"
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
+              transition={{ duration: 0.7, delay: 0.3 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* Decorative corner accent */}
               {stat.highlight && (
-                <div className="absolute top-0 right-0 w-10 sm:w-16 h-10 sm:h-16 bg-gradient-to-bl from-primary/20 to-transparent rounded-bl-full" />
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
               )}
-
               <div className="relative z-10">
-                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 sm:mb-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
                   {stat.label}
                 </p>
-                <p className={`text-xl sm:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2 ${
+                <p className={`text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight mb-2 ${
                   stat.highlight ? 'text-primary' : 'text-foreground'
                 }`}>
                   {stat.hasData ? (
@@ -439,10 +436,10 @@ export function Page3PeerIntelligence({
                       decimals={stat.decimals || 0}
                     />
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-muted-foreground/60">—</span>
                   )}
                 </p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground/60 leading-relaxed">
                   {stat.description}
                 </p>
               </div>
@@ -459,49 +456,34 @@ export function Page3PeerIntelligence({
           // Color schemes based on signal
           const colorSchemes = {
             caution: {
-              bg: 'from-red-500/10 via-red-500/5 to-red-500/10',
-              border: 'border-red-500/30',
-              accent: 'from-red-500 to-red-400',
-              icon: 'bg-red-500/20',
-              iconColor: 'text-red-500',
+              border: 'border-red-500/20',
+              accent: 'via-red-500/40',
               titleColor: 'text-red-600 dark:text-red-400',
-              highlight: 'text-red-500'
+              badgeColor: 'border-red-500/20 text-red-500/80'
             },
             monitor: {
-              bg: 'from-amber-500/10 via-amber-500/5 to-amber-500/10',
-              border: 'border-amber-500/30',
-              accent: 'from-amber-500 to-amber-400',
-              icon: 'bg-amber-500/20',
-              iconColor: 'text-amber-500',
+              border: 'border-amber-500/20',
+              accent: 'via-amber-500/40',
               titleColor: 'text-amber-600 dark:text-amber-400',
-              highlight: 'text-amber-500'
+              badgeColor: 'border-amber-500/20 text-amber-500/80'
             },
             active_window: {
-              bg: 'from-emerald-500/10 via-emerald-500/5 to-emerald-500/10',
-              border: 'border-emerald-500/30',
-              accent: 'from-emerald-500 to-emerald-400',
-              icon: 'bg-emerald-500/20',
-              iconColor: 'text-emerald-500',
+              border: 'border-emerald-500/20',
+              accent: 'via-emerald-500/40',
               titleColor: 'text-emerald-600 dark:text-emerald-400',
-              highlight: 'text-emerald-500'
+              badgeColor: 'border-emerald-500/20 text-emerald-500/80'
             },
             stable: {
-              bg: 'from-primary/10 via-primary/5 to-primary/10',
-              border: 'border-primary/30',
-              accent: 'from-primary to-primary/80',
-              icon: 'bg-primary/20',
-              iconColor: 'text-primary',
+              border: 'border-primary/20',
+              accent: 'via-primary/40',
               titleColor: 'text-primary',
-              highlight: 'text-primary'
+              badgeColor: 'border-primary/20 text-primary/80'
             },
             neutral: {
-              bg: 'from-muted/30 via-muted/20 to-muted/30',
-              border: 'border-border',
-              accent: 'from-muted-foreground to-muted-foreground/80',
-              icon: 'bg-muted',
-              iconColor: 'text-muted-foreground',
+              border: 'border-border/20',
+              accent: 'via-border/40',
               titleColor: 'text-muted-foreground',
-              highlight: 'text-foreground'
+              badgeColor: 'border-border/20 text-muted-foreground/80'
             }
           };
 
@@ -510,30 +492,24 @@ export function Page3PeerIntelligence({
 
           return (
             <motion.div
-              className={`relative overflow-hidden p-3 sm:p-4 lg:p-6 bg-gradient-to-r ${colors.bg} border ${colors.border} rounded-xl sm:rounded-2xl`}
-              initial={{ opacity: 0, y: 20 }}
+              className={`relative rounded-2xl border ${colors.border} bg-card/50 overflow-hidden px-4 sm:px-10 py-6`}
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.7 }}
+              transition={{ duration: 0.8, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${colors.accent}`} />
+              <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${colors.accent} to-transparent`} />
 
-              <div className="flex items-start sm:items-center gap-2 sm:gap-4">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${colors.icon} flex items-center justify-center flex-shrink-0`}>
-                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${colors.iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    {signal === 'caution' ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    ) : signal === 'active_window' ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    )}
-                  </svg>
-                </div>
+              <div className="flex items-start sm:items-center gap-4">
                 <div>
-                  <p className={`text-xs sm:text-sm font-semibold ${colors.titleColor} mb-0.5 sm:mb-1`}>
-                    {patternSignal?.title || 'CORRIDOR ACTIVITY PATTERN'}: <span className="uppercase">{badge}</span>
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <p className={`text-xs font-medium ${colors.titleColor}`}>
+                      {patternSignal?.title || 'CORRIDOR ACTIVITY PATTERN'}
+                    </p>
+                    <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${colors.badgeColor}`}>
+                      {badge}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
                     {patternSignal?.narrative || capitalFlowData?.velocity_interpretation?.narrative || (
                       velocityChange
                         ? `Movement velocity: ${velocityChange}. Analysis in progress.`
@@ -555,39 +531,41 @@ export function Page3PeerIntelligence({
       {showCorridor && (
       <motion.div
         className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.4 }}
+        transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 sm:mb-2 tracking-wide">
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
           WEALTH MIGRATION CORRIDOR
-        </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
+        </p>
+        <p className="text-sm text-muted-foreground/60 mb-8">
           {corridorSource && corridorDestination
             ? `${corridorSource} → ${corridorDestination} capital flow analysis`
             : 'Jurisdiction-specific capital flow patterns'
           }
         </p>
 
-        <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-xl">
+        <div className="relative rounded-2xl border border-border/30 overflow-hidden px-5 sm:px-8 md:px-12 py-10 md:py-12">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+
           {/* Single Corridor Visualization - Clean and Data-Driven */}
           <div className="relative">
             {/* The single corridor flow */}
             <div className="flex items-center justify-between gap-4 sm:gap-8">
               {/* Source Jurisdiction */}
               <motion.div
-                className="flex-1 max-w-[200px]"
+                className="flex-1 max-w-[150px] sm:max-w-[200px]"
                 initial={{ opacity: 0, x: -20 }}
                 animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.5, delay: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="p-4 sm:p-6 bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/30 rounded-xl sm:rounded-2xl">
-                  <p className="text-[10px] sm:text-xs text-red-500/80 uppercase tracking-wider mb-2">SOURCE</p>
-                  <p className="text-base sm:text-xl font-bold text-foreground mb-1">
+                <div className="p-4 sm:p-6 rounded-xl border border-red-500/20 bg-card/50">
+                  <p className="text-xs uppercase tracking-[0.2em] text-red-500/60 mb-3">SOURCE</p>
+                  <p className="text-base sm:text-xl font-medium text-foreground mb-1">
                     {corridorSource || '—'}
                   </p>
                   {hasCapitalFlowData && capitalFlows?.outflows[0] && (
-                    <p className="text-xs sm:text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground/60">
                       {capitalFlows.outflows[0].volume.toLocaleString()} HNWIs outflow
                     </p>
                   )}
@@ -599,32 +577,32 @@ export function Page3PeerIntelligence({
                 className="flex-shrink-0 flex flex-col items-center gap-2"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={isVisible ? { opacity: 1, scale: 1 } : {}}
-                transition={{ duration: 0.6, delay: 0.7 }}
+                transition={{ duration: 0.7, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
               >
                 <div className="relative">
                   {/* Animated flow line */}
-                  <div className="w-16 sm:w-32 h-1 bg-gradient-to-r from-red-500 via-primary to-primary rounded-full overflow-hidden">
+                  <div className="w-16 sm:w-32 h-px bg-gradient-to-r from-red-500/40 via-gold/40 to-primary/40 overflow-hidden">
                     <motion.div
-                      className="h-full w-8 bg-foreground/40 rounded-full"
+                      className="h-full w-8 bg-foreground/10"
                       animate={{ x: ['-100%', '400%'] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                     />
                   </div>
                   {/* Arrow head */}
-                  <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-l-[8px] border-l-primary border-y-[5px] border-y-transparent" />
+                  <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-l-[6px] border-l-primary/40 border-y-[4px] border-y-transparent" />
                 </div>
                 {velocityChange && (() => {
                   // Fix #11: Color velocity badge based on signal
                   const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
                   const badgeColors = signal === 'caution'
-                    ? 'text-red-500 bg-red-500/10'
+                    ? 'border-red-500/20 text-red-500/80'
                     : signal === 'monitor'
-                    ? 'text-amber-500 bg-amber-500/10'
+                    ? 'border-amber-500/20 text-amber-500/80'
                     : signal === 'active_window'
-                    ? 'text-emerald-500 bg-emerald-500/10'
-                    : 'text-primary bg-primary/10';
+                    ? 'border-emerald-500/20 text-emerald-500/80'
+                    : 'border-primary/20 text-primary/80';
                   return (
-                    <span className={`text-[10px] sm:text-xs font-semibold ${badgeColors} px-2 py-0.5 rounded-full`}>
+                    <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${badgeColors}`}>
                       {velocityChange} velocity
                     </span>
                   );
@@ -633,18 +611,18 @@ export function Page3PeerIntelligence({
 
               {/* Destination Jurisdiction */}
               <motion.div
-                className="flex-1 max-w-[200px]"
+                className="flex-1 max-w-[150px] sm:max-w-[200px]"
                 initial={{ opacity: 0, x: 20 }}
                 animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.5, delay: 0.5 }}
+                transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="p-4 sm:p-6 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/30 rounded-xl sm:rounded-2xl">
-                  <p className="text-[10px] sm:text-xs text-primary/80 uppercase tracking-wider mb-2">DESTINATION</p>
-                  <p className="text-base sm:text-xl font-bold text-foreground mb-1">
+                <div className="p-4 sm:p-6 rounded-xl border border-primary/20 bg-card/50">
+                  <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-3">DESTINATION</p>
+                  <p className="text-base sm:text-xl font-medium text-foreground mb-1">
                     {corridorDestination || '—'}
                   </p>
                   {hasCapitalFlowData && capitalFlows?.inflows[0] && (
-                    <p className="text-xs sm:text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground/60">
                       {capitalFlows.inflows[0].volume.toLocaleString()} HNWIs inflow
                     </p>
                   )}
@@ -655,36 +633,37 @@ export function Page3PeerIntelligence({
             {/* Flow Metrics - Only show with real data */}
             {hasCapitalFlowData && (
               <motion.div
-                className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border"
+                className="mt-8 sm:mt-12 pt-6 sm:pt-8"
                 initial={{ opacity: 0 }}
                 animate={isVisible ? { opacity: 1 } : {}}
-                transition={{ duration: 0.5, delay: 1 }}
+                transition={{ duration: 0.8, delay: 1, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-8" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
                   {/* Flow Intensity */}
                   <div className="text-center sm:text-left">
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Flow Intensity</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Flow Intensity</p>
                     {flowIntensityIndex != null ? (
-                      <div className="flex items-center justify-center sm:justify-start gap-2">
-                        <span className="text-lg sm:text-2xl font-bold text-foreground">
+                      <div className="flex items-center justify-center sm:justify-start gap-3">
+                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
                           {flowIntensityIndex.toFixed(2)}
                         </span>
-                        <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          flowIntensityIndex > 0.7 ? 'bg-red-500/10 text-red-500' :
-                          flowIntensityIndex > 0.4 ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-muted text-muted-foreground'
+                        <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
+                          flowIntensityIndex > 0.7 ? 'border-red-500/20 text-red-500/80' :
+                          flowIntensityIndex > 0.4 ? 'border-amber-500/20 text-amber-500/80' :
+                          'border-border/20 text-muted-foreground/80'
                         }`}>
                           {flowIntensityIndex > 0.7 ? 'HIGH' : flowIntensityIndex > 0.4 ? 'ELEVATED' : 'NORMAL'}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-lg sm:text-2xl font-bold text-muted-foreground">—</span>
+                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
                     )}
                   </div>
 
                   {/* Velocity Change - Fix #11: Color based on signal */}
                   <div className="text-center sm:text-left">
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Movement Velocity</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Movement Velocity</p>
                     {velocityChange ? (() => {
                       const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
                       const velocityColor = signal === 'caution'
@@ -695,17 +674,17 @@ export function Page3PeerIntelligence({
                         ? 'text-emerald-500'
                         : 'text-primary';
                       return (
-                        <span className={`text-lg sm:text-2xl font-bold ${velocityColor}`}>{velocityChange}</span>
+                        <span className={`text-xl md:text-2xl font-medium tabular-nums tracking-tight ${velocityColor}`}>{velocityChange}</span>
                       );
                     })() : (
-                      <span className="text-lg sm:text-2xl font-bold text-muted-foreground">—</span>
+                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
                     )}
                   </div>
 
                   {/* Peer Count */}
                   <div className="text-center sm:text-left col-span-2 sm:col-span-1">
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1">Peers in Corridor</p>
-                    <span className="text-lg sm:text-2xl font-bold text-foreground">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Peers in Corridor</p>
+                    <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
                       {peerData.total > 0 ? peerData.total.toLocaleString() : '—'}
                     </span>
                   </div>
@@ -716,11 +695,11 @@ export function Page3PeerIntelligence({
             {/* No data state */}
             {!hasCapitalFlowData && (
               <motion.div
-                className="mt-6 text-center py-4"
+                className="mt-8 text-center py-4"
                 initial={{ opacity: 0 }}
                 animate={isVisible ? { opacity: 1 } : {}}
               >
-                <p className="text-xs sm:text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground/60 leading-relaxed">
                   Capital flow metrics calculated from pattern intelligence
                 </p>
               </motion.div>
@@ -736,18 +715,18 @@ export function Page3PeerIntelligence({
       {showGeographic && cities.length > 0 && (
         <motion.div
           className="mb-10 sm:mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
-          <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 sm:mb-2 tracking-wide">
+          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
             GEOGRAPHIC OPPORTUNITY DISTRIBUTION
-          </h3>
-          <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
+          </p>
+          <p className="text-sm text-muted-foreground/60 mb-8">
             Interactive map of matched investment opportunities
           </p>
 
-          <div className="bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden shadow-xl">
+          <div className="rounded-2xl border border-border/30 overflow-hidden">
             <div className="h-[300px] sm:h-[400px] lg:h-[500px]">
               <InteractiveWorldMap
                 cities={cities}
@@ -761,17 +740,16 @@ export function Page3PeerIntelligence({
                 onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
                 hideCrownAssetsToggle={true}
                 useAbsolutePositioning={true}
+                showCrisisOverlay={true}
               />
             </div>
 
-            <div className="p-3 sm:p-4 bg-muted/30 border-t border-border">
-              <div className="flex items-start gap-2 sm:gap-3">
-                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-primary mt-1.5 sm:mt-2 flex-shrink-0" />
-                <p className="text-[10px] sm:text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">Interactive Map:</span> Click markers to view opportunity analysis.
-                  <span className="hidden sm:inline"> Color intensity reflects investment tier - use filters to narrow by price range and category.</span>
-                </p>
-              </div>
+            <div className="px-6 py-4">
+              <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+              <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                <span className="text-muted-foreground/60">Interactive Map:</span> Click markers to view opportunity analysis.
+                <span className="hidden sm:inline"> Color intensity reflects investment tier -- use filters to narrow by price range and category.</span>
+              </p>
             </div>
           </div>
         </motion.div>
@@ -783,31 +761,33 @@ export function Page3PeerIntelligence({
       {showDrivers && (
       <motion.div
         className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.8 }}
+        transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
-        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground mb-1 sm:mb-2 tracking-wide">
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
           MARKET SIGNAL CLASSIFICATION
-        </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-8">
+        </p>
+        <p className="text-sm text-muted-foreground/60 mb-8">
           Primary driver analysis
         </p>
 
         <div className="max-w-xl">
           {/* Primary Drivers */}
           <motion.div
-            className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-xl"
+            className="relative rounded-2xl border border-border/30 overflow-hidden px-4 sm:px-10 py-8"
             initial={{ opacity: 0, x: -20 }}
             animate={isVisible ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.9 }}
+            transition={{ duration: 0.8, delay: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h4 className="text-xs sm:text-sm font-semibold text-foreground mb-4 sm:mb-6 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary" />
-              Primary Drivers
-            </h4>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
-            <div className="space-y-3 sm:space-y-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
+              Primary Drivers
+            </p>
+
+            <div className="space-y-5">
               {hasDriverData ? (
                 [
                   {
@@ -832,33 +812,33 @@ export function Page3PeerIntelligence({
                     key={driver.label}
                     initial={{ opacity: 0, x: -10 }}
                     animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                    transition={{ duration: 0.4, delay: 1 + i * 0.1 }}
+                    transition={{ duration: 0.7, delay: 1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <div className="flex justify-between items-center mb-1.5 sm:mb-2">
-                      <span className="text-xs sm:text-sm text-muted-foreground">{driver.label}</span>
-                      <span className={`text-xs sm:text-sm font-semibold ${
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-muted-foreground/60">{driver.label}</span>
+                      <span className={`text-base font-medium tabular-nums ${
                         driver.color === 'primary' ? 'text-primary' : 'text-foreground'
                       }`}>
                         {driver.value}%
                       </span>
                     </div>
-                    <div className="h-1.5 sm:h-2 bg-muted/50 rounded-full overflow-hidden">
+                    <div className="h-1 bg-muted/30 rounded-full overflow-hidden">
                       <motion.div
                         className={`h-full rounded-full ${
-                          driver.color === 'primary' ? 'bg-primary' :
-                          driver.color === 'amber' ? 'bg-amber-500' : 'bg-muted-foreground/30'
+                          driver.color === 'primary' ? 'bg-primary/60' :
+                          driver.color === 'amber' ? 'bg-amber-500/60' : 'bg-muted-foreground/20'
                         }`}
                         initial={{ width: 0 }}
                         animate={isVisible ? { width: `${driver.value}%` } : {}}
-                        transition={{ duration: 0.8, delay: 1.1 + i * 0.1 }}
+                        transition={{ duration: 1, delay: 1.1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
                       />
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <p className="text-2xl font-semibold mb-2">—</p>
-                  <p className="text-xs">Driver data pending from backend</p>
+                <div className="text-center py-8 text-muted-foreground/60">
+                  <p className="text-2xl font-medium mb-2">—</p>
+                  <p className="text-xs uppercase tracking-[0.2em]">Driver data pending from backend</p>
                 </div>
               )}
             </div>
@@ -890,32 +870,26 @@ export function Page3PeerIntelligence({
             ? ' Review market fundamentals before committing capital to this corridor.'
             : ' Current window represents active execution period based on peer activity patterns.';
 
+          const borderColor = isCaution ? 'border-amber-500/20' : 'border-primary/20';
+          const accentColor = isCaution ? 'via-amber-500/40' : 'via-gold/40';
+
           return (
             <motion.div
-              className={`mt-4 sm:mt-6 p-3 sm:p-4 lg:p-5 ${isCaution ? 'bg-amber-500/5 border-amber-500/20' : 'bg-primary/5 border-primary/20'} border rounded-xl sm:rounded-2xl`}
-              initial={{ opacity: 0, y: 20 }}
+              className={`mt-6 sm:mt-8 relative rounded-2xl border ${borderColor} bg-card/50 overflow-hidden px-4 sm:px-10 py-6`}
+              initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 1.3 }}
+              transition={{ duration: 0.8, delay: 1.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-start gap-2 sm:gap-4">
-                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${isCaution ? 'bg-amber-500/20' : 'bg-primary/20'} flex items-center justify-center flex-shrink-0`}>
-                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 ${isCaution ? 'text-amber-500' : 'text-primary'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    {isCaution ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    )}
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-semibold text-foreground mb-0.5 sm:mb-1">
-                    {catalystTitle}
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {catalystBody}
-                    <span className="hidden sm:inline">{catalystDetail}</span>
-                  </p>
-                </div>
+              <div className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${accentColor} to-transparent`} />
+
+              <div>
+                <p className="text-xs font-medium text-foreground mb-1.5">
+                  {catalystTitle}
+                </p>
+                <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                  {catalystBody}
+                  <span className="hidden sm:inline">{catalystDetail}</span>
+                </p>
               </div>
             </motion.div>
           );

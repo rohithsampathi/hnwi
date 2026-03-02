@@ -114,12 +114,20 @@ export function PlanUpgradeModal({
   onSuccess
 }: PlanUpgradeModalProps) {
   const { theme } = useTheme()
+
+  // Normalize tier to handle legacy names
+  const normalizedCurrentTier: SubscriptionTier =
+    currentTier === 'family_office' ? 'architect' :
+    currentTier === 'professional' ? 'operator' :
+    currentTier === 'essential' ? 'observer' :
+    currentTier
+
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('operator')
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const [isProcessing, setIsProcessing] = useState(false)
-  
+
   const selectedPlan = PLANS.find(p => p.tier === selectedTier)
-  const currentPlanIndex = PLANS.findIndex(p => p.tier === currentTier)
+  const currentPlanIndex = PLANS.findIndex(p => p.tier === normalizedCurrentTier)
   const selectedPlanIndex = PLANS.findIndex(p => p.tier === selectedTier)
   const isDowngrade = selectedPlanIndex < currentPlanIndex
   
@@ -188,7 +196,7 @@ export function PlanUpgradeModal({
             {PLANS.map((plan) => {
               const Icon = plan.icon
               const isSelected = selectedTier === plan.tier
-              const isCurrent = currentTier === plan.tier
+              const isCurrent = normalizedCurrentTier === plan.tier
               const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice
               
               return (
@@ -266,7 +274,7 @@ export function PlanUpgradeModal({
               Cancel
             </Button>
             
-            {getPaymentButtonId() && currentTier !== selectedTier ? (
+            {getPaymentButtonId() && normalizedCurrentTier !== selectedTier ? (
               <div className="flex-1">
                 <RazorpayButton
                   playbookId={`subscription_${selectedTier}_${billingCycle}`}
@@ -279,7 +287,7 @@ export function PlanUpgradeModal({
                 disabled
                 className="flex-1"
               >
-                {currentTier === selectedTier ? 'Current Plan' : 'Select a Plan'}
+                {normalizedCurrentTier === selectedTier ? 'Current Plan' : 'Select a Plan'}
               </Button>
             )}
           </div>
@@ -287,8 +295,8 @@ export function PlanUpgradeModal({
           {isDowngrade && (
             <div className="p-4 bg-yellow-500/10 rounded-lg">
               <p className="text-sm text-yellow-600">
-                <strong>Note:</strong> Downgrading will take effect at the end of your current billing period. 
-                You'll continue to have access to {currentTier} features until then.
+                <strong>Note:</strong> Downgrading will take effect at the end of your current billing period.
+                You'll continue to have access to {normalizedCurrentTier} features until then.
               </p>
             </div>
           )}

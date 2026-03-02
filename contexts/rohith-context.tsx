@@ -11,13 +11,12 @@ import {
   loadUserContext,
   getConversations,
   getConversationHistory,
-  sendMessage as apiSendMessage,
-  createConversation as apiCreateConversation,
   deleteConversation as apiDeleteConversation,
   updateConversationTitle as apiUpdateConversationTitle,
   createMessage,
   submitFeedback as apiSubmitFeedback
 } from "@/lib/rohith-api"
+import type { VisualizationCommand } from "@/types/rohith"
 import { BackgroundSyncService } from "@/lib/services/background-sync-service"
 import type {
   RohithContextState,
@@ -41,7 +40,19 @@ interface RohithContextActions {
   submitMessageFeedback: (messageId: string, isPositive: boolean) => Promise<void>
 }
 
-type RohithContextType = RohithContextState & RohithContextActions
+type RohithContextType = RohithContextState & RohithContextActions & {
+  // JARVIS-specific state (Feb 2026: Now default mode)
+  visualizations: VisualizationCommand[]
+  predictivePrompts: string[]
+  narration: { text: string; delivery: string } | null
+  currentMode: "jarvis" | "classic" | null // Track current response mode from backend
+}
+
+// JARVIS-specific interfaces
+interface JarvisNarration {
+  text: string
+  delivery: 'word_by_word' | 'sentence_by_sentence' | 'instant'
+}
 
 // Action types
 type RohithAction =
@@ -58,6 +69,11 @@ type RohithAction =
   | { type: "REMOVE_CONVERSATION"; payload: string }
   | { type: "SET_CONTEXT_LOADED"; payload: boolean }
   | { type: "UPDATE_MESSAGE_FEEDBACK"; payload: { messageId: string; feedback: 'positive' | 'negative' } }
+  | { type: "SET_VISUALIZATIONS"; payload: VisualizationCommand[] }
+  | { type: "SET_PREDICTIVE_PROMPTS"; payload: string[] }
+  | { type: "SET_NARRATION"; payload: JarvisNarration | null }
+  | { type: "SET_RESPONSE_MODE"; payload: "jarvis" | "classic" | null }
+  | { type: "CLEAR_JARVIS_STATE" }
 
 const initialState: RohithContextState = {
   userContext: null,
@@ -69,6 +85,14 @@ const initialState: RohithContextState = {
   isContextLoaded: false,
   isConversationsLoading: false,
   error: null
+}
+
+// JARVIS-specific initial state (Feb 2026: JARVIS is now the default mode)
+const initialJarvisState = {
+  visualizations: [],
+  predictivePrompts: [],
+  narration: null,
+  currentMode: null as "jarvis" | "classic" | null
 }
 
 function rohithReducer(state: RohithContextState, action: RohithAction): RohithContextState {
@@ -137,6 +161,27 @@ function rohithReducer(state: RohithContextState, action: RohithAction): RohithC
       return { ...state, currentMessages: updatedMessages }
     }
 
+    case "SET_VISUALIZATIONS":
+      return { ...state, visualizations: action.payload }
+
+    case "SET_PREDICTIVE_PROMPTS":
+      return { ...state, predictivePrompts: action.payload }
+
+    case "SET_NARRATION":
+      return { ...state, narration: action.payload }
+
+    case "SET_RESPONSE_MODE":
+      return { ...state, currentMode: action.payload }
+
+    case "CLEAR_JARVIS_STATE":
+      return {
+        ...state,
+        visualizations: [],
+        predictivePrompts: [],
+        narration: null,
+        currentMode: null
+      }
+
     default:
       return state
   }
@@ -149,7 +194,10 @@ interface RohithProviderProps {
 }
 
 export function RohithProvider({ children }: RohithProviderProps) {
-  const [state, dispatch] = useReducer(rohithReducer, initialState)
+  const [state, dispatch] = useReducer(rohithReducer, {
+    ...initialState,
+    ...initialJarvisState
+  })
 
   // Load user context on mount
   useEffect(() => {
@@ -257,8 +305,9 @@ export function RohithProvider({ children }: RohithProviderProps) {
     createNewConversation: async (firstMessage: string): Promise<string> => {
       try {
 
-        // Clear any existing messages first
+        // Clear any existing messages and JARVIS state
         dispatch({ type: "SET_CURRENT_MESSAGES", payload: [] })
+        dispatch({ type: "CLEAR_JARVIS_STATE" })
 
         // Add user message immediately to UI for instant feedback
         const userMessage = createMessage("user", firstMessage)
@@ -266,15 +315,19 @@ export function RohithProvider({ children }: RohithProviderProps) {
 
         dispatch({ type: "SET_TYPING", payload: true })
 
-        // The /api/rohith/start endpoint creates conversation and returns Rohith's response
-        const response = await apiCreateConversation(firstMessage)
+        // Call JARVIS V5 API (now the default mode as of Feb 2026)
+        const jarvisResponse = await rohithAPI.createConversationJarvis(
+          firstMessage,
+          state.userContext?.userId
+        )
 
+        const conversationId = jarvisResponse.conversationId
 
-        // Handle if response is a string (conversation_id) or object with conversation_id
-        const conversationId = typeof response === 'string' ? response : response.conversation_id
+        // Set response mode from backend
+        const responseMode = jarvisResponse.mode || "jarvis"
+        dispatch({ type: "SET_RESPONSE_MODE", payload: responseMode })
 
-
-        // Create new conversation object with properly formatted title
+        // Create new conversation object
         const newConversation: Conversation = {
           id: conversationId,
           title: createConversationTitle(firstMessage),
@@ -285,37 +338,36 @@ export function RohithProvider({ children }: RohithProviderProps) {
           isActive: true
         }
 
-
         // Add to conversations list
         dispatch({ type: "SET_CONVERSATIONS", payload: [newConversation, ...state.conversations] })
         dispatch({ type: "SET_ACTIVE_CONVERSATION", payload: conversationId })
 
-
-        // If the start endpoint returned a response directly, add it
-        if (typeof response === 'object' && response.response) {
-          const assistantMessage = createMessage("assistant", response.response.content || response.response, {
-            hnwiKnowledgeSources: response.context?.relevant_entities?.map((e: any) => e.name) || ["rohith_api"],
-            responseTime: response.response?.processing_time_ms || response.system_performance?.processing_time_ms || 1000
-          })
-
-          // Add messageId from backend response for feedback
-          if (response.message_id) {
-            assistantMessage.messageId = response.message_id
+        // Update JARVIS-specific state only if in JARVIS mode
+        if (responseMode === "jarvis") {
+          if (jarvisResponse.visualizations) {
+            dispatch({ type: "SET_VISUALIZATIONS", payload: jarvisResponse.visualizations })
           }
-
-          dispatch({ type: "ADD_MESSAGE", payload: assistantMessage })
-        } else {
-          // Fallback: Load the conversation history to get Rohith's response
-          const conversationData = await getConversationHistory(conversationId)
-          if (conversationData && conversationData.messages.length > 1) {
-            // Find Rohith's response (should be the last message from assistant)
-            const assistantMessages = conversationData.messages.filter(msg => msg.role === "assistant")
-            if (assistantMessages.length > 0) {
-              const rohithResponse = assistantMessages[assistantMessages.length - 1]
-              dispatch({ type: "ADD_MESSAGE", payload: rohithResponse })
-            }
+          if (jarvisResponse.predictive_prompts) {
+            dispatch({ type: "SET_PREDICTIVE_PROMPTS", payload: jarvisResponse.predictive_prompts })
+          }
+          if (jarvisResponse.narration) {
+            dispatch({ type: "SET_NARRATION", payload: jarvisResponse.narration })
           }
         }
+
+        // Add Rohith's narration as assistant message (with visualizations attached)
+        const vizData = responseMode === "jarvis" ? jarvisResponse.visualizations : undefined
+        const assistantMessage = createMessage("assistant", jarvisResponse.narration?.text || "", {
+          hnwiKnowledgeSources: jarvisResponse.citations || ["jarvis_v5"], // Legacy field
+          sourceDocuments: jarvisResponse.source_documents || [], // New field (Feb 2026+)
+          responseTime: jarvisResponse.processing_time_ms || 1000
+        }, vizData)
+
+        if (jarvisResponse.message_id) {
+          assistantMessage.messageId = jarvisResponse.message_id
+        }
+
+        dispatch({ type: "ADD_MESSAGE", payload: assistantMessage })
 
         return conversationId
       } catch (error) {
@@ -339,21 +391,40 @@ export function RohithProvider({ children }: RohithProviderProps) {
 
         dispatch({ type: "SET_TYPING", payload: true })
 
-        // Send to API - this will use /api/chat/chat/{conversation_id}
-        const response: ConversationResponse = await apiSendMessage(
+        // Call JARVIS V5 API (now the default mode as of Feb 2026)
+        const jarvisResponse = await rohithAPI.sendMessageJarvis(
           message,
-          state.activeConversationId
+          state.activeConversationId,
+          state.userContext?.userId
         )
 
-        // Add Rohith's response (Katya's response from backend)
-        const assistantMessage = createMessage("assistant", response.response, {
-          hnwiKnowledgeSources: response.provenance?.source_nodes || ["chat_api"],
-          responseTime: response.response_time
-        })
+        // Set response mode from backend
+        const responseMode = jarvisResponse.mode || "jarvis"
+        dispatch({ type: "SET_RESPONSE_MODE", payload: responseMode })
 
-        // Add messageId from backend response for feedback
-        if (response.message_id) {
-          assistantMessage.messageId = response.message_id
+        // Update JARVIS-specific state only if in JARVIS mode
+        if (responseMode === "jarvis") {
+          if (jarvisResponse.visualizations) {
+            dispatch({ type: "SET_VISUALIZATIONS", payload: jarvisResponse.visualizations })
+          }
+          if (jarvisResponse.predictive_prompts) {
+            dispatch({ type: "SET_PREDICTIVE_PROMPTS", payload: jarvisResponse.predictive_prompts })
+          }
+          if (jarvisResponse.narration) {
+            dispatch({ type: "SET_NARRATION", payload: jarvisResponse.narration })
+          }
+        }
+
+        // Add Rohith's narration as assistant message (with visualizations attached)
+        const vizData = responseMode === "jarvis" ? jarvisResponse.visualizations : undefined
+        const assistantMessage = createMessage("assistant", jarvisResponse.narration?.text || "", {
+          hnwiKnowledgeSources: jarvisResponse.citations || ["jarvis_v5"], // Legacy field
+          sourceDocuments: jarvisResponse.source_documents || [], // New field (Feb 2026+)
+          responseTime: jarvisResponse.processing_time_ms || 1000
+        }, vizData)
+
+        if (jarvisResponse.message_id) {
+          assistantMessage.messageId = jarvisResponse.message_id
         }
 
         dispatch({ type: "ADD_MESSAGE", payload: assistantMessage })
@@ -364,9 +435,10 @@ export function RohithProvider({ children }: RohithProviderProps) {
         )
 
         if (updatedConversation) {
-          const lastMessagePreview = response.response.length > 100
-            ? response.response.substring(0, 100) + "..."
-            : response.response
+          const narrationText = jarvisResponse.narration?.text || ""
+          const lastMessagePreview = narrationText.length > 100
+            ? narrationText.substring(0, 100) + "..."
+            : narrationText
 
           const updated: Conversation = {
             ...updatedConversation,
@@ -489,7 +561,12 @@ export function RohithProvider({ children }: RohithProviderProps) {
 
   const contextValue: RohithContextType = {
     ...state,
-    ...contextActions
+    ...contextActions,
+    // JARVIS-specific state (Feb 2026: JARVIS is now default mode)
+    visualizations: (state as any).visualizations || [],
+    predictivePrompts: (state as any).predictivePrompts || [],
+    narration: (state as any).narration || null,
+    currentMode: (state as any).currentMode || null
   }
 
   return (

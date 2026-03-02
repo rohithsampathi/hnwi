@@ -63,23 +63,45 @@ const PLAN_PRICING = {
   architect: { monthly: 1499, yearly: 30000 }
 }
 
-export function SubscriptionCard({ 
-  subscription, 
-  onUpgrade, 
+export function SubscriptionCard({
+  subscription,
+  onUpgrade,
   onManage,
-  onCancel 
+  onCancel
 }: SubscriptionCardProps) {
   const { theme } = useTheme()
-  
+
   const currentTier = subscription?.tier || 'observer'
+
+  // Normalize tier to match PLAN_PRICING keys
+  const getNormalizedTier = (tier: string): 'observer' | 'operator' | 'architect' => {
+    // Map legacy/alternate tier names to standard ones
+    switch (tier) {
+      case 'architect':
+      case 'family_office':
+        return 'architect'
+      case 'operator':
+      case 'professional':
+        return 'operator'
+      case 'observer':
+      case 'essential':
+      default:
+        return 'observer'
+    }
+  }
+
+  const normalizedTier = getNormalizedTier(currentTier)
 
   const getTierDisplayName = (tier: string) => {
     switch (tier) {
       case 'architect':
+      case 'family_office':
         return 'Architect'
       case 'operator':
+      case 'professional':
         return 'Operator'
       case 'observer':
+      case 'essential':
         return 'Observer'
       default:
         return 'Observer'
@@ -87,6 +109,10 @@ export function SubscriptionCard({
   }
   const status = subscription?.status || 'active'
   const billing_cycle = subscription?.billing_cycle || 'monthly'
+  // Normalize billing cycle to match PLAN_PRICING keys
+  const normalizedBillingCycle = billing_cycle === 'yearly' || billing_cycle === 'annual' || billing_cycle === 'year'
+    ? 'yearly'
+    : 'monthly'
 
   const getTierIcon = (tier: string) => {
     switch (tier) {
@@ -163,14 +189,14 @@ export function SubscriptionCard({
                 >
                   {getTierDisplayName(currentTier)} Plan
                 </h3>
-                <p 
+                <p
                   className="text-sm"
-                  style={{ 
+                  style={{
                     color: theme === 'dark' ? 'hsl(43 74% 49% / 0.8)' : 'hsl(0 0% 0% / 0.7)',
-                    opacity: 0.9 
+                    opacity: 0.9
                   }}
                 >
-                  ${PLAN_PRICING[currentTier as keyof typeof PLAN_PRICING][billing_cycle]} / {billing_cycle === 'monthly' ? 'month' : 'year'}
+                  ${PLAN_PRICING[normalizedTier]?.[normalizedBillingCycle] || PLAN_PRICING.observer.monthly} / {normalizedBillingCycle === 'monthly' ? 'month' : 'year'}
                 </p>
               </div>
             </div>
@@ -237,7 +263,7 @@ export function SubscriptionCard({
             Plan Features
           </h4>
           <ul className="space-y-2">
-            {PLAN_FEATURES[currentTier as keyof typeof PLAN_FEATURES].map((feature, index) => (
+            {(PLAN_FEATURES[normalizedTier] || PLAN_FEATURES.observer).map((feature, index) => (
               <li key={index} className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <span className="text-sm text-muted-foreground">{feature}</span>
@@ -268,11 +294,11 @@ export function SubscriptionCard({
         )}
         
         {/* Action Buttons */}
-        <div 
+        <div
           className="flex gap-3 pt-4 border-t"
           style={{ borderColor: theme === 'dark' ? 'hsl(43 74% 49% / 0.2)' : 'hsl(0 0% 0% / 0.2)' }}
         >
-          {currentTier !== 'architect' && (
+          {normalizedTier !== 'architect' && (
             <Button
               onClick={onUpgrade}
               className="flex-1 hover:opacity-90"

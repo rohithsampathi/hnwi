@@ -172,17 +172,17 @@ export function MfaCodeInput({
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-4 sm:space-y-6 ${className}`}>
       {/* Code Input Label */}
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 mb-4">
-          <Shield className="h-4 w-4 text-primary" />
-          Enter the 6-digit security code sent to your email
+      <div className="text-center px-2">
+        <p className="text-xs sm:text-sm text-muted-foreground flex items-center justify-center gap-2 mb-3 sm:mb-4 flex-wrap">
+          <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
+          <span className="text-center">Enter the 6-digit security code sent to your email</span>
         </p>
       </div>
 
-      {/* Code Input Grid */}
-      <div className="flex justify-center gap-3">
+      {/* Code Input Grid - Responsive sizing */}
+      <div className="flex justify-center gap-1.5 sm:gap-2 md:gap-3 px-2">
         {Array.from({ length: 6 }).map((_, index) => (
           <Input
             key={index}
@@ -194,7 +194,7 @@ export function MfaCodeInput({
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={index === 0 ? handlePaste : undefined}
             disabled={isLoading || isSubmitting}
-            className={`w-12 h-12 text-center text-lg font-mono border-2 transition-all duration-200 ${
+            className={`w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 text-center text-base sm:text-lg font-mono border-2 transition-all duration-200 flex-shrink-0 ${
               theme === "dark"
                 ? "bg-gray-800 border-gray-600 focus:border-primary"
                 : "bg-white border-gray-300 focus:border-black"
@@ -205,40 +205,40 @@ export function MfaCodeInput({
       </div>
 
       {/* Timer and Status */}
-      <div className="text-center space-y-2">
-        <div className={`text-sm ${timeLeft > 60 ? 'text-green-600' : timeLeft > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+      <div className="text-center space-y-2 px-2">
+        <div className={`text-xs sm:text-sm font-medium ${timeLeft > 60 ? 'text-green-600' : timeLeft > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
           {timeLeft > 0 ? (
-            <>Code expires in {formatTime(timeLeft)}</>
+            <span>Code expires in {formatTime(timeLeft)}</span>
           ) : (
-            <>Code has expired</>
+            <span>Code has expired</span>
           )}
         </div>
-        
+
         {error && (
-          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
+          <div className="text-xs sm:text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 sm:p-3 rounded-md break-words">
             {error}
           </div>
         )}
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:gap-3 px-2">
         <Button
           onClick={() => handleSubmit()}
           disabled={code.length !== 6 || isLoading || isSubmitting}
-          className={`w-full h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
-            theme === "dark" 
+          className={`w-full h-11 sm:h-12 text-base sm:text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+            theme === "dark"
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
               : "bg-black text-white hover:bg-black/90"
           }`}
         >
           {(isLoading || isSubmitting) ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
+              <Loader2 className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
+              <span className="truncate">Verifying...</span>
             </>
           ) : (
-            "Verify Code"
+            <span className="truncate">Verify Code</span>
           )}
         </Button>
 
@@ -247,7 +247,7 @@ export function MfaCodeInput({
           variant="outline"
           onClick={handleResend}
           disabled={!canResend || isResending}
-          className={`w-full transition-all duration-200 ${
+          className={`w-full h-10 sm:h-11 text-sm sm:text-base transition-all duration-200 ${
             canResend && !isResending
               ? 'hover:bg-gray-50 dark:hover:bg-gray-800'
               : 'opacity-50 cursor-not-allowed'
@@ -255,27 +255,27 @@ export function MfaCodeInput({
         >
           {isResending ? (
             <>
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              Sending...
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin flex-shrink-0" />
+              <span className="truncate">Sending...</span>
             </>
           ) : canResend ? (
             <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Resend Code
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+              <span className="truncate">Resend Code</span>
             </>
           ) : (
             <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Resend in {formatTime(timeLeft)}
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+              <span className="truncate">Resend in {formatTime(timeLeft)}</span>
             </>
           )}
         </Button>
       </div>
 
       {/* Help Text */}
-      <div className="text-xs text-center text-gray-500 space-y-1">
-        <p>Didn't receive the code? Check your spam folder.</p>
-        <p>Code format: 6 alphanumeric characters (A1B2C3)</p>
+      <div className="text-[10px] sm:text-xs text-center text-gray-500 space-y-1 px-4">
+        <p className="break-words">Didn't receive the code? Check your spam folder.</p>
+        <p className="break-words">Code format: 6 alphanumeric characters (A1B2C3)</p>
       </div>
     </div>
   )

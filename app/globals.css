@@ -14,7 +14,7 @@
 @import 'overlayscrollbars/overlayscrollbars.css';
 
 body {
-  font-family: "Trojan Pro", Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter, "Inter"), "SF Pro Display", system-ui, sans-serif;
 }
 
 /* PWA Support: Ensure safe areas are respected on iOS devices with notches */
@@ -105,9 +105,19 @@ body {
   .premium-pulse {
     animation: premium-pulse 3s ease-in-out infinite;
   }
-  
+
   .premium-ping {
     animation: premium-ping 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* JARVIS shimmer animation */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .jarvis-shimmer {
+    animation: shimmer 2s infinite linear;
   }
   
   @keyframes premium-pulse {
@@ -175,12 +185,12 @@ body {
     --primary-foreground: 0 0% 98%;             /* White text on primary buttons */
     --secondary-foreground: 0 0% 10%;           /* Dark text on light platinum */
     --accent-foreground: 0 0% 10%;              /* Dark text on platinum accents */
-    --muted-foreground: 0 0% 40%;               /* Medium gray text */
+    --muted-foreground: 0 0% 25%;               /* Darker gray for opacity-based usage */
     --popover-foreground: 0 0% 10%;             /* Dark text in popovers */
     --sidebar-foreground: 0 0% 10%;             /* Dark text in sidebar */
     --sidebar-primary-foreground: 0 0% 10%;     /* Dark text on platinum */
     --sidebar-accent-foreground: 0 0% 20%;      /* Slightly lighter text */
-    --sidebar-muted-foreground: 0 0% 35%;       /* Medium gray sidebar text */
+    --sidebar-muted-foreground: 0 0% 28%;       /* Darker for opacity-based usage */
     
     /* Functional colors */
     --destructive: 0 70% 50%;                   /* Red for errors */
@@ -193,56 +203,88 @@ body {
     --chart-4: 0 0% 65%;                        /* Medium platinum */
     --chart-5: 0 0% 75%;                        /* Main platinum */
     
+    /* NEW: Semantic design tokens (light mode — darker for contrast on white) */
+    --surface: 0 0% 94%;                      /* Light card bg */
+    --surface-hover: 0 0% 92%;                /* Light hover state */
+    --gold: 43 70% 25%;                       /* ~#6C5510 — dark gold for white bg readability */
+    --gold-muted: 41 50% 22%;                 /* ~#544218 — darker muted gold */
+    --verdict-proceed: 142 71% 35%;           /* Darker green for white bg */
+    --verdict-restructure: 43 70% 25%;        /* Matches --gold */
+    --verdict-abort: 0 84% 45%;               /* Darker red for white bg */
+    --risk-high: 38 92% 40%;                  /* Darker amber for white bg */
+
+    /* Institutional Design System */
+    --institutional-border: 0 0% 88%;         /* matches --border */
+    --institutional-bg: 0 0% 100%;            /* matches --background */
+    --institutional-accent-width: 4px;
+    --institutional-top-border: 3px;
+
     --radius: 0.75rem;
   }
-  
+
   .dark {
-    /* DARK MODE - 60-30-10 Color System */
-    /* TERTIARY (60%) - Black backgrounds - dominant empty spaces */
-    --background: 0 0% 0%;                      /* Pure black - main background */
-    --popover: 0 0% 3%;                         /* Nearly black - popovers */
-    --sidebar-background: 0 0% 2%;              /* Almost black - sidebar */
-    
-    /* SECONDARY (30%) - Dark gray cards and content areas */
-    --card: 0 0% 12%;                           /* Dark gray - card backgrounds */
-    --muted: 0 0% 15%;                          /* Medium dark gray - muted areas */
-    --border: 0 0% 20%;                         /* Medium dark gray - borders */
-    --input: 0 0% 10%;                          /* Dark gray - inputs */
+    /* DARK MODE - Commandment III Exact Values */
+    /* TERTIARY (60%) - #0A0A0A backgrounds */
+    --background: 0 0% 4%;                      /* #0A0A0A - main background */
+    --popover: 0 0% 6%;                         /* Slightly lifted - popovers */
+    --sidebar-background: 0 0% 4%;              /* #0A0A0A - sidebar */
+
+    /* SECONDARY (30%) - #141414 cards, #1A1A1A hover, #262626 borders */
+    --card: 0 0% 8%;                            /* #141414 - card backgrounds */
+    --muted: 0 0% 10%;                          /* #1A1A1A - muted areas / surface-hover */
+    --border: 0 0% 15%;                         /* #262626 - borders */
+    --input: 0 0% 8%;                           /* #141414 - inputs */
     --secondary: 43 20% 25%;                    /* Dark gold-gray - secondary elements */
-    --sidebar-accent: 0 0% 18%;                 /* Medium dark gray - sidebar accents */
-    --sidebar-border: 0 0% 15%;                 /* Dark gray - sidebar borders */
-    --sidebar-muted: 0 0% 12%;                  /* Dark gray - sidebar muted */
-    
-    /* PRIMARY (10%) - Gold tags/CTAs - focal points */
-    --primary: 43 74% 49%;                      /* Main gold #DAA520 */
-    --accent: 43 74% 49%;                       /* Gold accent */
-    --ring: 43 74% 49%;                         /* Gold focus rings */
-    --sidebar-primary: 43 74% 49%;              /* Gold sidebar primary */
-    --sidebar-ring: 43 74% 49%;                 /* Gold sidebar focus */
-    
-    /* Text colors following hierarchy */
-    --foreground: 0 0% 98%;                     /* Pure white text on dark backgrounds */
-    --card-foreground: 0 0% 98%;                /* White text on dark cards */
+    --sidebar-accent: 0 0% 12%;                 /* Sidebar accents */
+    --sidebar-border: 0 0% 15%;                 /* #262626 - sidebar borders */
+    --sidebar-muted: 0 0% 8%;                   /* #141414 - sidebar muted */
+
+    /* PRIMARY (10%) - #D4A843 gold */
+    --primary: 43 64% 55%;                      /* #D4A843 - primary gold */
+    --accent: 43 64% 55%;                       /* #D4A843 - gold accent */
+    --ring: 43 64% 55%;                         /* Gold focus rings */
+    --sidebar-primary: 43 64% 55%;              /* Gold sidebar primary */
+    --sidebar-ring: 43 64% 55%;                 /* Gold sidebar focus */
+
+    /* Text colors - #F5F5F5 foreground, #A3A3A3 muted */
+    --foreground: 0 0% 96%;                     /* #F5F5F5 - primary text */
+    --card-foreground: 0 0% 96%;                /* #F5F5F5 - text on cards */
     --primary-foreground: 0 0% 10%;             /* Dark text on gold (contrast) */
     --secondary-foreground: 0 0% 10%;           /* Dark text on light gold */
     --accent-foreground: 0 0% 10%;              /* Dark text on gold accents */
-    --muted-foreground: 0 0% 70%;               /* Light gray text */
-    --popover-foreground: 0 0% 98%;             /* White text in popovers */
-    --sidebar-foreground: 0 0% 98%;             /* White text in sidebar */
+    --muted-foreground: 0 0% 64%;               /* #A3A3A3 - secondary text */
+    --popover-foreground: 0 0% 96%;             /* #F5F5F5 - text in popovers */
+    --sidebar-foreground: 0 0% 96%;             /* #F5F5F5 - text in sidebar */
     --sidebar-primary-foreground: 0 0% 10%;     /* Dark text on gold */
     --sidebar-accent-foreground: 0 0% 90%;      /* Light text on dark accents */
     --sidebar-muted-foreground: 0 0% 60%;       /* Medium gray sidebar text */
-    
+
     /* Functional colors */
     --destructive: 0 70% 55%;                   /* Lighter red for dark mode */
     --destructive-foreground: 0 0% 98%;         /* White text on red */
-    
+
     /* Chart colors - gold variants */
-    --chart-1: 43 74% 49%;                      /* Main gold */
-    --chart-2: 43 80% 60%;                      /* Bright gold */
-    --chart-3: 43 70% 40%;                      /* Dark gold */
-    --chart-4: 43 75% 55%;                      /* Medium bright gold */
-    --chart-5: 43 65% 35%;                      /* Very dark gold */
+    --chart-1: 43 64% 55%;                      /* #D4A843 gold */
+    --chart-2: 43 70% 62%;                      /* Bright gold */
+    --chart-3: 43 60% 42%;                      /* Dark gold */
+    --chart-4: 43 65% 58%;                      /* Medium bright gold */
+    --chart-5: 43 55% 35%;                      /* Very dark gold */
+
+    /* NEW: Semantic design tokens */
+    --surface: 0 0% 8%;                         /* #141414 — card/panel bg */
+    --surface-hover: 0 0% 10%;                  /* #1A1A1A — hover state */
+    --gold: 43 64% 55%;                         /* #D4A843 — primary gold */
+    --gold-muted: 41 38% 37%;                   /* #8B7532 — muted gold */
+    --verdict-proceed: 142 71% 45%;             /* #22C55E */
+    --verdict-restructure: 43 64% 55%;          /* #D4A843 */
+    --verdict-abort: 0 84% 60%;                 /* #EF4444 */
+    --risk-high: 38 92% 50%;                    /* #F59E0B */
+
+    /* Institutional Design System (dark) — aligned with new surface/border */
+    --institutional-border: 0 0% 15%;           /* matches --border */
+    --institutional-bg: 0 0% 4%;                /* matches --background */
+    --institutional-accent-width: 4px;
+    --institutional-top-border: 3px;
   }
 }
 
@@ -296,7 +338,33 @@ body {
   .sidebar-scroll::-webkit-scrollbar-thumb:hover {
     background-color: rgba(0, 0, 0, 0.3) !important;
   }
-  
+
+  /* Premium custom scrollbar for JARVIS interface */
+  .custom-scrollbar {
+    -ms-overflow-style: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(212, 168, 67, 0.3) transparent !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    display: block !important;
+    width: 8px !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(10, 10, 10, 0.3) !important;
+    border-radius: 4px !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(212, 168, 67, 0.4), rgba(212, 168, 67, 0.6)) !important;
+    border-radius: 4px !important;
+    border: 2px solid rgba(10, 10, 10, 0.3) !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(212, 168, 67, 0.6), rgba(212, 168, 67, 0.8)) !important;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(212, 168, 67, 0.9) !important;
+  }
+
   /* Standardize border radius & styles across the app - CLEAN BUSINESS STANDARD */
   .rounded-lg, .rounded-xl {
     border-radius: 0.5rem !important;

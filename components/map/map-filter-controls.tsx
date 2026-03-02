@@ -4,7 +4,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react"
-import { Crown, Gem, TrendingUp, ZoomOut } from "lucide-react"
+import { Crown, Gem, TrendingUp, ZoomOut, AlertTriangle } from "lucide-react"
 import Slider from "rc-slider"
 import "rc-slider/assets/index.css"
 import { GRADIENT_COLORS, getGradientColorFromPercent } from "@/lib/map-color-utils"
@@ -23,6 +23,9 @@ interface MapFilterControlsProps {
   currentZoom: number
   hideCrownAssetsToggle?: boolean // Hide Crown Assets toggle (for assessment)
   useAbsolutePositioning?: boolean // Use absolute positioning for assessment (inside map frame)
+  // Crisis Intel
+  showCrisisAlert?: boolean
+  onToggleCrisisAlert?: () => void
 }
 
 const MIN = 0
@@ -251,17 +254,33 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
                 <Crown className="h-3 w-3" />
               </button>
             )}
+
+            {/* Crisis Intel — inline with other filter icons */}
+            {props.onToggleCrisisAlert && (
+              <button
+                onClick={props.onToggleCrisisAlert}
+                className={`text-xs p-1.5 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center relative ${
+                  props.showCrisisAlert
+                    ? props.theme === 'dark'
+                      ? 'bg-red-500/15 text-red-400 font-medium shadow-sm'
+                      : 'bg-red-500/10 text-red-600 font-medium shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted/50'
+                }`}
+                aria-label="Crisis Intel"
+              >
+                <AlertTriangle className="h-3 w-3" />
+              </button>
+            )}
           </div>
 
-          {/* Zoom out - only show when zoomed in (zoom > 2) - smaller */}
+          {/* Zoom out - only show when zoomed in (zoom > 2) - icon only on mobile */}
           {props.currentZoom > 2 && (
             <button
               onClick={props.onReset}
-              className="text-xs px-1.5 py-1 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex flex-row items-center justify-center gap-0.5 bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-lg"
+              className="text-xs p-1.5 text-muted-foreground hover:text-primary transition-all duration-300 ease-in-out flex items-center justify-center bg-background/95 backdrop-blur-sm border border-border rounded-full shadow-lg"
               aria-label="Zoom out"
             >
               <ZoomOut className="h-3 w-3" />
-              <span className="text-[9px] font-semibold">Zoom out</span>
             </button>
           )}
         </div>
@@ -338,6 +357,23 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
             <TrendingUp className="h-3.5 w-3.5" />
             <span>HNWI Patterns</span>
           </button>
+
+          {/* Crisis Intel — inline with other toggles */}
+          {props.onToggleCrisisAlert && (
+            <button
+              onClick={props.onToggleCrisisAlert}
+              className={`text-xs px-2.5 py-1 rounded-full transition-colors flex items-center gap-1 ${
+                props.showCrisisAlert
+                  ? props.theme === 'dark'
+                    ? 'bg-red-500/15 text-red-400 font-medium'
+                    : 'bg-red-500/10 text-red-600 font-medium'
+                  : 'text-muted-foreground hover:text-primary'
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Crisis Intel</span>
+            </button>
+          )}
 
           {/* Only show divider and zoom out button when zoomed in */}
           {props.currentZoom > 2 && (

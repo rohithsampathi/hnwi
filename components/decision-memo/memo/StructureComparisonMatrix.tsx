@@ -1,5 +1,5 @@
 // components/decision-memo/memo/StructureComparisonMatrix.tsx
-// INSTITUTIONAL STRUCTURE COMPARISON - MCP CORE OUTPUT
+// INSTITUTIONAL STRUCTURE COMPARISON - "Money Talking" design language
 // Top 5 structures as comparison table, remaining as compact list
 
 "use client";
@@ -20,21 +20,23 @@ import {
   ChevronUp
 } from 'lucide-react';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type StringOrObject = string | Record<string, any>;
+type StringOrObject = string | Record<string, unknown>;
 
 /** Safely extract display text from items that may be strings or objects */
 function toDisplayString(item: StringOrObject): string {
   if (typeof item === 'string') return item;
   if (item && typeof item === 'object') {
     // Backend corridor/strategy objects: {destination, reason, benefit, requirement}
-    if (item.destination && item.reason) {
-      return `${item.destination} — ${item.reason}${item.benefit ? ` (${item.benefit})` : ''}`;
+    const dest = item.destination;
+    const reason = item.reason;
+    const benefit = item.benefit;
+    if (dest && reason) {
+      return `${String(dest)} — ${String(reason)}${benefit ? ` (${String(benefit)})` : ''}`;
     }
-    if (item.destination) return item.destination;
-    if (item.reason) return item.reason;
+    if (dest) return String(dest);
+    if (reason) return String(reason);
     // Generic fallback: join all values
-    return Object.values(item).filter(Boolean).join(' — ');
+    return Object.values(item).filter(Boolean).map(String).join(' — ');
   }
   return String(item);
 }
@@ -131,28 +133,28 @@ function AnimatedBenefit({ value }: { value: number }) {
 
 // Verdict badge (compact)
 function VerdictBadge({ verdict, compact = false }: { verdict: string; compact?: boolean }) {
-  const config: Record<string, { bg: string; text: string; icon: React.ReactNode; label: string }> = {
+  const config: Record<string, { border: string; text: string; icon: React.ReactNode; label: string }> = {
     'PROCEED': {
-      bg: 'bg-emerald-500/10 border-emerald-500/20',
-      text: 'text-emerald-600 dark:text-emerald-400',
+      border: 'border-emerald-500/20',
+      text: 'text-emerald-500/80',
       icon: <CheckCircle className="w-3 h-3" />,
       label: 'PROCEED'
     },
     'PROCEED_MODIFIED': {
-      bg: 'bg-amber-500/10 border-amber-500/20',
-      text: 'text-amber-600 dark:text-amber-400',
+      border: 'border-amber-500/20',
+      text: 'text-amber-500/80',
       icon: <AlertTriangle className="w-3 h-3" />,
       label: 'MODIFIED'
     },
     'PROCEED_DIVERSIFICATION_ONLY': {
-      bg: 'bg-blue-500/10 border-blue-500/20',
-      text: 'text-blue-600 dark:text-blue-400',
+      border: 'border-gold/20',
+      text: 'text-gold/80',
       icon: <Layers className="w-3 h-3" />,
       label: 'DIVERSIFY'
     },
     'DO_NOT_PROCEED': {
-      bg: 'bg-red-500/10 border-red-500/20',
-      text: 'text-red-600 dark:text-red-400',
+      border: 'border-red-500/20',
+      text: 'text-red-500/80',
       icon: <XCircle className="w-3 h-3" />,
       label: compact ? 'DNP' : 'DO NOT PROCEED'
     }
@@ -161,7 +163,7 @@ function VerdictBadge({ verdict, compact = false }: { verdict: string; compact?:
   const c = config[verdict] || config['DO_NOT_PROCEED'];
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide border ${c.bg} ${c.text}`}>
+    <span className={`inline-flex items-center gap-1 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${c.border} ${c.text}`}>
       {c.icon}
       {c.label}
     </span>
@@ -224,35 +226,30 @@ export function StructureComparisonMatrix({
 
   return (
     <div ref={sectionRef} className="relative">
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SECTION HEADER                                                     */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* SECTION HEADER */}
       <motion.div
-        className="mb-8 sm:mb-10"
-        initial={{ opacity: 0, y: 20 }}
+        className="mb-8 sm:mb-12"
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-primary/10 border border-primary/20 rounded-full mb-3 w-fit">
-          <Scale className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" />
-          <span className="text-primary text-[9px] sm:text-xs font-semibold tracking-wide uppercase">Structure Optimization</span>
-        </div>
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">Structure Optimization</p>
 
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-foreground tracking-tight leading-tight mb-2">
+        <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">
           Ownership Structure
           <br />
-          <span className="text-primary">Analysis</span>
+          <span className="text-gold/80">Analysis</span>
         </h2>
 
-        <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
-          <span className="text-xs sm:text-sm font-medium">{sourceJurisdiction}</span>
-          <ArrowRight className="w-4 h-4 text-primary" />
-          <span className="text-xs sm:text-sm font-medium">{destinationJurisdiction}</span>
-          <span className="text-xs text-muted-foreground/60 ml-2">{structures_analyzed.length} structures analyzed</span>
+        <div className="flex items-center gap-2 text-muted-foreground/60 flex-wrap">
+          <span className="text-xs font-normal">{sourceJurisdiction}</span>
+          <ArrowRight className="w-3.5 h-3.5 text-gold/70" />
+          <span className="text-xs font-normal">{destinationJurisdiction}</span>
+          <span className="text-sm text-muted-foreground/60 ml-2">{structures_analyzed.length} structures analyzed</span>
         </div>
 
         <motion.div
-          className="mt-3 w-16 h-1 bg-gradient-to-r from-primary to-primary/40 rounded-full"
+          className="mt-4 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent"
           initial={{ scaleX: 0 }}
           animate={isVisible ? { scaleX: 1 } : {}}
           transition={{ duration: 0.8, delay: 0.3 }}
@@ -260,113 +257,78 @@ export function StructureComparisonMatrix({
         />
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* OVERALL VERDICT                                                    */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* OVERALL VERDICT */}
       <motion.div
-        className={`relative overflow-hidden mb-6 sm:mb-8 rounded-xl sm:rounded-2xl border-2 p-5 sm:p-8 ${
-          verdict === 'PROCEED' || verdict === 'PROCEED_MODIFIED'
-            ? 'bg-gradient-to-br from-card via-card to-emerald-500/5 border-emerald-500/20'
-            : verdict === 'DO_NOT_PROCEED'
-            ? 'bg-gradient-to-br from-card via-card to-red-500/5 border-red-500/20'
-            : 'bg-gradient-to-br from-card via-card to-amber-500/5 border-amber-500/20'
-        }`}
-        initial={{ opacity: 0, y: 20 }}
+        className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6, delay: 0.1 }}
+        transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className={`absolute top-0 right-0 w-32 h-32 ${
-          verdict === 'PROCEED' || verdict === 'PROCEED_MODIFIED'
-            ? 'bg-gradient-to-bl from-emerald-500/10'
-            : verdict === 'DO_NOT_PROCEED'
-            ? 'bg-gradient-to-bl from-red-500/10'
-            : 'bg-gradient-to-bl from-amber-500/10'
-        } to-transparent rounded-bl-full`} />
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-        <div className="relative z-10">
-          <div className="flex items-start gap-4">
-            <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-              verdict === 'PROCEED' || verdict === 'PROCEED_MODIFIED'
-                ? 'bg-emerald-500/10'
-                : verdict === 'DO_NOT_PROCEED'
-                ? 'bg-red-500/10'
-                : 'bg-amber-500/10'
-            }`}>
-              {(verdict === 'PROCEED' || verdict === 'PROCEED_MODIFIED') && <CheckCircle className="w-7 h-7 text-emerald-500" />}
-              {verdict === 'DO_NOT_PROCEED' && <XCircle className="w-7 h-7 text-red-500" />}
-              {verdict === 'PROCEED_DIVERSIFICATION_ONLY' && <AlertTriangle className="w-7 h-7 text-amber-500" />}
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
-                {verdict === 'PROCEED' && 'Viable Structure Identified'}
-                {verdict === 'DO_NOT_PROCEED' && 'No Viable Structure Without Relocation'}
-                {verdict === 'PROCEED_MODIFIED' && 'Viable With Modifications'}
-                {verdict === 'PROCEED_DIVERSIFICATION_ONLY' && 'Diversification Pathway Only'}
-              </h3>
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                {verdict_reason}
-              </p>
+        <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
+          <div className="flex-1">
+            <h3 className="text-xl sm:text-2xl font-normal text-foreground mb-3">
+              {verdict === 'PROCEED' && 'Viable Structure Identified'}
+              {verdict === 'DO_NOT_PROCEED' && 'No Viable Structure Without Relocation'}
+              {verdict === 'PROCEED_MODIFIED' && 'Viable With Modifications'}
+              {verdict === 'PROCEED_DIVERSIFICATION_ONLY' && 'Diversification Pathway Only'}
+            </h3>
+            <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed font-normal">
+              {verdict_reason}
+            </p>
 
-              <div className="flex items-center gap-4 mt-4 flex-wrap">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Layers className="w-3.5 h-3.5 text-primary" />
-                  <span><strong className="text-foreground">{structures_analyzed.length}</strong> analyzed</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                  <span><strong className="text-foreground">{viableCount}</strong> viable</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <XCircle className="w-3.5 h-3.5 text-red-500" />
-                  <span><strong className="text-foreground">{structures_analyzed.length - viableCount}</strong> rejected</span>
-                </div>
+            <div className="flex items-center gap-6 mt-6 flex-wrap">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground/60">
+                <span className="font-medium text-foreground">{structures_analyzed.length}</span>
+                <span className="font-normal">analyzed</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground/60">
+                <span className="font-medium text-emerald-500/80">{viableCount}</span>
+                <span className="font-normal">viable</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground/60">
+                <span className="font-medium text-red-500/80">{structures_analyzed.length - viableCount}</span>
+                <span className="font-normal">rejected</span>
               </div>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* OPTIMAL STRUCTURE - Premium hero card                              */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* OPTIMAL STRUCTURE - Premium hero card */}
       {optimal_structure && (
         <motion.div
-          className="relative overflow-hidden mb-6 sm:mb-8 rounded-xl sm:rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/10"
-          initial={{ opacity: 0, y: 20 }}
+          className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
-          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-primary/5 to-transparent rounded-tr-full" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-          <div className="relative z-10 p-5 sm:p-8">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-xs sm:text-sm font-bold text-primary uppercase tracking-wider">Recommended Structure</span>
-            </div>
+          <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">Recommended Structure</p>
 
-            <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="grid md:grid-cols-2 gap-4 sm:gap-12">
               <div>
-                <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1">{optimal_structure.name}</p>
-                <p className="text-sm text-muted-foreground mb-5">{optimal_structure.type}</p>
+                <p className="text-2xl sm:text-3xl font-normal text-foreground tracking-tight mb-1">{optimal_structure.name}</p>
+                <p className="text-sm text-muted-foreground/60 font-normal mb-6">{optimal_structure.type}</p>
 
                 {((optimal_structure.setup_cost !== undefined && optimal_structure.setup_cost > 0) ||
                  (optimal_structure.annual_cost !== undefined && optimal_structure.annual_cost > 0)) && (
-                  <div className="bg-background/60 rounded-xl p-4 mb-4 border border-border/50 space-y-2">
-                    <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Implementation Costs</p>
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5 space-y-3">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Implementation Costs</p>
                     {optimal_structure.setup_cost !== undefined && optimal_structure.setup_cost > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Setup Cost</span>
-                        <span className="font-semibold text-foreground font-mono">{formatCost(optimal_structure.setup_cost)}</span>
+                        <span className="text-muted-foreground/60 font-normal">Setup Cost</span>
+                        <span className="font-medium text-foreground tabular-nums">{formatCost(optimal_structure.setup_cost)}</span>
                       </div>
                     )}
                     {optimal_structure.annual_cost !== undefined && optimal_structure.annual_cost > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Annual Maintenance</span>
-                        <span className="font-semibold text-foreground font-mono">{formatCost(optimal_structure.annual_cost)}/yr</span>
+                        <span className="text-muted-foreground/60 font-normal">Annual Maintenance</span>
+                        <span className="font-medium text-foreground tabular-nums">{formatCost(optimal_structure.annual_cost)}/yr</span>
                       </div>
                     )}
                   </div>
@@ -375,25 +337,25 @@ export function StructureComparisonMatrix({
                 {(optimal_structure.rental_income_rate !== undefined ||
                   optimal_structure.capital_gains_rate !== undefined ||
                   optimal_structure.estate_tax_rate !== undefined) && (
-                  <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                    <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Effective Tax Rates</p>
-                    <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-4">Effective Tax Rates</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                       {optimal_structure.rental_income_rate !== undefined && (
-                        <div className="text-center bg-muted/30 rounded-lg p-2">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Rental</p>
-                          <p className="text-base font-bold text-foreground">{optimal_structure.rental_income_rate.toFixed(1)}%</p>
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Rental</p>
+                          <p className="text-base font-medium tabular-nums text-foreground">{optimal_structure.rental_income_rate.toFixed(1)}%</p>
                         </div>
                       )}
                       {optimal_structure.capital_gains_rate !== undefined && (
-                        <div className="text-center bg-muted/30 rounded-lg p-2">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground">CGT</p>
-                          <p className="text-base font-bold text-foreground">{optimal_structure.capital_gains_rate.toFixed(1)}%</p>
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">CGT</p>
+                          <p className="text-base font-medium tabular-nums text-foreground">{optimal_structure.capital_gains_rate.toFixed(1)}%</p>
                         </div>
                       )}
                       {optimal_structure.estate_tax_rate !== undefined && (
-                        <div className="text-center bg-muted/30 rounded-lg p-2">
-                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Estate</p>
-                          <p className="text-base font-bold text-foreground">{optimal_structure.estate_tax_rate.toFixed(1)}%</p>
+                        <div className="text-center">
+                          <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Estate</p>
+                          <p className="text-base font-medium tabular-nums text-foreground">{optimal_structure.estate_tax_rate.toFixed(1)}%</p>
                         </div>
                       )}
                     </div>
@@ -401,41 +363,41 @@ export function StructureComparisonMatrix({
                 )}
               </div>
 
-              <div className="flex flex-col gap-4">
-                <div className="bg-background/80 rounded-2xl p-5 sm:p-6 border border-primary/15 text-center">
-                  <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">10-Year Net Benefit</p>
-                  <p className={`text-3xl sm:text-4xl font-bold ${
-                    optimal_structure.net_benefit_10yr >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+              <div className="flex flex-col gap-6">
+                <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 text-center">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">10-Year Net Benefit</p>
+                  <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
+                    optimal_structure.net_benefit_10yr >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                   }`}>
                     <AnimatedBenefit value={optimal_structure.net_benefit_10yr} />
                   </p>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-sm text-muted-foreground/60 mt-3 font-normal">
                     {optimal_structure.tax_savings_pct >= 0 ? '+' : ''}{optimal_structure.tax_savings_pct.toFixed(1)}% tax savings vs. current structure
                   </p>
                 </div>
 
                 {/* Estate Tax Exposure Callout */}
                 {optimal_structure.is_nra && optimal_structure.estate_tax_exposure !== undefined && optimal_structure.estate_tax_exposure > 0 && (
-                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-                    <p className="text-[10px] sm:text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-5">
+                    <p className="text-xs tracking-[0.15em] font-medium text-red-500/80 uppercase mb-2 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       NRA Estate Tax Exposure
                     </p>
-                    <p className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400 font-mono">
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-red-500/80">
                       {formatCost(optimal_structure.estate_tax_exposure)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground/60 mt-2 font-normal">
                       Based on $60,000 NRA exemption &middot; {formatRate(optimal_structure.estate_tax_rate)} effective rate
                     </p>
                   </div>
                 )}
                 {optimal_structure.is_nra && (optimal_structure.estate_tax_exposure === 0 || optimal_structure.estate_tax_exposure === undefined) && optimal_structure.estate_tax_rate === 0 && (
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
-                    <p className="text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-5">
+                    <p className="text-xs tracking-[0.15em] font-medium text-emerald-500/80 uppercase flex items-center gap-1.5">
                       <Shield className="w-3.5 h-3.5" />
                       Estate Tax Eliminated
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground/60 mt-2 font-normal">
                       This structure removes US situs exposure for NRA buyers
                     </p>
                   </div>
@@ -444,8 +406,7 @@ export function StructureComparisonMatrix({
                 {optimal_structure.anti_avoidance_flags && optimal_structure.anti_avoidance_flags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {optimal_structure.anti_avoidance_flags.map((flag, i) => (
-                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary/5 text-primary border border-primary/15 rounded-full text-[10px] font-semibold tracking-wide">
-                        <Shield className="w-3 h-3" />
+                      <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
                         {flag}
                       </span>
                     ))}
@@ -453,15 +414,15 @@ export function StructureComparisonMatrix({
                 )}
 
                 {optimal_structure.warnings && optimal_structure.warnings.length > 0 && (
-                  <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-4 flex-1">
-                    <p className="text-[10px] sm:text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-5 flex-1">
+                    <p className="text-xs uppercase tracking-[0.15em] font-medium text-amber-500/80 mb-3 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       Key Requirements
                     </p>
-                    <ul className="space-y-1.5">
+                    <ul className="space-y-2">
                       {optimal_structure.warnings.map((warning, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground">
-                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                        <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-muted-foreground/60 font-normal">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-amber-500/60 flex-shrink-0" />
                           <span>{toDisplayString(warning)}</span>
                         </li>
                       ))}
@@ -474,33 +435,31 @@ export function StructureComparisonMatrix({
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* IDENTICAL TAX RATES NOTICE                                        */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* IDENTICAL TAX RATES NOTICE */}
       {allIdenticalRates && (
         <motion.div
-          className="mb-4 sm:mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 sm:p-5"
-          initial={{ opacity: 0, y: 10 }}
+          className="mb-8 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-5 sm:p-6"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.4, delay: 0.25 }}
+          transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
         >
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-amber-500/60 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-foreground mb-1">
+              <p className="text-sm font-normal text-foreground mb-2">
                 All structures share identical effective tax rates
               </p>
-              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+              <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed mb-4 font-normal">
                 US worldwide taxation applies at the same rates regardless of ownership vehicle. The differentiator between structures is implementation cost, not tax efficiency.
               </p>
               <div className="flex flex-wrap gap-3">
-                <span className="text-xs font-mono font-semibold text-foreground bg-background/60 px-3 py-1.5 rounded-lg border border-border/50">
+                <span className="text-xs font-medium tabular-nums text-foreground rounded-xl border border-border/20 bg-card/50 px-3 py-1.5">
                   Rental: {formatRate(sharedRentalRate)}
                 </span>
-                <span className="text-xs font-mono font-semibold text-foreground bg-background/60 px-3 py-1.5 rounded-lg border border-border/50">
+                <span className="text-xs font-medium tabular-nums text-foreground rounded-xl border border-border/20 bg-card/50 px-3 py-1.5">
                   CGT: {formatRate(sharedCGTRate)}
                 </span>
-                <span className="text-xs font-mono font-semibold text-foreground bg-background/60 px-3 py-1.5 rounded-lg border border-border/50">
+                <span className="text-xs font-medium tabular-nums text-foreground rounded-xl border border-border/20 bg-card/50 px-3 py-1.5">
                   Estate: {formatRate(sharedEstateRate)}
                 </span>
               </div>
@@ -509,80 +468,73 @@ export function StructureComparisonMatrix({
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* TOP 5 STRUCTURES - Comparison Table                               */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* TOP 5 STRUCTURES - Comparison Table */}
       <motion.div
-        className="mb-6 sm:mb-8"
+        className="mb-8 sm:mb-12"
         initial={{ opacity: 0 }}
         animate={isVisible ? { opacity: 1 } : {}}
-        transition={{ duration: 0.4, delay: 0.3 }}
+        transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-primary" />
-          </div>
-          <h3 className="text-sm sm:text-base font-semibold text-foreground uppercase tracking-wider">
-            Top {Math.min(5, sortedStructures.length)} Structures &mdash; Comparison Matrix
-          </h3>
-        </div>
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+          Top {Math.min(5, sortedStructures.length)} Structures &mdash; Comparison Matrix
+        </p>
 
         {/* Mobile: Card layout */}
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-4">
           {top5.map((structure, index) => {
             const isOptimal = structure.name === optimal_structure?.name;
             const isPositive = structure.net_benefit_10yr >= 0;
             return (
               <div
                 key={structure.name}
-                className={`rounded-xl border-2 p-3 ${
-                  isOptimal ? 'border-primary/60 bg-primary/5' : 'border-border bg-card'
+                className={`rounded-xl border p-5 ${
+                  isOptimal ? 'border-gold/30 bg-gold/[0.03]' : 'border-border/20 bg-card/50'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`text-xs font-bold flex-shrink-0 ${isOptimal ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {isOptimal ? <Sparkles className="w-4 h-4 text-primary" /> : `#${index + 1}`}
+                    <span className={`text-xs font-normal flex-shrink-0 ${isOptimal ? 'text-gold/80' : 'text-muted-foreground/60'}`}>
+                      {isOptimal ? <Sparkles className="w-4 h-4 text-gold/80" /> : `#${index + 1}`}
                     </span>
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold ${isOptimal ? 'text-primary' : 'text-foreground'} line-clamp-2`}>
+                      <p className={`text-sm font-normal ${isOptimal ? 'text-gold/80' : 'text-foreground'} line-clamp-2`}>
                         {structure.name}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">{structure.type}</p>
+                      <p className="text-sm text-muted-foreground/60 font-normal">{structure.type}</p>
                     </div>
                   </div>
                   <VerdictBadge verdict={structure.verdict} compact />
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">10yr Benefit</p>
-                    <p className={`font-bold font-mono ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                <div className="grid grid-cols-2 gap-3 sm:gap-5 text-xs">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">10yr Benefit</p>
+                    <p className={`font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
                       {formatBenefit(structure.net_benefit_10yr)}
                     </p>
                   </div>
                   {!allIdenticalRates && (
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Tax Rates</p>
-                      <p className="font-mono text-foreground">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Tax Rates</p>
+                      <p className="font-medium tabular-nums text-foreground">
                         R:{formatRate(structure.rental_income_rate)} C:{formatRate(structure.capital_gains_rate)}
                       </p>
                     </div>
                   )}
-                  <div className="bg-muted/30 rounded-lg p-2">
-                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Setup / Annual</p>
-                    <p className="font-mono text-muted-foreground">{formatCost(structure.setup_cost)} / {formatCost(structure.annual_cost)}</p>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">Setup / Annual</p>
+                    <p className="font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)} / {formatCost(structure.annual_cost)}</p>
                   </div>
                   {!allIdenticalRates && (
-                    <div className="bg-muted/30 rounded-lg p-2">
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
                         {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? 'Estate Exposure' : 'Estate Tax'}
                       </p>
                       {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? (
-                        <p className="font-mono font-bold text-red-600 dark:text-red-400">{formatCost(structure.estate_tax_exposure)}</p>
+                        <p className="font-medium tabular-nums text-red-500/80">{formatCost(structure.estate_tax_exposure)}</p>
                       ) : structure.is_nra && structure.estate_tax_rate === 0 ? (
-                        <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">$0</p>
+                        <p className="font-medium tabular-nums text-emerald-500/80">$0</p>
                       ) : (
-                        <p className="font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</p>
+                        <p className="font-medium tabular-nums text-foreground">{formatRate(structure.estate_tax_rate)}</p>
                       )}
                     </div>
                   )}
@@ -593,26 +545,26 @@ export function StructureComparisonMatrix({
         </div>
 
         {/* Desktop: Table layout */}
-        <div className="hidden md:block rounded-xl border-2 border-border overflow-hidden">
+        <div className="hidden md:block rounded-2xl border border-border/30 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-muted/40 border-b-2 border-border">
-                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
-                  <th className="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Structure</th>
-                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">10yr Benefit</th>
+                <tr className="border-b border-border/20">
+                  <th className="text-left px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 w-8">#</th>
+                  <th className="text-left px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 min-w-[100px] sm:min-w-[180px]">Structure</th>
+                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">10yr Benefit</th>
                   {!allIdenticalRates && (
                     <>
-                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rental</th>
-                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">CGT</th>
-                      <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Rental</th>
+                      <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">CGT</th>
+                      <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">
                         {structures_analyzed.some(s => s.estate_tax_exposure && s.estate_tax_exposure > 0) ? 'Estate $' : 'Estate'}
                       </th>
                     </>
                   )}
-                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Setup</th>
-                  <th className="text-right px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Annual</th>
-                  <th className="text-center px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verdict</th>
+                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
+                  <th className="text-right px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                  <th className="text-center px-4 py-3.5 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Verdict</th>
                 </tr>
               </thead>
               <tbody>
@@ -623,62 +575,60 @@ export function StructureComparisonMatrix({
                   return (
                     <tr
                       key={structure.name}
-                      className={`border-b border-border/50 transition-colors ${
+                      className={`transition-colors ${
                         isOptimal
-                          ? 'bg-primary/5 hover:bg-primary/8'
-                          : index % 2 === 0
-                          ? 'bg-card hover:bg-muted/20'
-                          : 'bg-muted/10 hover:bg-muted/25'
-                      }`}
+                          ? 'bg-gold/[0.03] hover:bg-gold/[0.05]'
+                          : 'hover:bg-card/30'
+                      } ${index < top5.length - 1 ? 'border-b border-border/20' : ''}`}
                     >
-                      <td className="px-3 py-3.5">
-                        <span className={`text-xs font-bold ${isOptimal ? 'text-primary' : 'text-muted-foreground'}`}>
+                      <td className="px-4 py-4">
+                        <span className={`text-xs font-normal ${isOptimal ? 'text-gold/80' : 'text-muted-foreground/60'}`}>
                           {isOptimal ? (
-                            <Sparkles className="w-4 h-4 text-primary" />
+                            <Sparkles className="w-4 h-4 text-gold/80" />
                           ) : (
                             index + 1
                           )}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5">
+                      <td className="px-4 py-4">
                         <div>
-                          <p className={`text-sm font-semibold ${isOptimal ? 'text-primary' : 'text-foreground'}`}>
+                          <p className={`text-sm font-normal ${isOptimal ? 'text-gold/80' : 'text-foreground'}`}>
                             {structure.name}
                           </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{structure.type}</p>
+                          <p className="text-xs text-muted-foreground/60 mt-0.5 font-normal">{structure.type}</p>
                         </div>
                       </td>
-                      <td className="px-3 py-3.5 text-right">
-                        <span className={`text-sm font-bold font-mono ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                      <td className="px-4 py-4 text-right">
+                        <span className={`text-sm font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
                           {formatBenefit(structure.net_benefit_10yr)}
                         </span>
                       </td>
                       {!allIdenticalRates && (
                         <>
-                          <td className="px-3 py-3.5 text-right">
-                            <span className="text-xs font-mono text-foreground">{formatRate(structure.rental_income_rate)}</span>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-xs font-medium tabular-nums text-foreground/70">{formatRate(structure.rental_income_rate)}</span>
                           </td>
-                          <td className="px-3 py-3.5 text-right">
-                            <span className="text-xs font-mono text-foreground">{formatRate(structure.capital_gains_rate)}</span>
+                          <td className="px-4 py-4 text-right">
+                            <span className="text-xs font-medium tabular-nums text-foreground/70">{formatRate(structure.capital_gains_rate)}</span>
                           </td>
-                          <td className="px-3 py-3.5 text-right">
+                          <td className="px-4 py-4 text-right">
                             {structure.estate_tax_exposure !== undefined && structure.estate_tax_exposure > 0 ? (
-                              <span className="text-xs font-mono font-bold text-red-600 dark:text-red-400">{formatCost(structure.estate_tax_exposure)}</span>
+                              <span className="text-xs font-medium tabular-nums text-red-500/80">{formatCost(structure.estate_tax_exposure)}</span>
                             ) : structure.is_nra && structure.estate_tax_rate === 0 ? (
-                              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">$0</span>
+                              <span className="text-xs font-medium tabular-nums text-emerald-500/80">$0</span>
                             ) : (
-                              <span className="text-xs font-mono text-foreground">{formatRate(structure.estate_tax_rate)}</span>
+                              <span className="text-xs font-medium tabular-nums text-foreground/70">{formatRate(structure.estate_tax_rate)}</span>
                             )}
                           </td>
                         </>
                       )}
-                      <td className="px-3 py-3.5 text-right">
-                        <span className="text-xs font-mono text-muted-foreground">{formatCost(structure.setup_cost)}</span>
+                      <td className="px-4 py-4 text-right">
+                        <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.setup_cost)}</span>
                       </td>
-                      <td className="px-3 py-3.5 text-right">
-                        <span className="text-xs font-mono text-muted-foreground">{formatCost(structure.annual_cost)}</span>
+                      <td className="px-4 py-4 text-right">
+                        <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.annual_cost)}</span>
                       </td>
-                      <td className="px-3 py-3.5 text-center">
+                      <td className="px-4 py-4 text-center">
                         <VerdictBadge verdict={structure.verdict} compact />
                       </td>
                     </tr>
@@ -690,30 +640,25 @@ export function StructureComparisonMatrix({
         </div>
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* REMAINING STRUCTURES - Collapsible compact table                  */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* REMAINING STRUCTURES - Collapsible compact table */}
       {remaining.length > 0 && (
         <motion.div
-          className="mb-6 sm:mb-8"
+          className="mb-8 sm:mb-12"
           initial={{ opacity: 0 }}
           animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.4, delay: 0.35 }}
+          transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
           <button
             onClick={() => setShowAllRemaining(!showAllRemaining)}
-            className="flex items-center gap-2.5 mb-3 w-full text-left group"
+            className="flex items-center gap-2.5 mb-4 w-full text-left group"
           >
-            <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center group-hover:bg-muted/60 transition-colors">
-              <Layers className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <h3 className="text-sm sm:text-base font-semibold text-muted-foreground uppercase tracking-wider flex-1">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium flex-1 group-hover:text-muted-foreground/70 transition-colors">
               {remaining.length} Additional Structures
-            </h3>
+            </p>
             {showAllRemaining ? (
-              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+              <ChevronUp className="w-4 h-4 text-muted-foreground/60" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+              <ChevronDown className="w-4 h-4 text-muted-foreground/60" />
             )}
           </button>
 
@@ -724,44 +669,44 @@ export function StructureComparisonMatrix({
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className="rounded-2xl border border-border/30 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-muted/20 border-b border-border">
-                        <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground w-8">#</th>
-                        <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Structure</th>
-                        <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">10yr Benefit</th>
-                        <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Setup</th>
-                        <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Annual</th>
-                        <th className="text-center px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Verdict</th>
+                      <tr className="border-b border-border/20">
+                        <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60 w-8">#</th>
+                        <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Structure</th>
+                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">10yr Benefit</th>
+                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Setup</th>
+                        <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Annual</th>
+                        <th className="text-center px-4 py-3 text-xs uppercase tracking-[0.15em] font-medium text-muted-foreground/60">Verdict</th>
                       </tr>
                     </thead>
                     <tbody>
                       {remaining.map((structure, index) => (
                         <tr
                           key={structure.name}
-                          className={`border-b border-border/30 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/5'}`}
+                          className={`${index < remaining.length - 1 ? 'border-b border-border/20' : ''} hover:bg-card/30 transition-colors`}
                         >
-                          <td className="px-4 py-2.5 text-xs text-muted-foreground font-mono">{index + 6}</td>
-                          <td className="px-4 py-2.5">
-                            <p className="text-sm font-medium text-foreground">{structure.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{structure.type}</p>
+                          <td className="px-4 py-3 text-xs font-medium text-muted-foreground/60 tabular-nums">{index + 6}</td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-normal text-foreground">{structure.name}</p>
+                            <p className="text-xs text-muted-foreground/60 font-normal">{structure.type}</p>
                           </td>
-                          <td className="px-4 py-2.5 text-right">
-                            <span className={`text-xs font-bold font-mono ${
-                              structure.net_benefit_10yr >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'
+                          <td className="px-4 py-3 text-right">
+                            <span className={`text-xs font-medium tabular-nums ${
+                              structure.net_benefit_10yr >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                             }`}>
                               {formatBenefit(structure.net_benefit_10yr)}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-right text-xs font-mono text-muted-foreground">
+                          <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
                             {formatCost(structure.setup_cost)}
                           </td>
-                          <td className="px-4 py-2.5 text-right text-xs font-mono text-muted-foreground">
+                          <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
                             {formatCost(structure.annual_cost)}
                           </td>
-                          <td className="px-4 py-2.5 text-center">
+                          <td className="px-4 py-3 text-center">
                             <VerdictBadge verdict={structure.verdict} compact />
                           </td>
                         </tr>
@@ -775,70 +720,62 @@ export function StructureComparisonMatrix({
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* ALTERNATIVE STRATEGIES                                             */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ALTERNATIVE STRATEGIES */}
       {(alternative_corridors.length > 0 || alternative_strategies.length > 0) && (
         <motion.div
-          className="mb-6 sm:mb-8 grid md:grid-cols-2 gap-4"
-          initial={{ opacity: 0, y: 20 }}
+          className="mb-8 sm:mb-12 grid md:grid-cols-2 gap-6"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
           {alternative_corridors.length > 0 && (
-            <div className="rounded-xl sm:rounded-2xl border-2 border-border p-5 sm:p-6 hover:border-primary/20 transition-colors">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Alternative Corridors</h3>
+            <div className="relative rounded-xl border border-border/20 bg-card/50 p-6">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-5">Alternative Corridors</p>
+                <ul className="space-y-3">
+                  {alternative_corridors.map((corridor, index) => (
+                    <li key={index} className="flex items-start gap-2.5 text-sm text-muted-foreground/60 font-normal">
+                      <ArrowRight className="w-3.5 h-3.5 text-gold/70 flex-shrink-0 mt-0.5" />
+                      <span>{toDisplayString(corridor)}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2.5">
-                {alternative_corridors.map((corridor, index) => (
-                  <li key={index} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <ArrowRight className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                    <span>{toDisplayString(corridor)}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
 
           {alternative_strategies.length > 0 && (
-            <div className="rounded-xl sm:rounded-2xl border-2 border-border p-5 sm:p-6 hover:border-primary/20 transition-colors">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Alternative Strategies</h3>
+            <div className="relative rounded-xl border border-border/20 bg-card/50 p-6">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+              <div className="relative z-10">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-5">Alternative Strategies</p>
+                <ul className="space-y-3">
+                  {alternative_strategies.map((strategy, index) => (
+                    <li key={index} className="flex items-start gap-2.5 text-sm text-muted-foreground/60 font-normal">
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-500/40 flex-shrink-0 mt-0.5" />
+                      <span>{toDisplayString(strategy)}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2.5">
-                {alternative_strategies.map((strategy, index) => (
-                  <li key={index} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <ArrowRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <span>{toDisplayString(strategy)}</span>
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* FOOTER                                                             */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* FOOTER */}
       <motion.div
         className="flex items-center justify-center gap-3 pt-4"
         initial={{ opacity: 0 }}
         animate={isVisible ? { opacity: 1 } : {}}
-        transition={{ duration: 0.6, delay: 0.5 }}
+        transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
+        <p className="text-xs text-muted-foreground/60 leading-relaxed">
           Structure Optimization Engine
         </p>
-        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
+        <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
       </motion.div>
     </div>
   );

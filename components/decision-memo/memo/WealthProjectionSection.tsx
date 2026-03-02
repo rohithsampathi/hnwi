@@ -365,23 +365,15 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       <div ref={sectionRef}>
         {/* Section Header */}
         <motion.div
-          className="mb-8 sm:mb-12"
+          className="mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <div className="flex items-center gap-3 mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-              10-YEAR WEALTH PROJECTION
-            </h2>
-            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-              Multi-Scenario
-            </span>
-          </div>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-          <p className="text-sm text-muted-foreground mt-3">
-            Probability-weighted wealth trajectory analysis
-          </p>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            10-Year Wealth Projection
+          </h2>
+          <div className="h-px bg-border" />
         </motion.div>
 
         <div className="space-y-6">

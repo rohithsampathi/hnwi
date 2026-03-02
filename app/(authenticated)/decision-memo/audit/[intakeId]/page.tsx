@@ -22,7 +22,8 @@ import {
   Copy,
   Check,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  LayoutGrid
 } from 'lucide-react';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
@@ -31,6 +32,7 @@ import { PatternAuditWaitingInteractive } from '@/components/decision-memo/Patte
 import { usePatternAudit, ReportAuthRequiredError, transformArtifactFromAPI } from '@/lib/hooks/usePatternAudit';
 import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
 import { ReportAuthPopup } from '@/components/report-auth-popup';
+import { getCurrentUser } from '@/lib/auth-manager';
 import {
   AuditSession,
   PreviewArtifact,
@@ -65,8 +67,12 @@ import { StructureComparisonMatrix } from '@/components/decision-memo/memo/Struc
 // PDF Cover and Last Pages
 import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
 import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
+// Strategic Overview (Intelligence Foundation & Decision Context)
+import { AuditOverviewSection } from '@/components/decision-memo/memo/AuditOverviewSection';
 // Legal References (MFO Audit Requirement)
 import { ReferencesSection } from '@/components/decision-memo/memo/ReferencesSection';
+// Regulatory Sources (Complete Citations)
+import { RegulatorySourcesSection } from '@/components/decision-memo/memo/RegulatorySourcesSection';
 // Awe Visual Elements — Risk Radar, Liquidity Trap, Peer Benchmarking
 import { RiskRadarChart } from '@/components/decision-memo/memo/RiskRadarChart';
 import { LiquidityTrapFlowchart } from '@/components/decision-memo/memo/LiquidityTrapFlowchart';
@@ -79,6 +85,49 @@ import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import { AnimatePresence } from 'framer-motion';
+import { SectionReveal } from '@/components/ui/section-reveal';
+import { useTheme } from '@/contexts/theme-context';
+// Personal mode - UHNWI-standard navigation interface
+import { PersonalShell } from '@/components/decision-memo/personal';
+import { useSearchParams } from 'next/navigation';
+
+// Window augmentation for Razorpay payment integration
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+
+interface BackendAuditResponse {
+  success?: boolean;
+  preview_data: Record<string, unknown>;
+  memo_data?: Record<string, unknown>;
+  generated_at?: string;
+  risk_assessment?: Record<string, unknown>;
+  mitigationTimeline?: Record<string, unknown>;
+  all_mistakes?: Array<{ dev_id?: string; [key: string]: unknown }>;
+  full_artifact?: Record<string, unknown>;
+  full_memo_url?: string;
+  transparency_regime_impact?: unknown;
+  transparency_data?: unknown;
+  crisis_resilience_stress_test?: unknown;
+  crisis_data?: unknown;
+  peer_intelligence_analysis?: unknown;
+  peer_intelligence_data?: unknown;
+  market_dynamics_analysis?: unknown;
+  market_dynamics_data?: unknown;
+  implementation_roadmap_data?: unknown;
+  due_diligence_data?: unknown;
+  heir_management_data?: unknown;
+  heir_management_analysis?: unknown;
+  wealth_projection_data?: unknown;
+  wealth_projection_analysis?: unknown;
+  scenario_tree_data?: unknown;
+  scenario_tree_analysis?: unknown;
+  destination_drivers?: unknown;
+  hnwi_trends_analysis?: unknown;
+  [key: string]: unknown;
+}
 
 interface PageProps {
   params: {
@@ -129,13 +178,17 @@ function formatCountdown(ms: number): { hours: number; minutes: number; seconds:
 export default function PatternAuditPreviewPage({ params }: PageProps) {
   const { intakeId } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Check if user wants Personal mode (UHNWI navigation interface)
+  const usePersonalMode = searchParams.get('personal') === 'true';
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<AuditSession | null>(null);
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifact | null>(null);
   const [fullArtifact, setFullArtifact] = useState<ICArtifact | null>(null);
-  const [backendData, setBackendData] = useState<any>(null);  // Raw backend response with preview_data
+  const [backendData, setBackendData] = useState<BackendAuditResponse | null>(null);  // Raw backend response with preview_data
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -171,6 +224,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     }
     return sessionStorage.getItem(`report_token_${intakeId}`);
   });
+
+  const { theme: appTheme } = useTheme();
 
   const {
     getSession,
@@ -235,7 +290,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       }
     };
 
-    opportunities.forEach((opp: any) => {
+    opportunities.forEach((opp: { dev_id?: string; [key: string]: unknown }) => {
       if (opp.dev_id) {
         addDevId(String(opp.dev_id));
       }
@@ -247,7 +302,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     });
 
     if (backendData?.preview_data?.all_mistakes) {
-      backendData.preview_data.all_mistakes.forEach((mistake: any) => {
+      (backendData.preview_data.all_mistakes as Array<{ dev_id?: string; [key: string]: unknown }>).forEach((mistake: { dev_id?: string; [key: string]: unknown }) => {
         if (mistake.dev_id) {
           addDevId(String(mistake.dev_id));
         }
@@ -315,7 +370,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         try {
           const headers: Record<string, string> = {};
           if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-          const response = await fetch(`/api/decision-memo/${intakeId}`, { headers });
+          const response = await fetch(`/api/decision-memo/${intakeId}`, { headers, credentials: 'include' });
           if (response.status === 401) throw new ReportAuthRequiredError();
           if (response.ok) {
             const data = await response.json();
@@ -353,7 +408,18 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       }
     } catch (err) {
       if (err instanceof ReportAuthRequiredError) {
-        // Report requires authentication — show the login popup (unless bypassed)
+        // If user is already logged into the platform (this page is under /authenticated),
+        // do NOT show the "Encrypted Document" popup — cookies should handle auth.
+        // Only show popup for truly unauthenticated access (external advisors).
+        const platformUser = getCurrentUser();
+        if (platformUser && !MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+          // Platform-authenticated user got 401 — likely a cookie forwarding issue.
+          // Show a clear error instead of the misleading "Encrypted Document" popup.
+          console.error('Platform-authenticated user got 401 on audit. Cookie forwarding may have failed.', { intakeId });
+          setError('Unable to verify your access. Please refresh the page or try again.');
+          setIsLoading(false);
+          return;
+        }
         if (!MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
           setShowReportAuth(true);
           setIsLoading(false);
@@ -399,7 +465,13 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         })
         .catch((err) => {
           if (err instanceof ReportAuthRequiredError && !MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
-            setShowReportAuth(true);
+            const platformUser = getCurrentUser();
+            if (platformUser) {
+              console.error('Platform-authenticated user got 401 on preview fetch.');
+              setError('Unable to verify your access. Please refresh the page.');
+            } else {
+              setShowReportAuth(true);
+            }
             return;
           }
           console.error('Failed to fetch preview after SSE signal:', err);
@@ -539,7 +611,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         }
       };
 
-      const razorpay = new (window as any).Razorpay(options);
+      const RazorpayConstructor = window.Razorpay;
+      if (!RazorpayConstructor) {
+        throw new Error('Razorpay SDK not loaded. Please refresh the page.');
+      }
+      const razorpay = new RazorpayConstructor(options as Record<string, unknown>);
       razorpay.open();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -584,14 +660,70 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         // Merge expert analysis sections from memo_data into preview_data if not already present
         const previewData = { ...backendData.preview_data };
 
-        // Check root level of backendData for expert sections
+        // ══════════════════════════════════════════════════════════════════
+        // MERGE ALL EXPERT DATA — must match web UI merge (lines 1120-1252)
+        // ══════════════════════════════════════════════════════════════════
+
+        // Expert 7: Transparency Regime
         if (!previewData.transparency_regime_impact) {
           previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
                                                     (backendData as any).transparency_regime_impact;
         }
+        if (!previewData.transparency_data) {
+          previewData.transparency_data = backendData.memo_data?.transparency_data ||
+                                           (backendData as any).transparency_data;
+        }
+
+        // Expert 8: Crisis Resilience
         if (!previewData.crisis_resilience_stress_test) {
           previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
                                                        (backendData as any).crisis_resilience_stress_test;
+        }
+        if (!previewData.crisis_data) {
+          previewData.crisis_data = backendData.memo_data?.crisis_data ||
+                                     (backendData as any).crisis_data;
+        }
+
+        // Expert 9: Peer Intelligence
+        if (!previewData.peer_intelligence_analysis) {
+          previewData.peer_intelligence_analysis = backendData.memo_data?.peer_intelligence_analysis ||
+                                                    (backendData as any).peer_intelligence_analysis;
+        }
+        if (!previewData.peer_intelligence_data) {
+          previewData.peer_intelligence_data = backendData.memo_data?.peer_intelligence_data ||
+                                                (backendData as any).peer_intelligence_data;
+        }
+
+        // Expert 10: Market Dynamics
+        if (!previewData.market_dynamics_analysis) {
+          previewData.market_dynamics_analysis = backendData.memo_data?.market_dynamics_analysis ||
+                                                  (backendData as any).market_dynamics_analysis;
+        }
+        if (!previewData.market_dynamics_data) {
+          previewData.market_dynamics_data = backendData.memo_data?.market_dynamics_data ||
+                                              (backendData as any).market_dynamics_data;
+        }
+
+        // Expert 11: Implementation Roadmap
+        if (!previewData.implementation_roadmap_data) {
+          previewData.implementation_roadmap_data = backendData.memo_data?.implementation_roadmap_data ||
+                                                     (backendData as any).implementation_roadmap_data;
+        }
+
+        // Expert 12: Due Diligence
+        if (!previewData.due_diligence_data) {
+          previewData.due_diligence_data = backendData.memo_data?.due_diligence_data ||
+                                            (backendData as any).due_diligence_data;
+        }
+
+        // Risk Assessment (MCP fields from unified endpoint)
+        if (!previewData.risk_assessment && backendData.risk_assessment) {
+          previewData.risk_assessment = backendData.risk_assessment;
+        }
+
+        // All Mistakes (with cost_numeric from unified endpoint)
+        if (backendData.all_mistakes && backendData.all_mistakes.length > 0) {
+          previewData.all_mistakes = backendData.all_mistakes;
         }
 
         // SFO-Grade Expert Data (Experts 13-15)
@@ -657,8 +789,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         pdfMemoData = transformICArtifactToMemoData(fullArtifact, intakeId);
       }
 
-      // Call the exportPDF hook with complete memoData
-      await exportPDF(pdfMemoData as any);
+      // Call the exportPDF hook with complete memoData, passing current app theme
+      await exportPDF(pdfMemoData as any, appTheme);
     } catch (error) {
       console.error('PDF export failed:', error);
       alert('Failed to export PDF. Please try again.');
@@ -793,8 +925,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-          <div className="max-w-4xl mx-auto px-1 sm:px-6">
+        <div className="sticky top-20 z-40 bg-card/95 backdrop-blur-xl border-b border-border mb-6">
+          <div className="max-w-4xl mx-auto px-3 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -891,8 +1023,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         )}
 
         {/* Header */}
-        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-          <div className="max-w-5xl mx-auto px-1 sm:px-6">
+        <div className="sticky top-20 z-40 bg-card/95 backdrop-blur-xl border-b border-border mb-6">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6">
             <div className="flex items-center justify-between py-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
@@ -921,7 +1053,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         </div>
 
         {/* Preview Content */}
-        <div className="max-w-4xl mx-auto px-1 sm:px-6 py-8">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1401,9 +1533,37 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     // Legal references — fully backend-driven
     const legalReferences = memoData.preview_data.legal_references;
 
+    // Personal Mode - UHNWI-standard navigation interface
+    if (usePersonalMode) {
+      return (
+        <>
+          {/* PDF Export Loading Overlay */}
+          {isExportingPDF && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+              <CrownLoader
+                size="lg"
+                text="Generating PDF"
+                subtext="Creating institutional-grade document..."
+              />
+            </div>
+          )}
+
+          {/* Personal Shell - Clean navigation interface */}
+          <PersonalShell
+            memoData={memoData as any}
+            backendData={backendData}
+            intakeId={intakeId}
+            onExportPDF={handleExportPDF}
+            isExportingPDF={isExportingPDF}
+          />
+        </>
+      );
+    }
+
+    // LEGACY VIEW - Original linear scroll layout
     return (
       <>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background text-foreground">
         {/* PDF Export Loading Overlay */}
         {isExportingPDF && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -1416,39 +1576,70 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         )}
 
         {/* Premium Sticky Header - Hidden in PDF export */}
-        <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border print:hidden">
-          <div className="max-w-6xl mx-auto px-1 sm:px-6">
-            <div className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
+        {/* Back button + Page Title */}
+        <div className="bg-background border-b border-border print:hidden">
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3">
+            <div className="flex items-center gap-3 pl-1">
+              <button
+                onClick={() => router.push('/war-room')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-secondary border border-border text-foreground hover:bg-primary hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Back</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                <span className="text-foreground font-bold text-sm">War Room</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* HC branding + audit reference + action buttons */}
+        <div className="sticky top-20 z-40 bg-card/95 backdrop-blur-xl border-b border-border print:hidden mb-6">
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push('/war-room')}>
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
                   <span className="text-primary-foreground font-bold text-sm">HC</span>
                 </div>
                 <div>
-                  <p className="text-foreground font-semibold">HNWI Chronicles</p>
+                  <p className="text-foreground font-semibold">Decision Memo</p>
                   <p className="text-muted-foreground text-xs">
                     Ref: {intakeId.slice(7, 19).toUpperCase()}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('personal', 'true');
+                    router.push(`${window.location.pathname}?${params.toString()}`);
+                  }}
+                  className="min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border border-gold bg-gold/5 hover:bg-gold/10 rounded-lg flex items-center justify-center gap-2 transition-colors group"
+                >
+                  <LayoutGrid className="w-4 h-4 text-gold" />
+                  <span className="hidden sm:inline text-gold font-medium">War Room Mode</span>
+                </button>
                 <button
                   onClick={handleShare}
-                  className={`px-3 py-1.5 text-sm border rounded-lg flex items-center gap-2 transition-colors ${
+                  className={`min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border rounded-lg flex items-center justify-center gap-2 transition-colors ${
                     linkCopied
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border hover:bg-muted'
                   }`}
                 >
                   {linkCopied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                  {linkCopied ? 'Copied!' : 'Share'}
+                  <span className="hidden sm:inline">{linkCopied ? 'Copied!' : 'Share'}</span>
                 </button>
                 <button
                   onClick={handleExportPDF}
                   disabled={isExportingPDF}
-                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50"
+                  className="min-h-[44px] px-2 sm:px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isExportingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  {isExportingPDF ? 'Exporting...' : 'Export PDF'}
+                  <span className="hidden sm:inline">{isExportingPDF ? 'Exporting...' : 'Export PDF'}</span>
                 </button>
               </div>
             </div>
@@ -1456,13 +1647,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         </div>
 
         {/* Premium Simulation Template Content */}
-        <div id="artifact-content" className="max-w-6xl mx-auto px-1 sm:px-6 py-8 sm:py-12 print:max-w-[210mm] print:px-0 print:py-0">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-12 sm:space-y-20"
-          >
+        <div id="artifact-content" className="max-w-6xl mx-auto px-3 sm:px-6 pt-6 pb-8 sm:pb-12 print:max-w-[210mm] print:px-0 print:py-0">
+          <div className="space-y-12 sm:space-y-20">
             {/* ═══════════════════════════════════════════════════════════════════════ */}
             {/* HARVARD WEALTH MANAGEMENT PSYCHOLOGY FLOW                               */}
             {/* Hook → Value → Social Proof → Risk → Opportunity → Projection → Legacy → Action */}
@@ -1471,37 +1657,54 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PDF COVER PAGE - HNWI Chronicles Branding                                       */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <MemoCoverPage
-              intakeId={intakeId}
-              sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-              destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-              generatedAt={memoData.generated_at}
-              exposureClass={memoData.preview_data.exposure_class}
-              totalSavings={memoData.preview_data.total_savings}
-              viaNegativa={viaNegativaContext}
-            />
+            <SectionReveal direction="scale" duration={1.0}>
+              <MemoCoverPage
+                intakeId={intakeId}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                generatedAt={memoData.generated_at}
+                exposureClass={memoData.preview_data.exposure_class}
+                totalSavings={memoData.preview_data.total_savings}
+                viaNegativa={viaNegativaContext}
+              />
+            </SectionReveal>
 
-            {/* MEMO PRELUDE - Hero opener setting the intelligence foundation */}
-            <div className="mb-8">
-              {/* Intelligence Basis - The Hero Opener */}
-              <p className="text-base sm:text-lg text-foreground leading-relaxed mb-4">
-                This audit draws on <span className="font-semibold text-primary">{hnwiWorldCount.toLocaleString()}</span> validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against <span className="font-semibold text-primary">{(memoData.memo_data?.kgv3_intelligence_used?.precedents || 238).toLocaleString()}</span> corridor signals specific to the {memoData.preview_data.source_jurisdiction || 'Source'}→{memoData.preview_data.destination_jurisdiction || 'Destination'} corridor. All findings are citation-backed.
-              </p>
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* STRATEGIC OVERVIEW - Intelligence Foundation & Decision Context                */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
-              {/* Decision Under Review - Smaller, after the prelude */}
-              {fullArtifact?.thesisSummary && (
-                <p className="text-sm text-muted-foreground leading-relaxed pl-4 border-l-2 border-primary/30">
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground/70 block mb-1">Decision Under Audit</span>
-                  {fullArtifact.thesisSummary}
-                </p>
-              )}
-            </div>
+            <SectionReveal delay={0.05}>
+              <AuditOverviewSection
+                developmentsCount={backendData?.hnwiWorldCount || 1966}
+                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                thesisSummary={memoData.preview_data.thesis_summary ||
+                               backendData?.fullArtifact?.thesisSummary ||
+                               memoData.preview_data.decision_thesis}
+                exposureClass={memoData.preview_data.exposure_class}
+                totalSavings={memoData.preview_data.total_savings}
+                optimalStructure={memoData.preview_data.structure_optimization?.optimal_structure}
+                verdict={memoData.preview_data.structure_optimization?.verdict}
+                fullThesis={backendData?.thesis ||
+                           backendData?.fullArtifact?.thesis ||
+                           memoData.preview_data.thesis ||
+                           memoData.preview_data.decision_context ||
+                           memoData.preview_data.user_input}
+                rails={backendData?.rails}
+                constraints={backendData?.constraints}
+                showMap={false}  // Report mode - content only, no map
+              />
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PHASE 1: EXECUTIVE SUMMARY (Stanford BLUF - Bottom Line Up Front)              */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
             {/* 1. MemoHeader - Premium Header with Key Metrics (The Hook) */}
+            <SectionReveal delay={0.1}>
             <MemoHeader
               intakeId={intakeId}
               generatedAt={memoData.generated_at}
@@ -1533,6 +1736,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               verdict={memoData.preview_data.structure_optimization?.verdict}
               viaNegativa={viaNegativaContext}
             />
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* AWE ELEMENT 1: SFO Capital Allocation Risk Profile (Spider Chart)                   */}
@@ -1612,7 +1816,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               ];
 
               return (
-                <section>
+                <SectionReveal direction="scale">
                   <RiskRadarChart
                     scores={scores}
                     antifragilityAssessment={doctrineMetadata.antifragility_assessment}
@@ -1620,7 +1824,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     totalRiskFlags={doctrineMetadata.risk_flags_total}
                     isVetoed={isViaNegativa}
                   />
-                </section>
+                </SectionReveal>
               );
             })()}
 
@@ -1629,7 +1833,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
             {/* 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
-            <section>
+            <SectionReveal>
               <Page2AuditVerdict
                 mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
                 opportunitiesCount={memoData.preview_data.opportunities_count}
@@ -1643,7 +1847,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
                 viaNegativa={isViaNegativa ? viaNegativaContext : undefined}
               />
-            </section>
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* AWE ELEMENT 2: Liquidity Trap Flowchart (The Prison Diagram)                     */}
@@ -1677,7 +1881,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               const capitalOut = propertyValue; // recoverable = property value only
 
               return (
-                <section>
+                <SectionReveal direction="left">
                   <LiquidityTrapFlowchart
                     capitalIn={totalCost}
                     capitalOut={capitalOut}
@@ -1689,7 +1893,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     dayOneLossNote={crossBorderAudit?.bsd_note || (acqAudit as any)?.day_one_loss_label}
                     assetLabel={`${memoData.preview_data.destination_jurisdiction || 'Destination'} Residential Property`}
                   />
-                </section>
+                </SectionReveal>
               );
             })()}
 
@@ -1699,14 +1903,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
             {/* 3. Cross-Border Tax Audit / Confiscation Exposure (renders in both modes) */}
             {hasCrossBorderAudit && (
-              <section>
+              <SectionReveal>
                 <CrossBorderTaxAudit
                   audit={crossBorderAudit}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                   viaNegativa={viaNegativaContext}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1727,7 +1931,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               }));
 
               return (
-                <section>
+                <SectionReveal direction="right">
                   <PeerBenchmarkTicker
                     precedentCount={precedentCount}
                     failurePatterns={failurePatterns}
@@ -1736,60 +1940,60 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                     destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                     antifragilityAssessment={doctrineMetadata.antifragility_assessment}
-                    // FIX #24: Pass REAL pattern intelligence from KGv3
                     patternIntelligence={memoData.preview_data.pattern_intelligence}
                   />
-                </section>
+                </SectionReveal>
               );
             })()}
 
             {/* 3.5 Structure Comparison Matrix - MCP CORE OUTPUT */}
             {/* Shows all ownership structures analyzed with net benefit comparison */}
             {memoData.preview_data.structure_optimization && (
-              <section>
+              <SectionReveal>
                 <StructureComparisonMatrix
                   structureOptimization={memoData.preview_data.structure_optimization}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             )}
 
-            {/* 4. Tax Jurisdiction Analysis - Only show theoretical comparison if savings are real */}
-            {showTheoreticalTaxSavings && (
-              <section>
-                <Page1TaxDashboard
-                  totalSavings={memoData.preview_data.total_savings}
-                  exposureClass={memoData.preview_data.exposure_class}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  sourceCity={memoData.preview_data.source_city}
-                  destinationCity={memoData.preview_data.destination_city}
-                  executionSequence={memoData.preview_data.execution_sequence}
-                  sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-                  destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-                  taxDifferential={memoData.preview_data.tax_differential}
-                  sections={['tax']}
-                />
-              </section>
-            )}
+            {/* 4. Tax Jurisdiction Analysis - ALWAYS show (even with US worldwide tax) */}
+            {/* CRITICAL FIX: Don't hide section when showTheoreticalTaxSavings is false - component handles display */}
+            <SectionReveal>
+              <Page1TaxDashboard
+                totalSavings={memoData.preview_data.total_savings}
+                exposureClass={memoData.preview_data.exposure_class}
+                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
+                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
+                sourceCity={memoData.preview_data.source_city}
+                destinationCity={memoData.preview_data.destination_city}
+                executionSequence={memoData.preview_data.execution_sequence}
+                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
+                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
+                taxDifferential={memoData.preview_data.tax_differential}
+                sections={['tax']}
+                showTaxSavings={showTheoreticalTaxSavings}
+              />
+            </SectionReveal>
 
             {/* 5. Regime Intelligence (NHR, 13O, Special Tax Regimes) - Part of Tax Analysis */}
-            {memoData.preview_data.peer_cohort_stats?.regime_intelligence?.has_special_regime && (
-              <section>
+            {/* CRITICAL FIX: regime_intelligence is at preview_data level, NOT inside peer_cohort_stats */}
+            {memoData.preview_data.regime_intelligence?.has_special_regime && (
+              <SectionReveal direction="left">
                 <RegimeIntelligenceSection
-                  regimeIntelligence={memoData.preview_data.peer_cohort_stats.regime_intelligence}
+                  regimeIntelligence={memoData.preview_data.regime_intelligence}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* 4. 10-Year Wealth Projection - Part of Tax/Value Analysis */}
             {(memoData.preview_data.wealth_projection_analysis ||
               (memoData.preview_data.wealth_projection_data &&
                Object.keys(memoData.preview_data.wealth_projection_data).length > 0)) && (
-              <section>
+              <SectionReveal>
                 <WealthProjectionSection
                   data={memoData.preview_data.wealth_projection_data || {}}
                   rawAnalysis={memoData.preview_data.wealth_projection_analysis}
@@ -1797,7 +2001,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   structureProjections={memoData.preview_data.structure_projections || {}}
                   optimalStructureName={memoData.preview_data.structure_optimization?.optimal_structure?.name}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1805,7 +2009,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
             {/* 6. Peer Intelligence - Drivers, Peer Analysis & Corridor (Social Proof) */}
-            <section>
+            <SectionReveal>
               <Page3PeerIntelligence
                 opportunities={memoData.preview_data.all_opportunities}
                 peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
@@ -1822,11 +2026,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 sections={['drivers', 'peer', 'corridor']}
                 isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
               />
-            </section>
+            </SectionReveal>
 
             {/* 7. HNWI Migration Trends - More Social Proof */}
             {memoData.preview_data.hnwi_trends && memoData.preview_data.hnwi_trends.length > 0 && (
-              <section>
+              <SectionReveal direction="right">
                 <HNWITrendsSection
                   trends={memoData.preview_data.hnwi_trends}
                   confidence={memoData.preview_data.hnwi_trends_confidence}
@@ -1837,11 +2041,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   sourceCountry={memoData.preview_data.source_country}
                   destinationCountry={memoData.preview_data.destination_country}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* 8. Geographic Opportunity Distribution - Tied to Migration Trends */}
-            <section>
+            <SectionReveal>
               <Page3PeerIntelligence
                 opportunities={memoData.preview_data.all_opportunities}
                 peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
@@ -1858,7 +2062,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 sections={['geographic']}
                 isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
               />
-            </section>
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PHASE 4: RISK DETAILS (Detailed Risk Analysis)                                 */}
@@ -1866,19 +2070,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
 
             {/* 9. Transparency Regime Impact - Specific Risk */}
             {(memoData.preview_data.transparency_data || memoData.preview_data.transparency_regime_impact) && (
-              <section>
+              <SectionReveal>
                 <TransparencyRegimeSection
                   transparencyData={memoData.preview_data.transparency_data}
                   content={memoData.preview_data.transparency_regime_impact}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* 9.5 Real Asset Audit Intelligence - KGv3 Verified */}
             {memoData.preview_data.real_asset_audit && (
-              <section>
+              <SectionReveal direction="left">
                 <RealAssetAuditSection
                   data={memoData.preview_data.real_asset_audit}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
@@ -1887,19 +2091,19 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     ? parseFloat(memoData.preview_data.deal_overview.target_size.replace(/[^0-9.]/g, '')) * 1000000
                     : 0}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* 10. Crisis Resilience Stress Test - Antifragile Framework */}
             {(memoData.preview_data.crisis_data || memoData.preview_data.crisis_resilience_stress_test) && (
-              <section>
+              <SectionReveal direction="scale">
                 <CrisisResilienceSection
                   crisisData={memoData.preview_data.crisis_data}
                   content={memoData.preview_data.crisis_resilience_stress_test}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1909,21 +2113,21 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* 11. Golden Visa / Investment Migration (Single Unified Section) */}
             {/* Prioritize KGv3 intelligence if available, otherwise show basic visa programs */}
             {memoData.preview_data.golden_visa_intelligence ? (
-              <section>
+              <SectionReveal direction="right">
                 <GoldenVisaIntelligenceSection
                   intelligence={memoData.preview_data.golden_visa_intelligence}
                   sourceJurisdiction={memoData.preview_data.source_jurisdiction}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             ) : (memoData.preview_data.destination_drivers?.visa_programs &&
                  memoData.preview_data.destination_drivers.visa_programs.length > 0 && (
-              <section>
+              <SectionReveal direction="right">
                 <GoldenVisaSection
                   destinationDrivers={memoData.preview_data.destination_drivers}
                   destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
                 />
-              </section>
+              </SectionReveal>
             ))}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1934,12 +2138,12 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {(memoData.preview_data.scenario_tree_analysis ||
               (memoData.preview_data.scenario_tree_data &&
                Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
-              <section>
+              <SectionReveal>
                 <ScenarioTreeSection
                   data={memoData.preview_data.scenario_tree_data || {}}
                   rawAnalysis={memoData.preview_data.scenario_tree_analysis}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1950,12 +2154,12 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {(memoData.preview_data.heir_management_analysis ||
               (memoData.preview_data.heir_management_data &&
                Object.keys(memoData.preview_data.heir_management_data).length > 0)) && (
-              <section>
+              <SectionReveal>
                 <HeirManagementSection
                   data={memoData.preview_data.heir_management_data || {}}
                   rawAnalysis={memoData.preview_data.heir_management_analysis}
                 />
-              </section>
+              </SectionReveal>
             )}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
@@ -1963,7 +2167,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
 
             {/* 14. Implementation Roadmap - Action Items */}
-            <section>
+            <SectionReveal>
               <Page1TaxDashboard
                 totalSavings={memoData.preview_data.total_savings}
                 exposureClass={memoData.preview_data.exposure_class}
@@ -1977,14 +2181,12 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                 taxDifferential={memoData.preview_data.tax_differential}
                 sections={['implementation']}
               />
-            </section>
+            </SectionReveal>
 
             {/* Premium Footer */}
-            <motion.div
+            <SectionReveal>
+            <div
               className="relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border border-border rounded-2xl sm:rounded-3xl p-6 sm:p-10"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
             >
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div>
@@ -2025,17 +2227,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   For execution and implementation, consult your legal, tax, and financial advisory teams.
                 </p>
               </div>
-            </motion.div>
+            </div>
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* SHARE + NEXT AUDIT CTA (Web Only — hidden in print)                             */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <motion.div
-              className="print:hidden space-y-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
+            <SectionReveal>
+            <div className="print:hidden space-y-6">
               {/* Share Button */}
               <div className="flex justify-center">
                 <button
@@ -2103,31 +2302,55 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
+            </SectionReveal>
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* LEGAL REFERENCES - MFO Audit Requirement (Feb 2026)                             */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {legalReferences && legalReferences.total_count > 0 && (
-              <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
-                <ReferencesSection
-                  references={legalReferences}
-                  developmentsCount={hnwiWorldCount}
-                  precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                />
-              </section>
+              <SectionReveal>
+                <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
+                  <ReferencesSection
+                    references={legalReferences}
+                    developmentsCount={hnwiWorldCount}
+                    precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                  />
+                </section>
+              </SectionReveal>
             )}
+
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {/* REGULATORY SOURCES - Complete Citations & Legal Framework                       */}
+            {/* ══════════════════════════════════════════════════════════════════════════════ */}
+            {(() => {
+              const regulatoryCitations = memoData.preview_data?.regulatory_citations ||
+                                          legalReferences?.regulatory_sources ||
+                                          [];
+              if (!regulatoryCitations || (Array.isArray(regulatoryCitations) && regulatoryCitations.length === 0)) {
+                return null;
+              }
+              return (
+                <SectionReveal>
+                  <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
+                    <RegulatorySourcesSection citations={regulatoryCitations as any} />
+                  </section>
+                </SectionReveal>
+              );
+            })()}
 
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
             {/* PDF LAST PAGE - HNWI Chronicles Branding & Legal                                */}
             {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <MemoLastPage
-              intakeId={intakeId}
-              precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-              generatedAt={memoData.generated_at}
-              viaNegativa={viaNegativaContext}
-            />
-          </motion.div>
+            <SectionReveal direction="scale" duration={1.0}>
+              <MemoLastPage
+                intakeId={intakeId}
+                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
+                generatedAt={memoData.generated_at}
+                viaNegativa={viaNegativaContext}
+              />
+            </SectionReveal>
+          </div>
         </div>
       </div>
 

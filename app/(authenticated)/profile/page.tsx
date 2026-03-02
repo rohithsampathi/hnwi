@@ -3,7 +3,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ProfilePage } from "@/components/profile-page"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { BackButton } from "@/components/ui/back-button"
@@ -62,13 +62,13 @@ export default function ProfileRoute() {
     }
   }
 
-  const handleUpdateUser = (updatedUserData: any) => {
+  const handleUpdateUser = useCallback((updatedUserData: any) => {
     // Use AuthManager to update user
     const updated = updateUser(updatedUserData)
     if (updated) {
       setUser(updated)
     }
-  }
+  }, [])
 
   const handleLogout = () => {
     // Use AuthManager to logout

@@ -151,6 +151,21 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        // Commandment III semantic tokens
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          hover: "hsl(var(--surface-hover))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          muted: "hsl(var(--gold-muted))",
+        },
+        verdict: {
+          proceed: "hsl(var(--verdict-proceed))",
+          restructure: "hsl(var(--verdict-restructure))",
+          abort: "hsl(var(--verdict-abort))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -158,14 +173,12 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        // All typography uses Trojan Pro for consistency
-        sans: ["Trojan Pro", "system-ui", "sans-serif"],
-        serif: ["Trojan Pro", "system-ui", "sans-serif"],
-        mono: ["Trojan Pro", "ui-monospace", "monospace"],
-        heading: ["Trojan Pro", "system-ui", "sans-serif"],
-        body: ["Trojan Pro", "system-ui", "sans-serif"],
-        button: ["Trojan Pro", "system-ui", "sans-serif"],
-        display: ["Trojan Pro", "system-ui", "sans-serif"],
+        sans: ["Inter", "SF Pro Display", "system-ui", "sans-serif"],
+        serif: ["Georgia", "Times New Roman", "serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "monospace"],
+        heading: ["Inter", "SF Pro Display", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+        display: ["Inter", "SF Pro Display", "system-ui", "sans-serif"],
       },
       fontWeight: {
         thin: "100",

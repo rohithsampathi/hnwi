@@ -226,7 +226,9 @@ export function PreviewArtifactDisplay({ preview }: PreviewArtifactDisplayProps)
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground tracking-tight leading-tight mb-6">
-            {preview.thesisSummary}
+            {typeof preview.thesisSummary === 'object' && (preview.thesisSummary as any)?.move_description
+              ? (preview.thesisSummary as any).move_description
+              : preview.thesisSummary}
           </h1>
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">

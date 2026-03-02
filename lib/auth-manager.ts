@@ -101,7 +101,14 @@ export class AuthenticationManager {
 
     this.ensureInitialized();
 
-    // Store user data in memory and localStorage
+    // Ensure `name` is always present (synthesize from firstName/lastName if missing)
+    if (!userData.name && (userData.firstName || userData.first_name)) {
+      const first = userData.firstName || userData.first_name || '';
+      const last = userData.lastName || userData.last_name || '';
+      userData.name = `${first} ${last}`.trim();
+    }
+
+    // Store user data in memory
     this.user = userData;
     this.authenticated = true;
 
@@ -287,8 +294,27 @@ export class AuthenticationManager {
 
     this.user = { ...this.user, ...updates };
 
+    // Ensure `name` is always present (synthesize from firstName/lastName if missing)
+    if (!this.user.name && (this.user.firstName || this.user.first_name)) {
+      const first = this.user.firstName || this.user.first_name || '';
+      const last = this.user.lastName || this.user.last_name || '';
+      this.user.name = `${first} ${last}`.trim();
+    }
+
     if (typeof window !== 'undefined') {
-      localStorage.setItem('userObject', JSON.stringify(this.user));
+      const userObjectStr = JSON.stringify(this.user);
+
+      // Write to sessionStorage (where initializeSync reads from)
+      sessionStorage.setItem('userObject', userObjectStr);
+
+      // Also sync to pwaStorage for lib/api.ts compatibility
+      try {
+        import('./storage/pwa-storage').then(({ pwaStorage }) => {
+          pwaStorage.setItemSync('userObject', userObjectStr);
+        });
+      } catch {
+        // pwaStorage not available
+      }
 
       // Emit update event
       window.dispatchEvent(new CustomEvent('auth:userUpdated', {

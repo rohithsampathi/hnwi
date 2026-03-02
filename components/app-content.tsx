@@ -133,12 +133,16 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
   
           if (isMounted) {
             if (data.user) {
-              // Create consistent user object
+              // Create consistent user object — handle both camelCase and snake_case from backend
+              const firstName = data.user.firstName || data.user.first_name || '';
+              const lastName = data.user.lastName || data.user.last_name || '';
+              const fullName = data.user.name || [firstName, lastName].filter(Boolean).join(' ') || '';
               const userObj: User = {
                 id: data.user.id,
                 email: data.user.email,
-                firstName: data.user.firstName,
-                lastName: data.user.lastName || "",
+                firstName,
+                lastName,
+                name: fullName,
                 role: data.user.role || "user",
                 // Fields from API
                 user_id: data.user.user_id || data.user.id,
@@ -197,17 +201,38 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
           credentials: 'include'
         });
         const data = await response.json();
-        
+
         if (!data.user && isMounted) {
           // Session expired, need to logout
           setUser(null);
           localStorage.removeItem("userId");
           localStorage.removeItem("userObject");
           sessionStorage.removeItem("userDisplay");
+        } else if (data.user && isMounted) {
+          // Hydrate stored user with any missing fields from server (e.g. name, firstName)
+          const serverFirstName = data.user.firstName || data.user.first_name || '';
+          const serverLastName = data.user.lastName || data.user.last_name || '';
+          const serverName = data.user.name || [serverFirstName, serverLastName].filter(Boolean).join(' ') || '';
+
+          const needsUpdate = (!currentUser.name && serverName) ||
+            (!currentUser.firstName && serverFirstName) ||
+            (!currentUser.email && data.user.email);
+
+          if (needsUpdate) {
+            const hydrated: User = {
+              ...currentUser,
+              firstName: currentUser.firstName || serverFirstName,
+              lastName: currentUser.lastName || serverLastName,
+              name: currentUser.name || serverName,
+              email: currentUser.email || data.user.email,
+            };
+            setUser(hydrated);
+            updateAuthUser(hydrated);
+            sessionStorage.setItem("userObject", JSON.stringify(hydrated));
+          }
         }
       } catch (error) {
         // Background validation failed, but don't disrupt current session
-        // Only log for debugging
       }
     };
 

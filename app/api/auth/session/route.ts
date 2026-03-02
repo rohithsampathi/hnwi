@@ -48,12 +48,15 @@ async function verifyJWT(token: string): Promise<Record<string, any> | null> {
 
 // Extract user fields from a JWT payload
 function extractUserFromPayload(payload: Record<string, any>) {
+  const firstName = payload.firstName || payload.first_name || payload.name?.split(' ')[0] || '';
+  const lastName = payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' ') || '';
   return {
     id: payload.user_id || payload.userId || payload.id || payload.sub,
     user_id: payload.user_id || payload.userId || payload.id || payload.sub,
     email: payload.email,
-    firstName: payload.firstName || payload.first_name || payload.name?.split(' ')[0],
-    lastName: payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' '),
+    name: payload.name || `${firstName} ${lastName}`.trim() || undefined,
+    firstName,
+    lastName,
     role: payload.role || 'user',
   };
 }

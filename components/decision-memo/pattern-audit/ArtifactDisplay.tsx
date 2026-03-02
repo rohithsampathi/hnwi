@@ -141,7 +141,9 @@ export function ArtifactDisplay({ artifact }: ArtifactDisplayProps) {
           </div>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-foreground tracking-tight leading-tight mb-6">
-            {artifact.thesisSummary}
+            {typeof artifact.thesisSummary === 'object' && (artifact.thesisSummary as any)?.move_description
+              ? (artifact.thesisSummary as any).move_description
+              : artifact.thesisSummary}
           </h1>
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">

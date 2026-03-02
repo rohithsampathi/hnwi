@@ -29,6 +29,7 @@ export function PageHeader({
   // Map routes to their specific icons
   const getPageIcon = () => {
     if (pathname.includes('/dashboard')) return Brain
+    if (pathname.includes('/decision-memo')) return Shield
     if (pathname.includes('/prive-exchange')) return Gem
     if (pathname.includes('/hnwi-world') || pathname.includes('/strategy-vault')) return Globe
     if (pathname.includes('/crown-vault')) return Crown
@@ -55,9 +56,9 @@ export function PageHeader({
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-16 pb-0">
+    <div className="px-4 sm:px-6 lg:px-8 pt-14 pb-0">
       {config.showBackButton && (
-        <div className="mb-2">
+        <div className="mb-6">
           <Button
             variant="outline"
             size="sm"
@@ -71,7 +72,7 @@ export function PageHeader({
       )}
 
       <div className="mb-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2.5 mb-1">
           <PageIcon className="h-5 w-5 text-primary" />
           <h1 className="text-xl md:text-2xl font-bold text-foreground">
             {config.title}

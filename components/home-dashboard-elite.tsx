@@ -17,6 +17,7 @@ import { AnimatePresence } from "framer-motion"
 import { useTheme } from "@/contexts/theme-context"
 import { PersonalModeToggle } from "@/components/personal-mode-toggle"
 import { useOpportunities } from "@/lib/hooks/useOpportunities"
+import { usePersonalMode } from "@/lib/hooks/usePersonalMode"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -69,9 +70,9 @@ export function HomeDashboardElite({
   // Theme context for checkbox styling
   const { theme } = useTheme()
 
-  // Personal Mode state
-  const [isPersonalMode, setIsPersonalMode] = useState(false)
+  // Personal Mode state (shared across Home Dashboard and War Room)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(hasCompletedAssessmentProp || false)
+  const { isPersonalMode, togglePersonalMode } = usePersonalMode(hasCompletedAssessment)
   const [showModeBanner, setShowModeBanner] = useState(false)
 
   // Fetch opportunities using centralized hook (dashboard mode)
@@ -193,13 +194,7 @@ export function HomeDashboardElite({
     }
   }, [screenSize]) // Re-run if screen size changes
 
-  // Load Personal Mode preference from localStorage on mount
-  useEffect(() => {
-    const savedPreference = localStorage.getItem('personal_mode_enabled')
-    if (savedPreference === 'true') {
-      setIsPersonalMode(true)
-    }
-  }, [])
+  // Personal Mode preference is now handled by usePersonalMode hook
 
   // Update hasCompletedAssessment when prop changes
   useEffect(() => {
@@ -245,11 +240,7 @@ export function HomeDashboardElite({
     // If not completed, PersonalModeToggle component handles navigation to /assessment
     if (!hasCompletedAssessment) return
 
-    const newMode = !isPersonalMode
-    setIsPersonalMode(newMode)
-
-    // Save preference to localStorage
-    localStorage.setItem('personal_mode_enabled', String(newMode))
+    togglePersonalMode()
 
     // Show mode banner
     setShowModeBanner(true)
@@ -297,13 +288,31 @@ export function HomeDashboardElite({
   // Generate greeting text
   const getGreeting = () => {
     const hour = new Date().getHours()
-    const firstName = userData?.firstName || userData?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
 
-    if (hour < 6) return `Midnight Wealth Watchlist, ${firstName}`
-    if (hour < 12) return `Morning Intelligence Brief, ${firstName}`
-    if (hour < 17) return `Midday Market Synthesis, ${firstName}`
-    if (hour < 22) return `Evening Capital Insights, ${firstName}`
-    return `Night Watch: Global Capital Flow, ${firstName}`
+    // Resolve first name — never show "User" as a fallback
+    let firstName = '';
+    if (userData?.name?.trim() || user?.name?.trim()) {
+      firstName = (userData?.name || user?.name).trim().split(' ')[0];
+    } else {
+      const firstNameField = userData?.firstName || userData?.first_name || user?.firstName || user?.first_name;
+      if (firstNameField?.trim()) {
+        firstName = firstNameField.trim();
+      } else {
+        const emailName = userData?.email?.split('@')[0] || user?.email?.split('@')[0];
+        if (emailName?.trim()) {
+          firstName = emailName.trim();
+        }
+      }
+    }
+
+    // Build greeting — omit name suffix when user data hasn't loaded yet
+    const nameSuffix = firstName ? `, ${firstName}` : '';
+
+    if (hour < 6) return `Midnight Wealth Watchlist${nameSuffix}`
+    if (hour < 12) return `Morning Intelligence Brief${nameSuffix}`
+    if (hour < 17) return `Midday Market Synthesis${nameSuffix}`
+    if (hour < 22) return `Evening Capital Insights${nameSuffix}`
+    return `Night Watch: Global Capital Flow${nameSuffix}`
   }
 
   // Filter cities based on opportunity type toggles and selected categories
@@ -372,6 +381,7 @@ export function HomeDashboardElite({
           onToggleCrownAssets={() => setShowCrownAssets(!showCrownAssets)}
           onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
           onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
+          showCrisisOverlay={true}
         />
 
         {/* Greeting Overlay - Positioned with more breathing room from top */}

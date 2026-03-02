@@ -30,7 +30,9 @@ export default function DashboardPage() {
     }
 
     // Listen for auth state changes to update user
-    const handleAuthUpdate = (event: any) => {
+    // CRITICAL: Listen for BOTH auth:login AND auth:userUpdated
+    // auth:login = session validated (basic data), auth:userUpdated = name/profile hydrated
+    const handleAuthUpdate = () => {
       const updatedUser = getCurrentUser()
       if (updatedUser) {
         setUser(updatedUser)
@@ -38,9 +40,11 @@ export default function DashboardPage() {
     }
 
     window.addEventListener('auth:login', handleAuthUpdate)
+    window.addEventListener('auth:userUpdated', handleAuthUpdate)
 
     return () => {
       window.removeEventListener('auth:login', handleAuthUpdate)
+      window.removeEventListener('auth:userUpdated', handleAuthUpdate)
     }
   }, [])
 

@@ -4,299 +4,10 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from '@react-pdf/renderer';
-import { colors } from '../pdf-styles';
+import { View, Text } from '@react-pdf/renderer';
+import { colors, darkTheme, pdfStyles } from '../pdf-styles';
 import { HnwiTrendsData, TrendInsight, SourceCitation } from '../pdf-types';
-
-const styles = StyleSheet.create({
-  section: {
-    marginBottom: 32,
-  },
-
-  // === SECTION HEADER ===
-  header: {
-    marginBottom: 20,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
-  },
-  headerAccent: {
-    width: 24,
-    height: 3,
-    backgroundColor: colors.amber[500],
-    marginBottom: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 14,
-    color: colors.gray[900],
-    marginRight: 12,
-  },
-  headerBadge: {
-    backgroundColor: colors.amber[50],
-    borderWidth: 1,
-    borderColor: colors.amber[300],
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  headerBadgeText: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.amber[700],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontFamily: 'Times-Roman',
-    fontSize: 10,
-    color: colors.gray[500],
-    marginTop: 6,
-  },
-
-  // === CONFIDENCE METRICS BAR ===
-  metricsBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.gray[50],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    padding: 12,
-    marginBottom: 16,
-  },
-  metricsGroup: {
-    flexDirection: 'row',
-  },
-  metricItem: {
-    alignItems: 'flex-start',
-    marginRight: 24,
-  },
-  metricLabel: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.gray[500],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  metricValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metricValue: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 14,
-    color: colors.gray[900],
-    marginRight: 6,
-  },
-  confidenceBars: {
-    flexDirection: 'row',
-  },
-  confidenceBar: {
-    width: 4,
-    height: 12,
-    borderRadius: 1,
-    marginRight: 2,
-  },
-  confidenceBarActive: {
-    backgroundColor: colors.amber[500],
-  },
-  confidenceBarInactive: {
-    backgroundColor: colors.gray[200],
-  },
-  qualityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: colors.amber[300],
-    backgroundColor: colors.amber[50],
-  },
-  qualityBadgeText: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.amber[700],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  // === TRENDS LIST ===
-  trendsList: {
-    marginBottom: 16,
-  },
-  trendItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
-  trendItemCorridor: {
-    backgroundColor: colors.amber[50],
-    borderColor: colors.amber[200],
-  },
-  trendItemOutflow: {
-    backgroundColor: colors.gray[50],
-    borderColor: colors.gray[200],
-  },
-  trendItemInflow: {
-    backgroundColor: colors.emerald[50],
-    borderColor: colors.emerald[200],
-  },
-  trendIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  trendIconCorridor: {
-    backgroundColor: colors.amber[100],
-  },
-  trendIconOutflow: {
-    backgroundColor: colors.gray[200],
-  },
-  trendIconInflow: {
-    backgroundColor: colors.emerald[100],
-  },
-  trendIconDefault: {
-    backgroundColor: colors.gray[100],
-  },
-  trendIconText: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 10,
-  },
-  trendIconTextCorridor: {
-    color: colors.amber[700],
-  },
-  trendIconTextOutflow: {
-    color: colors.gray[600],
-  },
-  trendIconTextInflow: {
-    color: colors.emerald[700],
-  },
-  trendIconTextDefault: {
-    color: colors.gray[500],
-  },
-  trendContent: {
-    flex: 1,
-  },
-  trendText: {
-    fontFamily: 'Times-Roman',
-    fontSize: 10,
-    color: colors.gray[700],
-    lineHeight: 1.5,
-  },
-
-  // === DATA SOURCES ===
-  sourcesSection: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    padding: 12,
-    marginBottom: 16,
-  },
-  sourcesTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
-    color: colors.gray[700],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  sourcesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  sourceTag: {
-    backgroundColor: colors.gray[100],
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 6,
-  },
-  sourceTagText: {
-    fontFamily: 'Times-Roman',
-    fontSize: 8.5,
-    color: colors.gray[600],
-  },
-
-  // === CITATIONS ===
-  citationsSection: {
-    backgroundColor: colors.gray[50],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    padding: 12,
-    marginBottom: 16,
-  },
-  citationsTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
-    color: colors.gray[700],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  citationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  citationBullet: {
-    width: 4,
-    height: 4,
-    backgroundColor: colors.amber[500],
-    borderRadius: 2,
-    marginTop: 4,
-    marginRight: 6,
-  },
-  citationText: {
-    fontFamily: 'Times-Roman',
-    fontSize: 9,
-    color: colors.gray[600],
-    flex: 1,
-  },
-  citationDate: {
-    fontFamily: 'Times-Roman',
-    fontSize: 8.5,
-    color: colors.gray[400],
-  },
-  citationReliability: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.amber[600],
-    marginLeft: 4,
-  },
-
-  // === FOOTER ===
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-  },
-  footerDot: {
-    width: 4,
-    height: 4,
-    backgroundColor: colors.amber[500],
-    borderRadius: 2,
-    marginHorizontal: 6,
-  },
-  footerText: {
-    fontFamily: 'Times-Roman',
-    fontSize: 8.5,
-    color: colors.gray[400],
-  },
-});
+import { PdfSectionHeader } from './primitives';
 
 interface PdfHNWITrendsSectionProps {
   trendsData?: HnwiTrendsData;
@@ -309,119 +20,93 @@ export function PdfHNWITrendsSection({
   sourceJurisdiction,
   destinationJurisdiction
 }: PdfHNWITrendsSectionProps) {
-  // Only render if we have trends data with insights
-  if (!trendsData?.insights || trendsData.insights.length === 0) {
-    return null;
-  }
+  if (!trendsData?.insights || trendsData.insights.length === 0) return null;
 
   const confidence = trendsData.confidence || 0;
   const confidencePct = Math.round(confidence * 100);
   const confidenceBars = Math.round(confidence * 5);
-
   const corridorLabel = sourceJurisdiction && destinationJurisdiction
-    ? `${sourceJurisdiction} → ${destinationJurisdiction}`
+    ? `${sourceJurisdiction} > ${destinationJurisdiction}`
     : 'Cross-Border';
 
-  // Helper to determine trend type
   const getTrendType = (content: string): 'corridor' | 'outflow' | 'inflow' | 'default' => {
     const lower = content.toLowerCase();
-    if (lower.includes('→') || lower.includes('corridor')) return 'corridor';
+    if (lower.includes('\u2192') || lower.includes('corridor')) return 'corridor';
     if (lower.includes('outflow') || lower.includes('departures')) return 'outflow';
     if (lower.includes('inflow') || lower.includes('attracted')) return 'inflow';
     return 'default';
   };
 
+  const trendBg: Record<string, object> = {
+    corridor: { backgroundColor: 'rgba(212,168,67,0.08)', borderColor: 'rgba(212,168,67,0.25)' },
+    outflow: { backgroundColor: darkTheme.cardBg, borderColor: darkTheme.border },
+    inflow: { backgroundColor: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.25)' },
+    default: {},
+  };
+  const iconBg: Record<string, string> = {
+    corridor: 'rgba(212,168,67,0.15)',
+    outflow: darkTheme.border,
+    inflow: 'rgba(16,185,129,0.15)',
+    default: darkTheme.surfaceBg,
+  };
+  const iconColor: Record<string, string> = {
+    corridor: colors.amber[500],
+    outflow: darkTheme.textMuted,
+    inflow: colors.emerald[400],
+    default: darkTheme.textMuted,
+  };
+  const iconLabel: Record<string, string> = { corridor: '>', outflow: '+', inflow: '-', default: '*' };
+
   return (
-    <View style={styles.section}>
-      {/* Section Header */}
-      <View style={styles.header}>
-        <View style={styles.headerAccent} />
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>HNWI Migration Trends</Text>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>{corridorLabel}</Text>
-          </View>
-        </View>
-        <Text style={styles.headerSubtitle}>
-          High-net-worth wealth patterns and capital flow intelligence
-        </Text>
-      </View>
+    <View style={{ marginBottom: 32 }}>
+      <PdfSectionHeader
+        title="HNWI Migration Trends"
+        badge={corridorLabel}
+        subtitle="High-net-worth wealth patterns and capital flow intelligence"
+        accentColor={colors.amber[500]}
+      />
 
       {/* Confidence Metrics Bar */}
-      <View style={styles.metricsBar} wrap={false}>
-        <View style={styles.metricsGroup}>
-          {/* Confidence */}
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Confidence</Text>
-            <View style={styles.metricValueRow}>
-              <View style={styles.confidenceBars}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginBottom: 16 }} wrap={false}>
+        <View style={{ flexDirection: 'row' }}>
+          <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Confidence</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row' }}>
                 {[1, 2, 3, 4, 5].map(i => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.confidenceBar,
-                      i <= confidenceBars ? styles.confidenceBarActive : styles.confidenceBarInactive
-                    ]}
-                  />
+                  <View key={i} style={{ width: 4, height: 12, borderRadius: 1, marginRight: 2, backgroundColor: i <= confidenceBars ? colors.amber[500] : darkTheme.border }} />
                 ))}
               </View>
-              <Text style={styles.metricValue}>{confidencePct}%</Text>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary, marginLeft: 6 }}>{confidencePct}%</Text>
             </View>
           </View>
-
-          {/* Trends Count */}
-          <View style={styles.metricItem}>
-            <Text style={styles.metricLabel}>Trends</Text>
-            <Text style={styles.metricValue}>{trendsData.trends_count || trendsData.insights.length}</Text>
+          <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Trends</Text>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary }}>{trendsData.trends_count || trendsData.insights.length}</Text>
           </View>
-
-          {/* Sources */}
           {trendsData.sources_count !== undefined && (
-            <View style={styles.metricItem}>
-              <Text style={styles.metricLabel}>Sources</Text>
-              <Text style={styles.metricValue}>{trendsData.sources_count}</Text>
+            <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Sources</Text>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary }}>{trendsData.sources_count}</Text>
             </View>
           )}
         </View>
-
-        {/* Quality Badge */}
-        <View style={styles.qualityBadge}>
-          <Text style={styles.qualityBadgeText}>KGv3 Verified</Text>
+        <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.amber[500], backgroundColor: 'rgba(212,168,67,0.15)' }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>KGv3 Verified</Text>
         </View>
       </View>
 
       {/* Trends List */}
-      <View style={styles.trendsList}>
+      <View style={{ marginBottom: 16 }}>
         {trendsData.insights.slice(0, 6).map((insight, index) => {
-          const trendType = getTrendType(insight.content);
-          const iconStyles = {
-            corridor: { bg: styles.trendIconCorridor, text: styles.trendIconTextCorridor },
-            outflow: { bg: styles.trendIconOutflow, text: styles.trendIconTextOutflow },
-            inflow: { bg: styles.trendIconInflow, text: styles.trendIconTextInflow },
-            default: { bg: styles.trendIconDefault, text: styles.trendIconTextDefault }
-          };
-          const itemStyles = {
-            corridor: styles.trendItemCorridor,
-            outflow: styles.trendItemOutflow,
-            inflow: styles.trendItemInflow,
-            default: {}
-          };
-          const iconLabel = {
-            corridor: '→',
-            outflow: '↗',
-            inflow: '↙',
-            default: '●'
-          };
-
+          const type = getTrendType(insight.content);
           return (
-            <View key={index} style={[styles.trendItem, itemStyles[trendType]]} wrap={false}>
-              <View style={[styles.trendIcon, iconStyles[trendType].bg]}>
-                <Text style={[styles.trendIconText, iconStyles[trendType].text]}>
-                  {iconLabel[trendType]}
-                </Text>
+            <View key={index} style={[{ flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginBottom: 8, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border }, trendBg[type]]} wrap={false}>
+              <View style={{ width: 24, height: 24, borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: iconBg[type] }}>
+                <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: iconColor[type] }}>{iconLabel[type]}</Text>
               </View>
-              <View style={styles.trendContent}>
-                <Text style={styles.trendText}>{insight.content}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.5 }}>{insight.content}</Text>
               </View>
             </View>
           );
@@ -430,12 +115,12 @@ export function PdfHNWITrendsSection({
 
       {/* Data Sources Section */}
       {trendsData.collections_queried && trendsData.collections_queried.length > 0 && (
-        <View style={styles.sourcesSection}>
-          <Text style={styles.sourcesTitle}>KGv3 Collections Queried</Text>
-          <View style={styles.sourcesGrid}>
+        <View style={{ backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginBottom: 16 }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>KGv3 Collections Queried</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {trendsData.collections_queried.map((source, i) => (
-              <View key={i} style={styles.sourceTag}>
-                <Text style={styles.sourceTagText}>{source}</Text>
+              <View key={i} style={{ backgroundColor: darkTheme.surfaceBg, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{source}</Text>
               </View>
             ))}
           </View>
@@ -444,17 +129,15 @@ export function PdfHNWITrendsSection({
 
       {/* Source Citations */}
       {trendsData.source_citations && trendsData.source_citations.length > 0 && (
-        <View style={styles.citationsSection}>
-          <Text style={styles.citationsTitle}>Source Citations</Text>
+        <View style={{ backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginBottom: 16 }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Source Citations</Text>
           {trendsData.source_citations.slice(0, 5).map((citation, index) => (
-            <View key={index} style={styles.citationItem}>
-              <View style={styles.citationBullet} />
-              <Text style={styles.citationText}>
+            <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+              <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginTop: 4, marginRight: 6 }} />
+              <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, flex: 1 }}>
                 {citation.title}
-                {!!citation.date && <Text style={styles.citationDate}> ({citation.date})</Text>}
-                {!!citation.reliability && (
-                  <Text style={styles.citationReliability}> • {citation.reliability}</Text>
-                )}
+                {!!citation.date && <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}> ({citation.date})</Text>}
+                {!!citation.reliability && <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.amber[500], marginLeft: 4 }}> • {citation.reliability}</Text>}
               </Text>
             </View>
           ))}
@@ -462,9 +145,9 @@ export function PdfHNWITrendsSection({
       )}
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerDot} />
-        <Text style={styles.footerText}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border }}>
+        <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginHorizontal: 6 }} />
+        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>
           Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data
         </Text>
       </View>

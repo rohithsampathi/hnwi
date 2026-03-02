@@ -368,31 +368,29 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
     [onUpdateUser, toast],
   )
 
+  // Resolve userId once from user prop — don't re-run on callback changes
   useEffect(() => {
-    // First check if user data already has the correct ID
     if (user && (user.user_id || user._id)) {
       const userApiId = user.user_id || user._id || user.id
-      // Store the user ID from the API using centralized auth
-      updateAuthUser({ ...user, userId: userApiId, user_id: userApiId, id: userApiId })
       setUserId(userApiId)
-      fetchUserData(userApiId)
-      if (loadVaultData) {
-        fetchVaultStats(userApiId) // Only fetch Crown Vault stats if explicitly requested
-      }
     } else {
-      // Fallback to stored ID if available
       const storedUserId = getCurrentUserId()
       if (storedUserId) {
         setUserId(storedUserId)
-        fetchUserData(storedUserId)
-        if (loadVaultData) {
-          fetchVaultStats(storedUserId) // Only fetch Crown Vault stats if explicitly requested
-        }
       } else {
         setIsLoading(false)
       }
     }
-  }, [fetchUserData, fetchVaultStats, user, loadVaultData])
+  }, [user])
+
+  // Fetch data when userId is set (separate effect to avoid cascading re-renders)
+  useEffect(() => {
+    if (!userId) return
+    fetchUserData(userId)
+    if (loadVaultData) {
+      fetchVaultStats(userId)
+    }
+  }, [userId, fetchUserData, fetchVaultStats, loadVaultData])
 
   // Fetch billing history once when userId is set
   useEffect(() => {
@@ -617,7 +615,25 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
               {/* User Info Section */}
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-4xl font-bold text-foreground mb-2">
-                  {editedUser.name || "Welcome"}
+                  {(() => {
+                    // Try name field first (most reliable for full name)
+                    if (editedUser.name?.trim()) {
+                      return editedUser.name.trim();
+                    }
+
+                    // Then try firstName + lastName combination
+                    const firstName = editedUser.firstName || editedUser.first_name;
+                    const lastName = editedUser.lastName || editedUser.last_name;
+
+                    if (firstName && lastName) {
+                      return `${firstName} ${lastName}`;
+                    } else if (firstName) {
+                      return firstName;
+                    }
+
+                    // Fallback to email username
+                    return editedUser.email?.split('@')[0] || user.email?.split('@')[0] || 'Welcome';
+                  })()}
                 </h1>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground mb-4">
                   {(editedUser.company || editedUser.company_info?.name || editedUser.profile?.company_info?.name) && (
@@ -778,7 +794,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                         <label className="text-sm font-medium text-muted-foreground">Industries</label>
                         <Input
                           name="industries"
-                          value={editedUser.industries.join(", ")}
+                          value={(editedUser.industries || []).join(", ")}
                           onChange={(e) => handleIndustriesChange(e.target.value)}
                           placeholder="Technology, Finance, Real Estate"
                           className="bg-background border-border"

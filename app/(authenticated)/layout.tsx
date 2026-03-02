@@ -16,10 +16,12 @@ import { NotificationProvider } from "@/contexts/notification-context"
 import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
 import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
 import { CitationPanelProvider } from "@/contexts/elite-citation-panel-context"
+import { CrisisIntelligenceProvider } from "@/contexts/crisis-intelligence-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
-import { getCurrentUser, authManager } from "@/lib/auth-manager"
+import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib/auth-manager"
+import { secureApi } from "@/lib/secure-api"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import BackgroundSyncInitializer from "@/components/background-sync-initializer"
 import '@/lib/auth/debug-helper' // Load debug helper
@@ -53,6 +55,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
+    if (pathname.includes('/war-room')) return { title: '', currentPage: 'war-room', showBackButton: false }
     if (pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-rohith', showBackButton: true }
     if (pathname.includes('/simulation')) return { title: '', currentPage: 'simulation', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }
@@ -125,8 +128,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   // Track if we've validated the session with backend (for PWA)
   const [sessionValidated, setSessionValidated] = useState(false)
 
-  // CRITICAL: Synchronous localStorage check BEFORE first paint to prevent loading flash
-  // useLayoutEffect runs synchronously after DOM updates but before browser paint
+  // CRITICAL: Synchronous check BEFORE first paint to prevent loading flash
+  // Only trust sessionStorage (same-tab, active session). localStorage alone = stale.
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || !pathname) return
     if (isAuthenticated !== null) return // Already checked
@@ -141,19 +144,28 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       return
     }
 
-    // AUTHENTICATED ROUTES: Check localStorage first for quick access
-    // secure-api will handle 401/403 on actual API calls
-    const cachedUser = getCurrentUser()
-    if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
-      setUser(cachedUser)
-      setIsAuthenticated(true)
-      setIsInitialLoad(false)
-      setMounted(true)
+    // AUTHENTICATED ROUTES: Only render immediately if sessionStorage has full user
+    // sessionStorage = active session in this tab (dies with tab close)
+    // localStorage alone = potentially stale from a previous session — must validate first
+    const hasFullSession = !!sessionStorage.getItem('userObject')
 
-      // PWA FIX: Schedule background session validation
-      // This ensures cookies are still valid without blocking render
-      // Critical for PWA where cookies may expire independently of localStorage
+    if (hasFullSession) {
+      // Same tab, active session — trust it and render immediately
+      const cachedUser = getCurrentUser()
+      if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
+        setUser(cachedUser)
+        setIsAuthenticated(true)
+        setIsInitialLoad(false)
+        setMounted(true)
+        return
+      }
     }
+
+    // No active session in this tab — DON'T render content yet.
+    // Let the useEffect auth check validate with backend first.
+    // This prevents showing stale data from a previous session.
+    // isAuthenticated stays null → EliteLoadingState shows briefly while backend validates.
+    setMounted(true) // Ensure SINGLE AUTH CHECK useEffect can run immediately
   }, [pathname, isAuthenticated])
 
   // PWA SESSION VALIDATION: Verify cookies are still valid after localStorage-based auth
@@ -182,9 +194,25 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           const data = await sessionResponse.json()
           if (data.user) {
             // Session is valid - update user data if changed
-            setUser(data.user)
             authManager.login(data.user)
             setSessionValidated(true)
+            // Hydrate full profile if name is missing (JWT only has id/email)
+            const userId = data.user.user_id || data.user.id
+            if (userId && !data.user.name) {
+              secureApi.get(`/api/users/${userId}`, true)
+                .then((fullUser: any) => {
+                  if (fullUser?.name) {
+                    const merged = { ...data.user, ...fullUser }
+                    updateAuthUser(merged)
+                    setUser(merged)
+                  } else {
+                    setUser(data.user)
+                  }
+                })
+                .catch(() => setUser(data.user))
+            } else {
+              setUser(data.user)
+            }
             return
           }
         }
@@ -222,18 +250,9 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           }
         }
 
-        // FINAL CHECK: Before logging out, verify localStorage one more time
-        // This prevents race conditions where auth state was updated between checks
-        const currentUser = getCurrentUser()
-        if (currentUser && (currentUser.id || currentUser.user_id)) {
-          console.log('[Auth] Session validation failed but localStorage has user - trusting localStorage')
-          setSessionValidated(true)
-          return
-        }
-
-        // PWA FIX: Cookies are gone and refresh failed and no localStorage user
-        // Clear localStorage to stay in sync and redirect to login
-        console.log('[Auth] Session validation failed - clearing stale localStorage')
+        // Session AND refresh both failed — session is definitively lost.
+        // Do NOT trust localStorage here — it's stale. Redirect immediately.
+        console.log('[Auth] Session validation failed - clearing stale state and redirecting')
         authManager.logout()
         setIsAuthenticated(false)
         setUser(null)
@@ -252,10 +271,13 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
 
     // Run validation after a short delay to not block initial render
-    // Use longer delay for fresh logins to allow cookie propagation
+    // Recent login: 2s delay (cookies still propagating)
+    // Minimal user (localStorage only, no sessionStorage): immediate (session data is stale)
+    // Normal: 500ms
     const loginTimestamp = localStorage.getItem('loginTimestamp')
     const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000
-    const validationDelay = isRecentLogin ? 2000 : 500 // 2 seconds for fresh login, 500ms otherwise
+    const hasSessionStorage = !!sessionStorage.getItem('userObject')
+    const validationDelay = isRecentLogin ? 2000 : (hasSessionStorage ? 500 : 100)
     const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
   }, [isAuthenticated, sessionValidated, pathname, router])
@@ -330,17 +352,22 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         setIsInitialLoad(false)
         router.push("/")
       } catch (error) {
-        // Network error - check localStorage as fallback
-        const fallbackUser = getCurrentUser()
-        if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
-          setUser(fallbackUser)
-          setIsAuthenticated(true)
-          setIsInitialLoad(false)
-        } else {
-          setIsAuthenticated(false)
-          setIsInitialLoad(false)
-          router.push("/")
+        // Network error — only allow if sessionStorage has full user (active session)
+        // Don't trust localStorage alone — it's stale from a previous session
+        const hasFullSession = !!sessionStorage.getItem('userObject')
+        if (hasFullSession) {
+          const fallbackUser = getCurrentUser()
+          if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
+            setUser(fallbackUser)
+            setIsAuthenticated(true)
+            setIsInitialLoad(false)
+            return
+          }
         }
+        // No active session — redirect to splash
+        setIsAuthenticated(false)
+        setIsInitialLoad(false)
+        router.push("/")
       }
     }
 
@@ -365,6 +392,9 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [router, pathname])
 
   // Listen for auth updates to refresh user data
+  // CRITICAL: Listen for BOTH auth:login AND auth:userUpdated
+  // auth:login fires on session validation (basic user data)
+  // auth:userUpdated fires when name/profile is hydrated from /api/users/
   useEffect(() => {
     const handleAuthUpdate = () => {
       const updatedUser = getCurrentUser()
@@ -374,7 +404,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
 
     window.addEventListener('auth:login', handleAuthUpdate)
-    return () => window.removeEventListener('auth:login', handleAuthUpdate)
+    window.addEventListener('auth:userUpdated', handleAuthUpdate)
+    return () => {
+      window.removeEventListener('auth:login', handleAuthUpdate)
+      window.removeEventListener('auth:userUpdated', handleAuthUpdate)
+    }
   }, [])
 
   // PWA FIX: Re-validate session when app comes to foreground
@@ -452,6 +486,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                 <PageDataCacheProvider>
                   <CitationPanelProvider>
                     <ElitePulseErrorBoundary>
+                      <CrisisIntelligenceProvider>
                       <ElitePulseProvider>
                         <NotificationProvider
                         enablePolling={false}
@@ -480,6 +515,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                         </IntelligenceNotificationProvider>
                       </NotificationProvider>
                       </ElitePulseProvider>
+                      </CrisisIntelligenceProvider>
                     </ElitePulseErrorBoundary>
                   </CitationPanelProvider>
                 </PageDataCacheProvider>

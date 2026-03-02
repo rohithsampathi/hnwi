@@ -81,10 +81,49 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<'overview' | 'payment-methods' | 'add-card'>('overview')
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false)
   const [recentPayments, setRecentPayments] = useState<any[]>([])
+  const [newCard, setNewCard] = useState({
+    card_number: '',
+    expiry_month: '',
+    expiry_year: '',
+    cvv: '',
+    name: user.name || user.firstName || ''
+  })
+
+  // Normalize tier names to handle legacy values
+  const getNormalizedTier = (tier?: string): 'observer' | 'operator' | 'architect' => {
+    if (!tier) return 'observer'
+    switch (tier.toLowerCase()) {
+      case 'architect':
+      case 'family_office':
+        return 'architect'
+      case 'operator':
+      case 'professional':
+        return 'operator'
+      case 'observer':
+      case 'essential':
+      default:
+        return 'observer'
+    }
+  }
+
+  // Get normalized tier from user data
+  // Check all possible tier field locations (matching subscription-card logic)
+  const rawTier = user.tier || user.subscription_tier || user.subscription?.tier || 'family_office'
+
+  // Debug logging
+  console.log('[BillingModal] User tier data:', {
+    'user.tier': user.tier,
+    'user.subscription_tier': user.subscription_tier,
+    'user.subscription?.tier': user.subscription?.tier,
+    'rawTier': rawTier,
+    'normalized': getNormalizedTier(rawTier)
+  })
+
+  const currentTier = getNormalizedTier(rawTier)
 
   // Fetch payment methods from backend
   const fetchPaymentMethods = useCallback(async () => {
@@ -406,17 +445,13 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className={`text-xl font-bold ${getVisibleTextColor(theme)}`}>
-                        {user.subscription?.tier === 'architect' ? 'Architect' :
-                         user.subscription?.tier === 'operator' ? 'Operator' :
-                         user.tier === 'architect' ? 'Architect' :
-                         user.tier === 'operator' ? 'Operator' :
+                        {currentTier === 'architect' ? 'Architect' :
+                         currentTier === 'operator' ? 'Operator' :
                          'Observer'} Plan
                       </h3>
                       <p className="text-muted-foreground">
-                        ${user.subscription?.tier === 'architect' ? '1,499' :
-                          user.subscription?.tier === 'operator' ? '599' :
-                          user.tier === 'architect' ? '1,499' :
-                          user.tier === 'operator' ? '599' :
+                        ${currentTier === 'architect' ? '1,499' :
+                          currentTier === 'operator' ? '599' :
                           '199'}.00 / month
                       </p>
                     </div>
@@ -469,6 +504,30 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
                       </div>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Cancel Account Section */}
+              <Card className="border-red-500/20 bg-red-500/5">
+                <CardHeader>
+                  <CardTitle className="text-red-600">Cancel Subscription</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Cancelling your subscription will revoke access to premium features at the end of your billing period.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
+                    onClick={() => {
+                      toast({
+                        title: "Cancel Subscription",
+                        description: "Please contact support to cancel your subscription.",
+                      })
+                    }}
+                  >
+                    Cancel Account
+                  </Button>
                 </CardContent>
               </Card>
             </div>

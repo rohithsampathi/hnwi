@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Building2, AlertTriangle, Sparkles } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Sparkles } from 'lucide-react';
+import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface Structure {
   name: string;
@@ -57,94 +58,89 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
   const benefitPositive = (selectedStructure?.net_benefit_10yr ?? 0) >= 0;
 
   return (
-    <div className="rounded-xl border-2 border-border bg-card overflow-hidden">
-      {/* Top accent */}
-      <div className="h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+    <div className="relative rounded-2xl border border-border/30 overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-      <div className="p-4 sm:p-5">
+      <div className="relative px-5 sm:px-8 md:px-12 py-10 md:py-12">
         {/* Header row with dropdown */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Building2 className="w-4 h-4 text-primary" />
-            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-              Projection Vehicle
-            </span>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+          <span className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium flex-shrink-0">
+            Projection Vehicle
+          </span>
 
-          <select
-            value={selectedStructureName}
-            onChange={(e) => onSelect(e.target.value)}
-            className="flex-1 px-3 py-2.5 bg-muted/30 border border-border rounded-lg text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all cursor-pointer"
-          >
-            {structures.map((structure) => {
-              const isOpt = structure.name === optimalStructureName;
-              return (
-                <option key={structure.name} value={structure.name}>
-                  {structure.name} {isOpt ? '★' : ''} ({formatBenefit(structure.net_benefit_10yr)})
-                </option>
-              );
-            })}
-          </select>
+          <div className="relative flex-1">
+            <select
+              value={selectedStructureName}
+              onChange={(e) => onSelect(e.target.value)}
+              className="w-full appearance-none px-4 pr-10 py-3 min-h-[44px] bg-surface border border-border rounded-xl text-sm font-medium text-foreground hover:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold/50 transition-all cursor-pointer"
+            >
+              {structures.map((structure) => {
+                const isOpt = structure.name === optimalStructureName;
+                return (
+                  <option key={structure.name} value={structure.name}>
+                    {structure.name} {isOpt ? '*' : ''} ({formatBenefit(structure.net_benefit_10yr)})
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          </div>
         </div>
+
+        {/* Gold accent line */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
 
         {/* Selected structure context */}
         {selectedStructure && (
           <motion.div
             key={selectedStructureName}
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
           >
             {/* Badge row */}
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-3 mb-5 flex-wrap">
               {isOptimal && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">
+                <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80 inline-flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3" />
                   RECOMMENDED
                 </span>
               )}
               {!isViable && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500/10 text-red-500 text-[10px] font-bold rounded-full border border-red-500/20">
+                <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-red-500/20 text-red-500/80 inline-flex items-center gap-1.5">
                   <AlertTriangle className="w-3 h-3" />
                   NOT VIABLE
                 </span>
               )}
-              <span className={`text-xs font-bold font-mono ${benefitPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+              <span className={`text-base font-medium tabular-nums ${benefitPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
                 {formatBenefit(selectedStructure.net_benefit_10yr)} 10yr
               </span>
-              <span className="text-[10px] text-muted-foreground">•</span>
-              <span className="text-[10px] text-muted-foreground">{selectedStructure.type.replace(/_/g, ' ')}</span>
+              <span className="text-muted-foreground/20">&middot;</span>
+              <span className="text-xs text-muted-foreground/60 font-normal">{selectedStructure.type.replace(/_/g, ' ')}</span>
             </div>
 
             {/* Tax rates grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Rental Tax</p>
-                <p className="text-sm font-bold text-foreground font-mono">{(selectedStructure.rental_income_rate ?? 0).toFixed(1)}%</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">CGT</p>
-                <p className="text-sm font-bold text-foreground font-mono">{(selectedStructure.capital_gains_rate ?? 0).toFixed(1)}%</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Estate</p>
-                <p className="text-sm font-bold text-foreground font-mono">{(selectedStructure.estate_tax_rate ?? 0).toFixed(1)}%</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Setup</p>
-                <p className="text-sm font-bold text-foreground font-mono">{formatCurrency(selectedStructure.setup_cost ?? 0)}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Annual</p>
-                <p className="text-sm font-bold text-foreground font-mono">{formatCurrency(selectedStructure.annual_cost ?? 0)}</p>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {[
+                { label: 'Rental Tax', value: `${(selectedStructure.rental_income_rate ?? 0).toFixed(1)}%` },
+                { label: 'CGT', value: `${(selectedStructure.capital_gains_rate ?? 0).toFixed(1)}%` },
+                { label: 'Estate', value: `${(selectedStructure.estate_tax_rate ?? 0).toFixed(1)}%` },
+                { label: 'Setup', value: formatCurrency(selectedStructure.setup_cost ?? 0) },
+                { label: 'Annual', value: formatCurrency(selectedStructure.annual_cost ?? 0) },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl border border-border/20 bg-card/50 p-3 text-center">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{item.label}</p>
+                  <p className="text-base font-medium tabular-nums text-foreground">{item.value}</p>
+                </div>
+              ))}
             </div>
 
             {/* Warning (top 1) */}
             {selectedStructure.warnings && selectedStructure.warnings.length > 0 && (
-              <div className="mt-3 flex items-start gap-2 bg-amber-500/5 border border-amber-500/15 rounded-lg px-3 py-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground">{selectedStructure.warnings[0]}</p>
+              <div className="mt-5 flex items-start gap-3 rounded-xl border border-gold/15 bg-gold/[0.02] px-4 py-3">
+                <AlertTriangle className="w-3.5 h-3.5 text-gold/70 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground/60 font-normal">{selectedStructure.warnings[0]}</p>
               </div>
             )}
           </motion.div>

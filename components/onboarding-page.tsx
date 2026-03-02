@@ -71,7 +71,7 @@ export function OnboardingPage({
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)
   }
@@ -102,8 +102,8 @@ export function OnboardingPage({
       city: "Edit This Data",
       country: "Edit This Data",
       bio: "Edit This Data",
-      industries: selectedInterests.includes("Other") && otherInterest 
-        ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
+      industries: selectedInterests.includes("Other") && otherInterest
+        ? [...selectedInterests.filter(i => i !== "Other"), otherInterest]
         : selectedInterests,
       company: "Edit This Data",
       phone_number: "Edit This Data",
@@ -119,30 +119,30 @@ export function OnboardingPage({
         setError("Please fill in all required fields (email, password, first name)");
         return;
       }
-      
+
       // Password validation - at least 8 chars with 1 uppercase, 1 lowercase, 1 number
       if (password.length < 8) {
         setError("Password must be at least 8 characters");
         return;
       }
-      
+
       if (!/[A-Z]/.test(password)) {
         setError("Password must contain at least one uppercase letter");
         return;
       }
-      
+
       if (!/[a-z]/.test(password)) {
         setError("Password must contain at least one lowercase letter");
         return;
       }
-      
+
       if (!/[0-9]/.test(password)) {
         setError("Password must contain at least one number");
         return;
       }
-      
+
       // Send data to the FastAPI backend using secure API
-      
+
       const data = await secureApi.post('/api/users/profile', {
         email,
         password,
@@ -151,8 +151,8 @@ export function OnboardingPage({
         city: "Edit This Data",
         country: "Edit This Data",
         bio: "Edit This Data",
-        industries: selectedInterests.includes("Other") && otherInterest 
-          ? [...selectedInterests.filter(i => i !== "Other"), otherInterest] 
+        industries: selectedInterests.includes("Other") && otherInterest
+          ? [...selectedInterests.filter(i => i !== "Other"), otherInterest]
           : selectedInterests,
         phone_number: "Edit This Data",
         office_address: "Edit This Data",
@@ -168,7 +168,7 @@ export function OnboardingPage({
         },
         linkedin: "Edit This Data"
       });
-      
+
 
       if (data.status === "success" && data.user_id) {
         onComplete({
@@ -193,11 +193,10 @@ export function OnboardingPage({
           type="text"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
-            theme === "dark"
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
+            } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -209,11 +208,10 @@ export function OnboardingPage({
           type="text"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
-            theme === "dark"
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
+            } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -225,11 +223,10 @@ export function OnboardingPage({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
-            theme === "dark"
+          className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${theme === "dark"
               ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
               : "bg-white text-[#212121] border-[#DDD]"
-          } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
+            } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)]`}
           required
         />
       </div>
@@ -242,11 +239,10 @@ export function OnboardingPage({
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
-              theme === "dark"
+            className={`w-full p-3 rounded-3xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${theme === "dark"
                 ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                 : "bg-white text-[#212121] border-[#DDD]"
-            } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)] pr-10`}
+              } focus:outline-none focus:ring-2 focus:ring-[#059669] transition-all focus:shadow-[0_4px_10px_rgba(5,150,105,0.25)] pr-10`}
             required
           />
           <button
@@ -295,11 +291,10 @@ export function OnboardingPage({
               </label>
               {interest === "Other" && selectedInterests.includes("Other") && (
                 <Input
-                  className={`ml-3 p-2 w-32 text-sm rounded-xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${
-                    theme === "dark"
+                  className={`ml-3 p-2 w-32 text-sm rounded-xl font-body shadow-[0_2px_6px_rgba(0,0,0,0.1)] ${theme === "dark"
                       ? "bg-[#1A1A1A] text-[#E0E0E0] border-[#333]"
                       : "bg-white text-[#212121] border-[#DDD]"
-                  } focus:outline-none focus:ring-1 focus:ring-[#059669]`}
+                    } focus:outline-none focus:ring-1 focus:ring-[#059669]`}
                   placeholder="Please specify"
                   value={otherInterest}
                   onChange={(e) => setOtherInterest(e.target.value)}
@@ -361,32 +356,30 @@ export function OnboardingPage({
         url="https://hnwichronicles.com/signup" // Replace with actual URL
       />
       <div
-        className={`min-h-screen flex flex-col transition-colors duration-300 ${
-          theme === "dark" ? "bg-[#121212]" : "bg-[#F5F5F5]"
-        }`}
+        className={`min-h-screen flex flex-col transition-colors duration-300 ${theme === "dark" ? "bg-[#121212]" : "bg-[#F5F5F5]"
+          }`}
       >
         <ParticlesBackground />
-        
+
         <div className="fixed top-4 right-4 z-50">
           <ThemeToggle />
         </div>
-        
+
         <div className="fixed top-4 left-4 z-50">
           <Button
             variant="ghost"
             onClick={handleBack}
             type="button"
-            className={`text-sm rounded-full shadow-[0_4px_8px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 ${
-              theme === "dark"
+            className={`text-sm rounded-full shadow-[0_4px_8px_rgba(0,0,0,0.1)] hover:shadow-[0_6px_12px_rgba(0,0,0,0.15)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0.5 ${theme === "dark"
                 ? "text-[#BBDEFB] hover:text-white hover:bg-[#1A1A1A]"
                 : "text-[#424242] hover:text-[#212121] hover:bg-[#E0E0E0]"
-            }`}
+              }`}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
         </div>
-        
+
         <main className="flex-grow flex items-center justify-center p-4 relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
@@ -395,11 +388,10 @@ export function OnboardingPage({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
               transition={{ duration: 0.5 }}
-              className={`max-w-md w-full z-10 rounded-3xl p-8 backdrop-blur-sm ${
-                theme === "dark"
+              className={`max-w-md w-full z-10 rounded-3xl p-8 backdrop-blur-sm ${theme === "dark"
                   ? "bg-[#121212]/80 shadow-[0_15px_35px_rgba(156,163,175,0.3)]"
                   : "bg-[#F5F5F5]/80 shadow-[0_15px_35px_rgba(75,85,99,0.3)]"
-              }`}
+                }`}
               style={{
                 boxShadow:
                   theme === "dark"
@@ -408,13 +400,11 @@ export function OnboardingPage({
               }}
             >
               {slides[currentSlide].title && (
-                <Heading2 
-                  className={`text-3xl font-bold font-heading mb-4 text-center ${
-                    theme === "dark" ? "text-white" : "text-black"
-                  } ${
-                    slides[currentSlide].title === "Be one with the HNWI Ecosystem" ? 
-                    "relative pb-3 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:transform after:-translate-x-1/2 after:w-24 after:h-1 after:bg-gradient-to-r after:from-[#695d7e] after:to-[#7f6e6b] after:rounded-full" : ""
-                  }`}
+                <Heading2
+                  className={`text-3xl font-bold font-heading mb-4 text-center ${theme === "dark" ? "text-white" : "text-black"
+                    } ${slides[currentSlide].title === "Be one with the HNWI Ecosystem" ?
+                      "relative pb-3 after:content-[''] after:absolute after:bottom-0 after:left-1/2 after:transform after:-translate-x-1/2 after:w-24 after:h-1 after:bg-gradient-to-r after:from-[#695d7e] after:to-[#7f6e6b] after:rounded-full" : ""
+                    }`}
                 >
                   {slides[currentSlide].title}
                 </Heading2>
@@ -437,37 +427,36 @@ export function OnboardingPage({
                   {slides[currentSlide].sections.map((section, index) => {
                     // Get the icon component based on the icon name
                     let IconComponent;
-                    switch(section.icon) {
+                    switch (section.icon) {
                       case 'Shield': IconComponent = Shield; break;
                       case 'Globe': IconComponent = Globe; break;
                       case 'Users': IconComponent = Users; break;
                       default: IconComponent = Shield;
                     }
-                    
+
                     return (
-                      <motion.div 
+                      <motion.div
                         key={index}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.2 }}
-                        className={`p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-102 hover:shadow-lg ${
-                          theme === "dark" ? "bg-opacity-20 bg-white/5" : "bg-opacity-20 bg-black/5"
-                        }`}
+                        className={`p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-102 hover:shadow-lg ${theme === "dark" ? "bg-opacity-20 bg-white/5" : "bg-opacity-20 bg-black/5"
+                          }`}
                         style={{
                           borderLeft: `4px solid ${section.color}`,
                         }}
                       >
                         <div className="flex items-start space-x-3">
-                          <motion.div 
+                          <motion.div
                             className="p-2 rounded-full"
-                            style={{ 
+                            style={{
                               backgroundColor: theme === "dark" ? `${section.color}40` : `${section.color}30`,
-                              color: section.color 
+                              color: section.color
                             }}
                             whileHover={{ scale: 1.1 }}
-                            animate={{ 
+                            animate={{
                               scale: [1, 1.05, 1],
-                              opacity: [1, 0.9, 1] 
+                              opacity: [1, 0.9, 1]
                             }}
                             transition={{
                               duration: 3,
@@ -516,8 +505,8 @@ export function OnboardingPage({
               )}
 
               {currentSlide < slides.length - 1 && !slides[currentSlide].form && (
-                <Button 
-                  onClick={handleNext} 
+                <Button
+                  onClick={handleNext}
                   className="gradient-button w-full h-12 text-lg rounded-full mt-6 shadow-[0_8px_20px_rgba(75,85,99,0.5)] hover:shadow-[0_12px_25px_rgba(75,85,99,0.7)] dark:shadow-[0_8px_20px_rgba(156,163,175,0.5)] dark:hover:shadow-[0_12px_25px_rgba(156,163,175,0.7)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0.5"
                 >
                   Next
@@ -527,11 +516,10 @@ export function OnboardingPage({
           </AnimatePresence>
         </main>
         <footer
-          className={`text-[10px] leading-tight text-center py-4 font-body ${
-            theme === "dark" ? "text-[#666]" : "text-[#999]"
-          }`}
+          className={`text-[10px] leading-tight text-center py-4 font-body ${theme === "dark" ? "text-[#666]" : "text-[#999]"
+            }`}
         >
-          <p>© 2025 All Rights Reserved. HNWI Chronicles.</p>
+          <p>© 2026 All Rights Reserved. HNWI Chronicles.</p>
         </footer>
       </div>
     </>

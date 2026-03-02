@@ -215,9 +215,34 @@ export function SidebarNavigation({
     return () => clearInterval(interval)
   }, [])
 
-  // All navigation items with business mode flags - Reordered: Ask Rohith below HNWI World, Simulation before Profile
+  // All navigation items - Primary 4 first, rest in expandable section
   const allNavItems = [
+    // PRIMARY NAVIGATION (Always visible)
     { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
+    {
+      name: "Ask Rohith",
+      icon: Bot,
+      route: "ask-rohith",
+      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
+      isNew: true,
+      businessOnly: false
+    },
+    {
+      name: "War Room",
+      icon: Shield,
+      route: "war-room",
+      description: "Strategic intelligence audit. Expose allocation blind spots and build tactical frameworks.",
+      isNew: true,
+      businessOnly: false
+    },
+    {
+      name: "Crown Vault",
+      icon: Crown,
+      route: "crown-vault",
+      description: "Generational wealth architecture. Built for families that think in decades.",
+      businessOnly: false
+    },
+    // ADDITIONAL NAVIGATION (Show when expanded)
     {
       name: "Privé Exchange",
       icon: Gem,
@@ -232,21 +257,6 @@ export function SidebarNavigation({
       description: memberAnalytics ?
         `What ${memberAnalytics.active_members_24h} members are discussing privately` :
         "Private intelligence network",
-      businessOnly: false
-    },
-    {
-      name: "Ask Rohith",
-      icon: Bot,
-      route: "ask-rohith",
-      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
-      isNew: true,
-      businessOnly: false
-    },
-    {
-      name: "Crown Vault",
-      icon: Crown,
-      route: "crown-vault",
-      description: "Generational wealth architecture. Built for families that think in decades.",
       businessOnly: false
     },
     {
@@ -271,22 +281,6 @@ export function SidebarNavigation({
       isNew: true,
       businessOnly: false
     },
-    {
-      name: "Decision Memo",
-      icon: Shield,
-      route: "decision-memo",
-      description: "$1,000 stress test. Expose allocation blind spots before they cost you six figures.",
-      isNew: true,
-      businessOnly: false
-    },
-    // War Room - Hidden for now
-    // {
-    //   name: "War Room",
-    //   icon: Shield,
-    //   route: "war-room",
-    //   description: "Playbooks and strategies for entrepreneurs to effectively grow their business empires with HNWI Pattern Intelligence tactical frameworks.",
-    //   businessOnly: true
-    // },
     { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
   ]
 
@@ -303,22 +297,23 @@ export function SidebarNavigation({
   const mainNavItems = filteredNavItems.slice(0, 4)
   const additionalNavItems = filteredNavItems.slice(4)
 
-  // Mobile bottom nav items - Updated order: Home, Privé Exchange, HNWI World
+  // Mobile bottom nav items - Primary 4 items
   // Mobile items are always shown but disabled based on auth status
   const mobileNavItems = [
     { name: "Home", icon: Brain, route: "dashboard" },
-    { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
-    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
+    { name: "Ask Rohith", icon: Bot, route: "ask-rohith", isNew: true },
+    { name: "War Room", icon: Shield, route: "war-room", isNew: true },
+    { name: "Crown Vault", icon: Crown, route: "crown-vault" },
   ]
 
   // Additional menu items for three dots dropdown
   // Simulation is always shown - clicking it redirects to results if completed
   const moreMenuItems = [
-    { name: "Crown Vault", icon: Crown, route: "crown-vault" },
+    { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
+    { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
     { name: "Simulation", icon: ClipboardCheck, route: "assessment", isNew: true },
-    { name: "Decision Memo", icon: Shield, route: "decision-memo", isNew: true },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
@@ -336,6 +331,8 @@ export function SidebarNavigation({
       router.push("/hnwi-world") // HNWI World maps to hnwi-world
     } else if (route === "ask-rohith") {
       router.push("/ask-rohith")
+    } else if (route === "war-room") {
+      router.push("/war-room")
     } else if (route === "assessment") {
       // If user has completed assessment, redirect to results instead of landing page
       if (hasCompletedAssessment && completedSessionId) {
@@ -385,14 +382,13 @@ export function SidebarNavigation({
         }}
       >
         {/* Minimal placeholder during SSR */}
-        <div className="flex items-center justify-center px-4 py-4 border-b border-border bg-background flex-shrink-0">
+        <div className="flex items-center justify-center px-4 py-3 border-b border-border/30 bg-background flex-shrink-0">
           <Image
             src="/logo.png"
             alt="HNWI Chronicles Globe"
             width={32}
             height={32}
             className="w-8 h-8"
-            style={{ width: 'auto', height: 'auto' }}
             priority
           />
         </div>
@@ -426,21 +422,21 @@ export function SidebarNavigation({
         }}
       >
         {/* Logo at top */}
-        <div 
-          className="flex items-center justify-center px-4 py-4 border-b border-border bg-background flex-shrink-0 cursor-pointer"
+        <div
+          className="flex items-center justify-center px-4 py-3 border-b border-border/30 bg-background flex-shrink-0 cursor-pointer"
           onClick={() => handleNavigate("dashboard")}
         >
           <motion.div
-            className={cn(isCollapsed ? "mr-0" : "mr-3")}
-            animate={{ 
+            className={cn(isCollapsed ? "mr-0" : "mr-2.5")}
+            animate={{
               rotate: 360,
               scale: showHeartbeat ? [1, 1.2, 1, 1.15, 1] : 1
             }}
-            transition={{ 
-              rotate: { 
+            transition={{
+              rotate: {
                 duration: 10,
-                repeat: Number.POSITIVE_INFINITY, 
-                ease: "linear" 
+                repeat: Number.POSITIVE_INFINITY,
+                ease: "linear"
               },
               scale: showHeartbeat ? {
                 duration: 1,
@@ -457,12 +453,11 @@ export function SidebarNavigation({
               width={32}
               height={32}
               className="w-8 h-8"
-              style={{ width: 'auto', height: 'auto' }}
               priority
             />
           </motion.div>
           {!isCollapsed && (
-            <h1 className="text-sm font-bold font-heading leading-tight break-words max-w-full">
+            <h1 className="text-base font-bold font-heading leading-tight break-words max-w-full tracking-wide">
               <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>HNWI</span>{" "}
               <span className={`${theme === "dark" ? "text-[#C0C0C0]" : "text-[#888888]"}`}>CHRONICLES</span>
             </h1>
@@ -485,7 +480,7 @@ export function SidebarNavigation({
               </Button>
             </div>
           )}
-          
+
           {/* Toggle button when expanded */}
           {!isCollapsed && (
             <div className="p-3 flex-shrink-0">
@@ -499,7 +494,7 @@ export function SidebarNavigation({
               </Button>
             </div>
           )}
-          
+
           {/* Navigation items */}
           <nav className="p-3 pt-0 flex-1" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
             <div className="space-y-2">
@@ -517,71 +512,71 @@ export function SidebarNavigation({
                   const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
                   const actuallyDisabled = isItemDisabled && !isAuditPage;
                   return (
-                  <div key={item.route} className="relative">
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
-                        isCollapsed && "justify-center px-0 gap-0",
-                        visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
-                        isActive && !isAuditPage
-                          ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      )}
-                      onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
-                      disabled={actuallyDisabled}
-                    >
-                      <item.icon className={cn(
-                        "h-5 w-5 flex-shrink-0",
-                        isActive ? "text-primary" : ""
-                      )} />
-                      {!isCollapsed && (
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "text-sm font-semibold tracking-wide",
-                              isActive ? "text-primary" : ""
-                            )}>{item.name}</span>
-                            {(item.beta || item.isNew) && (
-                              <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                {item.isNew ? "New" : "Beta"}
-                              </span>
+                    <div key={item.route} className="relative">
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
+                          isCollapsed && "justify-center px-0 gap-0",
+                          visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                          isActive && !isAuditPage
+                            ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                        onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                        disabled={actuallyDisabled}
+                      >
+                        <item.icon className={cn(
+                          "h-5 w-5 flex-shrink-0",
+                          isActive ? "text-primary" : ""
+                        )} />
+                        {!isCollapsed && (
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "text-sm font-semibold tracking-wide",
+                                isActive ? "text-primary" : ""
+                              )}>{item.name}</span>
+                              {('beta' in item && item.beta || 'isNew' in item && item.isNew) && (
+                                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                  {'isNew' in item && item.isNew ? "New" : "Beta"}
+                                </span>
+                              )}
+                            </div>
+                            {item.description && (
+                              <Tooltip delayDuration={300}>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="right"
+                                  className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
+                                  style={{
+                                    zIndex: 999999,
+                                  }}
+                                  sideOffset={15}
+                                  avoidCollisions={true}
+                                >
+                                  <div className="max-w-[280px]">
+                                    <p className="line-clamp-4 break-words text-popover-foreground">
+                                      {item.description}
+                                    </p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
-                          {item.description && (
-                            <Tooltip delayDuration={300}>
-                              <TooltipTrigger asChild>
-                                <div 
-                                  className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent 
-                                side="right" 
-                                className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
-                                style={{ 
-                                  zIndex: 999999,
-                                }}
-                                sideOffset={15}
-                                avoidCollisions={true}
-                              >
-                                <div className="max-w-[280px]">
-                                  <p className="line-clamp-4 break-words text-popover-foreground">
-                                    {item.description}
-                                  </p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      )}
-                    </Button>
-                  </div>
+                        )}
+                      </Button>
+                    </div>
                   );
                 })}
-                
+
                 {/* Additional navigation items - inline accordion */}
                 {isMoreExpanded && additionalNavItems.length > 0 && (
                   <div className="space-y-2 mt-2">
@@ -595,71 +590,71 @@ export function SidebarNavigation({
                       const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
                       const actuallyDisabled = isItemDisabled && !isAuditPage;
                       return (
-                      <div key={item.route} className="relative">
-                        <Button
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
-                            isCollapsed && "justify-center px-0 gap-0",
-                            visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
-                            isActive && !isAuditPage
-                              ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                          )}
-                          onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
-                          disabled={actuallyDisabled}
-                        >
-                          <item.icon className={cn(
-                            "h-5 w-5 flex-shrink-0",
-                            isActive ? "text-primary" : ""
-                          )} />
-                          {!isCollapsed && (
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex items-center gap-2">
-                                <span className={cn(
-                                  "text-sm font-semibold tracking-wide",
-                                  isActive ? "text-primary" : ""
-                                )}>{item.name}</span>
-                                {(item.beta || item.isNew) && (
-                                  <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                                    {item.isNew ? "New" : "Beta"}
-                                  </span>
+                        <div key={item.route} className="relative">
+                          <Button
+                            variant="ghost"
+                            className={cn(
+                              "w-full justify-start gap-4 h-12 px-4 font-medium rounded-lg transition-all duration-200",
+                              isCollapsed && "justify-center px-0 gap-0",
+                              visuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
+                              isActive && !isAuditPage
+                                ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                            disabled={actuallyDisabled}
+                          >
+                            <item.icon className={cn(
+                              "h-5 w-5 flex-shrink-0",
+                              isActive ? "text-primary" : ""
+                            )} />
+                            {!isCollapsed && (
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-2">
+                                  <span className={cn(
+                                    "text-sm font-semibold tracking-wide",
+                                    isActive ? "text-primary" : ""
+                                  )}>{item.name}</span>
+                                  {('beta' in item && item.beta || 'isNew' in item && item.isNew) && (
+                                    <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                                      {'isNew' in item && item.isNew ? "New" : "Beta"}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.description && (
+                                  <Tooltip delayDuration={300}>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                        className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="right"
+                                      className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
+                                      style={{
+                                        zIndex: 999999,
+                                      }}
+                                      sideOffset={15}
+                                      avoidCollisions={true}
+                                    >
+                                      <div className="max-w-[280px]">
+                                        <p className="line-clamp-4 break-words text-popover-foreground">
+                                          {item.description}
+                                        </p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )}
                               </div>
-                              {item.description && (
-                                <Tooltip delayDuration={300}>
-                                  <TooltipTrigger asChild>
-                                    <div 
-                                      className="ml-2 p-1 hover:bg-muted-foreground/10 rounded-full transition-colors duration-200"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent 
-                                    side="right" 
-                                    className="max-w-xs p-4 text-xs leading-relaxed bg-popover border shadow-2xl"
-                                    style={{ 
-                                      zIndex: 999999,
-                                    }}
-                                    sideOffset={15}
-                                    avoidCollisions={true}
-                                  >
-                                    <div className="max-w-[280px]">
-                                      <p className="line-clamp-4 break-words text-popover-foreground">
-                                        {item.description}
-                                      </p>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                          )}
-                        </Button>
-                      </div>
+                            )}
+                          </Button>
+                        </div>
                       );
                     })}
-                    
+
                     {/* Collapse arrow at bottom of expanded items */}
                     <div className="relative">
                       <Button
@@ -683,7 +678,7 @@ export function SidebarNavigation({
                     </div>
                   </div>
                 )}
-                
+
                 {/* More expand button - only show when not expanded and there are additional items */}
                 {!isMoreExpanded && additionalNavItems.length > 0 && (
                   <div className="relative">
@@ -726,7 +721,7 @@ export function SidebarNavigation({
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Splash screen footer */}
                 <div className="space-y-2">
                   <div className="leading-relaxed text-[9px] break-words">
@@ -735,7 +730,7 @@ export function SidebarNavigation({
                     Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
                   </div>
                   <div className="text-muted-foreground/80 font-medium text-[8px] leading-tight break-words">
-                    © 2025 All Rights Reserved.
+                    © 2026 All Rights Reserved.
                     <br />
                     HNWI Chronicles.
                   </div>
@@ -779,7 +774,7 @@ export function SidebarNavigation({
                 onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
                 disabled={mobileActuallyDisabled}
               >
-                {item.isNew && (
+                {'isNew' in item && item.isNew && (
                   <span className="absolute -top-1 -right-1 text-[8px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold z-10">
                     NEW
                   </span>
@@ -794,7 +789,10 @@ export function SidebarNavigation({
                   isActive && 'text-primary',
                   theme === 'dark' && !isActive && "group-hover:text-white"
                 )}>
-                  {item.name === "Ask Rohith" ? "Rohith" : item.name === "HNWI World" ? "HNWI" : item.name}
+                  {item.name === "Ask Rohith" ? "Rohith" :
+                    item.name === "War Room" ? "War" :
+                      item.name === "Crown Vault" ? "Vault" :
+                        item.name}
                 </span>
               </Button>
             )
@@ -853,7 +851,7 @@ export function SidebarNavigation({
                       isActive && 'text-primary',
                       theme === 'light' && "group-hover:text-white"
                     )}>{item.name}</span>
-                    {item.isNew && (
+                    {'isNew' in item && item.isNew && (
                       <span className="ml-auto text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
                         New
                       </span>
@@ -899,11 +897,10 @@ export function SidebarNavigation({
                   window.open("https://www.hnwichronicles.com/clearance", "_blank")
                   setShowRequestAccess(false)
                 }}
-                className={`flex-1 h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
-                  theme === "dark"
+                className={`flex-1 h-12 text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${theme === "dark"
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-black text-white hover:bg-black/90"
-                }`}
+                  }`}
               >
                 Request Access
               </Button>

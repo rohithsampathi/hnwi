@@ -200,6 +200,7 @@ export function MapPage() {
         onTogglePriveOpportunities={() => setShowPriveOpportunities(prev => !prev)}
         onToggleHNWIPatterns={() => setShowHNWIPatterns(prev => !prev)}
         onNavigate={handleNavigate}
+        showCrisisOverlay={true}
       />
     </div>
   )

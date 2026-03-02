@@ -86,10 +86,10 @@ export function Header({ showBackButton = false, onNavigate, children }: HeaderP
               <Image
                 src="/logo.png"
                 alt="HNWI Chronicles Globe"
-                width={24}
-                height={24}
+                width={32}
+                height={32}
                 className="w-auto h-auto"
-                style={{ width: '24px', height: '24px' }}
+                style={{ width: '32px', height: '32px' }}
                 priority
               />
             </motion.div>

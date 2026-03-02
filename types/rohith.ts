@@ -1,6 +1,26 @@
 // types/rohith.ts
 // TypeScript interfaces for Ask Rohith feature
 
+// Source document types from backend
+export interface DevelopmentSource {
+  type: "development"
+  dev_id: string
+  title: string
+  jurisdiction: string
+  date: string
+}
+
+export interface KGIntelligenceSource {
+  type: "kg_intelligence"
+  category: string
+  jurisdiction: string
+  label: string
+  intelligence?: string  // Rich structured data from backend (tax rates, migration metrics, etc.)
+  source?: string  // Data provenance (e.g., "KGv3 verified")
+}
+
+export type SourceDocument = DevelopmentSource | KGIntelligenceSource
+
 export interface UserPortfolioContext {
   userId: string
   portfolio: {
@@ -22,6 +42,19 @@ export interface UserPortfolioContext {
   }
 }
 
+// Visualization command from JARVIS backend
+export interface VisualizationCommand {
+  id: string
+  type: string
+  position: 'center' | 'left' | 'right' | 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  size: 'small' | 'medium' | 'large' | 'full'
+  animation: 'materialize' | 'slide' | 'fade' | 'fly_to' | 'zoom'
+  duration_ms: number
+  priority: number
+  data: any
+  interactive: boolean
+}
+
 export interface Message {
   id: string
   role: "user" | "assistant"
@@ -29,9 +62,11 @@ export interface Message {
   timestamp: Date
   messageId?: string // Backend message ID for feedback submission
   feedbackSubmitted?: 'positive' | 'negative' | null // Track feedback state
+  visualizations?: VisualizationCommand[] // JARVIS visualization commands attached to this message
   context?: {
     portfolioSnapshot?: Partial<UserPortfolioContext>
-    hnwiKnowledgeSources?: string[]
+    hnwiKnowledgeSources?: string[] // Legacy field - kept for backwards compatibility
+    sourceDocuments?: SourceDocument[] // New field from backend (Feb 2026+)
     responseTime?: number
   }
 }
@@ -67,6 +102,8 @@ export interface ConversationResponse {
   response: string
   conversationId: string
   message_id?: string // Backend message ID for feedback
+  mode?: "jarvis" | "classic" // Response mode from backend (defaults to jarvis as of Feb 2026)
+  source_documents?: SourceDocument[] // New field (Feb 2026+) - replaces provenance.source_nodes
   authenticity_guarantee: boolean
   response_time: number
   provenance: {
@@ -191,4 +228,31 @@ export interface QuickInsightsProps {
     topPerformer?: string
   }
   onInsightClick?: (insight: QuickInsight) => void
+}
+
+// JARVIS V5 Response Types (Feb 2026 - Now Default)
+export interface JarvisNarration {
+  text: string
+  delivery: "word_by_word" | "sentence_by_sentence" | "instant"
+}
+
+export interface JarvisCitation {
+  source: string
+  type: string
+  confidence?: number
+}
+
+export interface JarvisResponse {
+  conversationId: string
+  message_id?: string
+  mode: "jarvis" | "classic" // Backend now returns mode indicator
+  narration: JarvisNarration
+  visualizations: any[] // VisualizationCommand[] - avoiding circular dependency
+  predictive_prompts: string[]
+  citations: JarvisCitation[] // Legacy field - kept for backwards compatibility
+  source_documents?: SourceDocument[] // New field (Feb 2026+) - development + KG intelligence sources
+  tier: "instant" | "fast" | "deep"
+  processing_time_ms: number
+  confidence_score: number
+  intelligence_sources?: string[]
 }

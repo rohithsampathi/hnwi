@@ -94,7 +94,8 @@ export function usePatternAudit() {
 
   const getSession = useCallback(async (intakeId: string, authToken?: string | null): Promise<AuditSession> => {
     const response = await fetch(`${API_BASE}/session/${intakeId}`, {
-      headers: buildHeaders(authToken)
+      headers: buildHeaders(authToken),
+      credentials: 'include'
     });
 
     if (response.status === 401) {
@@ -127,7 +128,8 @@ export function usePatternAudit() {
   ): Promise<PreviewArtifact> => {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
-      headers: buildHeaders(authToken)
+      headers: buildHeaders(authToken),
+      credentials: 'include'
     });
 
     if (response.status === 401) {
@@ -383,7 +385,8 @@ export function usePatternAudit() {
   ): Promise<ICArtifact> => {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
-      headers: buildHeaders(authToken)
+      headers: buildHeaders(authToken),
+      credentials: 'include'
     });
 
     if (response.status === 401) {
@@ -408,9 +411,9 @@ export function usePatternAudit() {
   // Client-side PDF generation - each section on new page
   // ==========================================================================
 
-  const exportPDF = useCallback(async (artifact: ICArtifact) => {
+  const exportPDF = useCallback(async (artifact: ICArtifact, theme?: 'light' | 'dark') => {
     // Use institutional-grade PDF export for $2,500 audits
-    return await exportInstitutionalPDF(artifact as any);
+    return await exportInstitutionalPDF(artifact as any, theme);
   }, []);
 
   // Old PDF generation code removed - now using institutional-grade export

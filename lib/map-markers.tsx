@@ -1,9 +1,24 @@
 // lib/map-markers.tsx
 // Marker creation utilities for the interactive world map
 
-import L from "leaflet"
+"use client"
+
 import type { City } from "@/components/interactive-world-map"
 import { getCategoryIcon } from "@/lib/map-utils"
+
+// Lazy-load Leaflet only on client-side to avoid SSR issues
+let _L: typeof import("leaflet") | null = null
+
+function getL() {
+  if (!_L && typeof window !== "undefined") {
+    // Synchronously require Leaflet on the client
+    _L = require("leaflet")
+  }
+  if (!_L) {
+    throw new Error("Leaflet not loaded yet — only call from client components")
+  }
+  return _L
+}
 
 /**
  * Get small marker icon based on category (for map dots)
@@ -294,6 +309,40 @@ function getSmallMarkerIcon(city: City, isCrownVault: boolean, isPriveExchange: 
 }
 
 /**
+ * Get small marker icon for audit type (Decision Memo arcs on War Room / Dashboard)
+ * Consistent 10x10 SVG, white fill, centered inside 16px gold dot.
+ * Uses the same styling conventions as getSmallMarkerIcon above.
+ */
+export function getAuditMarkerIcon(type: string): string {
+  const pos = 'style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"'
+  const attrs = `xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${pos}`
+  const t = (type || '').toLowerCase().replace(/_/g, ' ')
+
+  // Real estate / property / land — house icon
+  if (t.includes('real estate') || t.includes('property') || t.includes('land')) {
+    return `<svg ${attrs}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`
+  }
+  // Business / company / corporate — building icon
+  if (t.includes('business') || t.includes('company') || t.includes('corporate')) {
+    return `<svg ${attrs}><rect x="3" y="1" width="18" height="22" rx="1"/><rect x="7" y="5" width="3" height="3"/><rect x="14" y="5" width="3" height="3"/><rect x="7" y="11" width="3" height="3"/><rect x="14" y="11" width="3" height="3"/></svg>`
+  }
+  // Investment / portfolio / fund — layers icon
+  if (t.includes('investment') || t.includes('portfolio') || t.includes('fund')) {
+    return `<svg ${attrs}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`
+  }
+  // Trust / estate planning / succession — shield icon
+  if (t.includes('trust') || t.includes('estate plan') || t.includes('succession')) {
+    return `<svg ${attrs}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>`
+  }
+  // Relocation / migration / visa — globe icon
+  if (t.includes('relocation') || t.includes('migration') || t.includes('residency') || t.includes('visa')) {
+    return `<svg ${attrs}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`
+  }
+  // Default — document icon
+  return `<svg ${attrs}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>`
+}
+
+/**
  * Create a custom marker icon
  */
 export function createCustomIcon(
@@ -302,7 +351,8 @@ export function createCustomIcon(
   theme: string,
   getColorFromValue: (value: string | undefined) => string,
   openPopupIndex: number | null
-): L.DivIcon {
+) {
+  const L = getL()
   const color = getColorFromValue(city.value || city.population)
 
   // Show icon ONLY when popup is open for this specific marker
@@ -403,7 +453,8 @@ export function createCustomIcon(
 /**
  * Create a cluster icon
  */
-export function createClusterIcon(count: number, primaryType: string, theme: string): L.DivIcon {
+export function createClusterIcon(count: number, primaryType: string, theme: string) {
+  const L = getL()
   const borderColor = theme === "dark" ? "#ddd" : "#333"
   const bgColor = theme === "dark" ? "hsl(45, 50%, 45%)" : "hsl(30, 55%, 50%)"
   const textColor = theme === "dark" ? "#fff" : "#fff"

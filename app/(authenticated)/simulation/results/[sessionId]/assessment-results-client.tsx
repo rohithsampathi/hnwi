@@ -742,6 +742,7 @@ export default function AssessmentResultsClient() {
                         useAbsolutePositioning={true}
                         onCitationClick={openCitation}
                         citationMap={citationMap}
+                        showCrisisOverlay={true}
                       />
                     );
                   })()}

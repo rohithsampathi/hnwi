@@ -1,370 +1,26 @@
 /**
- * WORLD-CLASS TAX JURISDICTION ANALYSIS
+ * WORLD-CLASS TAX JURISDICTION ANALYSIS — Commandment III
  * Standards: Bridgewater / McKinsey / Goldman Sachs institutional quality
  *
- * Design Philosophy:
- * - Premium institutional aesthetic with refined elegance
- * - Clear data hierarchy for rapid comprehension
- * - Professional table design with proper typography
- * - Impactful cumulative savings display
- * - Visual rate comparison bars
- * - Strategic gold accents for premium feel
+ * Rebuilt with SVG primitives:
+ * - Hero dollar savings number (48pt, verdict-colored)
+ * - HorizontalBar SVGs for each tax type
+ * - FlowArrow SVG for corridor visualization
+ * - GradientAccentBar header
+ * - GradientDivider section separators
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from '@react-pdf/renderer';
-import { colors, cleanJurisdiction } from '../pdf-styles';
+import { View, Text } from '@react-pdf/renderer';
+import { colors, cleanJurisdiction, darkTheme } from '../pdf-styles';
 import { TaxRates } from '../pdf-types';
-
-const styles = StyleSheet.create({
-  section: {
-    marginBottom: 28,
-  },
-
-  // === PREMIUM SECTION HEADER ===
-  sectionHeader: {
-    marginBottom: 24,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
-  },
-  accentLine: {
-    width: 32,
-    height: 4,
-    backgroundColor: colors.amber[500],
-    marginBottom: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  sectionTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 15,
-    color: colors.gray[900],
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  headerBadge: {
-    backgroundColor: colors.gray[100],
-    borderWidth: 1,
-    borderColor: colors.gray[300],
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  headerBadgeText: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.gray[600],
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-
-  // === PREMIUM CUMULATIVE IMPACT HERO ===
-  impactHero: {
-    backgroundColor: colors.gray[50],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    marginBottom: 28,
-    padding: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  impactHeroAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    backgroundColor: colors.emerald[500],
-  },
-  impactHeroLabel: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.gray[500],
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  impactHeroValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  impactHeroValue: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 48,
-    letterSpacing: -1,
-    marginRight: 16,
-  },
-  impactHeroValuePositive: {
-    color: colors.emerald[600],
-  },
-  impactHeroValueNegative: {
-    color: colors.red[600],
-  },
-  impactHeroValueNeutral: {
-    color: colors.gray[500],
-  },
-  impactHeroDetails: {
-    alignItems: 'center',
-  },
-  impactHeroTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 14,
-    color: colors.gray[900],
-    marginBottom: 4,
-  },
-  impactHeroCorridor: {
-    fontFamily: 'Times-Roman',
-    fontSize: 10,
-    color: colors.gray[500],
-  },
-
-  // === CORRIDOR & SUMMARY ROW ===
-  summaryRow: {
-    flexDirection: 'row',
-    marginBottom: 28,
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-  },
-  summaryBox: {
-    flex: 1,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.gray[200],
-    marginRight: 20,
-    paddingLeft: 16,
-  },
-  summaryBoxHighlight: {
-    borderLeftColor: colors.amber[500],
-  },
-  summaryLabel: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 8.5,
-    color: colors.gray[500],
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  summaryValue: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 20,
-    color: colors.gray[900],
-    letterSpacing: -0.5,
-  },
-  summarySubtext: {
-    fontFamily: 'Times-Roman',
-    fontSize: 9,
-    color: colors.gray[500],
-    marginTop: 4,
-  },
-  corridorArrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  corridorJurisdiction: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 12,
-    color: colors.gray[800],
-    marginRight: 10,
-  },
-  corridorArrowIcon: {
-    fontFamily: 'Helvetica',
-    fontSize: 14,
-    color: colors.amber[500],
-    marginRight: 10,
-  },
-
-  // === PREMIUM TAX COMPARISON TABLE ===
-  table: {
-    width: '100%',
-    marginBottom: 28,
-    borderTopWidth: 3,
-    borderTopColor: colors.gray[900],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[300],
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.gray[900],
-    backgroundColor: colors.gray[50],
-  },
-  tableHeaderCell: {
-    flex: 1,
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
-    color: colors.gray[900],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 8,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-    alignItems: 'center',
-  },
-  tableRowAlt: {
-    backgroundColor: colors.gray[50],
-  },
-  tableCell: {
-    flex: 1,
-    fontFamily: 'Times-Roman',
-    fontSize: 10,
-    color: colors.gray[700],
-    paddingHorizontal: 8,
-  },
-  tableCellBold: {
-    fontFamily: 'Helvetica-Bold',
-    color: colors.gray[900],
-  },
-  tableCellValue: {
-    flex: 1,
-    fontFamily: 'Courier-Bold',
-    fontSize: 11,
-    textAlign: 'center',
-    color: colors.gray[800],
-    paddingHorizontal: 8,
-  },
-  tableCellValueHigher: {
-    color: colors.red[600],
-  },
-  tableCellValueLower: {
-    color: colors.emerald[600],
-  },
-  tableCellImpact: {
-    flex: 1,
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 11,
-    textAlign: 'right',
-    paddingHorizontal: 8,
-  },
-  positiveImpact: {
-    color: colors.emerald[600],
-  },
-  negativeImpact: {
-    color: colors.red[600],
-  },
-  neutralImpact: {
-    color: colors.gray[500],
-  },
-
-  // === PREMIUM STRUCTURE COMPARISON ===
-  structureRow: {
-    flexDirection: 'row',
-    marginBottom: 24,
-  },
-  structureCard: {
-    flex: 1,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderTopWidth: 3,
-    borderTopColor: colors.gray[300],
-    padding: 16,
-    marginRight: 20,
-  },
-  structureCardOptimized: {
-    borderTopColor: colors.amber[500],
-    backgroundColor: colors.amber[50],
-  },
-  structureHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-  },
-  structureDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.gray[400],
-    marginRight: 8,
-  },
-  structureDotOptimized: {
-    backgroundColor: colors.amber[500],
-  },
-  structureTitle: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 10,
-    color: colors.gray[900],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  structureItem: {
-    marginBottom: 12,
-  },
-  structureItemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  structureLabel: {
-    fontFamily: 'Times-Roman',
-    fontSize: 10,
-    color: colors.gray[600],
-  },
-  structureValue: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 11,
-    color: colors.gray[900],
-  },
-  structureValueOptimized: {
-    color: colors.emerald[600],
-  },
-  // Visual rate bar
-  rateBarContainer: {
-    height: 6,
-    backgroundColor: colors.gray[200],
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  rateBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  rateBarFillCurrent: {
-    backgroundColor: colors.red[400],
-  },
-  rateBarFillOptimized: {
-    backgroundColor: colors.emerald[500],
-  },
-
-  // === PREMIUM FOOTER ===
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-  },
-  footerDiamond: {
-    width: 6,
-    height: 6,
-    backgroundColor: colors.amber[500],
-    transform: 'rotate(45deg)',
-    marginHorizontal: 8,
-  },
-  footerText: {
-    fontFamily: 'Times-Roman',
-    fontSize: 8.5,
-    color: colors.gray[400],
-    letterSpacing: 0.5,
-  },
-});
+import { getVerdictTheme } from '../pdf-verdict-theme';
+import {
+  GradientAccentBar,
+  HorizontalBar,
+  FlowArrow,
+  GradientDivider,
+} from './svg';
 
 interface PdfTaxAnalysisProps {
   sourceJurisdiction?: string;
@@ -372,243 +28,204 @@ interface PdfTaxAnalysisProps {
   sourceTaxRates?: TaxRates;
   destinationTaxRates?: TaxRates;
   totalTaxBenefit?: string | number;
+  taxDifferential?: any;
+  showTaxSavings?: boolean;
 }
 
 export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
-  sourceJurisdiction,
-  destinationJurisdiction,
-  sourceTaxRates = {},
-  destinationTaxRates = {},
-  totalTaxBenefit,
+  sourceJurisdiction, destinationJurisdiction,
+  sourceTaxRates = {}, destinationTaxRates = {},
+  totalTaxBenefit, taxDifferential, showTaxSavings = true,
 }) => {
+  const microLabel = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase' as const, letterSpacing: 1.5 };
+  const headerBadge = { backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 10, paddingVertical: 4 };
+
+  const effectiveSourceRates = taxDifferential?.source || sourceTaxRates;
+  const effectiveDestRates = taxDifferential?.destination || destinationTaxRates;
+
   const taxTypes = [
-    { key: 'income_tax', altKey: null, label: 'Income Tax' },
-    { key: 'capital_gains', altKey: 'cgt', label: 'Capital Gains' },  // API returns 'cgt' sometimes
-    { key: 'estate_tax', altKey: null, label: 'Estate Tax' },
-    { key: 'wealth_tax', altKey: null, label: 'Wealth Tax' },
+    { key: 'income_tax', altKey: null as string | null, label: 'Income Tax' },
+    { key: 'capital_gains', altKey: 'cgt', label: 'Capital Gains' },
+    { key: 'estate_tax', altKey: null as string | null, label: 'Estate Tax' },
+    { key: 'wealth_tax', altKey: null as string | null, label: 'Wealth Tax' },
   ];
 
-  // Helper to get tax rate, checking both primary and alternative keys
   const getTaxRate = (rates: any, primaryKey: string, altKey: string | null): number | undefined => {
     const primary = rates?.[primaryKey];
     if (primary !== undefined && primary !== null) return primary;
-    if (altKey) {
-      const alt = rates?.[altKey];
-      if (alt !== undefined && alt !== null) return alt;
-    }
+    if (altKey) { const alt = rates?.[altKey]; if (alt !== undefined && alt !== null) return alt; }
     return undefined;
   };
 
-  const calculateImpact = (source: number | undefined, dest: number | undefined): { value: string; positive: boolean; neutral: boolean; diff: number } => {
-    const s = source ?? 0;
-    const d = dest ?? 0;
-    const diff = s - d;
+  const calculateImpact = (source: number | undefined, dest: number | undefined) => {
+    const s = source ?? 0; const d = dest ?? 0; const diff = s - d;
     if (diff === 0) return { value: '—', positive: false, neutral: true, diff: 0 };
-    return {
-      value: `${diff > 0 ? '+' : ''}${diff}%`,
-      positive: diff > 0,
-      neutral: false,
-      diff,
-    };
+    return { value: `${diff > 0 ? '+' : ''}${diff}%`, positive: diff > 0, neutral: false, diff };
   };
 
-  // Calculate cumulative tax differential (using helper to check both keys)
   let cumulativeDiff = 0;
   taxTypes.forEach(tax => {
-    const sourceRate = getTaxRate(sourceTaxRates, tax.key, tax.altKey) ?? 0;
-    const destRate = getTaxRate(destinationTaxRates, tax.key, tax.altKey) ?? 0;
-    cumulativeDiff += (sourceRate - destRate);
+    cumulativeDiff += (getTaxRate(effectiveSourceRates, tax.key, tax.altKey) ?? 0) - (getTaxRate(effectiveDestRates, tax.key, tax.altKey) ?? 0);
   });
 
-  // Parse total benefit or use calculated
-  let benefitValue = cumulativeDiff;
-  if (typeof totalTaxBenefit === 'string') {
-    const match = totalTaxBenefit.match(/([+-]?\d+)/);
-    if (match) benefitValue = parseInt(match[1]);
-  } else if (typeof totalTaxBenefit === 'number') {
-    benefitValue = totalTaxBenefit;
-  }
+  let benefitValue: number;
+  if (!showTaxSavings) { benefitValue = 0; }
+  else if (taxDifferential?.cumulative_tax_differential_pct != null) { benefitValue = Math.round(taxDifferential.cumulative_tax_differential_pct); }
+  else if (typeof totalTaxBenefit === 'string') { const match = totalTaxBenefit.match(/([+-]?\d+)/); benefitValue = match ? parseInt(match[1]) : cumulativeDiff; }
+  else if (typeof totalTaxBenefit === 'number') { benefitValue = totalTaxBenefit; }
+  else { benefitValue = cumulativeDiff; }
 
   const sourceClean = cleanJurisdiction(sourceJurisdiction) || 'Current';
   const destClean = cleanJurisdiction(destinationJurisdiction) || 'Optimized';
-
   const isPositive = benefitValue > 0;
   const isNeutral = benefitValue === 0;
+  const heroColor = isPositive ? colors.emerald[400] : isNeutral ? darkTheme.textMuted : colors.red[400];
+  const heroTheme = getVerdictTheme(isPositive ? 'PROCEED' : isNeutral ? 'REVIEW' : 'ABORT');
+
+  const cellBase = { flex: 1, fontFamily: 'Inter' as const, fontSize: 10, color: darkTheme.textSecondary, paddingHorizontal: 8 };
+  const cellHeaderBase = { flex: 1, fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 9, color: darkTheme.textPrimary, textTransform: 'uppercase' as const, letterSpacing: 0.5, paddingHorizontal: 8 };
+  const cellValueBase = { flex: 1, fontFamily: 'Courier-Bold' as const, fontSize: 11, textAlign: 'center' as const, color: darkTheme.textSecondary, paddingHorizontal: 8 };
+  const cellImpactBase = { flex: 1, fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 11, textAlign: 'right' as const, paddingHorizontal: 8 };
 
   return (
-    <View style={styles.section}>
-      {/* Premium Section Header */}
-      <View style={styles.sectionHeader} minPresenceAhead={150}>
-        <View style={styles.accentLine} />
-        <View style={styles.headerRow}>
-          <Text style={[styles.sectionTitle, { flexShrink: 1, maxWidth: '70%' }]}>Tax Jurisdiction Analysis</Text>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>Comparative Assessment</Text>
+    <View style={{ marginBottom: 28 }}>
+      {/* Header */}
+      <View style={{ marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} minPresenceAhead={150}>
+        <GradientAccentBar width={483} height={4} theme={heroTheme} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 10 }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: darkTheme.textPrimary, letterSpacing: 0.5, textTransform: 'uppercase', flexShrink: 1, maxWidth: '70%' }}>Tax Jurisdiction Analysis</Text>
+          <View style={headerBadge}>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>Commandment III</Text>
           </View>
         </View>
       </View>
 
-      {/* Premium Cumulative Impact Hero */}
-      <View style={styles.impactHero} wrap={false}>
-        <View style={[styles.impactHeroAccent, {
-          backgroundColor: isPositive ? colors.emerald[500] : isNeutral ? colors.gray[400] : colors.red[500]
-        }]} />
-        <Text style={styles.impactHeroLabel}>Cumulative Tax Impact</Text>
-        <View style={styles.impactHeroValueContainer}>
-          <Text style={[
-            styles.impactHeroValue,
-            isPositive && styles.impactHeroValuePositive,
-            !isPositive && !isNeutral && styles.impactHeroValueNegative,
-            isNeutral && styles.impactHeroValueNeutral,
-          ]}>
+      {/* Hero: Dollar Savings or N/A */}
+      {!showTaxSavings ? (
+        <View style={{ marginBottom: 24, padding: 28, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center' }} wrap={false}>
+          <Text style={{ ...microLabel, marginBottom: 8 }}>Cumulative Tax Impact</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: darkTheme.textFaint, marginBottom: 8 }}>N/A</Text>
+          <Text style={{ fontFamily: 'Inter', fontSize: 11, color: darkTheme.textMuted, textAlign: 'center', maxWidth: 360, lineHeight: 1.65 }}>
+            {taxDifferential?.cumulative_impact_label || 'US Worldwide Taxation — US citizens and residents are taxed on worldwide income regardless of residency. Tax optimization through jurisdiction change is not applicable.'}
+          </Text>
+        </View>
+      ) : (
+        <View style={{ marginBottom: 24, padding: 28, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center', position: 'relative', overflow: 'hidden' }} wrap={false}>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: heroColor }} />
+          <Text style={{ ...microLabel, marginBottom: 8 }}>Cumulative Tax Impact</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 48, letterSpacing: -1, marginBottom: 8, color: heroColor }}>
             {isPositive ? '+' : ''}{benefitValue}%
           </Text>
-          <View style={styles.impactHeroDetails}>
-            <Text style={styles.impactHeroTitle}>
-              {isPositive ? 'Total Tax Savings' : isNeutral ? 'Tax Neutral' : 'Total Tax Cost'}
-            </Text>
-            <Text style={styles.impactHeroCorridor}>
-              {sourceClean} → {destClean}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Summary Row */}
-      <View style={styles.summaryRow} wrap={false}>
-        <View style={[styles.summaryBox, styles.summaryBoxHighlight]}>
-          <Text style={styles.summaryLabel}>Migration Corridor</Text>
-          <View style={styles.corridorArrow}>
-            <Text style={styles.corridorJurisdiction}>{sourceClean}</Text>
-            <Text style={styles.corridorArrowIcon}>→</Text>
-            <Text style={styles.corridorJurisdiction}>{destClean}</Text>
-          </View>
-        </View>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryLabel}>Annual Efficiency Gain</Text>
-          <Text style={[styles.summaryValue, { color: isPositive ? colors.emerald[600] : colors.gray[600] }]}>
-            {isPositive ? '+' : ''}{benefitValue}%
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary, marginBottom: 4 }}>
+            {isPositive ? 'Total Tax Savings' : isNeutral ? 'Tax Neutral' : 'Total Tax Cost'}
           </Text>
-          <Text style={styles.summarySubtext}>Estimated tax optimization</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textMuted }}>{sourceClean}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 8 }}>
+              <View style={{ width: 20, height: 1, backgroundColor: darkTheme.textFaint }} />
+              <View style={{ width: 0, height: 0, borderTopWidth: 3, borderBottomWidth: 3, borderLeftWidth: 5, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: darkTheme.textFaint }} />
+            </View>
+            <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textMuted }}>{destClean}</Text>
+          </View>
+
+          {taxDifferential?.annual_savings_estimate && (
+            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border, alignItems: 'center' }}>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Estimated Annual Savings</Text>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, color: colors.emerald[400] }}>
+                {typeof taxDifferential.annual_savings_estimate === 'number' ? `$${(taxDifferential.annual_savings_estimate / 1000).toFixed(0)}K` : taxDifferential.annual_savings_estimate}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* FlowArrow SVG Corridor */}
+      <View style={{ flexDirection: 'row', marginBottom: 24, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center' }} wrap={false}>
+        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.amber[500], marginRight: 20, paddingLeft: 16 }}>
+          <Text style={{ ...microLabel, letterSpacing: 1, marginBottom: 8 }}>Migration Corridor</Text>
+          <FlowArrow from={sourceClean} to={destClean} height={32} theme={heroTheme} />
+        </View>
+        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: darkTheme.border, paddingLeft: 16 }}>
+          <Text style={{ ...microLabel, letterSpacing: 1, marginBottom: 8 }}>Annual Efficiency Gain</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, letterSpacing: -0.5, color: isPositive ? colors.emerald[400] : darkTheme.textMuted }}>
+            {showTaxSavings ? `${isPositive ? '+' : ''}${benefitValue}%` : 'N/A'}
+          </Text>
+          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, marginTop: 4 }}>Estimated tax optimization</Text>
         </View>
       </View>
 
-      {/* Premium Tax Comparison Table */}
-      <View style={styles.table} wrap={false}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.tableHeaderCell}>Tax Category</Text>
-          <Text style={[styles.tableHeaderCell, { textAlign: 'center' }]}>{sourceClean}</Text>
-          <Text style={[styles.tableHeaderCell, { textAlign: 'center' }]}>{destClean}</Text>
-          <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Impact</Text>
+      {/* Tax Comparison Table */}
+      <View style={{ width: '100%', marginBottom: 24, borderTopWidth: 3, borderTopColor: darkTheme.textPrimary, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} wrap={false}>
+        <View style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: darkTheme.textPrimary, backgroundColor: darkTheme.surfaceBg }}>
+          <Text style={cellHeaderBase}>Tax Category</Text>
+          <Text style={{ ...cellHeaderBase, textAlign: 'center' }}>{sourceClean}</Text>
+          <Text style={{ ...cellHeaderBase, textAlign: 'center' }}>{destClean}</Text>
+          <Text style={{ ...cellHeaderBase, textAlign: 'right' }}>Impact</Text>
         </View>
 
         {taxTypes.map((tax, index) => {
-          const sourceRate = getTaxRate(sourceTaxRates, tax.key, tax.altKey);
-          const destRate = getTaxRate(destinationTaxRates, tax.key, tax.altKey);
+          const sourceRate = getTaxRate(effectiveSourceRates, tax.key, tax.altKey);
+          const destRate = getTaxRate(effectiveDestRates, tax.key, tax.altKey);
           const impact = calculateImpact(sourceRate, destRate);
-
           const sourceIsHigher = (sourceRate ?? 0) > (destRate ?? 0);
           const destIsHigher = (destRate ?? 0) > (sourceRate ?? 0);
 
           return (
-            <View key={index} style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
-              <Text style={[styles.tableCell, styles.tableCellBold]}>{tax.label}</Text>
-              <Text style={[
-                styles.tableCellValue,
-                sourceIsHigher && styles.tableCellValueHigher,
-                !sourceIsHigher && destIsHigher && styles.tableCellValueLower,
-              ]}>
+            <View key={index} style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center', backgroundColor: index % 2 === 1 ? darkTheme.cardBg : undefined }}>
+              <Text style={{ ...cellBase, fontWeight: 700, color: darkTheme.textPrimary }}>{tax.label}</Text>
+              <Text style={{ ...cellValueBase, color: sourceIsHigher ? colors.red[400] : (!sourceIsHigher && destIsHigher) ? colors.emerald[400] : darkTheme.textSecondary }}>
                 {sourceRate !== undefined ? `${sourceRate}%` : '—'}
               </Text>
-              <Text style={[
-                styles.tableCellValue,
-                destIsHigher && styles.tableCellValueHigher,
-                !destIsHigher && sourceIsHigher && styles.tableCellValueLower,
-              ]}>
+              <Text style={{ ...cellValueBase, color: destIsHigher ? colors.red[400] : (!destIsHigher && sourceIsHigher) ? colors.emerald[400] : darkTheme.textSecondary }}>
                 {destRate !== undefined ? `${destRate}%` : '—'}
               </Text>
-              <Text style={[
-                styles.tableCellImpact,
-                impact.positive && styles.positiveImpact,
-                !impact.positive && !impact.neutral && styles.negativeImpact,
-                impact.neutral && styles.neutralImpact,
-              ]}>
+              <Text style={{ ...cellImpactBase, color: impact.positive ? colors.emerald[400] : !impact.neutral ? colors.red[400] : darkTheme.textMuted }}>
                 {impact.value}
-                {!impact.neutral && (
-                  <Text style={{ fontSize: 8.5, color: colors.gray[500] }}>
-                    {impact.positive ? ' saved' : ' more'}
-                  </Text>
-                )}
+                {!impact.neutral && <Text style={{ fontSize: 8.5, color: darkTheme.textMuted }}>{impact.positive ? ' saved' : ' more'}</Text>}
               </Text>
             </View>
           );
         })}
-      </View>
 
-      {/* Premium Structure Comparison with Visual Bars */}
-      <View style={styles.structureRow} wrap={false}>
-        {/* Current Structure */}
-        <View style={styles.structureCard}>
-          <View style={styles.structureHeader}>
-            <View style={styles.structureDot} />
-            <Text style={styles.structureTitle}>Current Structure</Text>
-          </View>
-          {taxTypes.map((tax, index) => {
-            const rate = getTaxRate(sourceTaxRates, tax.key, tax.altKey) ?? 0;
-            const barWidth = Math.min(rate * 2, 100); // Scale for visual
-            return (
-              <View key={index} style={styles.structureItem}>
-                <View style={styles.structureItemRow}>
-                  <Text style={styles.structureLabel}>{tax.label}</Text>
-                  <Text style={styles.structureValue}>{rate}%</Text>
-                </View>
-                <View style={styles.rateBarContainer}>
-                  <View style={[
-                    styles.rateBarFill,
-                    styles.rateBarFillCurrent,
-                    { width: `${barWidth}%` }
-                  ]} />
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Optimized Structure */}
-        <View style={[styles.structureCard, styles.structureCardOptimized]}>
-          <View style={styles.structureHeader}>
-            <View style={[styles.structureDot, styles.structureDotOptimized]} />
-            <Text style={styles.structureTitle}>Optimized Structure</Text>
-          </View>
-          {taxTypes.map((tax, index) => {
-            const rate = getTaxRate(destinationTaxRates, tax.key, tax.altKey) ?? 0;
-            const barWidth = Math.min(rate * 2, 100); // Scale for visual
-            return (
-              <View key={index} style={styles.structureItem}>
-                <View style={styles.structureItemRow}>
-                  <Text style={styles.structureLabel}>{tax.label}</Text>
-                  <Text style={[styles.structureValue, styles.structureValueOptimized]}>{rate}%</Text>
-                </View>
-                <View style={styles.rateBarContainer}>
-                  <View style={[
-                    styles.rateBarFill,
-                    styles.rateBarFillOptimized,
-                    { width: `${barWidth}%` }
-                  ]} />
-                </View>
-              </View>
-            );
-          })}
+        {/* Cumulative Total Row */}
+        <View style={{ flexDirection: 'row', paddingVertical: 14, backgroundColor: darkTheme.cardBg }}>
+          <Text style={{ ...cellBase, fontWeight: 700, color: darkTheme.textPrimary }}>Cumulative Impact</Text>
+          <Text style={{ flex: 1 }} />
+          <Text style={{ flex: 1 }} />
+          <Text style={{ ...cellImpactBase, color: isPositive ? colors.emerald[400] : isNeutral ? darkTheme.textFaint : colors.red[400], fontSize: 14 }}>
+            {isPositive ? '+' : ''}{benefitValue}%
+          </Text>
         </View>
       </View>
 
-      {/* Premium Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerDiamond} />
-        <Text style={styles.footerText}>
+      {/* Visual HorizontalBar Comparisons */}
+      <View style={{ marginBottom: 24 }} wrap={false}>
+        <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 11, color: darkTheme.textPrimary, marginBottom: 12 }}>Rate Comparison — Visual Analysis</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 4, backgroundColor: colors.red[400] }} />
+            <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{sourceClean}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 4, backgroundColor: colors.emerald[400] }} />
+            <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{destClean}</Text>
+          </View>
+        </View>
+        {taxTypes.map((tax, index) => (
+          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
+            <Text style={{ width: 90, fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary }}>{tax.label}</Text>
+            <HorizontalBar currentRate={getTaxRate(effectiveSourceRates, tax.key, tax.altKey) ?? 0} optimizedRate={getTaxRate(effectiveDestRates, tax.key, tax.altKey) ?? 0} width={180} height={22} />
+          </View>
+        ))}
+      </View>
+
+      {/* Footer */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
+        <GradientDivider width={180} height={1} color={darkTheme.border} />
+        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
           Tax analysis powered by HNWI Chronicles KGv3 Jurisdiction Intelligence
         </Text>
-        <View style={styles.footerDiamond} />
+        <GradientDivider width={180} height={1} color={darkTheme.border} />
       </View>
     </View>
   );

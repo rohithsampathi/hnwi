@@ -204,26 +204,15 @@ export function TransparencyRegimeSection({
       <div ref={sectionRef}>
         {/* Section Header */}
         <motion.div
-          className="mb-8 sm:mb-12"
+          className="mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <div className="flex items-center gap-3 mb-2 sm:mb-3">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
-              2026 TRANSPARENCY REGIME IMPACT
-            </h2>
-            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
-              CRS / FATCA / DAC8
-            </span>
-          </div>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
-          <div className="flex items-center gap-3 mt-3">
-            <p className="text-sm text-muted-foreground">
-              {sourceJurisdiction} → {destinationJurisdiction} compliance analysis
-            </p>
-            <RiskBanner level={parsedData.risk_level} />
-          </div>
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            2026 Transparency Regime Impact
+          </h2>
+          <div className="h-px bg-border" />
         </motion.div>
 
         <div className="space-y-6">
@@ -512,7 +501,7 @@ function LegacyTextTransparencySection({
     return (
       <div ref={sectionRef}>
         <motion.div
-          className="mb-8 sm:mb-12"
+          className="mb-5 sm:mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}

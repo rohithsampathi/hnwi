@@ -22,6 +22,7 @@ import { pdf } from '@react-pdf/renderer';
 import { ICArtifact } from '@/lib/decision-memo/pattern-audit-types';
 import { PdfMemoData, PdfPreviewData, PdfMemoMetadata } from '@/lib/pdf/pdf-types';
 import { PatternAuditDocument } from '@/lib/pdf/PatternAuditDocument';
+import { setPdfThemeMode } from '@/lib/pdf/pdf-styles';
 
 // Extended artifact type with preview data from memo transformation
 interface ExtendedArtifact extends ICArtifact {
@@ -256,7 +257,10 @@ function isCompleteMemoData(input: any): input is PdfMemoData {
  * 1. Complete PdfMemoData (preferred - same data as web UI uses)
  * 2. ExtendedArtifact (legacy - will be transformed)
  */
-export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoData): Promise<{
+export async function exportInstitutionalPDF(
+  input: ExtendedArtifact | PdfMemoData,
+  theme: 'light' | 'dark' = 'dark',
+): Promise<{
   success: boolean;
   fileName: string;
   pageCount?: number;
@@ -278,8 +282,17 @@ export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoDa
       intakeId = input.intakeId || `intake_${Date.now()}`;
     }
 
-    // Generate PDF blob using @react-pdf/renderer
-    const blob = await pdf(<PatternAuditDocument memoData={memoData} />).toBlob();
+    // Swap PDF theme before rendering (mutates darkTheme + rebuilds pdfStyles)
+    setPdfThemeMode(theme);
+
+    let blob: Blob;
+    try {
+      // Generate PDF blob using @react-pdf/renderer
+      blob = await pdf(<PatternAuditDocument memoData={memoData} />).toBlob();
+    } finally {
+      // Always restore dark theme after rendering
+      setPdfThemeMode('dark');
+    }
 
     // Generate filename
     const fileName = `HNWI-Decision-Audit-${intakeId.slice(10, 22) || 'export'}.pdf`;
@@ -301,6 +314,8 @@ export async function exportInstitutionalPDF(input: ExtendedArtifact | PdfMemoDa
 
   } catch (error) {
     console.error('[PDF Export] Error:', error);
+    // Ensure theme is restored even on unexpected errors
+    setPdfThemeMode('dark');
     return {
       success: false,
       fileName: '',
@@ -322,8 +337,8 @@ export async function generatePdfBlob(artifact: ExtendedArtifact): Promise<Blob>
  * Accepts either complete PdfMemoData (preferred) or ExtendedArtifact (legacy)
  */
 export function usePremiumPDFExport() {
-  const exportPDF = async (input: ExtendedArtifact | PdfMemoData) => {
-    return exportInstitutionalPDF(input);
+  const exportPDF = async (input: ExtendedArtifact | PdfMemoData, theme?: 'light' | 'dark') => {
+    return exportInstitutionalPDF(input, theme);
   };
 
   return { exportPDF };

@@ -38,6 +38,7 @@ interface EliteCitationPanelProps {
   onClose: () => void
   onCitationSelect: (citationId: string) => void
   citationMap?: Map<string, number>
+  preloadedSources?: Map<string, Development>
 }
 
 export function EliteCitationPanel({
@@ -45,7 +46,8 @@ export function EliteCitationPanel({
   selectedCitationId,
   onClose,
   onCitationSelect,
-  citationMap
+  citationMap,
+  preloadedSources
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
@@ -82,6 +84,13 @@ export function EliteCitationPanel({
 
     // LAZY LOAD: Fetch development only when clicked (if not already fetched or marked as not found)
     if (!developments.has(citationId)) {
+      // Check preloaded sources first (e.g. KG intelligence converted to Development format)
+      if (preloadedSources?.has(citationId)) {
+        setDevelopments(prev => new Map(prev).set(citationId, preloadedSources.get(citationId)!))
+        onCitationSelect(citationId)
+        return
+      }
+
       setLoading(true)
 
       try {

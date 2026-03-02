@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Mistake, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
+import { EASE_OUT_EXPO, EASE_OUT_QUART } from '@/lib/animations/motion-variants';
 
 interface DDChecklistItem {
   category: string;
@@ -54,7 +55,7 @@ interface Page2Props {
 function RadialGauge({
   value,
   maxValue = 100,
-  size = 180,
+  size = 220,
   label,
   sublabel,
   color = 'primary'
@@ -128,7 +129,7 @@ function RadialGauge({
           r={radius}
           fill="none"
           stroke="hsl(var(--muted))"
-          strokeWidth="12"
+          strokeWidth="14"
           strokeLinecap="round"
           strokeDasharray={circumference * 0.75}
           strokeDashoffset={0}
@@ -143,12 +144,12 @@ function RadialGauge({
           r={radius}
           fill="none"
           stroke={`url(#gauge-gradient-${color})`}
-          strokeWidth="14"
+          strokeWidth="16"
           strokeLinecap="round"
           strokeDasharray={circumference * 0.75}
           initial={{ strokeDashoffset: circumference * 0.75 }}
           animate={isInView ? { strokeDashoffset } : {}}
-          transition={{ duration: 1.8, ease: "easeOut" }}
+          transition={{ duration: 1.8, ease: EASE_OUT_QUART }}
           transform={`rotate(135 ${size / 2} ${size / 2})`}
           filter="url(#gauge-glow)"
         />
@@ -158,8 +159,8 @@ function RadialGauge({
           x={size / 2}
           y={size / 2 - 5}
           textAnchor="middle"
-          className="fill-foreground font-bold"
-          style={{ fontSize: size / 4.5 }}
+          className="fill-foreground font-medium"
+          style={{ fontSize: size / 4.5, fontFamily: 'ui-monospace, monospace' }}
         >
           {Math.round(animatedValue)}%
         </text>
@@ -167,14 +168,14 @@ function RadialGauge({
           x={size / 2}
           y={size / 2 + 18}
           textAnchor="middle"
-          className="fill-muted-foreground uppercase tracking-wider"
-          style={{ fontSize: 10 }}
+          className="fill-muted-foreground/60 uppercase tracking-wider"
+          style={{ fontSize: 12 }}
         >
           {label}
         </text>
       </svg>
       {sublabel && (
-        <p className="text-xs text-muted-foreground mt-2 text-center max-w-[140px]">
+        <p className="text-xs text-muted-foreground/60 mt-2 text-center max-w-[140px]">
           {sublabel}
         </p>
       )}
@@ -188,27 +189,23 @@ function SeverityPill({ severity }: { severity: string }) {
 
   const config = {
     critical: {
-      bg: 'bg-gradient-to-r from-red-600 to-red-500',
-      text: 'text-white',
-      dot: 'bg-white',
+      border: 'border-red-500/20',
+      text: 'text-red-500/80',
       pulse: true
     },
     high: {
-      bg: 'bg-gradient-to-r from-orange-500 to-orange-400',
-      text: 'text-white',
-      dot: 'bg-white',
+      border: 'border-orange-500/20',
+      text: 'text-orange-500/80',
       pulse: false
     },
     medium: {
-      bg: 'bg-gradient-to-r from-amber-400 to-amber-300',
-      text: 'text-amber-900',
-      dot: 'bg-amber-900',
+      border: 'border-amber-500/20',
+      text: 'text-amber-500/80',
       pulse: false
     },
     low: {
-      bg: 'bg-gradient-to-r from-emerald-400 to-emerald-300',
-      text: 'text-emerald-900',
-      dot: 'bg-emerald-900',
+      border: 'border-emerald-500/20',
+      text: 'text-emerald-500/80',
       pulse: false
     }
   };
@@ -221,8 +218,8 @@ function SeverityPill({ severity }: { severity: string }) {
   const c = config[level];
 
   return (
-    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${c.bg} ${c.text}`}>
-      <span className={`w-2 h-2 rounded-full ${c.dot} ${c.pulse ? 'animate-pulse' : ''}`} />
+    <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs tracking-[0.15em] font-medium uppercase border ${c.border} ${c.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full bg-current ${c.pulse ? 'animate-pulse' : ''}`} />
       {level}
     </span>
   );
@@ -248,28 +245,28 @@ function ExecutiveMetric({
 }) {
   return (
     <motion.div
-      className="relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border border-border rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6"
-      initial={{ opacity: 0, y: 20 }}
+      className="relative overflow-hidden rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 lg:p-8"
+      initial={{ opacity: 0, y: 12 }}
       animate={isVisible ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay }}
+      transition={{ duration: 0.7, delay, ease: EASE_OUT_EXPO }}
     >
-      <div className="flex items-start justify-between mb-2 sm:mb-4">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+      <div className="flex items-start justify-between mb-3 sm:mb-5">
+        <div className="text-gold/70">
           {icon}
         </div>
         {trend && (
-          <span className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full ${
-            trend === 'positive' ? 'bg-emerald-500/10 text-emerald-500' :
-            trend === 'negative' ? 'bg-red-500/10 text-red-500' :
-            'bg-muted text-muted-foreground'
+          <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
+            trend === 'positive' ? 'border-emerald-500/20 text-emerald-500/80' :
+            trend === 'negative' ? 'border-red-500/20 text-red-500/80' :
+            'border-border/20 text-muted-foreground/60'
           }`}>
-            {trend === 'positive' ? '↑' : trend === 'negative' ? '↓' : '→'}
+            {trend === 'positive' ? '+' : trend === 'negative' ? '-' : '='}
           </span>
         )}
       </div>
-      <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-1 sm:mb-2">{label}</p>
-      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-0.5 sm:mb-1">{value}</p>
-      {sublabel && <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{sublabel}</p>}
+      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{label}</p>
+      <p className="text-xl sm:text-2xl lg:text-3xl font-bold tabular-nums tracking-tight text-foreground mb-1">{value}</p>
+      {sublabel && <p className="text-sm text-muted-foreground/60 hidden sm:block">{sublabel}</p>}
     </motion.div>
   );
 }
@@ -444,35 +441,40 @@ export function Page2AuditVerdict({
       {/* Section Header */}
       <motion.div
         className="mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
       >
-        <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground mb-2 sm:mb-3 tracking-wide">
-          {viaNegativa?.isActive ? viaNegativa.verdictHeader : 'RISK ASSESSMENT & INVESTMENT VERDICT'}
+        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+          {viaNegativa?.isActive ? 'Capital Allocation Review' : 'Investment Committee'}
+        </p>
+        <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
+          {viaNegativa?.isActive ? viaNegativa.verdictHeader : 'Risk Assessment & Investment Verdict'}
         </h2>
-        <div className={`w-16 sm:w-24 h-1 bg-gradient-to-r ${viaNegativa?.isActive ? 'from-red-500 to-red-500/30' : 'from-primary to-primary/30'}`} />
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mt-6" />
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          VIA NEGATIVA: PASS/FAIL GRID (Autopsy Mode Only)
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* Via Negativa: Pass/Fail Grid (Autopsy Mode Only) */}
       {viaNegativa?.isActive && (
         <motion.div
           className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.15 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: EASE_OUT_EXPO }}
         >
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
             {/* Tax Efficiency */}
-            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+            <div className={`relative overflow-hidden rounded-xl p-4 sm:p-6 text-center border ${
               viaNegativa.taxEfficiencyPassed
-                ? 'bg-emerald-500/5 border-emerald-500/20'
-                : 'bg-red-500/5 border-red-500/20'
+                ? 'border-emerald-500/20 bg-emerald-500/[0.03]'
+                : 'border-red-500/20 bg-red-500/[0.03]'
             }`}>
-              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Tax Efficiency</p>
-              <p className={`text-2xl sm:text-4xl font-black ${
+              {/* Small colored dot indicator */}
+              <div className={`absolute top-3 left-3 w-2 h-2 rounded-full ${
+                viaNegativa.taxEfficiencyPassed ? 'bg-emerald-500' : 'bg-red-500'
+              }`} />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Tax Efficiency</p>
+              <p className={`text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
                 viaNegativa.taxEfficiencyPassed ? 'text-emerald-500' : 'text-red-500'
               }`}>
                 {viaNegativa.taxEfficiencyPassed ? 'PASS' : 'FAIL'}
@@ -480,13 +482,16 @@ export function Page2AuditVerdict({
             </div>
 
             {/* Liquidity */}
-            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+            <div className={`relative overflow-hidden rounded-xl p-4 sm:p-6 text-center border ${
               viaNegativa.liquidityPassed
-                ? 'bg-emerald-500/5 border-emerald-500/20'
-                : 'bg-red-500/5 border-red-500/20'
+                ? 'border-emerald-500/20 bg-emerald-500/[0.03]'
+                : 'border-red-500/20 bg-red-500/[0.03]'
             }`}>
-              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Liquidity</p>
-              <p className={`text-2xl sm:text-4xl font-black ${
+              <div className={`absolute top-3 left-3 w-2 h-2 rounded-full ${
+                viaNegativa.liquidityPassed ? 'bg-emerald-500' : 'bg-red-500'
+              }`} />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Liquidity</p>
+              <p className={`text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
                 viaNegativa.liquidityPassed ? 'text-emerald-500' : 'text-red-500'
               }`}>
                 {viaNegativa.liquidityPassed ? 'PASS' : 'FAIL'}
@@ -494,13 +499,16 @@ export function Page2AuditVerdict({
             </div>
 
             {/* Structure Viability */}
-            <div className={`relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center border-2 ${
+            <div className={`relative overflow-hidden rounded-xl p-4 sm:p-6 text-center border ${
               viaNegativa.structurePassed
-                ? 'bg-emerald-500/5 border-emerald-500/20'
-                : 'bg-red-500/5 border-red-500/20'
+                ? 'border-emerald-500/20 bg-emerald-500/[0.03]'
+                : 'border-red-500/20 bg-red-500/[0.03]'
             }`}>
-              <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-2">Structure Viability</p>
-              <p className={`text-2xl sm:text-4xl font-black ${
+              <div className={`absolute top-3 left-3 w-2 h-2 rounded-full ${
+                viaNegativa.structurePassed ? 'bg-emerald-500' : 'bg-red-500'
+              }`} />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Structure Viability</p>
+              <p className={`text-2xl sm:text-3xl font-bold tabular-nums tracking-tight ${
                 viaNegativa.structurePassed ? 'text-emerald-500' : 'text-red-500'
               }`}>
                 {viaNegativa.structurePassed ? 'PASS' : 'FAIL'}
@@ -509,237 +517,247 @@ export function Page2AuditVerdict({
           </div>
 
           {/* CAPITAL ALLOCATION DENIED stamp */}
-          <div className="mt-6 p-4 sm:p-6 bg-red-100 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-500/30 rounded-xl text-center">
-            <p className="text-xl sm:text-3xl font-black text-red-600 dark:text-red-500 tracking-wider">
+          <div className="mt-6 p-4 sm:p-6 rounded-xl border border-red-500/20 bg-red-500/[0.03] text-center">
+            <div className="absolute top-3 left-3 w-2 h-2 rounded-full bg-red-500" />
+            <p className="text-xl sm:text-2xl font-semibold text-red-500 tracking-wider">
               {viaNegativa.stampText.toUpperCase()}
             </p>
-            <p className="text-xs sm:text-sm text-red-600 dark:text-red-400/60 mt-2">
+            <p className="text-xs text-red-500/60 mt-3 tracking-wide">
               {viaNegativa.stampSubtext}
             </p>
           </div>
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          EXECUTIVE SUMMARY PANEL
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* Executive Summary Panel */}
       <motion.div
-        className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 30 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.2 }}
+        className="mb-10"
+        initial={{ opacity: 0 }}
+        animate={isVisible ? { opacity: 1 } : {}}
+        transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
       >
-        {/* Main Verdict Card */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border border-border rounded-2xl sm:rounded-3xl shadow-2xl mb-4 sm:mb-8">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-40 sm:w-80 h-40 sm:h-80 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full" />
-          <div className="absolute bottom-0 left-0 w-32 sm:w-60 h-32 sm:h-60 bg-gradient-to-tr from-primary/5 to-transparent rounded-tr-full" />
+        <div className="relative rounded-2xl border border-border/30 overflow-hidden">
+          {/* Ambient glow */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-          <div className="relative z-10 p-3 sm:p-6 lg:p-10 xl:p-12">
-            <div className="grid lg:grid-cols-12 gap-4 sm:gap-8 lg:gap-10">
-              {/* Left - Decision & Details */}
-              <div className="lg:col-span-7">
-                <div className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-6">
-                  <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${
-                    viaNegativa?.isActive ? 'bg-red-500' :
-                    verdict.color === 'emerald' ? 'bg-emerald-500' :
-                    verdict.color === 'amber' ? 'bg-amber-500' : 'bg-primary'
-                  } animate-pulse`} />
-                  <span className="text-[8px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-[0.1em] sm:tracking-[0.2em]">
-                    {viaNegativa?.isActive ? 'Capital Allocation Review' : 'Investment Committee Decision'}
-                  </span>
-                </div>
+          {/* Gold hairline gradient */}
+          <div className={`h-px bg-gradient-to-r from-transparent ${
+            viaNegativa?.isActive ? 'via-red-500/40' :
+            verdict.color === 'emerald' ? 'via-emerald-500/40' :
+            verdict.color === 'amber' ? 'via-amber-500/40' :
+            verdict.color === 'red' ? 'via-red-500/40' : 'via-gold/40'
+          } to-transparent`} />
 
-                <motion.h3
-                  className={`text-xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight mb-2 sm:mb-4 ${
-                    viaNegativa?.isActive ? 'text-red-500' :
-                    verdict.color === 'emerald' ? 'text-emerald-500' :
-                    verdict.color === 'amber' ? 'text-amber-500' : 'text-primary'
-                  }`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                >
-                  {viaNegativa?.isActive
-                    ? (viaNegativa.stampText?.toUpperCase() || 'NOT RECOMMENDED')
-                    : verdict.decision}
-                </motion.h3>
-
-                <motion.p
-                  className="text-xs sm:text-base lg:text-lg text-muted-foreground mb-3 sm:mb-8 max-w-xl leading-relaxed"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                >
-                  {viaNegativa?.isActive
-                    ? (viaNegativa.stampSubtext || 'Key viability thresholds not met — review alternative corridors and strategies')
-                    : verdict.recommendation}
-                </motion.p>
-
-                {/* Key Metrics Row */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  <motion.div
-                    className="p-2 sm:p-4 bg-muted/30 rounded-lg sm:rounded-xl border border-border/50"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.4, delay: 0.6 }}
-                  >
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Risk Level</p>
-                    <p className="text-sm sm:text-base lg:text-xl font-bold text-foreground">{verdict.riskLevel}</p>
-                  </motion.div>
-                  <motion.div
-                    className="p-2 sm:p-4 bg-primary/5 rounded-lg sm:rounded-xl border border-primary/20"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.4, delay: 0.7 }}
-                  >
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Opportunities</p>
-                    <p className="text-sm sm:text-base lg:text-xl font-bold text-primary">{opportunitiesCount}</p>
-                  </motion.div>
-                  <motion.div
-                    className="p-2 sm:p-4 bg-muted/30 rounded-lg sm:rounded-xl border border-border/50"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.4, delay: 0.8 }}
-                  >
-                    <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1">Risk Factors</p>
-                    <p className="text-sm sm:text-base lg:text-xl font-bold text-foreground">{mistakes.length}</p>
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Right - Data Quality Indicator */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center gap-4 sm:gap-6 mt-4 lg:mt-0">
-                <div className="w-[180px] p-6 bg-muted/30 rounded-2xl border border-border/50 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Data Quality</p>
-                  <p className={`text-2xl font-bold capitalize ${
-                    dataQuality === 'strong' ? 'text-emerald-500' :
-                    dataQuality === 'moderate' ? 'text-primary' :
-                    dataQuality === 'limited' ? 'text-amber-500' :
-                    'text-muted-foreground'
-                  }`}>
-                    {dataQuality || '—'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    {dataQualityNote || '—'}
-                  </p>
-                </div>
-              </div>
+          {/* Verdict section */}
+          <motion.div
+            className="px-5 sm:px-8 md:px-12 py-10 md:py-12"
+            initial={{ opacity: 0 }}
+            animate={isVisible ? { opacity: 1 } : {}}
+            transition={{ duration: 0.7, delay: 0.3, ease: EASE_OUT_EXPO }}
+          >
+            {/* Status dot + label */}
+            <div className="flex items-center gap-2 mb-6">
+              <div className={`w-2 h-2 rounded-full ${
+                viaNegativa?.isActive ? 'bg-red-500' :
+                verdict.color === 'emerald' ? 'bg-emerald-500' :
+                verdict.color === 'amber' ? 'bg-amber-500' : 'bg-gold'
+              } animate-pulse`} />
+              <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
+                {viaNegativa?.isActive ? 'Capital Allocation Review' : 'Investment Committee Decision'}
+              </span>
             </div>
-          </div>
-        </div>
 
-        {/* Secondary Metrics Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-          <ExecutiveMetric
-            label="Total Exposure"
-            value={riskAssessment?.total_exposure_formatted || '—'}
-            sublabel="Aggregate risk value"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            trend={riskAssessment?.total_exposure_formatted ? 'negative' : 'neutral'}
-            delay={0.3}
-            isVisible={isVisible}
-          />
-          <ExecutiveMetric
-            label="Critical Items"
-            value={riskAssessment?.critical_items ?? '—'}
-            sublabel="Require immediate action"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
-            trend={(riskAssessment?.critical_items ?? 0) > 0 ? 'negative' : 'neutral'}
-            delay={0.4}
-            isVisible={isVisible}
-          />
-          <ExecutiveMetric
-            label="High Priority"
-            value={riskAssessment?.high_priority ?? '—'}
-            sublabel="Priority mitigation needed"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
-            trend={(riskAssessment?.high_priority ?? 0) > 2 ? 'negative' : 'neutral'}
-            delay={0.5}
-            isVisible={isVisible}
-          />
-          <ExecutiveMetric
-            label="Mitigation Timeline"
-            value={mitigationTimeline}
-            sublabel="Recommended resolution window"
-            icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            delay={0.6}
-            isVisible={isVisible}
-          />
+            {/* Big verdict text */}
+            <motion.h3
+              className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 ${
+                viaNegativa?.isActive ? 'text-red-500' :
+                verdict.color === 'emerald' ? 'text-emerald-500' :
+                verdict.color === 'amber' ? 'text-amber-500' :
+                verdict.color === 'red' ? 'text-red-500' : 'text-foreground'
+              }`}
+              initial={{ opacity: 0 }}
+              animate={isVisible ? { opacity: 1 } : {}}
+              transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
+            >
+              {viaNegativa?.isActive
+                ? (viaNegativa.stampText?.toUpperCase() || 'NOT RECOMMENDED')
+                : verdict.decision}
+            </motion.h3>
+
+            {/* Recommendation text */}
+            <motion.p
+              className="text-sm sm:text-base text-muted-foreground/60 max-w-2xl leading-loose sm:leading-relaxed"
+              initial={{ opacity: 0 }}
+              animate={isVisible ? { opacity: 1 } : {}}
+              transition={{ duration: 0.7, delay: 0.45, ease: EASE_OUT_EXPO }}
+            >
+              {viaNegativa?.isActive
+                ? (viaNegativa.stampSubtext || 'Key viability thresholds not met — review alternative corridors and strategies')
+                : verdict.recommendation}
+            </motion.p>
+          </motion.div>
+
+          {/* Hairline divider */}
+          <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+
+          {/* Key metrics — gap-based grid */}
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-px bg-border/10"
+            initial={{ opacity: 0 }}
+            animate={isVisible ? { opacity: 1 } : {}}
+            transition={{ duration: 0.7, delay: 0.5, ease: EASE_OUT_EXPO }}
+          >
+            {/* Risk Level */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Risk Level</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{verdict.riskLevel}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Overall assessment</p>
+            </div>
+            {/* Opportunities */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Opportunities</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{opportunitiesCount}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Identified windows</p>
+            </div>
+            {/* Risk Factors */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Risk Factors</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{mistakes.length}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Items flagged</p>
+            </div>
+            {/* Data Quality */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Data Quality</p>
+              <p className={`text-xl sm:text-2xl font-bold capitalize ${
+                dataQuality === 'strong' ? 'text-emerald-500' :
+                dataQuality === 'moderate' ? 'text-foreground' :
+                dataQuality === 'limited' ? 'text-amber-500' :
+                'text-muted-foreground'
+              }`}>
+                {dataQuality || '—'}
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1 line-clamp-1">{dataQualityNote || '—'}</p>
+            </div>
+          </motion.div>
+
+          {/* Hairline divider */}
+          <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+
+          {/* Secondary metrics — gap-based grid */}
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-border/10"
+            initial={{ opacity: 0 }}
+            animate={isVisible ? { opacity: 1 } : {}}
+            transition={{ duration: 0.7, delay: 0.55, ease: EASE_OUT_EXPO }}
+          >
+            {/* Total Exposure */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Total Exposure</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{riskAssessment?.total_exposure_formatted || '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Aggregate risk value</p>
+            </div>
+            {/* Critical Items */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Critical Items</p>
+              <p className={`text-xl sm:text-2xl font-bold ${
+                (riskAssessment?.critical_items ?? 0) > 0 ? 'text-red-500' : 'text-foreground'
+              }`}>{riskAssessment?.critical_items ?? '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Require immediate action</p>
+            </div>
+            {/* High Priority */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">High Priority</p>
+              <p className={`text-xl sm:text-2xl font-bold ${
+                (riskAssessment?.high_priority ?? 0) > 2 ? 'text-amber-500' : 'text-foreground'
+              }`}>{riskAssessment?.high_priority ?? '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Priority mitigation needed</p>
+            </div>
+            {/* Mitigation Timeline */}
+            <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Mitigation Timeline</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{mitigationTimeline || '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Resolution window</p>
+            </div>
+          </motion.div>
         </div>
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          RISK ANALYSIS - Clean Institutional Design
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* Risk Analysis */}
       {mistakes.length > 0 && (
         <motion.div
           className="mb-10 sm:mb-16"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          transition={{ duration: 0.8, delay: 0.4, ease: EASE_OUT_EXPO }}
         >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground tracking-wide">
-              IDENTIFIED RISK FACTORS
-            </h3>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+                Risk Intelligence
+              </p>
+              <h3 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight">
+                Identified Risk Factors
+              </h3>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground/60 tracking-wide">
               <span>{riskAssessment?.critical_items ?? '—'} Critical</span>
-              <span className="text-border">|</span>
               <span>{riskAssessment?.high_priority ?? '—'} High</span>
-              <span className="text-border">|</span>
-              <span className="font-medium text-foreground">{riskAssessment?.total_exposure_formatted || '—'} Total</span>
+              <span className="font-medium text-foreground/60">{riskAssessment?.total_exposure_formatted || '—'} Total</span>
             </div>
           </div>
 
           {/* Clean List Layout */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             {riskItems.map((risk, index) => {
               const isCritical = risk.urgency.toLowerCase().includes('critical');
               const isHigh = risk.urgency.toLowerCase().includes('high');
               const severityLevel = isCritical ? 'Critical' : isHigh ? 'High' : 'Medium';
+              const dotColor = isCritical ? 'bg-red-500' : isHigh ? 'bg-amber-500' : 'bg-emerald-500';
 
               return (
                 <motion.div
                   key={index}
-                  className="bg-card border border-border rounded-xl p-4 sm:p-5"
-                  initial={{ opacity: 0, y: 10 }}
+                  className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+                  initial={{ opacity: 0, y: 12 }}
                   animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.3, delay: 0.5 + index * 0.08 }}
+                  transition={{ duration: 0.7, delay: 0.5 + index * 0.08, ease: EASE_OUT_EXPO }}
                 >
                   {/* Header Row */}
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-muted-foreground w-5">
+                      {/* Colored dot indicator instead of border-l */}
+                      <div className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`} />
+                      <span className="text-xs text-muted-foreground/60">
                         {risk.index}.
                       </span>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded ${
+                      <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
                         isCritical
-                          ? 'bg-red-500/10 text-red-600'
+                          ? 'border-red-500/20 text-red-500/80'
                           : isHigh
-                          ? 'bg-amber-500/10 text-amber-600'
-                          : 'bg-muted text-muted-foreground'
+                          ? 'border-amber-500/20 text-amber-500/80'
+                          : 'border-border/20 text-muted-foreground/60'
                       }`}>
                         {severityLevel}
                       </span>
                     </div>
-                    <span className={`text-sm font-semibold ${
-                      isCritical ? 'text-red-600' : isHigh ? 'text-amber-600' : 'text-muted-foreground'
+                    <span className={`text-sm font-medium ${
+                      isCritical ? 'text-red-500/80' : isHigh ? 'text-amber-500/80' : 'text-muted-foreground/60'
                     }`}>
                       {risk.cost}
                     </span>
                   </div>
 
                   {/* Risk Title */}
-                  <h4 className="text-sm sm:text-base font-medium text-foreground leading-relaxed mb-2 pl-8">
+                  <h4 className="text-sm sm:text-base font-normal text-foreground leading-loose sm:leading-relaxed mb-2 pl-8">
                     {risk.title}
                   </h4>
 
                   {/* Mitigation */}
                   {risk.fix && (
-                    <div className="pl-8 pt-2 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Mitigation: </span>
+                    <div className="pl-8 pt-3">
+                      <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-3" />
+                      <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">
+                        <span className="text-foreground/60 font-medium">Mitigation: </span>
                         {risk.fix}
                       </p>
                     </div>
@@ -754,48 +772,54 @@ export function Page2AuditVerdict({
       {/* No risks state */}
       {mistakes.length === 0 && (
         <motion.div
-          className="mb-16 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 border border-emerald-500/20 rounded-3xl p-12"
-          initial={{ opacity: 0, y: 30 }}
+          className="mb-16 rounded-2xl border border-border/30 overflow-hidden p-12"
+          initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          transition={{ duration: 0.8, delay: 0.4, ease: EASE_OUT_EXPO }}
         >
-          <div className="text-center">
-            <motion.div
-              className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/10 flex items-center justify-center"
-              initial={{ scale: 0 }}
-              animate={isVisible ? { scale: 1 } : {}}
-              transition={{ duration: 0.5, delay: 0.5, type: "spring" }}
-            >
-              <svg className="w-10 h-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </motion.div>
-            <h4 className="text-2xl font-bold text-foreground mb-3">
-              No Critical Risk Factors Identified
-            </h4>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              The proposed strategy demonstrates strong alignment with regulatory requirements
-              and industry best practices. Proceed with standard implementation protocols.
-            </p>
+          <div className="relative">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-emerald-500/[0.03] to-transparent pointer-events-none" />
+            <div className="text-center relative">
+              <motion.div
+                className="w-20 h-20 mx-auto mb-6 rounded-full border border-emerald-500/20 flex items-center justify-center"
+                initial={{ scale: 0 }}
+                animate={isVisible ? { scale: 1 } : {}}
+                transition={{ duration: 0.5, delay: 0.5, type: "spring" }}
+              >
+                <svg className="w-10 h-10 text-emerald-500/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </motion.div>
+              <h4 className="text-2xl font-bold text-foreground mb-3 tracking-tight">
+                No Critical Risk Factors Identified
+              </h4>
+              <p className="text-sm text-muted-foreground/60 max-w-lg mx-auto leading-relaxed">
+                The proposed strategy demonstrates strong alignment with regulatory requirements
+                and industry best practices. Proceed with standard implementation protocols.
+              </p>
+            </div>
           </div>
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          DUE DILIGENCE REQUIREMENTS - Premium Timeline
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* Due Diligence Requirements */}
       <motion.div
         className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.6 }}
+        transition={{ duration: 0.8, delay: 0.6, ease: EASE_OUT_EXPO }}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-foreground tracking-wide">
-            DUE DILIGENCE REQUIREMENTS
-          </h3>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+              Compliance Framework
+            </p>
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight">
+              Due Diligence Requirements
+            </h3>
+          </div>
           {ddChecklist?.items?.length && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground/60 tracking-wide">
               {ddChecklist.items.filter(i => i.priority === 'critical').length} Critical · {ddChecklist.items.filter(i => i.priority === 'high').length} High
             </span>
           )}
@@ -803,7 +827,7 @@ export function Page2AuditVerdict({
 
         {/* Clean List Layout */}
         {ddChecklist?.items?.length ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {ddChecklist.items
               .sort((a, b) => {
                 const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -822,32 +846,36 @@ export function Page2AuditVerdict({
                 return (
                   <motion.div
                     key={item.item}
-                    className="bg-card border border-border rounded-xl p-4 sm:p-5"
-                    initial={{ opacity: 0, y: 10 }}
+                    className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+                    initial={{ opacity: 0, y: 12 }}
                     animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.3, delay: 0.7 + i * 0.08 }}
+                    transition={{ duration: 0.7, delay: 0.7 + i * 0.08, ease: EASE_OUT_EXPO }}
                   >
                     {/* Header Row */}
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded ${
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-3">
+                        {/* Colored dot indicator */}
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          isCritical ? 'bg-gold' : 'bg-border/40'
+                        }`} />
+                        <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
                           isCritical
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
+                            ? 'border-gold/20 text-gold/80'
+                            : 'border-border/20 text-muted-foreground/60'
                         }`}>
                           {item.category}
                         </span>
-                        <span className={`text-[10px] font-medium ${
-                          isCritical ? 'text-primary' : 'text-muted-foreground'
+                        <span className={`text-xs ${
+                          isCritical ? 'text-gold/70' : 'text-muted-foreground/60'
                         }`}>
                           {timeline}
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{responsible}</span>
+                      <span className="text-xs text-muted-foreground/60">{responsible}</span>
                     </div>
 
                     {/* Item Title */}
-                    <p className="text-sm font-medium text-foreground leading-relaxed">
+                    <p className="text-sm font-normal text-foreground leading-relaxed pl-5">
                       {item.item}
                     </p>
                   </motion.div>
@@ -855,8 +883,8 @@ export function Page2AuditVerdict({
               })}
           </div>
         ) : (
-          <div className="text-center py-8 px-4 bg-card border border-border rounded-xl">
-            <p className="text-sm text-muted-foreground">
+          <div className="text-center py-10 px-6 rounded-xl border border-border/20 bg-card/50">
+            <p className="text-sm text-muted-foreground/60">
               Due diligence items will be generated based on {sourceJurisdiction} → {destinationJurisdiction} profile
             </p>
           </div>

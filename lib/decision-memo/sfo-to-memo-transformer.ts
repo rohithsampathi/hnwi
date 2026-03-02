@@ -306,7 +306,7 @@ function getJurisdictionCoordinates(jurisdiction: string): { lat: number; lng: n
 
   // Normalize jurisdiction name
   const normalized = jurisdiction.trim();
-  return coords[normalized] || coords['United States']; // Default to US
+  return coords[normalized] || { lat: 0, lng: 0 }; // Neutral default if not found
 }
 
 /**

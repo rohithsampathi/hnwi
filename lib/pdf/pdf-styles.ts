@@ -30,8 +30,8 @@ export const colors = {
     200: '#fde68a',
     300: '#fcd34d',
     400: '#fbbf24',
-    500: '#c9a227', // Primary gold - warm, sophisticated
-    600: '#a78b1f', // Dark gold for emphasis
+    500: '#D4A843', // Primary gold — Commandment III
+    600: '#8B7532', // Dark gold for emphasis
     700: '#856d17',
     800: '#634f0f',
     900: '#423407',
@@ -65,8 +65,8 @@ export const colors = {
   // Premium Neutrals - Warm undertones for sophistication
   white: '#ffffff',
   offWhite: '#fafaf9', // Warm white for backgrounds
-  black: '#0c0a09', // Warm black
-  dark: '#1c1917', // Rich dark for covers
+  black: '#0A0A0A', // Commandment III true black
+  dark: '#141414', // Rich dark for covers
   gray: {
     50: '#fafaf9',   // Warm off-white
     100: '#f5f5f4',  // Light background
@@ -76,11 +76,23 @@ export const colors = {
     500: '#78716c',  // Secondary text
     600: '#57534e',  // Body text
     700: '#44403c',  // Headings
-    800: '#292524',  // Strong text
-    900: '#1c1917',  // Darkest text
-    950: '#0c0a09',  // True black
+    800: '#262626',  // Strong text
+    900: '#141414',  // Darkest text
+    950: '#0A0A0A',  // True black — Commandment III
   },
   // Accent - Deep Blue (trust, professionalism)
+  // Warning - Orange (risk threshold 3–4)
+  orange: {
+    400: '#fb923c',
+    500: '#f97316', // Primary orange
+    600: '#ea580c',
+  },
+  // Caution - Yellow (risk threshold 5–6)
+  yellow: {
+    400: '#facc15',
+    500: '#eab308', // Primary yellow
+    600: '#ca8a04',
+  },
   blue: {
     50: '#eff6ff',
     100: '#dbeafe',
@@ -93,86 +105,143 @@ export const colors = {
     800: '#1e40af',
     900: '#1e3a8a',
   },
-  // Special - Background tints
+  // Special - Background tints (dark mode — higher opacity for visibility on dark)
   tints: {
-    goldLight: 'rgba(201, 162, 39, 0.05)',   // Subtle gold wash
-    goldMedium: 'rgba(201, 162, 39, 0.10)',  // Gold highlight
-    emeraldLight: 'rgba(16, 185, 129, 0.05)', // Subtle success
-    emeraldMedium: 'rgba(16, 185, 129, 0.10)', // Success highlight
-    redLight: 'rgba(239, 68, 68, 0.05)',     // Subtle alert
-    redMedium: 'rgba(239, 68, 68, 0.10)',    // Alert highlight
+    goldLight: 'rgba(212, 168, 67, 0.08)',   // Subtle gold wash
+    goldMedium: 'rgba(212, 168, 67, 0.15)',  // Gold highlight
+    goldStrong: 'rgba(212, 168, 67, 0.25)',  // Gold border accent
+    emeraldLight: 'rgba(16, 185, 129, 0.08)', // Subtle success
+    emeraldMedium: 'rgba(16, 185, 129, 0.15)', // Success highlight
+    redLight: 'rgba(239, 68, 68, 0.08)',     // Subtle alert
+    redMedium: 'rgba(239, 68, 68, 0.15)',    // Alert highlight
+    orangeMedium: 'rgba(249, 115, 22, 0.15)', // Orange highlight
+    yellowMedium: 'rgba(234, 179, 8, 0.15)', // Yellow highlight
   },
 };
 
 // =============================================================================
+// DARK THEME ALIASES — "Money Talking" Design Language
+// Maps Commandment III exact values to semantic usage
+// =============================================================================
+export const darkTheme: Record<string, string> = {
+  pageBg: '#0A0A0A',        // Page background
+  cardBg: '#141414',        // Card / panel background
+  surfaceBg: '#1A1A1A',     // Elevated surface
+  border: '#262626',        // Border color
+  borderSubtle: '#1F1F1F',  // Subtle border
+  textPrimary: '#F5F5F5',   // Primary text (headings, values)
+  textSecondary: '#D4D4D4', // Secondary text (body)
+  textMuted: '#A3A3A3',     // Muted text (labels, captions)
+  textFaint: '#737373',     // Faint text (footnotes)
+  gold: '#D4A843',          // Primary gold accent
+  goldMuted: '#8B7532',     // Muted gold
+  goldTint: 'rgba(212, 168, 67, 0.08)', // Gold wash bg
+};
+
+// Snapshot of original dark values for restoration after light-mode PDF export
+const _darkThemeValues = { ...darkTheme };
+
+// Institutional light theme — exact match to web UI (globals.css :root values)
+const _lightThemeValues: Record<string, string> = {
+  pageBg: '#FFFFFF',        // --background
+  cardBg: '#FAFAFA',        // --surface (stone-50)
+  surfaceBg: '#F5F5F5',     // --surface-hover (stone-100)
+  border: '#D4D4D4',        // --border (stone-300)
+  borderSubtle: '#E5E5E5',  // stone-200
+  textPrimary: '#0A0A0A',   // --foreground (stone-950)
+  textSecondary: '#262626',  // stone-800
+  textMuted: '#525252',     // --muted-foreground (stone-600)
+  textFaint: '#737373',     // stone-500
+  gold: '#D4A843',          // --gold (exact match)
+  goldMuted: '#8B7532',     // --gold-muted (exact match)
+  goldTint: 'rgba(212, 168, 67, 0.08)',
+};
+
+// =============================================================================
 // TYPOGRAPHY SCALE (8pt baseline grid)
-// Premium institutional typography: Times-Roman for body, Helvetica-Bold for headings
+// Matches web UI: Inter for all text, Courier for mono
 // =============================================================================
 export const typography = {
+  // Hero - Impact numbers (tax savings, scores) — biggest visual emphasis
+  hero: {
+    fontSize: 48,
+    fontFamily: 'Inter',
+    fontWeight: 700 as const,
+    letterSpacing: -1,
+    lineHeight: 1.0,
+  },
   // Display - Cover pages, major headings
   display: {
     fontSize: 36,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Inter',
+    fontWeight: 700 as const,
     letterSpacing: -0.5,
     lineHeight: 1.1,
   },
   // H1 - Page titles
   h1: {
     fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Inter',
+    fontWeight: 700 as const,
     letterSpacing: -0.3,
     lineHeight: 1.2,
   },
   // H2 - Section headers
   h2: {
     fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Inter',
+    fontWeight: 700 as const,
     letterSpacing: 0,
     lineHeight: 1.3,
   },
   // H3 - Subsection headers
   h3: {
     fontSize: 11,
-    fontFamily: 'Times-Bold',
+    fontFamily: 'Inter',
+    fontWeight: 600 as const,
     letterSpacing: 0,
     lineHeight: 1.35,
   },
   // H4 - Card titles
   h4: {
     fontSize: 10,
-    fontFamily: 'Times-Bold',
+    fontFamily: 'Inter',
+    fontWeight: 600 as const,
     letterSpacing: 0,
     lineHeight: 1.4,
   },
-  // Body - Primary content (Times-Roman for premium institutional feel)
+  // Body - Primary content
   body: {
-    fontSize: 11,
-    fontFamily: 'Times-Roman',
+    fontSize: 10,
+    fontFamily: 'Inter',
+    fontWeight: 400 as const,
     lineHeight: 1.65,
   },
   // Small - Secondary content
   small: {
-    fontSize: 10,
-    fontFamily: 'Times-Roman',
+    fontSize: 9,
+    fontFamily: 'Inter',
+    fontWeight: 400 as const,
     lineHeight: 1.5,
   },
   // Micro - Labels, captions
   micro: {
-    fontSize: 8.5,
-    fontFamily: 'Helvetica-Bold',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 8,
+    fontFamily: 'Inter',
+    fontWeight: 600 as const,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
     lineHeight: 1.4,
   },
-  // Mono - Reference numbers, codes
+  // Mono - Citations/references
   mono: {
-    fontSize: 10,
+    fontSize: 8,
     fontFamily: 'Courier',
     letterSpacing: 0.5,
   },
   // Mono small
   monoSmall: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontFamily: 'Courier',
     letterSpacing: 0.3,
   },
@@ -192,303 +261,354 @@ export const spacing = {
 };
 
 // =============================================================================
-// SHARED STYLES
+// SHARED STYLES — rebuilt on theme swap via buildPdfStyles()
 // =============================================================================
-export const pdfStyles = StyleSheet.create({
-  // Page layouts
-  page: {
-    fontFamily: 'Helvetica',
-    fontSize: 10,
-    paddingTop: 48,
-    paddingBottom: 56,
-    paddingHorizontal: 48,
-    backgroundColor: colors.white,
-    color: colors.gray[700],
-  },
-  pageDark: {
-    fontFamily: 'Helvetica',
-    fontSize: 10,
-    padding: 0,
-    backgroundColor: colors.dark,
-    color: colors.gray[200],
-  },
+function buildPdfStyles() {
+  return StyleSheet.create({
+    // Page layouts
+    page: {
+      fontFamily: 'Inter',
+      fontSize: 10,
+      paddingTop: 48,
+      paddingBottom: 56,
+      paddingHorizontal: 48,
+      backgroundColor: darkTheme.pageBg,
+      color: darkTheme.textSecondary,
+    },
+    pageDark: {
+      fontFamily: 'Inter',
+      fontSize: 10,
+      padding: 0,
+      backgroundColor: darkTheme.pageBg,
+      color: darkTheme.textSecondary,
+    },
 
-  // Cover/Last page specific
-  coverPage: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 56,
-  },
+    // Cover/Last page specific
+    coverPage: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 56,
+    },
 
-  // Typography styles
-  h1: {
-    ...typography.h1,
-    color: colors.gray[900],
-    marginBottom: spacing.md,
-  },
-  h2: {
-    ...typography.h2,
-    color: colors.gray[900],
-    marginBottom: spacing.md,
-  },
-  h3: {
-    ...typography.h3,
-    color: colors.gray[800],
-    marginBottom: spacing.sm,
-  },
-  h4: {
-    ...typography.h4,
-    color: colors.gray[700],
-    marginBottom: spacing.xs,
-  },
-  bodyText: {
-    ...typography.body,
-    color: colors.gray[600],
-  },
-  smallText: {
-    ...typography.small,
-    color: colors.gray[500],
-  },
-  label: {
-    ...typography.micro,
-    color: colors.gray[500],
-    marginBottom: spacing.xs,
-  },
+    // Typography styles
+    h1: {
+      ...typography.h1,
+      color: darkTheme.textPrimary,
+      marginBottom: spacing.md,
+    },
+    h2: {
+      ...typography.h2,
+      color: darkTheme.textPrimary,
+      marginBottom: spacing.md,
+    },
+    h3: {
+      ...typography.h3,
+      color: darkTheme.textPrimary,
+      marginBottom: spacing.sm,
+    },
+    h4: {
+      ...typography.h4,
+      color: darkTheme.textSecondary,
+      marginBottom: spacing.xs,
+    },
+    bodyText: {
+      ...typography.body,
+      color: darkTheme.textMuted,
+    },
+    smallText: {
+      ...typography.small,
+      color: darkTheme.textMuted,
+    },
+    label: {
+      ...typography.micro,
+      color: darkTheme.textMuted,
+      marginBottom: spacing.xs,
+    },
 
-  // Layout containers
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-    paddingBottom: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  spaceBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+    // Layout containers
+    section: {
+      marginBottom: spacing.xl,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: darkTheme.border,
+      paddingBottom: spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    spaceBetween: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
 
-  // Cards - Premium rounded styling
-  card: {
-    backgroundColor: colors.gray[50],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  cardBordered: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  cardDark: {
-    backgroundColor: colors.gray[900],
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  cardHighlight: {
-    backgroundColor: colors.tints.goldLight,
-    borderWidth: 1.5,
-    borderColor: colors.amber[500],
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-  },
+    // Cards
+    card: {
+      backgroundColor: darkTheme.cardBg,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+      borderRadius: 12,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    cardBordered: {
+      backgroundColor: darkTheme.cardBg,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+      borderRadius: 12,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    cardDark: {
+      backgroundColor: darkTheme.surfaceBg,
+      borderRadius: 12,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    cardHighlight: {
+      backgroundColor: darkTheme.goldTint,
+      borderWidth: 1.5,
+      borderColor: colors.amber[500],
+      borderRadius: 12,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
 
-  // Metrics grid
-  metricsGrid: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  metricBox: {
-    flex: 1,
-    backgroundColor: colors.gray[50],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 10,
-    padding: spacing.md,
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  metricValue: {
-    fontSize: 20,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.gray[900],
-    marginBottom: spacing.xs,
-  },
-  metricLabel: {
-    ...typography.micro,
-    color: colors.gray[500],
-    textAlign: 'center',
-  },
+    // Metrics grid
+    metricsGrid: {
+      flexDirection: 'row',
+      marginBottom: spacing.lg,
+    },
+    metricBox: {
+      flex: 1,
+      backgroundColor: darkTheme.cardBg,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+      borderRadius: 10,
+      padding: spacing.md,
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    metricValue: {
+      fontSize: 20,
+      fontFamily: 'Inter',
+      fontWeight: 700 as const,
+      color: darkTheme.textPrimary,
+      marginBottom: spacing.xs,
+    },
+    metricLabel: {
+      ...typography.micro,
+      color: darkTheme.textMuted,
+      textAlign: 'center',
+    },
 
-  // Tags/Badges - Pill shaped
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
-  },
-  badgeAmber: {
-    backgroundColor: colors.amber[100],
-  },
-  badgeGreen: {
-    backgroundColor: colors.emerald[100],
-  },
-  badgeRed: {
-    backgroundColor: colors.red[100],
-  },
-  badgeGray: {
-    backgroundColor: colors.gray[100],
-  },
-  badgeText: {
-    ...typography.micro,
-  },
+    // Tags/Badges
+    badge: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: 12,
+    },
+    badgeAmber: {
+      backgroundColor: 'rgba(212, 168, 67, 0.15)',
+    },
+    badgeGreen: {
+      backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    },
+    badgeRed: {
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    },
+    badgeGray: {
+      backgroundColor: darkTheme.surfaceBg,
+    },
+    badgeText: {
+      ...typography.micro,
+    },
 
-  // Tables - Refined styling
-  table: {
-    width: '100%',
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: colors.gray[800],
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
-    backgroundColor: colors.white,
-  },
-  tableRowAlt: {
-    flexDirection: 'row',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[100],
-    backgroundColor: colors.gray[50],
-  },
-  tableCell: {
-    flex: 1,
-    ...typography.small,
-    color: colors.gray[700],
-  },
-  tableCellHeader: {
-    flex: 1,
-    ...typography.micro,
-    color: colors.white,
-  },
+    // Tables
+    table: {
+      width: '100%',
+      marginBottom: spacing.lg,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+      borderRadius: 10,
+      overflow: 'hidden',
+    },
+    tableHeader: {
+      flexDirection: 'row',
+      backgroundColor: darkTheme.surfaceBg,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
+    tableRow: {
+      flexDirection: 'row',
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: darkTheme.borderSubtle,
+      backgroundColor: darkTheme.pageBg,
+    },
+    tableRowAlt: {
+      flexDirection: 'row',
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: darkTheme.borderSubtle,
+      backgroundColor: darkTheme.cardBg,
+    },
+    tableCell: {
+      flex: 1,
+      ...typography.small,
+      color: darkTheme.textSecondary,
+    },
+    tableCellHeader: {
+      flex: 1,
+      ...typography.micro,
+      color: darkTheme.textPrimary,
+    },
 
-  // Special elements
-  divider: {
-    height: 1,
-    backgroundColor: colors.gray[200],
-    marginVertical: spacing.lg,
-  },
-  accentLine: {
-    width: 4,
-    height: 20,
-    backgroundColor: colors.amber[500],
-    borderRadius: 2,
-    marginRight: spacing.sm,
-  },
+    // Special elements
+    divider: {
+      height: 1,
+      backgroundColor: darkTheme.border,
+      marginVertical: spacing.lg,
+    },
+    accentLine: {
+      width: 4,
+      height: 20,
+      backgroundColor: colors.amber[500],
+      borderRadius: 2,
+      marginRight: spacing.sm,
+    },
 
-  // Verdict box
-  verdictBox: {
-    backgroundColor: colors.gray[900],
-    borderRadius: 12,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-  },
-  verdictTitle: {
-    ...typography.display,
-    color: colors.white,
-    marginBottom: spacing.sm,
-  },
+    // Verdict box
+    verdictBox: {
+      backgroundColor: darkTheme.cardBg,
+      borderRadius: 12,
+      padding: spacing.xl,
+      marginBottom: spacing.lg,
+    },
+    verdictTitle: {
+      ...typography.display,
+      color: darkTheme.textPrimary,
+      marginBottom: spacing.sm,
+    },
 
-  // Risk indicators
-  riskHigh: {
-    color: colors.red[600],
-    fontFamily: 'Helvetica-Bold',
-  },
-  riskMedium: {
-    color: colors.amber[600],
-    fontFamily: 'Helvetica-Bold',
-  },
-  riskLow: {
-    color: colors.emerald[600],
-    fontFamily: 'Helvetica-Bold',
-  },
+    // Risk indicators
+    riskHigh: {
+      color: colors.red[400],
+      fontFamily: 'Inter',
+      fontWeight: 700 as const,
+    },
+    riskMedium: {
+      color: colors.amber[500],
+      fontFamily: 'Inter',
+      fontWeight: 700 as const,
+    },
+    riskLow: {
+      color: colors.emerald[400],
+      fontFamily: 'Inter',
+      fontWeight: 700 as const,
+    },
 
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 24,
-    left: 48,
-    right: 48,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-  },
-  footerText: {
-    ...typography.monoSmall,
-    color: colors.gray[400],
-  },
-  footerBrand: {
-    ...typography.micro,
-    color: colors.amber[500],
-    fontSize: 8.5,
-  },
+    // Footer
+    footer: {
+      position: 'absolute',
+      bottom: 24,
+      left: 48,
+      right: 48,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: darkTheme.border,
+    },
+    footerText: {
+      ...typography.monoSmall,
+      color: darkTheme.textFaint,
+    },
+    footerBrand: {
+      ...typography.micro,
+      color: colors.amber[500],
+      fontSize: 8.5,
+    },
 
-  // Intelligence note (grounded indicator)
-  groundedNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.gray[50],
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
-  groundedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.amber[500],
-    marginRight: spacing.sm,
-  },
-  groundedText: {
-    ...typography.micro,
-    color: colors.gray[500],
-    fontSize: 8.5,
-  },
-});
+    // Intelligence note (grounded indicator)
+    groundedNote: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: spacing.lg,
+      padding: spacing.md,
+      backgroundColor: darkTheme.cardBg,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+    },
+    groundedDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.amber[500],
+      marginRight: spacing.sm,
+    },
+    groundedText: {
+      ...typography.micro,
+      color: darkTheme.textMuted,
+      fontSize: 8.5,
+    },
+
+    // Hero number display (tax savings, scores)
+    heroValue: {
+      ...typography.hero,
+      color: darkTheme.textPrimary,
+    },
+
+    // Verdict-themed table header (colored top border)
+    tableHeaderVerdict: {
+      flexDirection: 'row',
+      backgroundColor: darkTheme.surfaceBg,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderTopWidth: 3,
+    },
+
+    // Verdict-themed card (left accent border)
+    cardVerdict: {
+      backgroundColor: darkTheme.cardBg,
+      borderWidth: 1,
+      borderColor: darkTheme.border,
+      borderLeftWidth: 3,
+      padding: spacing.lg,
+      marginBottom: spacing.md,
+    },
+
+    // Verdict-themed metric highlight
+    metricBoxVerdict: {
+      flex: 1,
+      padding: spacing.md,
+      alignItems: 'center',
+      marginRight: spacing.sm,
+      borderBottomWidth: 3,
+    },
+  });
+}
+
+export let pdfStyles = buildPdfStyles();
+
+/**
+ * Swap PDF color theme before rendering.
+ * Call with 'light' before pdf().toBlob(), then restore with 'dark' in a finally block.
+ */
+export function setPdfThemeMode(mode: 'light' | 'dark') {
+  Object.assign(darkTheme, mode === 'light' ? _lightThemeValues : _darkThemeValues);
+  pdfStyles = buildPdfStyles();
+}
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -625,22 +745,22 @@ export const formatDateShort = (dateString?: string): string => {
 export const getRiskColor = (level: string): string => {
   const normalizedLevel = level.toLowerCase();
   if (normalizedLevel === 'critical' || normalizedLevel === 'high') {
-    return colors.red[600];
+    return colors.red[400];
   } else if (normalizedLevel === 'medium' || normalizedLevel === 'moderate') {
-    return colors.amber[600];
+    return colors.amber[500];
   }
-  return colors.emerald[600];
+  return colors.emerald[400];
 };
 
 /**
- * Get risk background color based on level
+ * Get risk background color based on level (dark tints for dark backgrounds)
  */
 export const getRiskBgColor = (level: string): string => {
   const normalizedLevel = level.toLowerCase();
   if (normalizedLevel === 'critical' || normalizedLevel === 'high') {
-    return colors.red[100];
+    return 'rgba(239, 68, 68, 0.12)';
   } else if (normalizedLevel === 'medium' || normalizedLevel === 'moderate') {
-    return colors.amber[100];
+    return 'rgba(212, 168, 67, 0.12)';
   }
-  return colors.emerald[100];
+  return 'rgba(16, 185, 129, 0.12)';
 };

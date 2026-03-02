@@ -30,7 +30,17 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Apply to all routes with OG meta tags
+        // API routes — NEVER browser-cache (auth-dependent, dynamic data)
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+        ],
+      },
+      {
+        // Pages — cache for OG meta tags and social sharing
         source: '/:path*',
         headers: [
           {
@@ -74,23 +84,6 @@ const nextConfig = {
         /webpack\/lib\/cache\/PackFileCacheStrategy/,
         /was preloaded using link preload but not used/,
       ]
-      
-      // Optimize CSS preloading in development
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization.splitChunks,
-          cacheGroups: {
-            ...config.optimization.splitChunks?.cacheGroups,
-            styles: {
-              name: 'styles',
-              type: 'css/mini-extract',
-              chunks: 'all',
-              enforce: true,
-            },
-          },
-        },
-      }
     }
     return config
   },

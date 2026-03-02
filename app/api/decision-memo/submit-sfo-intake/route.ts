@@ -6,7 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
-import axios from 'axios';
 import { withAuth, withValidation } from '@/lib/security/api-auth';
 import { sfoIntakeSchema } from '@/lib/security/validation-schemas';
 import { safeError } from '@/lib/security/api-response';
@@ -39,28 +38,34 @@ async function handlePost(request: NextRequest) {
     const backendUrl = `${API_BASE_URL}/api/decision-memo/submit-sfo-intake`;
     logger.info('🔗 Calling backend:', backendUrl);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+
     try {
-      // Use axios instead of fetch to avoid undici's default timeout
-      // 5 minutes (300000ms) for MoEv5 processing — matches Vercel maxDuration
-      const response = await axios.post(backendUrl, body, {
+      const response = await fetch(backendUrl, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        timeout: 300000, // 5 minutes
-        validateStatus: () => true, // Don't throw on non-2xx status
+        body: JSON.stringify(body),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (response.status >= 400) {
-        logger.error('❌ Backend error:', response.status, response.data);
+        const errorData = await response.json().catch(() => ({}));
+        logger.error('❌ Backend error:', response.status, errorData);
         return NextResponse.json(
-          { success: false, error: `Backend returned ${response.status}`, details: response.data },
+          { success: false, error: `Backend returned ${response.status}`, details: errorData },
           { status: response.status }
         );
       }
 
-      logger.info('✅ Backend response:', response.data);
-      return NextResponse.json(response.data);
-    } catch (axiosError) {
-      // Re-throw to be caught by outer catch
-      throw axiosError;
+      const data = await response.json();
+      logger.info('✅ Backend response:', data);
+      return NextResponse.json(data);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
     }
 
   } catch (error) {
