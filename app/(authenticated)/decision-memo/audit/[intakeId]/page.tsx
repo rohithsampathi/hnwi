@@ -225,7 +225,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     return sessionStorage.getItem(`report_token_${intakeId}`);
   });
 
-  const { theme: appTheme } = useTheme();
+  useTheme();
 
   const {
     getSession,
@@ -233,7 +233,6 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     getFullArtifact,
     initiatePayment,
     checkPaymentStatus,
-    exportPDF,
     shareArtifact
   } = usePatternAudit();
 
@@ -438,6 +437,41 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Retry pending PDF export after Fast Refresh reload
+  // (Dev-mode first-compile of print route triggers full page reload, killing in-flight fetch)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('pdf-export-pending');
+      if (!raw) return;
+      sessionStorage.removeItem('pdf-export-pending');
+      const { id, ts } = JSON.parse(raw);
+      if (id === intakeId && Date.now() - ts < 60000) {
+        // Routes are now compiled — retry will succeed
+        const doRetry = async () => {
+          try {
+            setIsExportingPDF(true);
+            const response = await fetch(`/api/decision-memo/pdf/${intakeId}`);
+            if (!response.ok) throw new Error(`PDF generation failed: ${response.status}`);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `HNWI-Decision-Audit-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } catch {
+            // Silent — user can click again
+          } finally {
+            setIsExportingPDF(false);
+          }
+        };
+        doRetry();
+      }
+    } catch { /* ignore */ }
+  }, [intakeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch HNWI World developments count
   useEffect(() => {
@@ -644,156 +678,37 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Export PDF - Uses native PDF generation via @react-pdf/renderer
-  // Uses the EXACT same memoData building logic as the web UI (lines 834-900)
+  // Export PDF via native @react-pdf/renderer (server-side)
   const handleExportPDF = async () => {
-    if (!fullArtifact) return;
-
     try {
       setIsExportingPDF(true);
 
-      // Build COMPLETE memoData exactly like the web UI does (same as lines 834-900)
-      // This ensures PDF shows the same data as web UI
-      let pdfMemoData;
+      // Save intent — if Fast Refresh reloads the page (first-time route compile),
+      // the useEffect above will auto-retry after reload
+      sessionStorage.setItem('pdf-export-pending', JSON.stringify({ id: intakeId, ts: Date.now() }));
 
-      if (backendData?.preview_data) {
-        // Merge expert analysis sections from memo_data into preview_data if not already present
-        const previewData = { ...backendData.preview_data };
+      const response = await fetch(`/api/decision-memo/pdf/${intakeId}`);
+      sessionStorage.removeItem('pdf-export-pending');
 
-        // ══════════════════════════════════════════════════════════════════
-        // MERGE ALL EXPERT DATA — must match web UI merge (lines 1120-1252)
-        // ══════════════════════════════════════════════════════════════════
-
-        // Expert 7: Transparency Regime
-        if (!previewData.transparency_regime_impact) {
-          previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
-                                                    (backendData as any).transparency_regime_impact;
-        }
-        if (!previewData.transparency_data) {
-          previewData.transparency_data = backendData.memo_data?.transparency_data ||
-                                           (backendData as any).transparency_data;
-        }
-
-        // Expert 8: Crisis Resilience
-        if (!previewData.crisis_resilience_stress_test) {
-          previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
-                                                       (backendData as any).crisis_resilience_stress_test;
-        }
-        if (!previewData.crisis_data) {
-          previewData.crisis_data = backendData.memo_data?.crisis_data ||
-                                     (backendData as any).crisis_data;
-        }
-
-        // Expert 9: Peer Intelligence
-        if (!previewData.peer_intelligence_analysis) {
-          previewData.peer_intelligence_analysis = backendData.memo_data?.peer_intelligence_analysis ||
-                                                    (backendData as any).peer_intelligence_analysis;
-        }
-        if (!previewData.peer_intelligence_data) {
-          previewData.peer_intelligence_data = backendData.memo_data?.peer_intelligence_data ||
-                                                (backendData as any).peer_intelligence_data;
-        }
-
-        // Expert 10: Market Dynamics
-        if (!previewData.market_dynamics_analysis) {
-          previewData.market_dynamics_analysis = backendData.memo_data?.market_dynamics_analysis ||
-                                                  (backendData as any).market_dynamics_analysis;
-        }
-        if (!previewData.market_dynamics_data) {
-          previewData.market_dynamics_data = backendData.memo_data?.market_dynamics_data ||
-                                              (backendData as any).market_dynamics_data;
-        }
-
-        // Expert 11: Implementation Roadmap
-        if (!previewData.implementation_roadmap_data) {
-          previewData.implementation_roadmap_data = backendData.memo_data?.implementation_roadmap_data ||
-                                                     (backendData as any).implementation_roadmap_data;
-        }
-
-        // Expert 12: Due Diligence
-        if (!previewData.due_diligence_data) {
-          previewData.due_diligence_data = backendData.memo_data?.due_diligence_data ||
-                                            (backendData as any).due_diligence_data;
-        }
-
-        // Risk Assessment (MCP fields from unified endpoint)
-        if (!previewData.risk_assessment && backendData.risk_assessment) {
-          previewData.risk_assessment = backendData.risk_assessment;
-        }
-
-        // All Mistakes (with cost_numeric from unified endpoint)
-        if (backendData.all_mistakes && backendData.all_mistakes.length > 0) {
-          previewData.all_mistakes = backendData.all_mistakes;
-        }
-
-        // SFO-Grade Expert Data (Experts 13-15)
-        if (!previewData.heir_management_data || Object.keys(previewData.heir_management_data || {}).length === 0) {
-          previewData.heir_management_data = backendData.memo_data?.heir_management_data ||
-                                              backendData.full_artifact?.heir_management_data ||
-                                              (backendData as any).heir_management_data;
-          previewData.heir_management_analysis = backendData.memo_data?.heir_management_analysis ||
-                                                  backendData.full_artifact?.heir_management_analysis ||
-                                                  (backendData as any).heir_management_analysis;
-        }
-        if (!previewData.wealth_projection_data || Object.keys(previewData.wealth_projection_data || {}).length === 0) {
-          previewData.wealth_projection_data = backendData.memo_data?.wealth_projection_data ||
-                                                backendData.full_artifact?.wealth_projection_data ||
-                                                (backendData as any).wealth_projection_data;
-          previewData.wealth_projection_analysis = backendData.memo_data?.wealth_projection_analysis ||
-                                                    backendData.full_artifact?.wealth_projection_analysis ||
-                                                    (backendData as any).wealth_projection_analysis;
-        }
-        if (!previewData.scenario_tree_data || Object.keys(previewData.scenario_tree_data || {}).length === 0) {
-          previewData.scenario_tree_data = backendData.memo_data?.scenario_tree_data ||
-                                            backendData.full_artifact?.scenario_tree_data ||
-                                            (backendData as any).scenario_tree_data;
-          previewData.scenario_tree_analysis = backendData.memo_data?.scenario_tree_analysis ||
-                                                backendData.full_artifact?.scenario_tree_analysis ||
-                                                (backendData as any).scenario_tree_analysis;
-        }
-
-        // Golden Visa / Destination Drivers (from KGv3)
-        if (!previewData.destination_drivers || !previewData.destination_drivers?.visa_programs) {
-          previewData.destination_drivers = backendData.memo_data?.destination_drivers ||
-                                             backendData.full_artifact?.destination_drivers ||
-                                             (backendData as any).destination_drivers;
-        }
-
-        // HNWI Trends Analysis
-        if (!previewData.hnwi_trends_analysis) {
-          previewData.hnwi_trends_analysis = backendData.memo_data?.hnwi_trends_analysis ||
-                                              backendData.full_artifact?.hnwi_trends_analysis ||
-                                              (backendData as any).hnwi_trends_analysis;
-        }
-
-        // Create memo_data if it doesn't exist
-        const memoDataObj = backendData.memo_data || {
-          kgv3_intelligence_used: {
-            precedents: fullArtifact.intelligenceSources?.developmentsMatched || 0,
-            failure_modes: fullArtifact.intelligenceSources?.failurePatternsMatched || 0,
-            sequencing_rules: fullArtifact.intelligenceSources?.sequencingRulesApplied || 0,
-            jurisdictions: 2
-          }
-        };
-
-        pdfMemoData = {
-          success: true,
-          intake_id: intakeId,
-          generated_at: backendData.generated_at || fullArtifact.generatedAt,
-          preview_data: previewData,
-          memo_data: memoDataObj,
-          full_memo_url: backendData.full_memo_url || ''
-        };
-      } else {
-        // Fallback to transformation if no backend data
-        pdfMemoData = transformICArtifactToMemoData(fullArtifact, intakeId);
+      if (!response.ok) {
+        throw new Error(`PDF generation failed: ${response.status}`);
       }
 
-      // Call the exportPDF hook with complete memoData, passing current app theme
-      await exportPDF(pdfMemoData as any, appTheme);
-    } catch (error) {
-      console.error('PDF export failed:', error);
-      alert('Failed to export PDF. Please try again.');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `HNWI-Decision-Audit-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      // If the page didn't reload (real error), clear the pending flag and alert
+      if (sessionStorage.getItem('pdf-export-pending')) {
+        sessionStorage.removeItem('pdf-export-pending');
+        alert('Failed to export PDF. Please try again.');
+      }
     } finally {
       setIsExportingPDF(false);
     }
@@ -1634,6 +1549,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   <span className="hidden sm:inline">{linkCopied ? 'Copied!' : 'Share'}</span>
                 </button>
                 <button
+                  type="button"
                   onClick={handleExportPDF}
                   disabled={isExportingPDF}
                   className="min-h-[44px] px-2 sm:px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"

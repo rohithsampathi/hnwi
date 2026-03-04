@@ -134,6 +134,7 @@ const GEO_COORDS: Record<string, { lat: number; lng: number }> = {
   'Australia': { lat: -33.8688, lng: 151.2093 },
   'Canada': { lat: 43.6532, lng: -79.3832 },
   'Mexico': { lat: 19.4326, lng: -99.1332 },
+  'Mexico City': { lat: 19.4326, lng: -99.1332 },
   'Thailand': { lat: 13.7563, lng: 100.5018 },
   'Malaysia': { lat: 3.1390, lng: 101.6869 },
   'Greece': { lat: 37.9838, lng: 23.7275 },
@@ -151,24 +152,90 @@ const GEO_COORDS: Record<string, { lat: number; lng: number }> = {
   'South Africa': { lat: -33.9249, lng: 18.4241 },
 };
 
-// Case-insensitive coord lookup (handles backend typos like "NEw York")
+// Case-insensitive coord lookup with comma-split fallback
+// Handles: "Hyderabad", "Hyderabad, India", "India / Hyderabad", etc.
 const GEO_KEYS = Object.keys(GEO_COORDS);
+const GEO_LOWER_MAP = new Map(GEO_KEYS.map(k => [k.toLowerCase(), k]));
+
 function findCoords(name: string | undefined): { lat: number; lng: number } | undefined {
   if (!name) return undefined;
+  // 1. Exact match
   const exact = GEO_COORDS[name];
   if (exact) return exact;
-  const lower = name.toLowerCase();
-  const match = GEO_KEYS.find(k => k.toLowerCase() === lower);
-  return match ? GEO_COORDS[match] : undefined;
+  // 2. Case-insensitive
+  const lower = name.trim().toLowerCase();
+  const ciMatch = GEO_LOWER_MAP.get(lower);
+  if (ciMatch) return GEO_COORDS[ciMatch];
+  // 3. Split on common delimiters and try each part
+  const parts = name.split(/[,\/→>-]+/).map(p => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    const partExact = GEO_COORDS[part];
+    if (partExact) return partExact;
+    const partLower = part.toLowerCase();
+    const partMatch = GEO_LOWER_MAP.get(partLower);
+    if (partMatch) return GEO_COORDS[partMatch];
+    // Try COUNTRY_TO_CITY resolution for each part
+    const cityFromCountry = COUNTRY_TO_CITY[part];
+    if (cityFromCountry && GEO_COORDS[cityFromCountry]) return GEO_COORDS[cityFromCountry];
+    const ciCountry = GEO_KEYS.find(k => k.toLowerCase() === partLower);
+    if (ciCountry) {
+      const cityFromCICountry = COUNTRY_TO_CITY[ciCountry];
+      if (cityFromCICountry && GEO_COORDS[cityFromCICountry]) return GEO_COORDS[cityFromCICountry];
+      return GEO_COORDS[ciCountry];
+    }
+  }
+  return undefined;
 }
 
-// Normalize jurisdiction name to canonical GEO_COORDS key (handles case typos)
+// Map country names to their primary financial hub city
+// (backend sometimes returns country-level jurisdictions instead of cities)
+const COUNTRY_TO_CITY: Record<string, string> = {
+  'United States': 'New York',
+  'USA': 'New York',
+  'US': 'New York',
+  'United Arab Emirates': 'Dubai',
+  'UAE': 'Dubai',
+  'United Kingdom': 'London',
+  'UK': 'London',
+  'India': 'Mumbai',
+  'Portugal': 'Lisbon',
+  'Switzerland': 'Zurich',
+  'Singapore': 'Singapore',
+  'France': 'Paris',
+  'Germany': 'Frankfurt',
+  'Italy': 'Milan',
+  'Netherlands': 'Amsterdam',
+  'Spain': 'Madrid',
+  'Japan': 'Tokyo',
+  'Australia': 'Sydney',
+  'Canada': 'Toronto',
+  'China': 'Shanghai',
+  'South Korea': 'Seoul',
+  'Brazil': 'Sao Paulo',
+  'Thailand': 'Bangkok',
+  'Malaysia': 'Kuala Lumpur',
+  'Greece': 'Athens',
+  'Malta': 'Valletta',
+  'Cyprus': 'Nicosia',
+  'Ireland': 'Dublin',
+  'South Africa': 'Johannesburg',
+  'Mauritius': 'Port Louis',
+  'New Zealand': 'Auckland',
+  'Mexico': 'Mexico City',
+  'Bahamas': 'Nassau',
+  'Cayman Islands': 'George Town',
+  'Panama': 'Panama City',
+};
+
+// Normalize jurisdiction name: resolve country→city, then canonical GEO_COORDS key
 function normalizeName(name: string): string {
   if (!name) return name;
-  if (GEO_COORDS[name]) return name; // exact match
-  const lower = name.toLowerCase();
+  // Resolve country to primary city first
+  const cityResolved = COUNTRY_TO_CITY[name] || name;
+  if (GEO_COORDS[cityResolved]) return cityResolved; // exact match
+  const lower = cityResolved.toLowerCase();
   const match = GEO_KEYS.find(k => k.toLowerCase() === lower);
-  return match || name; // return canonical key or original if no match
+  return match || cityResolved; // return canonical key or original if no match
 }
 
 interface Audit {
@@ -177,6 +244,8 @@ interface Audit {
   destination_jurisdiction: string;
   source_country: string;
   destination_country: string;
+  source_coordinates?: { lat: number; lng: number } | null;
+  destination_coordinates?: { lat: number; lng: number } | null;
   created_at: string;
   type: string;
   value: string;
@@ -275,8 +344,8 @@ export default function WarRoomPage() {
           const assessments = data?.assessments || data || [];
           setHasCompletedAssessment(assessments.length > 0);
         }
-      } catch (error) {
-        console.error('Failed to check assessment:', error);
+      } catch {
+        // Silent fail
       }
     };
 
@@ -294,8 +363,8 @@ export default function WarRoomPage() {
         if (data.success) {
           setAudits(data.audits || []);
         }
-      } catch (error) {
-        console.error('Failed to fetch audits:', error);
+      } catch {
+        // Silent fail
       }
     };
 
@@ -337,16 +406,17 @@ export default function WarRoomPage() {
       const currentIdx = corridorIndices[corridorKey] || 0;
       const audit = corridorAudits[currentIdx] || corridorAudits[0];
 
-      // City-first lookup: jurisdiction (city) > country fallback (case-insensitive)
-      const srcCoords = findCoords(audit.source_jurisdiction) || findCoords(audit.source_country);
-      const dstCoords = findCoords(audit.destination_jurisdiction) || findCoords(audit.destination_country);
+      // Normalize to city names (resolves country→city), then look up coords
+      const srcName = normalizeName(audit.source_jurisdiction || audit.source_country);
+      const dstName = normalizeName(audit.destination_jurisdiction || audit.destination_country);
+
+      // Try GEO_COORDS first, fall back to backend-provided coordinates
+      const srcCoords = findCoords(srcName) || (audit.source_coordinates?.lat ? audit.source_coordinates : undefined);
+      const dstCoords = findCoords(dstName) || (audit.destination_coordinates?.lat ? audit.destination_coordinates : undefined);
 
       if (!srcCoords || !dstCoords) {
         return;
       }
-
-      const srcName = audit.source_jurisdiction || audit.source_country;
-      const dstName = audit.destination_jurisdiction || audit.destination_country;
 
       // Build label from available fields
       const label = audit.type
@@ -392,7 +462,7 @@ export default function WarRoomPage() {
             // Don't duplicate Source/Destination/Type/Value (already in title/subtitle)
             ...(audit.verdict ? { 'Verdict': audit.verdict } : {}),
             ...(audit.risk_level ? { 'Risk': audit.risk_level } : {}),
-            ...(audit.total_savings ? { 'Annual Savings': audit.total_savings } : {}),
+            ...(audit.annual_value ? { 'Annual Savings': audit.annual_value } : {}),
             ...(audit.total_exposure ? { 'Exposure': audit.total_exposure } : {}),
             ...(audit.summary ? { 'Summary': audit.summary } : {}),
           },

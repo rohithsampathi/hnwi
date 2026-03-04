@@ -40,27 +40,25 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
       return;
     }
 
-    // ROOT FIX: Never show auth popup on public routes (simulation, decision-memo)
+    // ROOT FIX: Never show auth popup on public routes (simulation, decision-memo, war-room)
     if (typeof window !== 'undefined') {
       const pathname = window.location.pathname
-      if (pathname.includes('/simulation') || pathname.includes('/decision-memo')) {
+      if (pathname.includes('/simulation') || pathname.includes('/decision-memo') || pathname.includes('/war-room')) {
         return;
       }
     }
 
-    // PWA FIX: Only skip popup if BOTH conditions are true:
-    // 1. User logged in within 2 minutes (reduced from 5 for PWA reliability)
-    // 2. We're NOT in PWA standalone mode (PWA has cookie persistence issues)
+    // ROOT FIX: Guard applies in ALL modes, including PWA standalone.
+    // If the user logged in within 2 minutes any 401/403 is a race condition
+    // (cookies still propagating to the service worker / httpOnly jar) and NOT
+    // a real session expiry. Showing the popup here would interrupt a fresh login.
+    // Genuine expired-session recovery in PWA is handled by the authenticated
+    // layout's visibilitychange handler + token refresh — not by this popup.
     if (typeof window !== 'undefined') {
       const loginTimestamp = localStorage.getItem('loginTimestamp')
       const recentlyLoggedIn = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 120000 // 2 minutes
 
-      // Detect PWA standalone mode - always allow popup in PWA
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                    (window.navigator as any).standalone === true
-
-      // Only skip if recently logged in AND not in PWA mode
-      if (recentlyLoggedIn && !isPWA) {
+      if (recentlyLoggedIn) {
         return
       }
     }

@@ -75,9 +75,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
         <View
           style={{
             borderWidth: 1,
-            borderColor: `${colors.emerald[500]}33`, // ~20% opacity
-            borderRadius: 8,
-            backgroundColor: `${darkTheme.cardBg}80`,
+            borderColor: darkTheme.border,
+            borderRadius: 0.01,
+            backgroundColor: darkTheme.surfaceBg,
             padding: spacing.md,
             alignItems: 'center',
           }}
@@ -97,7 +97,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
               fontSize: 22,
               fontFamily: 'Inter',
               fontWeight: 700,
-              color: colors.emerald[500],
+              color: colors.amber[500],
               letterSpacing: -0.3,
             }}
           >
@@ -112,9 +112,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
         <View
           style={{
             borderWidth: 1,
-            borderColor: `${darkTheme.border}33`,
-            borderRadius: 8,
-            backgroundColor: `${darkTheme.cardBg}80`,
+            borderColor: darkTheme.borderSubtle,
+            borderRadius: 0.01,
+            backgroundColor: darkTheme.surfaceBg,
             padding: spacing.sm,
             alignItems: 'center',
           }}
@@ -136,9 +136,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
         <View
           style={{
             borderWidth: 1,
-            borderColor: `${colors.red[500]}33`, // ~20% opacity
-            borderRadius: 8,
-            backgroundColor: `${darkTheme.cardBg}80`,
+            borderColor: darkTheme.border,
+            borderRadius: 0.01,
+            backgroundColor: darkTheme.surfaceBg,
             padding: spacing.md,
           }}
         >
@@ -146,7 +146,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
           <View
             style={{
               height: 1,
-              backgroundColor: `${colors.red[500]}4D`, // ~30% opacity
+              backgroundColor: colors.tints.redDeepStrong,
               marginBottom: spacing.md,
             }}
           />
@@ -156,7 +156,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
             <Text
               style={{
                 ...typography.micro,
-                color: `${colors.red[500]}CC`, // ~80% opacity
+                color: colors.red[700],
                 letterSpacing: 2.5,
               }}
             >
@@ -173,9 +173,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
               paddingHorizontal: spacing.md,
               paddingVertical: spacing.sm,
               borderWidth: 1,
-              borderColor: `${colors.red[500]}26`, // ~15% opacity
-              borderRadius: 8,
-              backgroundColor: `${colors.red[500]}08`, // ~3% opacity
+              borderColor: darkTheme.border,
+              borderRadius: 0.01,
+              backgroundColor: colors.tints.redDeepSubtle,
               marginBottom: spacing.xs,
             }}
           >
@@ -192,7 +192,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                 fontSize: 10,
                 fontFamily: 'Inter',
                 fontWeight: 500,
-                color: colors.red[500],
+                color: colors.red[700],
               }}
             >
               -{fmtCurrency(primaryBarrierCost)}
@@ -209,9 +209,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                 paddingHorizontal: spacing.md,
                 paddingVertical: spacing.sm,
                 borderWidth: 1,
-                borderColor: `${colors.red[500]}26`,
-                borderRadius: 8,
-                backgroundColor: `${colors.red[500]}08`,
+                borderColor: darkTheme.border,
+                borderRadius: 0.01,
+                backgroundColor: colors.tints.redDeepSubtle,
                 marginBottom: spacing.xs,
               }}
             >
@@ -228,7 +228,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                   fontSize: 10,
                   fontFamily: 'Inter',
                   fontWeight: 500,
-                  color: colors.red[500],
+                  color: colors.red[700],
                 }}
               >
                 -{fmtCurrency(secondaryBarrierCost)}
@@ -240,7 +240,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
           <View
             style={{
               height: 1,
-              backgroundColor: `${darkTheme.border}4D`, // ~30% opacity
+              backgroundColor: darkTheme.border,
               marginVertical: spacing.sm,
             }}
           />
@@ -254,15 +254,15 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
               paddingHorizontal: spacing.md,
               paddingVertical: spacing.sm,
               borderWidth: 1,
-              borderColor: `${colors.red[500]}40`, // ~25% opacity
-              borderRadius: 8,
-              backgroundColor: `${colors.red[500]}0D`, // ~5% opacity
+              borderColor: darkTheme.border,
+              borderRadius: 0.01,
+              backgroundColor: colors.tints.redDeepSubtle,
             }}
           >
             <Text
               style={{
                 ...typography.micro,
-                color: `${colors.red[500]}CC`, // ~80% opacity
+                color: colors.red[700],
                 letterSpacing: 1.5,
               }}
             >
@@ -273,7 +273,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                 fontSize: 14,
                 fontFamily: 'Inter',
                 fontWeight: 500,
-                color: colors.red[500],
+                color: colors.red[700],
               }}
             >
               -{fmtCurrency(totalLoss)}
@@ -288,9 +288,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
         <View
           style={{
             borderWidth: 1,
-            borderColor: `${darkTheme.border}33`,
-            borderRadius: 8,
-            backgroundColor: `${darkTheme.cardBg}80`,
+            borderColor: darkTheme.borderSubtle,
+            borderRadius: 0.01,
+            backgroundColor: darkTheme.surfaceBg,
             padding: spacing.md,
             alignItems: 'center',
           }}
@@ -310,7 +310,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
               fontSize: 22,
               fontFamily: 'Inter',
               fontWeight: 700,
-              color: darkTheme.textMuted,
+              color: colors.amber[500],
               letterSpacing: -0.3,
             }}
           >
@@ -319,7 +319,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
           <Text
             style={{
               ...typography.small,
-              color: `${colors.red[500]}B3`, // ~70% opacity
+              color: colors.red[700],
               marginTop: 4,
             }}
           >
@@ -332,7 +332,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
           <Text
             style={{
               ...typography.micro,
-              color: `${colors.red[500]}99`, // ~60% opacity
+              color: colors.red[700],
               letterSpacing: 2.5,
             }}
           >

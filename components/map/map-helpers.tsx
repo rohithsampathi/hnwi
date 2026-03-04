@@ -62,6 +62,19 @@ export function ResetView({ shouldReset, onReset, minZoom }: { shouldReset: bool
 }
 
 /**
+ * Imperatively update minZoom on resize (avoids full MapContainer re-mount)
+ */
+export function MinZoomUpdater({ minZoom }: { minZoom: number }) {
+  const map = useMap()
+
+  React.useEffect(() => {
+    map.setMinZoom(minZoom)
+  }, [map, minZoom])
+
+  return null
+}
+
+/**
  * Component to handle map clicks (close popups and reset icons)
  */
 export function MapClickHandler({

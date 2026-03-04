@@ -23,14 +23,10 @@ interface PdfRealAssetAuditSectionProps {
 }
 
 const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
-  <View style={{
-    position: 'absolute', bottom: 28, left: 56, right: 56,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border,
-  }} fixed>
-    <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>Ref: {intakeId.slice(10, 22).toUpperCase()}</Text>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>HNWI Chronicles</Text>
-    <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>Confidential</Text>
+  <View style={pdfStyles.footer} fixed>
+    <Text style={pdfStyles.footerText}>Ref: {intakeId.slice(10, 22).toUpperCase()}</Text>
+    <Text style={pdfStyles.footerBrand}>HNWI CHRONICLES</Text>
+    <Text style={pdfStyles.footerText}>Confidential</Text>
   </View>
 );
 
@@ -48,15 +44,7 @@ const hasContent = (d: JurisdictionAssetAudit): boolean => {
 export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> = ({
   data, sourceJurisdiction, destinationJurisdiction, transactionValue = 0, intakeId,
 }) => {
-  const ps = {
-    fontFamily: 'Inter' as const,
-    fontSize: 10,
-    paddingTop: 56,
-    paddingBottom: 72,
-    paddingHorizontal: 56,
-    backgroundColor: darkTheme.pageBg,
-    color: darkTheme.textSecondary,
-  };
+  const ps = pdfStyles.page;
 
   const jurisdictionKeys = Object.keys(data).filter(key => !key.startsWith('_'));
   const jurisdictionsWithContent = jurisdictionKeys.filter(key => hasContent(data[key]));
@@ -78,7 +66,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
             <View key={jurisdiction} style={{ marginBottom: 28 }}>
               {/* Jurisdiction Header */}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: colors.amber[500] }}>
-                <View style={{ width: 28, height: 28, backgroundColor: 'rgba(212,168,67,0.15)', borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <View style={{ width: 28, height: 28, backgroundColor: colors.tints.goldMedium, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                   <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 12, color: colors.amber[500] }}>{jurisdiction.charAt(0).toUpperCase()}</Text>
                 </View>
                 <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1, flex: 1 }}>{jurisdiction}</Text>
@@ -94,7 +82,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
         {/* Footer */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: darkTheme.border }}>
           <View style={{ width: 6, height: 6, backgroundColor: colors.amber[500], transform: 'rotate(45deg)', marginHorizontal: 8 }} />
-          <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5 }}>Powered by HNWI Chronicles KGv3 Real Asset Intelligence Engine</Text>
+          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, letterSpacing: 0.5 }}>Powered by HNWI Chronicles KGv3 Real Asset Intelligence Engine</Text>
           <View style={{ width: 6, height: 6, backgroundColor: colors.amber[500], transform: 'rotate(45deg)', marginHorizontal: 8 }} />
         </View>
       </View>

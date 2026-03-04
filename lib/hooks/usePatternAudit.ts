@@ -19,6 +19,7 @@ import {
   PatternAuditAPIPayload
 } from '@/lib/decision-memo/pattern-audit-types';
 import { exportInstitutionalPDF } from './usePremiumPDFExport';
+import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 
 const API_BASE = '/api/decision-memo';
 
@@ -411,7 +412,7 @@ export function usePatternAudit() {
   // Client-side PDF generation - each section on new page
   // ==========================================================================
 
-  const exportPDF = useCallback(async (artifact: ICArtifact, theme?: 'light' | 'dark') => {
+  const exportPDF = useCallback(async (artifact: ICArtifact | PdfMemoData, theme?: 'light' | 'dark') => {
     // Use institutional-grade PDF export for $2,500 audits
     return await exportInstitutionalPDF(artifact as any, theme);
   }, []);

@@ -276,6 +276,14 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         opportunities = response?.opportunities ||
                        (Array.isArray(response) ? response : []);
 
+        // Fallback: if personalized returned empty, retry with view=all
+        if (opportunities.length === 0 && viewParam === 'personalized') {
+          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=false`;
+          const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
+          opportunities = fallbackResponse?.opportunities ||
+                         (Array.isArray(fallbackResponse) ? fallbackResponse : []);
+        }
+
         // CLIENT-SIDE FILTERING: Apply timeframe and expiry filters
         const now = new Date();
         const beforeFilterCount = opportunities.length;

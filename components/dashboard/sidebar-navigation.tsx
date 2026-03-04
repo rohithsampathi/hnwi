@@ -60,6 +60,8 @@ export function SidebarNavigation({
   const [completedSessionId, setCompletedSessionId] = useState<string | null>(null)
   const [isDecisionMemoActive, setIsDecisionMemoActive] = useState(false)
   const [isSimulationActive, setIsSimulationActive] = useState(false)
+  const [isViewerSession, setIsViewerSession] = useState(false)
+  const [isDecisionMemoSession, setIsDecisionMemoSession] = useState(false)
 
   // Hydration fix: Load localStorage state after mount
   useEffect(() => {
@@ -67,6 +69,11 @@ export function SidebarNavigation({
     if (typeof window !== 'undefined') {
       const savedExpanded = localStorage.getItem('sidebar-more-expanded') === 'true'
       setIsMoreExpanded(savedExpanded)
+      // Viewer accounts (audit.viewer / hnwi@montaigne.co) get platform access but
+      // Simulation ($599/mo) should remain muted — same as other gated items
+      setIsViewerSession(sessionStorage.getItem('viewer_session') === 'true')
+      // Decision Memo login users: mute Simulation (they only need War Room access)
+      setIsDecisionMemoSession(sessionStorage.getItem('decision_memo_session') === 'true')
     }
   }, [])
 
@@ -83,6 +90,11 @@ export function SidebarNavigation({
         const simFlowStage = localStorage.getItem('assessment_flow_stage')
         const isSimActive = simFlowStage && simFlowStage !== 'landing' && simFlowStage !== 'digital_twin'
         setIsSimulationActive(!!isSimActive)
+
+        // Re-check Decision Memo session flag (may be set after sidebar mounts)
+        if (!isDecisionMemoSession && sessionStorage.getItem('decision_memo_session') === 'true') {
+          setIsDecisionMemoSession(true)
+        }
       }
     }
 
@@ -319,7 +331,8 @@ export function SidebarNavigation({
 
   const handleNavigate = (route: string) => {
     // On audit pages, intercept navigation for non-authenticated users only
-    if (isAuditPage && !isUserAuthenticated) {
+    // War Room is always accessible (decision-memo outsiders can reach it)
+    if (isAuditPage && !isUserAuthenticated && route !== 'war-room') {
       setShowRequestAccess(true)
       return
     }
@@ -503,14 +516,23 @@ export function SidebarNavigation({
                 {mainNavItems.map((item) => {
                   const isActive = currentPage === item.route;
                   // Authenticated users: all items accessible. Non-auth: only assessment (+ flow routes during active flows)
-                  const allowedRoutes = ['assessment', 'decision-memo'];
+                  const allowedRoutes = ['assessment', 'decision-memo', 'war-room'];
                   const isFlowActive = isDecisionMemoActive || isSimulationActive;
                   const isItemDisabled = !isUserAuthenticated && (
-                    item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                    item.route !== 'assessment' && item.route !== 'war-room' && !(isFlowActive && allowedRoutes.includes(item.route))
                   );
+                  // Viewer accounts (audit viewers): Simulation is gated — mute it like other request-access items
+                  const isSimulationForViewer = (isViewerSession || isDecisionMemoSession) && item.route === 'assessment';
                   // On audit pages for non-auth: look disabled but still clickable (to show popup)
-                  const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
-                  const actuallyDisabled = isItemDisabled && !isAuditPage;
+                  // War Room is always fully visible and clickable
+                  const isWarRoom = item.route === 'war-room';
+                  const visuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
+                  const actuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
+                  const handleClick = () => {
+                    if (isSimulationForViewer) { setShowRequestAccess(true); return }
+                    if (isAuditPage) { handleNavigate(item.route); return }
+                    if (!isItemDisabled) handleNavigate(item.route)
+                  }
                   return (
                     <div key={item.route} className="relative">
                       <Button
@@ -523,7 +545,7 @@ export function SidebarNavigation({
                             ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                         )}
-                        onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                        onClick={handleClick}
                         disabled={actuallyDisabled}
                       >
                         <item.icon className={cn(
@@ -582,13 +604,20 @@ export function SidebarNavigation({
                   <div className="space-y-2 mt-2">
                     {additionalNavItems.map((item) => {
                       const isActive = currentPage === item.route;
-                      const allowedRoutes = ['assessment', 'decision-memo'];
+                      const allowedRoutes = ['assessment', 'decision-memo', 'war-room'];
                       const isFlowActive = isDecisionMemoActive || isSimulationActive;
                       const isItemDisabled = !isUserAuthenticated && (
-                        item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                        item.route !== 'assessment' && item.route !== 'war-room' && !(isFlowActive && allowedRoutes.includes(item.route))
                       );
-                      const visuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
-                      const actuallyDisabled = isItemDisabled && !isAuditPage;
+                      const isSimulationForViewer = (isViewerSession || isDecisionMemoSession) && item.route === 'assessment';
+                      const isWarRoom = item.route === 'war-room';
+                      const visuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
+                      const actuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
+                      const handleAdditionalClick = () => {
+                        if (isSimulationForViewer) { setShowRequestAccess(true); return }
+                        if (isAuditPage) { handleNavigate(item.route); return }
+                        if (!isItemDisabled) handleNavigate(item.route)
+                      }
                       return (
                         <div key={item.route} className="relative">
                           <Button
@@ -601,7 +630,7 @@ export function SidebarNavigation({
                                 ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             )}
-                            onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                            onClick={handleAdditionalClick}
                             disabled={actuallyDisabled}
                           >
                             <item.icon className={cn(
@@ -754,13 +783,14 @@ export function SidebarNavigation({
         <div className="flex items-center justify-between px-3 py-1.5 safe-area-pb">
           {mobileNavItems.map((item) => {
             const isActive = currentPage === item.route;
-            const allowedRoutes = ['assessment', 'decision-memo'];
+            const allowedRoutes = ['assessment', 'decision-memo', 'war-room'];
             const isFlowActive = isDecisionMemoActive || isSimulationActive;
             const isItemDisabled = !isUserAuthenticated && (
-              item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+              item.route !== 'assessment' && item.route !== 'war-room' && !(isFlowActive && allowedRoutes.includes(item.route))
             );
-            const mobileVisuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
-            const mobileActuallyDisabled = isItemDisabled && !isAuditPage;
+            const isWarRoom = item.route === 'war-room';
+            const mobileVisuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled);
+            const mobileActuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage;
             return (
               <Button
                 key={item.route}
@@ -824,17 +854,23 @@ export function SidebarNavigation({
             <DropdownMenuContent align="end" className="w-48 mb-2">
               {moreMenuItems.map((item) => {
                 const isActive = currentPage === item.route;
-                const allowedRoutes = ['assessment', 'decision-memo'];
+                const allowedRoutes = ['assessment', 'decision-memo', 'war-room'];
                 const isFlowActive = isDecisionMemoActive || isSimulationActive;
                 const isItemDisabled = !isUserAuthenticated && (
-                  item.route !== 'assessment' && !(isFlowActive && allowedRoutes.includes(item.route))
+                  item.route !== 'assessment' && item.route !== 'war-room' && !(isFlowActive && allowedRoutes.includes(item.route))
                 );
-                const dropdownVisuallyDisabled = (!isUserAuthenticated && isAuditPage) || isItemDisabled;
-                const dropdownActuallyDisabled = isItemDisabled && !isAuditPage;
+                const isSimulationForViewer = (isViewerSession || isDecisionMemoSession) && item.route === 'assessment';
+                const isWarRoom = item.route === 'war-room';
+                const dropdownVisuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
+                const dropdownActuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
                 return (
                   <DropdownMenuItem
                     key={item.route}
-                    onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                    onClick={() => {
+                      if (isSimulationForViewer) { setShowRequestAccess(true); return }
+                      if (isAuditPage) { handleNavigate(item.route); return }
+                      if (!isItemDisabled) handleNavigate(item.route)
+                    }}
                     disabled={dropdownActuallyDisabled}
                     className={cn(
                       "flex items-center space-x-3 py-3 group relative",

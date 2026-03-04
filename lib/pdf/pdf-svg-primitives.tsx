@@ -199,15 +199,15 @@ export const HorizontalBar: React.FC<HorizontalBarProps> = ({
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       {/* Current rate bar (red) */}
       <Rect x="0" y="0" width={String(width)} height={String(barH)} rx="2" fill={darkTheme.surfaceBg} />
-      <Rect x="0" y="0" width={String(Math.max(currentW, 2))} height={String(barH)} rx="2" fill={colors.red[400]} />
-      {/* Optimized rate bar (green) */}
+      <Rect x="0" y="0" width={String(Math.max(currentW, 2))} height={String(barH)} rx="2" fill={colors.amber[500]} />
+      {/* Optimized rate bar */}
       <Rect x="0" y={String(barH + gap)} width={String(width)} height={String(barH)} rx="2" fill={darkTheme.surfaceBg} />
-      <Rect x="0" y={String(barH + gap)} width={String(Math.max(optimizedW, 2))} height={String(barH)} rx="2" fill={colors.emerald[400]} />
+      <Rect x="0" y={String(barH + gap)} width={String(Math.max(optimizedW, 2))} height={String(barH)} rx="2" fill={darkTheme.textFaint} />
       {/* Labels */}
-      <SvgText x={String(width + 4)} y={String(barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={colors.red[600]}>
+      <SvgText x={String(width + 4)} y={String(barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={colors.amber[500]}>
         {`${currentRate}%`}
       </SvgText>
-      <SvgText x={String(width + 4)} y={String(barH + gap + barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={colors.emerald[600]}>
+      <SvgText x={String(width + 4)} y={String(barH + gap + barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={darkTheme.textFaint}>
         {`${optimizedRate}%`}
       </SvgText>
     </Svg>
@@ -377,10 +377,10 @@ export const RiskHeatBar: React.FC<RiskHeatBarProps> = ({
   if (total === 0) return null;
 
   const segments = [
-    { count: critical, color: colors.red[500], label: 'CRITICAL' },
-    { count: high, color: colors.red[300], label: 'HIGH' },
-    { count: medium, color: colors.amber[400], label: 'MEDIUM' },
-    { count: low, color: colors.emerald[400], label: 'LOW' },
+    { count: critical, color: colors.red[700], label: 'CRITICAL' },
+    { count: high, color: colors.amber[600], label: 'HIGH' },
+    { count: medium, color: darkTheme.textFaint, label: 'MEDIUM' },
+    { count: low, color: darkTheme.surfaceBg, label: 'LOW' },
   ].filter(s => s.count > 0);
 
   let x = 0;

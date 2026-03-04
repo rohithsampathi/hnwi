@@ -411,30 +411,33 @@ async function handlePost(request: NextRequest) {
         } else {
           // Backend verification failed - increment attempts
           proxySession.attempts++
-          
+
           // Update the session in cookie with incremented attempts
           const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
-          
+
           const failResponse = NextResponse.json(
             { success: false, error: backendResponse.error || backendResponse.message || "Invalid verification code" },
             { status: 401 }
           );
-          
+
+          // Use same cookie options as the original mfa_session set in login/route.ts
+          // sameSite must stay consistent — mixing 'lax' and 'none' across requests
+          // breaks cookie updates in Safari and Chromium-based browsers.
+          const isProdFail = process.env.NODE_ENV === 'production';
+          const failCookieDomain = getCookieDomain();
+          const mfaFailOptions: any = {
+            httpOnly: true,
+            secure: isProdFail,
+            sameSite: isProdFail ? 'none' as const : 'lax' as const,
+            maxAge: 5 * 60,
+            path: '/',
+          };
+          if (failCookieDomain) mfaFailOptions.domain = failCookieDomain;
+          if (isProdFail) mfaFailOptions.partitioned = true;
+
           // Update cookies with new attempt count
-          failResponse.cookies.set('mfa_session', updatedEncryptedSession, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-            maxAge: 5 * 60, // 5 minutes
-            path: '/'
-          });
-          failResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-            maxAge: 5 * 60, // 5 minutes
-            path: '/'
-          });
+          failResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaFailOptions);
+          failResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, mfaFailOptions);
           
           logger.warn('Backend MFA verification failed', {
             email,
@@ -449,30 +452,31 @@ async function handlePost(request: NextRequest) {
 
       } catch (backendError) {
         proxySession.attempts++
-        
+
         // Update the session in cookie with incremented attempts
         const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
-        
+
         const errorResponse = NextResponse.json(
           { success: false, error: "Network error during verification. Please try again." },
           { status: 500 }
         );
-        
+
+        // Use same cookie options as the original mfa_session (consistent sameSite)
+        const isProdErr = process.env.NODE_ENV === 'production';
+        const errCookieDomain = getCookieDomain();
+        const mfaErrOptions: any = {
+          httpOnly: true,
+          secure: isProdErr,
+          sameSite: isProdErr ? 'none' as const : 'lax' as const,
+          maxAge: 5 * 60,
+          path: '/',
+        };
+        if (errCookieDomain) mfaErrOptions.domain = errCookieDomain;
+        if (isProdErr) mfaErrOptions.partitioned = true;
+
         // Update cookies with new attempt count
-        errorResponse.cookies.set('mfa_session', updatedEncryptedSession, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-          maxAge: 5 * 60, // 5 minutes
-          path: '/'
-        });
-        errorResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-          maxAge: 5 * 60, // 5 minutes
-          path: '/'
-        });
+        errorResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaErrOptions);
+        errorResponse.cookies.set(`mfa_token_${mfa_token.substring(0, 8)}`, updatedEncryptedSession, mfaErrOptions);
         
         logger.error('Backend MFA verification network/parsing error', {
           email,

@@ -5,9 +5,45 @@
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { colors, darkTheme, pdfStyles, spacing } from '../pdf-styles';
+import { colors, darkTheme, pdfStyles, spacing, typography } from '../pdf-styles';
 import { PdfSectionHeader, PdfGroundedNote, PdfBadge } from './primitives';
 import { DestinationDrivers, VisaProgram, GoldenVisaIntelligence } from '../pdf-types';
+
+// =============================================================================
+// LOCAL STYLE CONSTANTS — typography tokens + color, no layout
+// =============================================================================
+
+/** 9pt bold uppercase label (section headers, metric labels) */
+const microBoldLabel = { ...typography.microBold, color: darkTheme.textSecondary };
+const microBoldPrimary = { ...typography.microBold, color: darkTheme.textPrimary };
+const microBoldMuted = { ...typography.microBold, color: darkTheme.textMuted };
+const microBoldGold = { ...typography.microBold, color: colors.amber[500] };
+
+/** 9pt caption text (detail, benefit, table cell) */
+const captionMuted = { ...typography.caption, color: darkTheme.textMuted };
+const captionSecondary = { ...typography.caption, color: darkTheme.textSecondary };
+const captionPrimary = { ...typography.caption, color: darkTheme.textPrimary };
+
+/** 9pt bold (non-uppercase) for inline emphasis */
+const captionBoldPrimary = { ...typography.caption, fontWeight: 700 as const, color: darkTheme.textPrimary };
+const captionBoldMuted = { ...typography.caption, fontWeight: 700 as const, color: darkTheme.textMuted };
+
+/** 9pt micro for table headers (600 weight, uppercase, 1.2 tracking) */
+const tableHeaderCell = { ...typography.micro, color: darkTheme.textPrimary };
+
+/** 10pt bold (metric values) */
+const smallBoldPrimary = { ...typography.smallBold, color: darkTheme.textPrimary };
+const smallBoldGold = { ...typography.smallBold, color: colors.amber[500] };
+
+/** 11pt bold (program names) */
+const bodyBoldPrimary = { ...typography.bodyBold, color: darkTheme.textPrimary };
+
+/** 13pt h3 (program header) */
+const h3Primary = { ...typography.h3, color: darkTheme.textPrimary };
+
+// =============================================================================
+// COMPONENTS
+// =============================================================================
 
 interface PdfGoldenVisaSectionProps {
   destinationDrivers?: DestinationDrivers;
@@ -17,19 +53,19 @@ interface PdfGoldenVisaSectionProps {
 
 const VisaMetricBox: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <View style={{ flex: 1, backgroundColor: darkTheme.pageBg, borderWidth: 1, borderColor: darkTheme.border, padding: 10, marginRight: 12 }}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</Text>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: darkTheme.textPrimary }}>{value}</Text>
+    <Text style={{ ...microBoldMuted, marginBottom: 4 }}>{label}</Text>
+    <Text style={smallBoldPrimary}>{value}</Text>
   </View>
 );
 
 const ChangesNotice: React.FC<{ title: string; text: string }> = ({ title, text }) => (
   <View style={{ backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, padding: 10, marginTop: 12, flexDirection: 'row' }}>
-    <View style={{ width: 16, height: 16, backgroundColor: 'rgba(212,168,67,0.25)', borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: colors.amber[500] }}>!</Text>
+    <View style={{ width: 16, height: 16, backgroundColor: colors.tints.goldStrong, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+      <Text style={microBoldGold}>!</Text>
     </View>
     <View style={{ flex: 1 }}>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{title}</Text>
-      <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, lineHeight: 1.5 }}>{text}</Text>
+      <Text style={{ ...microBoldLabel, marginBottom: 4 }}>{title}</Text>
+      <Text style={captionMuted}>{text}</Text>
     </View>
   </View>
 );
@@ -45,17 +81,17 @@ const VisaProgramCard: React.FC<{ program: VisaProgram }> = ({ program }) => {
     <View style={{ backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, marginBottom: 16, padding: 16 }} wrap={false}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ width: 24, height: 24, backgroundColor: 'rgba(212,168,67,0.15)', borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: colors.amber[500] }}>V</Text>
+          <View style={{ width: 24, height: 24, backgroundColor: colors.tints.goldMedium, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+            <Text style={smallBoldGold}>V</Text>
           </View>
           <View>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 11, color: darkTheme.textPrimary }}>{programName}</Text>
-            {!!program.investment_type && <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, marginTop: 2 }}>{program.investment_type}</Text>}
+            <Text style={bodyBoldPrimary}>{programName}</Text>
+            {!!program.investment_type && <Text style={{ ...captionMuted, marginTop: 2 }}>{program.investment_type}</Text>}
           </View>
         </View>
         {!!program.status && (
           <View style={[pdfStyles.badge, isActive ? pdfStyles.badgeGreen : pdfStyles.badgeGray]}>
-            <Text style={[pdfStyles.badgeText, { color: isActive ? colors.emerald[400] : darkTheme.textMuted }]}>{program.status}</Text>
+            <Text style={[pdfStyles.badgeText, { color: isActive ? colors.amber[500] : darkTheme.textMuted }]}>{program.status}</Text>
           </View>
         )}
       </View>
@@ -69,12 +105,12 @@ const VisaProgramCard: React.FC<{ program: VisaProgram }> = ({ program }) => {
 
       {benefits.length > 0 && (
         <View>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Key Benefits</Text>
+          <Text style={{ ...microBoldLabel, marginBottom: 8 }}>Key Benefits</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {benefits.slice(0, 6).map((benefit, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', width: '48%', marginRight: 4, marginBottom: 6 }}>
                 <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginTop: 3, marginRight: 4 }} />
-                <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, flex: 1 }}>{benefit}</Text>
+                <Text style={{ ...captionMuted, flex: 1 }}>{benefit}</Text>
               </View>
             ))}
           </View>
@@ -83,8 +119,8 @@ const VisaProgramCard: React.FC<{ program: VisaProgram }> = ({ program }) => {
 
       {program.path_to_citizenship !== undefined && (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted }}>
-            Path to Citizenship: <Text style={{ fontFamily: 'Inter', fontWeight: 700 }}>{program.path_to_citizenship ? 'Yes' : 'No'}</Text>
+          <Text style={captionMuted}>
+            Path to Citizenship: <Text style={{ fontWeight: 700 }}>{program.path_to_citizenship ? 'Yes' : 'No'}</Text>
           </Text>
         </View>
       )}
@@ -96,10 +132,10 @@ const VisaProgramCard: React.FC<{ program: VisaProgram }> = ({ program }) => {
 
 const DriverCard: React.FC<{ title: string; pct: number; desc: string }> = ({ title, pct, desc }) => (
   <View style={{ flex: 1, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginRight: 12 }}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textPrimary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</Text>
+    <Text style={{ ...microBoldPrimary, marginBottom: 8 }}>{title}</Text>
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: darkTheme.textPrimary }}>{pct}%</Text>
-      <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, flex: 1, lineHeight: 1.4 }}> {desc}</Text>
+      <Text style={smallBoldPrimary}>{pct}%</Text>
+      <Text style={{ ...captionMuted, flex: 1, lineHeight: 1.4 }}> {desc}</Text>
     </View>
   </View>
 );
@@ -132,16 +168,16 @@ const getPriorityVariant = (priority: string): 'high' | 'medium' | 'low' => {
 /** KGv3 Qualification Routes Table */
 const KGv3QualificationRoutes: React.FC<{ routes: NonNullable<GoldenVisaIntelligence['qualification_routes']> }> = ({ routes }) => (
   <View style={{ marginBottom: spacing.lg }} wrap={false}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}>
+    <Text style={{ ...microBoldLabel, marginBottom: spacing.sm }}>
       Qualification Routes
     </Text>
     {/* Table Header */}
     <View style={{ flexDirection: 'row', backgroundColor: darkTheme.surfaceBg, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderTopWidth: 3, borderTopColor: colors.amber[500] }}>
-      <Text style={{ flex: 2, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Route</Text>
-      <Text style={{ flex: 2, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Min Investment</Text>
-      <Text style={{ flex: 2, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Property Types</Text>
-      <Text style={{ flex: 1.5, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Processing</Text>
-      <Text style={{ flex: 2, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Family Coverage</Text>
+      <Text style={{ flex: 2, ...tableHeaderCell }}>Route</Text>
+      <Text style={{ flex: 2, ...tableHeaderCell }}>Min Investment</Text>
+      <Text style={{ flex: 2, ...tableHeaderCell }}>Property Types</Text>
+      <Text style={{ flex: 1.5, ...tableHeaderCell }}>Processing</Text>
+      <Text style={{ flex: 2, ...tableHeaderCell }}>Family Coverage</Text>
     </View>
     {/* Table Rows */}
     {routes.map((route, i) => (
@@ -156,11 +192,11 @@ const KGv3QualificationRoutes: React.FC<{ routes: NonNullable<GoldenVisaIntellig
           backgroundColor: i % 2 === 0 ? darkTheme.pageBg : darkTheme.cardBg,
         }}
       >
-        <Text style={{ flex: 2, fontFamily: 'Inter', fontSize: 9, color: darkTheme.textSecondary, lineHeight: 1.5 }}>{route.route}</Text>
-        <Text style={{ flex: 2, fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textPrimary, lineHeight: 1.5 }}>{route.requirement}</Text>
-        <Text style={{ flex: 2, fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, lineHeight: 1.5 }}>{route.property_types || '—'}</Text>
-        <Text style={{ flex: 1.5, fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, lineHeight: 1.5 }}>{route.processing_time}</Text>
-        <Text style={{ flex: 2, fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, lineHeight: 1.5 }}>{route.family_inclusion || '—'}</Text>
+        <Text style={{ flex: 2, ...captionSecondary }}>{route.route}</Text>
+        <Text style={{ flex: 2, ...captionBoldPrimary }}>{route.requirement}</Text>
+        <Text style={{ flex: 2, ...captionMuted }}>{route.property_types || '—'}</Text>
+        <Text style={{ flex: 1.5, ...captionMuted }}>{route.processing_time}</Text>
+        <Text style={{ flex: 2, ...captionMuted }}>{route.family_inclusion || '—'}</Text>
       </View>
     ))}
   </View>
@@ -169,7 +205,7 @@ const KGv3QualificationRoutes: React.FC<{ routes: NonNullable<GoldenVisaIntellig
 /** KGv3 Critical Considerations list with priority badges */
 const KGv3CriticalConsiderations: React.FC<{ items: NonNullable<GoldenVisaIntelligence['critical_considerations']> }> = ({ items }) => (
   <View style={{ marginBottom: spacing.lg }} wrap={false}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}>
+    <Text style={{ ...microBoldLabel, marginBottom: spacing.sm }}>
       Critical Considerations
     </Text>
     {items.map((item, i) => (
@@ -189,8 +225,8 @@ const KGv3CriticalConsiderations: React.FC<{ items: NonNullable<GoldenVisaIntell
           <PdfBadge label={item.priority} variant={getPriorityVariant(item.priority)} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textPrimary, marginBottom: 2 }}>{item.item}</Text>
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, lineHeight: 1.5 }}>{item.detail}</Text>
+          <Text style={{ ...captionBoldPrimary, marginBottom: 2 }}>{item.item}</Text>
+          <Text style={captionMuted}>{item.detail}</Text>
         </View>
       </View>
     ))}
@@ -200,7 +236,7 @@ const KGv3CriticalConsiderations: React.FC<{ items: NonNullable<GoldenVisaIntell
 /** KGv3 Application Process — numbered steps */
 const KGv3ApplicationProcess: React.FC<{ steps: NonNullable<GoldenVisaIntelligence['application_process']> }> = ({ steps }) => (
   <View style={{ marginBottom: spacing.lg }} wrap={false}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}>
+    <Text style={{ ...microBoldLabel, marginBottom: spacing.sm }}>
       Application Process
     </Text>
     {steps.map((step, i) => (
@@ -216,18 +252,18 @@ const KGv3ApplicationProcess: React.FC<{ steps: NonNullable<GoldenVisaIntelligen
         <View style={{
           width: 20,
           height: 20,
-          backgroundColor: 'rgba(212, 168, 67, 0.15)',
-          borderRadius: 10,
+          backgroundColor: colors.tints.goldMedium,
+          borderRadius: 0.01,
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: spacing.sm,
         }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: colors.amber[500] }}>{step.step}</Text>
+          <Text style={microBoldGold}>{step.step}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textPrimary, lineHeight: 1.5 }}>{step.action}</Text>
+          <Text style={captionPrimary}>{step.action}</Text>
           {!!step.timeline && (
-            <Text style={{ fontFamily: 'Inter', fontSize: 8, color: darkTheme.textMuted, marginTop: 1 }}>{step.timeline}</Text>
+            <Text style={{ ...captionMuted, marginTop: 1 }}>{step.timeline}</Text>
           )}
         </View>
       </View>
@@ -250,13 +286,13 @@ const KGv3CostsBreakdown: React.FC<{ costs: NonNullable<GoldenVisaIntelligence['
 
   return (
     <View style={{ marginBottom: spacing.lg }} wrap={false}>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}>
+      <Text style={{ ...microBoldLabel, marginBottom: spacing.sm }}>
         Costs Breakdown
       </Text>
       {/* Table Header */}
       <View style={{ flexDirection: 'row', backgroundColor: darkTheme.surfaceBg, paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderTopWidth: 3, borderTopColor: colors.amber[500] }}>
-        <Text style={{ flex: 1, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2 }}>Cost Item</Text>
-        <Text style={{ flex: 1, fontFamily: 'Inter', fontWeight: 600, fontSize: 8, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 1.2, textAlign: 'right' }}>Amount</Text>
+        <Text style={{ flex: 1, ...tableHeaderCell }}>Cost Item</Text>
+        <Text style={{ flex: 1, ...tableHeaderCell, textAlign: 'right' }}>Amount</Text>
       </View>
       {/* Table Rows */}
       {costEntries.map((entry, i) => {
@@ -273,8 +309,8 @@ const KGv3CostsBreakdown: React.FC<{ costs: NonNullable<GoldenVisaIntelligence['
               backgroundColor: i % 2 === 0 ? darkTheme.pageBg : darkTheme.cardBg,
             }}
           >
-            <Text style={{ flex: 1, fontFamily: 'Inter', fontWeight: isTotal ? 700 : 400, fontSize: 9, color: isTotal ? darkTheme.textPrimary : darkTheme.textSecondary }}>{entry.label}</Text>
-            <Text style={{ flex: 1, fontFamily: 'Inter', fontWeight: isTotal ? 700 : 400, fontSize: 9, color: isTotal ? colors.amber[500] : darkTheme.textPrimary, textAlign: 'right' }}>{entry.amount}</Text>
+            <Text style={{ flex: 1, ...typography.caption, fontWeight: isTotal ? 700 : 400, color: isTotal ? darkTheme.textPrimary : darkTheme.textSecondary }}>{entry.label}</Text>
+            <Text style={{ flex: 1, ...typography.caption, fontWeight: isTotal ? 700 : 400, color: isTotal ? colors.amber[500] : darkTheme.textPrimary, textAlign: 'right' }}>{entry.amount}</Text>
           </View>
         );
       })}
@@ -285,7 +321,7 @@ const KGv3CostsBreakdown: React.FC<{ costs: NonNullable<GoldenVisaIntelligence['
 /** KGv3 Key Benefits list (handles both string and object forms) */
 const KGv3KeyBenefits: React.FC<{ benefits: NonNullable<GoldenVisaIntelligence['key_benefits']> }> = ({ benefits }) => (
   <View style={{ marginBottom: spacing.lg }}>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.sm }}>
+    <Text style={{ ...microBoldLabel, marginBottom: spacing.sm }}>
       Key Benefits
     </Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -296,8 +332,8 @@ const KGv3KeyBenefits: React.FC<{ benefits: NonNullable<GoldenVisaIntelligence['
           <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', width: '48%', marginRight: 4, marginBottom: 6 }}>
             <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginTop: 3, marginRight: 4 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textPrimary }}>{text}</Text>
-              {!!detail && <Text style={{ fontFamily: 'Inter', fontSize: 8, color: darkTheme.textMuted, marginTop: 1 }}>{detail}</Text>}
+              <Text style={captionPrimary}>{text}</Text>
+              {!!detail && <Text style={{ ...captionMuted, marginTop: 1 }}>{detail}</Text>}
             </View>
           </View>
         );
@@ -312,11 +348,11 @@ const KGv3IntelligenceBlock: React.FC<{ data: GoldenVisaIntelligence }> = ({ dat
     {/* Program Header with Status Badge */}
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 13, color: darkTheme.textPrimary }}>
+        <Text style={h3Primary}>
           {data.program_name || 'Golden Visa Program'}
         </Text>
         {!!data.jurisdiction && (
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, marginTop: 2 }}>{data.jurisdiction}</Text>
+          <Text style={{ ...captionMuted, marginTop: 2 }}>{data.jurisdiction}</Text>
         )}
       </View>
       {!!data.status && (
@@ -327,13 +363,13 @@ const KGv3IntelligenceBlock: React.FC<{ data: GoldenVisaIntelligence }> = ({ dat
     {/* Qualification Summary */}
     {!!data.qualification_summary && (
       <View style={{ backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, borderLeftWidth: 3, borderLeftColor: colors.amber[500], padding: spacing.md, marginBottom: spacing.lg }}>
-        <Text style={{ fontFamily: 'Inter', fontSize: 9.5, color: darkTheme.textSecondary, lineHeight: 1.6 }}>{data.qualification_summary}</Text>
+        <Text style={{ ...typography.caption, fontSize: 9.5, color: darkTheme.textSecondary, lineHeight: 1.6 }}>{data.qualification_summary}</Text>
         {data.qualifies_based_on_transaction !== undefined && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted }}>
+            <Text style={captionBoldMuted}>
               Qualifies Based on Transaction:{' '}
             </Text>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: data.qualifies_based_on_transaction ? colors.emerald[400] : colors.red[400] }}>
+            <Text style={{ ...typography.caption, fontWeight: 700 as const, color: data.qualifies_based_on_transaction ? colors.amber[500] : colors.red[700] }}>
               {data.qualifies_based_on_transaction ? 'Yes' : 'No'}
             </Text>
           </View>

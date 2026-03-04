@@ -138,7 +138,6 @@ export function MemoHeader({
   intakeId,
   generatedAt,
   exposureClass,
-  totalSavings,
   precedentCount = 0,
   taxDifferential,
   valueCreation,
@@ -174,14 +173,29 @@ export function MemoHeader({
   // ─── Metrics ──────────────────────────────────────────────────────────────
   const isNumericValue = (v: string) => /^[\$\+\-\d%]/.test(v) || v === '—';
 
+  // Compute true annual from individual components — NOT from total_annual (which is the 10-year figure)
+  const annualSavings = (() => {
+    // Prefer pre-formatted annual total if backend provides it
+    if (valueCreation?.annual?.total_formatted) return valueCreation.annual.total_formatted;
+    if (valueCreation?.annual?.total) return `$${(valueCreation.annual.total / 1000000).toFixed(1)}M`;
+    // Compute from individual annual components (rental + appreciation + tax_savings)
+    const rental = valueCreation?.annual?.rental || 0;
+    const appreciation = valueCreation?.annual?.appreciation || 0;
+    const taxSavings = valueCreation?.annual?.tax_savings || 0;
+    const computed = rental + appreciation + taxSavings;
+    if (computed > 0) return `$${(computed / 1000000).toFixed(1)}M`;
+    // Do NOT fall back to total_annual — it contains the 10-year net benefit, not annual
+    return null;
+  })();
+
   const metrics = [
-    {
-      label: 'Total Value Creation',
-      value: totalSavings,
-      description: valueCreation?.annual ? 'Projected annual returns' : 'Annual tax-optimized savings',
+    ...(annualSavings ? [{
+      label: 'Annual Savings',
+      value: annualSavings,
+      description: 'Projected annual returns',
       highlight: true,
       numeric: true,
-    },
+    }] : []),
     {
       label: optimalStructure ? 'Optimal Structure' : 'Strategy Classification',
       value: optimalStructure ? optimalStructure.name : exposureClass,
@@ -216,7 +230,7 @@ export function MemoHeader({
     const hasTax = typeof valueCreation.annual_tax_savings === 'number' || typeof valueCreation.annual_cgt_savings === 'number' || typeof valueCreation.annual_estate_benefit === 'number';
     if (!hasAnnual && !hasTax) return null;
 
-    const items: Array<{ value: string; label: string; color: string; note?: string }> = [];
+    const items: Array<{ value: string; label: string; color: string; note?: string; strikeValue?: string }> = [];
 
     if (hasAnnual) {
       items.push({
@@ -238,9 +252,10 @@ export function MemoHeader({
 
     if (hasPotentialCut) {
       items.push({
-        value: `+${Math.round(potentialDiff)}%`,
+        strikeValue: `+${Math.round(potentialDiff)}%`,
+        value: '$0',
         label: 'Tax Savings',
-        color: 'text-gold',
+        color: 'text-muted-foreground',
         note: 'Requires relocation',
       });
     } else {
@@ -362,7 +377,7 @@ export function MemoHeader({
           </motion.div>
 
           {/* ─── Key Metrics — floating, no borders ─────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10">
+          <div className={`grid grid-cols-1 ${metrics.length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6 sm:gap-10`}>
             {metrics.map((metric, i) => (
               <motion.div
                 key={metric.label}
@@ -411,6 +426,11 @@ export function MemoHeader({
               <div className="flex flex-wrap items-baseline gap-x-6 sm:gap-x-8 gap-y-4">
                 {valueComponents.map((item, i) => (
                   <div key={i} className="flex items-baseline gap-2">
+                    {item.strikeValue && (
+                      <span className="text-base sm:text-lg font-bold tabular-nums text-muted-foreground/50 line-through decoration-muted-foreground/60">
+                        {item.strikeValue}
+                      </span>
+                    )}
                     <span className={`text-base sm:text-lg font-bold tabular-nums ${item.color}`}>
                       {item.value}
                     </span>

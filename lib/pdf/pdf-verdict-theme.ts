@@ -22,45 +22,45 @@ export interface VerdictTheme {
 }
 
 const emeraldTheme: VerdictTheme = {
-  primary: '#22C55E', // Verdict PROCEED color
-  light: 'rgba(16, 185, 129, 0.15)',
-  dark: colors.emerald[400],
-  bg: 'rgba(16, 185, 129, 0.08)',
-  gradient: [colors.emerald[400], colors.emerald[600]],
-  accentBar: colors.emerald[500],
-  badgeBg: 'rgba(16, 185, 129, 0.15)',
-  badgeText: colors.emerald[400],
-  heroAccent: colors.emerald[400],
-  trackBg: 'rgba(16, 185, 129, 0.10)',
-  tint: 'rgba(16, 185, 129, 0.08)',
+  primary: colors.amber[500],
+  light: colors.tints.goldMedium,
+  dark: colors.amber[600],
+  bg: colors.tints.goldLight,
+  gradient: [colors.amber[400], colors.amber[600]],
+  accentBar: colors.amber[500],
+  badgeBg: colors.tints.goldMedium,
+  badgeText: colors.amber[500],
+  heroAccent: colors.amber[500],
+  trackBg: colors.tints.goldLight,
+  tint: colors.tints.goldLight,
 };
 
 const amberTheme: VerdictTheme = {
   primary: colors.amber[500],
-  light: 'rgba(212, 168, 67, 0.15)',
+  light: colors.tints.goldMedium,
   dark: colors.amber[500],
-  bg: 'rgba(212, 168, 67, 0.08)',
+  bg: colors.tints.goldLight,
   gradient: [colors.amber[400], colors.amber[600]],
   accentBar: colors.amber[500],
-  badgeBg: 'rgba(212, 168, 67, 0.15)',
+  badgeBg: colors.tints.goldMedium,
   badgeText: colors.amber[500],
   heroAccent: colors.amber[500],
-  trackBg: 'rgba(212, 168, 67, 0.10)',
-  tint: 'rgba(212, 168, 67, 0.08)',
+  trackBg: colors.tints.goldLight,
+  tint: colors.tints.goldLight,
 };
 
 const redTheme: VerdictTheme = {
   primary: colors.red[500],
-  light: 'rgba(239, 68, 68, 0.15)',
+  light: colors.tints.redMedium,
   dark: colors.red[400],
-  bg: 'rgba(239, 68, 68, 0.08)',
+  bg: colors.tints.redLight,
   gradient: [colors.red[400], colors.red[600]],
   accentBar: colors.red[500],
-  badgeBg: 'rgba(239, 68, 68, 0.15)',
+  badgeBg: colors.tints.redMedium,
   badgeText: colors.red[400],
   heroAccent: colors.red[400],
-  trackBg: 'rgba(239, 68, 68, 0.10)',
-  tint: 'rgba(239, 68, 68, 0.08)',
+  trackBg: colors.tints.redLight,
+  tint: colors.tints.redLight,
 };
 
 /**

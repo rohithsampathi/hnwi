@@ -101,7 +101,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
                 style={{
                   ...typography.micro,
                   color: colors.amber[500],
-                  fontSize: 7.5,
+                  fontSize: 9,
                   marginLeft: spacing.sm,
                 }}
               >
@@ -135,7 +135,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
                   style={{
                     width: 18,
                     height: 18,
-                    borderRadius: 9,
+                    borderRadius: 0.01,
                     borderWidth: 1,
                     borderColor: colors.amber[500],
                     alignItems: "center",
@@ -149,7 +149,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
                     style={{
                       fontFamily: "Inter",
                       fontWeight: 600 as const,
-                      fontSize: 7,
+                      fontSize: 9,
                       color: colors.amber[500],
                     }}
                   >
@@ -206,7 +206,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
                     <Text
                       style={{
                         ...typography.small,
-                        fontSize: 8,
+                        fontSize: 9,
                         color: darkTheme.textFaint,
                         marginBottom: citation.data_point
                           ? spacing.xs
@@ -230,7 +230,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
                         backgroundColor: darkTheme.cardBg,
                         borderWidth: 1,
                         borderColor: darkTheme.border,
-                        borderRadius: 6,
+                        borderRadius: 0.01,
                         paddingHorizontal: spacing.sm,
                         paddingVertical: spacing.xs + 1,
                         marginTop: spacing.xs,
@@ -266,7 +266,7 @@ export const PdfRegulatorySourcesPage: React.FC<PdfRegulatorySourcesPageProps> =
         <Text
           style={{
             ...typography.mono,
-            fontSize: 7.5,
+            fontSize: 9,
             color: darkTheme.textFaint,
             lineHeight: 1.6,
           }}

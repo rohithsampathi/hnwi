@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
       risk_level: memo.risk_level || '',
       total_exposure: memo.total_exposure || '',
       total_savings: memo.total_savings || '',
-      exposure_class: memo.exposure_class || '',
       annual_value: memo.annual_value || '',
+      exposure_class: memo.exposure_class || '',
       transaction_value: memo.transaction_value || '',
       // Access control flag
       has_access: memo.has_access || false,

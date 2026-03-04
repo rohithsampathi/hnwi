@@ -125,7 +125,7 @@ const RateBarRow: React.FC<RateBarProps> = ({
           width: 60,
           fontFamily: 'Inter',
           fontWeight: 600,
-          fontSize: 7,
+          fontSize: 9,
           letterSpacing: 0.8,
           textTransform: 'uppercase',
           color: labelColor,
@@ -159,7 +159,7 @@ const RateBarRow: React.FC<RateBarProps> = ({
           textAlign: 'right',
           fontFamily: 'Inter',
           fontWeight: 600,
-          fontSize: 8,
+          fontSize: 9,
           color: labelColor,
         }}
       >
@@ -181,15 +181,15 @@ const FtcIndicator: React.FC<{ available: boolean }> = ({ available }) => (
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderWidth: 1,
-      borderColor: available ? 'rgba(212, 168, 67, 0.25)' : darkTheme.border,
-      borderRadius: 10,
+      borderColor: available ? colors.tints.goldStrong : darkTheme.border,
+      borderRadius: 0.01,
     }}
   >
     <Text
       style={{
         fontFamily: 'Inter',
         fontWeight: 600,
-        fontSize: 7,
+        fontSize: 9,
         letterSpacing: 0.8,
         textTransform: 'uppercase',
         color: available ? colors.amber[500] : darkTheme.textFaint,
@@ -232,7 +232,7 @@ const TaxTreatmentCard: React.FC<TaxCardProps> = ({
         backgroundColor: darkTheme.cardBg,
         borderWidth: 1,
         borderColor: darkTheme.border,
-        borderRadius: 10,
+        borderRadius: 0.01,
         padding: spacing.md,
       }}
     >
@@ -264,7 +264,7 @@ const TaxTreatmentCard: React.FC<TaxCardProps> = ({
           label="Source"
           value={sourceRate}
           maxValue={maxRate}
-          barColor="rgba(212, 168, 67, 0.4)"
+          barColor={colors.amber[500]}
           labelColor={darkTheme.textFaint}
         />
         <RateBarRow
@@ -285,7 +285,7 @@ const TaxTreatmentCard: React.FC<TaxCardProps> = ({
           backgroundColor: darkTheme.surfaceBg,
           borderWidth: 1,
           borderColor: darkTheme.border,
-          borderRadius: 8,
+          borderRadius: 0.01,
           paddingHorizontal: spacing.sm,
           paddingVertical: spacing.xs,
           marginBottom: spacing.sm,
@@ -295,7 +295,7 @@ const TaxTreatmentCard: React.FC<TaxCardProps> = ({
           style={{
             ...typography.micro,
             color: darkTheme.textFaint,
-            fontSize: 7,
+            fontSize: 9,
             marginBottom: 0,
           }}
         >
@@ -310,7 +310,7 @@ const TaxTreatmentCard: React.FC<TaxCardProps> = ({
               savingsPct > 0
                 ? colors.amber[500]
                 : savingsPct < 0
-                ? colors.red[500]
+                ? colors.red[700]
                 : darkTheme.textFaint,
           }}
         >
@@ -358,7 +358,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     {
       label: 'Tax Savings',
       value: `${audit.total_tax_savings_pct.toFixed(1)}%`,
-      color: isZeroSavings ? colors.red[500] : colors.emerald[500],
+      color: isZeroSavings ? colors.red[700] : colors.amber[500],
     },
   ];
 
@@ -366,7 +366,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     topMetrics.push({
       label: 'Day-One Loss',
       value: `${audit.acquisition_audit.day_one_loss_pct.toFixed(2)}%`,
-      color: colors.red[500],
+      color: colors.red[700],
     });
     topMetrics.push({
       label: 'Total Acquisition Cost',
@@ -477,8 +477,8 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   borderWidth: 1,
                   borderColor: darkTheme.border,
                   borderLeftWidth: 3,
-                  borderLeftColor: colors.red[500],
-                  borderRadius: 6,
+                  borderLeftColor: colors.red[700],
+                  borderRadius: 0.01,
                   padding: spacing.md,
                   marginBottom: spacing.sm,
                 }}
@@ -489,7 +489,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                       style={{
                         fontFamily: 'Inter',
                         fontWeight: 700,
-                        color: colors.red[400],
+                        color: colors.red[700],
                       }}
                     >
                       {severityLabel}:{' '}
@@ -538,7 +538,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                 {
                   label: 'ABSD (Foreign)',
                   value: formatCurrency(audit.acquisition_audit.absd_additional_stamp_duty),
-                  color: colors.red[500],
+                  color: colors.red[700],
                 },
                 {
                   label: 'Total Acquisition',
@@ -558,7 +558,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                     style={{
                       ...typography.micro,
                       color: darkTheme.textMuted,
-                      fontSize: 7,
+                      fontSize: 9,
                       textAlign: 'center',
                       marginBottom: spacing.xs,
                     }}
@@ -597,7 +597,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                 backgroundColor: darkTheme.surfaceBg,
                 borderWidth: 1,
                 borderColor: darkTheme.border,
-                borderRadius: 8,
+                borderRadius: 0.01,
                 padding: spacing.md,
               }}
             >
@@ -621,7 +621,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   fontFamily: 'Inter',
                   fontWeight: 700,
                   fontSize: 22,
-                  color: colors.red[500],
+                  color: colors.red[700],
                 }}
               >
                 {audit.acquisition_audit.day_one_loss_pct.toFixed(2)}%
@@ -637,17 +637,17 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   marginTop: spacing.sm,
                   paddingHorizontal: spacing.md,
                   paddingVertical: spacing.sm,
-                  backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                  backgroundColor: colors.tints.goldLight,
                   borderWidth: 1,
-                  borderColor: 'rgba(16, 185, 129, 0.2)',
-                  borderRadius: 8,
+                  borderColor: colors.tints.goldStrong,
+                  borderRadius: 0.01,
                 }}
               >
                 <Text
                   style={{
                     fontFamily: 'Inter',
-                    fontSize: 8,
-                    color: colors.emerald[400],
+                    fontSize: 9,
+                    color: colors.amber[500],
                   }}
                 >
                   FTA benefit applied
@@ -755,7 +755,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                     style={{
                       ...typography.micro,
                       color: darkTheme.textMuted,
-                      fontSize: 7,
+                      fontSize: 9,
                       textAlign: 'center',
                       marginBottom: spacing.xs,
                     }}
@@ -813,7 +813,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   style={{
                     ...typography.small,
                     fontWeight: 600,
-                    color: colors.red[500],
+                    color: colors.red[700],
                   }}
                 >
                   -{formatCurrency(audit.net_yield_audit.annual_tax_paid)}
@@ -824,7 +824,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
               <View
                 style={{
                   height: 1,
-                  backgroundColor: 'rgba(212, 168, 67, 0.2)',
+                  backgroundColor: colors.tints.goldStrong,
                   marginVertical: 3,
                 }}
               />
@@ -890,7 +890,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
         <Text
           style={{
             fontFamily: 'Inter',
-            fontSize: 7.5,
+            fontSize: 9,
             color: darkTheme.textFaint,
             letterSpacing: 0.5,
             marginHorizontal: spacing.sm,

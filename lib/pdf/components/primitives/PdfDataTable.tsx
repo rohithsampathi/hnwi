@@ -42,7 +42,7 @@ export const PdfDataTable: React.FC<PdfDataTableProps> = ({
         marginBottom: spacing.lg,
         borderWidth: 1,
         borderColor: darkTheme.border,
-        borderRadius: 10,
+        borderRadius: 0.01,
         overflow: 'hidden',
       }}
     >

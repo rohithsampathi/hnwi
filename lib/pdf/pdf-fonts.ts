@@ -9,16 +9,19 @@
  */
 
 import { Font } from '@react-pdf/renderer';
+import path from 'path';
 
 // ─── Register Inter from local public/fonts/ ─────────────────────────────────
-// Files served by Next.js from the public directory
+// Absolute filesystem paths required for server-side rendering in API routes
+const fontsDir = path.join(process.cwd(), 'public', 'fonts');
+
 Font.register({
   family: 'Inter',
   fonts: [
-    { src: '/fonts/Inter-Regular.ttf', fontWeight: 400, fontStyle: 'normal' },
-    { src: '/fonts/Inter-Medium.ttf', fontWeight: 500, fontStyle: 'normal' },
-    { src: '/fonts/Inter-SemiBold.ttf', fontWeight: 600, fontStyle: 'normal' },
-    { src: '/fonts/Inter-Bold.ttf', fontWeight: 700, fontStyle: 'normal' },
+    { src: path.join(fontsDir, 'Inter-Regular.ttf'), fontWeight: 400, fontStyle: 'normal' },
+    { src: path.join(fontsDir, 'Inter-Medium.ttf'), fontWeight: 500, fontStyle: 'normal' },
+    { src: path.join(fontsDir, 'Inter-SemiBold.ttf'), fontWeight: 600, fontStyle: 'normal' },
+    { src: path.join(fontsDir, 'Inter-Bold.ttf'), fontWeight: 700, fontStyle: 'normal' },
   ],
 });
 

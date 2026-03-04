@@ -40,30 +40,59 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
   useEffect(() => {
     let cancelled = false
 
-    // Delay initial fetch slightly to let auth session establish
-    const initTimeout = setTimeout(() => {
-      fetchCrisisIntelligence()
-        .then((data) => { if (!cancelled) setCrisisData(data) })
-        .catch(() => {
-          // Single retry after 5s if auth wasn't ready
-          if (!cancelled) {
-            setTimeout(() => {
-              fetchCrisisIntelligence()
-                .then((data) => { if (!cancelled) setCrisisData(data) })
-                .catch(() => {})
-            }, 5000)
-          }
-        })
-    }, 1500)
-
-    // Refresh every 5 minutes
-    const interval = setInterval(() => {
+    const doFetch = () =>
       fetchCrisisIntelligence()
         .then((data) => { if (!cancelled) setCrisisData(data) })
         .catch(() => {})
-    }, 300_000)
 
-    return () => { cancelled = true; clearTimeout(initTimeout); clearInterval(interval) }
+    // Quick auth check — skip the initial fetch if user clearly isn't logged in yet.
+    // This avoids noisy 401s when the provider mounts on unauthenticated pages
+    // (e.g. /decision-memo before login). The auth-event listeners below will
+    // trigger a fetch as soon as login completes.
+    const hasAuth = typeof window !== 'undefined' && (
+      !!localStorage.getItem('userId') ||
+      !!sessionStorage.getItem('userId') ||
+      !!sessionStorage.getItem('latest_report_token')
+    )
+
+    let initTimeout: ReturnType<typeof setTimeout> | null = null
+
+    if (hasAuth) {
+      // User appears authenticated — fetch with a short delay for session to settle
+      initTimeout = setTimeout(() => {
+        fetchCrisisIntelligence()
+          .then((data) => { if (!cancelled) setCrisisData(data) })
+          .catch(() => {
+            // Single retry after 5s if auth wasn't ready
+            if (!cancelled) {
+              setTimeout(() => {
+                fetchCrisisIntelligence()
+                  .then((data) => { if (!cancelled) setCrisisData(data) })
+                  .catch(() => {})
+              }, 5000)
+            }
+          })
+      }, 1500)
+    }
+
+    // Refresh every 5 minutes
+    const interval = setInterval(doFetch, 300_000)
+
+    // Re-fetch immediately when auth state changes:
+    // - 'hnwi-auth-changed': viewer logs in via audit popup OR Decision Memo popup
+    // - 'auth:login': platform user logs in (syncAuthSystems dispatches this)
+    // This covers the case where provider mounts before login.
+    const handleAuthChanged = () => { if (!cancelled) doFetch() }
+    window.addEventListener('hnwi-auth-changed', handleAuthChanged)
+    window.addEventListener('auth:login', handleAuthChanged)
+
+    return () => {
+      cancelled = true
+      if (initTimeout) clearTimeout(initTimeout)
+      clearInterval(interval)
+      window.removeEventListener('hnwi-auth-changed', handleAuthChanged)
+      window.removeEventListener('auth:login', handleAuthChanged)
+    }
   }, [])
 
   // Derived data

@@ -178,14 +178,14 @@ export const PdfStructureComparisonPage: React.FC<
   const tableRows = top5.map((s, i) => {
     const isOptimal = s.name === optimal_structure?.name;
     const benefitColor =
-      s.net_benefit_10yr >= 0 ? colors.emerald[400] : colors.red[400];
+      s.net_benefit_10yr >= 0 ? colors.amber[500] : colors.red[700];
     return [
       { text: isOptimal ? "\u2605" : String(i + 1), bold: isOptimal, color: isOptimal ? colors.amber[500] : darkTheme.textMuted },
       { text: `${s.name} (${s.type})`, bold: isOptimal, color: isOptimal ? colors.amber[500] : darkTheme.textPrimary },
       { text: formatBenefit(s.net_benefit_10yr), bold: true, color: benefitColor },
       { text: formatCost(s.setup_cost), color: darkTheme.textMuted },
       { text: formatCost(s.annual_cost), color: darkTheme.textMuted },
-      { text: verdictLabel(s.verdict), color: s.viable ? colors.emerald[400] : colors.red[400] },
+      { text: verdictLabel(s.verdict), color: s.viable ? colors.amber[500] : colors.red[700] },
     ];
   });
 
@@ -240,7 +240,7 @@ export const PdfStructureComparisonPage: React.FC<
             <Text
               style={{
                 ...typography.h4,
-                color: colors.emerald[400],
+                color: colors.amber[500],
                 marginRight: 4,
               }}
             >
@@ -254,7 +254,7 @@ export const PdfStructureComparisonPage: React.FC<
             <Text
               style={{
                 ...typography.h4,
-                color: colors.red[400],
+                color: colors.red[700],
                 marginRight: 4,
               }}
             >
@@ -315,7 +315,7 @@ export const PdfStructureComparisonPage: React.FC<
                     backgroundColor: darkTheme.cardBg,
                     borderWidth: 1,
                     borderColor: darkTheme.border,
-                    borderRadius: 8,
+                    borderRadius: 0.01,
                     padding: spacing.md,
                     marginBottom: spacing.sm,
                   }}
@@ -394,7 +394,7 @@ export const PdfStructureComparisonPage: React.FC<
                     backgroundColor: darkTheme.cardBg,
                     borderWidth: 1,
                     borderColor: darkTheme.border,
-                    borderRadius: 8,
+                    borderRadius: 0.01,
                     padding: spacing.md,
                   }}
                 >
@@ -420,7 +420,7 @@ export const PdfStructureComparisonPage: React.FC<
                             ...typography.micro,
                             color: darkTheme.textFaint,
                             marginBottom: 2,
-                            fontSize: 7,
+                            fontSize: 9,
                           }}
                         >
                           RENTAL
@@ -447,7 +447,7 @@ export const PdfStructureComparisonPage: React.FC<
                             ...typography.micro,
                             color: darkTheme.textFaint,
                             marginBottom: 2,
-                            fontSize: 7,
+                            fontSize: 9,
                           }}
                         >
                           CGT
@@ -474,7 +474,7 @@ export const PdfStructureComparisonPage: React.FC<
                             ...typography.micro,
                             color: darkTheme.textFaint,
                             marginBottom: 2,
-                            fontSize: 7,
+                            fontSize: 9,
                           }}
                         >
                           ESTATE
@@ -501,8 +501,8 @@ export const PdfStructureComparisonPage: React.FC<
                 style={{
                   backgroundColor: darkTheme.cardBg,
                   borderWidth: 1,
-                  borderColor: colors.amber[600],
-                  borderRadius: 10,
+                  borderColor: colors.amber[500],
+                  borderRadius: 0.01,
                   padding: spacing.lg,
                   alignItems: "center",
                   marginBottom: spacing.sm,
@@ -524,8 +524,8 @@ export const PdfStructureComparisonPage: React.FC<
                     fontWeight: 700,
                     color:
                       optimal_structure.net_benefit_10yr >= 0
-                        ? colors.emerald[400]
-                        : colors.red[400],
+                        ? colors.amber[500]
+                        : colors.red[700],
                     marginBottom: spacing.xs,
                   }}
                 >
@@ -567,10 +567,10 @@ export const PdfStructureComparisonPage: React.FC<
                 optimal_structure.warnings.length > 0 && (
                   <View
                     style={{
-                      backgroundColor: "rgba(245, 158, 11, 0.06)",
+                      backgroundColor: colors.tints.goldLight,
                       borderWidth: 1,
-                      borderColor: "rgba(245, 158, 11, 0.20)",
-                      borderRadius: 8,
+                      borderColor: colors.tints.goldStrong,
+                      borderRadius: 0.01,
                       padding: spacing.md,
                     }}
                   >
@@ -594,7 +594,7 @@ export const PdfStructureComparisonPage: React.FC<
                       >
                         <Text
                           style={{
-                            fontSize: 6,
+                            fontSize: 9,
                             color: colors.amber[400],
                             marginRight: 5,
                             marginTop: 3,
@@ -630,7 +630,7 @@ export const PdfStructureComparisonPage: React.FC<
               marginBottom: spacing.sm,
             }}
           >
-            TOP {Math.min(5, sorted.length)} STRUCTURES \u2014 COMPARISON MATRIX
+            TOP {Math.min(5, sorted.length)} STRUCTURES — COMPARISON MATRIX
           </Text>
           <PdfDataTable
             headers={tableHeaders}
@@ -657,7 +657,7 @@ export const PdfStructureComparisonPage: React.FC<
                 backgroundColor: darkTheme.cardBg,
                 borderWidth: 1,
                 borderColor: darkTheme.border,
-                borderRadius: 10,
+                borderRadius: 0.01,
                 padding: spacing.md,
                 marginRight: alternative_strategies.length > 0 ? spacing.sm : 0,
               }}
@@ -683,7 +683,7 @@ export const PdfStructureComparisonPage: React.FC<
                 >
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 9,
                       color: colors.amber[500],
                       marginRight: 5,
                       marginTop: 1,
@@ -713,7 +713,7 @@ export const PdfStructureComparisonPage: React.FC<
                 backgroundColor: darkTheme.cardBg,
                 borderWidth: 1,
                 borderColor: darkTheme.border,
-                borderRadius: 10,
+                borderRadius: 0.01,
                 padding: spacing.md,
               }}
             >
@@ -738,7 +738,7 @@ export const PdfStructureComparisonPage: React.FC<
                 >
                   <Text
                     style={{
-                      fontSize: 8,
+                      fontSize: 9,
                       color: colors.amber[400],
                       marginRight: 5,
                       marginTop: 1,

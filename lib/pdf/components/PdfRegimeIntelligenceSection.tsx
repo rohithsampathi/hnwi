@@ -51,9 +51,9 @@ interface PdfRegimeIntelligenceSectionProps {
 
 const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
   <View style={{ position: 'absolute', bottom: 28, left: 56, right: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border }} fixed>
-    <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>Ref: {intakeId.slice(10, 22).toUpperCase()}</Text>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>HNWI Chronicles</Text>
-    <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>Confidential</Text>
+    <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint }}>Ref: {intakeId.slice(10, 22).toUpperCase()}</Text>
+    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>HNWI Chronicles</Text>
+    <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint }}>Confidential</Text>
   </View>
 );
 
@@ -69,9 +69,9 @@ export function PdfRegimeIntelligenceSection({ regimeIntelligence, sourceJurisdi
 
   const getStatusBadge = (status: string) => {
     const s = status.toLowerCase();
-    if (s === 'active') return { bg: 'rgba(16,185,129,0.15)', border: colors.emerald[500], color: colors.emerald[400], label: 'ACTIVE' };
+    if (s === 'active') return { bg: colors.tints.goldMedium, border: colors.amber[500], color: colors.amber[500], label: 'ACTIVE' };
     if (s === 'ended') return { bg: darkTheme.surfaceBg, border: darkTheme.textFaint, color: darkTheme.textMuted, label: 'ENDED' };
-    return { bg: 'rgba(212,168,67,0.15)', border: colors.amber[500], color: colors.amber[500], label: 'ENDING SOON' };
+    return { bg: colors.tints.goldMedium, border: colors.amber[500], color: colors.amber[500], label: 'ENDING SOON' };
   };
 
   const badge = getStatusBadge(regime_scenario.status);

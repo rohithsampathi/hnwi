@@ -21,7 +21,7 @@ export const PdfGroundedNote: React.FC<PdfGroundedNoteProps> = ({ source }) => (
       marginTop: spacing.lg,
       padding: spacing.md,
       backgroundColor: darkTheme.cardBg,
-      borderRadius: 8,
+      borderRadius: 0.01,
       borderWidth: 1,
       borderColor: darkTheme.border,
     }}
@@ -39,7 +39,7 @@ export const PdfGroundedNote: React.FC<PdfGroundedNoteProps> = ({ source }) => (
       style={{
         ...typography.micro,
         color: darkTheme.textMuted,
-        fontSize: 8.5,
+        fontSize: 9,
       }}
     >
       Source: {source}

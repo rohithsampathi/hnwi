@@ -7,8 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { DecisionMemoData, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { ArrowLeft, Download, FileText } from 'lucide-react';
-import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
+import { ArrowLeft, Download, FileText, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
@@ -36,6 +35,46 @@ export default function DecisionMemoPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  // Export PDF via native @react-pdf/renderer (server-side)
+  const handleExportPDF = async () => {
+    try {
+      setIsExportingPDF(true);
+      sessionStorage.setItem('pdf-export-pending', JSON.stringify({ id: intakeId, ts: Date.now() }));
+      const response = await fetch(`/api/decision-memo/pdf/${intakeId}`);
+      sessionStorage.removeItem('pdf-export-pending');
+      if (!response.ok) throw new Error(`PDF generation failed: ${response.status}`);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `HNWI-Decision-Audit-${(intakeId.slice(10, 22) || intakeId.slice(0, 12)).toUpperCase()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      if (sessionStorage.getItem('pdf-export-pending')) {
+        sessionStorage.removeItem('pdf-export-pending');
+      }
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  // Retry pending PDF export after Fast Refresh reload
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('pdf-export-pending');
+      if (!raw) return;
+      sessionStorage.removeItem('pdf-export-pending');
+      const { id, ts } = JSON.parse(raw);
+      if (id === intakeId && Date.now() - ts < 60000) {
+        handleExportPDF();
+      }
+    } catch { /* ignore */ }
+  }, [intakeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Citation management (using same hook as simulation results)
   const {
@@ -290,11 +329,12 @@ export default function DecisionMemoPage({ params }: PageProps) {
 
             {/* Right: Download PDF */}
             <button
-              onClick={() => exportInstitutionalPDF(data as any)}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-5 py-1.5 sm:py-2.5 bg-primary text-primary-foreground text-[10px] sm:text-sm font-semibold tracking-wider rounded-md sm:rounded-lg hover:bg-primary/90 flex-shrink-0"
+              onClick={handleExportPDF}
+              disabled={isExportingPDF}
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-5 py-1.5 sm:py-2.5 bg-primary text-primary-foreground text-[10px] sm:text-sm font-semibold tracking-wider rounded-md sm:rounded-lg hover:bg-primary/90 flex-shrink-0 disabled:opacity-50"
             >
-              <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">DOWNLOAD </span><span>PDF</span>
+              {isExportingPDF ? <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" /> : <Download className="w-3 h-3 sm:w-4 sm:h-4" />}
+              <span className="hidden sm:inline">{isExportingPDF ? 'GENERATING...' : 'DOWNLOAD '}</span><span>{isExportingPDF ? '' : 'PDF'}</span>
             </button>
           </div>
         </div>
@@ -318,7 +358,7 @@ export default function DecisionMemoPage({ params }: PageProps) {
           showTaxSavings={preview_data.show_tax_savings}
           optimalStructure={preview_data.structure_optimization?.optimal_structure}
           viaNegativa={viaNegativaContext}
-          onExportPDF={() => exportInstitutionalPDF(data as any)}
+          onExportPDF={handleExportPDF}
         />
 
         {/* Elegant Section Divider */}
@@ -479,12 +519,13 @@ export default function DecisionMemoPage({ params }: PageProps) {
               </div>
 
               <button
-                onClick={() => exportInstitutionalPDF(data as any)}
-                className="inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-4 bg-primary text-primary-foreground text-sm sm:text-base font-semibold tracking-wider rounded-xl hover:bg-primary/90"
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-4 bg-primary text-primary-foreground text-sm sm:text-base font-semibold tracking-wider rounded-xl hover:bg-primary/90 disabled:opacity-50"
               >
-                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">DOWNLOAD FULL PDF REPORT</span>
-                <span className="sm:hidden">DOWNLOAD PDF</span>
+                {isExportingPDF ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : <Download className="w-4 h-4 sm:w-5 sm:h-5" />}
+                <span className="hidden sm:inline">{isExportingPDF ? 'GENERATING PDF...' : 'DOWNLOAD FULL PDF REPORT'}</span>
+                <span className="sm:hidden">{isExportingPDF ? 'GENERATING...' : 'DOWNLOAD PDF'}</span>
               </button>
 
               <p className="mt-4 sm:mt-6 text-[10px] sm:text-xs text-muted-foreground px-2">

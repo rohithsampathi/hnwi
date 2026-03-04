@@ -2,7 +2,7 @@
 // Crisis Intelligence endpoint — proxies to backend with auth
 // Returns latest crisis snapshot (zones, alert, colors)
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { logger } from '@/lib/secure-logger';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
@@ -25,7 +25,13 @@ export async function GET() {
     };
 
     if (accessToken) {
+      // Platform session: use access_token cookie as Bearer
       headers['Authorization'] = `Bearer ${accessToken}`;
+    } else {
+      // Viewer accounts pass their report Bearer token directly from the client
+      // (report_access JWTs use the same JWT_SECRET_KEY so the backend accepts them)
+      const incomingAuth = request.headers.get('authorization');
+      if (incomingAuth) headers['Authorization'] = incomingAuth;
     }
 
     const response = await fetch(`${API_BASE_URL}/api/crisis-intelligence`, {

@@ -192,6 +192,38 @@ export class AuthenticationManager {
     window.dispatchEvent(new CustomEvent('auth:logout'));
   }
 
+  // Silent logout: clears state and storage WITHOUT dispatching auth:logout.
+  // Use for pre-login cleanup to avoid triggering the authenticated layout's
+  // auth:logout listener which would redirect to "/" mid-login-attempt.
+  public silentLogout(): void {
+    if (typeof window === 'undefined') return;
+
+    this.ensureInitialized();
+
+    this.user = null;
+    this.authenticated = false;
+
+    localStorage.removeItem('userId');
+    localStorage.removeItem('loginTimestamp');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userObject');
+
+    sessionStorage.removeItem('userEmail');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('userObject');
+    sessionStorage.removeItem('loginTimestamp');
+
+    try {
+      import('./storage/pwa-storage').then(({ pwaStorage }) => {
+        pwaStorage.clear();
+      });
+    } catch {
+      // pwaStorage not available
+    }
+
+    // Intentionally NO auth:logout event dispatch
+  }
+
   public getAuthToken(): string | null {
     // Tokens are in httpOnly cookies now - not accessible to JS
     return null;
@@ -417,6 +449,7 @@ export const getAuthToken = () => authManager.getAuthToken(); // Always returns 
 export const isAuthenticated = () => authManager.isAuthenticated();
 export const loginUser = (userData: User) => authManager.login(userData); // No token param!
 export const logoutUser = () => authManager.logout();
+export const silentLogoutUser = () => authManager.silentLogout();
 export const updateUser = (updates: Partial<User>) => authManager.updateUser(updates);
 export const refreshUser = () => authManager.refreshAuth();
 export const getAuthHeaders = () => authManager.getAuthHeaders();

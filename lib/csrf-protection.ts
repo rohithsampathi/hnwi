@@ -8,8 +8,12 @@ import { sanitizeLoggingContext } from './security/sanitization';
 interface CSRFTokenData {
   token: string;
   timestamp: number;
-  userAgent: string;
-  ipHash?: string; // SHA-256 hash of client IP — binds token to network
+  // userAgent and ipHash are intentionally not validated:
+  // - Mobile Safari UA differs between navigation and Fetch API requests
+  // - Mobile IPs change on WiFi↔cellular switches
+  // Double-submit cookie pattern + SameSite=Lax provides sufficient CSRF protection
+  userAgent?: string; // kept for backwards compat with existing tokens
+  ipHash?: string;    // kept for backwards compat with existing tokens
 }
 
 const CSRF_TOKEN_LIFETIME = 60 * 60 * 1000; // 1 hour
@@ -79,14 +83,10 @@ export class CSRFProtection {
   static async setCSRFToken(request: NextRequest): Promise<{ token: string; cookie: string }> {
     const userAgent = request.headers.get('user-agent') || '';
     const token = this.generateToken(userAgent);
-    const clientIP = extractClientIP(request);
-    const ipHashValue = await hashIP(clientIP);
 
     const tokenData: CSRFTokenData = {
       token,
       timestamp: Date.now(),
-      userAgent,
-      ipHash: ipHashValue
     };
 
     const cookieValue = btoa(JSON.stringify(tokenData));
@@ -190,37 +190,10 @@ export class CSRFProtection {
         return { valid: false, error: 'CSRF token expired' };
       }
 
-      // Validate User-Agent hasn't changed (basic anti-hijacking)
-      // Skip for legacy format since we don't have original userAgent
-      const currentUserAgent = request.headers.get('user-agent') || '';
-      if (!isLegacyFormat && tokenData.userAgent !== currentUserAgent) {
-        const context = sanitizeLoggingContext({
-          endpoint: new URL(request.url).pathname,
-          userAgent: currentUserAgent,
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
-        });
-        logger.warn('CSRF validation failed - user agent mismatch', {
-          ...context,
-          tokenUserAgent: tokenData.userAgent?.substring(0, 20) + '...'
-        });
-        return { valid: false, error: 'CSRF token invalid - security check failed' };
-      }
-
-      // Validate IP hash (network binding) — skip for legacy tokens without ipHash
-      if (!isLegacyFormat && tokenData.ipHash) {
-        const currentIP = extractClientIP(request);
-        const currentHash = await hashIP(currentIP);
-        if (currentHash !== tokenData.ipHash) {
-          const context = sanitizeLoggingContext({
-            endpoint: new URL(request.url).pathname,
-            ip: currentIP,
-          });
-          logger.warn('CSRF validation failed - IP mismatch (possible token replay)', context);
-          return { valid: false, error: 'CSRF token invalid - security check failed' };
-        }
-      } else if (!isLegacyFormat && !tokenData.ipHash) {
-        logger.warn('CSRF token missing ipHash — legacy token, consider refreshing');
-      }
+      // NOTE: User-Agent and IP binding checks deliberately removed.
+      // Mobile Safari UA differs between navigation and Fetch API requests.
+      // Mobile IPs change on WiFi↔cellular switches.
+      // Security relies on: double-submit cookie pattern + SameSite=Lax + timestamp expiry.
 
       // Validate the token matches
       if (tokenData.token !== csrfHeader) {

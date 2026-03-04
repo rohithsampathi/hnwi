@@ -126,7 +126,18 @@ export function ReportAuthPopup({
           description: data.message || "Check your email for the 6-digit code."
         })
       } else if (data.token) {
-        // Direct access (no MFA) — shouldn't normally happen but handle it
+        // Direct access (no MFA) — viewer account with skip_mfa
+        // If platform access_token also returned, flag this as a viewer session
+        // so the sidebar can mute Simulation (which requires $599/mo subscription)
+        if (data.access_token && typeof window !== 'undefined') {
+          sessionStorage.setItem('viewer_session', 'true')
+          // Store report token under a well-known key so fetchCrisisIntelligence
+          // can pass it as Authorization Bearer to the backend — the backend's
+          // SecurityMiddleware accepts report_access JWTs (same JWT_SECRET_KEY)
+          sessionStorage.setItem('latest_report_token', data.token)
+          // Notify crisis intel context to re-fetch immediately with the token
+          window.dispatchEvent(new Event('hnwi-auth-changed'))
+        }
         completeAuth(data.token)
       }
     } catch (err) {

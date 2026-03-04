@@ -46,17 +46,17 @@ import { PdfRegulatorySourcesPage } from './components/PdfRegulatorySourcesPage'
 
 function buildDocStyles() {
   return StyleSheet.create({
-    page: { fontFamily: 'Inter', fontSize: 10, paddingTop: 56, paddingBottom: 72, paddingHorizontal: 56, backgroundColor: darkTheme.pageBg, color: darkTheme.textSecondary },
-    footer: { position: 'absolute', bottom: 28, left: 56, right: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border },
-    footerText: { fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5 },
-    footerBrand: { fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.amber[500], letterSpacing: 1, textTransform: 'uppercase' },
+    page: { fontFamily: 'Inter', fontSize: 11, paddingTop: 52, paddingBottom: 68, paddingHorizontal: 52, backgroundColor: darkTheme.pageBg, color: darkTheme.textSecondary },
+    footer: { position: 'absolute', bottom: 24, left: 52, right: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: darkTheme.border },
+    footerText: { fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, letterSpacing: 0.5 },
+    footerBrand: { fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], letterSpacing: 1.5, textTransform: 'uppercase' },
   });
 }
 
 const PageHeader: React.FC = () => (
-  <View style={{ position: 'absolute', top: 20, left: 56, right: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottomWidth: 0.5, borderBottomColor: darkTheme.border }} fixed>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 7.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 2.5 }}>HNWI Chronicles</Text>
-    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 7.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 2.5 }}>SFO Decision Memorandum</Text>
+  <View style={{ position: 'absolute', top: 18, left: 52, right: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: darkTheme.border }} fixed>
+    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 2.5 }}>HNWI Chronicles</Text>
+    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 2.5 }}>SFO Decision Memorandum</Text>
   </View>
 );
 
@@ -73,11 +73,11 @@ const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => {
 
 const ConfidentialWatermark: React.FC = () => (
   <>
-    <View fixed style={{ position: 'absolute', bottom: 55, right: 36, width: 36, height: 36, borderWidth: 1.5, borderColor: darkTheme.border, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: darkTheme.textFaint, letterSpacing: -0.5 }}>HC</Text>
+    <View fixed style={{ position: 'absolute', bottom: 52, right: 32, width: 36, height: 36, borderWidth: 1.5, borderColor: darkTheme.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: darkTheme.borderSubtle, letterSpacing: -0.5 }}>HC</Text>
     </View>
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' }} fixed>
-      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 42, color: darkTheme.borderSubtle, transform: 'rotate(-35deg)', letterSpacing: 14, textTransform: 'uppercase' }}>CONFIDENTIAL</Text>
+      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 48, color: 'rgba(46, 46, 46, 0.08)', transform: 'rotate(-35deg)', letterSpacing: 16, textTransform: 'uppercase' }}>CONFIDENTIAL</Text>
     </View>
   </>
 );
@@ -181,21 +181,25 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 12. Stress Test & Wealth Projection */}
-      <Page size="A4" style={s.page}>
-        <PageHeader />
-        <PdfStressTestPage crisisData={v.crisisData} wealthProjection={v.wealthProjection} heirManagement={v.heirManagement} startingValue={v.startingValue} baseYear10={v.baseYear10} stressYear10={v.stressYear10} opportunityYear10={v.opportunityYear10} baseProbability={v.baseProbability} stressProbability={v.stressProbability} opportunityProbability={v.opportunityProbability} verdict={v.verdict} />
-        <PageFooter intakeId={v.intakeId} />
-        <ConfidentialWatermark />
-      </Page>
+      {/* 12. Stress Test & Wealth Projection (conditional — need crisis or projection data) */}
+      {(v.crisisData || v.wealthProjection || v.startingValue > 0) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfStressTestPage crisisData={v.crisisData} wealthProjection={v.wealthProjection} heirManagement={v.heirManagement} startingValue={v.startingValue} baseYear10={v.baseYear10} stressYear10={v.stressYear10} opportunityYear10={v.opportunityYear10} baseProbability={v.baseProbability} stressProbability={v.stressProbability} opportunityProbability={v.opportunityProbability} verdict={v.verdict} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
 
-      {/* 13. Pattern Intelligence & Peer Analysis */}
-      <Page size="A4" style={s.page}>
-        <PageHeader />
-        <PdfPatternIntelligencePage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} precedentCount={v.precedentCount} peerStats={v.peerStats} capitalFlow={v.capitalFlow} evidenceAnchors={v.evidenceAnchors} verdict={v.verdict} />
-        <PageFooter intakeId={v.intakeId} />
-        <ConfidentialWatermark />
-      </Page>
+      {/* 13. Pattern Intelligence & Peer Analysis (conditional — need peer data, capital flows, or evidence anchors) */}
+      {(v.peerStats || v.capitalFlow || (v.evidenceAnchors && v.evidenceAnchors.length > 0)) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfPatternIntelligencePage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} precedentCount={v.precedentCount} peerStats={v.peerStats} capitalFlow={v.capitalFlow} evidenceAnchors={v.evidenceAnchors} verdict={v.verdict} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
 
       {/* 14. HNWI Trends (conditional) */}
       {v.hnwiTrendsData?.insights && v.hnwiTrendsData.insights.length > 0 && (
@@ -207,13 +211,15 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 15. Decision Timeline & Scenario Tree */}
-      <Page size="A4" style={s.page}>
-        <PageHeader />
-        <PdfDecisionTimelinePage costOfInaction={v.costOfInaction} executionSequence={v.executionSequence} decisionGates={v.scenarioTree?.decision_gates || []} verdict={v.verdict} branches={v.scenarioTree?.branches ? Object.entries(v.scenarioTree.branches).filter(([, b]) => b).map(([key, b]) => ({ branch: key, probability: b!.probability || 0, expected_value: b!.expected_value, conditions: b!.conditions?.map(c => ({ condition: c.condition, status: c.status })), verdict_text: b!.recommended_if })) : undefined} marketValidation={(() => { const evr = v.scenarioTree?.expected_vs_reality; if (!evr?.comparisons?.length) return undefined; const a = evr.comparisons.find(c => /appreciation/i.test(c.metric)); const r = evr.comparisons.find(c => /rental|yield/i.test(c.metric)); if (!a && !r) return undefined; return { appreciation: { expected: Number(a?.expected || 0), actual: Number(a?.actual || 0), deviation_pct: parseFloat(String(a?.deviation || '0')) }, rental_yield: { expected: Number(r?.expected || 0), actual: Number(r?.actual || 0), deviation_pct: parseFloat(String(r?.deviation || '0')) } }; })()} validityDays={v.scenarioTree?.validity_period ? parseInt(v.scenarioTree.validity_period) || undefined : undefined} reassessTriggers={v.scenarioTree?.reassess_conditions} />
-        <PageFooter intakeId={v.intakeId} />
-        <ConfidentialWatermark />
-      </Page>
+      {/* 15. Decision Timeline & Scenario Tree (conditional — need cost of inaction or execution steps) */}
+      {(v.costOfInaction || (v.executionSequence && v.executionSequence.length > 0) || v.scenarioTree) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfDecisionTimelinePage costOfInaction={v.costOfInaction} executionSequence={v.executionSequence} decisionGates={v.scenarioTree?.decision_gates || []} verdict={v.verdict} branches={v.scenarioTree?.branches ? Object.entries(v.scenarioTree.branches).filter(([, b]) => b).map(([key, b]) => ({ branch: key, probability: b!.probability || 0, expected_value: b!.expected_value, conditions: b!.conditions?.map(c => ({ condition: c.condition, status: c.status })), verdict_text: b!.recommended_if })) : undefined} marketValidation={(() => { const evr = v.scenarioTree?.expected_vs_reality; if (!evr?.comparisons?.length) return undefined; const a = evr.comparisons.find(c => /appreciation/i.test(c.metric)); const r = evr.comparisons.find(c => /rental|yield/i.test(c.metric)); if (!a && !r) return undefined; return { appreciation: { expected: Number(a?.expected || 0), actual: Number(a?.actual || 0), deviation_pct: parseFloat(String(a?.deviation || '0')) }, rental_yield: { expected: Number(r?.expected || 0), actual: Number(r?.actual || 0), deviation_pct: parseFloat(String(r?.deviation || '0')) } }; })()} validityDays={v.scenarioTree?.validity_period ? parseInt(v.scenarioTree.validity_period) || undefined : undefined} reassessTriggers={v.scenarioTree?.reassess_conditions} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
 
       {/* 16. Heir Management (conditional) */}
       {v.heirManagement && (v.heirManagement.heir_allocations?.length > 0 || v.heirManagement.third_generation_risk || v.heirManagement.with_structure || v.heirManagement.g1_position) && (

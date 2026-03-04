@@ -1,8 +1,12 @@
 /**
- * PdfSectionHeader — Shared PDF section header primitive
- * Replaces duplicated header patterns across 14 PDF components
+ * PdfSectionHeader — Section header primitive
  *
- * Uses: darkTheme, typography, colors from pdf-styles (no local StyleSheet)
+ * Design: Section headers are the FIRST thing scanned on each page.
+ * They must command attention with:
+ * - 32px gold accent bar (wider = more authority)
+ * - 16pt bold title (visible at mobile zoom levels)
+ * - Clear bottom border for section closure
+ * - Generous margin below for breathing room
  */
 
 import React from 'react';
@@ -24,8 +28,8 @@ export const PdfSectionHeader: React.FC<PdfSectionHeaderProps> = ({
 }) => (
   <View
     style={{
-      marginBottom: 20,
-      paddingBottom: 8,
+      marginBottom: 24,
+      paddingBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: darkTheme.border,
     }}
@@ -33,10 +37,10 @@ export const PdfSectionHeader: React.FC<PdfSectionHeaderProps> = ({
   >
     <View
       style={{
-        width: 24,
+        width: 32,
         height: 3,
         backgroundColor: accentColor,
-        marginBottom: 8,
+        marginBottom: 10,
       }}
     />
     <View
@@ -59,19 +63,18 @@ export const PdfSectionHeader: React.FC<PdfSectionHeaderProps> = ({
       {badge && (
         <View
           style={{
-            marginLeft: 12,
+            marginLeft: 14,
             borderWidth: 1,
-            borderColor: darkTheme.textFaint,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
+            borderColor: darkTheme.border,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
           }}
         >
           <Text
             style={{
               ...typography.micro,
               color: darkTheme.textMuted,
-              fontSize: 8.5,
-              letterSpacing: 1,
+              letterSpacing: 1.2,
             }}
           >
             {badge}
@@ -84,7 +87,7 @@ export const PdfSectionHeader: React.FC<PdfSectionHeaderProps> = ({
         style={{
           ...typography.small,
           color: darkTheme.textMuted,
-          marginTop: 4,
+          marginTop: 6,
         }}
       >
         {subtitle}

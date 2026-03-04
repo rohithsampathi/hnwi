@@ -213,6 +213,8 @@ interface InteractiveWorldMapProps {
   useAbsolutePositioning?: boolean // Use absolute positioning for controls (assessment mode)
   // Crisis overlay — when true, country boundaries are always highlighted + toggle for alert box
   showCrisisOverlay?: boolean
+  // When true, crisis alert box + legend render OUTSIDE the map (parent handles placement)
+  crisisAlertExternal?: boolean
 }
 
 export function InteractiveWorldMap({
@@ -235,6 +237,7 @@ export function InteractiveWorldMap({
   hideCrownAssetsToggle = false,
   useAbsolutePositioning = false,
   showCrisisOverlay = false,
+  crisisAlertExternal = false,
 }: InteractiveWorldMapProps) {
   const { theme } = useTheme()
   const {
@@ -250,6 +253,8 @@ export function InteractiveWorldMap({
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
   const [forceRender, setForceRender] = useState(0)
+  // Unique key per mount — prevents "Map container already initialized" on HMR/Strict Mode remount
+  const [mapKey] = useState(() => `map-${Date.now()}`)
   const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 2000000 })
   const [hoveredCorridorKey, setHoveredCorridorKey] = useState<string | null>(null)
   const [selectedCorridorKey, setSelectedCorridorKey] = useState<string | null>(null) // Persist highlight when popup is open
@@ -398,34 +403,35 @@ export function InteractiveWorldMap({
     }, 10)
   }, [])
 
-  // Calculate dynamic min zoom based on viewport - uses centralized MAP_CONFIG
-  const [minZoomLevel, setMinZoomLevel] = useState(MAP_CONFIG.zoom.default)
+  // Two separate zoom concepts:
+  // 1. startingZoom — fills viewport with no white gaps (used as initial zoom + reset target)
+  // 2. minZoom — fixed low value so user can zoom out to see the full world
+  const [startingZoom, setStartingZoom] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const sw = window.innerWidth
+      const sh = window.innerHeight
+      return MAP_CONFIG.calculateMinZoom(sw / sh, sh)
+    }
+    return MAP_CONFIG.zoom.default
+  })
 
   React.useEffect(() => {
-    const calculateMinZoom = () => {
+    const handleResize = () => {
       if (typeof window !== 'undefined') {
-        const screenWidth = window.innerWidth
-        const screenHeight = window.innerHeight
-        const aspectRatio = screenWidth / screenHeight
-
-        // Use centralized zoom calculation logic
-        const zoom = MAP_CONFIG.calculateMinZoom(aspectRatio, screenHeight)
-
-        setMinZoomLevel(zoom)
-        setCurrentZoom(zoom) // Also update current zoom
+        const sw = window.innerWidth
+        const sh = window.innerHeight
+        setStartingZoom(MAP_CONFIG.calculateMinZoom(sw / sh, sh))
       }
     }
 
-    calculateMinZoom()
-    window.addEventListener('resize', calculateMinZoom)
-    // Also listen for orientation changes on mobile
+    window.addEventListener('resize', handleResize)
     window.addEventListener('orientationchange', () => {
-      setTimeout(calculateMinZoom, 100) // Delay to ensure dimensions are updated
+      setTimeout(handleResize, 100)
     })
 
     return () => {
-      window.removeEventListener('resize', calculateMinZoom)
-      window.removeEventListener('orientationchange', calculateMinZoom)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
     }
   }, [])
 
@@ -438,10 +444,10 @@ export function InteractiveWorldMap({
   return (
     <div className={`relative w-full h-full overflow-hidden ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
       <MapContainer
-        key={`map-${minZoomLevel}`} // Force re-render when zoom changes
+        key={mapKey}
         center={[20, 0]}
-        zoom={minZoomLevel}
-        minZoom={minZoomLevel}
+        zoom={startingZoom}
+        minZoom={MAP_CONFIG.zoom.min}
         maxZoom={MAP_CONFIG.zoom.max}
         style={{ width: "100%", height: "100%", position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         zoomControl={false}
@@ -454,7 +460,7 @@ export function InteractiveWorldMap({
         maxBoundsViscosity={1.0}  // Makes bounds completely rigid - no elastic scrolling
         bounceAtZoomLimits={false}  // Prevents bounce effect at zoom limits
       >
-        <TileLayer url={tileUrl} noWrap={true} />
+        <TileLayer url={tileUrl} noWrap={false} />
 
         {/* Clustered City Markers */}
         {clusterCities.map((cluster, clusterIndex) => {
@@ -1039,7 +1045,7 @@ export function InteractiveWorldMap({
                   position={arcMid}
                   icon={routeLabel}
                   interactive={false}
-                  zIndexOffset={10000}
+                  zIndexOffset={30000}
                 />
               )}
             </React.Fragment>
@@ -1056,7 +1062,7 @@ export function InteractiveWorldMap({
 
         {/* Map Helper Components */}
         <FlyToCity city={flyToCity} />
-        <ResetView shouldReset={resetView} onReset={() => setResetView(false)} minZoom={minZoomLevel} />
+        <ResetView shouldReset={resetView} onReset={() => setResetView(false)} minZoom={startingZoom} />
         <MapClickHandler onMapClick={handleMapClick} />
         <ZoomTracker onZoomChange={setCurrentZoom} />
         <PopupZoomHandler />
@@ -1145,8 +1151,8 @@ export function InteractiveWorldMap({
         </div>
       )}
 
-      {/* Crisis Alert Box */}
-      {showCrisisOverlay && showCrisisAlert && crisisData && crisisColors && (
+      {/* Crisis Alert Box — hidden when crisisAlertExternal (parent renders it below map) */}
+      {showCrisisOverlay && showCrisisAlert && crisisData && crisisColors && !crisisAlertExternal && (
         <div
           style={{
             position: useAbsolutePositioning ? 'absolute' : 'fixed',
@@ -1167,8 +1173,8 @@ export function InteractiveWorldMap({
         </div>
       )}
 
-      {/* Crisis Legend — bottom-right when crisis overlay is active */}
-      {showCrisisOverlay && showCrisisAlert && crisisData && (
+      {/* Crisis Legend — bottom-right when crisis overlay is active (hidden when external) */}
+      {showCrisisOverlay && showCrisisAlert && crisisData && !crisisAlertExternal && (
         <div
           style={{
             position: 'absolute',

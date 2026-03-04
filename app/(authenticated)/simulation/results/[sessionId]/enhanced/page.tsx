@@ -19,10 +19,12 @@ import {
 import type { EnhancedReportData } from '@/types/assessment-report';
 import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
 import type { PdfMemoData } from '@/lib/pdf/pdf-types';
+import { useTheme } from '@/contexts/theme-context';
 
 export default function EnhancedReportPage() {
   const params = useParams();
   const router = useRouter();
+  const { theme: appTheme } = useTheme();
   const sessionId = params.sessionId as string;
 
   const [reportData, setReportData] = useState<EnhancedReportData | null>(null);
@@ -104,7 +106,7 @@ export default function EnhancedReportPage() {
         },
       };
 
-      await exportInstitutionalPDF(memoData);
+      await exportInstitutionalPDF(memoData, appTheme);
     } catch (err) {
       alert('Failed to generate PDF. Please try again.');
     }

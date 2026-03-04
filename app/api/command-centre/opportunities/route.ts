@@ -75,9 +75,13 @@ export async function GET(request: NextRequest) {
       'Cookie': cookieHeader, // Forward all cookies
     };
 
-    // Also include Authorization header as backup
     if (accessToken) {
+      // Platform session: use access_token cookie as Bearer
       headers['Authorization'] = `Bearer ${accessToken}`;
+    } else {
+      // Viewer accounts pass their report Bearer token directly from the client
+      const incomingAuth = request.headers.get('authorization');
+      if (incomingAuth) headers['Authorization'] = incomingAuth;
     }
 
     const response = await fetch(backendUrl, {

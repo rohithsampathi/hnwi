@@ -45,9 +45,9 @@ export const PdfRealAssetTrusts: React.FC<PdfRealAssetTrustsProps> = ({ auditDat
         </View>
 
         {!!(auditData.dynasty_trusts.recommended || auditData.dynasty_trusts.best_for_perpetuity) && (
-          <View style={{ marginTop: 14, backgroundColor: 'rgba(212,168,67,0.08)', borderWidth: 1, borderColor: 'rgba(212,168,67,0.25)', borderLeftWidth: 4, borderLeftColor: colors.amber[500], padding: 14 }}>
+          <View style={{ marginTop: 14, backgroundColor: colors.tints.goldLight, borderWidth: 1, borderColor: colors.tints.goldStrong, borderLeftWidth: 4, borderLeftColor: colors.amber[500], padding: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ width: 16, height: 16, backgroundColor: 'rgba(212,168,67,0.25)', borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+              <View style={{ width: 16, height: 16, backgroundColor: colors.tints.goldStrong, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                 <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500] }}>!</Text>
               </View>
               <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommended Structure</Text>
@@ -77,9 +77,9 @@ export const PdfRealAssetTrusts: React.FC<PdfRealAssetTrustsProps> = ({ auditDat
           </View>
           {auditData.succession_vehicles.slice(0, 4).map((vehicle, idx) => (
             <View key={idx} style={[trBase, idx % 2 === 1 && { backgroundColor: darkTheme.cardBg }]}>
-              <Text style={[cellNormal, { flex: 1, fontSize: 8, color: darkTheme.textMuted }]}>{vehicle.vehicle_type || vehicle.type || 'Vehicle'}</Text>
+              <Text style={[cellNormal, { flex: 1, fontSize: 9, color: darkTheme.textMuted }]}>{vehicle.vehicle_type || vehicle.type || 'Vehicle'}</Text>
               <Text style={[cellBold, { flex: 2 }]}>{vehicle.name}</Text>
-              <Text style={[cellNormal, { flex: 2, fontSize: 8 }]}>
+              <Text style={[cellNormal, { flex: 2, fontSize: 9 }]}>
                 {(Array.isArray(vehicle.tax_benefits) ? vehicle.tax_benefits : Array.isArray(vehicle.benefits) ? vehicle.benefits : []).slice(0, 2).join(', ') || 'N/A'}
               </Text>
             </View>
@@ -108,10 +108,10 @@ export const PdfRealAssetTrusts: React.FC<PdfRealAssetTrustsProps> = ({ auditDat
     {/* Data Completeness */}
     {auditData.data_completeness && (
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: darkTheme.surfaceBg }}>
-        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, marginRight: 8 }}>Sources: {auditData.data_completeness.total_sources || 0}</Text>
+        <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, marginRight: 8 }}>Sources: {auditData.data_completeness.total_sources || 0}</Text>
         {!!auditData.data_completeness.confidence && (
           <View style={{ backgroundColor: darkTheme.surfaceBg, paddingHorizontal: 6, paddingVertical: 2 }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted }}>{auditData.data_completeness.confidence} Confidence</Text>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted }}>{auditData.data_completeness.confidence} Confidence</Text>
           </View>
         )}
       </View>

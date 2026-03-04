@@ -150,6 +150,24 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
 }
 
 export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceResponse> {
+  // Viewer accounts (audit.viewer / hnwi@montaigne.co) authenticate via report Bearer token.
+  // The report token is stored in sessionStorage by the audit popup on login.
+  // We pass it as Authorization so the Next.js route can forward it to the backend —
+  // the SecurityMiddleware accepts any valid JWT signed with the same secret.
+  const reportToken =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("latest_report_token")
+      : null;
+
+  if (reportToken) {
+    const resp = await fetch("/api/crisis-intelligence", {
+      credentials: "include",
+      headers: { Authorization: `Bearer ${reportToken}` },
+    });
+    if (!resp.ok) throw new Error(`${resp.status}`);
+    return transformBackendResponse(await resp.json());
+  }
+
   const data = await secureApi.get("/api/crisis-intelligence", true);
   return transformBackendResponse(data);
 }

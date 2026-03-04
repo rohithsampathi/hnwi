@@ -3,7 +3,7 @@
 // Leverages secure-api for all backend communication with URL masking and secure routing
 
 import { secureApi, setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
-import { authManager, loginUser, logoutUser, getCurrentUser, type User } from '@/lib/auth-manager'
+import { authManager, loginUser, logoutUser, silentLogoutUser, getCurrentUser, type User } from '@/lib/auth-manager'
 import { DeviceTrustManager } from '@/lib/device-trust'
 
 export interface AuthState {
@@ -105,15 +105,18 @@ class UnifiedAuthManager {
     // Clear client-side auth state only (don't call backend logout - wastes retry attempts)
     // If session is expired, backend logout will fail anyway
     // Backend login will automatically invalidate any old session
-    await this.clearAuthSystems()
+    // Use silent clear to avoid dispatching auth:logout during a fresh login attempt
+    await this.silentClearClientState()
 
     try {
       // Use secure-api for masked backend communication
+      // requireAuth=false: login endpoint doesn't require a pre-existing session.
+      // Without this, a 403 CSRF failure triggers the auth popup instead of an error message.
       const result = await secureApi.post('/api/auth/login', {
         email,
         password,
         rememberDevice
-      })
+      }, false)
 
       if (result.requires_mfa && result.mfa_token) {
         // MFA required - store email for MFA verification and don't update auth state yet
@@ -186,12 +189,14 @@ class UnifiedAuthManager {
 
     try {
       // Use secure-api for masked backend communication
+      // requireAuth=false: MFA verify is mid-auth flow, no session cookie exists yet.
+      // Without this, a CSRF/403 failure triggers the auth popup instead of an error message.
       const result = await secureApi.post('/api/auth/mfa/verify', {
         email: this.mfaEmail,
         mfa_code: code,
         mfa_token: mfaToken,
         rememberMe: rememberDevice
-      })
+      }, false)
 
       if (result.success && result.user) {
         if (typeof console !== 'undefined') {
@@ -607,6 +612,36 @@ class UnifiedAuthManager {
       }
       // Continue with login even if cache clearing fails
     }
+  }
+
+  // Silently clear client-side auth state WITHOUT dispatching auth:logout.
+  // Use this for pre-login cleanup only. Dispatching auth:logout during a fresh
+  // login attempt causes use-auth-sync listeners to run onAuthChange(false) mid-flight,
+  // and triggers the authenticated layout's handleLogout → router.push("/") — which
+  // would close the auth popup and redirect the user away mid-login.
+  private async silentClearClientState(): Promise<void> {
+    silentLogoutUser()  // clears storage WITHOUT the auth:logout event
+    setAuthState(false)
+    this.mfaEmail = null
+    DeviceTrustManager.removeTrust()
+
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      try {
+        const cacheNames = await caches.keys()
+        await Promise.all(
+          cacheNames
+            .filter(name =>
+              name.includes('api') ||
+              name.includes('pages') ||
+              name.includes('intelligence')
+            )
+            .map(name => caches.delete(name))
+        )
+      } catch {
+        // Silent fail — cache clearing is enhancement, not critical
+      }
+    }
+    // Intentionally no auth:logout event dispatch
   }
 
   // Clear all authentication systems

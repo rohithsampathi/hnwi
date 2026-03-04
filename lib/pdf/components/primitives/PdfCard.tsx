@@ -1,14 +1,15 @@
 /**
  * PdfCard — Shared PDF card/panel primitive
- * Replaces duplicated card patterns across 14 PDF components
  *
- * Variants map directly to darkTheme values:
- *   default   → cardBg + border
- *   premium   → surfaceBg, no border (elevated look)
- *   bordered  → cardBg + border + rounded
- *   highlight → gold tint background + gold border
+ * Design: Cards create the primary visual depth on dark pages.
+ * cardBg (#1C1C1C) sits 7 brightness points above pageBg (#0C0C0C)
+ * — enough contrast to be visible in PDF rendering without subpixel smoothing.
  *
- * Uses: darkTheme, spacing, colors from pdf-styles (no local StyleSheet)
+ * Variants:
+ *   default   → cardBg + visible border (workhorse)
+ *   premium   → surfaceBg (elevated, no border — special emphasis)
+ *   bordered  → cardBg + border + rounded (same as default, semantic alias)
+ *   highlight → gold tint bg + gold border (key findings, verdicts)
  */
 
 import React from 'react';
@@ -25,13 +26,13 @@ const variantStyles: Record<string, Style> = {
     backgroundColor: darkTheme.cardBg,
     borderWidth: 1,
     borderColor: darkTheme.border,
-    borderRadius: 12,
+    borderRadius: 0.01,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
   premium: {
     backgroundColor: darkTheme.surfaceBg,
-    borderRadius: 12,
+    borderRadius: 0.01,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
@@ -39,7 +40,7 @@ const variantStyles: Record<string, Style> = {
     backgroundColor: darkTheme.cardBg,
     borderWidth: 1,
     borderColor: darkTheme.border,
-    borderRadius: 12,
+    borderRadius: 0.01,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
@@ -47,7 +48,7 @@ const variantStyles: Record<string, Style> = {
     backgroundColor: darkTheme.goldTint,
     borderWidth: 1.5,
     borderColor: colors.amber[500],
-    borderRadius: 12,
+    borderRadius: 0.01,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },

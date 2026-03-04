@@ -43,7 +43,27 @@ export async function POST(
 
     const data = await response.json();
 
-    return NextResponse.json(data, { status: response.status });
+    const nextResponse = NextResponse.json(data, { status: response.status });
+
+    // If the backend issued platform session cookies (skip_mfa viewer accounts),
+    // set them as httpOnly cookies so the browser can use them for subsequent
+    // platform API calls (War Room, crisis intelligence, HNWI World, etc.)
+    if (data.access_token) {
+      const isProd = process.env.NODE_ENV === 'production';
+      const cookieOpts = {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? ('none' as const) : ('lax' as const),
+        maxAge: 7 * 24 * 60 * 60, // 7 days (matches remember_me=True on backend)
+        path: '/',
+      };
+      nextResponse.cookies.set('access_token', data.access_token, cookieOpts);
+      if (data.refresh_token) {
+        nextResponse.cookies.set('refresh_token', data.refresh_token, cookieOpts);
+      }
+    }
+
+    return nextResponse;
   } catch (error) {
     logger.error('Report Auth proxy error', { subPath, error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(

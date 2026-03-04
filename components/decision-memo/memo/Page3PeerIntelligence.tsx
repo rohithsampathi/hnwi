@@ -11,6 +11,8 @@ import { Opportunity } from '@/lib/decision-memo/memo-types';
 import type { CitationMap, Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { City } from '@/components/interactive-world-map';
+import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
+import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
 
 // Dynamic import for map component
 const InteractiveWorldMap = dynamic(
@@ -189,6 +191,9 @@ export function Page3PeerIntelligence({
   const [showCrownAssets, setShowCrownAssets] = useState(true);
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
+
+  // Crisis intelligence — rendered below map when in geographic-only mode
+  const { showCrisisAlert, crisisData, crisisCounts, crisisColors } = useCrisisIntelligence();
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -741,6 +746,7 @@ export function Page3PeerIntelligence({
                 hideCrownAssetsToggle={true}
                 useAbsolutePositioning={true}
                 showCrisisOverlay={true}
+                crisisAlertExternal={true}
               />
             </div>
 
@@ -751,6 +757,19 @@ export function Page3PeerIntelligence({
                 <span className="hidden sm:inline"> Color intensity reflects investment tier -- use filters to narrow by price range and category.</span>
               </p>
             </div>
+
+            {/* Crisis Intel Summary — rendered below map for visibility */}
+            {showCrisisAlert && crisisData && crisisColors && (
+              <div className="px-6 pb-4">
+                <CrisisAlertBox
+                  visible={showCrisisAlert}
+                  theme="dark"
+                  alert={crisisData.alert}
+                  counts={crisisCounts}
+                  colors={crisisColors}
+                />
+              </div>
+            )}
           </div>
         </motion.div>
       )}

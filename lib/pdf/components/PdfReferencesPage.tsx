@@ -93,7 +93,7 @@ const CitationRow: React.FC<{ citation: CitationEntry; isLast: boolean }> = ({
         style={{
           fontFamily: 'Inter',
           fontWeight: 400,
-          fontSize: 8,
+          fontSize: 9,
           color: darkTheme.textMuted,
           marginTop: 2,
         }}
@@ -126,7 +126,7 @@ const CitationCategoryBlock: React.FC<{
           style={{
             ...typography.micro,
             color: colors.amber[500],
-            fontSize: 7.5,
+            fontSize: 9,
           }}
         >
           {label}
@@ -135,7 +135,7 @@ const CitationCategoryBlock: React.FC<{
           style={{
             ...typography.micro,
             color: darkTheme.textFaint,
-            fontSize: 7.5,
+            fontSize: 9,
           }}
         >
           ({citations.length})
@@ -155,7 +155,7 @@ const CitationCategoryBlock: React.FC<{
           backgroundColor: darkTheme.cardBg,
           borderWidth: 1,
           borderColor: darkTheme.border,
-          borderRadius: 8,
+          borderRadius: 0.01,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.xs,
         }}
@@ -237,7 +237,7 @@ export const PdfReferencesPage: React.FC<PdfReferencesPageProps> = ({
                 style={{
                   ...typography.micro,
                   color: darkTheme.textMuted,
-                  fontSize: 7.5,
+                  fontSize: 9,
                 }}
               >
                 DEVELOPMENTS
@@ -260,7 +260,7 @@ export const PdfReferencesPage: React.FC<PdfReferencesPageProps> = ({
                 style={{
                   ...typography.micro,
                   color: darkTheme.textMuted,
-                  fontSize: 7.5,
+                  fontSize: 9,
                 }}
               >
                 PRECEDENTS

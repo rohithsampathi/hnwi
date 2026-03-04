@@ -65,7 +65,7 @@ export function MemoCoverPage({
 
   return (
     <motion.div
-      className="relative min-h-[100vh] bg-[#0A0A0A] flex-col items-center justify-center overflow-hidden hidden print:flex print:break-after-page print:h-[277mm] print:max-h-[277mm] print:min-h-[277mm] print:w-[180mm] print:overflow-hidden print:mx-auto"
+      className="relative min-h-[100vh] bg-[#0A0A0A] flex-col items-center justify-center overflow-hidden hidden print:flex print:h-[270mm] print:max-h-[270mm] print:min-h-[270mm] print:w-[180mm] print:overflow-hidden print:mx-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}

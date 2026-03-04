@@ -10,8 +10,6 @@ import { AuthProvider } from "@/components/auth-provider"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
 import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
 import { AuthSyncProvider } from "@/components/auth-sync-provider"
-import PWAInstallPrompt from "@/components/pwa-install-prompt"
-import { ServiceWorkerUpdateManager } from "@/components/sw-update-manager"
 import './globals.css'
 
 const inter = Inter({
@@ -69,8 +67,6 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-
-  manifest: "/manifest.json",
 
   icons: {
     icon: "/logo.png",
@@ -150,37 +146,25 @@ export default function RootLayout({
           suppressHydrationWarning={true}
           dangerouslySetInnerHTML={{
             __html: `
-              // Clear all caches and service workers on localhost to prevent stale manifest errors
-              if (location.hostname.includes('localhost')) {
-                (async function clearAllCaches() {
-                  try {
-                    // Unregister all service workers
-                    if ('serviceWorker' in navigator) {
-                      const registrations = await navigator.serviceWorker.getRegistrations();
-                      for (const registration of registrations) {
-                        await registration.unregister();
-                      }
+              // PWA removed — unregister any existing service workers and clear caches
+              (async function cleanupPWA() {
+                try {
+                  if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                      await registration.unregister();
                     }
-                    // Clear all caches
-                    if ('caches' in window) {
-                      const cacheNames = await caches.keys();
-                      for (const cacheName of cacheNames) {
-                        await caches.delete(cacheName);
-                      }
-                    }
-                  } catch (e) {
-                    // Silent fail
                   }
-                })();
-              }
-
-              // Register service worker in production only
-              if ('serviceWorker' in navigator && !location.hostname.includes('localhost')) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                    .catch(() => {});
-                });
-              }
+                  if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const cacheName of cacheNames) {
+                      await caches.delete(cacheName);
+                    }
+                  }
+                } catch (e) {
+                  // Silent fail
+                }
+              })();
             `,
           }}
         />
@@ -194,8 +178,6 @@ export default function RootLayout({
                   <AuthPopupProvider>
                     <StepUpMfaProvider>
                       {children}
-                      <PWAInstallPrompt />
-                      <ServiceWorkerUpdateManager />
                       <div id="toast-container" className="fixed top-0 right-0 z-50">
                         {/* Toast container for notifications */}
                       </div>

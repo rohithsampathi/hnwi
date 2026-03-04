@@ -40,17 +40,18 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 import { 
-  CreditCard, 
-  Plus, 
+  CreditCard,
+  Plus,
   Calendar,
   DollarSign,
   CheckCircle2,
   X,
-  User,
+  User as UserIcon,
   Mail,
-  Phone
-, Shield} from "lucide-react"
-import { getMetallicCardStyle, getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors"
+  Phone,
+  Shield,
+} from "lucide-react"
+import { getMetallicCardStyle, getSubtleCardStyle, getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors"
 import type { User } from "@/types/user"
 
 interface BillingManagementModalProps {
@@ -90,7 +91,7 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
     expiry_month: '',
     expiry_year: '',
     cvv: '',
-    name: user.name || user.firstName || ''
+    name: user.name || ''
   })
 
   // Normalize tier names to handle legacy values
@@ -129,10 +130,7 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
   const fetchPaymentMethods = useCallback(async () => {
     setLoadingPaymentMethods(true)
     try {
-      const data = await secureApi.get('/api/subscriptions/payment-methods/', true, {
-        enableCache: true,
-        cacheDuration: 300000 // 5 minutes cache
-      })
+      const data = await secureApi.get('/api/subscriptions/payment-methods/', true, false)
       
       if (data.success && data.payment_methods) {
         // Convert backend format to frontend format
@@ -159,9 +157,7 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
   // Fetch recent payments that can be saved as payment methods
   const fetchRecentPayments = useCallback(async () => {
     try {
-      const data = await secureApi.get('/api/subscriptions/payment-history', true, {
-        enableCache: false // Get fresh data
-      })
+      const data = await secureApi.get('/api/subscriptions/payment-history', true, true)
       
       if (data.success && data.payments) {
         // Filter recent successful payments that aren't already saved as payment methods
@@ -490,7 +486,7 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <User className="w-4 h-4 text-muted-foreground" />
+                      <UserIcon className="w-4 h-4 text-muted-foreground" />
                       <span>{user.name}</span>
                     </div>
                     <div className="flex items-center gap-3">

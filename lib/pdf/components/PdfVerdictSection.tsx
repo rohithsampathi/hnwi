@@ -76,7 +76,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
   precedentCount = 0, totalExposureFormatted, mitigationTimeline,
   criticalItems, highPriority, riskFactors = [], viaNegativa,
 }) => {
-  const microLabel = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase' as const, letterSpacing: 1 };
+  const microLabel = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 9, color: darkTheme.textMuted, textTransform: 'uppercase' as const, letterSpacing: 1 };
   const headerBadge = { backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 10, paddingVertical: 4 };
 
   const theme = getVerdictTheme(viaNegativa?.isActive ? 'ABORT' : verdict);
@@ -91,7 +91,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       <View style={{ marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
         <GradientAccentBar width={483} height={4} theme={theme} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 10 }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: darkTheme.textPrimary, letterSpacing: 0.5, textTransform: 'uppercase', flexShrink: 1, maxWidth: '70%' }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 16, color: darkTheme.textPrimary, letterSpacing: 0.5, textTransform: 'uppercase', flexShrink: 1, maxWidth: '70%' }}>
             {viaNegativa?.isActive ? viaNegativa.verdictHeader : 'Investment Committee Decision'}
           </Text>
           <View style={headerBadge}>
@@ -109,10 +109,10 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
           <Text style={{ ...microLabel, letterSpacing: 1.5, color: darkTheme.textFaint, marginBottom: 6 }}>
             {viaNegativa?.isActive ? viaNegativa.verdictBadgeLabel : 'Executive Summary'}
           </Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 28, letterSpacing: -0.5, marginBottom: 8, color: theme.primary }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, letterSpacing: -0.5, marginBottom: 8, color: theme.primary }}>
             {viaNegativa?.isActive ? 'VETOED' : verdict}
           </Text>
-          <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textFaint, lineHeight: 1.65, maxWidth: 320 }}>
+          <Text style={{ fontFamily: 'Inter', fontSize: 11, color: darkTheme.textFaint, lineHeight: 1.65, maxWidth: 320 }}>
             {verdictRationale || `Risk level assessed as ${riskLevel}. Proceed with structured monitoring and targeted due diligence as outlined in this assessment.`}
           </Text>
         </View>
@@ -127,19 +127,19 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
         <View style={{ width: 1, height: 60, backgroundColor: darkTheme.border, marginRight: 24 }} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={{ ...microLabel, marginBottom: 8 }}>Data Quality</Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, marginBottom: 6, color: dataQuality === 'Strong' ? colors.emerald[400] : dataQuality === 'Good' ? colors.amber[500] : darkTheme.textMuted }}>{dataQuality}</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, marginBottom: 6, color: dataQuality === 'Strong' ? colors.amber[500] : dataQuality === 'Good' ? colors.amber[600] : darkTheme.textMuted }}>{dataQuality}</Text>
           <ConfidenceMeter level={confidenceBars} size={60} theme={theme} />
-          <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted, textAlign: 'center', marginTop: 6 }}>
+          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, textAlign: 'center', marginTop: 6 }}>
             Based on {precedentCount.toLocaleString()} KGv3 precedents
           </Text>
         </View>
         <View style={{ width: 1, height: 60, backgroundColor: darkTheme.border, marginLeft: 24, marginRight: 24 }} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={{ ...microLabel, marginBottom: 8 }}>Intelligence Depth</Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, color: darkTheme.textPrimary, marginBottom: 6 }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, color: darkTheme.textPrimary, marginBottom: 6 }}>
             {precedentCount > 1000 ? 'DEEP' : precedentCount > 500 ? 'GOOD' : 'STANDARD'}
           </Text>
-          <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted, textAlign: 'center', marginTop: 6 }}>
+          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, textAlign: 'center', marginTop: 6 }}>
             {precedentCount.toLocaleString()} precedents{'\n'}analyzed for this corridor
           </Text>
         </View>
@@ -156,17 +156,17 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
             ].map((item, i) => (
               <View key={i} style={{
                 flex: 1, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', borderWidth: 2, marginRight: i < 2 ? 8 : 0,
-                borderColor: item.passed ? colors.emerald[500] : colors.red[500],
-                backgroundColor: item.passed ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                borderColor: item.passed ? colors.amber[500] : colors.red[700],
+                backgroundColor: item.passed ? colors.tints.goldLight : colors.tints.redDeepSubtle,
               }}>
                 <Text style={{ ...microLabel, letterSpacing: 0.5, marginBottom: 8 }}>{item.label}</Text>
-                <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 24, color: item.passed ? colors.emerald[400] : colors.red[400] }}>{item.passed ? 'PASS' : 'FAIL'}</Text>
+                <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 24, color: item.passed ? colors.amber[500] : colors.red[700] }}>{item.passed ? 'PASS' : 'FAIL'}</Text>
               </View>
             ))}
           </View>
-          <View style={{ paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', marginBottom: 24, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderWidth: 2, borderColor: colors.red[500] }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, letterSpacing: 3, textTransform: 'uppercase', color: colors.red[400] }}>{viaNegativa.stampText}</Text>
-            <Text style={{ fontFamily: 'Inter', fontSize: 10, marginTop: 6, color: colors.red[400] }}>{viaNegativa.stampSubtext}</Text>
+          <View style={{ paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', marginBottom: 24, backgroundColor: colors.tints.redDeepSubtle, borderWidth: 2, borderColor: colors.red[700] }}>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, letterSpacing: 3, textTransform: 'uppercase', color: colors.red[700] }}>{viaNegativa.stampText}</Text>
+            <Text style={{ fontFamily: 'Inter', fontSize: 10, marginTop: 6, color: colors.red[700] }}>{viaNegativa.stampSubtext}</Text>
           </View>
         </View>
       )}
@@ -174,15 +174,15 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       {/* 4-Metric Grid */}
       <View style={{ flexDirection: 'row', borderTopWidth: 2, borderTopColor: darkTheme.textPrimary, marginBottom: 24 }} wrap={false}>
         {[
-          { label: 'Total Exposure', value: totalExposureFormatted || '—', sub: 'Aggregate risk at stake', color: colors.red[400], border: theme.primary, bg: theme.tint },
-          { label: 'Risk Factors', value: String(riskFactorCount), sub: `${criticalCount}C · ${highCount}H identified`, color: criticalCount > 0 ? colors.red[400] : darkTheme.textPrimary, border: criticalCount > 0 ? colors.red[500] : darkTheme.border },
-          { label: 'Mitigation Window', value: mitigationTimeline || '—', sub: 'Est. resolution timeline', color: colors.emerald[400], border: colors.emerald[500] },
+          { label: 'Total Exposure', value: totalExposureFormatted || '—', sub: 'Aggregate risk at stake', color: colors.red[700], border: theme.primary, bg: theme.tint },
+          { label: 'Risk Factors', value: String(riskFactorCount), sub: `${criticalCount}C · ${highCount}H identified`, color: criticalCount > 0 ? colors.red[700] : darkTheme.textPrimary, border: criticalCount > 0 ? colors.red[700] : darkTheme.border },
+          { label: 'Mitigation Window', value: mitigationTimeline || '—', sub: 'Est. resolution timeline', color: colors.amber[500], border: colors.amber[500] },
           { label: 'Opportunities', value: String(opportunityCount), sub: 'Identified in corridor', color: colors.amber[500], border: colors.amber[500], last: true },
         ].map((m, i) => (
           <View key={i} style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12, borderRightWidth: m.last ? 0 : 1, borderRightColor: darkTheme.border, borderBottomWidth: 3, borderBottomColor: m.border, backgroundColor: m.bg }}>
             <Text style={{ ...microLabel, letterSpacing: 0.5, marginBottom: 8 }}>{m.label}</Text>
             <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: m.value.length > 12 ? 10 : m.value.length > 6 ? 14 : 20, color: m.color, marginBottom: 4 }}>{m.value}</Text>
-            <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{m.sub}</Text>
+            <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted }}>{m.sub}</Text>
           </View>
         ))}
       </View>
@@ -190,7 +190,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       {/* Key Finding Callout */}
       {verdictRationale && (
         <View style={{ marginBottom: 16, paddingVertical: 14, paddingHorizontal: 20, borderLeftWidth: 4, borderLeftColor: theme.primary, backgroundColor: theme.tint }} wrap={false}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: theme.dark, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Key Finding</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: theme.dark, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Key Finding</Text>
           <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.65 }}>{verdictRationale}</Text>
         </View>
       )}
@@ -198,7 +198,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       {/* Footer */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
-        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
+        <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
           Assessment powered by HNWI Chronicles KGv3 Intelligence Engine
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />

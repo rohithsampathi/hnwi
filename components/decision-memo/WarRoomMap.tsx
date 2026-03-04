@@ -16,6 +16,7 @@ interface Audit {
   verdict: 'PROCEED' | 'RESTRUCTURE' | 'ABORT';
   exposure_class: string;
   total_savings: string;
+  annual_value: string;
   status: string;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 }
@@ -25,29 +26,122 @@ interface WarRoomMapProps {
   onAuditClick: (intakeId: string) => void;
 }
 
-// Country coordinates (simplified - you can expand this)
+// City + country coordinates (expanded to match War Room)
 const COUNTRY_COORDS: Record<string, { lat: number; lng: number }> = {
-  'India': { lat: 20.5937, lng: 78.9629 },
-  'Portugal': { lat: 39.3999, lng: -8.2245 },
+  // Cities — India
+  'Hyderabad': { lat: 17.3850, lng: 78.4867 },
+  'Mumbai': { lat: 19.0760, lng: 72.8777 },
+  'Delhi': { lat: 28.6139, lng: 77.2090 },
+  'New Delhi': { lat: 28.6139, lng: 77.2090 },
+  'Bangalore': { lat: 12.9716, lng: 77.5946 },
+  'Chennai': { lat: 13.0827, lng: 80.2707 },
+  'Kolkata': { lat: 22.5726, lng: 88.3639 },
+  'Pune': { lat: 18.5204, lng: 73.8567 },
+  'Ahmedabad': { lat: 23.0225, lng: 72.5714 },
+  // Cities — Europe
+  'Lisbon': { lat: 38.7223, lng: -9.1393 },
+  'Porto': { lat: 41.1579, lng: -8.6291 },
+  'London': { lat: 51.5074, lng: -0.1278 },
+  'Zurich': { lat: 47.3769, lng: 8.5417 },
+  'Geneva': { lat: 46.2044, lng: 6.1432 },
+  'Paris': { lat: 48.8566, lng: 2.3522 },
+  'Berlin': { lat: 52.5200, lng: 13.4050 },
+  'Frankfurt': { lat: 50.1109, lng: 8.6821 },
+  'Munich': { lat: 48.1351, lng: 11.5820 },
+  'Milan': { lat: 45.4642, lng: 9.1900 },
+  'Rome': { lat: 41.9028, lng: 12.4964 },
+  'Amsterdam': { lat: 52.3676, lng: 4.9041 },
+  'Madrid': { lat: 40.4168, lng: -3.7038 },
+  'Barcelona': { lat: 41.3874, lng: 2.1686 },
+  'Dublin': { lat: 53.3498, lng: -6.2603 },
+  'Athens': { lat: 37.9838, lng: 23.7275 },
+  'Vienna': { lat: 48.2082, lng: 16.3738 },
+  'Monaco': { lat: 43.7384, lng: 7.4246 },
+  // Cities — Middle East
+  'Dubai': { lat: 25.2048, lng: 55.2708 },
+  'Abu Dhabi': { lat: 24.4539, lng: 54.3773 },
+  'Riyadh': { lat: 24.7136, lng: 46.6753 },
+  'Doha': { lat: 25.2854, lng: 51.5310 },
+  // Cities — Asia-Pacific
   'Singapore': { lat: 1.3521, lng: 103.8198 },
-  'United Arab Emirates': { lat: 23.4241, lng: 53.8478 },
-  'UAE': { lat: 23.4241, lng: 53.8478 },
-  'United States': { lat: 37.0902, lng: -95.7129 },
-  'USA': { lat: 37.0902, lng: -95.7129 },
-  'United Kingdom': { lat: 55.3781, lng: -3.4360 },
-  'UK': { lat: 55.3781, lng: -3.4360 },
-  'Switzerland': { lat: 46.8182, lng: 8.2275 },
-  'Spain': { lat: 40.4637, lng: -3.7492 },
-  'France': { lat: 46.2276, lng: 2.2137 },
-  'Germany': { lat: 51.1657, lng: 10.4515 },
-  'Italy': { lat: 41.8719, lng: 12.5674 },
-  'Netherlands': { lat: 52.1326, lng: 5.2913 },
   'Hong Kong': { lat: 22.3193, lng: 114.1694 },
-  'Japan': { lat: 36.2048, lng: 138.2529 },
-  'Australia': { lat: -25.2744, lng: 133.7751 },
-  'Canada': { lat: 56.1304, lng: -106.3468 },
-  'Mexico': { lat: 23.6345, lng: -102.5528 },
+  'Tokyo': { lat: 35.6762, lng: 139.6503 },
+  'Sydney': { lat: -33.8688, lng: 151.2093 },
+  'Melbourne': { lat: -37.8136, lng: 144.9631 },
+  'Bangkok': { lat: 13.7563, lng: 100.5018 },
+  'Kuala Lumpur': { lat: 3.1390, lng: 101.6869 },
+  'Shanghai': { lat: 31.2304, lng: 121.4737 },
+  'Seoul': { lat: 37.5665, lng: 126.9780 },
+  // Cities — Americas
+  'New York': { lat: 40.7128, lng: -74.0060 },
+  'Miami': { lat: 25.7617, lng: -80.1918 },
+  'San Francisco': { lat: 37.7749, lng: -122.4194 },
+  'Los Angeles': { lat: 34.0522, lng: -118.2437 },
+  'Toronto': { lat: 43.6532, lng: -79.3832 },
+  'Sao Paulo': { lat: -23.5505, lng: -46.6333 },
+  'Mexico City': { lat: 19.4326, lng: -99.1332 },
+  // Cities — Africa
+  'Port Louis': { lat: -20.1609, lng: 57.5012 },
+  'Cape Town': { lat: -33.9249, lng: 18.4241 },
+  'Johannesburg': { lat: -26.2041, lng: 28.0473 },
+  // Country fallbacks (map to financial hub)
+  'India': { lat: 19.0760, lng: 72.8777 },       // Mumbai
+  'Portugal': { lat: 38.7223, lng: -9.1393 },     // Lisbon
+  'United Arab Emirates': { lat: 25.2048, lng: 55.2708 }, // Dubai
+  'UAE': { lat: 25.2048, lng: 55.2708 },
+  'United States': { lat: 40.7128, lng: -74.0060 }, // New York
+  'USA': { lat: 40.7128, lng: -74.0060 },
+  'US': { lat: 40.7128, lng: -74.0060 },
+  'United Kingdom': { lat: 51.5074, lng: -0.1278 }, // London
+  'UK': { lat: 51.5074, lng: -0.1278 },
+  'Switzerland': { lat: 47.3769, lng: 8.5417 },   // Zurich
+  'Spain': { lat: 40.4168, lng: -3.7038 },        // Madrid
+  'France': { lat: 48.8566, lng: 2.3522 },        // Paris
+  'Germany': { lat: 52.5200, lng: 13.4050 },      // Berlin
+  'Italy': { lat: 41.9028, lng: 12.4964 },        // Rome
+  'Netherlands': { lat: 52.3676, lng: 4.9041 },   // Amsterdam
+  'Japan': { lat: 35.6762, lng: 139.6503 },       // Tokyo
+  'Australia': { lat: -33.8688, lng: 151.2093 },   // Sydney
+  'Canada': { lat: 43.6532, lng: -79.3832 },      // Toronto
+  'Mexico': { lat: 19.4326, lng: -99.1332 },      // Mexico City
+  'Thailand': { lat: 13.7563, lng: 100.5018 },    // Bangkok
+  'Malaysia': { lat: 3.1390, lng: 101.6869 },     // Kuala Lumpur
+  'Greece': { lat: 37.9838, lng: 23.7275 },       // Athens
+  'Ireland': { lat: 53.3498, lng: -6.2603 },      // Dublin
+  'South Africa': { lat: -26.2041, lng: 28.0473 }, // Johannesburg
+  'Mauritius': { lat: -20.1609, lng: 57.5012 },   // Port Louis
+  'Brazil': { lat: -23.5505, lng: -46.6333 },     // Sao Paulo
+  'South Korea': { lat: 37.5665, lng: 126.9780 }, // Seoul
+  'China': { lat: 31.2304, lng: 121.4737 },       // Shanghai
+  // Indian States
+  'Telangana': { lat: 17.3850, lng: 78.4867 },
+  'Maharashtra': { lat: 19.0760, lng: 72.8777 },
+  'Karnataka': { lat: 12.9716, lng: 77.5946 },
+  'Tamil Nadu': { lat: 13.0827, lng: 80.2707 },
+  'Gujarat': { lat: 23.0225, lng: 72.5714 },
 };
+
+// Case-insensitive coord lookup with comma-split fallback
+const COORD_KEYS = Object.keys(COUNTRY_COORDS);
+const COORD_LOWER_MAP = new Map(COORD_KEYS.map(k => [k.toLowerCase(), k]));
+
+function findCoords(name: string | undefined): { lat: number; lng: number } | undefined {
+  if (!name) return undefined;
+  const exact = COUNTRY_COORDS[name];
+  if (exact) return exact;
+  const lower = name.trim().toLowerCase();
+  const ciMatch = COORD_LOWER_MAP.get(lower);
+  if (ciMatch) return COUNTRY_COORDS[ciMatch];
+  // Split on common delimiters and try each part
+  const parts = name.split(/[,\/→>-]+/).map(p => p.trim()).filter(Boolean);
+  for (const part of parts) {
+    const partExact = COUNTRY_COORDS[part];
+    if (partExact) return partExact;
+    const partMatch = COORD_LOWER_MAP.get(part.toLowerCase());
+    if (partMatch) return COUNTRY_COORDS[partMatch];
+  }
+  return undefined;
+}
 
 function getVerdictColor(verdict: string): string {
   switch (verdict) {
@@ -102,11 +196,10 @@ export default function WarRoomMap({
   // Convert audits to arc data (routes between countries)
   const arcsData = useMemo(() => {
     return audits.map(audit => {
-      const sourceCoords = COUNTRY_COORDS[audit.source_country] || COUNTRY_COORDS[audit.source_jurisdiction];
-      const destCoords = COUNTRY_COORDS[audit.destination_country] || COUNTRY_COORDS[audit.destination_jurisdiction];
+      const sourceCoords = findCoords(audit.source_country) || findCoords(audit.source_jurisdiction);
+      const destCoords = findCoords(audit.destination_country) || findCoords(audit.destination_jurisdiction);
 
       if (!sourceCoords || !destCoords) {
-        console.warn(`Missing coordinates for ${audit.source_jurisdiction} or ${audit.destination_jurisdiction}`);
         return null;
       }
 
@@ -275,10 +368,10 @@ export default function WarRoomMap({
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Total Savings
+                    Annual Savings
                   </div>
                   <div className="text-sm font-semibold text-gold">
-                    {selectedAudit.total_savings}
+                    {selectedAudit.annual_value || selectedAudit.total_savings}
                   </div>
                 </div>
                 <div>
@@ -350,7 +443,7 @@ function AuditCard({ audit, isHovered }: { audit: Audit; isHovered?: boolean }) 
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{audit.exposure_class}</span>
-        <span className="font-semibold text-gold">{audit.total_savings}</span>
+        <span className="font-semibold text-gold">{audit.annual_value || audit.total_savings}</span>
       </div>
 
       <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground">

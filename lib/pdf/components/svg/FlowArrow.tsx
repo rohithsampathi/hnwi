@@ -22,8 +22,8 @@ interface FlowArrowProps {
 }
 
 export const FlowArrow: React.FC<FlowArrowProps> = ({
-  from,
-  to,
+  from = '',
+  to = '',
   width = 210,
   height = 36,
   theme,
@@ -34,8 +34,10 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
 
   // Estimate text widths: ~5.5px per char at 10pt Inter bold, plus small padding
   const CHAR_WIDTH = 5.5;
-  const fromTextWidth = Math.ceil(from.length * CHAR_WIDTH);
-  const toTextWidth = Math.ceil(to.length * CHAR_WIDTH);
+  const fromLabel = from || 'Source';
+  const toLabel = to || 'Destination';
+  const fromTextWidth = Math.ceil(fromLabel.length * CHAR_WIDTH);
+  const toTextWidth = Math.ceil(toLabel.length * CHAR_WIDTH);
   const labelGap = 10; // gap between label and arrow
   const minArrowLen = 24; // minimum arrow length to remain visible
 
@@ -53,7 +55,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       {/* From label */}
       <SvgText x="4" y={String(arrowY + 4)} fontSize="10" fontFamily="Inter" fontWeight={700} fill={darkTheme.textPrimary}>
-        {from}
+        {fromLabel}
       </SvgText>
       {/* Arrow line */}
       <Line
@@ -80,7 +82,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
         fontFamily="Inter" fontWeight={700}
         fill={darkTheme.textPrimary}
       >
-        {to}
+        {toLabel}
       </SvgText>
     </Svg>
   );

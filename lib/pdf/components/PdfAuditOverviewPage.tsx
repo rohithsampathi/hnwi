@@ -10,7 +10,6 @@ import { darkTheme, colors, typography, spacing } from '../pdf-styles';
 import { PdfSectionHeader } from './primitives/PdfSectionHeader';
 import { PdfCard } from './primitives/PdfCard';
 import { PdfMetricGrid } from './primitives/PdfMetricGrid';
-import { FlowArrow } from './svg/FlowArrow';
 
 interface PdfAuditOverviewPageProps {
   sourceJurisdiction: string;
@@ -64,8 +63,11 @@ export const PdfAuditOverviewPage: React.FC<PdfAuditOverviewPageProps> = ({
             <Text style={{ ...typography.micro, color: darkTheme.textMuted, marginBottom: 4, letterSpacing: 1.5, textTransform: 'uppercase' }}>Origin</Text>
             <Text style={{ ...typography.h3, color: darkTheme.textPrimary }}>{srcLabel}</Text>
           </View>
-          <View style={{ width: 60, alignItems: 'center' }}>
-            <FlowArrow width={50} color={colors.amber[500]} />
+          <View style={{ width: 60, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 30, height: 2, backgroundColor: colors.amber[500] }} />
+              <View style={{ width: 0, height: 0, borderTopWidth: 4, borderBottomWidth: 4, borderLeftWidth: 6, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: colors.amber[500] }} />
+            </View>
           </View>
           <View style={{ alignItems: 'center', flex: 1 }}>
             <Text style={{ ...typography.micro, color: darkTheme.textMuted, marginBottom: 4, letterSpacing: 1.5, textTransform: 'uppercase' }}>Destination</Text>
@@ -92,11 +94,11 @@ export const PdfAuditOverviewPage: React.FC<PdfAuditOverviewPageProps> = ({
       {/* Intelligence Basis Note */}
       <PdfCard variant="default">
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
-            <Text style={{ fontSize: 12, color: colors.emerald[500] }}>✓</Text>
+          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: darkTheme.goldTint, borderWidth: 1.5, borderColor: colors.amber[600], alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
+            <Text style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>{'\u2713'}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ ...typography.micro, color: colors.emerald[500], marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>
+            <Text style={{ ...typography.micro, color: colors.amber[500], marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>
               Intelligence Basis
             </Text>
             <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textSecondary, lineHeight: 1.6 }}>

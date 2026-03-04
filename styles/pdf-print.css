@@ -1,0 +1,461 @@
+/**
+ * PDF Print Stylesheet — Puppeteer rendering
+ * Applied to /decision-memo/print/[intakeId] page
+ * Ensures proper A4 layout, page breaks, and dark theme
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE SETUP
+
+   @page margin MUST MATCH Puppeteer margin values exactly.
+   Chrome applies @page margin to content layout INDEPENDENTLY
+   of Puppeteer margins. Puppeteer margins only control where
+   header/footer templates render — they do NOT restrict content.
+   If @page says margin:0, Chrome renders content to full page
+   edges and it overflows into the Puppeteer footer zone.
+
+   By setting @page margin = Puppeteer margin, both systems agree
+   on the content area. No overlap possible regardless of which
+   system Chrome prioritizes internally.
+
+   Puppeteer config: { top: "40px", bottom: "56px", left: "0", right: "0" }
+   ═══════════════════════════════════════════════════════════════ */
+
+@page {
+  size: A4;
+  margin: 40px 0 56px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATION KILL — disable all motion for static PDF rendering
+   ═══════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FRAMER-MOTION KILL — force all animated elements to final state
+
+   framer-motion sets inline styles (opacity, transform) via React.
+   CSS animation kill above only handles CSS animations/transitions.
+   Elements with useInView/whileInView stay at initial state (opacity:0)
+   because Puppeteer doesn't scroll → IntersectionObserver never fires.
+
+   Fix: Override inline opacity/transform with !important.
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-container * {
+  opacity: 1 !important;
+}
+
+/* Force transform to final state for ALL framer-motion animated elements.
+   framer-motion sets inline transform (translateY, scaleX, etc.) via JS.
+   Elements stuck at initial state show displaced/invisible content.
+   Exception: preserve intentional rotations (watermark, diamond accents). */
+.print-container [style*="translateY"]:not(.print-watermark),
+.print-container [style*="translateX"]:not(.print-watermark),
+.print-container [style*="scaleX"]:not(.print-watermark),
+.print-container [style*="scaleY"]:not(.print-watermark) {
+  transform: none !important;
+}
+
+/* Scale animations (scaleFade) — force to scale(1) */
+.print-container [style*="scale("]:not([style*="scaleX"]):not([style*="scaleY"]):not(.print-watermark) {
+  transform: scale(1) !important;
+}
+
+/* SVG stroke animations: force paths/arcs to drawn state */
+.print-container svg path,
+.print-container svg circle,
+.print-container svg polygon,
+.print-container svg line {
+  stroke-dashoffset: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT CONTAINER — A4 dimensions at 96dpi
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-container {
+  width: 794px;
+  margin: 0 auto;
+  background: hsl(0 0% 4%);  /* --background dark */
+  color: hsl(0 0% 96%);      /* --foreground dark */
+  overflow: visible;          /* allow content to flow across pages */
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PAGE BREAK STRATEGY
+
+   Puppeteer margins: top 40px, bottom 56px.
+   These define BOTH the content area AND the header/footer zones.
+   Content is automatically bounded — it CANNOT enter margin zones.
+   @page margin is 0 to avoid conflicts with preferCSSPageSize.
+
+   Section padding (52px) provides additional clearance on the
+   FIRST page of each section only (no box-decoration-break:clone).
+
+   CRITICAL: Do NOT use break-inside:avoid on large/variable-height
+   elements. Chromium pushes oversized elements to the next page,
+   creating blank pages. Only protect small, fixed-height elements
+   via the .print-no-break utility class.
+   See: https://github.com/puppeteer/puppeteer/issues/6951
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Each major section starts on a new page */
+.print-section {
+  break-before: page;
+  page-break-before: always;
+  padding: 52px;
+  position: relative;
+}
+
+/* First section (cover) doesn't need break-before */
+.print-section:first-child {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+/* ── Headings: never orphan at page bottom ── */
+.print-section h2,
+.print-section h3,
+.print-section h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* ── Explicit no-break: opt-in only via .print-no-break class ──
+     Also protect table header rows and individual data rows. */
+.print-no-break,
+thead,
+tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Tables CAN break across pages (a large table pushed as one unit
+   creates empty pages). Only individual rows are protected above. */
+
+/* Override ALL overflow clipping — prevents content from being clipped at page breaks.
+   Catches overflow-hidden, overflow-auto, overflow-scroll, overflow-y-hidden, etc.
+   EXCEPTION: Cover page (first section) and last page need overflow:hidden
+   to stay contained within a single page. */
+.print-section [class*="overflow-"] {
+  overflow: visible !important;
+}
+.print-section:first-child [class*="overflow-"],
+.print-section:last-child [class*="overflow-"] {
+  overflow: hidden !important;
+}
+
+/* ── Cards that split across pages: clone borders/bg on each fragment ──
+     This is VISUAL ONLY — it does NOT prevent breaking.
+     When a card must split, borders and background are repeated on both pages.
+     Do NOT add break-inside:avoid here — it causes blank pages for tall cards. */
+.print-section [class*="rounded-xl"],
+.print-section [class*="rounded-2xl"] {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLE FIT — tighten tables for A4 without breaking layout.
+   Web uses px-4 py-3.5 (16px/14px padding per cell) which is
+   too spacious for 690px printable width. Reduce padding and
+   let browser auto-size columns proportionally (NO table-layout:fixed).
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-section table {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.print-section table th {
+  padding: 6px 5px !important;
+  font-size: 0.6rem !important;
+  white-space: nowrap;           /* keep headers on 1 line */
+}
+
+.print-section table td {
+  padding: 6px 5px !important;
+  font-size: 0.7rem !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCENARIO TREE — print-specific layout
+
+   The 3-column branch grid (md:grid-cols-3) results in ~214px
+   columns on A4 (690px content width). Text wraps to single
+   words per line. Override to single column for readability.
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-scenario-tree .md\:grid-cols-3 {
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+}
+
+/* Tighten inner padding for print — cards don't need as much breathing room */
+.print-scenario-tree .rounded-2xl {
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WATERMARK
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(46, 46, 46, 0.35);
+  letter-spacing: 16px;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* HC corner badge on each page */
+.print-hc-badge {
+  position: fixed;
+  bottom: 52px;
+  right: 32px;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid rgba(38, 38, 38, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: rgba(38, 38, 38, 0.5);
+  letter-spacing: -0.5px;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTION HEADER/FOOTER OVERRIDES
+   These elements repeat per section (positioned absolute within)
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-page-header {
+  position: absolute;
+  top: 18px;
+  left: 52px;
+  right: 52px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid hsl(0 0% 15%);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 8px;
+  color: hsl(0 0% 40%);
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HIDE NON-PRINT ELEMENTS — PWA, overlays, interactive controls
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Nuclear: hide ALL fixed-position overlays except our print watermark/badge.
+   This catches PWA prompt, citation panel, toast container, Next.js dev overlay, etc. */
+body > :not(.print-container) .fixed:not(.print-watermark):not(.print-hc-badge),
+body > .fixed {
+  display: none !important;
+}
+
+/* Next.js dev error overlay (custom element, not caught by .fixed rule) */
+nextjs-portal {
+  display: none !important;
+}
+
+/* Toast container */
+#toast-container {
+  display: none !important;
+}
+
+/* Hide elements marked as web-only */
+.print-hide,
+.print-container button,
+.print-container [class*="cursor-pointer"],
+.print-container [class*="hover:"],
+.print-container [role="button"] {
+  /* Don't hide all hover classes — too aggressive. Just disable pointer events */
+}
+
+/* Specifically hide interactive controls */
+.print-container .print-hide {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPOGRAPHY OVERRIDES FOR PDF
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Ensure minimum font size */
+.print-container * {
+  min-height: 0; /* Prevent flexbox min-height issues */
+}
+
+/* Ensure text doesn't overflow */
+.print-section {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE OVERRIDES — force desktop layout
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Override responsive breakpoints to always show desktop layout */
+.print-container .hidden {
+  /* Don't override all hidden — only sm:hidden patterns */
+}
+
+/* Show desktop elements, hide mobile-only */
+.print-container .sm\:inline,
+.print-container .sm\:block,
+.print-container .sm\:flex,
+.print-container .sm\:grid,
+.print-container .md\:flex,
+.print-container .lg\:flex {
+  display: inherit !important;
+}
+
+.print-container .sm\:hidden {
+  display: none !important;
+}
+
+/* Force desktop spacing */
+.print-container .sm\:p-8 { padding: 2rem !important; }
+.print-container .sm\:p-6 { padding: 1.5rem !important; }
+.print-container .sm\:px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+.print-container .sm\:py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+.print-container .sm\:gap-8 { gap: 2rem !important; }
+.print-container .sm\:gap-6 { gap: 1.5rem !important; }
+.print-container .sm\:gap-4 { gap: 1rem !important; }
+.print-container .sm\:gap-3 { gap: 0.75rem !important; }
+.print-container .sm\:mb-16 { margin-bottom: 4rem !important; }
+.print-container .sm\:mb-12 { margin-bottom: 3rem !important; }
+.print-container .sm\:my-12 { margin-top: 3rem !important; margin-bottom: 3rem !important; }
+.print-container .sm\:text-base { font-size: 1rem !important; }
+.print-container .sm\:text-sm { font-size: 0.875rem !important; }
+.print-container .sm\:text-lg { font-size: 1.125rem !important; }
+.print-container .sm\:text-xl { font-size: 1.25rem !important; }
+.print-container .sm\:text-2xl { font-size: 1.5rem !important; }
+.print-container .sm\:text-3xl { font-size: 1.875rem !important; }
+.print-container .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.print-container .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.print-container .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.print-container .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.print-container .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.print-container .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   COVER PAGE & LAST PAGE — tighten spacing for A4 fit
+   These pages use large web margins (mb-20 = 5rem) that overflow A4.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Cover page: reduce excessive vertical margins */
+.print-section:first-child .mb-20 { margin-bottom: 2.5rem !important; }
+.print-section:first-child .mb-16 { margin-bottom: 2rem !important; }
+.print-section:first-child .mb-14 { margin-bottom: 1.5rem !important; }
+.print-section:first-child .mb-12 { margin-bottom: 1.5rem !important; }
+
+/* Last page: reduce excessive vertical margins */
+.print-section:last-child .mb-14 { margin-bottom: 1.5rem !important; }
+.print-section:last-child .mb-12 { margin-bottom: 1.5rem !important; }
+.print-section:last-child .mb-10 { margin-bottom: 1rem !important; }
+
+/* Cover & last page: let the component's own layout handle centering.
+   The components already have print:flex/print:h-[Xmm] set.
+   Only add min-height to ensure they fill the page. Do NOT add padding
+   that would push content beyond the printable area. */
+.print-section:first-child > div,
+.print-section:last-child > div {
+  min-height: calc(100vh - 96px); /* Account for Puppeteer margins: 40px top + 56px bottom */
+}
+
+/* Ensure cover page content container has proper centering */
+.print-section:first-child > div > .relative.z-10,
+.print-section:last-child > div > .relative.z-10 {
+  width: 100%;
+  max-width: 600px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MEMO HEADER — metric grid overflow fix
+   The 3-column grid (Annual Savings | Optimal Structure | Intelligence Depth)
+   has long text in the structure column that overflows into neighbors.
+   Force truncation so columns don't overlap on A4 width (690px content).
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-section .sm\:grid-cols-3 > div {
+  overflow: hidden !important;
+}
+
+/* Truncate long metric values that don't fit their column */
+.print-section .sm\:grid-cols-3 > div p[title] {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* But allow non-numeric values (structure names) to wrap instead of truncate */
+.print-section .sm\:grid-cols-3 > div .text-lg,
+.print-section .sm\:grid-cols-3 > div .md\:text-xl {
+  white-space: normal !important;
+  text-overflow: clip !important;
+  font-size: 0.85rem !important;
+  line-height: 1.3 !important;
+}
+
+/* Numeric values: keep large but ensure no overflow */
+.print-section .sm\:grid-cols-3 > div .text-2xl,
+.print-section .sm\:grid-cols-3 > div .sm\:text-3xl,
+.print-section .sm\:grid-cols-3 > div .md\:text-4xl {
+  font-size: 1.5rem !important;
+  white-space: nowrap !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4-COLUMN METRIC GRIDS — prevent label wrapping
+   "OPPORTUNITIE S", "CRITICAL" etc. break mid-word in 4-col grids
+   on A4 width. Force smaller font and nowrap for uppercase labels.
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-section .sm\:grid-cols-4 > div {
+  overflow: hidden !important;
+}
+
+/* Uppercase metric labels in 4-column grids */
+.print-section .sm\:grid-cols-4 p[class*="uppercase"],
+.print-section .sm\:grid-cols-4 span[class*="uppercase"],
+.print-section .lg\:grid-cols-4 p[class*="uppercase"],
+.print-section .lg\:grid-cols-4 span[class*="uppercase"] {
+  font-size: 0.55rem !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* Metric values in 4-column grids — tighter sizing */
+.print-section .sm\:grid-cols-4 .text-2xl,
+.print-section .sm\:grid-cols-4 .sm\:text-3xl,
+.print-section .sm\:grid-cols-4 .text-3xl,
+.print-section .lg\:grid-cols-4 .text-2xl,
+.print-section .lg\:grid-cols-4 .text-3xl {
+  font-size: 1.25rem !important;
+}

@@ -115,9 +115,9 @@ function getPatternName(mode: string): string {
 function getMovementStyle(signal: string): { color: string; directionText: string; arrow: string } {
   switch (signal) {
     case 'entering':
-      return { color: colors.emerald[500], directionText: 'entering', arrow: '\u2191' }; // up arrow
+      return { color: colors.amber[500], directionText: 'entering', arrow: '\u2191' }; // up arrow
     case 'exiting':
-      return { color: colors.red[500], directionText: 'exiting', arrow: '\u2193' }; // down arrow
+      return { color: colors.red[700], directionText: 'exiting', arrow: '\u2193' }; // down arrow
     case 'cooling':
       return { color: colors.amber[500], directionText: 'cooling on', arrow: '\u2193' };
     default:
@@ -195,7 +195,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
         {/* Red top accent line */}
         <View style={{
           height: 2,
-          backgroundColor: colors.red[500],
+          backgroundColor: colors.red[700],
           marginBottom: spacing.md,
           marginTop: -spacing.lg,
           marginHorizontal: -spacing.lg,
@@ -204,8 +204,8 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
         {/* Status label */}
         <Text style={{
           ...typography.micro,
-          color: colors.red[500],
-          fontSize: 8,
+          color: colors.red[700],
+          fontSize: 9,
           letterSpacing: 1.5,
           marginBottom: spacing.md,
         }}>
@@ -223,7 +223,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
               <Text style={{ color: darkTheme.textPrimary, fontWeight: 700 }}>SYSTEM MATCH: </Text>
               {'This deal structure matches '}
               {patternId && (
-                <Text style={{ color: colors.red[500], fontSize: 9, fontWeight: 600 }}>
+                <Text style={{ color: colors.red[700], fontSize: 9, fontWeight: 600 }}>
                   {patternId}
                 </Text>
               )}
@@ -257,7 +257,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
           <Text style={{
             ...typography.micro,
             color: darkTheme.textFaint,
-            fontSize: 8,
+            fontSize: 9,
             letterSpacing: 1,
             marginBottom: spacing.sm,
           }}>
@@ -280,7 +280,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
                     fontFamily: 'Inter',
                     fontWeight: 700,
                     fontSize: 24,
-                    color: colors.red[500],
+                    color: colors.red[700],
                     letterSpacing: -0.5,
                   }}>
                     {failureRate?.toFixed(0)}%
@@ -335,7 +335,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
                   ...typography.small,
                   color: colors.amber[500],
                   marginTop: spacing.xs,
-                  fontStyle: 'italic',
+                  fontStyle: 'normal',
                 }}>
                   {historicalOutcome.confidence_note}
                 </Text>
@@ -381,7 +381,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
           <Text style={{
             ...typography.micro,
             color: darkTheme.textFaint,
-            fontSize: 8,
+            fontSize: 9,
             letterSpacing: 1,
             marginBottom: spacing.sm,
           }}>
@@ -440,7 +440,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
                   color: darkTheme.textFaint,
                   marginTop: spacing.xs,
                   fontFamily: 'Courier',
-                  fontSize: 8,
+                  fontSize: 9,
                   letterSpacing: 0.5,
                 }}>
                   Velocity: {peerMovement.velocity_pct > 0 ? '+' : ''}{peerMovement.velocity_pct.toFixed(1)}%
@@ -457,7 +457,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
           <Text style={{
             ...typography.micro,
             color: darkTheme.textMuted,
-            fontSize: 8,
+            fontSize: 9,
             letterSpacing: 1.2,
             marginBottom: spacing.sm,
           }}>
@@ -521,7 +521,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
           <Text style={{
             ...typography.small,
             color: darkTheme.textFaint,
-            fontSize: 8,
+            fontSize: 9,
             marginRight: spacing.sm,
           }}>
             Intelligence Base: {precedentCount.toLocaleString()}+ corridor signals
@@ -539,7 +539,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
         <Text style={{
           ...typography.small,
           color: darkTheme.textFaint,
-          fontSize: 8,
+          fontSize: 9,
           fontFamily: 'Courier',
           letterSpacing: 0.3,
         }}>

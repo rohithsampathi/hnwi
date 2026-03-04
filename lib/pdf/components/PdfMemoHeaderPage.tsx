@@ -60,8 +60,8 @@ function getTier(verdict: string, viaNegativa?: PdfViaNegativa): VerdictTier {
 
 function getTierColor(tier: VerdictTier): string {
   switch (tier) {
-    case 'approved': return colors.emerald[500];
-    case 'vetoed': return colors.red[500];
+    case 'approved': return colors.amber[500];
+    case 'vetoed': return colors.red[700];
     default: return colors.amber[500];
   }
 }
@@ -106,14 +106,14 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
         vcItems.push({
           value: annual.rental_formatted || formatCurrency(annual.rental),
           label: 'Rental Income',
-          color: annual.rental > 0 ? colors.emerald[500] : darkTheme.textMuted,
+          color: annual.rental > 0 ? colors.amber[500] : darkTheme.textMuted,
         });
       }
       if (annual.appreciation !== undefined) {
         vcItems.push({
           value: annual.appreciation_formatted || formatCurrency(annual.appreciation),
           label: 'Appreciation',
-          color: annual.appreciation > 0 ? colors.emerald[500] : darkTheme.textMuted,
+          color: annual.appreciation > 0 ? colors.amber[500] : darkTheme.textMuted,
         });
       }
     }
@@ -122,7 +122,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       vcItems.push({
         value: valueCreation.formatted?.annual_tax_savings || formatCurrency(Math.abs(v)),
         label: v < 0 ? 'Tax Cost' : 'Tax Savings',
-        color: v > 0 ? colors.emerald[500] : v < 0 ? colors.red[500] : darkTheme.textMuted,
+        color: v > 0 ? colors.amber[500] : v < 0 ? colors.red[700] : darkTheme.textMuted,
       });
     }
     if (typeof valueCreation.annual_cgt_savings === 'number') {
@@ -130,7 +130,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       vcItems.push({
         value: valueCreation.formatted?.annual_cgt_savings || formatCurrency(Math.abs(v)),
         label: v < 0 ? 'CGT Cost' : 'CGT Savings',
-        color: v > 0 ? colors.emerald[500] : v < 0 ? colors.red[500] : darkTheme.textMuted,
+        color: v > 0 ? colors.amber[500] : v < 0 ? colors.red[700] : darkTheme.textMuted,
       });
     }
     if (typeof valueCreation.annual_estate_benefit === 'number') {
@@ -138,7 +138,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       vcItems.push({
         value: valueCreation.formatted?.annual_estate_benefit || formatCurrency(Math.abs(v)),
         label: v < 0 ? 'Estate Cost' : 'Estate Benefit',
-        color: v > 0 ? colors.emerald[500] : v < 0 ? colors.red[500] : darkTheme.textMuted,
+        color: v > 0 ? colors.amber[500] : v < 0 ? colors.red[700] : darkTheme.textMuted,
       });
     }
   }
@@ -158,7 +158,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       </View>
 
       {/* Hero verdict text */}
-      <Text style={{ fontSize: 36, fontFamily: 'Inter', fontWeight: 700, color: tierColor, letterSpacing: -0.5, marginBottom: 4 }}>
+      <Text style={{ fontSize: 42, fontFamily: 'Inter', fontWeight: 700, color: tierColor, letterSpacing: -0.5, marginBottom: 4 }}>
         {heroText}
       </Text>
       {subtitle && (
@@ -171,8 +171,8 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl, marginTop: spacing.xs }}>
         <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textMuted }}>{formatDate(generatedAt)}</Text>
         <View style={{ width: 1, height: 10, backgroundColor: darkTheme.border, marginHorizontal: 8 }} />
-        <Text style={{ fontSize: 8, fontFamily: 'Courier', color: darkTheme.textFaint, letterSpacing: 1.5 }}>
-          {intakeId.slice(7, 19).toUpperCase()}
+        <Text style={{ fontSize: 9, fontFamily: 'Courier', color: darkTheme.textFaint, letterSpacing: 1.5 }}>
+          {intakeId.slice(10, 22).toUpperCase()}
         </Text>
       </View>
 
@@ -186,7 +186,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
           <Text style={{ fontSize: 28, fontFamily: 'Inter', fontWeight: 700, color: tierColor }}>
             {totalSavings}
           </Text>
-          <Text style={{ fontSize: 8.5, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
+          <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
             {valueCreation?.annual ? 'Projected annual returns' : 'Annual tax-optimized savings'}
           </Text>
         </View>
@@ -200,7 +200,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
             {optimalStructure ? optimalStructure.name || '—' : exposureClass}
           </Text>
           {optimalStructure?.net_benefit_10yr && (
-            <Text style={{ fontSize: 8.5, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
               {(optimalStructure.net_benefit_10yr / 1_000_000).toFixed(2)}M 10-yr benefit
             </Text>
           )}
@@ -214,7 +214,7 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
           <Text style={{ fontSize: 28, fontFamily: 'Inter', fontWeight: 700, color: darkTheme.textPrimary }}>
             {precedentCount > 0 ? precedentCount.toLocaleString() : '—'}
           </Text>
-          <Text style={{ fontSize: 8.5, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
+          <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, marginTop: 4 }}>
             Corridor signals analyzed
           </Text>
         </View>
@@ -223,8 +223,8 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       {/* Returns Analysis */}
       {vcItems.length > 0 && (
         <View>
-          <View style={{ height: 1, backgroundColor: darkTheme.border, marginBottom: spacing.md, opacity: 0.4 }} />
-          <Text style={{ ...typography.micro, color: colors.amber[500], marginBottom: spacing.sm, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600, opacity: 0.7 }}>
+          <View style={{ height: 1, backgroundColor: darkTheme.borderSubtle, marginBottom: spacing.md }} />
+          <Text style={{ ...typography.micro, color: colors.amber[500], marginBottom: spacing.sm, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>
             Returns Analysis
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -243,8 +243,8 @@ export const PdfMemoHeaderPage: React.FC<PdfMemoHeaderPageProps> = ({
       )}
 
       {/* Advisory Disclosure */}
-      <View style={{ marginTop: spacing.lg, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: darkTheme.border, opacity: 0.6 }}>
-        <Text style={{ fontSize: 8, fontFamily: 'Inter', color: darkTheme.textFaint, lineHeight: 1.5 }}>
+      <View style={{ marginTop: spacing.lg, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: darkTheme.borderSubtle }}>
+        <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, lineHeight: 1.5 }}>
           Pattern & Market Intelligence Report based on {precedentCount > 0 ? precedentCount.toLocaleString() : '0'}+ analyzed corridor signals. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.
         </Text>
       </View>

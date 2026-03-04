@@ -12,7 +12,7 @@
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { colors, cleanJurisdiction, darkTheme } from '../pdf-styles';
+import { colors, cleanJurisdiction, darkTheme, typography, spacing } from '../pdf-styles';
 import { TaxRates } from '../pdf-types';
 import { getVerdictTheme } from '../pdf-verdict-theme';
 import {
@@ -21,6 +21,124 @@ import {
   FlowArrow,
   GradientDivider,
 } from './svg';
+
+// =============================================================================
+// LOCAL STYLES — composed from centralized typography tokens
+// =============================================================================
+const styles = {
+  // Section title — 15pt bold uppercase (between h2=16 and h3=13)
+  sectionHeading: {
+    ...typography.h2,
+    fontSize: 15,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+    color: darkTheme.textPrimary,
+  },
+  // Micro label — bold 9pt uppercase with wide tracking
+  microLabel: {
+    ...typography.microBold,
+    letterSpacing: 1.5,
+    color: darkTheme.textMuted,
+  },
+  // Badge label — bold 9pt uppercase, narrower tracking than microLabel
+  badgeLabel: {
+    ...typography.microBold,
+    letterSpacing: 1,
+    color: darkTheme.textMuted,
+  },
+  // Hero impact number — 48pt (slightly smaller than hero token's 52pt)
+  heroImpact: {
+    ...typography.hero,
+    fontSize: 48,
+    letterSpacing: -1,
+  },
+  // Hero N/A state — 32pt bold for disabled display
+  heroDisabled: {
+    ...typography.h1,
+    fontSize: 32,
+    color: darkTheme.textFaint,
+  },
+  // Body text — 11pt standard body
+  body: {
+    ...typography.body,
+    color: darkTheme.textMuted,
+  },
+  // Metric small — 14pt bold
+  metricSm: {
+    ...typography.metricSm,
+    color: darkTheme.textPrimary,
+  },
+  // Metric savings — 20pt bold (between metricMd=16 and metricLg=22)
+  metricSavings: {
+    ...typography.metricLg,
+    fontSize: 20,
+  },
+  // Metric efficiency — 18pt bold with tight tracking
+  metricEfficiency: {
+    ...typography.metricMd,
+    fontSize: 18,
+    letterSpacing: -0.5,
+  },
+  // Small text — 10pt for jurisdiction labels, legend items
+  small: {
+    ...typography.small,
+    color: darkTheme.textMuted,
+  },
+  // Caption — 9pt for footnotes, estimation notes
+  caption: {
+    ...typography.caption,
+    color: darkTheme.textMuted,
+  },
+  // Footer caption — 9pt with tracking
+  footerCaption: {
+    ...typography.caption,
+    color: darkTheme.textFaint,
+    letterSpacing: 0.5,
+  },
+  // Sub-section title — bold body text
+  subSectionTitle: {
+    ...typography.bodyBold,
+    color: darkTheme.textPrimary,
+  },
+  // Bar chart label — bold 9pt without uppercase transform
+  barLabel: {
+    ...typography.microBold,
+    textTransform: undefined as unknown as undefined,
+    letterSpacing: 0,
+    color: darkTheme.textSecondary,
+  },
+  // Table: cell base — 10pt regular
+  cellBase: {
+    ...typography.small,
+    color: darkTheme.textSecondary,
+    paddingHorizontal: 8,
+  },
+  // Table: column header — bold 9pt uppercase
+  cellHeader: {
+    ...typography.microBold,
+    color: darkTheme.textPrimary,
+    paddingHorizontal: 8,
+  },
+  // Table: value cell — monospaced 11pt centered
+  cellValue: {
+    fontSize: 11,
+    fontFamily: 'Courier-Bold' as const,
+    textAlign: 'center' as const,
+    color: darkTheme.textSecondary,
+    paddingHorizontal: 8,
+  },
+  // Table: impact cell — bold 11pt right-aligned
+  cellImpact: {
+    ...typography.bodyBold,
+    textAlign: 'right' as const,
+    paddingHorizontal: 8,
+  },
+  // Inline impact annotation — caption size
+  impactAnnotation: {
+    ...typography.caption,
+    color: darkTheme.textMuted,
+  },
+} as const;
 
 interface PdfTaxAnalysisProps {
   sourceJurisdiction?: string;
@@ -37,7 +155,6 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
   sourceTaxRates = {}, destinationTaxRates = {},
   totalTaxBenefit, taxDifferential, showTaxSavings = true,
 }) => {
-  const microLabel = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase' as const, letterSpacing: 1.5 };
   const headerBadge = { backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 10, paddingVertical: 4 };
 
   const effectiveSourceRates = taxDifferential?.source || sourceTaxRates;
@@ -79,59 +196,54 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
   const destClean = cleanJurisdiction(destinationJurisdiction) || 'Optimized';
   const isPositive = benefitValue > 0;
   const isNeutral = benefitValue === 0;
-  const heroColor = isPositive ? colors.emerald[400] : isNeutral ? darkTheme.textMuted : colors.red[400];
+  const heroColor = isPositive ? colors.amber[500] : isNeutral ? darkTheme.textMuted : colors.red[700];
   const heroTheme = getVerdictTheme(isPositive ? 'PROCEED' : isNeutral ? 'REVIEW' : 'ABORT');
 
-  const cellBase = { flex: 1, fontFamily: 'Inter' as const, fontSize: 10, color: darkTheme.textSecondary, paddingHorizontal: 8 };
-  const cellHeaderBase = { flex: 1, fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 9, color: darkTheme.textPrimary, textTransform: 'uppercase' as const, letterSpacing: 0.5, paddingHorizontal: 8 };
-  const cellValueBase = { flex: 1, fontFamily: 'Courier-Bold' as const, fontSize: 11, textAlign: 'center' as const, color: darkTheme.textSecondary, paddingHorizontal: 8 };
-  const cellImpactBase = { flex: 1, fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 11, textAlign: 'right' as const, paddingHorizontal: 8 };
-
   return (
-    <View style={{ marginBottom: 28 }}>
+    <View style={{ marginBottom: spacing.xl }}>
       {/* Header */}
-      <View style={{ marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} minPresenceAhead={150}>
+      <View style={{ marginBottom: spacing.lg, paddingBottom: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} minPresenceAhead={150}>
         <GradientAccentBar width={483} height={4} theme={heroTheme} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 10 }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: darkTheme.textPrimary, letterSpacing: 0.5, textTransform: 'uppercase', flexShrink: 1, maxWidth: '70%' }}>Tax Jurisdiction Analysis</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: spacing.sm + 2 }}>
+          <Text style={{ ...styles.sectionHeading, flexShrink: 1, maxWidth: '70%' }}>Tax Jurisdiction Analysis</Text>
           <View style={headerBadge}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>Commandment III</Text>
+            <Text style={styles.badgeLabel}>TAX INTELLIGENCE</Text>
           </View>
         </View>
       </View>
 
       {/* Hero: Dollar Savings or N/A */}
       {!showTaxSavings ? (
-        <View style={{ marginBottom: 24, padding: 28, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center' }} wrap={false}>
-          <Text style={{ ...microLabel, marginBottom: 8 }}>Cumulative Tax Impact</Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 32, color: darkTheme.textFaint, marginBottom: 8 }}>N/A</Text>
-          <Text style={{ fontFamily: 'Inter', fontSize: 11, color: darkTheme.textMuted, textAlign: 'center', maxWidth: 360, lineHeight: 1.65 }}>
+        <View style={{ marginBottom: spacing.xl - 4, padding: spacing.xl, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center' }} wrap={false}>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Cumulative Tax Impact</Text>
+          <Text style={{ ...styles.heroDisabled, marginBottom: spacing.sm }}>N/A</Text>
+          <Text style={{ ...styles.body, textAlign: 'center', maxWidth: 360 }}>
             {taxDifferential?.cumulative_impact_label || 'US Worldwide Taxation — US citizens and residents are taxed on worldwide income regardless of residency. Tax optimization through jurisdiction change is not applicable.'}
           </Text>
         </View>
       ) : (
-        <View style={{ marginBottom: 24, padding: 28, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center', position: 'relative', overflow: 'hidden' }} wrap={false}>
+        <View style={{ marginBottom: spacing.xl - 4, padding: spacing.xl, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, alignItems: 'center', position: 'relative', overflow: 'hidden' }} wrap={false}>
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: heroColor }} />
-          <Text style={{ ...microLabel, marginBottom: 8 }}>Cumulative Tax Impact</Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 48, letterSpacing: -1, marginBottom: 8, color: heroColor }}>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Cumulative Tax Impact</Text>
+          <Text style={{ ...styles.heroImpact, marginBottom: spacing.sm, color: heroColor }}>
             {isPositive ? '+' : ''}{benefitValue}%
           </Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary, marginBottom: 4 }}>
+          <Text style={{ ...styles.metricSm, marginBottom: spacing.xs }}>
             {isPositive ? 'Total Tax Savings' : isNeutral ? 'Tax Neutral' : 'Total Tax Cost'}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textMuted }}>{sourceClean}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 8 }}>
+            <Text style={styles.small}>{sourceClean}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: spacing.sm }}>
               <View style={{ width: 20, height: 1, backgroundColor: darkTheme.textFaint }} />
               <View style={{ width: 0, height: 0, borderTopWidth: 3, borderBottomWidth: 3, borderLeftWidth: 5, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: darkTheme.textFaint }} />
             </View>
-            <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textMuted }}>{destClean}</Text>
+            <Text style={styles.small}>{destClean}</Text>
           </View>
 
           {taxDifferential?.annual_savings_estimate && (
-            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border, alignItems: 'center' }}>
-              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Estimated Annual Savings</Text>
-              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 20, color: colors.emerald[400] }}>
+            <View style={{ marginTop: spacing.sm + 4, paddingTop: spacing.sm + 4, borderTopWidth: 1, borderTopColor: darkTheme.border, alignItems: 'center' }}>
+              <Text style={{ ...styles.badgeLabel, marginBottom: spacing.xs }}>Estimated Annual Savings</Text>
+              <Text style={{ ...styles.metricSavings, color: colors.amber[500] }}>
                 {typeof taxDifferential.annual_savings_estimate === 'number' ? `$${(taxDifferential.annual_savings_estimate / 1000).toFixed(0)}K` : taxDifferential.annual_savings_estimate}
               </Text>
             </View>
@@ -139,28 +251,33 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
         </View>
       )}
 
-      {/* FlowArrow SVG Corridor */}
-      <View style={{ flexDirection: 'row', marginBottom: 24, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center' }} wrap={false}>
-        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.amber[500], marginRight: 20, paddingLeft: 16 }}>
-          <Text style={{ ...microLabel, letterSpacing: 1, marginBottom: 8 }}>Migration Corridor</Text>
-          <FlowArrow from={sourceClean} to={destClean} height={32} theme={heroTheme} />
+      {/* Migration Corridor + Efficiency Gain */}
+      <View style={{ flexDirection: 'row', marginBottom: spacing.xl - 4, paddingBottom: spacing.lg, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} wrap={false}>
+        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.amber[500], paddingLeft: spacing.md + 2, marginRight: spacing.lg }}>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Migration Corridor</Text>
+          <Text style={{ ...styles.metricSm, marginBottom: 4 }}>{sourceClean}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+            <View style={{ width: 20, height: 1.5, backgroundColor: colors.amber[500] }} />
+            <View style={{ width: 0, height: 0, borderTopWidth: 3, borderBottomWidth: 3, borderLeftWidth: 5, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: colors.amber[500] }} />
+          </View>
+          <Text style={{ ...styles.metricSm }}>{destClean}</Text>
         </View>
-        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: darkTheme.border, paddingLeft: 16 }}>
-          <Text style={{ ...microLabel, letterSpacing: 1, marginBottom: 8 }}>Annual Efficiency Gain</Text>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, letterSpacing: -0.5, color: isPositive ? colors.emerald[400] : darkTheme.textMuted }}>
+        <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: darkTheme.border, paddingLeft: spacing.md + 2 }}>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Annual Efficiency Gain</Text>
+          <Text style={{ ...styles.metricEfficiency, color: isPositive ? colors.amber[500] : darkTheme.textMuted }}>
             {showTaxSavings ? `${isPositive ? '+' : ''}${benefitValue}%` : 'N/A'}
           </Text>
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, marginTop: 4 }}>Estimated tax optimization</Text>
+          <Text style={{ ...styles.caption, marginTop: spacing.xs }}>Estimated tax optimization</Text>
         </View>
       </View>
 
       {/* Tax Comparison Table */}
-      <View style={{ width: '100%', marginBottom: 24, borderTopWidth: 3, borderTopColor: darkTheme.textPrimary, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} wrap={false}>
-        <View style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: darkTheme.textPrimary, backgroundColor: darkTheme.surfaceBg }}>
-          <Text style={cellHeaderBase}>Tax Category</Text>
-          <Text style={{ ...cellHeaderBase, textAlign: 'center' }}>{sourceClean}</Text>
-          <Text style={{ ...cellHeaderBase, textAlign: 'center' }}>{destClean}</Text>
-          <Text style={{ ...cellHeaderBase, textAlign: 'right' }}>Impact</Text>
+      <View style={{ width: '100%', marginBottom: spacing.xl - 4, borderTopWidth: 3, borderTopColor: darkTheme.textPrimary, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} wrap={false}>
+        <View style={{ flexDirection: 'row', paddingVertical: spacing.sm + 4, borderBottomWidth: 2, borderBottomColor: darkTheme.textPrimary, backgroundColor: darkTheme.surfaceBg }}>
+          <Text style={{ ...styles.cellHeader, flex: 1 }}>Tax Category</Text>
+          <Text style={{ ...styles.cellHeader, flex: 1, textAlign: 'center' }}>{sourceClean}</Text>
+          <Text style={{ ...styles.cellHeader, flex: 1, textAlign: 'center' }}>{destClean}</Text>
+          <Text style={{ ...styles.cellHeader, flex: 1, textAlign: 'right' }}>Impact</Text>
         </View>
 
         {taxTypes.map((tax, index) => {
@@ -171,58 +288,58 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
           const destIsHigher = (destRate ?? 0) > (sourceRate ?? 0);
 
           return (
-            <View key={index} style={{ flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center', backgroundColor: index % 2 === 1 ? darkTheme.cardBg : undefined }}>
-              <Text style={{ ...cellBase, fontWeight: 700, color: darkTheme.textPrimary }}>{tax.label}</Text>
-              <Text style={{ ...cellValueBase, color: sourceIsHigher ? colors.red[400] : (!sourceIsHigher && destIsHigher) ? colors.emerald[400] : darkTheme.textSecondary }}>
+            <View key={index} style={{ flexDirection: 'row', paddingVertical: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center', backgroundColor: index % 2 === 1 ? darkTheme.cardBg : undefined }}>
+              <Text style={{ ...styles.cellBase, flex: 1, fontWeight: 700, color: darkTheme.textPrimary }}>{tax.label}</Text>
+              <Text style={{ ...styles.cellValue, flex: 1, color: sourceIsHigher ? colors.red[700] : (!sourceIsHigher && destIsHigher) ? colors.amber[500] : darkTheme.textSecondary }}>
                 {sourceRate !== undefined ? `${sourceRate}%` : '—'}
               </Text>
-              <Text style={{ ...cellValueBase, color: destIsHigher ? colors.red[400] : (!destIsHigher && sourceIsHigher) ? colors.emerald[400] : darkTheme.textSecondary }}>
+              <Text style={{ ...styles.cellValue, flex: 1, color: destIsHigher ? colors.red[700] : (!destIsHigher && sourceIsHigher) ? colors.amber[500] : darkTheme.textSecondary }}>
                 {destRate !== undefined ? `${destRate}%` : '—'}
               </Text>
-              <Text style={{ ...cellImpactBase, color: impact.positive ? colors.emerald[400] : !impact.neutral ? colors.red[400] : darkTheme.textMuted }}>
+              <Text style={{ ...styles.cellImpact, flex: 1, color: impact.positive ? colors.amber[500] : !impact.neutral ? colors.red[700] : darkTheme.textMuted }}>
                 {impact.value}
-                {!impact.neutral && <Text style={{ fontSize: 8.5, color: darkTheme.textMuted }}>{impact.positive ? ' saved' : ' more'}</Text>}
+                {!impact.neutral && <Text style={styles.impactAnnotation}>{impact.positive ? ' saved' : ' more'}</Text>}
               </Text>
             </View>
           );
         })}
 
         {/* Cumulative Total Row */}
-        <View style={{ flexDirection: 'row', paddingVertical: 14, backgroundColor: darkTheme.cardBg }}>
-          <Text style={{ ...cellBase, fontWeight: 700, color: darkTheme.textPrimary }}>Cumulative Impact</Text>
+        <View style={{ flexDirection: 'row', paddingVertical: spacing.md, backgroundColor: darkTheme.cardBg }}>
+          <Text style={{ ...styles.cellBase, flex: 1, fontWeight: 700, color: darkTheme.textPrimary }}>Cumulative Impact</Text>
           <Text style={{ flex: 1 }} />
           <Text style={{ flex: 1 }} />
-          <Text style={{ ...cellImpactBase, color: isPositive ? colors.emerald[400] : isNeutral ? darkTheme.textFaint : colors.red[400], fontSize: 14 }}>
+          <Text style={{ ...styles.cellImpact, flex: 1, color: isPositive ? colors.amber[500] : isNeutral ? darkTheme.textFaint : colors.red[700], fontSize: 14 }}>
             {isPositive ? '+' : ''}{benefitValue}%
           </Text>
         </View>
       </View>
 
       {/* Visual HorizontalBar Comparisons */}
-      <View style={{ marginBottom: 24 }} wrap={false}>
-        <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 11, color: darkTheme.textPrimary, marginBottom: 12 }}>Rate Comparison — Visual Analysis</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 4, backgroundColor: colors.red[400] }} />
-            <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{sourceClean}</Text>
+      <View style={{ marginBottom: spacing.xl - 4 }}>
+        <Text style={{ ...styles.subSectionTitle, marginBottom: spacing.sm + 4 }}>Rate Comparison — Visual Analysis</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md + 2 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs, backgroundColor: colors.red[700] }} />
+            <Text style={styles.caption}>{sourceClean}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 4, backgroundColor: colors.emerald[400] }} />
-            <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{destClean}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md + 2 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs, backgroundColor: colors.amber[500] }} />
+            <Text style={styles.caption}>{destClean}</Text>
           </View>
         </View>
         {taxTypes.map((tax, index) => (
-          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
-            <Text style={{ width: 90, fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textSecondary }}>{tax.label}</Text>
+          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm + 4, paddingBottom: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
+            <Text style={{ ...styles.barLabel, width: 90 }}>{tax.label}</Text>
             <HorizontalBar currentRate={getTaxRate(effectiveSourceRates, tax.key, tax.altKey) ?? 0} optimizedRate={getTaxRate(effectiveDestRates, tax.key, tax.altKey) ?? 0} width={180} height={22} />
           </View>
         ))}
       </View>
 
       {/* Footer */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.md + 2, paddingTop: spacing.sm + 4 }}>
         <GradientDivider width={180} height={1} color={darkTheme.border} />
-        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
+        <Text style={{ ...styles.footerCaption, marginHorizontal: spacing.sm + 4 }}>
           Tax analysis powered by HNWI Chronicles KGv3 Jurisdiction Intelligence
         </Text>
         <GradientDivider width={180} height={1} color={darkTheme.border} />

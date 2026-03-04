@@ -4,10 +4,13 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { fadeInUp } from '@/lib/animations/motion-variants';
+import { useOpportunities } from '@/lib/hooks/useOpportunities';
+import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
+import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
 import type { City, MigrationFlow } from '@/components/interactive-world-map';
 
 // Dynamic import for InteractiveWorldMap (no SSR for Leaflet)
@@ -211,6 +214,23 @@ export function AuditOverviewSection({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Fetch command centre opportunities for map markers (same data as War Room)
+  // Use view=all to always show opportunities regardless of assessment status
+  const { cities: opportunityCities } = useOpportunities({
+    isPublic: false,
+    timeframe: 'live',
+    isPersonalMode: false,
+    hasCompletedAssessment: false,
+    includeCrownVault: false,
+    cleanCategories: true,
+  });
+
+  // Crisis intelligence for below-map alert
+  const { showCrisisAlert, crisisData, crisisCounts, crisisColors } = useCrisisIntelligence();
+
+  // Only show opportunity markers when map is active
+  const mapCities = useMemo(() => showMap ? opportunityCities : [], [showMap, opportunityCities]);
+
   const cleanJurisdiction = (jurisdiction: string) => {
     return jurisdiction
       .replace(/_/g, ' ')
@@ -318,18 +338,37 @@ export function AuditOverviewSection({
       {/* Mobile: 1/3 height, Desktop: 60vh */}
       {/* Desktop: Allow zoom in/pan (no zoom out), Mobile: Full interaction */}
       {showMap && auditFlow && (
-        <div className="w-full h-[33vh] sm:h-[60vh] rounded-xl overflow-hidden border border-border mb-6">
-          <InteractiveWorldMap
-            width="100%"
-            height="100%"
-            showControls={true}
-            cities={[]}
-            migrationFlows={[auditFlow]}
-            onCorridorNavigate={() => {}}
-            onPopupClose={() => {}}
-            showCrisisOverlay={true}
-            useAbsolutePositioning={true}
-          />
+        <div className="w-full rounded-xl overflow-hidden border border-border mb-6">
+          <div className="h-[33vh] sm:h-[60vh]">
+            <InteractiveWorldMap
+              width="100%"
+              height="100%"
+              showControls={true}
+              cities={mapCities}
+              migrationFlows={[auditFlow]}
+              onCorridorNavigate={() => {}}
+              onPopupClose={() => {}}
+              showCrownAssets={true}
+              showPriveOpportunities={true}
+              showHNWIPatterns={true}
+              showCrisisOverlay={true}
+              crisisAlertExternal={true}
+              useAbsolutePositioning={true}
+            />
+          </div>
+
+          {/* Crisis Intel Summary — rendered below map */}
+          {showCrisisAlert && crisisData && crisisColors && (
+            <div className="px-4 py-3 border-t border-border">
+              <CrisisAlertBox
+                visible={showCrisisAlert}
+                theme="dark"
+                alert={crisisData.alert}
+                counts={crisisCounts}
+                colors={crisisColors}
+              />
+            </div>
+          )}
         </div>
       )}
 

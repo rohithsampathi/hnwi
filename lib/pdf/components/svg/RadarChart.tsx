@@ -23,18 +23,17 @@ interface RadarChartProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 2) return colors.red[500];
-  if (score <= 4) return colors.orange[500];
-  if (score <= 6) return colors.yellow[500];
-  return colors.emerald[500];
+  if (score <= 3) return colors.red[700];
+  if (score <= 5) return colors.amber[600];
+  if (score <= 7) return colors.amber[500];
+  return colors.amber[400];
 }
 
 function getAvgFill(avg: number, isVetoed?: boolean): { fill: string; stroke: string } {
-  if (isVetoed) return { fill: colors.tints.redMedium, stroke: colors.red[500] };
-  if (avg <= 3) return { fill: colors.tints.redMedium, stroke: colors.red[500] };
-  if (avg <= 5) return { fill: colors.tints.orangeMedium, stroke: colors.orange[500] };
-  if (avg <= 7) return { fill: colors.tints.yellowMedium, stroke: colors.yellow[500] };
-  return { fill: colors.tints.emeraldMedium, stroke: colors.emerald[500] };
+  if (isVetoed) return { fill: colors.tints.redDeepSubtle, stroke: colors.red[700] };
+  if (avg <= 3) return { fill: colors.tints.redDeepSubtle, stroke: colors.red[700] };
+  if (avg <= 5) return { fill: colors.tints.goldMutedSubtle, stroke: colors.amber[600] };
+  return { fill: colors.tints.goldSubtle, stroke: colors.amber[500] };
 }
 
 /**
@@ -68,6 +67,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.35;
+  const pad = Math.round(size * 0.25); // viewBox padding for label overflow
   const n = scores.length;
   if (n === 0) return null;
   const avgScore = scores.reduce((s, d) => s + d.score, 0) / n;
@@ -75,7 +75,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
   const gridLevels = [2, 4, 6, 8, 10];
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <Svg width={size} height={size} viewBox={`${-pad} ${-pad} ${size + pad * 2} ${size + pad * 2}`}>
       {/* Grid hexagons */}
       {gridLevels.map((level, i) => (
         <Path
@@ -127,7 +127,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
 
       {/* Axis labels */}
       {scores.map((s, i) => {
-        const labelR = maxR + 18;
+        const labelR = maxR + 28;
         const { x, y } = radarPoint(cx, cy, labelR, i, n, 10, 10);
         const textAnchor = x < cx - 5 ? 'end' : x > cx + 5 ? 'start' : 'middle';
         const scoreColor = getScoreColor(s.score);
@@ -136,9 +136,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
           <G key={`lbl-${i}`}>
             <SvgText
               x={x}
-              y={y - 4}
+              y={y - 5}
               fill={darkTheme.textMuted}
-              fontSize={7}
+              fontSize={10}
               fontFamily="Inter"
               fontWeight={600}
               textAnchor={textAnchor as 'start' | 'middle' | 'end'}
@@ -147,9 +147,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
             </SvgText>
             <SvgText
               x={x}
-              y={y + 6}
+              y={y + 8}
               fill={scoreColor}
-              fontSize={7}
+              fontSize={9}
               fontFamily="Inter"
               fontWeight={700}
               textAnchor={textAnchor as 'start' | 'middle' | 'end'}

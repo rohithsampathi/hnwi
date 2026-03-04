@@ -443,7 +443,7 @@ export function RiskRadarChart({
               <span className="text-foreground/60 font-medium">Critical Imbalance Detected.</span>{' '}
               The asset quality ({maxScore}/10) is sound, but structural dimensions
               ({minScore}/10 minimum) expose the deal to systemic risk. The shape reveals
-              a fundamentally broken structure around a viable asset.
+              a significant structural gap that must be addressed before commitment.
             </>
           ) : imbalance >= 4 ? (
             <>

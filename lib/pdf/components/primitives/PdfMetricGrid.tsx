@@ -1,8 +1,11 @@
 /**
- * PdfMetricGrid — Shared PDF metric grid primitive
- * Replaces duplicated metric-box row patterns across 14 PDF components
+ * PdfMetricGrid — Metric display grid primitive
  *
- * Uses: darkTheme, typography, spacing from pdf-styles (no local StyleSheet)
+ * Design: Numbers are THE thing UHNWIs scan for.
+ * - Values at 26pt (visible even when zoomed out on mobile)
+ * - Labels in micro uppercase (institutional look)
+ * - Each metric box clearly bounded with visible border
+ * - Generous padding inside boxes
  */
 
 import React from 'react';
@@ -42,7 +45,7 @@ export const PdfMetricGrid: React.FC<PdfMetricGridProps> = ({
             backgroundColor: darkTheme.cardBg,
             borderWidth: 1,
             borderColor: darkTheme.border,
-            borderRadius: 10,
+            borderRadius: 0.01,
             padding: spacing.md,
             alignItems: 'center',
             marginRight: idx < visibleMetrics.length - 1 ? spacing.sm : 0,
@@ -60,10 +63,11 @@ export const PdfMetricGrid: React.FC<PdfMetricGridProps> = ({
           </Text>
           <Text
             style={{
-              fontSize: 22,
+              fontSize: metric.value.length > 12 ? 13 : metric.value.length > 6 ? 18 : 26,
               fontFamily: 'Inter',
               fontWeight: 700,
               color: metric.color || darkTheme.textPrimary,
+              textAlign: 'center',
               marginBottom: metric.subtext ? spacing.xs : 0,
             }}
           >

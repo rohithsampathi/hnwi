@@ -34,7 +34,7 @@ const PdfSummaryPage: React.FC<PdfSummaryPageProps> = ({
   intakeId,
 }) => {
   const labelStyle = {
-    fontSize: 8.5,
+    fontSize: 9,
     fontFamily: "Inter" as const,
     fontWeight: 700 as const,
     color: darkTheme.textMuted,
@@ -60,17 +60,17 @@ const PdfSummaryPage: React.FC<PdfSummaryPageProps> = ({
 
     {/* Key Outcomes — 4-column grid */}
     <View style={{ flexDirection: "row", marginBottom: 32, borderTopWidth: 2, borderTopColor: darkTheme.textPrimary }} wrap={false}>
-      <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: darkTheme.border, borderBottomWidth: 3, borderBottomColor: verdictTheme.primary }}>
+      <View style={{ flex: 1.3, paddingVertical: 16, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: darkTheme.border, borderBottomWidth: 3, borderBottomColor: verdictTheme.primary }}>
         <Text style={labelStyle}>Verdict</Text>
-        <Text style={{ ...valueStyle, color: verdictTheme.primary }}>{verdict}</Text>
+        <Text style={{ ...valueStyle, fontSize: verdict.length > 10 ? 14 : 18, color: verdictTheme.primary }}>{verdict}</Text>
       </View>
       <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: darkTheme.border }}>
         <Text style={labelStyle}>Tax Impact</Text>
-        <Text style={{ ...valueStyle, color: showTaxSavings ? colors.emerald[400] : darkTheme.textFaint }}>{totalTaxBenefit}</Text>
+        <Text style={{ ...valueStyle, color: showTaxSavings ? colors.amber[500] : darkTheme.textFaint }}>{totalTaxBenefit}</Text>
       </View>
       <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: darkTheme.border }}>
         <Text style={labelStyle}>Exposure</Text>
-        <Text style={{ ...valueStyle, color: colors.red[400] }}>{totalExposureFormatted || formatCurrency(totalExposure)}</Text>
+        <Text style={{ ...valueStyle, color: colors.red[700] }}>{totalExposureFormatted || formatCurrency(totalExposure)}</Text>
       </View>
       <View style={{ flex: 1, paddingVertical: 16, paddingHorizontal: 12 }}>
         <Text style={labelStyle}>Precedents</Text>
@@ -90,7 +90,7 @@ const PdfSummaryPage: React.FC<PdfSummaryPageProps> = ({
         <Text style={[pdfStyles.tableCell, { fontFamily: "Inter", fontWeight: 700, fontSize: 20 }]}>{precedentCount}</Text>
         <Text style={[pdfStyles.tableCell, { fontFamily: "Inter", fontWeight: 700, fontSize: 20 }]}>{failureModes}</Text>
         <Text style={[pdfStyles.tableCell, { fontFamily: "Inter", fontWeight: 700, fontSize: 20 }]}>{sequencingRules}</Text>
-        <Text style={[pdfStyles.tableCell, { fontFamily: "Inter", fontWeight: 700, fontSize: 20, color: colors.red[400] }]}>{riskFactorCount}</Text>
+        <Text style={[pdfStyles.tableCell, { fontFamily: "Inter", fontWeight: 700, fontSize: 20, color: colors.red[700] }]}>{riskFactorCount}</Text>
       </View>
     </View>
 

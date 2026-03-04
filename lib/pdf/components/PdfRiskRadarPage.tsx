@@ -29,10 +29,10 @@ interface PdfRiskRadarPageProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 2) return colors.red[500];
-  if (score <= 4) return colors.orange[500];
-  if (score <= 6) return colors.yellow[500];
-  return colors.emerald[500];
+  if (score <= 3) return colors.red[700];
+  if (score <= 5) return colors.amber[600];
+  if (score <= 7) return colors.amber[500];
+  return colors.amber[400];
 }
 
 export const PdfRiskRadarPage: React.FC<PdfRiskRadarPageProps> = ({
@@ -93,23 +93,23 @@ export const PdfRiskRadarPage: React.FC<PdfRiskRadarPageProps> = ({
                   backgroundColor: darkTheme.cardBg,
                   borderWidth: 1,
                   borderColor: darkTheme.border,
-                  borderRadius: 8,
+                  borderRadius: 0.01,
                   padding: spacing.sm,
-                  marginRight: i < 2 ? spacing.xs : 0,
+                  marginRight: i < 2 ? spacing.sm : 0,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ ...typography.micro, color: darkTheme.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', maxWidth: '80%' }} numberOfLines={1}>
+                  <Text style={{ ...typography.micro, color: darkTheme.textMuted, letterSpacing: 0.8, textTransform: 'uppercase', flexShrink: 1 }}>
                     {s.label}
                   </Text>
                   {isCritical && (
-                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#ef4444' }} />
+                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.red[700] }} />
                   )}
                 </View>
-                <Text style={{ fontSize: 18, fontFamily: 'Inter', fontWeight: 700, color, marginBottom: 4 }}>
+                <Text style={{ fontSize: 20, fontFamily: 'Inter', fontWeight: 700, color, marginBottom: 4 }}>
                   {s.score}<Text style={{ fontSize: 9, color: darkTheme.textFaint, fontWeight: 400 }}>/10</Text>
                 </Text>
-                <MiniMetricBar value={s.score} maxValue={10} color={color} width={80} height={3} />
+                <MiniMetricBar value={s.score * 10} color={color} width={80} height={3} />
               </View>
             );
           })}
@@ -139,7 +139,7 @@ export const PdfRiskRadarPage: React.FC<PdfRiskRadarPageProps> = ({
             )}
           </View>
         </View>
-        <Text style={{ fontSize: 8.5, fontFamily: 'Inter', color: darkTheme.textFaint, lineHeight: 1.5 }}>
+        <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textFaint, lineHeight: 1.5 }}>
           <Text style={{ color: darkTheme.textMuted, fontWeight: 600 }}>{diagnosisTitle} </Text>
           {diagnosisBody}
         </Text>

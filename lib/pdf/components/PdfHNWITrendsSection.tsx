@@ -38,21 +38,21 @@ export function PdfHNWITrendsSection({
   };
 
   const trendBg: Record<string, object> = {
-    corridor: { backgroundColor: 'rgba(212,168,67,0.08)', borderColor: 'rgba(212,168,67,0.25)' },
+    corridor: { backgroundColor: colors.tints.goldLight, borderColor: colors.tints.goldStrong },
     outflow: { backgroundColor: darkTheme.cardBg, borderColor: darkTheme.border },
-    inflow: { backgroundColor: 'rgba(16,185,129,0.08)', borderColor: 'rgba(16,185,129,0.25)' },
+    inflow: { backgroundColor: colors.tints.goldLight, borderColor: colors.tints.goldStrong },
     default: {},
   };
   const iconBg: Record<string, string> = {
-    corridor: 'rgba(212,168,67,0.15)',
+    corridor: colors.tints.goldMedium,
     outflow: darkTheme.border,
-    inflow: 'rgba(16,185,129,0.15)',
+    inflow: colors.tints.goldMedium,
     default: darkTheme.surfaceBg,
   };
   const iconColor: Record<string, string> = {
     corridor: colors.amber[500],
     outflow: darkTheme.textMuted,
-    inflow: colors.emerald[400],
+    inflow: colors.amber[500],
     default: darkTheme.textMuted,
   };
   const iconLabel: Record<string, string> = { corridor: '>', outflow: '+', inflow: '-', default: '*' };
@@ -70,7 +70,7 @@ export function PdfHNWITrendsSection({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 12, marginBottom: 16 }} wrap={false}>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Confidence</Text>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Confidence</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ flexDirection: 'row' }}>
                 {[1, 2, 3, 4, 5].map(i => (
@@ -81,18 +81,18 @@ export function PdfHNWITrendsSection({
             </View>
           </View>
           <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Trends</Text>
+            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Trends</Text>
             <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary }}>{trendsData.trends_count || trendsData.insights.length}</Text>
           </View>
           {trendsData.sources_count !== undefined && (
             <View style={{ alignItems: 'flex-start', marginRight: 24 }}>
-              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Sources</Text>
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Sources</Text>
               <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: darkTheme.textPrimary }}>{trendsData.sources_count}</Text>
             </View>
           )}
         </View>
-        <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.amber[500], backgroundColor: 'rgba(212,168,67,0.15)' }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>KGv3 Verified</Text>
+        <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: colors.amber[500], backgroundColor: colors.tints.goldMedium }}>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>KGv3 Verified</Text>
         </View>
       </View>
 
@@ -102,7 +102,7 @@ export function PdfHNWITrendsSection({
           const type = getTrendType(insight.content);
           return (
             <View key={index} style={[{ flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginBottom: 8, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border }, trendBg[type]]} wrap={false}>
-              <View style={{ width: 24, height: 24, borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: iconBg[type] }}>
+              <View style={{ width: 24, height: 24, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: iconBg[type] }}>
                 <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: iconColor[type] }}>{iconLabel[type]}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -120,7 +120,7 @@ export function PdfHNWITrendsSection({
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {trendsData.collections_queried.map((source, i) => (
               <View key={i} style={{ backgroundColor: darkTheme.surfaceBg, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 }}>
-                <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textMuted }}>{source}</Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted }}>{source}</Text>
               </View>
             ))}
           </View>
@@ -136,8 +136,8 @@ export function PdfHNWITrendsSection({
               <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginTop: 4, marginRight: 6 }} />
               <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted, flex: 1 }}>
                 {citation.title}
-                {!!citation.date && <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}> ({citation.date})</Text>}
-                {!!citation.reliability && <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.amber[500], marginLeft: 4 }}> • {citation.reliability}</Text>}
+                {!!citation.date && <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint }}> ({citation.date})</Text>}
+                {!!citation.reliability && <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: colors.amber[500], marginLeft: 4 }}> • {citation.reliability}</Text>}
               </Text>
             </View>
           ))}
@@ -147,7 +147,7 @@ export function PdfHNWITrendsSection({
       {/* Footer */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: darkTheme.border }}>
         <View style={{ width: 4, height: 4, backgroundColor: colors.amber[500], borderRadius: 2, marginHorizontal: 6 }} />
-        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint }}>
+        <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint }}>
           Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data
         </Text>
       </View>

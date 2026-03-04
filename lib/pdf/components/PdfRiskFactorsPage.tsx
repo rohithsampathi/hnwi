@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { colors, formatCurrency, darkTheme } from '../pdf-styles';
+import { colors, formatCurrency, darkTheme, typography, spacing } from '../pdf-styles';
 import { RiskFactor, DueDiligenceItem } from '../pdf-types';
 import { getVerdictTheme } from '../pdf-verdict-theme';
 import {
@@ -19,6 +19,121 @@ import {
   RiskHeatBar,
   GradientDivider,
 } from './svg';
+
+/* ─── Local Typography Compositions ──────────────────────────────────────── */
+const styles = {
+  /** Bold 9pt uppercase label — used for section micro-labels */
+  microLabel: {
+    ...typography.microBold,
+    letterSpacing: 1,
+    color: darkTheme.textMuted,
+  },
+  /** Page section title — h2 uppercase */
+  sectionHeading: {
+    ...typography.h2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+    color: darkTheme.textPrimary,
+  },
+  /** Large exposure metric (28pt) */
+  exposureHero: {
+    ...typography.metricLg,
+    fontSize: 28,
+    color: colors.red[700],
+  },
+  /** Mono reference text (9pt Courier) */
+  monoRef: {
+    ...typography.mono,
+    color: darkTheme.textMuted,
+  },
+  /** Bold 9pt count badge — severity counters in header */
+  countBadge: {
+    ...typography.microBold,
+    letterSpacing: 0,
+    textTransform: undefined as unknown as undefined,
+  },
+  /** Card index number */
+  cardIndex: {
+    ...typography.microBold,
+    letterSpacing: 0,
+    textTransform: undefined as unknown as undefined,
+    color: darkTheme.textMuted,
+  },
+  /** Severity badge text — microBold exact match */
+  severityBadge: {
+    ...typography.microBold,
+  },
+  /** Cost/exposure display — smallBold */
+  costDisplay: {
+    ...typography.smallBold,
+    color: darkTheme.textSecondary,
+  },
+  /** Risk card title — smallBold with custom line-height */
+  riskTitle: {
+    ...typography.smallBold,
+    color: darkTheme.textPrimary,
+    lineHeight: 1.4,
+  },
+  /** Risk description body — small with relaxed line-height */
+  riskDescription: {
+    ...typography.small,
+    color: darkTheme.textMuted,
+    lineHeight: 1.65,
+  },
+  /** Mitigation timeline badge */
+  mitigationBadge: {
+    ...typography.microBold,
+    letterSpacing: 0,
+    textTransform: undefined as unknown as undefined,
+  },
+  /** Mitigation action type badge — microBold uppercase */
+  actionTypeBadge: {
+    ...typography.microBold,
+    textTransform: 'uppercase' as const,
+  },
+  /** Mitigation body text — small */
+  mitigationBody: {
+    ...typography.small,
+    color: darkTheme.textSecondary,
+    lineHeight: 1.5,
+  },
+  /** Due diligence section header — h4 uppercase */
+  ddSectionTitle: {
+    ...typography.h4,
+    fontWeight: 700 as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    color: darkTheme.textPrimary,
+  },
+  /** DD category badge — microBold exact match */
+  ddCategoryBadge: {
+    ...typography.microBold,
+  },
+  /** DD timeline badge — microBold base, no uppercase */
+  ddTimelineBadge: {
+    ...typography.microBold,
+    letterSpacing: 0,
+    textTransform: undefined as unknown as undefined,
+    color: darkTheme.textMuted,
+  },
+  /** DD responsible party — caption */
+  ddResponsible: {
+    ...typography.caption,
+    color: darkTheme.textMuted,
+  },
+  /** DD task body — small */
+  ddTaskBody: {
+    ...typography.small,
+    color: darkTheme.textSecondary,
+    lineHeight: 1.5,
+  },
+  /** Footer caption — caption with letter-spacing */
+  footerCaption: {
+    ...typography.caption,
+    color: darkTheme.textFaint,
+    letterSpacing: 0.5,
+  },
+} as const;
 
 interface PdfRiskFactorsPageProps {
   riskFactors: RiskFactor[];
@@ -50,12 +165,11 @@ const parseAmount = (str: string): number => {
 export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
   riskFactors, dueDiligence, totalExposureFormatted, verdict,
 }) => {
-  const microLabel = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase' as const, letterSpacing: 1 };
   const headerBadge = { backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 10, paddingVertical: 4 };
-  const severityColor = (s: string) => s === 'critical' ? colors.red[400] : s === 'high' ? colors.amber[400] : darkTheme.textMuted;
-  const severityBorderColor = (s: string) => s === 'critical' ? colors.red[500] : s === 'high' ? colors.amber[500] : darkTheme.textFaint;
-  const severityBg = (s: string) => s === 'critical' ? 'rgba(239, 68, 68, 0.08)' : s === 'high' ? darkTheme.goldTint : undefined;
-  const severityBadgeBg = (s: string) => s === 'critical' ? 'rgba(239, 68, 68, 0.12)' : s === 'high' ? 'rgba(212, 168, 67, 0.12)' : darkTheme.surfaceBg;
+  const severityColor = (s: string) => s === 'critical' ? colors.red[700] : s === 'high' ? colors.amber[600] : darkTheme.textMuted;
+  const severityBorderColor = (s: string) => s === 'critical' ? colors.red[700] : s === 'high' ? colors.amber[600] : darkTheme.textFaint;
+  const severityBg = (s: string) => s === 'critical' ? colors.tints.redDeepSubtle : s === 'high' ? darkTheme.goldTint : undefined;
+  const severityBadgeBg = (s: string) => s === 'critical' ? colors.tints.redDeepLight : s === 'high' ? darkTheme.goldTint : darkTheme.surfaceBg;
 
   const theme = getVerdictTheme(verdict);
   const criticalCount = riskFactors.filter(r => r.severity === 'critical').length;
@@ -69,44 +183,44 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
   if (sortedRiskFactors.length === 0 && dueDiligence.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: 28 }}>
+    <View style={{ marginBottom: spacing.xl }}>
       {/* Header */}
-      <View style={{ marginBottom: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
+      <View style={{ marginBottom: spacing.lg, paddingBottom: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
         <GradientAccentBar width={483} height={4} theme={getVerdictTheme('ABORT')} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: 10 }}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: darkTheme.textPrimary, letterSpacing: 0.5, textTransform: 'uppercase', flexShrink: 1, maxWidth: '70%' }}>Risk Factor Analysis</Text>
+          <Text style={{ ...styles.sectionHeading, flexShrink: 1, maxWidth: '70%' }}>Risk Factor Analysis</Text>
           <View style={headerBadge}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: darkTheme.textMuted, textTransform: 'uppercase', letterSpacing: 1 }}>Commandment I</Text>
+            <Text style={{ ...styles.microLabel, letterSpacing: 1 }}>RISK ANALYSIS</Text>
           </View>
         </View>
       </View>
 
       {/* Total Exposure Hero */}
       {totalExposureFormatted && (
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingVertical: 16, paddingHorizontal: 20, backgroundColor: 'rgba(239, 68, 68, 0.08)', borderWidth: 1, borderColor: darkTheme.border, borderLeftWidth: 4, borderLeftColor: colors.red[500] }} wrap={false}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg, paddingVertical: 16, paddingHorizontal: spacing.lg, backgroundColor: colors.tints.redDeepSubtle, borderWidth: 1, borderColor: darkTheme.border, borderLeftWidth: 4, borderLeftColor: colors.red[700] }} wrap={false}>
           <View>
-            <Text style={{ ...microLabel, marginBottom: 4 }}>Total Exposure at Risk</Text>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 28, color: colors.red[400], letterSpacing: -0.5 }}>{totalExposureFormatted}</Text>
+            <Text style={{ ...styles.microLabel, marginBottom: spacing.xs }}>{/* Total Exposure at Risk */}Total Exposure at Risk</Text>
+            <Text style={styles.exposureHero}>{totalExposureFormatted}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ fontFamily: 'Courier', fontSize: 9, color: darkTheme.textMuted }}>{sortedRiskFactors.length} Risk Factors Identified</Text>
+            <Text style={styles.monoRef}>{sortedRiskFactors.length} Risk Factors Identified</Text>
             <View style={{ flexDirection: 'row', marginTop: 6 }}>
               {criticalCount > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                  <View style={{ width: 8, height: 8, backgroundColor: colors.red[500], marginRight: 4 }} />
-                  <Text style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: colors.red[400] }}>{criticalCount} Critical</Text>
+                  <View style={{ width: 8, height: 8, backgroundColor: colors.red[700], marginRight: 4 }} />
+                  <Text style={{ ...styles.countBadge, color: colors.red[700] }}>{criticalCount} Critical</Text>
                 </View>
               )}
               {highCount > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 10 }}>
-                  <View style={{ width: 8, height: 8, backgroundColor: colors.amber[500], marginRight: 4 }} />
-                  <Text style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>{highCount} High</Text>
+                  <View style={{ width: 8, height: 8, backgroundColor: colors.amber[600], marginRight: 4 }} />
+                  <Text style={{ ...styles.countBadge, color: colors.amber[600] }}>{highCount} High</Text>
                 </View>
               )}
               {mediumCount > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ width: 8, height: 8, backgroundColor: darkTheme.textFaint, marginRight: 4 }} />
-                  <Text style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: darkTheme.textMuted }}>{mediumCount} Medium</Text>
+                  <Text style={{ ...styles.countBadge, color: darkTheme.textMuted }}>{mediumCount} Medium</Text>
                 </View>
               )}
             </View>
@@ -117,7 +231,7 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
       {/* RiskHeatBar SVG */}
       {riskFactors.length > 0 && (
         <View style={{ marginBottom: 24, alignItems: 'center' }} wrap={false}>
-          <Text style={{ ...microLabel, marginBottom: 8 }}>Risk Distribution</Text>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Risk Distribution</Text>
           <RiskHeatBar critical={criticalCount} high={highCount} medium={mediumCount} low={lowCount} width={400} height={18} />
         </View>
       )}
@@ -130,45 +244,45 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
           borderLeftWidth: ['critical', 'high', 'medium'].includes(risk.severity) ? 4 : 1,
           borderLeftColor: ['critical', 'high', 'medium'].includes(risk.severity) ? severityBorderColor(risk.severity) : darkTheme.border,
         }}>
-          <View style={{ padding: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{ padding: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: darkTheme.surfaceBg, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                  <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 9, color: darkTheme.textMuted }}>{index + 1}</Text>
+                <View style={{ width: 20, height: 20, borderRadius: 0.01, backgroundColor: darkTheme.surfaceBg, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                  <Text style={styles.cardIndex}>{index + 1}</Text>
                 </View>
                 <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: severityColor(risk.severity), backgroundColor: severityBadgeBg(risk.severity) }}>
-                  <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: 0.5, color: severityColor(risk.severity) }}>{risk.severity.toUpperCase()}</Text>
+                  <Text style={{ ...styles.severityBadge, color: severityColor(risk.severity) }}>{risk.severity.toUpperCase()}</Text>
                 </View>
               </View>
               {!!(risk.cost_display || (risk.exposure_amount && risk.exposure_amount > 0)) && (
-                <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: darkTheme.textSecondary, maxWidth: 120, textAlign: 'right' }}>
+                <Text style={{ ...styles.costDisplay, maxWidth: 120, textAlign: 'right' }}>
                   {formatCostDisplay(risk.cost_display) || formatCurrency(risk.exposure_amount || 0)}
                 </Text>
               )}
             </View>
 
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: darkTheme.textPrimary, marginBottom: 6, marginTop: 4, lineHeight: 1.4 }}>{risk.title}</Text>
+            <Text style={{ ...styles.riskTitle, marginBottom: 6, marginTop: 4 }}>{risk.title}</Text>
             {!!risk.description && (
-              <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textMuted, lineHeight: 1.65 }}>{risk.description}</Text>
+              <Text style={styles.riskDescription}>{risk.description}</Text>
             )}
 
             {!!(risk.mitigation || risk.mitigation_timeline_days) && (
-              <View style={{ marginTop: 10, backgroundColor: 'rgba(16, 185, 129, 0.08)', borderLeftWidth: 3, borderLeftColor: colors.emerald[500], padding: 12 }}>
+              <View style={{ marginTop: 10, backgroundColor: darkTheme.goldTint, borderLeftWidth: 3, borderLeftColor: colors.amber[600], padding: spacing.sm + 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                  <Text style={{ ...microLabel, letterSpacing: 0.5, marginRight: 8 }}>Mitigation Plan</Text>
+                  <Text style={{ ...styles.microLabel, letterSpacing: 0.5, marginRight: spacing.sm }}>Mitigation Plan</Text>
                   {!!risk.mitigation_timeline_days && (
-                    <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.12)', borderWidth: 1, borderColor: colors.emerald[500], paddingHorizontal: 6, paddingVertical: 2 }}>
-                      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: colors.emerald[400] }}>{risk.mitigation_timeline_days} DAYS</Text>
+                    <View style={{ backgroundColor: darkTheme.goldTint, borderWidth: 1, borderColor: colors.amber[600], paddingHorizontal: 6, paddingVertical: 2 }}>
+                      <Text style={{ ...styles.mitigationBadge, color: colors.amber[600] }}>{risk.mitigation_timeline_days} DAYS</Text>
                     </View>
                   )}
                   {!!risk.mitigation_action_type && (
-                    <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.08)', borderWidth: 1, borderColor: colors.blue[500], paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
-                      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, color: colors.blue[400], textTransform: 'uppercase' }}>{risk.mitigation_action_type}</Text>
+                    <View style={{ backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
+                      <Text style={{ ...styles.actionTypeBadge, color: darkTheme.textSecondary }}>{risk.mitigation_action_type}</Text>
                     </View>
                   )}
                 </View>
                 {!!risk.mitigation && (
-                  <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.5 }}>{risk.mitigation}</Text>
+                  <Text style={styles.mitigationBody}>{risk.mitigation}</Text>
                 )}
               </View>
             )}
@@ -178,10 +292,10 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
 
       {/* Due Diligence Section */}
       {dueDiligence.length > 0 && (
-        <View style={{ marginTop: 28 }}>
+        <View style={{ marginTop: spacing.xl }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
-            <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 12, color: darkTheme.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 }}>Due Diligence Requirements</Text>
-            <Text style={{ fontFamily: 'Courier', fontSize: 9, color: darkTheme.textMuted }}>
+            <Text style={styles.ddSectionTitle}>Due Diligence Requirements</Text>
+            <Text style={styles.monoRef}>
               {dueDiligence.filter(d => d.priority === 'critical').length} Critical · {dueDiligence.filter(d => d.priority === 'high').length} High Priority
             </Text>
           </View>
@@ -192,30 +306,30 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
             return (
               <View key={index} wrap={false} style={{
                 backgroundColor: isCritical ? darkTheme.goldTint : darkTheme.pageBg,
-                borderWidth: 1, borderColor: darkTheme.border, marginBottom: 8, padding: 14,
+                borderWidth: 1, borderColor: darkTheme.border, marginBottom: spacing.sm, padding: spacing.md,
                 borderLeftWidth: isCritical ? 3 : 1,
                 borderLeftColor: isCritical ? colors.amber[500] : darkTheme.border,
               }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{
-                      backgroundColor: isCritical ? 'rgba(212, 168, 67, 0.12)' : darkTheme.surfaceBg,
+                      backgroundColor: isCritical ? colors.tints.goldMedium : darkTheme.surfaceBg,
                       borderWidth: 1, borderColor: isCritical ? colors.amber[500] : darkTheme.border,
-                      paddingHorizontal: 8, paddingVertical: 3, marginRight: 8,
+                      paddingHorizontal: 8, paddingVertical: 3, marginRight: spacing.sm,
                     }}>
-                      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8.5, textTransform: 'uppercase', letterSpacing: 0.5, color: isCritical ? colors.amber[400] : darkTheme.textSecondary }}>
+                      <Text style={{ ...styles.ddCategoryBadge, color: isCritical ? colors.amber[400] : darkTheme.textSecondary }}>
                         {item.category?.toUpperCase() || 'COMPLIANCE'}
                       </Text>
                     </View>
                     <View style={{ backgroundColor: darkTheme.pageBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 8, paddingVertical: 3 }}>
-                      <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 8, color: darkTheme.textMuted }}>{item.timeline || timeline}</Text>
+                      <Text style={styles.ddTimelineBadge}>{item.timeline || timeline}</Text>
                     </View>
                   </View>
                   {!!item.responsible && (
-                    <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textMuted }}>{item.responsible}</Text>
+                    <Text style={styles.ddResponsible}>{item.responsible}</Text>
                   )}
                 </View>
-                <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.5 }}>{item.task}</Text>
+                <Text style={styles.ddTaskBody}>{item.task}</Text>
               </View>
             );
           })}
@@ -223,9 +337,9 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
       )}
 
       {/* Footer */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: spacing.sm + 4 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
-        <Text style={{ fontFamily: 'Inter', fontSize: 8.5, color: darkTheme.textFaint, letterSpacing: 0.5, marginHorizontal: 12 }}>
+        <Text style={{ ...styles.footerCaption, marginHorizontal: spacing.sm + 4 }}>
           Risk analysis powered by HNWI Chronicles KGv3 Intelligence Engine
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />

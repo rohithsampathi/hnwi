@@ -23,20 +23,11 @@ import { Layout } from "@/components/layout/layout"
 import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib/auth-manager"
 import { secureApi } from "@/lib/secure-api"
 import TokenRefreshManager from "@/components/token-refresh-manager"
-import BackgroundSyncInitializer from "@/components/background-sync-initializer"
 import '@/lib/auth/debug-helper' // Load debug helper
-
-// Helper to detect PWA standalone mode
-const isPWAStandalone = (): boolean => {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         (window.navigator as any).standalone === true ||
-         document.referrer.includes('android-app://')
-}
 
 // Helper to check if this is a public route
 const isPublicRoute = (pathname: string): boolean => {
-  return pathname?.includes('/simulation') || pathname?.includes('/decision-memo')
+  return pathname?.includes('/simulation') || pathname?.includes('/decision-memo') || pathname?.includes('/war-room')
 }
 
 interface AuthenticatedLayoutProps {
@@ -292,8 +283,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
     const checkAuthStatus = async () => {
       try {
-        // PUBLIC ROUTES: /simulation and /decision-memo - allow access without login
-        if (pathname.includes('/simulation') || pathname.includes('/decision-memo')) {
+        // PUBLIC ROUTES: /simulation, /decision-memo, /war-room - allow access without login
+        if (isPublicRoute(pathname)) {
           const authUser = getCurrentUser()
           setUser(authUser)
           setIsAuthenticated(true)
@@ -378,7 +369,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   useEffect(() => {
     const handleLogout = () => {
       // Ignore logout events on public routes
-      if (pathname?.includes('/simulation') || pathname?.includes('/decision-memo')) {
+      if (isPublicRoute(pathname || '')) {
         return
       }
 
@@ -411,61 +402,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
   }, [])
 
-  // PWA FIX: Re-validate session when app comes to foreground
-  // Critical for iOS where cookies may be cleared in background
-  useEffect(() => {
-    // Skip for public routes
-    if (isPublicRoute(pathname)) return
 
-    const handleVisibilityChange = async () => {
-      // Only check when app becomes visible
-      if (document.visibilityState !== 'visible') return
-      // Skip if not authenticated
-      if (!isAuthenticated) return
-      // Only do this in PWA standalone mode
-      if (!isPWAStandalone()) return
-
-      console.log('[PWA] App became visible - validating session')
-
-      try {
-        const sessionResponse = await fetch('/api/auth/session', {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (sessionResponse.ok) {
-          const data = await sessionResponse.json()
-          if (data.user) {
-            // Session still valid
-            return
-          }
-        }
-
-        // Session invalid - try refresh
-        const refreshResponse = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (!refreshResponse.ok) {
-          // Refresh failed - session is truly lost
-          console.log('[PWA] Session lost while in background - clearing state')
-          authManager.logout()
-          setIsAuthenticated(false)
-          setUser(null)
-          localStorage.removeItem('loginTimestamp')
-          router.push("/")
-        }
-      } catch (error) {
-        // Network error - continue with cached state
-        console.log('[PWA] Visibility check network error - continuing')
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [isAuthenticated, pathname, router])
 
   // Only show elite loading for initial page load, not internal navigation
   if (isAuthenticated === null) {
@@ -508,7 +445,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                             isUserAuthenticated={!!user}
                           >
                             <TokenRefreshManager refreshIntervalMinutes={45} />
-                            <BackgroundSyncInitializer />
                             {children}
                             <Toaster />
                           </Layout>

@@ -103,8 +103,15 @@ function extractValueCreation(vc: PdfPreviewData['value_creation']): string {
   if (typeof vc === 'string') return vc;
   if (typeof vc === 'number') return formatCurrency(vc);
   if (typeof vc === 'object') {
-    if (vc.formatted) return vc.formatted;
-    if (typeof vc.amount === 'number') return formatCurrency(vc.amount);
+    const obj = vc as Record<string, unknown>;
+    if (obj.total_formatted) return String(obj.total_formatted);
+    if (obj.formatted) return String(obj.formatted);
+    if (typeof obj.total === 'number') return formatCurrency(obj.total as number);
+    if (typeof obj.amount === 'number') return formatCurrency(obj.amount as number);
+    // Check annual.total_formatted
+    const annual = obj.annual as Record<string, unknown> | undefined;
+    if (annual?.total_formatted) return String(annual.total_formatted);
+    if (typeof annual?.total === 'number') return formatCurrency(annual.total as number);
   }
   return '—';
 }

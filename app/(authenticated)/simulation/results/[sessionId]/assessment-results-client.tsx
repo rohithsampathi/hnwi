@@ -29,6 +29,7 @@ import {
   StrategicPositioningGaps
 } from '@/components/report';
 import { useAssessmentSSE } from '@/lib/hooks/useAssessmentSSE';
+import { useTheme } from '@/contexts/theme-context';
 
 // Dynamic import for InteractiveWorldMap to avoid SSR issues with Leaflet
 const InteractiveWorldMap = dynamic(
@@ -49,6 +50,7 @@ const InteractiveWorldMap = dynamic(
 export default function AssessmentResultsClient() {
   const params = useParams();
   const router = useRouter();
+  const { theme: appTheme } = useTheme();
   const sessionId = params.sessionId as string;
 
   const [results, setResults] = useState<AssessmentResults | null>(null);
@@ -507,7 +509,7 @@ export default function AssessmentResultsClient() {
         },
       };
 
-      await exportInstitutionalPDF(memoData);
+      await exportInstitutionalPDF(memoData, appTheme);
     } catch (err) {
       alert('Failed to generate PDF. Please try again.');
     }

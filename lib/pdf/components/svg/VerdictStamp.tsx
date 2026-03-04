@@ -65,8 +65,9 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
   // Text block consists of: verdict lines + optional score
   const scoreSize = size * 0.2;
   const scoreLineHeight = scoreSize * 1.1;
+  const scoreGap = hasScore ? fontSize * 0.4 : 0; // gap between verdict text and score
   const totalTextHeight = lines.length * lineHeight
-    + (hasScore ? scoreLineHeight * 0.6 : 0);
+    + (hasScore ? scoreGap + scoreLineHeight * 0.6 : 0);
   // Start y so the block is vertically centered (offset by ~0.35em for baseline)
   const blockStartY = cy - totalTextHeight / 2 + fontSize * 0.35;
 
@@ -94,7 +95,7 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
       {hasScore && (
         <SvgText
           x={String(cx)}
-          y={String(blockStartY + lines.length * lineHeight + scoreLineHeight * 0.3)}
+          y={String(blockStartY + lines.length * lineHeight + scoreGap + scoreLineHeight * 0.3)}
           textAnchor="middle"
           fontSize={scoreSize}
           fontFamily="Inter" fontWeight={700}

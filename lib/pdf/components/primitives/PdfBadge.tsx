@@ -1,12 +1,8 @@
 /**
- * PdfBadge — Shared PDF badge/tag primitive
- * Replaces duplicated badge patterns across 14 PDF components
+ * PdfBadge — Status badge/tag primitive
  *
- * Risk variants use getRiskColor/getRiskBgColor;
- * gold and info have special handling.
- *
- * Uses: darkTheme, typography, spacing, colors, getRiskColor, getRiskBgColor
- * from pdf-styles (no local StyleSheet)
+ * Design: Badges must be readable at 9pt with boosted tint backgrounds.
+ * PDF rendering flattens low-opacity colors — tints use 22% opacity minimum.
  */
 
 import React from 'react';
@@ -40,12 +36,12 @@ const getVariantStyles = (
   switch (variant) {
     case 'gold':
       return {
-        bg: 'rgba(212, 168, 67, 0.15)',
+        bg: colors.tints.goldMedium,
         fg: colors.amber[500],
       };
     case 'info':
       return {
-        bg: 'rgba(59, 130, 246, 0.12)',
+        bg: colors.tints.blueMedium,
         fg: colors.blue[400],
       };
     case 'success':
@@ -82,14 +78,13 @@ export const PdfBadge: React.FC<PdfBadgeProps> = ({ label, variant }) => {
         backgroundColor: bg,
         paddingHorizontal: spacing.sm,
         paddingVertical: spacing.xs,
-        borderRadius: 12,
+        borderRadius: 0.01,
       }}
     >
       <Text
         style={{
           ...typography.micro,
           color: fg,
-          fontSize: 8,
         }}
       >
         {label}
