@@ -112,7 +112,7 @@ const CitationCategoryBlock: React.FC<{
   if (!citations || citations.length === 0) return null;
 
   return (
-    <View style={{ marginBottom: spacing.lg }} wrap={false}>
+    <View style={{ marginBottom: spacing.lg }}>
       {/* Category sub-header */}
       <View
         style={{
@@ -240,7 +240,7 @@ export const PdfReferencesPage: React.FC<PdfReferencesPageProps> = ({
                   fontSize: 9,
                 }}
               >
-                DEVELOPMENTS
+                LEGAL CITATIONS
               </Text>
             </View>
           )}
@@ -263,7 +263,7 @@ export const PdfReferencesPage: React.FC<PdfReferencesPageProps> = ({
                   fontSize: 9,
                 }}
               >
-                PRECEDENTS
+                PRECEDENTS ANALYZED
               </Text>
             </View>
           )}

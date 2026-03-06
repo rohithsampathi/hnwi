@@ -75,11 +75,8 @@ function forwardBackendCookies(response: NextResponse, backendCookieHeader: stri
       cookieOptions.domain = cookieDomain;
     }
 
-    // Add partitioned attribute for Chrome's cookie partitioning
-    // This helps with cross-context scenarios
-    if (isProd) {
-      cookieOptions.partitioned = true;
-    }
+    // Note: partitioned:true intentionally omitted — conflicts with domain
+    // attribute per CHIPS spec; causes Safari to silently drop the cookie.
 
     response.cookies.set(cookieOptions);
   });
@@ -331,8 +328,7 @@ async function handlePost(request: NextRequest) {
           sameSite: isProd ? ('none' as const) : ('lax' as const), // 'none' for PWA in production
           maxAge: 5 * 60, // 5 minutes
           path: '/',
-          ...(cookieDomain ? { domain: cookieDomain } : {}),
-          ...(isProd ? { partitioned: true } : {})
+          ...(cookieDomain ? { domain: cookieDomain } : {})
         };
 
         response.cookies.set('mfa_session', encryptedSession, mfaCookieOptions);
@@ -393,7 +389,6 @@ async function handlePost(request: NextRequest) {
             path: '/'
           };
           if (cookieDomain) sessionUserOptions.domain = cookieDomain;
-          if (isProd) sessionUserOptions.partitioned = true;
 
           response.cookies.set('session_user', sessionUserData, sessionUserOptions);
 
@@ -417,7 +412,6 @@ async function handlePost(request: NextRequest) {
             path: '/'
           };
           if (cookieDomain) accessTokenOptions.domain = cookieDomain;
-          if (isProd) accessTokenOptions.partitioned = true;
 
           response.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
 
@@ -439,7 +433,6 @@ async function handlePost(request: NextRequest) {
             path: '/'
           };
           if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
-          if (isProd) refreshTokenOptions.partitioned = true;
 
           response.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
         }

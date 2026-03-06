@@ -148,6 +148,7 @@ interface PdfPatternIntelligencePageProps {
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
   precedentCount?: number;
+  developmentsCount?: number;
   peerStats?: PeerCohortStats;
   capitalFlow?: CapitalFlowData;
   evidenceAnchors?: Array<{
@@ -164,11 +165,13 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
   sourceJurisdiction,
   destinationJurisdiction,
   precedentCount = 0,
+  developmentsCount,
   peerStats,
   capitalFlow,
   evidenceAnchors = [],
   verdict,
 }) => {
+  const devCount = developmentsCount || precedentCount;
   const theme = getVerdictTheme(verdict);
   const sourceClean = cleanJurisdiction(sourceJurisdiction) || 'Source';
   const destClean = cleanJurisdiction(destinationJurisdiction) || 'Destination';
@@ -190,7 +193,7 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg, padding: 16, backgroundColor: darkTheme.cardBg }} wrap={false}>
         <View>
           <Text style={{ ...styles.microLabelFaint, marginBottom: spacing.xs }}>Intelligence Depth</Text>
-          <Text style={styles.metricLgPrimary}>{precedentCount.toLocaleString()}+</Text>
+          <Text style={styles.metricLgPrimary}>{devCount.toLocaleString()}+</Text>
           <Text style={{ ...styles.captionFaint, marginTop: 2 }}>Validated developments in KGv3</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
@@ -350,7 +353,7 @@ export const PdfPatternIntelligencePage: React.FC<PdfPatternIntelligencePageProp
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
         <Text style={{ ...pdfStyles.footerCenter, marginHorizontal: 12 }}>
-          Pattern intelligence sourced from {precedentCount.toLocaleString()}+ KGv3 developments
+          Pattern intelligence sourced from {devCount.toLocaleString()}+ KGv3 developments
         </Text>
         <GradientDivider width={200} height={1} color={darkTheme.border} />
       </View>

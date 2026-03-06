@@ -32,6 +32,8 @@ async function main() {
     risk_assessment: doc.risk_assessment,
     all_mistakes: doc.all_mistakes,
     identified_risks: doc.identified_risks,
+    thesis: doc.thesis,
+    full_artifact: doc.full_artifact,
   };
 
   await client.close();
@@ -45,7 +47,7 @@ async function main() {
   console.log(`Has memo_data keys: ${Object.keys(memoData.memo_data || {}).length}`);
 
   console.log('\nRendering PDF...');
-  const buffer = await renderToBuffer(React.createElement(PatternAuditDocument, { memoData: memoData as any }));
+  const buffer = await renderToBuffer(React.createElement(PatternAuditDocument, { memoData: memoData as any }) as any);
 
   const outPath = `/tmp/pdf-real-${INTAKE_ID.slice(-8)}.pdf`;
   fs.writeFileSync(outPath, buffer);

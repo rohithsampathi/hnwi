@@ -86,6 +86,8 @@ export async function GET(request: NextRequest, context: RouteParams) {
       risk_assessment: rawData.risk_assessment,
       all_mistakes: rawData.all_mistakes,
       identified_risks: rawData.identified_risks,
+      thesis: rawData.thesis,
+      full_artifact: rawData.full_artifact,
     };
 
     logger.info("Memo data fetched, rendering PDF", {

@@ -17,6 +17,10 @@ export interface PdfMemoData {
   risk_assessment?: RiskAssessment;
   all_mistakes?: Mistake[];
   identified_risks?: any[];
+  // Root-level thesis (object with move_description/expected_outcome or string)
+  thesis?: Record<string, unknown> | string;
+  // Full artifact (contains thesis_summary, verdict, etc.)
+  full_artifact?: Record<string, unknown>;
 }
 
 export interface PdfPreviewData {

@@ -17,8 +17,6 @@ import { TaxRates } from '../pdf-types';
 import { getVerdictTheme } from '../pdf-verdict-theme';
 import {
   GradientAccentBar,
-  HorizontalBar,
-  FlowArrow,
   GradientDivider,
 } from './svg';
 
@@ -313,27 +311,6 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
             {isPositive ? '+' : ''}{benefitValue}%
           </Text>
         </View>
-      </View>
-
-      {/* Visual HorizontalBar Comparisons */}
-      <View style={{ marginBottom: spacing.xl - 4 }}>
-        <Text style={{ ...styles.subSectionTitle, marginBottom: spacing.sm + 4 }}>Rate Comparison — Visual Analysis</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md + 2 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs, backgroundColor: colors.red[700] }} />
-            <Text style={styles.caption}>{sourceClean}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md + 2 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: spacing.xs, backgroundColor: colors.amber[500] }} />
-            <Text style={styles.caption}>{destClean}</Text>
-          </View>
-        </View>
-        {taxTypes.map((tax, index) => (
-          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm + 4, paddingBottom: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: darkTheme.border }}>
-            <Text style={{ ...styles.barLabel, width: 90 }}>{tax.label}</Text>
-            <HorizontalBar currentRate={getTaxRate(effectiveSourceRates, tax.key, tax.altKey) ?? 0} optimizedRate={getTaxRate(effectiveDestRates, tax.key, tax.altKey) ?? 0} width={180} height={22} />
-          </View>
-        ))}
       </View>
 
       {/* Footer */}

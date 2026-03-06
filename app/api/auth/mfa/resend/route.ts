@@ -6,6 +6,19 @@ import { SessionEncryption } from "@/lib/session-encryption"
 import { cookies } from "next/headers"
 import { CSRFProtection } from "@/lib/csrf-protection"
 
+// Must match the cookie domain used in login/route.ts so we overwrite the same cookie
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV !== 'production') return undefined;
+  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
+  if (!productionUrl) return undefined;
+  try {
+    const url = new URL(productionUrl);
+    const hostParts = url.hostname.split('.');
+    if (hostParts.length >= 2) return `.${hostParts.slice(-2).join('.')}`;
+  } catch {}
+  return undefined;
+}
+
 async function handlePost(request: NextRequest) {
   try {
     const { sessionToken } = await request.json()
@@ -117,21 +130,21 @@ async function handlePost(request: NextRequest) {
             message: backendResponse.message || "New security code sent to your email"
           });
           
-          // Update cookies with reset session
-          successResponse.cookies.set('mfa_session', updatedEncryptedSession, {
+          // Update cookies with reset session — must match login/route.ts cookie options
+          // exactly (same sameSite + domain) so we overwrite the original cookie on Safari.
+          const isProd = process.env.NODE_ENV === 'production';
+          const cookieDomain = getCookieDomain();
+          const mfaSessionOptions: any = {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
+            secure: isProd,
+            sameSite: isProd ? 'none' as const : 'lax' as const,
             maxAge: 5 * 60, // 5 minutes
             path: '/'
-          });
-          successResponse.cookies.set(`mfa_token_${sessionToken.substring(0, 8)}`, updatedEncryptedSession, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-            maxAge: 5 * 60, // 5 minutes
-            path: '/'
-          });
+          };
+          if (cookieDomain) mfaSessionOptions.domain = cookieDomain;
+
+          successResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaSessionOptions);
+          successResponse.cookies.set(`mfa_token_${sessionToken.substring(0, 8)}`, updatedEncryptedSession, mfaSessionOptions);
 
           logger.info('MFA resend successful via backend', {
             email: proxySession.email

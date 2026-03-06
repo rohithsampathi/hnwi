@@ -67,7 +67,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.35;
-  const pad = Math.round(size * 0.25); // viewBox padding for label overflow
+  const pad = Math.round(size * 0.4); // viewBox padding for long label overflow (e.g. ANTIFRAGILE)
   const n = scores.length;
   if (n === 0) return null;
   const avgScore = scores.reduce((s, d) => s + d.score, 0) / n;
@@ -131,6 +131,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
         const { x, y } = radarPoint(cx, cy, labelR, i, n, 10, 10);
         const textAnchor = x < cx - 5 ? 'end' : x > cx + 5 ? 'start' : 'middle';
         const scoreColor = getScoreColor(s.score);
+        // Cap label to 6 chars to prevent SVG overflow (e.g. ANTIFRAGILE → ANTI)
+        const rawLabel = s.shortLabel.toUpperCase();
+        const displayLabel = rawLabel.length > 6 ? rawLabel.slice(0, 4) : rawLabel;
 
         return (
           <G key={`lbl-${i}`}>
@@ -143,7 +146,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
               fontWeight={600}
               textAnchor={textAnchor as 'start' | 'middle' | 'end'}
             >
-              {s.shortLabel.toUpperCase()}
+              {displayLabel}
             </SvgText>
             <SvgText
               x={x}

@@ -127,11 +127,11 @@ const styles = {
   scenarioGrowthLabel: { ...typography.microBold, color: darkTheme.textMuted },
   scenarioGrowthValue: { ...typography.microBold, color: darkTheme.textSecondary },
   scenarioYear10Label: { ...typography.microBold, color: darkTheme.textMuted },
-  sparklineCard: { marginBottom: spacing.xl, padding: spacing.md, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border },
+  sparklineCard: { marginBottom: spacing.lg, padding: spacing.md, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border },
   sparklineHeader: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, marginBottom: 12 },
   sparklineTitle: { ...typography.bodyBold, color: darkTheme.textPrimary },
   sparklineFooter: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginTop: spacing.sm },
-  probBox: { marginBottom: spacing.xl, padding: spacing.md, backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: colors.amber[500], borderLeftWidth: 3 },
+  probBox: { marginBottom: spacing.lg, padding: spacing.md, backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: colors.amber[500], borderLeftWidth: 3 },
   probTitle: { ...typography.smallBold, color: colors.amber[500], textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 10 },
   probMetricLabel: { ...typography.microBold, color: darkTheme.textMuted, marginBottom: 4 },
   crisisCard: { width: '48%', backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, padding: 10, marginBottom: 0 },
@@ -168,8 +168,12 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
   const bufferRequired = parseDollarValue(crisisData?.key_metrics?.required_buffer || crisisData?.overall_resilience?.buffer_required);
   const g3Risk = heirManagement?.third_generation_risk;
   const wealthTransfer = heirManagement?.wealth_transfer;
+  // Use compound growth (CAGR) curve instead of linear for realistic wealth projection
   const sparklineData = startingValue > 0 && baseYear10 > 0
-    ? Array.from({ length: 11 }, (_, i) => startingValue + (baseYear10 - startingValue) * (i / 10))
+    ? (() => {
+        const cagr = Math.pow(baseYear10 / startingValue, 1 / 10);
+        return Array.from({ length: 11 }, (_, i) => startingValue * Math.pow(cagr, i));
+      })()
     : [];
   const resilienceColor = resilienceScore >= 60 ? colors.amber[500] : resilienceScore >= 40 ? colors.amber[500] : colors.red[700];
   const resilienceTheme = getVerdictTheme(resilienceScore >= 60 ? 'PROCEED' : resilienceScore >= 40 ? 'RESTRUCTURE' : 'ABORT');
@@ -274,7 +278,7 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
           </View>
           <View style={styles.sparklineFooter}>
             <Text style={{ ...typography.mono, color: darkTheme.textFaint }}>Today: {formatCurrency(startingValue)}</Text>
-            <Text style={{ ...typography.mono, color: darkTheme.textFaint }}>Year 5: {formatCurrency(startingValue + (baseYear10 - startingValue) * 0.5)}</Text>
+            <Text style={{ ...typography.mono, color: darkTheme.textFaint }}>Year 5: {formatCurrency(sparklineData[5] || startingValue)}</Text>
             <Text style={{ fontFamily: 'Courier-Bold', fontSize: 9, color: colors.amber[500] }}>Year 10: {formatCurrency(baseYear10)}</Text>
           </View>
         </View>
@@ -377,7 +381,7 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
 
       {/* ═══ Section 3: Crisis Scenarios Grid ═══ */}
       {hasCrisisScenarios && (
-        <View style={{ marginBottom: spacing.xl }}>
+        <View style={{ marginBottom: spacing.lg }}>
           <Text style={pdfStyles.sectionTitle}>Crisis Scenario Analysis</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {crisisScenarios.slice(0, 4).map((scenario, idx) => {
@@ -415,7 +419,7 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
 
       {/* ═══ Section 4: SFO Recommendations ═══ */}
       {hasCrisisRecommendations && (
-        <View style={{ marginBottom: spacing.xl }}>
+        <View style={{ marginBottom: spacing.lg }}>
           <Text style={pdfStyles.sectionTitle}>SFO Recommendations</Text>
           {crisisRecommendations.map((rec, idx) => (
             <View
@@ -475,14 +479,6 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
         </View>
       )}
 
-      {/* Footer */}
-      <View style={styles.footerRow}>
-        <GradientDivider width={200} height={1} color={darkTheme.border} />
-        <Text style={[pdfStyles.footerCenter, { marginHorizontal: 12 }]}>
-          Stress testing powered by HNWI Chronicles KGv3 Risk Models
-        </Text>
-        <GradientDivider width={200} height={1} color={darkTheme.border} />
-      </View>
     </View>
   );
 };

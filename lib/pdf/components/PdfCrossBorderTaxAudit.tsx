@@ -112,7 +112,7 @@ const RateBarRow: React.FC<RateBarProps> = ({
   maxValue,
   barColor,
   labelColor = darkTheme.textMuted,
-  width = 200,
+  width = 120,
 }) => {
   const barH = 6;
   const totalH = 14;
@@ -122,18 +122,18 @@ const RateBarRow: React.FC<RateBarProps> = ({
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
       <Text
         style={{
-          width: 60,
+          width: 46,
           fontFamily: 'Inter',
           fontWeight: 600,
-          fontSize: 9,
-          letterSpacing: 0.8,
+          fontSize: 8,
+          letterSpacing: 0.6,
           textTransform: 'uppercase',
           color: labelColor,
         }}
       >
         {label}
       </Text>
-      <View style={{ flex: 1, marginRight: 6 }}>
+      <View style={{ flex: 1, marginRight: 4 }}>
         <Svg width={width} height={totalH} viewBox={`0 0 ${width} ${totalH}`}>
           <Rect
             x="0"
@@ -155,11 +155,11 @@ const RateBarRow: React.FC<RateBarProps> = ({
       </View>
       <Text
         style={{
-          width: 36,
+          width: 34,
           textAlign: 'right',
           fontFamily: 'Inter',
           fontWeight: 600,
-          fontSize: 9,
+          fontSize: 8,
           color: labelColor,
         }}
       >
@@ -707,7 +707,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
 
       {/* 8. Net Yield Card */}
       {audit.net_yield_audit && (
-        <View wrap={false}>
+        <View>
           <Text
             style={{
               ...typography.micro,

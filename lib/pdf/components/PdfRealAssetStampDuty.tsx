@@ -39,8 +39,8 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
     return colors.amber[500];
   };
 
-  const rowBase = { flexDirection: 'row' as const, paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'center' as const };
-  const labelStyle = { flex: 2, fontFamily: 'Inter' as const, fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.5, paddingRight: 12 };
+  const rowBase = { flexDirection: 'row' as const, paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: darkTheme.border, alignItems: 'flex-start' as const };
+  const labelText = { fontFamily: 'Inter' as const, fontSize: 10, color: darkTheme.textSecondary, lineHeight: 1.5 };
   const effectiveStyle = { fontFamily: 'Inter' as const, fontSize: 9, color: darkTheme.textMuted, marginTop: 2 };
 
   if (!stampDuty?.found) return null;
@@ -53,11 +53,11 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
       <View style={{ width: '100%', marginBottom: 16, borderTopWidth: 3, borderTopColor: darkTheme.textPrimary, borderBottomWidth: 1, borderBottomColor: darkTheme.border }} wrap={false}>
         {stampDuty.foreign_buyer_surcharge && (
           <View style={[rowBase, { backgroundColor: colors.tints.redLight, borderLeftWidth: 4, borderLeftColor: colors.red[700] }]}>
-            <View style={{ flex: 2 }}>
-              <Text style={labelStyle}>Foreign Buyer Surcharge (ABSD)</Text>
+            <View style={{ flex: 2, paddingRight: 12 }}>
+              <Text style={labelText}>Foreign Buyer Surcharge (ABSD)</Text>
               {!!stampDuty.foreign_buyer_surcharge.effective_date && <Text style={effectiveStyle}>Effective: {stampDuty.foreign_buyer_surcharge.effective_date}</Text>}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0, paddingTop: 2 }}>
               <Text style={[rateStyle, { color: colors.red[700] }]}>{stampDuty.foreign_buyer_surcharge.rate_pct != null ? `${stampDuty.foreign_buyer_surcharge.rate_pct}%` : 'N/A'}</Text>
               <View style={[badgeBase, { backgroundColor: colors.tints.redMedium, borderColor: colors.red[700] }]}>
                 <Text style={[badgeTextStyle, { color: colors.red[700] }]}>{getSeverityLabel(stampDuty.foreign_buyer_surcharge.rate_pct)}</Text>
@@ -68,11 +68,11 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
 
         {stampDuty.commercial_rates && (
           <View style={[rowBase, stampDuty.commercial_rates.foreign_surcharge_pct === 0 && { backgroundColor: colors.tints.goldLight, borderLeftWidth: 4, borderLeftColor: colors.amber[500] }]}>
-            <View style={{ flex: 2 }}>
-              <Text style={labelStyle}>Commercial Property</Text>
+            <View style={{ flex: 2, paddingRight: 12 }}>
+              <Text style={labelText}>Commercial Property</Text>
               {!!stampDuty.commercial_rates.note && <Text style={effectiveStyle}>{stampDuty.commercial_rates.note}</Text>}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0, paddingTop: 2 }}>
               <Text style={[rateStyle, { color: stampDuty.commercial_rates.foreign_surcharge_pct === 0 ? colors.amber[500] : darkTheme.textSecondary }]}>
                 {stampDuty.commercial_rates.foreign_surcharge_pct != null ? `${stampDuty.commercial_rates.foreign_surcharge_pct}%` : 'N/A'}
               </Text>
@@ -87,14 +87,14 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
 
         {Array.isArray(stampDuty.residential_rates) && stampDuty.residential_rates.slice(0, 3).map((tier, idx) => (
           <View key={idx} style={rowBase}>
-            <Text style={[labelStyle, { flex: 2 }]}>{tier.threshold || tier.description || `Tier ${idx + 1}`}</Text>
+            <Text style={[labelText, { flex: 2, paddingRight: 12 }]}>{tier.threshold || tier.description || `Tier ${idx + 1}`}</Text>
             <Text style={[rateStyle, { color: darkTheme.textSecondary }]}>{tier.rate_pct != null ? `${tier.rate_pct}%` : 'N/A'}</Text>
           </View>
         ))}
 
         {transactionValue > 0 && stampDuty.foreign_buyer_surcharge && (
           <View style={[rowBase, { backgroundColor: darkTheme.surfaceBg }]}>
-            <Text style={[labelStyle, { flex: 2, fontFamily: 'Inter', fontWeight: 700 }]}>Impact on {formatCurrency(transactionValue)} Transaction</Text>
+            <Text style={[labelText, { flex: 2, paddingRight: 12, fontWeight: 700 }]}>Impact on {formatCurrency(transactionValue)} Transaction</Text>
             <Text style={[rateStyle, { color: colors.red[700] }]}>{formatCurrency(transactionValue * (stampDuty.foreign_buyer_surcharge.rate_pct / 100))}</Text>
           </View>
         )}

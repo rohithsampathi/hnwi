@@ -1,15 +1,17 @@
 /**
- * PdfAuditOverviewPage — Decision Thesis & Intelligence Foundation
+ * PdfAuditOverviewPage — Decision Thesis & Intelligence Basis
  * Maps to web's AuditOverviewSection (report mode, showMap=false)
- * Shows: Intelligence basis, decision thesis, corridor label
+ *
+ * Web shows (report mode):
+ *   1. Decision Thesis card (fullThesis > thesisSummary, gold bordered card)
+ *   2. Intelligence Basis banner (prose with 2 highlighted numbers)
+ *   3. NO metrics grid, NO corridor arrows (those are personal/map mode only)
  */
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
 import { darkTheme, colors, typography, spacing } from '../pdf-styles';
 import { PdfSectionHeader } from './primitives/PdfSectionHeader';
-import { PdfCard } from './primitives/PdfCard';
-import { PdfMetricGrid } from './primitives/PdfMetricGrid';
 
 interface PdfAuditOverviewPageProps {
   sourceJurisdiction: string;
@@ -19,6 +21,7 @@ interface PdfAuditOverviewPageProps {
   developmentsCount: number;
   precedentCount: number;
   thesisSummary?: string;
+  fullThesis?: string;
   exposureClass?: string;
   verdict?: string;
   cleanJurisdiction: (j: string) => string;
@@ -32,81 +35,103 @@ export const PdfAuditOverviewPage: React.FC<PdfAuditOverviewPageProps> = ({
   developmentsCount,
   precedentCount,
   thesisSummary,
+  fullThesis,
   exposureClass,
-  verdict,
   cleanJurisdiction,
 }) => {
   const srcLabel = cleanJurisdiction(sourceCity || sourceJurisdiction);
   const dstLabel = cleanJurisdiction(destinationCity || destinationJurisdiction);
 
+  // Prefer fullThesis (richer context), fallback to thesisSummary — mirrors web's displayText logic
+  const thesisText = fullThesis || thesisSummary;
+
   return (
     <View>
       <PdfSectionHeader
-        title="Decision Thesis & Intelligence Foundation"
-        badge="AUDIT OVERVIEW"
+        title="Audit Overview"
+        badge="DECISION INTEL"
       />
 
-      {/* Intelligence Basis Metrics */}
-      <PdfMetricGrid
-        columns={3}
-        metrics={[
-          { label: 'Developments Analyzed', value: developmentsCount.toLocaleString(), color: colors.amber[500] },
-          { label: 'Corridor Signals', value: precedentCount.toLocaleString(), color: colors.amber[500] },
-          { label: 'Risk Profile', value: exposureClass || '—' },
-        ]}
-      />
-
-      {/* Corridor Flow */}
-      <PdfCard variant="default">
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.sm }}>
-          <View style={{ alignItems: 'center', flex: 1 }}>
-            <Text style={{ ...typography.micro, color: darkTheme.textMuted, marginBottom: 4, letterSpacing: 1.5, textTransform: 'uppercase' }}>Origin</Text>
-            <Text style={{ ...typography.h3, color: darkTheme.textPrimary }}>{srcLabel}</Text>
-          </View>
-          <View style={{ width: 60, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 30, height: 2, backgroundColor: colors.amber[500] }} />
-              <View style={{ width: 0, height: 0, borderTopWidth: 4, borderBottomWidth: 4, borderLeftWidth: 6, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: colors.amber[500] }} />
+      {/* ─── Decision Thesis card — web: border-2 border-gold/20 bg-gold/5 ── */}
+      {thesisText && (
+        <View style={{
+          marginBottom: spacing.lg,
+          padding: 20,
+          borderWidth: 1.5,
+          borderColor: `${colors.amber[600]}40`,
+          backgroundColor: darkTheme.goldTint,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
+            <View style={{
+              width: 28, height: 28,
+              backgroundColor: `${colors.amber[600]}1A`,
+              alignItems: 'center', justifyContent: 'center',
+              marginRight: 10, flexShrink: 0,
+            }}>
+              <Text style={{ fontSize: 13, fontFamily: 'Inter', color: colors.amber[500] }}>≡</Text>
+            </View>
+            <View>
+              <Text style={{ ...typography.micro, color: colors.amber[500], fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
+                Decision Thesis
+              </Text>
+              <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textMuted }}>
+                Strategic mandate for this evaluation
+              </Text>
             </View>
           </View>
-          <View style={{ alignItems: 'center', flex: 1 }}>
-            <Text style={{ ...typography.micro, color: darkTheme.textMuted, marginBottom: 4, letterSpacing: 1.5, textTransform: 'uppercase' }}>Destination</Text>
-            <Text style={{ ...typography.h3, color: darkTheme.textPrimary }}>{dstLabel}</Text>
-          </View>
+          <Text style={{ fontSize: 10.5, fontFamily: 'Inter', color: darkTheme.textPrimary, lineHeight: 1.65 }}>
+            {thesisText}
+          </Text>
         </View>
-      </PdfCard>
-
-      {/* Decision Thesis */}
-      {thesisSummary && (
-        <PdfCard variant="highlight">
-          <Text style={{ ...typography.micro, color: colors.amber[500], marginBottom: 6, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 700 }}>
-            Decision Thesis
-          </Text>
-          <Text style={{ ...typography.micro, color: darkTheme.textMuted, marginBottom: 8 }}>
-            Strategic mandate for this evaluation
-          </Text>
-          <Text style={{ fontSize: 10, fontFamily: 'Inter', color: darkTheme.textSecondary, lineHeight: 1.6 }}>
-            {thesisSummary}
-          </Text>
-        </PdfCard>
       )}
 
-      {/* Intelligence Basis Note */}
-      <PdfCard variant="default">
+      {/* ─── Intelligence Basis banner — web: border border-border bg-surface ── */}
+      <View style={{
+        padding: 20,
+        borderWidth: 1,
+        borderColor: darkTheme.border,
+        backgroundColor: darkTheme.cardBg,
+      }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: darkTheme.goldTint, borderWidth: 1.5, borderColor: colors.amber[600], alignItems: 'center', justifyContent: 'center', marginRight: spacing.sm }}>
-            <Text style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>{'\u2713'}</Text>
+          {/* Emerald check icon */}
+          <View style={{
+            width: 28, height: 28,
+            backgroundColor: 'rgba(34,197,94,0.08)',
+            alignItems: 'center', justifyContent: 'center',
+            marginRight: 10, flexShrink: 0,
+          }}>
+            <Text style={{ fontSize: 13, fontFamily: 'Inter', color: '#22C55E', fontWeight: 700 }}>{'\u2713'}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ ...typography.micro, color: colors.amber[500], marginBottom: 4, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, color: '#22C55E', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
               Intelligence Basis
             </Text>
-            <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textSecondary, lineHeight: 1.6 }}>
-              This audit draws on {developmentsCount.toLocaleString()} validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against {precedentCount.toLocaleString()} corridor signals specific to the {srcLabel}→{dstLabel} corridor. All findings are citation-backed.
+            {/* Prose matching web exactly — inline highlighted numbers */}
+            <Text style={{ fontSize: 10, fontFamily: 'Inter', color: darkTheme.textSecondary, lineHeight: 1.65 }}>
+              {'This audit draws on '}
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>
+                {developmentsCount.toLocaleString()}
+              </Text>
+              {' validated developments from 3 years of HNWI wealth pattern tracking, cross-referenced against '}
+              <Text style={{ fontFamily: 'Inter', fontWeight: 700, color: colors.amber[500] }}>
+                {precedentCount.toLocaleString()}
+              </Text>
+              {` corridor signals specific to the ${srcLabel}\u2192${dstLabel} corridor. All findings are citation-backed.`}
             </Text>
           </View>
         </View>
-      </PdfCard>
+      </View>
+
+      {/* Exposure Class tag — subtle context row */}
+      {exposureClass && exposureClass !== '—' && (
+        <View style={{ marginTop: spacing.md, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.amber[500], marginRight: 6 }} />
+          <Text style={{ fontSize: 9, fontFamily: 'Inter', color: darkTheme.textMuted }}>
+            {'Risk Profile: '}
+            <Text style={{ color: darkTheme.textSecondary, fontWeight: 700 }}>{exposureClass}</Text>
+          </Text>
+        </View>
+      )}
     </View>
   );
 };

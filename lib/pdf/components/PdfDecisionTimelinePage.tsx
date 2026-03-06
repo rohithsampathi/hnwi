@@ -225,76 +225,74 @@ export const PdfDecisionTimelinePage: React.FC<PdfDecisionTimelinePageProps> = (
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
-       *  SCENARIO BRANCH CARDS
-       *  3-column layout: Proceed Now | Proceed Modified | Do Not Proceed
+       *  SCENARIO BRANCH BLOCKS — Vertical stack (not cramped 3-column)
        * ═══════════════════════════════════════════════════════════════════ */}
       {hasBranches && (
-        <View style={{ marginBottom: 24 }} wrap={false}>
+        <View style={{ marginBottom: 24 }}>
           <Text style={styles.sectionHeading}>Scenario Branches</Text>
-          <View style={{ flexDirection: 'row', columnGap: 8 }}>
-            {branches.slice(0, 3).map((b, idx) => {
-              const displayName = BRANCH_DISPLAY_NAMES[b.branch] || b.branch.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-              const probabilityPct = Math.round((b.probability || 0) * 100);
-              const isRecommended = b.branch === 'proceed_now';
+          {branches.slice(0, 3).map((b, idx) => {
+            const displayName = BRANCH_DISPLAY_NAMES[b.branch] || b.branch.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const probabilityPct = Math.round((b.probability || 0) * 100);
+            const isRecommended = b.branch === 'proceed_now';
+            const branchIndex = idx + 1;
 
-              return (
-                <View
-                  key={idx}
-                  wrap={false}
-                  style={{
-                    flex: 1,
-                    backgroundColor: darkTheme.cardBg,
-                    borderWidth: 1,
-                    borderColor: isRecommended ? colors.amber[500] : darkTheme.border,
-                    borderTopWidth: 3,
-                    borderTopColor: isRecommended ? colors.amber[500] : darkTheme.border,
-                    padding: 12,
-                    marginRight: idx < 2 ? 6 : 0,
-                  }}
-                >
-                  {/* Branch name */}
-                  <Text style={[styles.branchName, { marginBottom: 8 }]}>{displayName}</Text>
-
-                  {/* Probability */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            return (
+              <View
+                key={idx}
+                wrap={false}
+                style={{
+                  backgroundColor: darkTheme.cardBg,
+                  borderWidth: 1,
+                  borderColor: isRecommended ? colors.amber[500] : darkTheme.border,
+                  borderLeftWidth: 4,
+                  borderLeftColor: isRecommended ? colors.amber[500] : darkTheme.border,
+                  padding: 14,
+                  marginBottom: 10,
+                }}
+              >
+                {/* Header row: index + name + probability + EV */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <View style={{ width: 22, height: 22, backgroundColor: isRecommended ? colors.amber[500] : darkTheme.border, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                    <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: darkTheme.contrastText }}>{branchIndex}</Text>
+                  </View>
+                  <Text style={[styles.branchName, { flex: 1 }]}>{displayName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
                     <Text style={styles.branchProbLabel}>Probability</Text>
                     <Text style={styles.branchProbValue}>{probabilityPct}%</Text>
                   </View>
-
-                  {/* Expected value */}
                   {b.expected_value !== undefined && b.expected_value !== null && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
                       <Text style={styles.branchEvLabel}>EV</Text>
                       <Text style={[styles.branchEvValue, { color: b.expected_value >= 0 ? colors.amber[500] : colors.red[700] }]}>{formatCurrency(b.expected_value)}</Text>
                     </View>
                   )}
-
-                  {/* Conditions list */}
-                  {b.conditions && b.conditions.length > 0 && (
-                    <View style={{ marginTop: 4, borderTopWidth: 1, borderTopColor: darkTheme.border, paddingTop: 6 }}>
-                      {b.conditions.slice(0, 4).map((cond, ci) => {
-                        const statusStyle = getStatusStyle(cond.status);
-                        const statusLabel = cond.status.toUpperCase();
-                        return (
-                          <View key={ci} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <View style={{ backgroundColor: statusStyle.bg, borderWidth: 1, borderColor: statusStyle.border, paddingHorizontal: 4, paddingVertical: 1, marginRight: 6, minWidth: 38, alignItems: 'center' }}>
-                              <Text style={[styles.conditionStatus, { color: statusStyle.text }]}>{statusLabel}</Text>
-                            </View>
-                            <Text style={[styles.conditionText, { flex: 1 }]}>{cond.condition}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  {/* Verdict text */}
-                  {!!b.verdict_text && (
-                    <Text style={[styles.branchVerdict, { marginTop: 6 }]}>{b.verdict_text}</Text>
-                  )}
                 </View>
-              );
-            })}
-          </View>
+
+                {/* Conditions — compact 2-column grid */}
+                {b.conditions && b.conditions.length > 0 && (
+                  <View style={{ borderTopWidth: 1, borderTopColor: darkTheme.border, paddingTop: 8 }}>
+                    {b.conditions.slice(0, 5).map((cond, ci) => {
+                      const statusStyle = getStatusStyle(cond.status);
+                      const statusLabel = cond.status.toUpperCase();
+                      return (
+                        <View key={ci} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+                          <View style={{ backgroundColor: statusStyle.bg, borderWidth: 1, borderColor: statusStyle.border, paddingHorizontal: 4, paddingVertical: 1, marginRight: 6, minWidth: 50, alignItems: 'center' }}>
+                            <Text style={[styles.conditionStatus, { color: statusStyle.text }]}>{statusLabel}</Text>
+                          </View>
+                          <Text style={[styles.conditionText, { flex: 1 }]}>{cond.condition}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Verdict text */}
+                {!!b.verdict_text && (
+                  <Text style={[styles.branchVerdict, { marginTop: 6 }]}>{b.verdict_text}</Text>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -424,14 +422,6 @@ export const PdfDecisionTimelinePage: React.FC<PdfDecisionTimelinePageProps> = (
         </View>
       )}
 
-      {/* Footer */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, paddingTop: 12 }}>
-        <GradientDivider width={200} height={1} color={darkTheme.border} />
-        <Text style={[pdfStyles.footerCenter, { marginHorizontal: 12 }]}>
-          Timeline analysis powered by HNWI Chronicles KGv3
-        </Text>
-        <GradientDivider width={200} height={1} color={darkTheme.border} />
-      </View>
     </View>
   );
 };

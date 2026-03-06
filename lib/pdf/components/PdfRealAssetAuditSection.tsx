@@ -26,7 +26,7 @@ const PageFooter: React.FC<{ intakeId: string }> = ({ intakeId }) => (
   <View style={pdfStyles.footer} fixed>
     <Text style={pdfStyles.footerText}>Ref: {intakeId.slice(10, 22).toUpperCase()}</Text>
     <Text style={pdfStyles.footerBrand}>HNWI CHRONICLES</Text>
-    <Text style={pdfStyles.footerText}>Confidential</Text>
+    <Text style={pdfStyles.footerText}>CONFIDENTIAL</Text>
   </View>
 );
 
@@ -79,12 +79,6 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
           );
         })}
 
-        {/* Footer */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: darkTheme.border }}>
-          <View style={{ width: 6, height: 6, backgroundColor: colors.amber[500], transform: 'rotate(45deg)', marginHorizontal: 8 }} />
-          <Text style={{ fontFamily: 'Inter', fontSize: 9, color: darkTheme.textFaint, letterSpacing: 0.5 }}>Powered by HNWI Chronicles KGv3 Real Asset Intelligence Engine</Text>
-          <View style={{ width: 6, height: 6, backgroundColor: colors.amber[500], transform: 'rotate(45deg)', marginHorizontal: 8 }} />
-        </View>
       </View>
 
       <PageFooter intakeId={intakeId} />

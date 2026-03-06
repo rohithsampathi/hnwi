@@ -3,13 +3,16 @@
  * Orchestrator: assembles up to 24 pages from PDF components (full web parity)
  * Uses extractMemoVariables() for all data extraction
  *
- * Page order:
- *  1. Cover → 2. AuditOverview → 3. MemoHeader → 4. Verdict → 5. RiskRadar*
- *  6. TaxAnalysis → 7. LiquidityTrap* → 8. CrossBorderTax* → 9. PeerBenchmark*
- * 10. RiskFactors → 11. StructureComparison* → 12. StressTest → 13. PatternIntelligence
- * 14. HNWITrends* → 15. DecisionTimeline → 16. HeirManagement* → 17. GoldenVisa*
- * 18. TransparencyRegime* → 19. RealAssetAudit* → 20. RegimeIntelligence*
- * 21. References* → 22. RegulatorySources* → 23. Summary → 24. LastPage
+ * Page order (matches UI Linear View flow):
+ *  HEADER:  1. Cover → 2. AuditOverview → 3. MemoHeader
+ *  TAX:     4. TaxAnalysis → 5. CrossBorderTax* → 6. LiquidityTrap*
+ *  VERDICT: 7. Verdict → 8. RiskRadar* → 9. RiskFactors → 10. StressTest*
+ *           11. StructureComparison* → 12. DecisionTimeline*
+ *  INTEL:   13. PeerBenchmark* → 14. PatternIntelligence* → 15. HNWITrends*
+ *  EXTRA:   16. HeirManagement* → 17. GoldenVisa* → 18. TransparencyRegime*
+ *           19. RealAssetAudit* → 20. RegimeIntelligence*
+ *  REFS:    21. RegulatorySources* → 22. References*
+ *  CLOSE:   23. Summary → 24. LastPage
  * (* = conditional)
  */
 
@@ -87,44 +90,34 @@ interface PatternAuditDocumentProps { memoData: PdfMemoData }
 export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memoData }) => {
   const s = buildDocStyles();
   const v = extractMemoVariables(memoData);
-  const riskFactorsForPdf = v.allMistakes.length > 0 ? v.mistakesAsRiskFactors : v.riskFactors;
+  // Use identified_risks (20 items) > all_mistakes (2 items) > risk_factors as fallback
+  const riskFactorsForPdf = v.identifiedRisksAsFactors.length > 0
+    ? v.identifiedRisksAsFactors
+    : (v.allMistakes.length > 0 ? v.mistakesAsRiskFactors : v.riskFactors);
 
   return (
     <Document title={`HNWI Decision Audit - ${v.intakeId.slice(10, 22)}`} author="HNWI Chronicles - Private Intelligence Division" subject="SFO Pattern Audit" keywords="HNWI, Family Office, Decision Audit, Tax Optimization">
       <PdfCoverPage intakeId={v.intakeId} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} generatedAt={v.generatedAt} exposureClass={v.exposureClass} valueCreation={v.valueCreation} verdict={v.verdict} precedentCount={v.precedentCount} viaNegativa={v.pdfViaNegativa} />
 
-      {/* Page 2: Audit Overview */}
+      {/* ═══ SECTION 1: HEADER ═══ */}
+
+      {/* Audit Overview — Decision Thesis */}
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfAuditOverviewPage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} sourceCity={v.sourceCity} destinationCity={v.destinationCity} developmentsCount={v.developmentsCount} precedentCount={v.precedentCount} thesisSummary={v.thesisSummary} exposureClass={v.exposureClass} verdict={v.verdict} cleanJurisdiction={cleanJurisdiction} />
+        <PdfAuditOverviewPage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} sourceCity={v.sourceCity} destinationCity={v.destinationCity} developmentsCount={v.developmentsCount} precedentCount={v.precedentCount} thesisSummary={v.thesisSummary} fullThesis={v.fullThesis} exposureClass={v.exposureClass} verdict={v.verdict} cleanJurisdiction={cleanJurisdiction} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
 
-      {/* Page 3: Memo Header / Executive Summary */}
+      {/* Memo Header — Executive Summary */}
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfMemoHeaderPage intakeId={v.intakeId} generatedAt={v.generatedAt} exposureClass={v.exposureClass} totalSavings={v.valueCreation} precedentCount={v.precedentCount} verdict={v.verdict} optimalStructure={v.optimalStructure} valueCreation={v.memoData.preview_data.value_creation as Record<string, unknown>} viaNegativa={v.pdfViaNegativa} />
+        <PdfMemoHeaderPage intakeId={v.intakeId} generatedAt={v.generatedAt} exposureClass={v.exposureClass} totalSavings={v.valueCreation} precedentCount={v.precedentCount} verdict={v.memoVerdict} optimalStructure={v.optimalStructure} valueCreation={v.memoData.preview_data.value_creation as Record<string, unknown>} viaNegativa={v.pdfViaNegativa} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
 
-      <Page size="A4" style={s.page}>
-        <PageHeader />
-        <PdfVerdictSection verdict={v.verdict} verdictRationale={v.memoData.preview_data.verdict_rationale} riskLevel={v.riskLevel} opportunityCount={v.opportunityCount} riskFactorCount={v.riskFactorCount} dataQuality={v.dataQuality} precedentCount={v.precedentCount} sourceJurisdiction={cleanJurisdiction(v.sourceJurisdiction)} destinationJurisdiction={cleanJurisdiction(v.destJurisdiction)} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} mitigationTimeline={v.riskAssessment?.mitigation_timeline || (v.memoData as Record<string, unknown>).mitigationTimeline as string} criticalItems={v.riskAssessment?.critical_items} highPriority={v.riskAssessment?.high_priority} riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} viaNegativa={v.pdfViaNegativa} />
-        <PageFooter intakeId={v.intakeId} />
-        <ConfidentialWatermark />
-      </Page>
-
-      {/* Page 5: Risk Radar (conditional) */}
-      {v.riskRadarScores && v.riskRadarScores.scores.length > 0 && (
-        <Page size="A4" style={s.page}>
-          <PageHeader />
-          <PdfRiskRadarPage scores={v.riskRadarScores.scores} antifragilityAssessment={v.riskRadarScores.antifragilityAssessment} failureModeCount={v.riskRadarScores.failureModeCount} totalRiskFlags={v.riskRadarScores.totalRiskFlags} isVetoed={v.isViaNegativa} />
-          <PageFooter intakeId={v.intakeId} />
-          <ConfidentialWatermark />
-        </Page>
-      )}
+      {/* ═══ SECTION 2: TAX ANALYSIS (matches UI Page1TaxDashboard) ═══ */}
 
       <Page size="A4" style={s.page}>
         <PageHeader />
@@ -132,16 +125,6 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
-
-      {/* Liquidity Trap (conditional — acquisition stamp duty analysis) */}
-      {v.crossBorderAudit?.acquisition_audit && (
-        <Page size="A4" style={s.page}>
-          <PageHeader />
-          <PdfLiquidityTrapPage capitalIn={v.crossBorderAudit.acquisition_audit.total_acquisition_cost || v.crossBorderAudit.acquisition_audit.property_value || 0} capitalOut={v.crossBorderAudit.acquisition_audit.property_value || 0} primaryBarrier="ABSD (Foreign Buyer)" primaryBarrierCost={v.crossBorderAudit.acquisition_audit.absd_additional_stamp_duty || 0} secondaryBarrier="BSD Stamp Duty" secondaryBarrierCost={v.crossBorderAudit.acquisition_audit.bsd_stamp_duty || 0} dayOneLossPct={v.crossBorderAudit.acquisition_audit.day_one_loss_pct || 0} />
-          <PageFooter intakeId={v.intakeId} />
-          <ConfidentialWatermark />
-        </Page>
-      )}
 
       {/* Cross-Border Tax Audit (conditional) */}
       {v.crossBorderAudit && (
@@ -153,17 +136,36 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 9. Peer Benchmark / Pattern Intelligence (conditional) */}
-      {((v.doctrineMetadata?.failure_modes && v.doctrineMetadata.failure_modes.length > 0) || v.patternIntelligence?.found) && (
+      {/* Liquidity Trap (conditional — acquisition stamp duty analysis) */}
+      {v.crossBorderAudit?.acquisition_audit && (
         <Page size="A4" style={s.page}>
           <PageHeader />
-          <PdfPeerBenchmarkPage precedentCount={v.precedentCount} failurePatterns={(v.doctrineMetadata?.failure_modes || []).map(fm => ({ mode: fm.mode || '', severity: fm.severity || 'LOW', description: fm.description || '', nightmareName: fm.nightmare_name }))} failureModeCount={v.doctrineMetadata?.failure_mode_count || v.doctrineMetadata?.failure_modes?.length || 0} totalRiskFlags={v.doctrineMetadata?.risk_flags_total || 0} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} patternIntelligence={v.patternIntelligence as Parameters<typeof PdfPeerBenchmarkPage>[0]['patternIntelligence']} />
+          <PdfLiquidityTrapPage capitalIn={v.crossBorderAudit.acquisition_audit.total_acquisition_cost || v.crossBorderAudit.acquisition_audit.property_value || 0} capitalOut={v.crossBorderAudit.acquisition_audit.property_value || 0} primaryBarrier="ABSD (Foreign Buyer)" primaryBarrierCost={v.crossBorderAudit.acquisition_audit.absd_additional_stamp_duty || 0} secondaryBarrier="BSD Stamp Duty" secondaryBarrierCost={v.crossBorderAudit.acquisition_audit.bsd_stamp_duty || 0} dayOneLossPct={v.crossBorderAudit.acquisition_audit.day_one_loss_pct || 0} />
           <PageFooter intakeId={v.intakeId} />
           <ConfidentialWatermark />
         </Page>
       )}
 
-      {/* 10. Risk Factors */}
+      {/* ═══ SECTION 3: VERDICT & RISK (matches UI Page2AuditVerdict) ═══ */}
+
+      <Page size="A4" style={s.page}>
+        <PageHeader />
+        <PdfVerdictSection verdict={v.verdict} verdictRationale={v.memoData.preview_data.verdict_rationale} riskLevel={v.riskLevel} opportunityCount={v.opportunityCount} riskFactorCount={v.riskFactorCount} dataQuality={v.dataQuality} precedentCount={v.precedentCount} sourceJurisdiction={cleanJurisdiction(v.sourceJurisdiction)} destinationJurisdiction={cleanJurisdiction(v.destJurisdiction)} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} mitigationTimeline={v.riskAssessment?.mitigation_timeline || (v.memoData as Record<string, unknown>).mitigationTimeline as string} criticalItems={v.riskAssessment?.critical_items} highPriority={v.riskAssessment?.high_priority} riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} viaNegativa={v.pdfViaNegativa} />
+        <PageFooter intakeId={v.intakeId} />
+        <ConfidentialWatermark />
+      </Page>
+
+      {/* Risk Radar (conditional) */}
+      {v.riskRadarScores && v.riskRadarScores.scores.length > 0 && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfRiskRadarPage scores={v.riskRadarScores.scores} antifragilityAssessment={v.riskRadarScores.antifragilityAssessment} failureModeCount={v.riskRadarScores.failureModeCount} totalRiskFlags={v.riskRadarScores.totalRiskFlags} isVetoed={v.isViaNegativa} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
+
+      {/* Risk Factors */}
       <Page size="A4" style={s.page}>
         <PageHeader />
         <PdfRiskFactorsPage riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted || formatCurrency(v.totalExposure)} verdict={v.verdict} />
@@ -171,17 +173,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         <ConfidentialWatermark />
       </Page>
 
-      {/* 11. Structure Comparison (conditional) */}
-      {v.structureOptimization && (
-        <Page size="A4" style={s.page}>
-          <PageHeader />
-          <PdfStructureComparisonPage structureOptimization={v.structureOptimization as Parameters<typeof PdfStructureComparisonPage>[0]['structureOptimization']} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
-          <PageFooter intakeId={v.intakeId} />
-          <ConfidentialWatermark />
-        </Page>
-      )}
-
-      {/* 12. Stress Test & Wealth Projection (conditional — need crisis or projection data) */}
+      {/* Stress Test & Wealth Projection (conditional) */}
       {(v.crisisData || v.wealthProjection || v.startingValue > 0) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
@@ -191,27 +183,17 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 13. Pattern Intelligence & Peer Analysis (conditional — need peer data, capital flows, or evidence anchors) */}
-      {(v.peerStats || v.capitalFlow || (v.evidenceAnchors && v.evidenceAnchors.length > 0)) && (
+      {/* Structure Comparison (conditional) */}
+      {v.structureOptimization && (
         <Page size="A4" style={s.page}>
           <PageHeader />
-          <PdfPatternIntelligencePage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} precedentCount={v.precedentCount} peerStats={v.peerStats} capitalFlow={v.capitalFlow} evidenceAnchors={v.evidenceAnchors} verdict={v.verdict} />
+          <PdfStructureComparisonPage structureOptimization={v.structureOptimization as Parameters<typeof PdfStructureComparisonPage>[0]['structureOptimization']} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
           <PageFooter intakeId={v.intakeId} />
           <ConfidentialWatermark />
         </Page>
       )}
 
-      {/* 14. HNWI Trends (conditional) */}
-      {v.hnwiTrendsData?.insights && v.hnwiTrendsData.insights.length > 0 && (
-        <Page size="A4" style={s.page}>
-          <PageHeader />
-          <PdfHNWITrendsSection trendsData={v.hnwiTrendsData} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
-          <PageFooter intakeId={v.intakeId} />
-          <ConfidentialWatermark />
-        </Page>
-      )}
-
-      {/* 15. Decision Timeline & Scenario Tree (conditional — need cost of inaction or execution steps) */}
+      {/* Decision Timeline & Scenario Tree (conditional) */}
       {(v.costOfInaction || (v.executionSequence && v.executionSequence.length > 0) || v.scenarioTree) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
@@ -221,7 +203,41 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 16. Heir Management (conditional) */}
+      {/* ═══ SECTION 4: INTELLIGENCE (matches UI Page3PeerIntelligence) ═══ */}
+
+      {/* Peer Benchmark (conditional) */}
+      {((v.doctrineMetadata?.failure_modes && v.doctrineMetadata.failure_modes.length > 0) || v.patternIntelligence?.found) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfPeerBenchmarkPage precedentCount={v.precedentCount} failurePatterns={(v.doctrineMetadata?.failure_modes || []).map(fm => ({ mode: fm.mode || '', severity: fm.severity || 'LOW', description: fm.description || '', nightmareName: fm.nightmare_name }))} failureModeCount={v.doctrineMetadata?.failure_mode_count || v.doctrineMetadata?.failure_modes?.length || 0} totalRiskFlags={v.doctrineMetadata?.risk_flags_total || 0} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} patternIntelligence={v.patternIntelligence as Parameters<typeof PdfPeerBenchmarkPage>[0]['patternIntelligence']} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
+
+      {/* Pattern Intelligence & Peer Analysis (conditional) */}
+      {(v.peerStats || v.capitalFlow || (v.evidenceAnchors && v.evidenceAnchors.length > 0)) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfPatternIntelligencePage sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} precedentCount={v.precedentCount} developmentsCount={v.developmentsCount} peerStats={v.peerStats} capitalFlow={v.capitalFlow} evidenceAnchors={v.evidenceAnchors} verdict={v.verdict} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
+
+      {/* HNWI Trends (conditional) */}
+      {v.hnwiTrendsData?.insights && v.hnwiTrendsData.insights.length > 0 && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfHNWITrendsSection trendsData={v.hnwiTrendsData} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
+
+      {/* ═══ SECTION 5: SUPPLEMENTARY ═══ */}
+
+      {/* Heir Management (conditional) */}
       {v.heirManagement && (v.heirManagement.heir_allocations?.length > 0 || v.heirManagement.third_generation_risk || v.heirManagement.with_structure || v.heirManagement.g1_position) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
@@ -231,7 +247,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 17. Golden Visa / Investment Migration (conditional) */}
+      {/* Golden Visa / Investment Migration (conditional) */}
       {((v.destinationDrivers?.visa_programs && v.destinationDrivers.visa_programs.length > 0) || v.goldenVisaIntelligence) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
@@ -241,7 +257,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 18. Transparency Regime (conditional) */}
+      {/* Transparency Regime (conditional) */}
       {v.transparencyData && (
         <Page size="A4" style={s.page}>
           <PageHeader />
@@ -251,7 +267,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         </Page>
       )}
 
-      {/* 19. Real Asset Audit (conditional) */}
+      {/* Real Asset Audit (conditional) */}
       {v.realAssetAudit && Object.keys(v.realAssetAudit).length > 0 && (
         <PdfRealAssetAuditSection data={v.realAssetAudit} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} transactionValue={v.startingValue} intakeId={v.intakeId} />
       )}
@@ -260,15 +276,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
         <PdfRegimeIntelligenceSection regimeIntelligence={v.regimeIntelligence} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} intakeId={v.intakeId} />
       )}
 
-      {/* Legal References (conditional) */}
-      {v.legalReferences && ((v.legalReferences.total_count || 0) > 0 || v.legalReferences.tax_statutes?.length || v.legalReferences.regulations?.length) && (
-        <Page size="A4" style={s.page}>
-          <PageHeader />
-          <PdfReferencesPage references={v.legalReferences} developmentsCount={v.developmentsCount} precedentCount={v.precedentCount} />
-          <PageFooter intakeId={v.intakeId} />
-          <ConfidentialWatermark />
-        </Page>
-      )}
+      {/* ═══ SECTION 6: REFERENCES (matches UI RegulatorySourcesSection + ReferencesSection) ═══ */}
 
       {/* Regulatory Sources (conditional) */}
       {v.regulatoryCitations && v.regulatoryCitations.length > 0 && (
@@ -279,6 +287,18 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
           <ConfidentialWatermark />
         </Page>
       )}
+
+      {/* Legal References (conditional) */}
+      {v.legalReferences && ((v.legalReferences.total_count || 0) > 0 || v.legalReferences.tax_statutes?.length || v.legalReferences.regulations?.length) && (
+        <Page size="A4" style={s.page}>
+          <PageHeader />
+          <PdfReferencesPage references={v.legalReferences} developmentsCount={v.legalCitationCount} precedentCount={v.precedentCount} />
+          <PageFooter intakeId={v.intakeId} />
+          <ConfidentialWatermark />
+        </Page>
+      )}
+
+      {/* ═══ SECTION 7: CLOSING ═══ */}
 
       <Page size="A4" style={s.page}>
         <PageHeader />

@@ -236,21 +236,21 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
         </View>
       )}
 
-      {/* Risk Cards */}
-      {sortedRiskFactors.slice(0, 6).map((risk, index) => (
+      {/* Risk Cards — show all identified risks */}
+      {sortedRiskFactors.map((risk, index) => (
         <View key={index} wrap={false} style={{
           backgroundColor: severityBg(risk.severity) || darkTheme.pageBg,
-          borderWidth: 1, borderColor: darkTheme.border, marginBottom: 10, position: 'relative', overflow: 'hidden',
+          borderWidth: 1, borderColor: darkTheme.border, marginBottom: 6, position: 'relative', overflow: 'hidden',
           borderLeftWidth: ['critical', 'high', 'medium'].includes(risk.severity) ? 4 : 1,
           borderLeftColor: ['critical', 'high', 'medium'].includes(risk.severity) ? severityBorderColor(risk.severity) : darkTheme.border,
         }}>
-          <View style={{ padding: spacing.md }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+          <View style={{ paddingVertical: 8, paddingHorizontal: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 20, height: 20, borderRadius: 0.01, backgroundColor: darkTheme.surfaceBg, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                <View style={{ width: 18, height: 18, borderRadius: 0.01, backgroundColor: darkTheme.surfaceBg, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
                   <Text style={styles.cardIndex}>{index + 1}</Text>
                 </View>
-                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: severityColor(risk.severity), backgroundColor: severityBadgeBg(risk.severity) }}>
+                <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: severityColor(risk.severity), backgroundColor: severityBadgeBg(risk.severity) }}>
                   <Text style={{ ...styles.severityBadge, color: severityColor(risk.severity) }}>{risk.severity.toUpperCase()}</Text>
                 </View>
               </View>
@@ -261,28 +261,20 @@ export const PdfRiskFactorsPage: React.FC<PdfRiskFactorsPageProps> = ({
               )}
             </View>
 
-            <Text style={{ ...styles.riskTitle, marginBottom: 6, marginTop: 4 }}>{risk.title}</Text>
-            {!!risk.description && (
-              <Text style={styles.riskDescription}>{risk.description}</Text>
-            )}
+            <Text style={{ ...styles.riskTitle, marginBottom: 2, marginTop: 2 }}>{risk.title}</Text>
 
             {!!(risk.mitigation || risk.mitigation_timeline_days) && (
-              <View style={{ marginTop: 10, backgroundColor: darkTheme.goldTint, borderLeftWidth: 3, borderLeftColor: colors.amber[600], padding: spacing.sm + 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                  <Text style={{ ...styles.microLabel, letterSpacing: 0.5, marginRight: spacing.sm }}>Mitigation Plan</Text>
+              <View style={{ marginTop: 6, backgroundColor: darkTheme.goldTint, borderLeftWidth: 3, borderLeftColor: colors.amber[600], paddingVertical: 4, paddingHorizontal: spacing.sm }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                  <Text style={{ ...styles.microLabel, letterSpacing: 0.5, marginRight: spacing.sm }}>Mitigation</Text>
                   {!!risk.mitigation_timeline_days && (
-                    <View style={{ backgroundColor: darkTheme.goldTint, borderWidth: 1, borderColor: colors.amber[600], paddingHorizontal: 6, paddingVertical: 2 }}>
+                    <View style={{ backgroundColor: darkTheme.goldTint, borderWidth: 1, borderColor: colors.amber[600], paddingHorizontal: 6, paddingVertical: 1 }}>
                       <Text style={{ ...styles.mitigationBadge, color: colors.amber[600] }}>{risk.mitigation_timeline_days} DAYS</Text>
-                    </View>
-                  )}
-                  {!!risk.mitigation_action_type && (
-                    <View style={{ backgroundColor: darkTheme.surfaceBg, borderWidth: 1, borderColor: darkTheme.border, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
-                      <Text style={{ ...styles.actionTypeBadge, color: darkTheme.textSecondary }}>{risk.mitigation_action_type}</Text>
                     </View>
                   )}
                 </View>
                 {!!risk.mitigation && (
-                  <Text style={styles.mitigationBody}>{risk.mitigation}</Text>
+                  <Text style={{ ...styles.mitigationBody, fontSize: 9 }}>{risk.mitigation}</Text>
                 )}
               </View>
             )}

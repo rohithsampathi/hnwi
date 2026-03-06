@@ -185,6 +185,7 @@ export interface MemoVariables {
   riskFactors: RiskFactor[];
   mistakesAsRiskFactors: RiskFactor[];
   allMistakes: Mistake[];
+  identifiedRisksAsFactors: RiskFactor[];
   totalExposure: number;
   riskFactorCount: number;
 
@@ -246,12 +247,16 @@ export interface MemoVariables {
 
   // Decision Thesis
   thesisSummary: string | undefined;
+  fullThesis: string | undefined;
   sourceCity: string | undefined;
   destinationCity: string | undefined;
   developmentsCount: number;
+  // Verdict for MemoHeader (structure_optimization.verdict = PROCEED/PROCEED_MODIFIED/etc.)
+  memoVerdict: string;
 
   // Legal References & Citations
   legalReferences: LegalReferences | undefined;
+  legalCitationCount: number;
   regulatoryCitations: RegulatoryCitation[];
 
   // Memo metadata
@@ -265,8 +270,9 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   const sourceJurisdiction = safeText(preview_data.source_jurisdiction, '—');
   const destJurisdiction = safeText(preview_data.destination_jurisdiction, '—');
 
-  // Verdict
-  const riskAssessment = getRiskAssessment(preview_data);
+  // Verdict — check root-level risk_assessment first (matches web: backendData?.risk_assessment || preview_data.risk_assessment)
+  const riskAssessment = (memoData as Record<string, unknown>).risk_assessment as RiskAssessment | undefined
+    || getRiskAssessment(preview_data);
   const verdict = safeText(riskAssessment?.verdict || preview_data.verdict, '—');
   const riskLevel = safeText(riskAssessment?.risk_level || preview_data.risk_level, '—');
 
@@ -298,10 +304,42 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   const sourceTaxRates = preview_data.source_tax_rates || preview_data.tax_differential?.source || {};
   const destTaxRates = preview_data.destination_tax_rates || preview_data.tax_differential?.destination || {};
 
-  // Risks
+  // Risks — check root-level data first (matches web: backendData?.all_mistakes || preview_data.all_mistakes)
   const riskFactors = preview_data.risk_factors || [];
-  const allMistakes = getAllMistakes(preview_data);
+  const rootMistakes = (memoData as Record<string, unknown>).all_mistakes as Mistake[] | undefined;
+  const allMistakes = (rootMistakes && rootMistakes.length > 0) ? rootMistakes : getAllMistakes(preview_data);
   const mistakesAsRiskFactors = mapMistakesToRiskFactors(allMistakes);
+
+  // identified_risks lives at memoData root (from MongoDB document root), NOT inside preview_data
+  const identifiedRisks = (memoData.identified_risks as Array<Record<string, unknown>> | undefined)
+    || (preview_data as Record<string, unknown>).identified_risks as Array<Record<string, unknown>> | undefined;
+
+  const identifiedRisksAsFactors: RiskFactor[] = (identifiedRisks || []).map((r) => {
+    // Map severity: check string fields first, then numeric urgency_level (1-10 scale)
+    const severityStr = ((r.severity as string) || (r.urgency as string) || '').toLowerCase();
+    let sev: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+    if (severityStr.includes('critical')) sev = 'critical';
+    else if (severityStr.includes('high')) sev = 'high';
+    else if (severityStr.includes('low')) sev = 'low';
+    else if (severityStr.includes('medium')) sev = 'medium';
+    else if (typeof r.urgency_level === 'number') {
+      // Numeric urgency_level: 9-10=critical, 7-8=high, 5-6=medium, 1-4=low
+      const ul = r.urgency_level as number;
+      if (ul >= 9) sev = 'critical';
+      else if (ul >= 7) sev = 'high';
+      else if (ul >= 5) sev = 'medium';
+      else sev = 'low';
+    }
+
+    return {
+      title: (r.title as string) || (r.risk as string) || 'Unspecified Risk',
+      description: (r.description as string) || (r.fix as string) || (r.mitigation as string) || (r.action_required as string) || (r.impact as string) || '',
+      severity: sev,
+      exposure_amount: (r.cost_numeric as number) || (r.exposure_value as number) || parseDollarAmount((r.cost as string) || '') || 0,
+      cost_display: (r.cost as string) || undefined,
+      mitigation: (r.mitigation as string) || (r.fix as string) || (r.action_required as string) || '',
+    };
+  });
 
   // Total exposure
   let totalExposure = 0;
@@ -321,7 +359,9 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
 
   const opportunities = preview_data.all_opportunities || [];
   const opportunityCount = opportunities.length;
-  const riskFactorCount = allMistakes.length > 0 ? allMistakes.length : riskFactors.length;
+  const riskFactorCount = identifiedRisksAsFactors.length > 0
+    ? identifiedRisksAsFactors.length
+    : (allMistakes.length > 0 ? allMistakes.length : riskFactors.length);
 
   // Expert sections
   const crisisData = getCrisisData(preview_data) || parseCrisisData(preview_data.crisis_resilience_stress_test);
@@ -422,17 +462,56 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   // Pattern Intelligence
   const patternIntelligence = preview_data.pattern_intelligence as PatternIntelligence | undefined;
 
-  // Decision Thesis
+  // Decision Thesis — check all known field paths
+  // Priority: full_artifact.thesis_summary > root thesis object (move_description+expected_outcome) > preview_data fields
   const thesisSummary = safeText(
     preview_data.thesis_summary || preview_data.decision_thesis || preview_data.decision_context,
     undefined
   ) || undefined;
+
+  // Resolve fullThesis: handle thesis as object { move_description, expected_outcome } or string
+  const rootThesisRaw = (memoData as Record<string, unknown>).thesis;
+  const fullArtifactRaw = (memoData as Record<string, unknown>).full_artifact as Record<string, unknown> | undefined;
+  let fullThesis: string | undefined;
+  // 1. full_artifact.thesis_summary is the cleanest combined text
+  if (fullArtifactRaw?.thesis_summary && typeof fullArtifactRaw.thesis_summary === 'string') {
+    fullThesis = fullArtifactRaw.thesis_summary;
+  } else if (rootThesisRaw && typeof rootThesisRaw === 'object') {
+    // 2. Root thesis object — combine move_description + expected_outcome
+    const t = rootThesisRaw as Record<string, unknown>;
+    const parts = [t.move_description, t.expected_outcome].filter(v => v && typeof v === 'string').map(String);
+    if (parts.length > 0) fullThesis = parts.join('\n\n');
+  } else if (typeof rootThesisRaw === 'string' && rootThesisRaw.trim()) {
+    // 3. Root thesis as string (e.g. from Python backend response)
+    fullThesis = rootThesisRaw;
+  }
+  // 4. Fallback to preview_data fields
+  if (!fullThesis) {
+    fullThesis = safeText(
+      (preview_data as Record<string, unknown>).thesis as string ||
+      (preview_data as Record<string, unknown>).user_input as string ||
+      (memo_data as Record<string, unknown>).thesis as string ||
+      preview_data.decision_context ||
+      thesisSummary,
+      undefined
+    ) || undefined;
+  }
+
+  // Verdict for MemoHeader display (web uses structure_optimization.verdict = "PROCEED"/"PROCEED_MODIFIED"/etc.)
+  // distinct from risk_assessment.verdict ("APPROVED") which is for the cover badge
+  const structureOptVerdict = (preview_data.structure_optimization as Record<string, unknown> | undefined)?.verdict as string | undefined;
+  const memoVerdict = safeText(structureOptVerdict || verdict, '—');
   const sourceCity = safeText(preview_data.source_city, undefined) || undefined;
   const destinationCity = safeText(preview_data.destination_city, undefined) || undefined;
-  const developmentsCount = (preview_data as Record<string, unknown>).developments_count as number || precedentCount;
+  // developmentsCount: HNWI World global DB count — web uses backendData?.hnwiWorldCount || 1966
+  // Not per-audit; use memo_data field if present, else 1966 as platform default
+  const developmentsCount = (preview_data as Record<string, unknown>).developments_count as number
+    || (memo_data as Record<string, unknown>).hnwi_world_count as number
+    || 1966;
 
   // Legal References & Regulatory Citations
   const legalReferences = preview_data.legal_references as LegalReferences | undefined;
+  const legalCitationCount = legalReferences?.total_count || 0;
   const regulatoryCitations: RegulatoryCitation[] = (preview_data.regulatory_citations as RegulatoryCitation[] | undefined)
     || legalReferences?.regulatory_sources
     || [];
@@ -455,6 +534,7 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
     riskFactors,
     mistakesAsRiskFactors,
     allMistakes,
+    identifiedRisksAsFactors,
     totalExposure,
     riskFactorCount,
     opportunities,
@@ -495,10 +575,13 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
     riskRadarScores,
     patternIntelligence,
     thesisSummary,
+    fullThesis,
+    memoVerdict,
     sourceCity,
     destinationCity,
     developmentsCount,
     legalReferences,
+    legalCitationCount,
     regulatoryCitations,
 
     memoData,

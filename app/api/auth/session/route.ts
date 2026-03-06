@@ -167,7 +167,6 @@ async function handlePost(request: NextRequest) {
         path: '/'
       };
       if (cookieDomain) sessionTokenOptions.domain = cookieDomain;
-      if (isProd) sessionTokenOptions.partitioned = true;
 
       response.cookies.set('session_token', result.token, sessionTokenOptions);
 
@@ -189,7 +188,6 @@ async function handlePost(request: NextRequest) {
         path: '/'
       };
       if (cookieDomain) sessionUserOptions.domain = cookieDomain;
-      if (isProd) sessionUserOptions.partitioned = true;
 
       response.cookies.set('session_user', encryptedUserData, sessionUserOptions);
     }

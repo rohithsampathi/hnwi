@@ -126,10 +126,8 @@ async function handlePost(request: NextRequest) {
             cookieOptions.domain = cookieDomain;
           }
 
-          // Add partitioned attribute for Chrome's cookie partitioning
-          if (isProd) {
-            cookieOptions.partitioned = true;
-          }
+          // Note: partitioned:true intentionally omitted — conflicts with domain
+          // attribute per CHIPS spec; causes Safari to silently drop the cookie.
 
           response.cookies.set(cookieOptions);
         });
@@ -146,7 +144,6 @@ async function handlePost(request: NextRequest) {
         maxAge: accessTokenAge
       };
       if (cookieDomain) accessTokenOptions.domain = cookieDomain;
-      if (isProd) accessTokenOptions.partitioned = true;
 
       response.cookies.set('access_token', tokenData.access_token, accessTokenOptions);
 
@@ -161,7 +158,6 @@ async function handlePost(request: NextRequest) {
           maxAge: refreshTokenAge
         };
         if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
-        if (isProd) refreshTokenOptions.partitioned = true;
 
         response.cookies.set('refresh_token', tokenData.refresh_token, refreshTokenOptions);
       }

@@ -318,7 +318,8 @@ async function handlePost(request: NextRequest) {
               maxAge: accessTokenAge
             };
             if (cookieDomain) accessTokenOptions.domain = cookieDomain;
-            if (isProd) accessTokenOptions.partitioned = true;
+            // Note: partitioned:true is intentionally omitted — it conflicts with domain
+            // attribute per CHIPS spec and causes Safari to silently drop the cookie.
 
             successResponse.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
             logger.info('access_token cookie set from response body', {
@@ -337,7 +338,6 @@ async function handlePost(request: NextRequest) {
               maxAge: refreshTokenAge
             };
             if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
-            if (isProd) refreshTokenOptions.partitioned = true;
 
             successResponse.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
             logger.info('refresh_token cookie set from response body', {
@@ -369,7 +369,6 @@ async function handlePost(request: NextRequest) {
             maxAge: 7 * 24 * 60 * 60 // 7 days
           };
           if (cookieDomain) sessionUserOptions.domain = cookieDomain;
-          if (isProd) sessionUserOptions.partitioned = true;
 
           successResponse.cookies.set('session_user', sessionUserData, sessionUserOptions);
 
@@ -388,7 +387,6 @@ async function handlePost(request: NextRequest) {
               maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token
             };
             if (cookieDomain) rememberOptions.domain = cookieDomain;
-            if (isProd) rememberOptions.partitioned = true;
 
             successResponse.cookies.set('remember_me', 'true', rememberOptions);
           } else {
@@ -433,7 +431,6 @@ async function handlePost(request: NextRequest) {
             path: '/',
           };
           if (failCookieDomain) mfaFailOptions.domain = failCookieDomain;
-          if (isProdFail) mfaFailOptions.partitioned = true;
 
           // Update cookies with new attempt count
           failResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaFailOptions);
@@ -472,7 +469,6 @@ async function handlePost(request: NextRequest) {
           path: '/',
         };
         if (errCookieDomain) mfaErrOptions.domain = errCookieDomain;
-        if (isProdErr) mfaErrOptions.partitioned = true;
 
         // Update cookies with new attempt count
         errorResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaErrOptions);

@@ -100,7 +100,7 @@ export const PdfLastPage: React.FC<PdfLastPageProps> = ({ intakeId, precedentCou
       <View style={{ position: 'absolute', top: spacing.xxxl, left: spacing.xxxl }}><View style={s.lnH} /><View style={s.lnV} /></View>
       <View style={{ position: 'absolute', top: spacing.xxxl, right: spacing.xxxl }}><View style={{ ...s.lnH, alignSelf: 'flex-end' }} /><View style={{ ...s.lnV, position: 'absolute', right: 0 }} /></View>
 
-      <View wrap={false} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 80, paddingVertical: 32 }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 80, paddingVertical: 32 }}>
         {/* Monogram */}
         <View style={{ width: 52, height: 52, borderWidth: 2, borderColor: colors.amber[500], alignItems: 'center', justifyContent: 'center', marginBottom: 20, position: 'relative' }}>
           <View style={{ position: 'absolute', top: 3, left: 3, right: 3, bottom: 3, borderWidth: 1, borderColor: colors.amber[600] }} />
