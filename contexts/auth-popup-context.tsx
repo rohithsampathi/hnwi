@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 import { AuthPopup } from "@/components/auth-popup"
 import { registerAuthPopupCallback } from "@/lib/secure-api"
+import { isLoginAttemptInProgress } from "@/lib/unified-auth-manager"
 
 interface AuthPopupContextType {
   showAuthPopup: (options?: {
@@ -46,6 +47,14 @@ export function AuthPopupProvider({ children }: AuthPopupProviderProps) {
       if (pathname.includes('/simulation') || pathname.includes('/decision-memo') || pathname.includes('/war-room')) {
         return;
       }
+    }
+
+    // CRITICAL: Never show auth popup while a login attempt is in progress.
+    // The login flow uses requireAuth=false but silentClearClientState() clears
+    // existing auth state, which can trigger concurrent 401s from other API calls.
+    // Showing the popup here would overlay the login form's inline error.
+    if (isLoginAttemptInProgress()) {
+      return;
     }
 
     // ROOT FIX: Guard applies in ALL modes, including PWA standalone.

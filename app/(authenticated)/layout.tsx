@@ -22,6 +22,7 @@ import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
 import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib/auth-manager"
 import { secureApi } from "@/lib/secure-api"
+import { isLoginAttemptInProgress } from "@/lib/unified-auth-manager"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import '@/lib/auth/debug-helper' // Load debug helper
 
@@ -241,7 +242,58 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           }
         }
 
+        // MOBILE FIX: If session + refresh both failed but localStorage has a userId,
+        // cookies may not have synced from the mobile OS cookie store yet.
+        // Wait and retry once before giving up.
+        const hasLocalUser = !!localStorage.getItem('userId')
+        if (hasLocalUser && !isRecentLogin) {
+          console.log('[Auth] Session validation failed but localStorage has userId — retrying after delay')
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          const retryResponse = await fetch('/api/auth/session', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json()
+            if (retryData.user) {
+              authManager.login(retryData.user)
+              setUser(retryData.user)
+              setSessionValidated(true)
+              return
+            }
+          }
+          // Also retry refresh
+          const retryRefresh = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (retryRefresh.ok) {
+            const retrySession = await fetch('/api/auth/session', {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            if (retrySession.ok) {
+              const retryData = await retrySession.json()
+              if (retryData.user) {
+                authManager.login(retryData.user)
+                setUser(retryData.user)
+                setSessionValidated(true)
+                return
+              }
+            }
+          }
+        }
+
         // Session AND refresh both failed — session is definitively lost.
+        // But if a login attempt is currently in progress (auth popup or splash screen),
+        // don't interfere — let the login flow handle errors inline.
+        if (isLoginAttemptInProgress()) {
+          console.log('[Auth] Session validation failed but login in progress - deferring')
+          setSessionValidated(true)
+          return
+        }
+
         // Do NOT trust localStorage here — it's stale. Redirect immediately.
         console.log('[Auth] Session validation failed - clearing stale state and redirecting')
         authManager.logout()
@@ -296,49 +348,63 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         const { authManager } = await import('@/lib/auth-manager')
         await authManager.waitForInitialization()
 
-        // Try session check
-        const sessionResponse = await fetch('/api/auth/session', {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (sessionResponse.ok) {
-          const data = await sessionResponse.json()
-          if (data.user) {
-            authManager.login(data.user)
-            setUser(data.user)
-            setIsAuthenticated(true)
-            setIsInitialLoad(false)
-            return
-          }
-        }
-
-        // Session invalid - try refresh token
-        const refreshResponse = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (refreshResponse.ok) {
-          const newSessionResponse = await fetch('/api/auth/session', {
+        // Helper: try session + refresh validation
+        const tryValidateSession = async (): Promise<any | null> => {
+          const sessionResponse = await fetch('/api/auth/session', {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
           })
-
-          if (newSessionResponse.ok) {
-            const data = await newSessionResponse.json()
-            if (data.user) {
-              authManager.login(data.user)
-              setUser(data.user)
-              setIsAuthenticated(true)
-              setIsInitialLoad(false)
-              return
+          if (sessionResponse.ok) {
+            const data = await sessionResponse.json()
+            if (data.user) return data.user
+          }
+          // Session invalid - try refresh token
+          const refreshResponse = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (refreshResponse.ok) {
+            const newSessionResponse = await fetch('/api/auth/session', {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            if (newSessionResponse.ok) {
+              const data = await newSessionResponse.json()
+              if (data.user) return data.user
             }
+          }
+          return null
+        }
+
+        // First attempt
+        let validatedUser = await tryValidateSession()
+
+        // MOBILE FIX: If first attempt fails but localStorage indicates a prior session,
+        // cookies may not have synced from the mobile OS cookie store yet.
+        // Retry once after a delay to give cookies time to propagate.
+        if (!validatedUser && typeof window !== 'undefined') {
+          const hasLocalUser = !!localStorage.getItem('userId')
+          if (hasLocalUser) {
+            console.log('[Auth] Session check failed but localStorage has userId — retrying after delay (mobile cookie sync)')
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            validatedUser = await tryValidateSession()
           }
         }
 
-        // No valid session - redirect to login
+        if (validatedUser) {
+          authManager.login(validatedUser)
+          setUser(validatedUser)
+          setIsAuthenticated(true)
+          setIsInitialLoad(false)
+          return
+        }
+
+        // No valid session - redirect to login (unless login is in progress)
+        if (isLoginAttemptInProgress()) {
+          setIsInitialLoad(false)
+          return
+        }
         setIsAuthenticated(false)
         setIsInitialLoad(false)
         router.push("/")
@@ -355,7 +421,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             return
           }
         }
-        // No active session — redirect to splash
+        // No active session — redirect to splash (unless login is in progress)
+        if (isLoginAttemptInProgress()) {
+          setIsInitialLoad(false)
+          return
+        }
         setIsAuthenticated(false)
         setIsInitialLoad(false)
         router.push("/")
@@ -370,6 +440,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     const handleLogout = () => {
       // Ignore logout events on public routes
       if (isPublicRoute(pathname || '')) {
+        return
+      }
+
+      // Don't redirect during an active login attempt — the login form
+      // handles errors inline and a redirect would close the auth popup.
+      if (isLoginAttemptInProgress()) {
         return
       }
 

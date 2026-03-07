@@ -55,8 +55,66 @@ export default function Home() {
         }
       }
 
+      // MOBILE FIX: If getCurrentUser returned a minimal user from localStorage only
+      // (no sessionStorage = hard refresh), validate with backend before redirecting.
+      // This prevents redirecting to /dashboard where the authenticated layout would
+      // fail validation (cookies may not have synced yet on mobile) and bounce back.
+      const hasFullSession = !!sessionStorage.getItem('userObject')
+      if (user && (user.id || user.user_id) && !hasFullSession) {
+        // Hard refresh case — validate session with backend first
+        try {
+          const sessionResponse = await fetch('/api/auth/session', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (sessionResponse.ok) {
+            const data = await sessionResponse.json()
+            if (data.user) {
+              // Session confirmed valid — safe to redirect
+              const { loginUser } = await import("@/lib/auth-manager")
+              loginUser(data.user) // Populates sessionStorage for layout
+              setIsRedirecting(true)
+              router.push("/dashboard")
+              return
+            }
+          }
+          // Session check failed — try refresh
+          const refreshResponse = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          if (refreshResponse.ok) {
+            const retrySession = await fetch('/api/auth/session', {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            if (retrySession.ok) {
+              const retryData = await retrySession.json()
+              if (retryData.user) {
+                const { loginUser } = await import("@/lib/auth-manager")
+                loginUser(retryData.user)
+                setIsRedirecting(true)
+                router.push("/dashboard")
+                return
+              }
+            }
+          }
+          // Both failed — user needs to login again, show splash screen
+          // Clear stale localStorage to prevent infinite redirect loop
+          localStorage.removeItem('userId')
+          localStorage.removeItem('loginTimestamp')
+        } catch {
+          // Network error — still redirect, layout will handle retries
+          setIsRedirecting(true)
+          router.push("/dashboard")
+          return
+        }
+        return
+      }
+
       if (user && (user.id || user.user_id)) {
-        // User appears to be logged in, redirect to dashboard immediately
+        // User has full session (sessionStorage present) — redirect immediately
         setIsRedirecting(true)
         router.push("/dashboard")
       }

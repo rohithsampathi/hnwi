@@ -41,6 +41,12 @@ class UnifiedAuthManager {
   }
   private listeners: Set<(state: AuthState) => void> = new Set()
   private mfaEmail: string | null = null
+  // Track whether a login attempt is in progress to prevent auth popup interference
+  private _loginInProgress = false
+
+  public get isLoginInProgress(): boolean {
+    return this._loginInProgress
+  }
 
   private constructor() {
     // Initialize with existing auth state on startup
@@ -108,6 +114,16 @@ class UnifiedAuthManager {
     // Use silent clear to avoid dispatching auth:logout during a fresh login attempt
     await this.silentClearClientState()
 
+    // CRITICAL: Re-set loginTimestamp after silentClearClientState clears it.
+    // This keeps the auth popup's 2-minute guard active (auth-popup-context.tsx)
+    // and the authenticated layout's 30-second grace period (validateSession).
+    // Without this, any concurrent 401 can trigger the auth popup mid-login.
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('loginTimestamp', String(Date.now()))
+    }
+
+    this._loginInProgress = true
+
     try {
       // Use secure-api for masked backend communication
       // requireAuth=false: login endpoint doesn't require a pre-existing session.
@@ -120,6 +136,7 @@ class UnifiedAuthManager {
 
       if (result.requires_mfa && result.mfa_token) {
         // MFA required - store email for MFA verification and don't update auth state yet
+        this._loginInProgress = false
         this.mfaEmail = email
         this.updateAuthState({ isLoading: false })
         return {
@@ -133,6 +150,7 @@ class UnifiedAuthManager {
       if (result.success && result.user) {
         // Direct login success - sync all auth systems
         // syncAuthSystems calls loginUser which automatically sets loginTimestamp
+        this._loginInProgress = false
         await this.syncAuthSystems(result.user)
 
         this.updateAuthState({
@@ -150,6 +168,7 @@ class UnifiedAuthManager {
       }
 
       // Login failed
+      this._loginInProgress = false
       this.updateAuthState({
         isLoading: false,
         error: result.error || 'Login failed'
@@ -161,6 +180,7 @@ class UnifiedAuthManager {
       }
 
     } catch (error) {
+      this._loginInProgress = false
       const errorMessage = error instanceof Error ? error.message : 'Login failed'
       this.updateAuthState({
         isLoading: false,
@@ -706,6 +726,10 @@ class UnifiedAuthManager {
 
 // Export singleton instance
 export const unifiedAuthManager = UnifiedAuthManager.getInstance()
+
+// Check if a login attempt is currently in progress
+// Used by auth-popup-context to prevent showing auth popup during login
+export const isLoginAttemptInProgress = (): boolean => unifiedAuthManager.isLoginInProgress
 
 // Export convenience functions that leverage secure-api
 export const useUnifiedAuth = () => {
