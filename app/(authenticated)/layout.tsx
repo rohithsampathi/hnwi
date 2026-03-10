@@ -248,7 +248,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         const hasLocalUser = !!localStorage.getItem('userId')
         if (hasLocalUser && !isRecentLogin) {
           console.log('[Auth] Session validation failed but localStorage has userId — retrying after delay')
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise(resolve => setTimeout(resolve, 500))
           const retryResponse = await fetch('/api/auth/session', {
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
@@ -387,7 +387,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           const hasLocalUser = !!localStorage.getItem('userId')
           if (hasLocalUser) {
             console.log('[Auth] Session check failed but localStorage has userId — retrying after delay (mobile cookie sync)')
-            await new Promise(resolve => setTimeout(resolve, 1000))
+            await new Promise(resolve => setTimeout(resolve, 500))
             validatedUser = await tryValidateSession()
           }
         }
