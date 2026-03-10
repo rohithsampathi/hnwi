@@ -26,6 +26,15 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# test output artifacts (generated, not source)
+__tests__/pdf/screenshots/
+__tests__/pdf/*.pdf
+__tests__/pdf/*.png
+
+# debug/utility scripts (not needed in production)
+scripts/debug-*.ts
+scripts/check-*.ts
+
 # streamlit files (local development only)
 *.py
 requirements.txt
