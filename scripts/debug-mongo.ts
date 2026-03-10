@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-const MONGO_URI = 'mongodb+srv://Rohith:SridhaR16@leadmirror.evkzzyi.mongodb.net/?retryWrites=true&w=majority&appName=LeadMirror';
+const MONGO_URI = process.env.MONGODB_URI || '';
 const INTAKE_ID = 'fo_audit_c5_heFbzDg3T';
 async function main() {
   const client = new MongoClient(MONGO_URI);
