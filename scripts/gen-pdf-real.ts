@@ -5,7 +5,7 @@ import { MongoClient } from 'mongodb';
 import { PatternAuditDocument } from '../lib/pdf/PatternAuditDocument';
 
 const INTAKE_ID = process.argv[2] || 'sfo_audit_90c06218287b4af6';
-const MONGO_URI = 'mongodb+srv://Rohith:SridhaR16@leadmirror.evkzzyi.mongodb.net/?retryWrites=true&w=majority&appName=LeadMirror';
+const MONGO_URI = process.env.MONGODB_URI || '';
 
 async function main() {
   console.log(`Fetching from MongoDB: ${INTAKE_ID}`);
