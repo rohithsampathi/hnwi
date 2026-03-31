@@ -67,12 +67,25 @@ export function sanitizeUserAgent(userAgent: string): string {
  * Full errors are logged server-side instead.
  */
 export function sanitizeErrorMessage(error: unknown, _isProduction?: boolean): string {
-  // Return generic messages based on error type (always sanitized)
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
+  const rawMessage =
+    typeof error === 'string'
+      ? error
+      : error instanceof Error
+        ? error.message
+        : '';
 
+  const message = rawMessage.toLowerCase();
+
+  if (message) {
     // Authentication/authorization errors
-    if (message.includes('unauthorized') || message.includes('invalid credentials') || message.includes('token')) {
+    if (
+      message.includes('unauthorized') ||
+      message.includes('invalid credentials') ||
+      message.includes('invalid email') ||
+      message.includes('invalid password') ||
+      message.includes('authentication failed') ||
+      message.includes('token')
+    ) {
       return 'Authentication failed';
     }
 

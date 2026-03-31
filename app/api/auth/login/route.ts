@@ -224,8 +224,14 @@ async function handlePost(request: NextRequest) {
           error: backendResponse.error || backendResponse.message
         });
 
+        const backendError =
+          backendResponse.error ||
+          backendResponse.detail ||
+          backendResponse.message ||
+          'Authentication failed';
+
         const response = NextResponse.json(
-          createSafeErrorResponse(backendResponse.error || backendResponse.message || 'Authentication failed'),
+          createSafeErrorResponse(backendError),
           { status: backendFetchResponse.status }
         );
 
@@ -344,11 +350,11 @@ async function handlePost(request: NextRequest) {
       if (backendResponse.error && !backendResponse.mfa_token) {
         logger.warn("Backend login failed with no MFA token", {
           email: validation.data!.email,
-          error: backendResponse.error
+          error: backendResponse.error || backendResponse.detail
         });
         
         const response = NextResponse.json(
-          createSafeErrorResponse(backendResponse.error),
+          createSafeErrorResponse(backendResponse.error || backendResponse.detail || 'Authentication failed'),
           { status: 401 }
         );
         

@@ -60,10 +60,10 @@ export function ResetPasswordForm() {
       return
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       toast({
         title: "Password Too Short",
-        description: "Password must be at least 6 characters long",
+        description: "Password must be at least 8 characters long",
         variant: "destructive",
       })
       return

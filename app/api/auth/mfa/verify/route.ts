@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { RateLimiter } from "@/lib/rate-limiter"
 import { logger } from "@/lib/secure-logger"
 import { cookies } from "next/headers"
-import { SignJWT } from "jose"
-import { secureApi } from "@/lib/secure-api"
 import { SessionEncryption } from "@/lib/session-encryption"
 import { CSRFProtection } from "@/lib/csrf-protection"
 
@@ -26,38 +24,6 @@ function getCookieDomain(): string | undefined {
 
   return undefined;
 }
-
-function getJWTSecret(): Uint8Array {
-  const secret = process.env.JWT_SECRET
-  if (!secret) {
-    throw new Error("JWT_SECRET environment variable must be set")
-  }
-  return new TextEncoder().encode(secret)
-}
-
-// Removed frontend session management - backend handles all cookies now
-// function getSecureCookieName(baseName: string): string {
-//   if (process.env.NODE_ENV === 'production') {
-//     return `__Host-${baseName}`
-//   } else {
-//     return `__Secure-${baseName}`
-//   }
-// }
-
-// const COOKIE_OPTIONS = {
-//   httpOnly: true,
-//   secure: process.env.NODE_ENV === "production",
-//   sameSite: "strict" as const,
-//   maxAge: 60 * 60 * 24, // 24 hours
-// }
-
-// async function createToken(user: any): Promise<string> {
-//   return await new SignJWT({ ...user })
-//     .setProtectedHeader({ alg: "HS256" })
-//     .setIssuedAt()
-//     .setExpirationTime("24h")
-//     .sign(getJWTSecret())
-// }
 
 async function handlePost(request: NextRequest) {
   try {
@@ -196,7 +162,8 @@ async function handlePost(request: NextRequest) {
         const backendVerifyRequest = {
           email: email,
           mfa_code: mfa_code,
-          mfa_token: proxySession.backendMfaToken // Include for backend compatibility but validation is via email + code
+          mfa_token: proxySession.backendMfaToken, // Include for backend compatibility but validation is via email + code
+          remember_me: rememberMe
         }
 
         logger.info('Calling backend MFA verification', {
@@ -414,7 +381,10 @@ async function handlePost(request: NextRequest) {
           const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
 
           const failResponse = NextResponse.json(
-            { success: false, error: backendResponse.error || backendResponse.message || "Invalid verification code" },
+            {
+              success: false,
+              error: backendResponse.error || backendResponse.detail || backendResponse.message || "Invalid verification code"
+            },
             { status: 401 }
           );
 
@@ -440,7 +410,7 @@ async function handlePost(request: NextRequest) {
             email,
             attempts: proxySession.attempts,
             backendStatus: fetchResponse.status,
-            backendError: backendResponse.error,
+            backendError: backendResponse.error || backendResponse.detail,
             backendMessage: backendResponse.message
           })
           

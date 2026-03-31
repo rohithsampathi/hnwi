@@ -429,19 +429,30 @@ export async function handleForgotPassword(email: string): Promise<{ success: bo
     }
 
     try {
-      // Call backend forgot password endpoint
-      await secureApi.post('/api/auth/forgot-password', { email }, false)
-      
-      logger.info("Password reset request sent to backend", { email })
-      return { success: true }
+      const result = await secureApi.post('/api/auth/forgot-password', { email }, false)
+
+      if (result?.success === true) {
+        logger.info("Password reset request sent to backend", { email })
+        return { success: true }
+      }
+
+      const errorMessage =
+        result?.error ||
+        result?.message ||
+        "Password reset is temporarily unavailable. Please try again."
+
+      logger.error("Password reset API returned an unsuccessful response", {
+        email,
+        error: errorMessage
+      })
+      return { success: false, error: errorMessage }
 
     } catch (apiError) {
       logger.error("Password reset API error", { 
         error: apiError instanceof Error ? apiError.message : String(apiError),
         email 
       })
-      // Return success to avoid revealing if email exists (backend should handle this too)
-      return { success: true }
+      return { success: false, error: "Password reset is temporarily unavailable. Please try again." }
     }
 
   } catch (error) {
@@ -459,16 +470,28 @@ export async function handleResetPassword(token: string, newPassword: string): P
       return { success: false, error: "Token and new password are required" }
     }
 
-    if (newPassword.length < 6) {
-      return { success: false, error: "Password must be at least 6 characters long" }
+    if (newPassword.length < 8) {
+      return { success: false, error: "Password must be at least 8 characters long" }
     }
 
     try {
-      // Call backend reset password endpoint
-      await secureApi.post('/api/auth/reset-password', { 
+      const result = await secureApi.post('/api/auth/reset-password', {
         token, 
         new_password: newPassword 
       }, false)
+
+      if (result?.success !== true) {
+        const errorMessage =
+          result?.error ||
+          result?.message ||
+          "Invalid or expired reset token"
+
+        logger.error("Password reset API returned an unsuccessful response", {
+          error: errorMessage,
+          token: token.substring(0, 8) + "..."
+        })
+        return { success: false, error: errorMessage }
+      }
 
       logger.info("Password reset successful", { tokenPrefix: token.substring(0, 8) + "..." })
       return { success: true }
