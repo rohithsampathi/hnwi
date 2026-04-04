@@ -22,10 +22,10 @@ const InteractiveWorldMap = dynamic(
 
 interface AuditOverviewSectionProps {
   // Intelligence metadata
-  developmentsCount: number;
+  developmentsCount?: number;
   precedentCount: number;
-  sourceJurisdiction: string;
-  destinationJurisdiction: string;
+  sourceJurisdiction?: string;
+  destinationJurisdiction?: string;
   sourceCity?: string;
   destinationCity?: string;
 
@@ -36,12 +36,12 @@ interface AuditOverviewSectionProps {
 
   // Structure plan
   optimalStructure?: {
-    name: string;
+    name?: string;
     net_benefit?: string;
     net_benefit_formatted?: string;
     description?: string;
   };
-  verdict?: 'PROCEED' | 'RESTRUCTURE' | 'ABORT';
+  verdict?: string;
 
   // Optional full thesis from intake
   fullThesis?: string;
@@ -231,8 +231,8 @@ export function AuditOverviewSection({
   // Only show opportunity markers when map is active
   const mapCities = useMemo(() => showMap ? opportunityCities : [], [showMap, opportunityCities]);
 
-  const cleanJurisdiction = (jurisdiction: string) => {
-    return jurisdiction
+  const cleanJurisdiction = (jurisdiction?: string) => {
+    return (jurisdiction || '—')
       .replace(/_/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
   };
@@ -257,6 +257,9 @@ export function AuditOverviewSection({
       default: return '#67E8F9';
     }
   };
+
+  const hasDevelopmentCount = typeof developmentsCount === 'number' && developmentsCount > 0;
+  const hasPrecedentCount = precedentCount > 0;
 
   // Format field labels: remove underscores, convert to Capital Case
   const formatLabel = (key: string): string => {
@@ -289,20 +292,20 @@ export function AuditOverviewSection({
 
     // Skip map if no coords found, but still show analysis box
     if (srcCoords && dstCoords) {
-      const srcName = sourceCity || sourceJurisdiction;
-      const dstName = destinationCity || destinationJurisdiction;
+      const srcName = sourceCity || sourceJurisdiction || '—';
+      const dstName = destinationCity || destinationJurisdiction || '—';
 
       // Build City objects with correct field names (latitude/longitude, NOT lat/lng)
       const sourceCity_obj: City = {
         name: cleanJurisdiction(srcName),
-        country: sourceJurisdiction,
+        country: sourceJurisdiction || '—',
         latitude: srcCoords.lat,
         longitude: srcCoords.lng,
       };
 
       const destCity_obj: City = {
         name: cleanJurisdiction(dstName),
-        country: destinationJurisdiction,
+        country: destinationJurisdiction || '—',
         latitude: dstCoords.lat,
         longitude: dstCoords.lng,
       };
@@ -498,15 +501,27 @@ export function AuditOverviewSection({
               <h3 className="text-xs uppercase tracking-wide text-emerald-500 font-bold mb-3">Intelligence Basis</h3>
               <p className="text-sm sm:text-base text-foreground/90 leading-relaxed">
                 This audit draws on{' '}
-                <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
-                  {developmentsCount.toLocaleString()}
-                </span>{' '}
-                validated developments from 3 years of HNWI wealth pattern tracking,
-                cross-referenced against{' '}
-                <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
-                  {precedentCount.toLocaleString()}
-                </span>{' '}
-                corridor signals specific to the{' '}
+                {hasDevelopmentCount ? (
+                  <>
+                    <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
+                      {developmentsCount.toLocaleString()}
+                    </span>{' '}
+                    validated developments from 3 years of HNWI wealth pattern tracking
+                  </>
+                ) : (
+                  <>validated HNWI developments from 3 years of wealth pattern tracking</>
+                )}
+                {hasPrecedentCount ? (
+                  <>
+                    , cross-referenced against{' '}
+                    <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
+                      {precedentCount.toLocaleString()}
+                    </span>{' '}
+                    corridor signals specific to the{' '}
+                  </>
+                ) : (
+                  <> specific to the{' '}</>
+                )}
                 <span className="font-medium text-foreground">
                   {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
                 </span>{' '}

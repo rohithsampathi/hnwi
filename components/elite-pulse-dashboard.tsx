@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { secureApi } from "@/lib/secure-api"
 import { isAuthenticated } from "@/lib/auth-utils"
-import { useElitePulseData, useElitePulse, useIntelligenceLoading } from "@/contexts/elite-pulse-context"
+import { IntelligenceType, useElitePulseData, useElitePulse, useIntelligenceLoading } from "@/contexts/elite-pulse-context"
 
 interface RegulatoryCompliance {
   us_compliance?: {
@@ -163,7 +163,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       setLoading(true)
       
       // Fetch brief counts in parallel with Elite Pulse data - direct backend call
-      const countsPromise = secureApi.get('/api/developments/counts', true);
+      const countsPromise = secureApi.get('/api/castle-briefs/counts', true);
       
       // Try user-specific first if authenticated, otherwise fallback to global
       let data = null
@@ -230,7 +230,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       setError(null)
       
       // Track view in intelligence system
-      trackIntelligenceView('elite_pulse', elitePulseDataFromContext.record_id || 'current')
+      trackIntelligenceView(IntelligenceType.ELITE_PULSE, elitePulseDataFromContext.record_id || 'current')
     } else if (!intelligenceLoading && !hasIntelligence) {
       // Fallback to legacy fetch if context data not available
       fetchElitePulse()

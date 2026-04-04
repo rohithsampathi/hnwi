@@ -37,7 +37,7 @@ export function PdfHNWITrendsSection({
     return 'default';
   };
 
-  const trendBg: Record<string, object> = {
+  const trendBg: Record<'corridor' | 'outflow' | 'inflow' | 'default', { backgroundColor?: string; borderColor?: string }> = {
     corridor: { backgroundColor: colors.tints.goldLight, borderColor: colors.tints.goldStrong },
     outflow: { backgroundColor: darkTheme.cardBg, borderColor: darkTheme.border },
     inflow: { backgroundColor: colors.tints.goldLight, borderColor: colors.tints.goldStrong },
@@ -101,7 +101,7 @@ export function PdfHNWITrendsSection({
         {trendsData.insights.slice(0, 6).map((insight, index) => {
           const type = getTrendType(insight.content);
           return (
-            <View key={index} style={[{ flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginBottom: 8, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border }, trendBg[type]]} wrap={false}>
+            <View key={index} style={{ flexDirection: 'row', alignItems: 'flex-start', padding: 12, marginBottom: 8, backgroundColor: darkTheme.cardBg, borderWidth: 1, borderColor: darkTheme.border, ...trendBg[type] }} wrap={false}>
               <View style={{ width: 24, height: 24, borderRadius: 0.01, alignItems: 'center', justifyContent: 'center', marginRight: 12, backgroundColor: iconBg[type] }}>
                 <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 10, color: iconColor[type] }}>{iconLabel[type]}</Text>
               </View>

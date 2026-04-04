@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
 import { colors, darkTheme, formatCurrency } from '../pdf-styles';
+import type { StampDutyData } from '../pdf-types';
 
 const getSeverityLabel = (ratePct: number) => {
   if (ratePct >= 50) return 'PROHIBITIVE';
@@ -18,16 +19,8 @@ const rateStyle = { fontFamily: 'Inter' as const, fontWeight: 700 as const, font
 const badgeBase = { paddingHorizontal: 8, paddingVertical: 3, marginLeft: 10, borderWidth: 1 };
 const badgeTextStyle = { fontFamily: 'Inter' as const, fontWeight: 700 as const, fontSize: 9, textTransform: 'uppercase' as const, letterSpacing: 0.5 };
 
-interface StampDutyData {
-  found?: boolean;
-  foreign_buyer_surcharge?: { rate_pct: number; effective_date?: string };
-  commercial_rates?: { foreign_surcharge_pct: number; note?: string };
-  residential_rates?: Array<{ threshold?: string; description?: string; rate_pct?: number }>;
-  statute_citation?: string;
-}
-
 interface PdfRealAssetStampDutyProps {
-  stampDuty: StampDutyData;
+  stampDuty?: StampDutyData;
   transactionValue: number;
 }
 
@@ -60,17 +53,17 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
             <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0, paddingTop: 2 }}>
               <Text style={[rateStyle, { color: colors.red[700] }]}>{stampDuty.foreign_buyer_surcharge.rate_pct != null ? `${stampDuty.foreign_buyer_surcharge.rate_pct}%` : 'N/A'}</Text>
               <View style={[badgeBase, { backgroundColor: colors.tints.redMedium, borderColor: colors.red[700] }]}>
-                <Text style={[badgeTextStyle, { color: colors.red[700] }]}>{getSeverityLabel(stampDuty.foreign_buyer_surcharge.rate_pct)}</Text>
+                <Text style={[badgeTextStyle, { color: colors.red[700] }]}>{getSeverityLabel(stampDuty.foreign_buyer_surcharge.rate_pct ?? 0)}</Text>
               </View>
             </View>
           </View>
         )}
 
         {stampDuty.commercial_rates && (
-          <View style={[rowBase, stampDuty.commercial_rates.foreign_surcharge_pct === 0 && { backgroundColor: colors.tints.goldLight, borderLeftWidth: 4, borderLeftColor: colors.amber[500] }]}>
+          <View style={{ ...rowBase, ...(stampDuty.commercial_rates.foreign_surcharge_pct === 0 ? { backgroundColor: colors.tints.goldLight, borderLeftWidth: 4, borderLeftColor: colors.amber[500] } : {}) }}>
             <View style={{ flex: 2, paddingRight: 12 }}>
               <Text style={labelText}>Commercial Property</Text>
-              {!!stampDuty.commercial_rates.note && <Text style={effectiveStyle}>{stampDuty.commercial_rates.note}</Text>}
+              {!!(stampDuty.commercial_rates.note || stampDuty.commercial_rates.notes) && <Text style={effectiveStyle}>{stampDuty.commercial_rates.note || stampDuty.commercial_rates.notes}</Text>}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 130, flexShrink: 0, paddingTop: 2 }}>
               <Text style={[rateStyle, { color: stampDuty.commercial_rates.foreign_surcharge_pct === 0 ? colors.amber[500] : darkTheme.textSecondary }]}>
@@ -95,7 +88,7 @@ export const PdfRealAssetStampDuty: React.FC<PdfRealAssetStampDutyProps> = ({ st
         {transactionValue > 0 && stampDuty.foreign_buyer_surcharge && (
           <View style={[rowBase, { backgroundColor: darkTheme.surfaceBg }]}>
             <Text style={[labelText, { flex: 2, paddingRight: 12, fontWeight: 700 }]}>Impact on {formatCurrency(transactionValue)} Transaction</Text>
-            <Text style={[rateStyle, { color: colors.red[700] }]}>{formatCurrency(transactionValue * (stampDuty.foreign_buyer_surcharge.rate_pct / 100))}</Text>
+            <Text style={[rateStyle, { color: colors.red[700] }]}>{formatCurrency(transactionValue * ((stampDuty.foreign_buyer_surcharge.rate_pct ?? 0) / 100))}</Text>
           </View>
         )}
       </View>

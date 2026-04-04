@@ -94,19 +94,6 @@ export function EliteCitationPanel({
       setLoading(true)
 
       try {
-        // First check if development exists to avoid 404 console errors
-        const existsResponse = await fetch(`/api/developments/public/${citationId}/exists`)
-        const { exists } = await existsResponse.json()
-
-        if (!exists) {
-          // Mark as not found without triggering 404 error
-          setDevelopments(prev => new Map(prev).set(citationId, null as any))
-          setLoading(false)
-          onCitationSelect(citationId) // Still select the citation to show "not found" message
-          return
-        }
-
-        // Development exists, fetch full data
         const response = await fetch(`/api/developments/public/${citationId}`)
 
         if (response.ok) {

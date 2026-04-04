@@ -90,6 +90,12 @@ interface PatternAuditDocumentProps { memoData: PdfMemoData }
 export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memoData }) => {
   const s = buildDocStyles();
   const v = extractMemoVariables(memoData);
+  const memoHeaderValueCreation = (() => {
+    const { value_creation } = memoData.preview_data;
+    return typeof value_creation === 'object' && value_creation !== null && !Array.isArray(value_creation)
+      ? (value_creation as Parameters<typeof PdfMemoHeaderPage>[0]['valueCreation'])
+      : undefined;
+  })();
   // Use identified_risks (20 items) > all_mistakes (2 items) > risk_factors as fallback
   const riskFactorsForPdf = v.identifiedRisksAsFactors.length > 0
     ? v.identifiedRisksAsFactors
@@ -112,7 +118,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {/* Memo Header — Executive Summary */}
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfMemoHeaderPage intakeId={v.intakeId} generatedAt={v.generatedAt} exposureClass={v.exposureClass} totalSavings={v.valueCreation} precedentCount={v.precedentCount} verdict={v.memoVerdict} optimalStructure={v.optimalStructure} valueCreation={v.memoData.preview_data.value_creation as Record<string, unknown>} viaNegativa={v.pdfViaNegativa} />
+        <PdfMemoHeaderPage intakeId={v.intakeId} generatedAt={v.generatedAt} exposureClass={v.exposureClass} totalSavings={v.valueCreation} precedentCount={v.precedentCount} verdict={v.memoVerdict} optimalStructure={v.optimalStructure} valueCreation={memoHeaderValueCreation} viaNegativa={v.pdfViaNegativa} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
@@ -130,7 +136,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {v.crossBorderAudit && (
         <Page size="A4" style={s.page}>
           <PageHeader />
-          <PdfCrossBorderTaxAudit audit={v.crossBorderAudit as Record<string, unknown> as Parameters<typeof PdfCrossBorderTaxAudit>[0]['audit']} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
+          <PdfCrossBorderTaxAudit audit={v.crossBorderAudit} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />
           <PageFooter intakeId={v.intakeId} />
           <ConfidentialWatermark />
         </Page>
@@ -150,7 +156,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfVerdictSection verdict={v.verdict} verdictRationale={v.memoData.preview_data.verdict_rationale} riskLevel={v.riskLevel} opportunityCount={v.opportunityCount} riskFactorCount={v.riskFactorCount} dataQuality={v.dataQuality} precedentCount={v.precedentCount} sourceJurisdiction={cleanJurisdiction(v.sourceJurisdiction)} destinationJurisdiction={cleanJurisdiction(v.destJurisdiction)} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} mitigationTimeline={v.riskAssessment?.mitigation_timeline || (v.memoData as Record<string, unknown>).mitigationTimeline as string} criticalItems={v.riskAssessment?.critical_items} highPriority={v.riskAssessment?.high_priority} riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} viaNegativa={v.pdfViaNegativa} />
+        <PdfVerdictSection verdict={v.verdict} verdictRationale={v.memoData.preview_data.verdict_rationale} riskLevel={v.riskLevel} opportunityCount={v.opportunityCount} riskFactorCount={v.riskFactorCount} dataQuality={v.dataQuality} precedentCount={v.precedentCount} sourceJurisdiction={cleanJurisdiction(v.sourceJurisdiction)} destinationJurisdiction={cleanJurisdiction(v.destJurisdiction)} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} mitigationTimeline={v.riskAssessment?.mitigation_timeline} criticalItems={v.riskAssessment?.critical_items} highPriority={v.riskAssessment?.high_priority} riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} viaNegativa={v.pdfViaNegativa} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
@@ -168,7 +174,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {/* Risk Factors */}
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfRiskFactorsPage riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted || formatCurrency(v.totalExposure)} verdict={v.verdict} />
+        <PdfRiskFactorsPage riskFactors={riskFactorsForPdf} dueDiligence={v.dueDiligence || []} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted || formatCurrency(v.totalExposure)} verdict={v.verdict} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>
@@ -177,7 +183,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {(v.crisisData || v.wealthProjection || v.startingValue > 0) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
-          <PdfStressTestPage crisisData={v.crisisData} wealthProjection={v.wealthProjection} heirManagement={v.heirManagement} startingValue={v.startingValue} baseYear10={v.baseYear10} stressYear10={v.stressYear10} opportunityYear10={v.opportunityYear10} baseProbability={v.baseProbability} stressProbability={v.stressProbability} opportunityProbability={v.opportunityProbability} verdict={v.verdict} />
+          <PdfStressTestPage crisisData={v.crisisData ?? undefined} wealthProjection={v.wealthProjection} heirManagement={v.heirManagement} startingValue={v.startingValue} baseYear10={v.baseYear10} stressYear10={v.stressYear10} opportunityYear10={v.opportunityYear10} baseProbability={v.baseProbability} stressProbability={v.stressProbability} opportunityProbability={v.opportunityProbability} verdict={v.verdict} />
           <PageFooter intakeId={v.intakeId} />
           <ConfidentialWatermark />
         </Page>
@@ -238,7 +244,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       {/* ═══ SECTION 5: SUPPLEMENTARY ═══ */}
 
       {/* Heir Management (conditional) */}
-      {v.heirManagement && (v.heirManagement.heir_allocations?.length > 0 || v.heirManagement.third_generation_risk || v.heirManagement.with_structure || v.heirManagement.g1_position) && (
+      {v.heirManagement && ((v.heirManagement.heir_allocations?.length ?? 0) > 0 || v.heirManagement.third_generation_risk || v.heirManagement.with_structure || v.heirManagement.g1_position) && (
         <Page size="A4" style={s.page}>
           <PageHeader />
           <PdfHeirManagementPage heirManagement={v.heirManagement} intakeId={v.intakeId} />
@@ -302,7 +308,7 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
 
       <Page size="A4" style={s.page}>
         <PageHeader />
-        <PdfSummaryPage verdict={v.verdict} verdictTheme={v.verdictTheme} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} totalTaxBenefit={v.totalTaxBenefit} showTaxSavings={v.showTaxSavings} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} precedentCount={v.precedentCount} riskFactorCount={v.riskFactorCount} failureModes={v.kgIntelligence?.failure_modes || 2} sequencingRules={v.kgIntelligence?.sequencing_rules || 2} intakeId={v.intakeId} />
+        <PdfSummaryPage verdict={v.verdict} verdictTheme={v.verdictTheme} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} totalTaxBenefit={v.totalTaxBenefit} showTaxSavings={v.showTaxSavings} totalExposure={v.totalExposure} totalExposureFormatted={v.riskAssessment?.total_exposure_formatted} precedentCount={v.precedentCount} riskFactorCount={v.riskFactorCount} failureModes={typeof v.kgIntelligence?.failure_modes === 'number' ? v.kgIntelligence.failure_modes : 2} sequencingRules={typeof v.kgIntelligence?.sequencing_rules === 'number' ? v.kgIntelligence.sequencing_rules : 2} intakeId={v.intakeId} />
         <PageFooter intakeId={v.intakeId} />
         <ConfidentialWatermark />
       </Page>

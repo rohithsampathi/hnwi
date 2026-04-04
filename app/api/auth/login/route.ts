@@ -88,10 +88,10 @@ async function handlePost(request: NextRequest) {
 
     // Check if IP is blocked
     if (RateLimiter.isBlocked(request)) {
-      const context = sanitizeLoggingContext({
-        ip: ApiAuth.getClientIP(request),
-        userAgent: request.headers.get('user-agent')
-      });
+        const context = sanitizeLoggingContext({
+          ip: ApiAuth.getClientIP(request),
+          userAgent: request.headers.get('user-agent') ?? undefined
+        });
       logger.warn("Login attempt from blocked IP", context);
       return NextResponse.json(
         createSafeErrorResponse('Access temporarily blocked'),
@@ -106,7 +106,7 @@ async function handlePost(request: NextRequest) {
       if (!rateLimitResult.allowed) {
         const context = sanitizeLoggingContext({
           ip: ApiAuth.getClientIP(request),
-          userAgent: request.headers.get('user-agent'),
+          userAgent: request.headers.get('user-agent') ?? undefined,
           attempts: rateLimitResult.totalHits
         });
         logger.warn("Login rate limit exceeded", context);
@@ -493,7 +493,7 @@ async function handlePost(request: NextRequest) {
   } catch (error) {
     const context = sanitizeLoggingContext({
       ip: ApiAuth.getClientIP(request),
-      userAgent: request.headers.get('user-agent'),
+      userAgent: request.headers.get('user-agent') ?? undefined,
       endpoint: '/api/auth/login'
     });
     logger.error("Login API error", {

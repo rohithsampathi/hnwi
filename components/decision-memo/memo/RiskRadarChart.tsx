@@ -276,7 +276,9 @@ export function RiskRadarChart({
   return (
     <motion.div
       ref={sectionRef}
-      className="relative rounded-2xl border border-border/30 overflow-hidden"
+      className="print-risk-radar relative rounded-2xl border border-border/30 overflow-hidden"
+      data-print-block="keep"
+      data-print-max-height="1080"
       initial={{ opacity: 0, y: 12 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}

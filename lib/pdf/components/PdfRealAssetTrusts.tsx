@@ -34,7 +34,7 @@ export const PdfRealAssetTrusts: React.FC<PdfRealAssetTrustsProps> = ({ auditDat
             <Text style={[thBase, { flex: 2 }]}>Protection</Text>
           </View>
           {auditData.dynasty_trusts.jurisdictions.slice(0, 4).map((trust, idx) => (
-            <View key={idx} style={[trBase, idx % 2 === 1 && { backgroundColor: darkTheme.cardBg }]}>
+            <View key={idx} style={{ ...trBase, ...(idx % 2 === 1 ? { backgroundColor: darkTheme.cardBg } : {}) }}>
               <Text style={[cellBold, { flex: 2 }]}>{trust.name || trust.jurisdiction}</Text>
               <Text style={[cellNormal, { flex: 1 }]}>
                 {trust.perpetuity_period || trust.max_duration || (trust.perpetuity_years ? `${trust.perpetuity_years} yrs` : 'N/A')}
@@ -76,7 +76,7 @@ export const PdfRealAssetTrusts: React.FC<PdfRealAssetTrustsProps> = ({ auditDat
             <Text style={[thBase, { flex: 2 }]}>Benefits</Text>
           </View>
           {auditData.succession_vehicles.slice(0, 4).map((vehicle, idx) => (
-            <View key={idx} style={[trBase, idx % 2 === 1 && { backgroundColor: darkTheme.cardBg }]}>
+            <View key={idx} style={{ ...trBase, ...(idx % 2 === 1 ? { backgroundColor: darkTheme.cardBg } : {}) }}>
               <Text style={[cellNormal, { flex: 1, fontSize: 9, color: darkTheme.textMuted }]}>{vehicle.vehicle_type || vehicle.type || 'Vehicle'}</Text>
               <Text style={[cellBold, { flex: 2 }]}>{vehicle.name}</Text>
               <Text style={[cellNormal, { flex: 2, fontSize: 9 }]}>

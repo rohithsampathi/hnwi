@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect, useCallback } from "react"
 import { ProfilePage } from "@/components/profile-page"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { BackButton } from "@/components/ui/back-button"
-import { getCurrentUser, updateUser, logoutUser } from "@/lib/auth-manager"
+import { getCurrentUser, updateUser } from "@/lib/auth-manager"
 import { usePageTitle } from "@/hooks/use-page-title"
+import { PUBLIC_HOME_ROUTE } from "@/lib/auth-navigation"
 
 export default function ProfileRoute() {
   const router = useRouter()
@@ -29,11 +29,10 @@ export default function ProfileRoute() {
       if (currentUser) {
         setUser(currentUser)
       } else {
-        // No user found, redirect to login
-        router.push("/")
+        router.replace(PUBLIC_HOME_ROUTE)
       }
     }
-  }, [])
+  }, [router, user])
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {
@@ -70,11 +69,17 @@ export default function ProfileRoute() {
     }
   }, [])
 
-  const handleLogout = () => {
-    // Use AuthManager to logout
-    logoutUser()
-    router.push("/")
-  }
+  const handleLogout = useCallback(async () => {
+    setLoading(true)
+
+    try {
+      const { unifiedAuthManager } = await import("@/lib/unified-auth-manager")
+      await unifiedAuthManager.logout()
+    } finally {
+      setLoading(false)
+      router.replace(PUBLIC_HOME_ROUTE)
+    }
+  }, [router])
 
   if (loading) {
     return (

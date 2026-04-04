@@ -140,22 +140,16 @@ export const RadarChart: React.FC<RadarChartProps> = ({ scores, size = 200, isVe
             <SvgText
               x={x}
               y={y - 5}
-              fill={darkTheme.textMuted}
-              fontSize={10}
-              fontFamily="Inter"
-              fontWeight={600}
               textAnchor={textAnchor as 'start' | 'middle' | 'end'}
+              style={{ fill: darkTheme.textMuted, fontSize: 10, fontFamily: 'Inter', fontWeight: 600 }}
             >
               {displayLabel}
             </SvgText>
             <SvgText
               x={x}
               y={y + 8}
-              fill={scoreColor}
-              fontSize={9}
-              fontFamily="Inter"
-              fontWeight={700}
               textAnchor={textAnchor as 'start' | 'middle' | 'end'}
+              style={{ fill: scoreColor, fontSize: 9, fontFamily: 'Inter', fontWeight: 700 }}
             >
               {`${s.score}/10`}
             </SvgText>

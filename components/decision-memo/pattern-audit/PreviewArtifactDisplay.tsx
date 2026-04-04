@@ -22,6 +22,7 @@ import {
   Zap
 } from 'lucide-react';
 import { PreviewArtifact } from '@/lib/decision-memo/pattern-audit-types';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface PreviewArtifactDisplayProps {
   preview: PreviewArtifact;
@@ -142,6 +143,8 @@ function StatCard({
 // MAIN COMPONENT
 // =============================================================================
 export function PreviewArtifactDisplay({ preview }: PreviewArtifactDisplayProps) {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
@@ -442,7 +445,9 @@ export function PreviewArtifactDisplay({ preview }: PreviewArtifactDisplayProps)
               </div>
               <div>
                 <p className="text-xl font-bold text-foreground">{patternNames.length} Patterns Matched</p>
-                <p className="text-sm text-muted-foreground">From 1,875+ historical developments</p>
+                <p className="text-sm text-muted-foreground">
+                  {briefCountLabel ? `From ${briefCountLabel} historical developments` : 'From historical developments'}
+                </p>
               </div>
             </div>
 

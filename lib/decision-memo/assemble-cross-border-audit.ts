@@ -39,7 +39,6 @@ interface RealAssetEntry {
     foreign_buyer_surcharge?: { rate_pct?: number; description?: string };
     total_effective_rate_pct?: number;
   };
-  [key: string]: unknown;
 }
 
 interface StartingPositionInput {
@@ -51,7 +50,6 @@ interface StartingPositionInput {
   selected_structure?: SelectedStructure;
   current_tax_rate?: number;
   target_tax_rate?: number;
-  [key: string]: unknown;
 }
 
 interface TaxDifferentialInput {
@@ -62,7 +60,6 @@ interface TaxDifferentialInput {
   estate_tax_differential_pct?: number;
   cumulative_tax_differential_pct?: number;
   weighted_tax_differential_pct?: number;
-  [key: string]: unknown;
 }
 
 interface PreviewDataInput {
@@ -75,9 +72,7 @@ interface PreviewDataInput {
   show_tax_savings?: boolean;
   wealth_projection_data?: {
     starting_position?: StartingPositionInput;
-    [key: string]: unknown;
   };
-  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------

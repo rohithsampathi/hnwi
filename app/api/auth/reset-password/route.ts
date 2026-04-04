@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/secure-logger'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
-import { secureApi } from '@/lib/secure-api'
+import { API_BASE_URL } from '@/config/api'
 import { CSRFProtection } from '@/lib/csrf-protection'
 
 async function handlePost(request: NextRequest) {
@@ -83,32 +83,51 @@ async function handlePost(request: NextRequest) {
     });
 
     try {
-      // Use secureApi to call backend
-      const backendResponse = await secureApi.post('/api/auth/reset-password', {
-        token: body.token,
-        new_password: body.new_password
-      }, false);
+      // Call FastAPI backend directly with absolute URL (not secureApi which uses relative URLs)
+      const backendUrl = `${API_BASE_URL}/api/auth/reset-password`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const backendFetchResponse = await fetch(backendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: body.token,
+          new_password: body.new_password
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const backendData = await backendFetchResponse.json();
 
       logger.info("Backend reset password response received", {
         tokenPrefix: body.token.substring(0, 8) + "...",
-        success: backendResponse.success !== false
+        status: backendFetchResponse.status,
+        success: backendData.success !== false
       });
+
+      if (!backendFetchResponse.ok) {
+        // Backend returned an error (e.g. invalid/expired token)
+        const errorDetail = backendData.detail || backendData.error || 'Password reset failed';
+        throw new Error(errorDetail);
+      }
 
       // Return the backend response
       const response = NextResponse.json({
         success: true,
-        message: backendResponse.message || "Password has been reset successfully"
+        message: backendData.message || "Password has been reset successfully"
       });
 
       response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
       return ApiAuth.addSecurityHeaders(response);
-      
+
     } catch (apiError) {
-      logger.warn("Backend reset password request failed", { 
+      logger.warn("Backend reset password request failed", {
         error: apiError instanceof Error ? apiError.message : String(apiError),
         tokenPrefix: body.token.substring(0, 8) + "..."
       });
-      
+
       // Handle specific error messages from backend
       const errorMessage = apiError instanceof Error ? apiError.message : 'Password reset failed';
       let statusCode = 400;
@@ -124,12 +143,12 @@ async function handlePost(request: NextRequest) {
         statusCode = 429;
         userMessage = 'Too many attempts. Please wait before trying again.';
       }
-      
+
       const response = NextResponse.json(
         { success: false, error: userMessage },
         { status: statusCode }
       );
-      
+
       return ApiAuth.addSecurityHeaders(response);
     }
     

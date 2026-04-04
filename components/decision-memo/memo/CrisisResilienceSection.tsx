@@ -7,17 +7,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { EASE_OUT_EXPO, EASE_OUT_QUART } from '@/lib/animations/motion-variants';
+import type { CrisisData as PdfCrisisData } from '@/lib/pdf/pdf-types';
 
 // Structured JSON interfaces
 interface CrisisScenario {
-  id: "ai_bubble" | "bank_crisis" | "recession_2008" | "liquidity_crisis";
+  id?: "ai_bubble" | "bank_crisis" | "recession_2008" | "liquidity_crisis";
   name: string;
-  position: string;
-  stress_factor: string;
-  impact: string;
-  recovery: string;
-  risk_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  verdict: string;
+  position?: string;
+  stress_factor?: string;
+  impact?: string | number;
+  recovery?: string;
+  risk_level?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  verdict?: string;
 }
 
 interface OverallResilience {
@@ -25,19 +26,19 @@ interface OverallResilience {
   // Fix #20: Match backend rating values from rate_resilience()
   // Backend returns: EXCELLENT, STRONG, MODERATE, FRAGILE, CRITICAL
   rating: "EXCELLENT" | "STRONG" | "MODERATE" | "FRAGILE" | "CRITICAL" | "VULNERABLE" | "AT_RISK";
-  summary: string;
+  summary?: string;
 }
 
 interface Recommendation {
-  priority: "IMMEDIATE" | "SHORT_TERM" | "LONG_TERM";
+  priority: "IMMEDIATE" | "SHORT_TERM" | "LONG_TERM" | string;
   action: string;
-  rationale: string;
+  rationale?: string;
 }
 
 interface KeyMetrics {
-  worst_case_loss: string;
-  recovery_time: string;
-  required_buffer: string;
+  worst_case_loss?: string;
+  recovery_time?: string;
+  required_buffer?: string;
 }
 
 // Taleb Antifragile Framework - "Profit from crisis"
@@ -78,17 +79,17 @@ interface PositionComparison {
 }
 
 export interface CrisisData {
-  scenarios: CrisisScenario[];
-  overall_resilience: OverallResilience;
-  recommendations: Recommendation[];
-  key_metrics: KeyMetrics;
+  scenarios?: CrisisScenario[];
+  overall_resilience?: OverallResilience;
+  recommendations?: Recommendation[];
+  key_metrics?: KeyMetrics;
   // Taleb Antifragile Framework
   antifragile_opportunity?: AntifragileOpportunity;
   position_comparison?: PositionComparison;
 }
 
 interface CrisisResilienceSectionProps {
-  crisisData?: CrisisData;        // Structured JSON (preferred)
+  crisisData?: CrisisData | PdfCrisisData;        // Structured JSON (preferred)
   content?: string;                // Legacy text (fallback)
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
@@ -263,6 +264,7 @@ export function CrisisResilienceSection({
   sourceJurisdiction = '',
   destinationJurisdiction = ''
 }: CrisisResilienceSectionProps) {
+  const structuredCrisisData = crisisData as CrisisData | undefined;
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
@@ -273,7 +275,7 @@ export function CrisisResilienceSection({
 
   // Try to parse JSON from content string if crisisData not provided
   // Backend sometimes sends JSON wrapped in markdown header like "## TITLE\n{json...}"
-  let parsedData: CrisisData | undefined = crisisData;
+  let parsedData: CrisisData | undefined = structuredCrisisData;
 
   if (!parsedData && content) {
     try {
@@ -380,7 +382,7 @@ export function CrisisResilienceSection({
             >
               {parsedData.scenarios?.map((scenario, idx) => (
                 <motion.div
-                  key={scenario.id}
+                  key={scenario.id || `${scenario.name}-${idx}`}
                   className="relative rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 transition-all duration-300"
                   initial={{ opacity: 0, y: 12 }}
                   animate={isVisible ? { opacity: 1, y: 0 } : {}}
@@ -390,30 +392,30 @@ export function CrisisResilienceSection({
                   {/* Header */}
                   <div className="flex items-start justify-between mb-5">
                     <div className="flex items-center gap-3">
-                      <ScenarioIcon id={scenario.id} />
+                      <ScenarioIcon id={scenario.id || 'liquidity_crisis'} />
                       <div>
                         <h4 className="text-sm font-normal text-foreground break-words line-clamp-2">{scenario.name}</h4>
-                        <p className="text-xs text-muted-foreground/60">{scenario.position}</p>
+                        <p className="text-xs text-muted-foreground/60">{scenario.position || 'Scenario positioning under review'}</p>
                       </div>
                     </div>
-                    <RiskIndicator level={scenario.risk_level} />
+                      <RiskIndicator level={scenario.risk_level || 'MEDIUM'} />
                   </div>
 
                   {/* Stress Factor */}
                   <div className="rounded-lg p-3 mb-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Stress Factor</p>
-                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.stress_factor}</p>
+                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.stress_factor || 'Stress factor not provided.'}</p>
                   </div>
 
                   {/* Impact & Recovery */}
                   <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-5">
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
-                      <p className="text-sm font-medium text-primary">{scenario.impact}</p>
+                      <p className="text-sm font-medium text-primary">{scenario.impact !== undefined ? String(scenario.impact) : '—'}</p>
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>
-                      <p className="text-sm font-medium text-foreground">{scenario.recovery}</p>
+                      <p className="text-sm font-medium text-foreground">{scenario.recovery || '—'}</p>
                     </div>
                   </div>
 
@@ -421,7 +423,7 @@ export function CrisisResilienceSection({
                   <div className="pt-4">
                     <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Verdict</p>
-                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.verdict}</p>
+                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.verdict || 'Verdict pending further validation.'}</p>
                   </div>
                 </motion.div>
               ))}

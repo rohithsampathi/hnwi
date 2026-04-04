@@ -1,1 +1,2 @@
-export { default as DecisionMemoDashboardMap } from './DecisionMemoDashboardMap';
+export { OpportunitiesMap } from './OpportunitiesMap';
+export { default as WarRoomMap } from './WarRoomMap';

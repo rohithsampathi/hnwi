@@ -23,18 +23,29 @@ import path from "path";
 
 const ROOT = path.resolve(__dirname, "../..");
 const CSS_PATH = path.join(ROOT, "styles/pdf-print.css");
-const ROUTE_PATH = path.join(
+const PDF_RENDERER_PATH = path.join(
   ROOT,
-  "app/api/decision-memo/pdf-puppeteer/[intakeId]/route.ts"
+  "lib/decision-memo/render-decision-memo-pdf.ts"
+);
+const ROUTE_ENTRY_PATH = path.join(
+  ROOT,
+  "app/api/decision-memo/pdf/[intakeId]/route.ts"
 );
 const PRINT_PAGE_PATH = path.join(
   ROOT,
   "app/decision-memo-print/[intakeId]/page.tsx"
 );
+const REPORT_COMPONENT_PATH = path.join(
+  ROOT,
+  "components/decision-memo/memo/DecisionMemoLinearReport.tsx"
+);
 
 const cssContent = fs.readFileSync(CSS_PATH, "utf-8");
-const routeContent = fs.readFileSync(ROUTE_PATH, "utf-8");
+const routeContent = fs.readFileSync(PDF_RENDERER_PATH, "utf-8");
+const routeEntryContent = fs.readFileSync(ROUTE_ENTRY_PATH, "utf-8");
 const printPageContent = fs.readFileSync(PRINT_PAGE_PATH, "utf-8");
+const reportComponentContent = fs.readFileSync(REPORT_COMPONENT_PATH, "utf-8");
+const combinedPrintContent = `${printPageContent}\n${reportComponentContent}`;
 
 // ─────────────────────────────────────────────────────────────────────
 // HELPERS: Parse CSS and Puppeteer config values from source
@@ -242,9 +253,10 @@ describe("Puppeteer route configuration", () => {
     expect(routeContent).toContain("reduce");
   });
 
-  test("waits for data-loaded signal before PDF generation", () => {
+  test("waits for memo-ready and pagination-ready signals before PDF generation", () => {
     expect(routeContent).toContain("data-loaded");
-    expect(routeContent).toMatch(/waitForSelector/);
+    expect(routeContent).toMatch(/waitForFunction/);
+    expect(routeContent).toContain("data-print-pagination-ready");
   });
 
   test("uses networkidle0 for initial page load", () => {
@@ -252,7 +264,7 @@ describe("Puppeteer route configuration", () => {
   });
 
   test("maxDuration is set for long PDF generation", () => {
-    expect(routeContent).toMatch(/maxDuration\s*=\s*\d+/);
+    expect(routeEntryContent).toMatch(/maxDuration\s*=\s*\d+/);
   });
 });
 
@@ -315,7 +327,7 @@ describe("CSS break rules — no blank-page-causing rules", () => {
     expect(bgBorderRule).toBeNull();
   });
 
-  test("break-inside:avoid ONLY on .print-no-break, thead, tr", () => {
+  test("break-inside:avoid is limited to explicit print controls", () => {
     // Extract all selectors that have break-inside: avoid
     const breakInsideRules: string[] = [];
     const ruleRegex = /([^{}]+)\{[^}]*break-inside:\s*avoid[^}]*\}/g;
@@ -324,12 +336,15 @@ describe("CSS break rules — no blank-page-causing rules", () => {
       breakInsideRules.push(match[1].trim());
     }
 
-    // Should only have ONE rule with these three selectors
-    expect(breakInsideRules.length).toBe(1);
-    const selectorGroup = breakInsideRules[0];
-    expect(selectorGroup).toContain(".print-no-break");
-    expect(selectorGroup).toContain("thead");
-    expect(selectorGroup).toContain("tr");
+    expect(breakInsideRules.length).toBe(2);
+
+    const noBreakGroup = breakInsideRules.find((group) => group.includes(".print-no-break"));
+    const runtimeGroup = breakInsideRules.find((group) => group.includes(".print-keep-together"));
+
+    expect(noBreakGroup).toBeDefined();
+    expect(noBreakGroup).toContain("thead");
+    expect(noBreakGroup).toContain("tr");
+    expect(runtimeGroup).toBeDefined();
   });
 
   test("box-decoration-break:clone on rounded cards (visual continuity only)", () => {
@@ -431,43 +446,49 @@ describe("Print page structure", () => {
   });
 
   test("has print-container wrapper div", () => {
-    expect(printPageContent).toContain("print-container");
+    expect(reportComponentContent).toContain("print-container");
   });
 
-  test("sections use print-section class", () => {
+  test("shared report renders many print sections", () => {
     const sectionCount = (
-      printPageContent.match(/className="print-section/g) || []
+      reportComponentContent.match(/<ReportSection\s+mode=\{mode\}/g) || []
     ).length;
-    // Should have many sections (25 sections total)
     expect(sectionCount).toBeGreaterThanOrEqual(10);
   });
 
   test("scenario tree section has print-scenario-tree class", () => {
-    expect(printPageContent).toContain("print-section print-scenario-tree");
+    expect(reportComponentContent).toContain('printClassName="print-scenario-tree"');
   });
 
-  test("sections have print-page-header divs", () => {
-    const headerCount = (
-      printPageContent.match(/print-page-header/g) || []
-    ).length;
-    expect(headerCount).toBeGreaterThanOrEqual(10);
+  test("sections do not inject inline print-page-header chrome", () => {
+    expect(reportComponentContent).not.toContain("print-page-header");
   });
 
   test("sets data-loaded attribute for Puppeteer signal", () => {
     expect(printPageContent).toContain("data-loaded");
   });
 
-  test("mocks IntersectionObserver for Puppeteer (elements with useInView)", () => {
-    expect(printPageContent).toContain("IntersectionObserver");
-    expect(printPageContent).toContain("isIntersecting: true");
+  test("server-resolves print data before rendering the shared report", () => {
+    expect(printPageContent).toContain("fetchDecisionMemoSurfaceData");
+    expect(printPageContent).toContain("data-decision-memo-ready");
+    expect(printPageContent).toContain("data-print-pagination-ready");
   });
 
   test("has watermark element with print-watermark class", () => {
-    expect(printPageContent).toContain("print-watermark");
+    expect(reportComponentContent).toContain("print-watermark");
   });
 
   test("has HC badge element with print-hc-badge class", () => {
-    expect(printPageContent).toContain("print-hc-badge");
+    expect(reportComponentContent).toContain("print-hc-badge");
+  });
+
+  test("print page delegates rendering to shared linear report component", () => {
+    expect(printPageContent).toContain("DecisionMemoLinearReport");
+    expect(printPageContent).toContain('mode="print"');
+  });
+
+  test("shared report mounts the pagination optimizer in print mode", () => {
+    expect(reportComponentContent).toContain("PrintPaginationOptimizer");
   });
 });
 
@@ -499,9 +520,10 @@ describe("Scenario tree print layout", () => {
 // ═══════════════════════════════════════════════════════════════════════
 
 describe("Cover and last page layout", () => {
-  test("cover page does NOT have break-before:page", () => {
-    expect(cssContent).toMatch(
-      /\.print-section:first-child\s*\{[^}]*break-before:\s*auto/s
+  test("framing pages stay opt-in and avoid forced page breaks", () => {
+    expect(reportComponentContent).toContain('printClassName="print-framing-page"');
+    expect(cssContent).not.toMatch(
+      /\.print-framing-page\s*\{[^}]*break-before:\s*page/s
     );
   });
 
@@ -513,7 +535,7 @@ describe("Cover and last page layout", () => {
   test("cover page reduces excessive web margins for A4 fit", () => {
     // Web uses mb-20 (5rem = 80px) — too much for A4
     expect(cssContent).toMatch(
-      /\.print-section:first-child\s+\.mb-20\s*\{[^}]*margin-bottom:[^}]*!important/s
+      /\.print-framing-page\s+\.mb-20\s*\{[^}]*margin-bottom:[^}]*!important/s
     );
   });
 });
@@ -604,9 +626,18 @@ describe("Print container dimensions", () => {
     );
   });
 
-  test("section padding is 52px", () => {
+  test("section padding keeps horizontal rhythm while reducing top dead space", () => {
     expect(cssContent).toMatch(
-      /\.print-section\s*\{[^}]*padding:\s*52px/s
+      /\.print-section\s*\{[^}]*padding:\s*12px\s+44px\s+20px/s
+    );
+  });
+
+  test("runtime pagination classes are defined", () => {
+    expect(cssContent).toMatch(
+      /\.print-break-before\s*\{[^}]*break-before:\s*page/s
+    );
+    expect(cssContent).toMatch(
+      /\.print-keep-together\s*\{[^}]*break-inside:\s*avoid-page/s
     );
   });
 });

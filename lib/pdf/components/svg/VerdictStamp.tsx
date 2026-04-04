@@ -84,9 +84,7 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
           x={String(cx)}
           y={String(blockStartY + i * lineHeight)}
           textAnchor="middle"
-          fontSize={fontSize}
-          fontFamily="Inter" fontWeight={700}
-          fill={t.primary}
+          style={{ fontSize, fontFamily: 'Inter', fontWeight: 700, fill: t.primary }}
         >
           {line}
         </SvgText>
@@ -97,9 +95,7 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
           x={String(cx)}
           y={String(blockStartY + lines.length * lineHeight + scoreGap + scoreLineHeight * 0.3)}
           textAnchor="middle"
-          fontSize={scoreSize}
-          fontFamily="Inter" fontWeight={700}
-          fill={darkTheme.textPrimary}
+          style={{ fontSize: scoreSize, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
         >
           {String(Math.round(score!))}
         </SvgText>

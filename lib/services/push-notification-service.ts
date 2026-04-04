@@ -1,4 +1,15 @@
 import { notificationService } from './notification-service';
+import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags';
+
+type PushAction = {
+  action: string;
+  title: string;
+  icon?: string;
+};
+
+type PushNotificationOptions = NotificationOptions & {
+  actions?: PushAction[];
+};
 
 export class PushNotificationService {
   private registration: ServiceWorkerRegistration | null = null;
@@ -7,7 +18,7 @@ export class PushNotificationService {
   // Check if push notifications are supported
   static isSupported(): boolean {
     return (
-      'serviceWorker' in navigator &&
+      canUseServiceWorkerRuntime() &&
       'PushManager' in window &&
       'Notification' in window
     );
@@ -78,7 +89,7 @@ export class PushNotificationService {
       // Subscribe to push notifications
       this.subscription = await this.registration!.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(vapid_public_key)
+        applicationServerKey: this.urlBase64ToUint8Array(vapid_public_key) as BufferSource
       });
 
       // Send subscription to backend
@@ -153,7 +164,6 @@ export class PushNotificationService {
         icon: '/icon-192x192.png',
         badge: '/badge-72x72.png',
         tag: 'test-notification',
-        timestamp: Date.now(),
         data: {
           testNotification: true
         }
@@ -172,7 +182,7 @@ export class PushNotificationService {
       .replace(/_/g, '/');
 
     const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
+    const outputArray = new Uint8Array(new ArrayBuffer(rawData.length));
 
     for (let i = 0; i < rawData.length; ++i) {
       outputArray[i] = rawData.charCodeAt(i);
@@ -202,14 +212,12 @@ export class PushNotificationService {
           };
         }
 
-        const notificationOptions: NotificationOptions = {
+        const notificationOptions: PushNotificationOptions = {
           body: notificationData.content || notificationData.body || 'You have a new notification',
           icon: '/icon-192x192.png',
           badge: '/badge-72x72.png',
           tag: notificationData.id || 'notification',
-          timestamp: Date.now(),
           requireInteraction: notificationData.priority === 'urgent',
-          vibrate: [200, 100, 200],
           data: {
             ...notificationData,
             clickUrl: notificationData.actionUrl || '/'

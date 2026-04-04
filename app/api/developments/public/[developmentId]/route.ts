@@ -20,15 +20,26 @@ export async function GET(
 
     // Call backend without authentication - this should be a public endpoint
     const backendUrl = `${API_BASE_URL}/api/developments/public/${developmentId}`
+    const cookie = request.headers.get('cookie')
+    const authorization = request.headers.get('authorization')
+    const forwardedHeaders: HeadersInit = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'NextJS-Proxy/1.0',
+    }
+
+    if (cookie) {
+      forwardedHeaders.cookie = cookie
+    }
+
+    if (authorization) {
+      forwardedHeaders.authorization = authorization
+    }
 
     // Fetching from backend public endpoint
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'NextJS-Proxy/1.0',
-      },
+      headers: forwardedHeaders,
     })
 
     // Backend response received

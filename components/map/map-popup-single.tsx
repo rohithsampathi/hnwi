@@ -4,7 +4,7 @@
 "use client"
 
 import React from "react"
-import { MapPin, Crown, Globe, Linkedin, Brain } from "lucide-react"
+import { MapPin, Crown, Globe, Linkedin } from "lucide-react"
 import type { City } from "@/components/interactive-world-map"
 import { CitationText } from "@/components/elite/citation-text"
 import { FormattedAnalysis } from "@/components/elite/formatted-analysis"
@@ -260,50 +260,15 @@ export function MapPopupSingle({
                   </div>
                 )}
 
-                {(city as any).katherine_analysis && (
-                  <div
-                    className="bg-primary/5 rounded-lg p-3 border border-primary/20"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <p className="text-xs text-primary mb-2 font-semibold flex items-center gap-1">
-                      <Brain className="h-3 w-3" />
-                      Elite Pulse
-                    </p>
-                    <div className="text-xs leading-relaxed text-foreground">
-                      <FormattedAnalysis
-                        text={(city as any).katherine_analysis}
-                        onCitationClick={onCitationClick}
-                        citationMap={citationMap}
-                        className="text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             {/* Regular Analysis */}
-            {!city.source?.toLowerCase().includes('crown') && city.analysis && (
+            {city.analysis && (
               <div onClick={(e) => e.stopPropagation()}>
-                <p className="text-xs text-muted-foreground mb-1 font-semibold">Analysis:</p>
                 <div className="text-xs leading-relaxed">
                   <FormattedAnalysis
                     text={city.analysis}
-                    onCitationClick={onCitationClick}
-                    citationMap={citationMap}
-                    className="text-xs"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Elite Pulse */}
-            {!city.source?.toLowerCase().includes('crown') && city.elite_pulse_analysis && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <p className="text-xs text-muted-foreground mb-1 font-semibold">Elite Pulse:</p>
-                <div className="text-xs leading-relaxed">
-                  <FormattedAnalysis
-                    text={city.elite_pulse_analysis}
                     onCitationClick={onCitationClick}
                     citationMap={citationMap}
                     className="text-xs"

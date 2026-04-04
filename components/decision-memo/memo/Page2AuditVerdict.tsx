@@ -5,9 +5,14 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Mistake, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { EASE_OUT_EXPO, EASE_OUT_QUART } from '@/lib/animations/motion-variants';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
 
 interface DDChecklistItem {
   category: string;
@@ -18,7 +23,7 @@ interface DDChecklistItem {
 
 interface Page2Props {
   mistakes: Mistake[];
-  opportunitiesCount: number;
+  opportunitiesCount?: number;
   precedentCount?: number;  // From kgv3_intelligence_used.precedents
   ddChecklist?: {
     total_items: number;
@@ -67,34 +72,18 @@ function RadialGauge({
   sublabel?: string;
   color?: 'primary' | 'emerald' | 'amber' | 'red';
 }) {
+  const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<SVGSVGElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const [animatedValue, setAnimatedValue] = useState(0);
+  const isInView = useReportInView(ref, { once: true, margin: "-50px" });
+  const animatedValue = useAnimatedMetric(value, {
+    duration: 1800,
+    enabled: motionEnabled && isInView,
+  });
 
   const radius = (size - 30) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = animatedValue / maxValue;
   const strokeDashoffset = circumference * (1 - progress * 0.75); // 270 degrees (3/4 circle)
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    let startTime: number;
-    const duration = 1800;
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const elapsed = Math.min((timestamp - startTime) / duration, 1);
-      const easeOutQuart = 1 - Math.pow(1 - elapsed, 4);
-      setAnimatedValue(value * easeOutQuart);
-
-      if (elapsed < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [value, isInView]);
 
   const colorMap = {
     primary: { stroke: 'hsl(var(--primary))', bg: 'hsl(var(--primary) / 0.1)' },
@@ -285,9 +274,10 @@ export function Page2AuditVerdict({
   viaNegativa,
   scenarioTreeData
 }: Page2Props) {
-  const [isVisible, setIsVisible] = useState(false);
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(sectionRef, { once: true, margin: "-50px" });
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -462,7 +452,11 @@ export function Page2AuditVerdict({
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.15, ease: EASE_OUT_EXPO }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6"
+            data-print-block="keep"
+            data-print-max-gap="220"
+          >
             {/* Tax Efficiency */}
             <div className={`relative overflow-hidden rounded-xl p-4 sm:p-6 text-center border ${
               viaNegativa.taxEfficiencyPassed
@@ -536,7 +530,11 @@ export function Page2AuditVerdict({
         animate={isVisible ? { opacity: 1 } : {}}
         transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
       >
-        <div className="relative rounded-2xl border border-border/30 overflow-hidden">
+        <div
+          className="relative rounded-2xl border border-border/30 overflow-hidden"
+          data-print-block="keep"
+          data-print-max-gap="240"
+        >
           {/* Ambient glow */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
@@ -718,6 +716,8 @@ export function Page2AuditVerdict({
                 <motion.div
                   key={index}
                   className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+                  data-print-block="keep"
+                  data-print-max-gap="148"
                   initial={{ opacity: 0, y: 12 }}
                   animate={isVisible ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.7, delay: 0.5 + index * 0.08, ease: EASE_OUT_EXPO }}
@@ -773,6 +773,8 @@ export function Page2AuditVerdict({
       {mistakes.length === 0 && (
         <motion.div
           className="mb-16 rounded-2xl border border-border/30 overflow-hidden p-12"
+          data-print-block="keep"
+          data-print-max-gap="220"
           initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.4, ease: EASE_OUT_EXPO }}
@@ -847,6 +849,8 @@ export function Page2AuditVerdict({
                   <motion.div
                     key={item.item}
                     className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+                    data-print-block="keep"
+                    data-print-max-gap="148"
                     initial={{ opacity: 0, y: 12 }}
                     animate={isVisible ? { opacity: 1, y: 0 } : {}}
                     transition={{ duration: 0.7, delay: 0.7 + i * 0.08, ease: EASE_OUT_EXPO }}
@@ -883,7 +887,11 @@ export function Page2AuditVerdict({
               })}
           </div>
         ) : (
-          <div className="text-center py-10 px-6 rounded-xl border border-border/20 bg-card/50">
+          <div
+            className="text-center py-10 px-6 rounded-xl border border-border/20 bg-card/50"
+            data-print-block="keep"
+            data-print-max-gap="180"
+          >
             <p className="text-sm text-muted-foreground/60">
               Due diligence items will be generated based on {sourceJurisdiction} → {destinationJurisdiction} profile
             </p>

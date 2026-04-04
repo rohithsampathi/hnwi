@@ -226,7 +226,7 @@ export class ZeroTrustEngine {
     return Math.max(0, trustScore);
   }
 
-  private static evaluateTimeBasedTrust(context: AccessContext): Promise<number> {
+  private static evaluateTimeBasedTrust(context: AccessContext): number {
     const hour = new Date(context.timestamp).getHours();
     const dayOfWeek = new Date(context.timestamp).getDay();
 
@@ -376,10 +376,12 @@ export class ZeroTrustEngine {
   private static async getWebGLFingerprint(): Promise<string> {
     try {
       const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const gl = (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")) as WebGLRenderingContext | null;
       if (!gl) return "";
 
-      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info") as
+        | { UNMASKED_VENDOR_WEBGL: number; UNMASKED_RENDERER_WEBGL: number }
+        | null;
       if (!debugInfo) return "";
 
       const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);

@@ -365,7 +365,6 @@ export function ArtifactDisplay({ artifact }: ArtifactDisplayProps) {
                     </span>
                   </div>
                   <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
-                    anchor.confidence === 'CRITICAL' ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' :
                     anchor.confidence === 'HIGH' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' :
                     anchor.confidence === 'MEDIUM' ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white' :
                     'bg-muted text-muted-foreground'

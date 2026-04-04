@@ -81,12 +81,10 @@ export async function generateMetadata({
           type: "image/png",
         }
       ],
-      article: {
-        publishedTime: new Date().toISOString(),
-        modifiedTime: new Date().toISOString(),
-        section: "Wealth Intelligence",
-        tags: ["HNWI", "Wealth DNA", tierName, "Strategic Assessment", "Ultra-Wealthy"],
-      }
+      publishedTime: new Date().toISOString(),
+      modifiedTime: new Date().toISOString(),
+      section: "Wealth Intelligence",
+      tags: ["HNWI", "Wealth DNA", tierName, "Strategic Assessment", "Ultra-Wealthy"],
     },
     twitter: {
       card: "summary_large_image",

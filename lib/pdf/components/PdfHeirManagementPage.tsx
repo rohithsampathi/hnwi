@@ -224,7 +224,7 @@ export const PdfHeirManagementPage: React.FC<PdfHeirManagementPageProps> = ({ he
       ? Math.round(heirManagement.third_generation_risk.with_structure_probability * 100)
       : null;
 
-  const improvement = (currentRisk != null && withStructureRisk != null) ? currentRisk - withStructureRisk : null;
+  const improvement = (currentRisk != null && withStructureRisk != null) ? Number(currentRisk) - Number(withStructureRisk) : null;
 
   // Preservation rate for recommended structure
   const preservationRate = ('preservation_with_structure_pct' in thirdGenProblem && thirdGenProblem.preservation_with_structure_pct != null)

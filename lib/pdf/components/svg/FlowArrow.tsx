@@ -54,7 +54,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       {/* From label */}
-      <SvgText x="4" y={String(arrowY + 4)} fontSize="10" fontFamily="Inter" fontWeight={700} fill={darkTheme.textPrimary}>
+      <SvgText x="4" y={String(arrowY + 4)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}>
         {fromLabel}
       </SvgText>
       {/* Arrow line */}
@@ -78,9 +78,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
       <SvgText
         x={String(toLabelX)}
         y={String(arrowY + 4)}
-        fontSize="10"
-        fontFamily="Inter" fontWeight={700}
-        fill={darkTheme.textPrimary}
+        style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
       >
         {toLabel}
       </SvgText>

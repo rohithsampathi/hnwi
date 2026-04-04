@@ -8,21 +8,17 @@ import { Heading2 } from "@/components/ui/typography"
 import { PageHeaderWithBack } from "@/components/ui/back-button"
 import { DollarSign, Loader2 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { getOpportunities, Opportunity } from "@/lib/api"
+import { getCommandCentreOpportunities, Opportunity } from "@/lib/api"
+import type { Opportunity as GlobeOpportunity, Region as GlobeRegion } from "@/lib/invest-scan-data"
 
 // Dynamically import the Globe component with SSR disabled
-const InvestmentGlobe = dynamic(
-  () => import("@/components/investment-globe"),
+const InvestmentGlobe = dynamic<{ regions: GlobeRegion[]; onRegionSelect: (regionId: string) => void }>(
+  () => import("@/components/investment-globe").then((module) => module.InvestmentGlobe),
   { ssr: false }
 )
 
 // Transform API data into the format needed by the globe component
-interface RegionData {
-  id: string;
-  name: string;
-  position: [number, number];
-  opportunities: Opportunity[];
-}
+type RegionData = GlobeRegion
 
 // Map region names to region IDs and coordinates
 const regionMap: Record<string, { id: string; position: [number, number] }> = {
@@ -47,12 +43,16 @@ export function InvestScanPage({ onNavigate }: { onNavigate?: (route: string) =>
     async function loadOpportunities() {
       try {
         setLoading(true)
-        const data = await getOpportunities()
+        const data = await getCommandCentreOpportunities({
+          includeCrownVault: false,
+          view: "all",
+          timeframe: "LIVE",
+        })
         setOpportunities(data)
         
         // Group opportunities by region
         const regionGroups = data.reduce((acc, opp) => {
-          const region = opp.region
+          const region = opp.region || opp.country || "Global"
           if (!acc[region]) {
             acc[region] = []
           }
@@ -67,11 +67,31 @@ export function InvestScanPage({ onNavigate }: { onNavigate?: (route: string) =>
             position: [0, 0] // Default position if region not in map
           }
           
+          const regionOpportunities: GlobeOpportunity[] = regionGroups[regionName].map((opportunity) => ({
+            id: opportunity.id,
+            title: opportunity.title,
+            type: opportunity.type || opportunity.asset_category || "Opportunity",
+            value: opportunity.value || opportunity.minimum_investment_display || "Confidential",
+            description: opportunity.description || opportunity.subtitle || "",
+            fullAnalysis: opportunity.fullAnalysis || opportunity.investment_thesis?.what_youre_buying || "",
+            riskLevel: (opportunity.riskLevel as GlobeOpportunity["riskLevel"]) || opportunity.risk_level || "Medium",
+            expectedReturn: opportunity.expectedReturn || (
+              opportunity.expected_return_annual_low && opportunity.expected_return_annual_high
+                ? `${opportunity.expected_return_annual_low}-${opportunity.expected_return_annual_high}%`
+                : opportunity.expected_return_annual_low
+                  ? `${opportunity.expected_return_annual_low}%`
+                  : "Confidential"
+            ),
+            investmentHorizon: opportunity.investmentHorizon || opportunity.time_horizon_display?.time_horizon || "Medium-term",
+            pros: opportunity.pros || [],
+            cons: opportunity.cons || [],
+          }))
+
           return {
             id: regionInfo.id,
             name: regionName,
             position: regionInfo.position,
-            opportunities: regionGroups[regionName]
+            opportunities: regionOpportunities
           }
         })
         

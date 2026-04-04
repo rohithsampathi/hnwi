@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 import {
   Brain,
   Search,
@@ -152,6 +153,7 @@ export function AnalysisLoader({
   metrics: backendMetrics,
   statusMessage
 }: AnalysisLoaderProps) {
+  const castleBriefCount = useCastleBriefCount({ initialCount: backendMetrics?.developmentsAnalyzed ?? null });
   // Local animation state (used when no backend data)
   const [localPhaseIndex, setLocalPhaseIndex] = useState(0);
   const [localSubStepIndex, setLocalSubStepIndex] = useState(0);
@@ -185,7 +187,7 @@ export function AnalysisLoader({
     patternVectors: backendMetrics?.patternVectors ?? 2340,
     dependencyLayers: backendMetrics?.dependencyLayers ?? 6,
     riskScenarios: backendMetrics?.riskScenarios ?? 12,
-    developmentsAnalyzed: backendMetrics?.developmentsAnalyzed ?? 1875,
+    developmentsAnalyzed: backendMetrics?.developmentsAnalyzed ?? castleBriefCount ?? 0,
     patternsScanned: backendMetrics?.patternsScanned ?? patternsScanned
   };
 
@@ -231,12 +233,12 @@ export function AnalysisLoader({
       // Pattern counter (for pattern phase)
       if (phaseIdx === 1) { // pattern phase
         const patternProgress = phasePct / 100;
-        setPatternsScanned(Math.floor(patternProgress * 1875));
+        setPatternsScanned(Math.floor(patternProgress * (castleBriefCount ?? 0)));
       }
     }, 50);
 
     return () => clearInterval(animationLoop);
-  }, [backendPhase, backendProgress, startTime, localPhaseIndex]);
+  }, [backendPhase, backendProgress, startTime, localPhaseIndex, castleBriefCount]);
 
   return (
     <div className="flex flex-col h-full bg-background/50 backdrop-blur-sm">

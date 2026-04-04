@@ -38,6 +38,7 @@ export function FlyToCity({ city, zoomLevel }: { city: City | null; zoomLevel?: 
  */
 export function ResetView({ shouldReset, onReset, minZoom }: { shouldReset: boolean; onReset: () => void; minZoom?: number }) {
   const map = useMap()
+  const timeoutRef = React.useRef<number | null>(null)
 
   React.useEffect(() => {
     if (shouldReset) {
@@ -52,9 +53,16 @@ export function ResetView({ shouldReset, onReset, minZoom }: { shouldReset: bool
       })
 
       // Reset state after animation completes (duration in seconds * 1000 + buffer)
-      setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         onReset()
       }, duration * 1000 + 100)
+    }
+
+    return () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
     }
   }, [shouldReset, map, onReset, minZoom])
 
@@ -130,6 +138,14 @@ export function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => 
  */
 export function PopupZoomHandler() {
   const [isZooming, setIsZooming] = React.useState(false)
+  const pendingTimeoutsRef = React.useRef<number[]>([])
+
+  const clearPendingTimeouts = React.useCallback(() => {
+    pendingTimeoutsRef.current.forEach(timeoutId => window.clearTimeout(timeoutId))
+    pendingTimeoutsRef.current = []
+  }, [])
+
+  React.useEffect(() => clearPendingTimeouts, [clearPendingTimeouts])
 
   const map = useMapEvents({
     popupopen: (e) => {
@@ -150,7 +166,9 @@ export function PopupZoomHandler() {
         const targetZoom = MAP_CONFIG.zoom.popupDetail
 
         // Wait for popup to fully render and DOM to settle
-        setTimeout(() => {
+        clearPendingTimeouts()
+
+        const flyTimeout = window.setTimeout(() => {
           const mapSize = map.getSize()
 
           // Calculate pixel offset using centralized config
@@ -169,10 +187,13 @@ export function PopupZoomHandler() {
           })
 
           // Reset zooming flag after animation completes
-          setTimeout(() => {
+          const resetTimeout = window.setTimeout(() => {
             setIsZooming(false)
           }, MAP_CONFIG.animation.flyToPopup * 1000 + 50)
+          pendingTimeoutsRef.current.push(resetTimeout)
         }, 150) // Increased delay slightly for DOM to fully settle
+
+        pendingTimeoutsRef.current.push(flyTimeout)
       }
     },
   })

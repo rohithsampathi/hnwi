@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DollarSign, Shield, Clock, FileText } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface PaymentWallProps {
   previewId: string;
@@ -15,6 +16,11 @@ interface PaymentWallProps {
 
 export function PaymentWall({ previewId, preventedLoss, onPaymentSuccess }: PaymentWallProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const briefCount = useCastleBriefCount();
+  const corridorSignalsBenefit =
+    briefCount !== null
+      ? `10+ corridor signals cited (from ${briefCount.toLocaleString()} developments)`
+      : '10+ corridor signals cited from live developments';
 
   const handlePayment = async () => {
     setIsProcessing(true);
@@ -88,7 +94,7 @@ export function PaymentWall({ previewId, preventedLoss, onPaymentSuccess }: Paym
             'Complete exposure map (all 12 blind spots, not just 3)',
             'All failure modes with evidence citations',
             'Corrected sequencing (4-step Before → After roadmap)',
-            '10+ corridor signals cited (from 1,875 developments)',
+            corridorSignalsBenefit,
             'Deep dive on matched opportunities with timing analysis',
             'Implementation roadmap with advisor SLAs',
             'Evidence sources (full MongoDB dev_ids)',

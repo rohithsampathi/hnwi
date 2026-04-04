@@ -60,16 +60,14 @@ export async function mobileFetch(
       const timeoutId = setTimeout(() => controller.abort(), opts.timeout);
 
       // Mobile-specific headers
-      const mobileHeaders: HeadersInit = {
-        ...init?.headers,
-        'X-Client-Type': device.isMobile ? 'mobile' : 'desktop',
-        'X-Client-Platform': device.isIOS ? 'ios' : device.isAndroid ? 'android' : 'web',
-      };
+      const mobileHeaders = new Headers(init?.headers);
+      mobileHeaders.set('X-Client-Type', device.isMobile ? 'mobile' : 'desktop');
+      mobileHeaders.set('X-Client-Platform', device.isIOS ? 'ios' : device.isAndroid ? 'android' : 'web');
 
       // Special handling for POST on iOS Safari
       if (requiresSpecialPostHandling() && init?.method === 'POST') {
         // Add extra header to help backend identify mobile requests
-        mobileHeaders['X-Mobile-Post'] = 'true';
+        mobileHeaders.set('X-Mobile-Post', 'true');
       }
 
       const response = await fetch(url, {

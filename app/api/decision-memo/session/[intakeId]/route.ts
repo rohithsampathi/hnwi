@@ -56,14 +56,20 @@ export async function GET(
     // Frontend expects 401 to trigger ReportAuthRequiredError and show auth popup
     if (response.status === 401) {
       const data = await response.json().catch(() => ({ error: 'Authentication required' }));
-      return NextResponse.json(data, { status: 401 });
+      return NextResponse.json(data, {
+        status: 401,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
 
     // Pass through 404 if audit not found
     if (response.status === 404) {
       return NextResponse.json(
         { error: 'Session not found' },
-        { status: 404 }
+        {
+          status: 404,
+          headers: { 'Cache-Control': 'no-store' },
+        }
       );
     }
 
@@ -75,14 +81,19 @@ export async function GET(
       });
       return NextResponse.json(
         { success: false, error: `Backend returned ${response.status}` },
-        { status: response.status }
+        {
+          status: response.status,
+          headers: { 'Cache-Control': 'no-store' },
+        }
       );
     }
 
     const data = await response.json();
     logger.info('Session status retrieved', { intakeId, status: data.status });
 
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
 
   } catch (error) {
     logger.error('Error fetching session status', {

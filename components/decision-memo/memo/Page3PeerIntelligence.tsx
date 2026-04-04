@@ -6,13 +6,19 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { motion, useInView } from 'framer-motion';
-import { Opportunity } from '@/lib/decision-memo/memo-types';
+import { motion } from 'framer-motion';
+import type { Opportunity as MemoOpportunity } from '@/lib/decision-memo/memo-types';
+import type { Opportunity as PdfOpportunity } from '@/lib/pdf/pdf-types';
 import type { CitationMap, Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { City } from '@/components/interactive-world-map';
 import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
 import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
 
 // Dynamic import for map component
 const InteractiveWorldMap = dynamic(
@@ -45,14 +51,14 @@ interface PeerCohortStats {
     avg_deal_value?: string;
     avg_deal_value_subtitle?: string;
   };
-  total_peers: number;
-  last_6_months: number;  // Changed from last_90_days
-  avg_deal_value_m: number;
-  drivers: {
+  total_peers?: number;
+  last_6_months?: number;  // Changed from last_90_days
+  avg_deal_value_m?: number;
+  drivers?: {
     tax_optimization: number;
     asset_protection: number;
     lifestyle: number;
-  };
+  } | string[];
 }
 
 // Backend-provided capital flow data
@@ -91,7 +97,7 @@ interface CapitalFlowData {
 }
 
 interface Page3Props {
-  opportunities: Opportunity[];
+  opportunities: Array<MemoOpportunity | PdfOpportunity>;
   peerCount: number;
   onCitationClick: (citationId: string) => void;
   citationMap: CitationMap | Map<string, number>;
@@ -112,6 +118,7 @@ interface Page3Props {
   hideSectionTitle?: boolean;
   // Fix #16: Relocation status affects labels (Migration Window vs Acquisition Window)
   isRelocating?: boolean;
+  renderMode?: 'screen' | 'print';
 }
 
 // Animated counter for stats
@@ -128,30 +135,13 @@ function AnimatedStat({
   decimals?: number;
   duration?: number;
 }) {
-  const [count, setCount] = useState(0);
+  const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    let startTime: number;
-    let animationFrame: number;
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      setCount(value * easeOutQuart);
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      }
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [value, duration, isInView]);
+  const isInView = useReportInView(ref, { once: true, margin: "-50px" });
+  const count = useAnimatedMetric(value, {
+    duration,
+    enabled: motionEnabled && isInView,
+  });
 
   return (
     <span ref={ref}>
@@ -175,17 +165,20 @@ export function Page3PeerIntelligence({
   capitalFlowData,
   sections = ['all'],
   hideSectionTitle = false,
-  isRelocating = false  // Fix #16: Default to false (cross-border acquisition)
+  isRelocating = false,  // Fix #16: Default to false (cross-border acquisition)
+  renderMode = 'screen',
 }: Page3Props) {
-  const [isVisible, setIsVisible] = useState(false);
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(sectionRef, { once: true, margin: "-50px" });
 
   // Section visibility helpers
   const showPeer = sections.includes('all') || sections.includes('peer');
   const showCorridor = sections.includes('all') || sections.includes('corridor');
   const showGeographic = sections.includes('all') || sections.includes('geographic');
   const showDrivers = sections.includes('all') || sections.includes('drivers');
+  const isPrintMode = renderMode === 'print';
 
   // Filter states for map
   const [showCrownAssets, setShowCrownAssets] = useState(true);
@@ -213,7 +206,7 @@ export function Page3PeerIntelligence({
   };
 
   // Driver percentages from backend ONLY - no fallbacks
-  const drivers = peerCohortStats?.drivers;
+  const drivers = Array.isArray(peerCohortStats?.drivers) ? undefined : peerCohortStats?.drivers;
   const hasDriverData = drivers !== undefined;
 
   // Capital flow data - ONLY from backend, no fake data generation
@@ -350,44 +343,82 @@ export function Page3PeerIntelligence({
       });
   }, [opportunities, sourceJurisdiction, destinationJurisdiction, sourceCountry, destinationCountry, sourceCity, destinationCity]);
 
+  const geographicHighlights = useMemo(() => {
+    const grouped = new Map<string, { name: string; country: string; count: number; titles: string[] }>();
+
+    cities.forEach((city) => {
+      const key = `${city.name}__${city.country}`;
+      const existing = grouped.get(key) ?? {
+        name: city.name,
+        country: city.country,
+        count: 0,
+        titles: [],
+      };
+
+      existing.count += 1;
+
+      if (city.title && !existing.titles.includes(city.title) && existing.titles.length < 2) {
+        existing.titles.push(city.title);
+      }
+
+      grouped.set(key, existing);
+    });
+
+    return Array.from(grouped.values()).sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+  }, [cities]);
+
+  const sectionHeader = (
+    <motion.div
+      className="mb-8 sm:mb-12"
+      initial={{ opacity: 0, y: 12 }}
+      animate={isVisible ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+        Section III
+      </p>
+      <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
+        Market Intelligence & Peer Analysis
+      </h2>
+      <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+    </motion.div>
+  );
+
   return (
     <div ref={sectionRef}>
-      {/* Section Header - shows if peer, corridor, or drivers sections are visible AND not hidden */}
-      {!hideSectionTitle && (showPeer || showCorridor || showDrivers) && (
-        <motion.div
-          className="mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: 12 }}
-          animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
-            Section III
-          </p>
-          <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
-            Market Intelligence & Peer Analysis
-          </h2>
-          <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-        </motion.div>
-      )}
+      {/* Section Header - keep it attached to the first peer block in print mode */}
+      {!hideSectionTitle && !showPeer && (showCorridor || showDrivers) && sectionHeader}
 
       {/* ═══════════════════════════════════════════════════════════════════
           PEER MOVEMENT ANALYSIS - Premium Stats Grid
           ═══════════════════════════════════════════════════════════════════ */}
       {showPeer && (
-      <motion.div
-        className="mb-10 sm:mb-16"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-          {peerCohortStats?.section_title || 'CROSS-BORDER ACQUISITION INTELLIGENCE'}
-        </p>
-        <p className="text-sm text-muted-foreground/60 mb-8">
-          {peerCohortStats?.section_subtitle || `HNWI real estate acquisitions in ${destinationJurisdiction || 'destination'}`}
-        </p>
+      <div data-print-block="keep" data-print-max-height="760">
+        {!hideSectionTitle && sectionHeader}
+        <motion.div
+          className="mb-10 sm:mb-16"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+            {peerCohortStats?.section_title || 'CROSS-BORDER ACQUISITION INTELLIGENCE'}
+          </p>
+          <p className="text-sm text-muted-foreground/60 mb-8">
+            {peerCohortStats?.section_subtitle || `HNWI real estate acquisitions in ${destinationJurisdiction || 'destination'}`}
+          </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8"
+          data-print-block="keep"
+          data-print-max-gap="200"
+        >
           {[
             {
               label: peerCohortStats?.metric_labels?.total_peers || 'Total Acquisitions',
@@ -498,6 +529,8 @@ export function Page3PeerIntelligence({
           return (
             <motion.div
               className={`relative rounded-2xl border ${colors.border} bg-card/50 overflow-hidden px-4 sm:px-10 py-6`}
+              data-print-block="keep"
+              data-print-max-gap="180"
               initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.8, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
@@ -526,7 +559,8 @@ export function Page3PeerIntelligence({
             </motion.div>
           );
         })()}
-      </motion.div>
+        </motion.div>
+      </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════
@@ -540,175 +574,181 @@ export function Page3PeerIntelligence({
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
-        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-          WEALTH MIGRATION CORRIDOR
-        </p>
-        <p className="text-sm text-muted-foreground/60 mb-8">
-          {corridorSource && corridorDestination
-            ? `${corridorSource} → ${corridorDestination} capital flow analysis`
-            : 'Jurisdiction-specific capital flow patterns'
-          }
-        </p>
+        <div data-print-block="keep" data-print-max-height="760">
+          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+            WEALTH MIGRATION CORRIDOR
+          </p>
+          <p className="text-sm text-muted-foreground/60 mb-8">
+            {corridorSource && corridorDestination
+              ? `${corridorSource} → ${corridorDestination} capital flow analysis`
+              : 'Jurisdiction-specific capital flow patterns'
+            }
+          </p>
 
-        <div className="relative rounded-2xl border border-border/30 overflow-hidden px-5 sm:px-8 md:px-12 py-10 md:py-12">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+          <div
+            className="relative rounded-2xl border border-border/30 overflow-hidden px-5 sm:px-8 md:px-12 py-10 md:py-12"
+            data-print-block="keep"
+            data-print-max-gap="180"
+          >
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-          {/* Single Corridor Visualization - Clean and Data-Driven */}
-          <div className="relative">
-            {/* The single corridor flow */}
-            <div className="flex items-center justify-between gap-4 sm:gap-8">
-              {/* Source Jurisdiction */}
-              <motion.div
-                className="flex-1 max-w-[150px] sm:max-w-[200px]"
-                initial={{ opacity: 0, x: -20 }}
-                animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="p-4 sm:p-6 rounded-xl border border-red-500/20 bg-card/50">
-                  <p className="text-xs uppercase tracking-[0.2em] text-red-500/60 mb-3">SOURCE</p>
-                  <p className="text-base sm:text-xl font-medium text-foreground mb-1">
-                    {corridorSource || '—'}
-                  </p>
-                  {hasCapitalFlowData && capitalFlows?.outflows[0] && (
-                    <p className="text-xs text-muted-foreground/60">
-                      {capitalFlows.outflows[0].volume.toLocaleString()} HNWIs outflow
+            {/* Single Corridor Visualization - Clean and Data-Driven */}
+            <div className="relative">
+              {/* The single corridor flow */}
+              <div className="flex items-center justify-between gap-4 sm:gap-8">
+                {/* Source Jurisdiction */}
+                <motion.div
+                  className="flex-1 max-w-[150px] sm:max-w-[200px]"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={isVisible ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="p-4 sm:p-6 rounded-xl border border-red-500/20 bg-card/50">
+                    <p className="text-xs uppercase tracking-[0.2em] text-red-500/60 mb-3">SOURCE</p>
+                    <p className="text-base sm:text-xl font-medium text-foreground mb-1">
+                      {corridorSource || '—'}
                     </p>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Flow Arrow with Animation */}
-              <motion.div
-                className="flex-shrink-0 flex flex-col items-center gap-2"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={isVisible ? { opacity: 1, scale: 1 } : {}}
-                transition={{ duration: 0.7, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="relative">
-                  {/* Animated flow line */}
-                  <div className="w-16 sm:w-32 h-px bg-gradient-to-r from-red-500/40 via-gold/40 to-primary/40 overflow-hidden">
-                    <motion.div
-                      className="h-full w-8 bg-foreground/10"
-                      animate={{ x: ['-100%', '400%'] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                    />
+                    {hasCapitalFlowData && capitalFlows?.outflows[0] && (
+                      <p className="text-xs text-muted-foreground/60">
+                        {capitalFlows.outflows[0].volume.toLocaleString()} HNWIs outflow
+                      </p>
+                    )}
                   </div>
-                  {/* Arrow head */}
-                  <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-l-[6px] border-l-primary/40 border-y-[4px] border-y-transparent" />
-                </div>
-                {velocityChange && (() => {
-                  // Fix #11: Color velocity badge based on signal
-                  const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
-                  const badgeColors = signal === 'caution'
-                    ? 'border-red-500/20 text-red-500/80'
-                    : signal === 'monitor'
-                    ? 'border-amber-500/20 text-amber-500/80'
-                    : signal === 'active_window'
-                    ? 'border-emerald-500/20 text-emerald-500/80'
-                    : 'border-primary/20 text-primary/80';
-                  return (
-                    <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${badgeColors}`}>
-                      {velocityChange} velocity
-                    </span>
-                  );
-                })()}
-              </motion.div>
+                </motion.div>
 
-              {/* Destination Jurisdiction */}
-              <motion.div
-                className="flex-1 max-w-[150px] sm:max-w-[200px]"
-                initial={{ opacity: 0, x: 20 }}
-                animate={isVisible ? { opacity: 1, x: 0 } : {}}
-                transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="p-4 sm:p-6 rounded-xl border border-primary/20 bg-card/50">
-                  <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-3">DESTINATION</p>
-                  <p className="text-base sm:text-xl font-medium text-foreground mb-1">
-                    {corridorDestination || '—'}
-                  </p>
-                  {hasCapitalFlowData && capitalFlows?.inflows[0] && (
-                    <p className="text-xs text-muted-foreground/60">
-                      {capitalFlows.inflows[0].volume.toLocaleString()} HNWIs inflow
+                {/* Flow Arrow with Animation */}
+                <motion.div
+                  className="flex-shrink-0 flex flex-col items-center gap-2"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={isVisible ? { opacity: 1, scale: 1 } : {}}
+                  transition={{ duration: 0.7, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="relative">
+                    {/* Animated flow line */}
+                    <div className="w-16 sm:w-32 h-px bg-gradient-to-r from-red-500/40 via-gold/40 to-primary/40 overflow-hidden">
+                      <motion.div
+                        className="h-full w-8 bg-foreground/10"
+                        animate={{ x: ['-100%', '400%'] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      />
+                    </div>
+                    {/* Arrow head */}
+                    <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-0 h-0 border-l-[6px] border-l-primary/40 border-y-[4px] border-y-transparent" />
+                  </div>
+                  {velocityChange && (() => {
+                    // Fix #11: Color velocity badge based on signal
+                    const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+                    const badgeColors = signal === 'caution'
+                      ? 'border-red-500/20 text-red-500/80'
+                      : signal === 'monitor'
+                      ? 'border-amber-500/20 text-amber-500/80'
+                      : signal === 'active_window'
+                      ? 'border-emerald-500/20 text-emerald-500/80'
+                      : 'border-primary/20 text-primary/80';
+                    return (
+                      <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${badgeColors}`}>
+                        {velocityChange} velocity
+                      </span>
+                    );
+                  })()}
+                </motion.div>
+
+                {/* Destination Jurisdiction */}
+                <motion.div
+                  className="flex-1 max-w-[150px] sm:max-w-[200px]"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={isVisible ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="p-4 sm:p-6 rounded-xl border border-primary/20 bg-card/50">
+                    <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-3">DESTINATION</p>
+                    <p className="text-base sm:text-xl font-medium text-foreground mb-1">
+                      {corridorDestination || '—'}
                     </p>
-                  )}
-                </div>
-              </motion.div>
+                    {hasCapitalFlowData && capitalFlows?.inflows[0] && (
+                      <p className="text-xs text-muted-foreground/60">
+                        {capitalFlows.inflows[0].volume.toLocaleString()} HNWIs inflow
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Flow Metrics - Only show with real data */}
+              {hasCapitalFlowData && (
+                <motion.div
+                  className="mt-8 sm:mt-12 pt-6 sm:pt-8"
+                  initial={{ opacity: 0 }}
+                  animate={isVisible ? { opacity: 1 } : {}}
+                  transition={{ duration: 0.8, delay: 1, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-8" />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+                    {/* Flow Intensity */}
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Flow Intensity</p>
+                      {flowIntensityIndex != null ? (
+                        <div className="flex items-center justify-center sm:justify-start gap-3">
+                          <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
+                            {flowIntensityIndex.toFixed(2)}
+                          </span>
+                          <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
+                            flowIntensityIndex > 0.7 ? 'border-red-500/20 text-red-500/80' :
+                            flowIntensityIndex > 0.4 ? 'border-amber-500/20 text-amber-500/80' :
+                            'border-border/20 text-muted-foreground/80'
+                          }`}>
+                            {flowIntensityIndex > 0.7 ? 'HIGH' : flowIntensityIndex > 0.4 ? 'ELEVATED' : 'NORMAL'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
+                      )}
+                    </div>
+
+                    {/* Velocity Change - Fix #11: Color based on signal */}
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Movement Velocity</p>
+                      {velocityChange ? (() => {
+                        const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
+                        const velocityColor = signal === 'caution'
+                          ? 'text-red-500'
+                          : signal === 'monitor'
+                          ? 'text-amber-500'
+                          : signal === 'active_window'
+                          ? 'text-emerald-500'
+                          : 'text-primary';
+                        return (
+                          <span className={`text-xl md:text-2xl font-medium tabular-nums tracking-tight ${velocityColor}`}>{velocityChange}</span>
+                        );
+                      })() : (
+                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
+                      )}
+                    </div>
+
+                    {/* Peer Count */}
+                    <div className="text-center sm:text-left col-span-2 sm:col-span-1">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Peers in Corridor</p>
+                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
+                        {peerData.total > 0 ? peerData.total.toLocaleString() : '—'}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* No data state */}
+              {!hasCapitalFlowData && (
+                <motion.div
+                  className="mt-8 text-center py-4"
+                  initial={{ opacity: 0 }}
+                  animate={isVisible ? { opacity: 1 } : {}}
+                >
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                    Capital flow metrics calculated from pattern intelligence
+                  </p>
+                </motion.div>
+              )}
             </div>
-
-            {/* Flow Metrics - Only show with real data */}
-            {hasCapitalFlowData && (
-              <motion.div
-                className="mt-8 sm:mt-12 pt-6 sm:pt-8"
-                initial={{ opacity: 0 }}
-                animate={isVisible ? { opacity: 1 } : {}}
-                transition={{ duration: 0.8, delay: 1, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-8" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
-                  {/* Flow Intensity */}
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Flow Intensity</p>
-                    {flowIntensityIndex != null ? (
-                      <div className="flex items-center justify-center sm:justify-start gap-3">
-                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
-                          {flowIntensityIndex.toFixed(2)}
-                        </span>
-                        <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
-                          flowIntensityIndex > 0.7 ? 'border-red-500/20 text-red-500/80' :
-                          flowIntensityIndex > 0.4 ? 'border-amber-500/20 text-amber-500/80' :
-                          'border-border/20 text-muted-foreground/80'
-                        }`}>
-                          {flowIntensityIndex > 0.7 ? 'HIGH' : flowIntensityIndex > 0.4 ? 'ELEVATED' : 'NORMAL'}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
-                    )}
-                  </div>
-
-                  {/* Velocity Change - Fix #11: Color based on signal */}
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Movement Velocity</p>
-                    {velocityChange ? (() => {
-                      const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
-                      const velocityColor = signal === 'caution'
-                        ? 'text-red-500'
-                        : signal === 'monitor'
-                        ? 'text-amber-500'
-                        : signal === 'active_window'
-                        ? 'text-emerald-500'
-                        : 'text-primary';
-                      return (
-                        <span className={`text-xl md:text-2xl font-medium tabular-nums tracking-tight ${velocityColor}`}>{velocityChange}</span>
-                      );
-                    })() : (
-                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
-                    )}
-                  </div>
-
-                  {/* Peer Count */}
-                  <div className="text-center sm:text-left col-span-2 sm:col-span-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Peers in Corridor</p>
-                    <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
-                      {peerData.total > 0 ? peerData.total.toLocaleString() : '—'}
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* No data state */}
-            {!hasCapitalFlowData && (
-              <motion.div
-                className="mt-8 text-center py-4"
-                initial={{ opacity: 0 }}
-                animate={isVisible ? { opacity: 1 } : {}}
-              >
-                <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                  Capital flow metrics calculated from pattern intelligence
-                </p>
-              </motion.div>
-            )}
           </div>
         </div>
       </motion.div>
@@ -724,50 +764,109 @@ export function Page3PeerIntelligence({
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
-          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-            GEOGRAPHIC OPPORTUNITY DISTRIBUTION
-          </p>
-          <p className="text-sm text-muted-foreground/60 mb-8">
-            Interactive map of matched investment opportunities
-          </p>
+          <div data-print-block="keep" data-print-max-height="900">
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+              GEOGRAPHIC OPPORTUNITY DISTRIBUTION
+            </p>
+            <p className="text-sm text-muted-foreground/60 mb-8">
+              Interactive map of matched investment opportunities
+            </p>
 
-          <div className="rounded-2xl border border-border/30 overflow-hidden">
-            <div className="h-[300px] sm:h-[400px] lg:h-[500px]">
-              <InteractiveWorldMap
-                cities={cities}
-                onCitationClick={onCitationClick}
-                citationMap={citationMap}
-                showCrownAssets={showCrownAssets}
-                showPriveOpportunities={showPriveOpportunities}
-                showHNWIPatterns={showHNWIPatterns}
-                onToggleCrownAssets={() => setShowCrownAssets(!showCrownAssets)}
-                onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
-                onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
-                hideCrownAssetsToggle={true}
-                useAbsolutePositioning={true}
-                showCrisisOverlay={true}
-                crisisAlertExternal={true}
-              />
-            </div>
+            {isPrintMode ? (
+              <div className="rounded-2xl border border-border/30 overflow-hidden bg-card/60">
+                <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] px-6 py-6 sm:px-8 sm:py-8">
+                  <div className="relative rounded-2xl border border-border/20 bg-background/70 px-5 py-5 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-gold/[0.05] via-transparent to-transparent pointer-events-none" />
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 font-medium mb-3">
+                      Corridor Footprint
+                    </p>
+                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground mb-3">
+                      {geographicHighlights.length.toLocaleString()} matched markets across {cities.length.toLocaleString()} corridor opportunities
+                    </h3>
+                    <p className="text-sm text-muted-foreground/70 leading-relaxed">
+                      Geographic concentration clusters were filtered to the {corridorSource} → {corridorDestination} opportunity set,
+                      preserving the same matched opportunities shown in the live report without relying on interactive map state during export.
+                    </p>
 
-            <div className="px-6 py-4">
-              <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
-              <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                <span className="text-muted-foreground/60">Interactive Map:</span> Click markers to view opportunity analysis.
-                <span className="hidden sm:inline"> Color intensity reflects investment tier -- use filters to narrow by price range and category.</span>
-              </p>
-            </div>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-border/40 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+                        Source: {sourceCity || corridorSource}
+                      </span>
+                      <span className="rounded-full border border-border/40 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+                        Destination: {destinationCity || corridorDestination}
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Crisis Intel Summary — rendered below map for visibility */}
-            {showCrisisAlert && crisisData && crisisColors && (
-              <div className="px-6 pb-4">
-                <CrisisAlertBox
-                  visible={showCrisisAlert}
-                  theme="dark"
-                  alert={crisisData.alert}
-                  counts={crisisCounts}
-                  colors={crisisColors}
-                />
+                  <div className="space-y-3">
+                    {geographicHighlights.slice(0, 6).map((highlight, index) => (
+                      <div
+                        key={`${highlight.name}-${highlight.country}`}
+                        className="rounded-xl border border-border/20 bg-background/80 px-4 py-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {highlight.name}
+                            </p>
+                            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground/60 mt-1">
+                              {highlight.country}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-gold/20 bg-gold/[0.06] px-3 py-1 text-xs font-medium text-gold/80">
+                            {highlight.count} match{highlight.count === 1 ? '' : 'es'}
+                          </span>
+                        </div>
+                        {highlight.titles.length > 0 ? (
+                          <p className="text-xs text-muted-foreground/70 leading-relaxed mt-3">
+                            {highlight.titles.join(' • ')}
+                          </p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border/30 overflow-hidden">
+                <div className="h-[300px] sm:h-[400px] lg:h-[500px]">
+                  <InteractiveWorldMap
+                    cities={cities}
+                    onCitationClick={onCitationClick}
+                    citationMap={citationMap}
+                    showCrownAssets={showCrownAssets}
+                    showPriveOpportunities={showPriveOpportunities}
+                    showHNWIPatterns={showHNWIPatterns}
+                    onToggleCrownAssets={() => setShowCrownAssets(!showCrownAssets)}
+                    onTogglePriveOpportunities={() => setShowPriveOpportunities(!showPriveOpportunities)}
+                    onToggleHNWIPatterns={() => setShowHNWIPatterns(!showHNWIPatterns)}
+                    hideCrownAssetsToggle={true}
+                    useAbsolutePositioning={true}
+                    showCrisisOverlay={true}
+                    crisisAlertExternal={true}
+                  />
+                </div>
+
+                <div className="px-6 py-4">
+                  <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                    <span className="text-muted-foreground/60">Interactive Map:</span> Click markers to view opportunity analysis.
+                    <span className="hidden sm:inline"> Color intensity reflects investment tier -- use filters to narrow by price range and category.</span>
+                  </p>
+                </div>
+
+                {/* Crisis Intel Summary — rendered below map for visibility */}
+                {showCrisisAlert && crisisData && crisisColors && (
+                  <div className="px-6 pb-4">
+                    <CrisisAlertBox
+                      visible={showCrisisAlert}
+                      theme="dark"
+                      alert={crisisData.alert}
+                      counts={crisisCounts}
+                      colors={crisisColors}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

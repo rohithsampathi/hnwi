@@ -27,16 +27,17 @@ import {
   ScenarioName,
   formatCurrency
 } from '@/lib/decision-memo/sfo-expert-types';
+import type { WealthProjectionData as PdfWealthProjectionData } from '@/lib/pdf/pdf-types';
 import { StructureSelector } from './StructureSelector';
 
 interface Structure {
-  name: string;
-  type: string;
-  net_benefit_10yr: number;
-  tax_savings_pct: number;
-  viable: boolean;
-  verdict: string;
-  warnings: string[];
+  name?: string;
+  type?: string;
+  net_benefit_10yr?: number;
+  tax_savings_pct?: number;
+  viable?: boolean;
+  verdict?: string;
+  warnings?: string[];
   setup_cost?: number;
   annual_cost?: number;
   rental_income_rate?: number;
@@ -45,11 +46,11 @@ interface Structure {
 }
 
 interface WealthProjectionSectionProps {
-  data?: WealthProjectionData | Record<string, never>;
+  data?: WealthProjectionData | PdfWealthProjectionData | Record<string, never>;
   rawAnalysis?: string;
   // STRUCTURE-AWARE PROJECTIONS (Jan 2026)
   structures?: Structure[];
-  structureProjections?: Record<string, WealthProjectionData>;
+  structureProjections?: Record<string, WealthProjectionData | PdfWealthProjectionData>;
   optimalStructureName?: string;
 }
 
@@ -131,12 +132,16 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       || typedBase.starting_position?.transaction_amount || 0;
 
     for (const structure of structures) {
+      if (!structure.name) {
+        continue;
+      }
+
       if (structure.name === refStructure.name) {
         projections[structure.name] = typedBase;
         continue;
       }
 
-      const delta = structure.net_benefit_10yr - refStructure.net_benefit_10yr;
+      const delta = (structure.net_benefit_10yr ?? 0) - (refStructure.net_benefit_10yr ?? 0);
 
       projections[structure.name] = {
         ...typedBase,
@@ -157,10 +162,14 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           ten_year_outcome: {
             ...scenario.ten_year_outcome,
             total_value_creation: scenario.ten_year_outcome.total_value_creation + delta,
-            final_value: (scenario.ten_year_outcome.final_value
-              ?? (scenario.ten_year_outcome as Record<string, number>).final_total_value ?? 0) + delta,
-            final_total_value: ((scenario.ten_year_outcome as Record<string, number>).final_total_value
-              ?? scenario.ten_year_outcome.final_value ?? 0) + delta,
+            final_value:
+              (scenario.ten_year_outcome.final_value ??
+                (scenario.ten_year_outcome as unknown as Record<string, number>).final_total_value ??
+                0) + delta,
+            final_total_value:
+              ((scenario.ten_year_outcome as unknown as Record<string, number>).final_total_value ??
+                scenario.ten_year_outcome.final_value ??
+                0) + delta,
             percentage_gain: startingValue > 0
               ? ((scenario.ten_year_outcome.total_value_creation + delta) / startingValue) * 100
               : scenario.ten_year_outcome.percentage_gain,
@@ -175,8 +184,6 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
         probability_weighted_outcome: {
           ...typedBase.probability_weighted_outcome,
           expected_value_creation: typedBase.probability_weighted_outcome.expected_value_creation + delta,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          expected_total_value: ((typedBase.probability_weighted_outcome as any).expected_total_value || 0) + delta,
           expected_net_worth: typedBase.probability_weighted_outcome.expected_net_worth + delta,
           net_benefit_of_move: typedBase.probability_weighted_outcome.net_benefit_of_move + delta,
         }
@@ -560,7 +567,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
                 Cost of Inaction
               </h3>
-              <span className="text-[10px] text-muted-foreground">(If You Don't Proceed)</span>
+              <span className="text-[10px] text-muted-foreground">(If You Don&apos;t Proceed)</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
@@ -654,12 +661,15 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   const buildChartData = (scenario: typeof baseScenario) => {
     return scenario?.year_by_year
       ?.filter(y => y.year <= 10)
-      ?.map(y => ({
+      ?.map(y => {
+        const yAny = y as typeof y & { total_value?: number; rental_income?: number };
+        return ({
         year: y.year,
-        value: y.total_value / 1000000,
+        value: (yAny.total_value ?? y.net_worth) / 1000000,
         property: y.property_value / 1000000,
-        rental: y.rental_income / 1000000
-      })) || [];
+        rental: (yAny.rental_income ?? y.income) / 1000000
+      });
+      }) || [];
   };
 
   const chartDataByScenario = {
@@ -758,7 +768,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   const activeScenarioObj = getActiveScenario();
 
   // Per-scenario Cost of Inaction: value creation at year 1, 5, 10
-  const activeCOI = useMemo(() => {
+  const activeCOI = (() => {
     if (!costOfInaction) return null;
     const ybY = activeScenarioObj?.year_by_year;
     if (!ybY?.length) return costOfInaction;
@@ -782,14 +792,14 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       year_5: y5Val !== undefined ? (y5Val - startVal) : costOfInaction.year_5,
       year_10: y10Val !== undefined ? (y10Val - startVal) : costOfInaction.year_10,
     };
-  }, [activeScenarioObj, costOfInaction, startingValue]);
+  })();
 
   // Per-scenario Probability-Weighted Outcome: show the active scenario's actual outcome
-  const activePW = useMemo(() => {
+  const activePW = (() => {
     if (!pwOutcome || !activeOutcome) return pwOutcome;
 
     const finalVal = activeOutcome.final_value
-      ?? (activeOutcome as Record<string, number>).final_total_value
+      ?? (activeOutcome as unknown as Record<string, number>).final_total_value
       ?? 0;
     const valueCreation = activeOutcome.total_value_creation ?? 0;
     // "If Stay" is scenario-independent (what your money does at 4% cash)
@@ -804,7 +814,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       expected_value_creation: valueCreation,
       net_benefit_of_move: netBenefit,
     };
-  }, [activeOutcome, pwOutcome]);
+  })();
 
   // Dynamic metrics for the selected scenario (structured data)
   // Display backend data directly - no frontend calculations
@@ -812,9 +822,9 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   const structuredDynamicMetrics = {
     percentGain: activeOutcome?.percentage_gain || 0,
     year10Value: (activeOutcome?.final_value || activeOutcome?.final_total_value)
-      ? formatCurrency(activeOutcome.final_value || activeOutcome.final_total_value)
+      ? formatCurrency(activeOutcome.final_value || activeOutcome.final_total_value || 0)
       : 'N/A',
-    valueCreation: activeOutcome?.total_value_creation ? formatCurrency(activeOutcome.total_value_creation) : 'N/A'
+    valueCreation: activeOutcome?.total_value_creation ? formatCurrency(activeOutcome.total_value_creation ?? 0) : 'N/A'
   };
 
   return (
@@ -1046,7 +1056,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
                 Cost of Inaction
               </h3>
-              <span className="text-[10px] text-muted-foreground">(If You Don't Proceed)</span>
+              <span className="text-[10px] text-muted-foreground">(If You Don&apos;t Proceed)</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
@@ -1078,54 +1088,56 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
           </motion.div>
         )}
 
-        {/* Probability-Weighted Summary — scenario-reactive */}
-        {activePW && (
+        <div data-print-block="keep" data-print-max-height="280">
+          {/* Probability-Weighted Summary — scenario-reactive */}
+          {activePW && (
+            <motion.div
+              className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
+              initial={{ opacity: 0, y: 20 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.35 }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Zap className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  {activeScenario === 'base' ? 'Probability-Weighted' : activeScenario === 'stress' ? 'Stress Case' : 'Opportunity Case'} Expected Outcome
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-card rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency((activePW as any).expected_total_value ?? activePW.expected_net_worth)}</p>
+                </div>
+                <div className="text-center p-4 bg-card rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(activePW.expected_value_creation)}</p>
+                </div>
+                <div className="text-center p-4 bg-card rounded-lg">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (No Move)</p>
+                  <p className="text-xl font-bold text-muted-foreground">{formatCurrency((activePW as any).vs_cash_at_4pct ?? activePW.vs_stay_expected)}</p>
+                </div>
+                <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
+                  <p className="text-2xl font-bold text-primary">+{formatCurrency(activePW.net_benefit_of_move)}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Intelligence Source Footer */}
           <motion.div
-            className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.35 }}
+            className="flex items-center justify-center gap-2 pt-4"
+            initial={{ opacity: 0 }}
+            animate={isVisible ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Zap className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                {activeScenario === 'base' ? 'Probability-Weighted' : activeScenario === 'stress' ? 'Stress Case' : 'Opportunity Case'} Expected Outcome
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-card rounded-lg">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
-                <p className="text-xl font-bold text-foreground">{formatCurrency((activePW as any).expected_total_value ?? activePW.expected_net_worth)}</p>
-              </div>
-              <div className="text-center p-4 bg-card rounded-lg">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
-                <p className="text-xl font-bold text-primary">{formatCurrency(activePW.expected_value_creation)}</p>
-              </div>
-              <div className="text-center p-4 bg-card rounded-lg">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (No Move)</p>
-                <p className="text-xl font-bold text-muted-foreground">{formatCurrency((activePW as any).vs_cash_at_4pct ?? activePW.vs_stay_expected)}</p>
-              </div>
-              <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
-                <p className="text-2xl font-bold text-primary">+{formatCurrency(activePW.net_benefit_of_move)}</p>
-              </div>
-            </div>
+            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+            <p className="text-[10px] text-muted-foreground">
+              Grounded in HNWI Chronicles KG Wealth Projection Models + Historical Precedents
+            </p>
           </motion.div>
-        )}
-
-        {/* Intelligence Source Footer */}
-        <motion.div
-          className="flex items-center justify-center gap-2 pt-4"
-          initial={{ opacity: 0 }}
-          animate={isVisible ? { opacity: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-          <p className="text-[10px] text-muted-foreground">
-            Grounded in HNWI Chronicles KG Wealth Projection Models + Historical Precedents
-          </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

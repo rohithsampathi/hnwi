@@ -23,6 +23,7 @@ import type {
 export class RohithAPI {
   private static instance: RohithAPI
   private userContextCache: Map<string, { data: UserPortfolioContext; timestamp: number }> = new Map()
+  private conversationCache: Map<string, ConversationWithMessages> = new Map()
   private readonly CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
 
   private constructor() {}
@@ -59,7 +60,7 @@ export class RohithAPI {
       // Use placeholder data for portfolio metrics on Ask Rohith page
       // This avoids loading Crown Vault data unnecessarily
       const assets: any[] = []
-      const stats = {}
+      const stats: Record<string, any> = {}
       const totalValue = 0
       const realEstateValue = 0
       const preciousMetalsValue = 0
@@ -264,10 +265,30 @@ export class RohithAPI {
         messages: messages
       }
 
+      this.conversationCache.set(conversationId, conversationData)
       return conversationData
     } catch (error) {
       return null
     }
+  }
+
+  private async getConversation(
+    conversationId: string,
+    userId?: string | null,
+  ): Promise<ConversationWithMessages | null> {
+    const conversation = await this.getConversationHistory(conversationId)
+    if (!conversation) {
+      return null
+    }
+
+    if (!conversation.userId && userId) {
+      return {
+        ...conversation,
+        userId,
+      }
+    }
+
+    return conversation
   }
 
   /**
@@ -753,6 +774,8 @@ export class RohithAPI {
    * Clear conversation cache for a specific conversation
    */
   private clearConversationCache(conversationId: string): void {
+    this.conversationCache.delete(conversationId)
+
     // Clear from secure API cache
     const cacheKeys = [
       `/api/rohith/history/${conversationId}`,

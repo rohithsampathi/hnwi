@@ -202,7 +202,7 @@ export default function SharedResultsClient() {
   useEffect(() => {
     async function fetchHNWICount() {
       try {
-        const response = await fetch('/api/developments/counts', {
+        const response = await fetch('/api/castle-briefs/counts', {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',

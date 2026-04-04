@@ -112,6 +112,13 @@ const transformOpportunityToCity = (
   const lat = opp.latitude;
   const lng = opp.longitude;
   const displayName = opp.location || opp.country || opp.title || 'Opportunity';
+  const sourceLower = (opp.source || '').toLowerCase();
+  const opportunityType =
+    sourceLower.includes('crown vault') || sourceLower === 'crown vault'
+      ? 'crown'
+      : (sourceLower.includes('privé') || sourceLower.includes('prive'))
+        ? 'prive'
+        : 'hnwi';
 
   // Validate coordinates
   if (!lat || !lng || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
@@ -168,7 +175,7 @@ const transformOpportunityToCity = (
     latitude: lat,
     longitude: lng,
     population: opp.value,
-    type: opp.source === "MOEv4" ? "finance" : "luxury",
+    type: opportunityType,
     _id: opp._id,
     id: opp.id,
     title: opp.title,
@@ -226,7 +233,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
   // CRITICAL FIX: Check URL parameter to trigger cache busting on mount
   // This solves the timing issue where events are dispatched before component mounts
-  const initialBustCache = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
+  const initialBustCache = TEMPORARILY_DISABLE_CACHE || !isPublic || (typeof window !== 'undefined' &&
     (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
 
   const [bustCache, setBustCache] = useState(initialBustCache);
@@ -264,8 +271,8 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe;
         const viewParam = (isPersonalMode && hasCompletedAssessment) ? 'personalized' : 'all';
 
-        // Only request Crown Vault in personalized mode
-        const shouldIncludeCrownVault = includeCrownVault && viewParam === 'personalized';
+        // Authenticated users should still see Crown Vault rows in all-mode when requested.
+        const shouldIncludeCrownVault = includeCrownVault;
 
         const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
 
@@ -278,7 +285,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         // Fallback: if personalized returned empty, retry with view=all
         if (opportunities.length === 0 && viewParam === 'personalized') {
-          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=false`;
+          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
           const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
           opportunities = fallbackResponse?.opportunities ||
                          (Array.isArray(fallbackResponse) ? fallbackResponse : []);

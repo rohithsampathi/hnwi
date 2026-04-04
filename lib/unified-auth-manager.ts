@@ -5,6 +5,7 @@
 import { secureApi, setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
 import { authManager, loginUser, logoutUser, silentLogoutUser, getCurrentUser, type User } from '@/lib/auth-manager'
 import { DeviceTrustManager } from '@/lib/device-trust'
+import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags'
 
 export interface AuthState {
   isAuthenticated: boolean
@@ -615,7 +616,7 @@ class UnifiedAuthManager {
       }
 
       // 2. Also notify service worker to clear its caches
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      if (canUseServiceWorkerRuntime() && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
           type: 'AUTH_LOGIN',
           timestamp: Date.now(),

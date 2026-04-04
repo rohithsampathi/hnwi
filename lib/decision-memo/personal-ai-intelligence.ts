@@ -91,6 +91,19 @@ export class PersonalAI {
     const riskLevel = this.getRiskLevel();
     const totalSavings = this.memoData.preview_data.total_savings;
     const verdict = this.memoData.preview_data.structure_optimization?.verdict;
+    const hasLiquidityAnalysis = Boolean(
+      this.memoData.preview_data.liquidity_trap_analysis ||
+      this.memoData.preview_data.liquidity_analysis
+    );
+    const hasPeerBenchmarks = Boolean(
+      this.memoData.preview_data.peer_benchmarks ||
+      this.memoData.preview_data.peer_cohort_stats ||
+      this.memoData.preview_data.peer_intelligence_data
+    );
+    const hasGoldenVisaIntelligence = Boolean(
+      this.memoData.preview_data.golden_visa_intelligence?.exists ??
+      this.memoData.preview_data.golden_visa_intelligence?.program_name
+    );
 
     // CRITICAL: Risk assessment not viewed
     if (!this.viewedSections.has('risk-radar') && riskLevel === 'CRITICAL') {
@@ -139,7 +152,7 @@ export class PersonalAI {
 
     // HIGH: Liquidity trap analysis available
     if (!this.viewedSections.has('liquidity-trap') &&
-        this.memoData.preview_data.liquidity_trap_analysis) {
+        hasLiquidityAnalysis) {
       return {
         priority: 'HIGH',
         sectionId: 'liquidity-trap',
@@ -169,7 +182,7 @@ export class PersonalAI {
 
     // RECOMMENDED: Peer intelligence
     if (!this.viewedSections.has('peer-cohort') &&
-        this.memoData.preview_data.peer_benchmarks) {
+        hasPeerBenchmarks) {
       return {
         priority: 'RECOMMENDED',
         sectionId: 'peer-cohort',
@@ -184,7 +197,7 @@ export class PersonalAI {
 
     // RECOMMENDED: Golden visa if available
     if (!this.viewedSections.has('golden-visa-intelligence') &&
-        this.memoData.preview_data.golden_visa_intelligence?.exists) {
+        hasGoldenVisaIntelligence) {
       return {
         priority: 'RECOMMENDED',
         sectionId: 'golden-visa-intelligence',

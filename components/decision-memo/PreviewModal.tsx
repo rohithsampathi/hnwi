@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Diamond, AlertTriangle, TrendingUp, Check, Shield, Lock, ArrowRight, Zap, Target, Crown } from 'lucide-react';
 import type { Opportunity, Mistake, IntelligenceMatch, PreviewData } from '@/lib/hooks/useDecisionMemoSSE';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 // Pricing configuration
 const PRICING = {
@@ -67,6 +68,9 @@ export function PreviewModal({
   onPay,
   onClose
 }: PreviewModalProps) {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
+
   if (!isOpen || !previewData) return null;
 
   // Calculate total savings from mistakes
@@ -143,7 +147,11 @@ export function PreviewModal({
                 We Found {mistakes.length} Six-Figure Mistakes
               </h2>
               <p className="text-xl text-muted-foreground max-w-3xl">
-                Based on your 10 questions, our AI analyzed <span className="text-foreground font-semibold">1,562 HNWI corridor signals</span> and detected critical coordination gaps in your allocation strategy.
+                Based on your 10 questions, our AI analyzed{' '}
+                <span className="text-foreground font-semibold">
+                  {briefCountLabel ? `${briefCountLabel} live HNWI signals` : 'live HNWI signals'}
+                </span>{' '}
+                and detected critical coordination gaps in your allocation strategy.
               </p>
             </motion.div>
           </div>

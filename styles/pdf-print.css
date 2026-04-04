@@ -1,7 +1,7 @@
 /**
  * PDF Print Stylesheet — Puppeteer rendering
  * Applied to /decision-memo/print/[intakeId] page
- * Ensures proper A4 layout, page breaks, and dark theme
+ * Ensures proper A4 layout, proof-surface parity, and stable pagination
  */
 
 /* ═══════════════════════════════════════════════════════════════
@@ -84,9 +84,15 @@
 .print-container {
   width: 794px;
   margin: 0 auto;
-  background: hsl(0 0% 4%);  /* --background dark */
-  color: hsl(0 0% 96%);      /* --foreground dark */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.995) 0%, rgba(250, 248, 244, 0.995) 100%);
+  color: hsl(222 24% 12%);
   overflow: visible;          /* allow content to flow across pages */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  text-rendering: geometricPrecision;
+  font-feature-settings: "liga" 1, "kern" 1;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -107,18 +113,27 @@
    See: https://github.com/puppeteer/puppeteer/issues/6951
    ═══════════════════════════════════════════════════════════════ */
 
-/* Each major section starts on a new page */
 .print-section {
-  break-before: page;
-  page-break-before: always;
-  padding: 52px;
+  padding: 12px 44px 20px;
   position: relative;
+  isolation: isolate;
 }
 
-/* First section (cover) doesn't need break-before */
-.print-section:first-child {
-  break-before: auto;
-  page-break-before: auto;
+.print-section--page-break {
+  break-before: page;
+  page-break-before: always;
+}
+
+/* Runtime-applied pagination classes.
+   These are added only to explicitly marked blocks after layout settles. */
+.print-break-before {
+  break-before: page;
+  page-break-before: always;
+}
+
+.print-keep-together {
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 /* ── Headings: never orphan at page bottom ── */
@@ -142,14 +157,11 @@ tr {
    creates empty pages). Only individual rows are protected above. */
 
 /* Override ALL overflow clipping — prevents content from being clipped at page breaks.
-   Catches overflow-hidden, overflow-auto, overflow-scroll, overflow-y-hidden, etc.
-   EXCEPTION: Cover page (first section) and last page need overflow:hidden
-   to stay contained within a single page. */
+   Catches overflow-hidden, overflow-auto, overflow-scroll, overflow-y-hidden, etc. */
 .print-section [class*="overflow-"] {
   overflow: visible !important;
 }
-.print-section:first-child [class*="overflow-"],
-.print-section:last-child [class*="overflow-"] {
+.print-framing-page [class*="overflow-"] {
   overflow: hidden !important;
 }
 
@@ -158,9 +170,13 @@ tr {
      When a card must split, borders and background are repeated on both pages.
      Do NOT add break-inside:avoid here — it causes blank pages for tall cards. */
 .print-section [class*="rounded-xl"],
-.print-section [class*="rounded-2xl"] {
+.print-section [class*="rounded-2xl"],
+.print-section [class*="rounded-3xl"] {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+  box-shadow:
+    0 8px 24px rgba(63, 46, 21, 0.045),
+    inset 0 0 0 0.5px rgba(182, 146, 78, 0.1);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -203,6 +219,112 @@ tr {
 .print-scenario-tree .rounded-2xl {
   padding-left: 24px !important;
   padding-right: 24px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTION-SPECIFIC COMPACTION
+   Reduce "one-line spill" tails on premium memo sections so they
+   fit their intended page span more often.
+   ═══════════════════════════════════════════════════════════════ */
+
+.print-risk-radar .px-5,
+.print-risk-radar .sm\:px-8,
+.print-risk-radar .md\:px-12 {
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+}
+
+.print-risk-radar .py-10,
+.print-risk-radar .md\:py-12 {
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+}
+
+.print-risk-radar .pb-10,
+.print-risk-radar .md\:pb-12 {
+  padding-bottom: 18px !important;
+}
+
+.print-risk-radar .pt-8,
+.print-risk-radar .md\:pt-10 {
+  padding-top: 20px !important;
+}
+
+.print-risk-radar .max-w-\[220px\],
+.print-risk-radar .sm\:max-w-\[280px\],
+.print-risk-radar .md\:max-w-\[360px\] {
+  max-width: 300px !important;
+}
+
+.print-risk-radar .sm\:gap-6 {
+  gap: 14px !important;
+}
+
+.print-risk-radar .mb-4,
+.print-risk-radar .sm\:mb-6 {
+  margin-bottom: 12px !important;
+}
+
+.print-cross-border-audit .mb-8,
+.print-cross-border-audit .sm\:mb-12 {
+  margin-bottom: 20px !important;
+}
+
+.print-cross-border-audit .py-10,
+.print-cross-border-audit .md\:py-12 {
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+}
+
+.print-cross-border-audit .px-5,
+.print-cross-border-audit .sm\:px-8,
+.print-cross-border-audit .md\:px-12 {
+  padding-left: 30px !important;
+  padding-right: 30px !important;
+}
+
+.print-cross-border-audit .gap-6,
+.print-cross-border-audit .sm\:gap-6 {
+  gap: 14px !important;
+}
+
+.print-cross-border-audit .p-6,
+.print-cross-border-audit .sm\:p-5,
+.print-cross-border-audit .sm\:p-6 {
+  padding: 16px !important;
+}
+
+.print-cross-border-audit .mt-8,
+.print-cross-border-audit .mb-8 {
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+}
+
+.print-cross-border-audit .text-2xl,
+.print-cross-border-audit .sm\:text-3xl,
+.print-cross-border-audit .md\:text-4xl {
+  font-size: 1.7rem !important;
+  line-height: 1.1 !important;
+}
+
+.print-cross-border-audit .text-sm {
+  font-size: 0.82rem !important;
+}
+
+.print-peer-benchmark {
+  row-gap: 24px !important;
+}
+
+.print-peer-benchmark .py-10,
+.print-peer-benchmark .md\:py-12,
+.print-peer-benchmark .px-5,
+.print-peer-benchmark .sm\:px-8,
+.print-peer-benchmark .md\:px-12,
+.print-peer-benchmark .sm\:px-10 {
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: 30px !important;
+  padding-right: 30px !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -249,21 +371,11 @@ tr {
    ═══════════════════════════════════════════════════════════════ */
 
 .print-page-header {
-  position: absolute;
-  top: 18px;
-  left: 52px;
-  right: 52px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 8px;
-  border-bottom: 0.5px solid hsl(0 0% 15%);
-  font-family: 'Inter', system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 8px;
-  color: hsl(0 0% 40%);
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
+  display: none;
+}
+
+.print-page-header span:last-child {
+  color: rgba(182, 146, 78, 0.9);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -369,29 +481,23 @@ nextjs-portal {
    These pages use large web margins (mb-20 = 5rem) that overflow A4.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Cover page: reduce excessive vertical margins */
-.print-section:first-child .mb-20 { margin-bottom: 2.5rem !important; }
-.print-section:first-child .mb-16 { margin-bottom: 2rem !important; }
-.print-section:first-child .mb-14 { margin-bottom: 1.5rem !important; }
-.print-section:first-child .mb-12 { margin-bottom: 1.5rem !important; }
-
-/* Last page: reduce excessive vertical margins */
-.print-section:last-child .mb-14 { margin-bottom: 1.5rem !important; }
-.print-section:last-child .mb-12 { margin-bottom: 1.5rem !important; }
-.print-section:last-child .mb-10 { margin-bottom: 1rem !important; }
+/* Cover/last pages: reduce excessive vertical margins */
+.print-framing-page .mb-20 { margin-bottom: 2.5rem !important; }
+.print-framing-page .mb-16 { margin-bottom: 2rem !important; }
+.print-framing-page .mb-14 { margin-bottom: 1.5rem !important; }
+.print-framing-page .mb-12 { margin-bottom: 1.5rem !important; }
+.print-framing-page .mb-10 { margin-bottom: 1rem !important; }
 
 /* Cover & last page: let the component's own layout handle centering.
    The components already have print:flex/print:h-[Xmm] set.
    Only add min-height to ensure they fill the page. Do NOT add padding
    that would push content beyond the printable area. */
-.print-section:first-child > div,
-.print-section:last-child > div {
+.print-framing-page > div {
   min-height: calc(100vh - 96px); /* Account for Puppeteer margins: 40px top + 56px bottom */
 }
 
 /* Ensure cover page content container has proper centering */
-.print-section:first-child > div > .relative.z-10,
-.print-section:last-child > div > .relative.z-10 {
+.print-framing-page > div > .relative.z-10 {
   width: 100%;
   max-width: 600px;
 }

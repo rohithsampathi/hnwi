@@ -156,7 +156,7 @@ export function NotificationCenter({
                 <p className="text-sm text-muted-foreground">
                   {stats && (
                     <>
-                      {stats.total_count} total, {unreadCount} unread
+                      {stats.total_notifications} total, {unreadCount} unread
                     </>
                   )}
                 </p>
@@ -193,13 +193,15 @@ export function NotificationCenter({
           {/* Controls */}
           <div className="flex items-center gap-2 pt-3">
             <div className="flex-1">
-              <Input
-                placeholder="Search notifications..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-                icon={<Search className="w-4 h-4" />}
-              />
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search notifications..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9"
+                />
+              </div>
             </div>
             
             {/* Filter dropdown */}

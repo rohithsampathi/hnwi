@@ -435,7 +435,7 @@ interface ElitePulseContextValue {
   hasIntelligence: boolean
   isStale: boolean
   lastUpdateTime: string
-  performanceMetrics: typeof initialState.intelligence.dashboard.processing_metadata | null
+  performanceMetrics: IntelligenceDashboard["processing_metadata"] | null
 }
 
 const ElitePulseContext = createContext<ElitePulseContextValue | null>(null)
@@ -482,8 +482,7 @@ export function ElitePulseProvider({ children }: ElitePulseProviderProps) {
       
       // Use secureApi to properly route to backend and handle authentication
       const dashboard: IntelligenceDashboard = await secureApi.get(`/api/hnwi/intelligence/dashboard/${userId}`, true, { 
-        enableCache: false, // Always get fresh intelligence data
-        timeout: 10000 
+        enableCache: false // Always get fresh intelligence data
       })
 
       // Log Crown Vault data specifically

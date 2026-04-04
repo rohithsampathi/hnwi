@@ -19,8 +19,8 @@ import {
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { getMemberAnalytics, type MemberAnalytics } from "@/lib/api"
 import { useRouter, usePathname } from "next/navigation"
+import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
 
 export function SidebarNavigation({
   onNavigate,
@@ -53,7 +53,6 @@ export function SidebarNavigation({
   const [isMoreExpanded, setIsMoreExpanded] = useState(false) // Always start false on server
   const [isMounted, setIsMounted] = useState(false)
   const [isTabletSize, setIsTabletSize] = useState(false)
-  const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalytics | null>(null)
   const [isLandscape, setIsLandscape] = useState(false)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean | null>(null)
   const [isCheckingAssessment, setIsCheckingAssessment] = useState(true)
@@ -127,15 +126,12 @@ export function SidebarNavigation({
           return
         }
 
-        const response = await fetch(`/api/assessment/history/${userId}`, {
-          credentials: 'include'
-        }).catch(() => null) // Silently catch network errors
+        const data = await fetchAssessmentHistory(userId).catch(() => null)
 
-        if (response && response.ok) {
-          const data = await response.json()
+        if (data) {
 
           const assessments = data?.assessments || data || []
-          if (Array.isArray(assessments) && assessments.length > 0) {
+          if (Array.isArray(assessments) && assessments.length > 0 && hasRecentAssessmentResult(data)) {
             const sessionId = assessments[0]?.session_id || null
             setHasCompletedAssessment(true)
             setCompletedSessionId(sessionId)
@@ -196,28 +192,6 @@ export function SidebarNavigation({
     }
   }, [isLandscape, isCollapsed, onSidebarToggle])
 
-  // Fetch member analytics (skip on Ask Rohith page)
-  useEffect(() => {
-    // Skip analytics fetch on Ask Rohith page
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-    if (pathname.includes('/ask-rohith')) {
-      return;
-    }
-
-    const fetchAnalytics = async () => {
-      try {
-        const analytics = await getMemberAnalytics();
-        setMemberAnalytics(analytics);
-      } catch (error) {
-      }
-    };
-
-    fetchAnalytics();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchAnalytics, 300000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Heartbeat animation for logo
   useEffect(() => {
     const interval = setInterval(() => {
@@ -266,9 +240,7 @@ export function SidebarNavigation({
       name: "HNWI World",
       icon: Globe,
       route: "strategy-vault",
-      description: memberAnalytics ?
-        `What ${memberAnalytics.active_members_24h} members are discussing privately` :
-        "Private intelligence network",
+      description: "Private intelligence network",
       businessOnly: false
     },
     {

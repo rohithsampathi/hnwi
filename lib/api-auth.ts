@@ -193,7 +193,7 @@ export class ApiAuth {
         // Add rate limit headers if it's a rate limit error
         if (authResult.status === 429) {
           response.headers.set('Retry-After', '60'); // Default retry after
-          response.headers.set('X-RateLimit-Message', authResult.error);
+          response.headers.set('X-RateLimit-Message', authResult.error || 'Rate limit exceeded');
         }
 
         return response;

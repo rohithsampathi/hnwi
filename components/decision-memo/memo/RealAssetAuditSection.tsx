@@ -9,10 +9,11 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useCitationPanel } from '@/contexts/elite-citation-panel-context';
+import type { RealAssetAuditData as PdfRealAssetAuditData } from '@/lib/pdf/pdf-types';
 
 // Types
 interface StampDutyData {
-  found: boolean;
+  found?: boolean;
   jurisdiction?: string;
   jurisdiction_code?: string;
   tax_name?: string;  // e.g., "ABSD", "SDLT", "RPTT"
@@ -77,7 +78,7 @@ interface DynastyTrustJurisdiction {
 }
 
 interface DynastyTrustData {
-  found: boolean;
+  found?: boolean;
   jurisdictions?: DynastyTrustJurisdiction[];
   best_for_perpetuity?: string;
   recommended?: string;
@@ -96,7 +97,7 @@ interface SuccessionVehicle {
 }
 
 interface FreeportData {
-  found: boolean;
+  found?: boolean;
   freeports?: Array<{
     name: string;
     jurisdiction?: string;
@@ -125,7 +126,7 @@ interface RealAssetAuditData {
 }
 
 interface RealAssetAuditSectionProps {
-  data: RealAssetAuditData;
+  data: RealAssetAuditData | PdfRealAssetAuditData;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
   transactionValue?: number;
@@ -134,11 +135,12 @@ interface RealAssetAuditSectionProps {
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
 export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
-  data,
+  data: rawData,
   sourceJurisdiction,
   destinationJurisdiction,
   transactionValue = 0,
 }) => {
+  const data = rawData as RealAssetAuditData;
   const { openPanel } = useCitationPanel();
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);

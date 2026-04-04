@@ -6,12 +6,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Target, TrendingUp, Zap } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface StressTestIntroProps {
   onStart: () => void;
 }
 
 export const StressTestIntro: React.FC<StressTestIntroProps> = ({ onStart }) => {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount !== null ? briefCount.toLocaleString() : null;
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
       <div className="max-w-4xl mx-auto">
@@ -64,7 +68,9 @@ export const StressTestIntro: React.FC<StressTestIntroProps> = ({ onStart }) => 
             <h3 className="text-2xl font-bold mb-6">Your allocation will be stress tested against:</h3>
             <div className="grid md:grid-cols-3 gap-8 text-center">
               <div>
-                <div className="text-5xl font-bold text-amber-500 mb-2">1,875</div>
+                <div className="text-5xl font-bold text-amber-500 mb-2">
+                  {briefCountLabel ?? 'Live'}
+                </div>
                 <div className="text-sm text-muted-foreground">Wealth Developments</div>
               </div>
               <div>

@@ -39,6 +39,8 @@ export const GRADIENT_COLORS = [
   { pos: 100, color: [128, 0, 32], hex: '#800020' }     // $2M+ - Deep dark burgundy ruby
 ] as const
 
+type GradientColorStop = (typeof GRADIENT_COLORS)[number]
+
 /**
  * Get color from gradient based on percentage (0-100)
  * This matches the exact logic used in the slider
@@ -46,8 +48,8 @@ export const GRADIENT_COLORS = [
  */
 export function getGradientColorFromPercent(percent: number): string {
   // Find the two colors to interpolate between
-  let lowerColor = GRADIENT_COLORS[0]
-  let upperColor = GRADIENT_COLORS[GRADIENT_COLORS.length - 1]
+  let lowerColor: GradientColorStop = GRADIENT_COLORS[0]
+  let upperColor: GradientColorStop = GRADIENT_COLORS[GRADIENT_COLORS.length - 1]
 
   for (let i = 0; i < GRADIENT_COLORS.length - 1; i++) {
     if (percent >= GRADIENT_COLORS[i].pos && percent <= GRADIENT_COLORS[i + 1].pos) {

@@ -10,9 +10,19 @@ import type { Opportunity } from "@/lib/api"
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+// Extract clean UUID from potentially malformed IDs (e.g., "UUID Check out this..." from navigator.share)
+function extractUUID(rawId: string): string | null {
+  const decoded = decodeURIComponent(rawId)
+  const match = decoded.match(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i)
+  return match ? match[1] : null
+}
+
 // Server-side function to fetch shared opportunity
 async function getSharedOpportunity(opportunityId: string): Promise<Opportunity | null> {
   try {
+    const cleanId = extractUUID(opportunityId)
+    if (!cleanId) return null
+
     // Determine the correct base URL based on environment
     const isProduction = process.env.NODE_ENV === 'production'
 
@@ -24,7 +34,7 @@ async function getSharedOpportunity(opportunityId: string): Promise<Opportunity 
 
 
     // Call the Next.js API route (works in both dev and production)
-    const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${opportunityId}`, {
+    const response = await fetch(`${apiBaseUrl}/api/opportunities/public/${cleanId}`, {
       cache: 'no-store', // Always get fresh data for social crawlers
       headers: {
         'Content-Type': 'application/json'
@@ -58,7 +68,8 @@ export async function generateMetadata({
 }: {
   params: { id: string }
 }): Promise<Metadata> {
-  const opportunity = await getSharedOpportunity(params.id)
+  const cleanId = extractUUID(params.id)
+  const opportunity = cleanId ? await getSharedOpportunity(params.id) : null
 
   if (!opportunity) {
     return {
@@ -81,7 +92,7 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
-      url: `${siteUrl}/share/opportunity/${params.id}`,
+      url: `${siteUrl}/share/opportunity/${cleanId}`,
       siteName: "HNWI Chronicles",
       images: [
         {
@@ -107,11 +118,14 @@ export default async function SharedOpportunityPage({
 }: {
   params: { id: string }
 }) {
+  const cleanId = extractUUID(params.id)
+  if (!cleanId) notFound()
+
   const opportunity = await getSharedOpportunity(params.id)
 
   if (!opportunity) {
     notFound()
   }
 
-  return <SharedOpportunityClient opportunity={opportunity} opportunityId={params.id} />
+  return <SharedOpportunityClient opportunity={opportunity} opportunityId={cleanId} />
 }

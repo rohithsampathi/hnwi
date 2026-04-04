@@ -8,13 +8,17 @@ interface DoctrineScore {
 }
 
 export function computeRiskRadarScores(memoData: PdfMemoData, isViaNegativa: boolean = false) {
-  const doctrineMetadata = memoData.preview_data.doctrine_metadata || {};
+  const doctrineMetadata =
+    memoData.preview_data.scenario_tree_data?.doctrine_metadata ||
+    memoData.preview_data.doctrine_metadata ||
+    {};
   const failureModes = doctrineMetadata.failure_modes || [];
+  const assessment = doctrineMetadata.antifragility_assessment || '';
 
-  const isRuinExposed = failureModes.some((f: any) =>
+  const isRuinExposed = assessment === 'RUIN_EXPOSED' || failureModes.some((f: any) =>
     ((f.mode || '') + ' ' + (f.description || '')).toUpperCase().includes('RUIN')
   );
-  const isFrag = failureModes.some((f: any) =>
+  const isFrag = assessment === 'FRAGILE' || failureModes.some((f: any) =>
     ((f.mode || '') + ' ' + (f.description || '')).toUpperCase().includes('FRAGIL')
   );
 
@@ -68,7 +72,7 @@ export function computeRiskRadarScores(memoData: PdfMemoData, isViaNegativa: boo
 
   return {
     scores,
-    antifragilityAssessment: doctrineMetadata.antifragility_assessment,
+    antifragilityAssessment: assessment,
     failureModeCount: doctrineMetadata.failure_mode_count,
     totalRiskFlags: doctrineMetadata.risk_flags_total,
   };

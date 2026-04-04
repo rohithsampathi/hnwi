@@ -4,7 +4,7 @@ import { useState } from "react";
 import { RefreshCw, Brain, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CrownVaultAsset, refreshAssetPrice } from "@/lib/api";
+import { CrownVaultAsset, normalizeAppreciationMetrics, refreshAssetPrice } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 
 interface PriceRefreshButtonProps {
@@ -34,6 +34,10 @@ export function PriceRefreshButton({
       setIsRefreshing(true);
 
       const result = await refreshAssetPrice(asset.asset_id);
+      const appreciation = normalizeAppreciationMetrics(result.appreciation, {
+        createdAt: asset.created_at,
+        existingTimeHeldDays: asset.appreciation?.time_held_days,
+      });
 
       // Create updated asset object
       const updatedAsset: CrownVaultAsset = {
@@ -44,7 +48,7 @@ export function PriceRefreshButton({
           current_price: result.new_price,
           value: (asset.asset_data.unit_count || 1) * result.new_price
         },
-        appreciation: result.appreciation,
+        appreciation,
         last_price_update: new Date().toISOString()
       };
 

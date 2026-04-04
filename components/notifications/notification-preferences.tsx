@@ -22,8 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useNotificationContext } from "@/contexts/notification-context";
-import { pushNotificationService } from "@/lib/services/push-notification-service";
-import { UserNotificationPreferences } from "@/lib/services/notification-service";
+import { PushNotificationService, pushNotificationService } from "@/lib/services/push-notification-service";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  normalizeNotificationPreferences,
+  UserNotificationPreferences,
+  type NotificationPreferenceEventType
+} from "@/lib/services/notification-service";
+import { EventTypeDescriptions, EventTypeLabels } from "@/lib/notification-config";
 
 interface NotificationPreferencesProps {
   className?: string;
@@ -47,74 +53,16 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
   // Initialize local preferences
   useEffect(() => {
     if (preferences && !localPreferences) {
-      // Ensure all required fields are present with defaults
-      const normalizedPreferences = {
-        email_enabled: true,
-        push_enabled: false,
-        in_app_enabled: true,
-        sms_enabled: false,
-        quiet_hours_enabled: false,
-        quiet_hours_start: "22:00",
-        quiet_hours_end: "08:00",
-        event_types: {
-          elite_pulse: true,
-          hnwi_world: true,
-          crown_vault: true,
-          social_hub: true,
-          system_notification: true
-        },
-        frequency_limits: {
-          max_per_hour: 10,
-          max_per_day: 50
-        },
-        ...preferences,
-        event_types: {
-          elite_pulse_generated: true,
-          opportunity_added: true,
-          crown_vault_update: true,
-          social_event_added: true,
-          market_alert: true,
-          regulatory_update: true,
-          system_notification: true,
-          ...preferences.event_types
-        },
-        frequency_limits: {
-          max_per_hour: 10,
-          max_per_day: 50,
-          ...preferences.frequency_limits
-        }
-      };
-      setLocalPreferences(normalizedPreferences);
+      setLocalPreferences(normalizeNotificationPreferences(preferences));
     } else if (!preferences && !preferencesLoading && !localPreferences) {
-      // If no preferences from context and not loading, create default ones
-      const defaultPreferences: UserNotificationPreferences = {
-        email_enabled: true,
-        push_enabled: false,
-        in_app_enabled: true,
-        sms_enabled: false,
-        quiet_hours_enabled: false,
-        quiet_hours_start: "22:00",
-        quiet_hours_end: "08:00",
-        event_types: {
-          elite_pulse: true,
-          hnwi_world: true,
-          crown_vault: true,
-          social_hub: true,
-          system_notification: true
-        },
-        frequency_limits: {
-          max_per_hour: 10,
-          max_per_day: 50
-        }
-      };
-      setLocalPreferences(defaultPreferences);
+      setLocalPreferences(DEFAULT_NOTIFICATION_PREFERENCES);
     }
   }, [preferences, preferencesLoading]);
 
   // Check push notification support and status
   useEffect(() => {
     const checkPushStatus = async () => {
-      const supported = pushNotificationService.constructor.isSupported();
+      const supported = PushNotificationService.isSupported();
       setPushSupported(supported);
 
       if (supported) {
@@ -190,8 +138,6 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
     setLocalPreferences(prev => prev ? {
       ...prev,
       frequency_limits: {
-        max_per_hour: 10,
-        max_per_day: 50,
         ...prev.frequency_limits,
         [field]: numValue
       }
@@ -352,36 +298,20 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
           <CardTitle>Notification Types</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {localPreferences?.event_types && Object.entries(localPreferences.event_types).map(([eventType, enabled]) => {
-            const labels = {
-              elite_pulse: 'Elite Pulse Intelligence Reports',
-              hnwi_world: 'Investment Opportunities',
-              crown_vault: 'Crown Vault Updates',
-              social_hub: 'Social Events & Gatherings',
-              system_notification: 'System Notifications'
-            };
-
-            const descriptions = {
-              elite_pulse: 'Strategic market intelligence and analysis',
-              hnwi_world: 'Exclusive investment and wealth opportunities',
-              crown_vault: 'Updates to your assets and heirs',
-              social_hub: 'High-society events and networking opportunities',
-              system_notification: 'Important system updates and maintenance'
-            };
-
+          {localPreferences?.event_types && (Object.entries(localPreferences.event_types) as [NotificationPreferenceEventType, boolean][]).map(([eventType, enabled]) => {
             return (
               <div key={eventType} className="flex items-center justify-between py-2">
                 <div className="flex-1">
                   <Label className="text-sm font-medium">
-                    {labels[eventType as keyof typeof labels] || eventType}
+                    {EventTypeLabels[eventType] || eventType}
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {descriptions[eventType as keyof typeof descriptions] || ''}
+                    {EventTypeDescriptions[eventType] || ''}
                   </p>
                 </div>
                 <Switch 
                   checked={enabled}
-                  onCheckedChange={() => handleEventTypeToggle(eventType as keyof UserNotificationPreferences['event_types'])}
+                  onCheckedChange={() => handleEventTypeToggle(eventType)}
                 />
               </div>
             );

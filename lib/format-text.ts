@@ -100,7 +100,7 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
       const shouldBeBulletWithColon = isColonBasedSection && startsWithColonPattern
 
       // Legacy sections that treat ALL lines as bullets (if any remain)
-      const allLinesBulletSections = [] // Empty now - all sections use colon-based logic
+      const allLinesBulletSections: string[] = [] // Empty now - all sections use colon-based logic
       const shouldTreatAsBullet = allLinesBulletSections.some(section =>
         currentSection.title.toLowerCase().includes(section)
       )

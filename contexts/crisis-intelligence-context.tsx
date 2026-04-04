@@ -27,6 +27,23 @@ interface CrisisIntelligenceState {
 }
 
 const CrisisIntelligenceContext = createContext<CrisisIntelligenceState | null>(null)
+const CRISIS_FETCH_TIMEOUT_MS = 5000
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => reject(new Error("crisis-intelligence-timeout")), timeoutMs)
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timeoutId)
+        resolve(value)
+      })
+      .catch((error) => {
+        window.clearTimeout(timeoutId)
+        reject(error)
+      })
+  })
+}
 
 export function CrisisIntelligenceProvider({ children }: { children: React.ReactNode }) {
   const [showCrisisAlert, setShowCrisisAlert] = useState(false)
@@ -41,7 +58,7 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
     let cancelled = false
 
     const doFetch = () =>
-      fetchCrisisIntelligence()
+      withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
         .then((data) => { if (!cancelled) setCrisisData(data) })
         .catch(() => {})
 
@@ -60,13 +77,13 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
     if (hasAuth) {
       // User appears authenticated — fetch with a short delay for session to settle
       initTimeout = setTimeout(() => {
-        fetchCrisisIntelligence()
+        withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
           .then((data) => { if (!cancelled) setCrisisData(data) })
           .catch(() => {
             // Single retry after 5s if auth wasn't ready
             if (!cancelled) {
               setTimeout(() => {
-                fetchCrisisIntelligence()
+                withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
                   .then((data) => { if (!cancelled) setCrisisData(data) })
                   .catch(() => {})
               }, 5000)

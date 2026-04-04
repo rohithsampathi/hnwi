@@ -37,14 +37,18 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
 
   const citationMap = citationMapProp ?? fallbackCitationMap
 
+  const getOpportunityRoute = (opp: any) => {
+    const opportunityParam = opp._id || opp.id || encodeURIComponent(opp.title || opp.name || '')
+    return `opportunity/${opportunityParam}`
+  }
 
-  // Use ONLY Victor analysis opportunities
   const allOpportunities = (() => {
-    // Use victorOpportunities from analysis exclusively
+    if (data.realOpportunities && data.realOpportunities.length > 0) {
+      return data.realOpportunities
+    }
     if (data.victorOpportunities && data.victorOpportunities.length > 0) {
       return data.victorOpportunities
     }
-    // Fallback to categorized Victor opportunities
     return [...(data.juicyOpportunities || []), ...(data.moderateOpportunities || []), ...(data.farFetchedOpportunities || [])]
   })()
 
@@ -93,8 +97,8 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
           <div className="flex items-center space-x-3">
             <Gem className="h-6 w-6 text-primary" />
             <div>
-              <h2 className="text-xl font-bold">Privé Exchange Updates</h2>
-              <p className="text-sm text-muted-foreground">Latest opportunities available on the exclusive marketplace</p>
+              <h2 className="text-xl font-bold">Command Centre Opportunities</h2>
+              <p className="text-sm text-muted-foreground">Live HNWI Pattern, Privé Exchange, and Crown Vault signals from the active board</p>
             </div>
           </div>
         </div>
@@ -123,9 +127,7 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                   style={metallicStyle.style}
                   onClick={() => {
                     if (onNavigate) {
-                      // Navigate to Prive Exchange page with opportunity ID or title in URL
-                      const opportunityParam = opp._id || opp.id || encodeURIComponent(opp.title || opp.name || '')
-                      onNavigate(`prive-exchange?opportunity=${opportunityParam}`)
+                      onNavigate(getOpportunityRoute(opp))
                     }
                   }}
                 >
@@ -274,9 +276,9 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                     >
                     <div className="space-y-3">
 
-                    {/* Elite Pulse Analysis */}
+                    {/* Analysis */}
                     <div className="text-xs">
-                      <span className="font-semibold text-foreground block mb-2">Elite Pulse Analysis</span>
+                      <span className="font-semibold text-foreground block mb-2">Analysis</span>
                       <div className="text-muted-foreground leading-relaxed">
                         <CitationText
                           text={opp.victor_reasoning || opp.reasoning || opp.analysis || opp.description || 'Strategic investment opportunity with favorable risk-return profile.'}
@@ -410,8 +412,7 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
                         onClick={(e) => {
                           e.stopPropagation()
                           if (onNavigate) {
-                            const opportunityParam = opp._id || opp.id || encodeURIComponent(opp.title || opp.name || '')
-                            onNavigate(`prive-exchange?opportunity=${opportunityParam}`)
+                            onNavigate(getOpportunityRoute(opp))
                           }
                         }}
                         className="text-xs gap-1 px-3 py-1.5 h-7"
@@ -432,14 +433,14 @@ export function OpportunitiesTab({ data, onNavigate, onCitationClick, citations 
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between">
               <div className="text-xs text-muted-foreground">
-                Showing top 3 featured opportunities from {allOpportunities.length} available on Privé Exchange
+                Showing top 3 featured opportunities from {allOpportunities.length} live Command Centre opportunities
               </div>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => {
                   if (onNavigate) {
-                    onNavigate('prive-exchange')
+                    onNavigate('invest-scan')
                   }
                 }}
                 className="hover:text-white"

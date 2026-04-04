@@ -103,11 +103,12 @@ export const useAssessmentSSE = (sessionId: string | null) => {
       const filterData = JSON.parse(e.data);
 
       setEvents(prev => {
-        const newEvents = [...prev, {
+        const nextEvent: SSEEvent = {
           type: 'calibration_filter',
           data: filterData,
           timestamp: new Date().toISOString()
-        }];
+        };
+        const newEvents = [...prev, nextEvent];
         return newEvents;
       });
     });

@@ -375,7 +375,8 @@ const ChannelPerformanceRating: React.FC = () => {
               ...category,
               subChannels: category.subChannels.map((subChannel) => {
                 const matchingData = data.data.find(
-                  (item) => item.channel.toLowerCase() === subChannel.name.toLowerCase(),
+                  (item: { channel?: string; average_score?: number }) =>
+                    item.channel?.toLowerCase() === subChannel.name.toLowerCase(),
                 )
                 if (matchingData) {
                   return {
@@ -497,4 +498,3 @@ const ChannelPerformanceRating: React.FC = () => {
 }
 
 export default ChannelPerformanceRating
-

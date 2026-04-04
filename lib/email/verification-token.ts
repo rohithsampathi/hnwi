@@ -2,7 +2,7 @@
 // JWT-based email verification tokens (no database needed)
 // Uses industry-standard signed JWTs for secure, self-verifying tokens
 
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 
 const JWT_SECRET = process.env.EMAIL_VERIFICATION_SECRET || process.env.NEXTAUTH_SECRET;
 if (!JWT_SECRET) {
@@ -21,6 +21,8 @@ interface VerifiedTokenPayload extends VerificationTokenPayload {
   iat?: number;
 }
 
+type VerificationJWTPayload = JWTPayload & VerificationTokenPayload;
+
 /**
  * Generate a signed JWT for email verification
  * The token is self-contained and doesn't require database storage
@@ -31,11 +33,13 @@ export async function generateVerificationToken(
 ): Promise<string> {
   const secret = new TextEncoder().encode(JWT_SECRET);
 
-  const token = await new SignJWT({
+  const payload: VerificationJWTPayload = {
     user_id: userId,
     user_email: userEmail,
     purpose: 'email_verification',
-  } as VerificationTokenPayload)
+  };
+
+  const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
@@ -58,16 +62,25 @@ export async function verifyVerificationToken(
       algorithms: ['HS256'],
     });
 
+    const userId = typeof payload.user_id === 'string' ? payload.user_id : null;
+    const userEmail = typeof payload.user_email === 'string' ? payload.user_email : null;
+
     // Validate payload structure
     if (
-      !payload.user_id ||
-      !payload.user_email ||
+      !userId ||
+      !userEmail ||
       payload.purpose !== 'email_verification'
     ) {
       throw new Error('Invalid token payload');
     }
 
-    return payload as VerifiedTokenPayload;
+    return {
+      user_id: userId,
+      user_email: userEmail,
+      purpose: 'email_verification',
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+      iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+    };
   } catch (error) {
     if (error instanceof Error) {
       // JWT expired
@@ -94,7 +107,24 @@ export function decodeTokenUnsafe(token: string): VerifiedTokenPayload | null {
       Buffer.from(parts[1], 'base64url').toString('utf-8')
     );
 
-    return payload;
+    if (
+      typeof payload?.user_id !== 'string' ||
+      typeof payload?.user_email !== 'string' ||
+      payload?.purpose !== 'email_verification'
+    ) {
+      return null;
+    }
+
+    const userId = payload.user_id;
+    const userEmail = payload.user_email;
+
+    return {
+      user_id: userId,
+      user_email: userEmail,
+      purpose: 'email_verification',
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+      iat: typeof payload.iat === 'number' ? payload.iat : undefined,
+    };
   } catch {
     return null;
   }

@@ -7,10 +7,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  FileText,
   Clock,
   Lock,
   CheckCircle,
@@ -29,8 +28,9 @@ import { CrownLoader } from '@/components/ui/crown-loader';
 import { PreviewArtifactDisplay } from '@/components/decision-memo/pattern-audit/PreviewArtifactDisplay';
 import { ArtifactDisplay } from '@/components/decision-memo/pattern-audit/ArtifactDisplay';
 import { PatternAuditWaitingInteractive } from '@/components/decision-memo/PatternAuditWaitingInteractive';
-import { usePatternAudit, ReportAuthRequiredError, transformArtifactFromAPI } from '@/lib/hooks/usePatternAudit';
+import { usePatternAudit, ReportAuthRequiredError } from '@/lib/hooks/usePatternAudit';
 import { useDecisionMemoSSE } from '@/lib/hooks/useDecisionMemoSSE';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 import { ReportAuthPopup } from '@/components/report-auth-popup';
 import { getCurrentUser } from '@/lib/auth-manager';
 import {
@@ -40,53 +40,17 @@ import {
 } from '@/lib/decision-memo/pattern-audit-types';
 import Link from 'next/link';
 
-// Simulation template components (premium UI)
-import { MemoHeader } from '@/components/decision-memo/memo/MemoHeader';
-import { Page1TaxDashboard } from '@/components/decision-memo/memo/Page1TaxDashboard';
-import { Page2AuditVerdict } from '@/components/decision-memo/memo/Page2AuditVerdict';
-import { Page3PeerIntelligence } from '@/components/decision-memo/memo/Page3PeerIntelligence';
-import { TransparencyRegimeSection } from '@/components/decision-memo/memo/TransparencyRegimeSection';
-import { CrisisResilienceSection } from '@/components/decision-memo/memo/CrisisResilienceSection';
-import { RegimeIntelligenceSection } from '@/components/decision-memo/memo/RegimeIntelligenceSection';
-// SFO-Grade Expert Sections (Experts 13-15)
-import { WealthProjectionSection } from '@/components/decision-memo/memo/WealthProjectionSection';
-import { ScenarioTreeSection } from '@/components/decision-memo/memo/ScenarioTreeSection';
-import { HeirManagementSection } from '@/components/decision-memo/memo/HeirManagementSection';
-// Golden Visa / Investment Migration Section
-import { GoldenVisaSection } from '@/components/decision-memo/memo/GoldenVisaSection';
-// Enhanced Golden Visa Intelligence (from KGv3)
-import { GoldenVisaIntelligenceSection } from '@/components/decision-memo/memo/GoldenVisaIntelligenceSection';
-// HNWI Migration Trends Section
-import { HNWITrendsSection } from '@/components/decision-memo/memo/HNWITrendsSection';
-// Real Asset Audit Intelligence Section (KGv3-verified)
-import { RealAssetAuditSection } from '@/components/decision-memo/memo/RealAssetAuditSection';
-// Cross-Border Tax Audit (US Worldwide Taxation Analysis)
-import { CrossBorderTaxAudit } from '@/components/decision-memo/memo/CrossBorderTaxAudit';
-// Structure Comparison Matrix (MCP CORE OUTPUT)
-import { StructureComparisonMatrix } from '@/components/decision-memo/memo/StructureComparisonMatrix';
-// PDF Cover and Last Pages
-import { MemoCoverPage } from '@/components/decision-memo/memo/MemoCoverPage';
-import { MemoLastPage } from '@/components/decision-memo/memo/MemoLastPage';
-// Strategic Overview (Intelligence Foundation & Decision Context)
-import { AuditOverviewSection } from '@/components/decision-memo/memo/AuditOverviewSection';
-// Legal References (MFO Audit Requirement)
-import { ReferencesSection } from '@/components/decision-memo/memo/ReferencesSection';
-// Regulatory Sources (Complete Citations)
-import { RegulatorySourcesSection } from '@/components/decision-memo/memo/RegulatorySourcesSection';
-// Awe Visual Elements — Risk Radar, Liquidity Trap, Peer Benchmarking
-import { RiskRadarChart } from '@/components/decision-memo/memo/RiskRadarChart';
-import { LiquidityTrapFlowchart } from '@/components/decision-memo/memo/LiquidityTrapFlowchart';
-import { PeerBenchmarkTicker } from '@/components/decision-memo/memo/PeerBenchmarkTicker';
-import { transformICArtifactToMemoData } from '@/lib/decision-memo/sfo-to-memo-transformer';
-import { assembleCrossBorderAudit } from '@/lib/decision-memo/assemble-cross-border-audit';
-import { Opportunity, ViaNegativaContext } from '@/lib/decision-memo/memo-types';
+import DecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMemoLinearReport';
 import { useCitationManager } from '@/hooks/use-citation-manager';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import { AnimatePresence } from 'framer-motion';
-import { SectionReveal } from '@/components/ui/section-reveal';
 import { useTheme } from '@/contexts/theme-context';
+import {
+  resolveDecisionMemoSurfaceData,
+  type ResolvedDecisionMemoSurfaceData,
+} from '@/lib/decision-memo/resolve-decision-memo-surface-data';
 // Personal mode - UHNWI-standard navigation interface
 import { PersonalShell } from '@/components/decision-memo/personal';
 import { useSearchParams } from 'next/navigation';
@@ -94,7 +58,7 @@ import { useSearchParams } from 'next/navigation';
 // Window augmentation for Razorpay payment integration
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay: any;
   }
 }
 
@@ -102,6 +66,8 @@ interface BackendAuditResponse {
   success?: boolean;
   preview_data: Record<string, unknown>;
   memo_data?: Record<string, unknown>;
+  resolvedDevelopmentsCount?: number;
+  castleBriefsCount?: number;
   generated_at?: string;
   risk_assessment?: Record<string, unknown>;
   mitigationTimeline?: Record<string, unknown>;
@@ -146,7 +112,7 @@ const TIER_CONFIG = {
     features: [
       'Full IC-ready artifact',
       'PDF export',
-      'Pattern matching against 1,875 developments',
+      'Pattern matching against live developments',
       '48-hour SLA'
     ]
   },
@@ -178,6 +144,7 @@ function formatCountdown(ms: number): { hours: number; minutes: number; seconds:
 export default function PatternAuditPreviewPage({ params }: PageProps) {
   const { intakeId } = params;
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Check if user wants Personal mode (UHNWI navigation interface)
@@ -187,8 +154,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<AuditSession | null>(null);
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifact | null>(null);
-  const [fullArtifact, setFullArtifact] = useState<ICArtifact | null>(null);
+  const [, setFullArtifact] = useState<Record<string, unknown> | ICArtifact | null>(null);
   const [backendData, setBackendData] = useState<BackendAuditResponse | null>(null);  // Raw backend response with preview_data
+  const [resolvedSurfaceData, setResolvedSurfaceData] = useState<ResolvedDecisionMemoSurfaceData | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -197,7 +165,6 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const [isUnlockReady, setIsUnlockReady] = useState(false);
   const [isWaitingForPreview, setIsWaitingForPreview] = useState(false);
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
-  const [hnwiWorldCount, setHnwiWorldCount] = useState<number>(1875); // HNWI World developments count
 
   // Report-scoped authentication
   // MFA bypass for specific demo/testing intake IDs
@@ -225,12 +192,53 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     return sessionStorage.getItem(`report_token_${intakeId}`);
   });
 
+  const buildPdfExportHeaders = useCallback((): HeadersInit | undefined => {
+    if (!reportToken || reportToken === 'mfa_bypass_token') {
+      return undefined;
+    }
+
+    return {
+      Authorization: `Bearer ${reportToken}`,
+    };
+  }, [reportToken]);
+
+  const buildAuditViewHref = useCallback((personalMode: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (personalMode) {
+      params.set('personal', 'true');
+    } else {
+      params.delete('personal');
+      params.delete('section');
+    }
+
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
+
   useTheme();
+  const initialDevelopmentCount =
+    resolvedSurfaceData?.developmentsCount
+    ?? backendData?.resolvedDevelopmentsCount
+    ?? backendData?.castleBriefsCount
+    ?? null;
+  const developmentCount = useCastleBriefCount({ initialCount: initialDevelopmentCount });
+  const developmentCountLabel = developmentCount !== null ? developmentCount.toLocaleString() : null;
+  const developmentCountPhrase = developmentCountLabel
+    ? `${developmentCountLabel} wealth developments`
+    : 'live wealth developments';
+  const singleTierFeatures = useMemo(() => [
+    TIER_CONFIG.single.features[0],
+    TIER_CONFIG.single.features[1],
+    developmentCountLabel
+      ? `Pattern matching against ${developmentCountLabel} developments`
+      : TIER_CONFIG.single.features[2],
+    TIER_CONFIG.single.features[3],
+  ], [developmentCountLabel]);
 
   const {
     getSession,
     getPreviewArtifact,
-    getFullArtifact,
     initiatePayment,
     checkPaymentStatus,
     shareArtifact
@@ -274,8 +282,16 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   // This fixes the timing issue where useEffect fires AFTER render, leaving the citationMap empty
   // when Leaflet popups first render (causing all citations to show [1])
   const { computedCitations, computedCitationMap } = useMemo(() => {
-    const opportunities = backendData?.preview_data?.all_opportunities;
-    if (!opportunities) return { computedCitations: [] as Citation[], computedCitationMap: new Map<string, number>() };
+    const previewData = resolvedSurfaceData?.memoData?.preview_data ?? backendData?.preview_data;
+    const opportunities = Array.isArray(previewData?.all_opportunities)
+      ? (previewData.all_opportunities as Array<{
+          dev_id?: string;
+          hnwi_analysis?: string;
+          expected_return?: string;
+          opportunity_narrative?: string;
+        }>)
+      : [];
+    if (opportunities.length === 0) return { computedCitations: [] as Citation[], computedCitationMap: new Map<string, number>() };
 
     const allDevIds: string[] = [];
     const seenNormalized = new Set<string>();
@@ -289,19 +305,21 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       }
     };
 
-    opportunities.forEach((opp: { dev_id?: string; [key: string]: unknown }) => {
+    opportunities.forEach((opp) => {
       if (opp.dev_id) {
         addDevId(String(opp.dev_id));
       }
       // Also extract from analysis text — these contain [Dev ID: XXX] references
       const analysisFields = [opp.hnwi_analysis, opp.expected_return, opp.opportunity_narrative];
-      analysisFields.forEach((field: string | undefined) => {
-        if (field) extractDevIds(field).forEach(addDevId);
+      analysisFields.forEach((field) => {
+        if (typeof field === 'string') {
+          extractDevIds(field).forEach(addDevId);
+        }
       });
     });
 
-    if (backendData?.preview_data?.all_mistakes) {
-      (backendData.preview_data.all_mistakes as Array<{ dev_id?: string; [key: string]: unknown }>).forEach((mistake: { dev_id?: string; [key: string]: unknown }) => {
+    if (previewData?.all_mistakes) {
+      (previewData.all_mistakes as Array<{ dev_id?: string; [key: string]: unknown }>).forEach((mistake: { dev_id?: string; [key: string]: unknown }) => {
         if (mistake.dev_id) {
           addDevId(String(mistake.dev_id));
         }
@@ -318,7 +336,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     citationList.forEach(c => citMap.set(c.id, c.number));
 
     return { computedCitations: citationList, computedCitationMap: citMap };
-  }, [backendData]);
+  }, [backendData, resolvedSurfaceData]);
 
   // Sync computed citations with useCitationManager (for EliteCitationPanel)
   useEffect(() => {
@@ -333,6 +351,67 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     try {
       setIsLoading(true);
       setError(null);
+      setResolvedSurfaceData(null);
+
+      const applyResolvedSurfaceData = (data: ResolvedDecisionMemoSurfaceData) => {
+        setResolvedSurfaceData(data);
+        setBackendData(data.backendData as BackendAuditResponse);
+        setFullArtifact((data.fullArtifact ?? null) as Record<string, unknown> | ICArtifact | null);
+      };
+
+      const buildFallbackSurfaceData = (sessionData: any) => {
+        const rawFullArtifact =
+          sessionData.rawFullArtifact ??
+          sessionData.full_artifact ??
+          sessionData.fullArtifact ??
+          null;
+        const fallbackBackendData = sessionData.preview_data
+          ? ({
+              preview_data: sessionData.preview_data,
+              memo_data: sessionData.memo_data,
+              generated_at: sessionData.generated_at || sessionData.submittedAt,
+              mitigationTimeline:
+                sessionData.mitigationTimeline ||
+                sessionData.preview_data?.risk_assessment?.mitigation_timeline,
+              risk_assessment:
+                sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
+              all_mistakes:
+                sessionData.all_mistakes || sessionData.preview_data?.all_mistakes,
+              full_artifact: rawFullArtifact,
+              fullArtifact: rawFullArtifact,
+            } as BackendAuditResponse)
+          : null;
+
+        const fallbackSurfaceData = resolveDecisionMemoSurfaceData({
+          intakeId,
+          backendData: fallbackBackendData,
+          fullArtifact: rawFullArtifact as Record<string, unknown> | ICArtifact | null,
+        });
+
+        if (fallbackSurfaceData) {
+          applyResolvedSurfaceData(fallbackSurfaceData);
+        }
+
+        return fallbackSurfaceData;
+      };
+
+      const fetchResolvedMemoSurface = async () => {
+        const headers: Record<string, string> = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const response = await fetch(`/api/decision-memo/surface/${intakeId}`, {
+          headers,
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (response.status === 401) throw new ReportAuthRequiredError();
+        if (!response.ok) {
+          throw new Error('Memo surface fetch failed');
+        }
+
+        const data = await response.json() as ResolvedDecisionMemoSurfaceData;
+        applyResolvedSurfaceData(data);
+        return data;
+      };
 
       // Get session status (now returns full_artifact when unlocked)
       const sessionData = await getSession(intakeId, authToken) as any;
@@ -340,21 +419,18 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       // Check if session includes full artifact (unlocked state)
       if (sessionData.fullArtifact) {
         setSession({ ...sessionData, status: 'PAID' });
-        setFullArtifact(sessionData.fullArtifact);
 
-        // Also store preview_data if session includes it (for peer_cohort_stats, capital_flow_data)
-        // CRITICAL: Include mitigationTimeline and risk_assessment at top level for Page2AuditVerdict
-        if (sessionData.preview_data) {
-          setBackendData({
-            preview_data: sessionData.preview_data,
-            memo_data: sessionData.memo_data,
-            generated_at: sessionData.generated_at || sessionData.submittedAt,
-            // MCP fields from preview_data OR computed from risk counts
-            mitigationTimeline: sessionData.mitigationTimeline || sessionData.preview_data?.risk_assessment?.mitigation_timeline,
-            risk_assessment: sessionData.risk_assessment || sessionData.preview_data?.risk_assessment,
-            all_mistakes: sessionData.all_mistakes || sessionData.preview_data?.all_mistakes
-          });
+        try {
+          await fetchResolvedMemoSurface();
+        } catch (artifactErr) {
+          if (artifactErr instanceof ReportAuthRequiredError) throw artifactErr;
+          console.error('Failed to fetch canonical memo surface:', artifactErr);
+          const fallbackSurfaceData = buildFallbackSurfaceData(sessionData);
+          if (!fallbackSurfaceData) {
+            setFullArtifact(sessionData.rawFullArtifact || sessionData.fullArtifact);
+          }
         }
+
         setIsWaitingForPreview(false);
         return;
       }
@@ -365,25 +441,15 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       if (isPaid) {
         setSession({ ...sessionData, status: 'PAID' });
 
-        // Single fetch from unified endpoint - returns preview_data + MCP fields (mitigationTimeline, risk_assessment)
         try {
-          const headers: Record<string, string> = {};
-          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-          const response = await fetch(`/api/decision-memo/${intakeId}`, { headers, credentials: 'include' });
-          if (response.status === 401) throw new ReportAuthRequiredError();
-          if (response.ok) {
-            const data = await response.json();
-            setBackendData(data);  // Store raw response with preview_data + mitigationTimeline
-            // Transform artifact from same response — no duplicate fetch
-            const artifactData = data.artifact || data;
-            setFullArtifact(transformArtifactFromAPI(artifactData));
-          } else {
-            throw new Error('Artifact fetch failed');
-          }
+          await fetchResolvedMemoSurface();
         } catch (artifactErr) {
           if (artifactErr instanceof ReportAuthRequiredError) throw artifactErr;
-          console.error('Failed to fetch full artifact:', artifactErr);
-          setError('Payment confirmed but artifact not available. Please contact support.');
+          console.error('Failed to fetch memo surface:', artifactErr);
+          const fallbackSurfaceData = buildFallbackSurfaceData(sessionData);
+          if (!fallbackSurfaceData) {
+            setError('Payment confirmed but artifact not available. Please contact support.');
+          }
         }
         setIsWaitingForPreview(false);
       } else if (sessionData.status === 'PREVIEW_READY') {
@@ -401,7 +467,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setIsWaitingForPreview(false);
         }
       } else {
-        // Status is PROCESSING, SUBMITTED, or IN_REVIEW - wait for SSE
+        // Status is still in pre-preview processing - wait for SSE
         setSession(sessionData);
         setIsWaitingForPreview(true);
       }
@@ -451,7 +517,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         const doRetry = async () => {
           try {
             setIsExportingPDF(true);
-            const response = await fetch(`/api/decision-memo/pdf/${intakeId}`);
+            const response = await fetch(`/api/decision-memo/pdf/${intakeId}`, {
+              headers: buildPdfExportHeaders(),
+            });
             if (!response.ok) throw new Error(`PDF generation failed: ${response.status}`);
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
@@ -471,18 +539,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         doRetry();
       }
     } catch { /* ignore */ }
-  }, [intakeId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fetch HNWI World developments count
-  useEffect(() => {
-    fetch('/api/developments/counts')
-      .then(res => res.json())
-      .then(data => {
-        const count = data.developments?.total_count || data.total || data.count || 1875;
-        setHnwiWorldCount(count);
-      })
-      .catch(() => {}); // Silently fail, use default
-  }, []);
+  }, [buildPdfExportHeaders, intakeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When SSE signals preview is ready, fetch from backend
   // Always fetch to ensure proper snake_case → camelCase transformation
@@ -585,12 +642,10 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       // Handle already paid case - fetch full artifact directly
       if (data.already_paid) {
         try {
-          const artifact = await getFullArtifact(intakeId);
-          setFullArtifact(artifact);
-          setSession(prev => prev ? { ...prev, status: 'PAID' } : null);
+          await fetchData(reportToken);
           setIsProcessingPayment(false);
         } catch (artifactErr) {
-          console.error('Failed to fetch full artifact:', artifactErr);
+          console.error('Failed to refresh paid memo surface:', artifactErr);
           // Fallback to reload
           window.location.reload();
         }
@@ -657,7 +712,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       alert(`Payment error: ${errorMessage}`);
       setIsProcessingPayment(false);
     }
-  }, [intakeId, initiatePayment, selectedTier]);
+  }, [fetchData, intakeId, initiatePayment, reportToken, selectedTier]);
 
   // Copy share link
   const handleCopyLink = async () => {
@@ -687,7 +742,9 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       // the useEffect above will auto-retry after reload
       sessionStorage.setItem('pdf-export-pending', JSON.stringify({ id: intakeId, ts: Date.now() }));
 
-      const response = await fetch(`/api/decision-memo/pdf/${intakeId}`);
+      const response = await fetch(`/api/decision-memo/pdf/${intakeId}`, {
+        headers: buildPdfExportHeaders(),
+      });
       sessionStorage.removeItem('pdf-export-pending');
 
       if (!response.ok) {
@@ -835,8 +892,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     );
   }
 
-  // Processing state (SUBMITTED, IN_REVIEW, or PROCESSING)
-  if (session?.status === 'SUBMITTED' || session?.status === 'IN_REVIEW' || session?.status === 'PROCESSING') {
+  // Processing state before preview is ready
+  if (session?.status === 'SUBMITTED' || session?.status === 'IN_REVIEW') {
     return (
       <div className="min-h-screen bg-background">
         {/* Header */}
@@ -879,7 +936,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
               Decision Posture Audit in Progress
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              Our intelligence systems are analyzing your decision thesis against 1,875 wealth developments and failure patterns.
+              Our intelligence systems are analyzing your decision thesis against {developmentCountPhrase} and failure patterns.
             </p>
 
             <div className="bg-card border border-border rounded-2xl p-6 mb-8">
@@ -1011,7 +1068,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                   <p className="text-2xl font-bold text-foreground mb-2">{TIER_CONFIG.single.priceDisplay}</p>
                   <p className="text-xs text-muted-foreground mb-3">{TIER_CONFIG.single.description}</p>
                   <div className="space-y-1.5">
-                    {TIER_CONFIG.single.features.slice(0, 3).map((feature, i) => (
+                    {singleTierFeatures.slice(0, 3).map((feature, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs">
                         <CheckCircle className="w-3 h-3 text-primary flex-shrink-0" />
                         <span className="text-muted-foreground">{feature}</span>
@@ -1117,7 +1174,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                       })()}
                     </div>
                     <p className="text-xs text-muted-foreground mt-4">
-                      Our intelligence systems are analyzing your decision thesis against 1,875 wealth developments.
+                      Our intelligence systems are analyzing your decision thesis against {developmentCountPhrase}.
                     </p>
                   </div>
 
@@ -1159,294 +1216,31 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   }
 
   // Full Artifact state (PAID or FULL_READY) - Uses simulation template UI
-  if ((session?.status === 'PAID' || session?.status === 'FULL_READY') && fullArtifact) {
-    // Use backend preview_data directly if available (has real command_centre opportunities)
-    // Fall back to transformation only if backendData not available
-    let memoData;
-    // Check if we have preview_data (memo_data may not exist, that's okay)
-    if (backendData?.preview_data) {
-      // Merge expert analysis sections from memo_data into preview_data if not already present
-      const previewData = { ...backendData.preview_data };
+  if ((session?.status === 'PAID' || session?.status === 'FULL_READY') && !resolvedSurfaceData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <CrownLoader
+          size="lg"
+          text="Preparing Memo Surface"
+          subtext="Synchronizing the live report and PDF surface..."
+        />
+      </div>
+    );
+  }
 
-      // ══════════════════════════════════════════════════════════════════════════
-      // MERGE EXPERT DATA FROM BACKEND (Experts 7-15)
-      // Backend may store in preview_data, memo_data, or at root level
-      // ══════════════════════════════════════════════════════════════════════════
+  // Full Artifact state (PAID or FULL_READY) - Uses simulation template UI
+  if ((session?.status === 'PAID' || session?.status === 'FULL_READY') && resolvedSurfaceData) {
 
-      // Expert 7: Transparency Regime
-      if (!previewData.transparency_regime_impact) {
-        previewData.transparency_regime_impact = backendData.memo_data?.transparency_regime_impact ||
-                                                  backendData.transparency_regime_impact;
-      }
-      if (!previewData.transparency_data) {
-        previewData.transparency_data = backendData.memo_data?.transparency_data ||
-                                         backendData.transparency_data;
-      }
+    const {
+      memoData,
+      backendData: resolvedBackendData,
+      fullArtifact: resolvedFullArtifact,
+      developmentsCount,
+    } = resolvedSurfaceData;
 
-      // Expert 8: Crisis Resilience
-      if (!previewData.crisis_resilience_stress_test) {
-        previewData.crisis_resilience_stress_test = backendData.memo_data?.crisis_resilience_stress_test ||
-                                                     backendData.crisis_resilience_stress_test;
-      }
-      if (!previewData.crisis_data) {
-        previewData.crisis_data = backendData.memo_data?.crisis_data ||
-                                   backendData.crisis_data;
-      }
-
-      // Expert 9: Peer Intelligence
-      if (!previewData.peer_intelligence_analysis) {
-        previewData.peer_intelligence_analysis = backendData.memo_data?.peer_intelligence_analysis ||
-                                                  backendData.peer_intelligence_analysis;
-      }
-      if (!previewData.peer_intelligence_data) {
-        previewData.peer_intelligence_data = backendData.memo_data?.peer_intelligence_data ||
-                                              backendData.peer_intelligence_data;
-      }
-
-      // Expert 10: Market Dynamics
-      if (!previewData.market_dynamics_analysis) {
-        previewData.market_dynamics_analysis = backendData.memo_data?.market_dynamics_analysis ||
-                                                backendData.market_dynamics_analysis;
-      }
-      if (!previewData.market_dynamics_data) {
-        previewData.market_dynamics_data = backendData.memo_data?.market_dynamics_data ||
-                                            backendData.market_dynamics_data;
-      }
-
-      // Expert 11: Implementation Roadmap
-      if (!previewData.implementation_roadmap_data) {
-        previewData.implementation_roadmap_data = backendData.memo_data?.implementation_roadmap_data ||
-                                                   backendData.implementation_roadmap_data;
-      }
-
-      // Expert 12: Due Diligence
-      if (!previewData.due_diligence_data) {
-        previewData.due_diligence_data = backendData.memo_data?.due_diligence_data ||
-                                          backendData.due_diligence_data;
-      }
-
-      // HNWI Trends
-      if (!previewData.hnwi_trends_analysis) {
-        previewData.hnwi_trends_analysis = backendData.memo_data?.hnwi_trends_analysis ||
-                                            backendData.hnwi_trends_analysis;
-      }
-
-      // Risk Assessment (MCP fields from unified endpoint)
-      if (!previewData.risk_assessment && backendData.risk_assessment) {
-        previewData.risk_assessment = backendData.risk_assessment;
-      }
-
-      // All Mistakes (with cost_numeric from unified endpoint)
-      if (backendData.all_mistakes && backendData.all_mistakes.length > 0) {
-        previewData.all_mistakes = backendData.all_mistakes;
-      }
-
-      // SFO-Grade Expert Data (Experts 13-15)
-      // Merge from memo_data, full_artifact, or root level if not in preview_data
-      // Backend may store in different locations depending on response format
-      if (!previewData.heir_management_data || Object.keys(previewData.heir_management_data).length === 0) {
-        previewData.heir_management_data = backendData.memo_data?.heir_management_data ||
-                                            backendData.full_artifact?.heir_management_data ||
-                                            backendData.heir_management_data;
-        previewData.heir_management_analysis = backendData.memo_data?.heir_management_analysis ||
-                                                backendData.full_artifact?.heir_management_analysis ||
-                                                backendData.heir_management_analysis;
-      }
-      if (!previewData.wealth_projection_data || Object.keys(previewData.wealth_projection_data).length === 0) {
-        previewData.wealth_projection_data = backendData.memo_data?.wealth_projection_data ||
-                                              backendData.full_artifact?.wealth_projection_data ||
-                                              backendData.wealth_projection_data;
-        previewData.wealth_projection_analysis = backendData.memo_data?.wealth_projection_analysis ||
-                                                  backendData.full_artifact?.wealth_projection_analysis ||
-                                                  backendData.wealth_projection_analysis;
-      }
-      if (!previewData.scenario_tree_data || Object.keys(previewData.scenario_tree_data).length === 0) {
-        previewData.scenario_tree_data = backendData.memo_data?.scenario_tree_data ||
-                                          backendData.full_artifact?.scenario_tree_data ||
-                                          backendData.scenario_tree_data;
-        previewData.scenario_tree_analysis = backendData.memo_data?.scenario_tree_analysis ||
-                                              backendData.full_artifact?.scenario_tree_analysis ||
-                                              backendData.scenario_tree_analysis;
-      }
-
-      // Golden Visa / Destination Drivers (from KGv3)
-      if (!previewData.destination_drivers || !previewData.destination_drivers.visa_programs) {
-        previewData.destination_drivers = backendData.memo_data?.destination_drivers ||
-                                           backendData.full_artifact?.destination_drivers ||
-                                           backendData.destination_drivers;
-      }
-
-      // Create memo_data if it doesn't exist
-      const memoDataObj = backendData.memo_data || {
-        kgv3_intelligence_used: {
-          precedents: fullArtifact.intelligenceSources?.developmentsMatched || 0,
-          failure_modes: fullArtifact.intelligenceSources?.failurePatternsMatched || 0,
-          sequencing_rules: fullArtifact.intelligenceSources?.sequencingRulesApplied || 0,
-          jurisdictions: 2
-        }
-      };
-
-      memoData = {
-        success: true,
-        intake_id: intakeId,
-        generated_at: backendData.generated_at || fullArtifact.generatedAt,
-        preview_data: previewData,
-        memo_data: memoDataObj,
-        full_memo_url: backendData.full_memo_url || ''
-      };
-    } else {
-      memoData = transformICArtifactToMemoData(fullArtifact, intakeId);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // CROSS-BORDER TAX AUDIT: Assemble from scattered data if backend returns null
-    // The backend may return cross_border_audit_summary: null while all raw tax data
-    // exists in source_tax_rates, destination_tax_rates, selected_structure, real_asset_audit.
-    // This normalization ensures every corridor renders the full CrossBorderTaxAudit UI.
-    // ══════════════════════════════════════════════════════════════════════════
-    if (
-      memoData.preview_data?.wealth_projection_data?.starting_position &&
-      !memoData.preview_data.wealth_projection_data.starting_position.cross_border_audit_summary
-    ) {
-      const assembled = assembleCrossBorderAudit(
-        memoData.preview_data,
-        memoData.preview_data.wealth_projection_data.starting_position,
-        memoData.preview_data.real_asset_audit,
-      );
-      if (assembled) {
-        memoData.preview_data.wealth_projection_data.starting_position.cross_border_audit_summary = assembled;
-      }
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // CROSS-BORDER TAX AUDIT: Determine if theoretical tax savings are valid
-    // When US worldwide taxation applies, tax savings are 0% - don't show misleading comparisons
-    // Jan 2026 MCP CORE: Use backend's show_tax_savings flag (driven by structure_optimization)
-    // ══════════════════════════════════════════════════════════════════════════
-    const crossBorderAudit = memoData.preview_data.wealth_projection_data?.starting_position?.cross_border_audit_summary;
-    const hasCrossBorderAudit = !!crossBorderAudit;
-    const hasUSWorldwideTax = crossBorderAudit?.compliance_flags?.includes('US_WORLDWIDE_TAXATION');
-
-    // CRITICAL: Use backend's show_tax_savings flag as primary source of truth
-    // This is set by Structure Optimization Engine when structure is not viable
-    const showTheoreticalTaxSavings = memoData.preview_data.show_tax_savings !== false && !hasUSWorldwideTax;
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // VIA NEGATIVA: "Crime Scene Investigation" overlay for DO_NOT_PROCEED deals
-    // Same backend data, dramatically different presentation framing
-    // ══════════════════════════════════════════════════════════════════════════
-    const structureVerdict = memoData.preview_data.structure_optimization?.verdict;
-    const isViaNegativa = structureVerdict === 'DO_NOT_PROCEED';
-
-    let viaNegativaContext: ViaNegativaContext | undefined;
-    if (isViaNegativa) {
-      // Backend-driven via_negativa object (Jan 2026)
-      // Contains all labels, computed values, and tone-shifted copy.
-      // If absent, fall back to frontend-computed values.
-      const backendVN = memoData.preview_data?.via_negativa || (memoData as any).via_negativa;
-
-      const acquisitionAudit = crossBorderAudit?.acquisition_audit;
-      const propertyValue = acquisitionAudit?.property_value || 0;
-      const totalAcquisitionCost = acquisitionAudit?.total_acquisition_cost || 0;
-
-      // Prefer backend computed values, fall back to frontend computation.
-      // Use || (not ??) so that backend value of 0 falls through to local computation.
-      const dayOneLossPct = backendVN?.day_one_loss_pct || acquisitionAudit?.day_one_loss_pct || 0;
-      const dayOneLossAmount = backendVN?.day_one_loss_amount || (totalAcquisitionCost - propertyValue);
-
-      let totalConfiscationExposure = backendVN?.total_regulatory_exposure ?? 0;
-      if (!totalConfiscationExposure) {
-        // Fallback: parse from warnings
-        const warnings = crossBorderAudit?.warnings || [];
-        warnings.forEach((w: string) => {
-          const match = w.match(/\$[\d,]+(?:\.\d+)?/g);
-          if (match) {
-            match.forEach((m: string) => {
-              const val = parseFloat(m.replace(/[$,]/g, ''));
-              if (!isNaN(val) && val > totalConfiscationExposure) {
-                totalConfiscationExposure = val;
-              }
-            });
-          }
-        });
-      }
-
-      const taxEfficiencyPassed = backendVN?.tax_efficiency_passed ?? (showTheoreticalTaxSavings && (crossBorderAudit?.total_tax_savings_pct || 0) > 0);
-      const liquidityPassed = backendVN?.liquidity_passed ?? dayOneLossPct < 10;
-      const structurePassed = backendVN?.structure_passed ?? false;
-
-      // Read labels from backend, fall back to pessimistic-but-fair defaults
-      const hdr = backendVN?.header;
-      const sc = backendVN?.scenario_section;
-      const tx = backendVN?.tax_section;
-      const vs = backendVN?.verdict_section;
-      const cta = backendVN?.cta;
-      const metrics = backendVN?.metrics;
-
-      viaNegativaContext = {
-        isActive: true,
-
-        // Computed values
-        dayOneLoss: dayOneLossPct,
-        dayOneLossAmount,
-        totalConfiscationExposure,
-        taxEfficiencyPassed,
-        liquidityPassed,
-        structurePassed,
-
-        // Labels — backend → fallback defaults (pessimistic but fair)
-        analysisPosture: backendVN?.analysis_posture || 'Via Negativa: Strengths acknowledged. Weaknesses stated without qualification.',
-        badgeLabel: hdr?.badge_label || 'ELEVATED RISK',
-        titlePrefix: hdr?.title_prefix || 'Capital At',
-        titleHighlight: hdr?.title_highlight || 'Risk',
-        noticeTitle: hdr?.notice_title || 'Elevated Risk Advisory',
-        noticeBody: (hdr?.notice_body || 'Analysis of {precedentCount}+ corridor signals identified {dayOneLoss}% Day-One capital exposure in this corridor. The destination market may carry long-term merit, but the current ownership structure imposes acquisition costs that require careful evaluation before deployment.')
-          .replace('{dayOneLoss}', dayOneLossPct.toFixed(2))
-          .replace('{precedentCount}', (backendVN?.precedent_count ?? memoData.memo_data?.kgv3_intelligence_used?.precedents ?? 0).toLocaleString()),
-
-        metricLabels: {
-          capitalExposure: metrics?.[0]?.label || 'Day-One Capital Exposure',
-          structureVerdict: metrics?.[1]?.label || 'Structure Verdict',
-          structureVerdictValue: metrics?.[1]?.value || 'Not Recommended',
-          structureVerdictDesc: metrics?.[1]?.description || 'Negative NPV across analyzed structures',
-          regulatoryExposure: metrics?.[2]?.label || 'Regulatory Exposure',
-          regulatoryExposureDesc: metrics?.[2]?.description || 'FBAR + compliance penalties',
-        },
-
-        scenarioHeader: sc?.header || 'Projection Audit',
-        expectationLabel: sc?.expectation_label || 'Your Projection',
-        actualLabel: sc?.actual_label || 'Market Data',
-        commentaryTitle: sc?.commentary_title || 'Reality Gap Analysis',
-        commentaryBody: sc?.commentary_body || 'Your projected returns deviate from verified market data in key areas. Where fundamentals support the thesis, they are noted above. Where projections exceed market benchmarks, the gap is flagged as a risk factor.',
-
-        taxBadgeLabel: tx?.badge_label || 'Regulatory Exposure Analysis',
-        taxTitleLine1: tx?.title_line1 || 'Regulatory',
-        taxTitleLine2: tx?.title_line2 || 'Exposure',
-        compliancePrefix: tx?.compliance_prefix ?? '',
-        warningPrefix: tx?.warning_prefix || 'Regulatory Flag',
-
-        verdictHeader: vs?.header || 'Structural Review',
-        verdictBadgeLabel: vs?.badge_label || 'Capital Allocation Review',
-        stampText: vs?.stamp_text || 'Allocation Not Recommended',
-        stampSubtext: vs?.stamp_subtext || 'Key viability thresholds not met in this structure — review alternative corridors and strategies below',
-
-        ctaHeadline: cta?.headline || 'DOES YOUR CURRENT DEAL SURVIVE THIS FILTER?',
-        ctaBody: (cta?.body_template || 'This Pattern Audit identified {dayOneLoss}% Day-One capital exposure. The same engine analyzes any cross-border acquisition across 50+ jurisdictions.')
-          .replace('{dayOneLoss}', dayOneLossPct.toFixed(2)),
-        ctaScarcity: cta?.scarcity_text || '5 Slots Remaining — February Cycle',
-        ctaButtonText: cta?.button_text || 'INITIATE RED TEAM AUDIT ($5,000)',
-        ctaButtonUrl: cta?.button_url || 'https://app.hnwichronicles.com/decision-memo',
-        ctaContextNote: cta?.context_note || 'For Indian Family Offices: This sample analyzes a US → Singapore corridor. The same Pattern Recognition Engine applies to India → Dubai, India → Singapore, India → Portugal, and 50+ other corridors.',
-      };
-    }
-
-    // Handle citation clicks - opens EliteCitationPanel (matching Home Dashboard pattern)
     const handleCitationClick = (citationId: string) => {
       openCitation(citationId);
     };
-
-    // Legal references — fully backend-driven
-    const legalReferences = memoData.preview_data.legal_references;
 
     // Personal Mode - UHNWI-standard navigation interface
     if (usePersonalMode) {
@@ -1466,10 +1260,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           {/* Personal Shell - Clean navigation interface */}
           <PersonalShell
             memoData={memoData as any}
-            backendData={backendData}
+            backendData={resolvedBackendData}
             intakeId={intakeId}
             onExportPDF={handleExportPDF}
             isExportingPDF={isExportingPDF}
+            onSwitchToReportView={() => router.push(buildAuditViewHref(false))}
           />
         </>
       );
@@ -1514,7 +1309,11 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         <div className="sticky top-20 z-40 bg-card/95 backdrop-blur-xl border-b border-border print:hidden mb-6">
           <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push('/war-room')}>
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="flex items-center gap-3 text-left cursor-pointer hover:opacity-80 transition-opacity"
+              >
                 <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
                   <span className="text-primary-foreground font-bold text-sm">HC</span>
                 </div>
@@ -1524,14 +1323,13 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
                     Ref: {intakeId.slice(7, 19).toUpperCase()}
                   </p>
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => {
-                    const params = new URLSearchParams(searchParams.toString());
-                    params.set('personal', 'true');
-                    router.push(`${window.location.pathname}?${params.toString()}`);
+                    router.push(buildAuditViewHref(true));
                   }}
+                  type="button"
                   className="min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border border-gold bg-gold/5 hover:bg-gold/10 rounded-lg flex items-center justify-center gap-2 transition-colors group"
                 >
                   <LayoutGrid className="w-4 h-4 text-gold" />
@@ -1562,711 +1360,18 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Premium Simulation Template Content */}
         <div id="artifact-content" className="max-w-6xl mx-auto px-3 sm:px-6 pt-6 pb-8 sm:pb-12 print:max-w-[210mm] print:px-0 print:py-0">
-          <div className="space-y-12 sm:space-y-20">
-            {/* ═══════════════════════════════════════════════════════════════════════ */}
-            {/* HARVARD WEALTH MANAGEMENT PSYCHOLOGY FLOW                               */}
-            {/* Hook → Value → Social Proof → Risk → Opportunity → Projection → Legacy → Action */}
-            {/* ═══════════════════════════════════════════════════════════════════════ */}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PDF COVER PAGE - HNWI Chronicles Branding                                       */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <SectionReveal direction="scale" duration={1.0}>
-              <MemoCoverPage
-                intakeId={intakeId}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                generatedAt={memoData.generated_at}
-                exposureClass={memoData.preview_data.exposure_class}
-                totalSavings={memoData.preview_data.total_savings}
-                viaNegativa={viaNegativaContext}
-              />
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* STRATEGIC OVERVIEW - Intelligence Foundation & Decision Context                */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            <SectionReveal delay={0.05}>
-              <AuditOverviewSection
-                developmentsCount={backendData?.hnwiWorldCount || 1966}
-                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                thesisSummary={memoData.preview_data.thesis_summary ||
-                               backendData?.fullArtifact?.thesisSummary ||
-                               memoData.preview_data.decision_thesis}
-                exposureClass={memoData.preview_data.exposure_class}
-                totalSavings={memoData.preview_data.total_savings}
-                optimalStructure={memoData.preview_data.structure_optimization?.optimal_structure}
-                verdict={memoData.preview_data.structure_optimization?.verdict}
-                fullThesis={backendData?.thesis ||
-                           backendData?.fullArtifact?.thesis ||
-                           memoData.preview_data.thesis ||
-                           memoData.preview_data.decision_context ||
-                           memoData.preview_data.user_input}
-                rails={backendData?.rails}
-                constraints={backendData?.constraints}
-                showMap={false}  // Report mode - content only, no map
-              />
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 1: EXECUTIVE SUMMARY (Stanford BLUF - Bottom Line Up Front)              */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 1. MemoHeader - Premium Header with Key Metrics (The Hook) */}
-            <SectionReveal delay={0.1}>
-            <MemoHeader
-              intakeId={intakeId}
-              generatedAt={memoData.generated_at}
-              exposureClass={memoData.preview_data.exposure_class}
-              totalSavings={memoData.preview_data.total_savings}
-              precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-              sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-              destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-              sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-              destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-              taxDifferential={memoData.preview_data.tax_differential}
-              valueCreation={{
-                ...memoData.preview_data.value_creation,
-                ...(memoData.preview_data.annual_rental_income !== undefined || memoData.preview_data.annual_appreciation !== undefined ? {
-                  annual: {
-                    rental: memoData.preview_data.annual_rental_income,
-                    rental_formatted: memoData.preview_data.annual_rental_income_formatted,
-                    appreciation: memoData.preview_data.annual_appreciation,
-                    appreciation_formatted: memoData.preview_data.annual_appreciation_formatted,
-                    total: memoData.preview_data.annual_value,
-                    total_formatted: memoData.preview_data.annual_value_formatted,
-                  }
-                } : {})
-              }}
-              crossBorderTaxSavingsPct={crossBorderAudit?.total_tax_savings_pct}
-              crossBorderComplianceFlags={crossBorderAudit?.compliance_flags}
-              showTaxSavings={showTheoreticalTaxSavings}
-              optimalStructure={memoData.preview_data.structure_optimization?.optimal_structure}
-              verdict={memoData.preview_data.structure_optimization?.verdict}
-              viaNegativa={viaNegativaContext}
-            />
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* AWE ELEMENT 1: SFO Capital Allocation Risk Profile (Spider Chart)                   */}
-            {/* Shows the "broken shape" — asset is fine, structure is broken                     */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {(() => {
-              const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
-              if (!doctrineMetadata) return null;
-
-              // Build 6-axis scores from doctrine metadata + failure modes.
-              // Scores are DERIVED from real backend failure_modes data.
-              // Each failure mode is mapped to the dimension(s) it affects.
-              const failureModes = doctrineMetadata.failure_modes || [];
-              const totalFailures = failureModes.length;
-              const assessment = doctrineMetadata.antifragility_assessment || '';
-
-              // Baseline: for vetoed deals (RUIN_EXPOSED / FRAGILE) start lower.
-              // For passing deals start at 7. This ensures the shape looks broken for vetoed deals.
-              const isRuinExposed = assessment === 'RUIN_EXPOSED';
-              const isFrag = assessment === 'FRAGILE';
-              const baseline = isViaNegativa ? (isRuinExposed ? 3 : isFrag ? 4 : 5) : 7;
-
-              // Score calculation: start at baseline, deduct for matching failure modes,
-              // but also boost slightly for non-matching (max +1) to create the "jagged" shape
-              function calcScore(keywords: string[]): number {
-                let score = baseline;
-                let matched = false;
-                failureModes.forEach((f: any) => {
-                  const mode = (f.mode || '').toUpperCase();
-                  const desc = (f.description || '').toUpperCase();
-                  const book = (f.doctrine_book || '').toUpperCase();
-                  const sev = (f.severity || '').toUpperCase();
-                  const allText = `${mode} ${desc} ${book}`;
-                  if (keywords.some(k => allText.includes(k))) {
-                    matched = true;
-                    score -= sev === 'CRITICAL' ? 4 : sev === 'HIGH' ? 3 : sev === 'MEDIUM' ? 2 : 1;
-                  }
-                });
-                // Unmatched dimensions get a slight bump to create contrast
-                if (!matched && isViaNegativa) score += 1;
-                return Math.max(0, Math.min(10, score));
-              }
-
-              // Antifragility: use backend score if available, else derive
-              const antifragilityScore = doctrineMetadata.antifragility_score != null
-                ? Math.round(doctrineMetadata.antifragility_score / 10)
-                : calcScore(['ANTIFRAGIL', 'FRAGIL', 'RUIN', 'STRESS', 'CRISIS', 'RESILIEN', 'SHOCK']);
-
-              // Liquidity: ABSD, stamp duty, exit barriers, lock-in
-              const liquidityScore = calcScore(['LIQUID', 'PRISON', 'TRAP', 'LOCK', 'EXIT', 'ABSD', 'STAMP', 'BARRIER', 'FROZEN', 'ILLIQUID', 'FOREIGN_OWNER', 'ACQUISITION']);
-
-              // Regulatory: compliance, FBAR, FATCA, PFIC, tax drag, penalties
-              const regulatoryScore = calcScore(['REGULAT', 'COMPLIANCE', 'FBAR', 'FATCA', 'PFIC', 'TAX_DRAG', 'PENALTY', 'REPORT', 'FILING', 'SANCTION', 'WORLDWIDE', 'DRAGNET']);
-
-              // Asset quality: only deduct if the asset itself is problematic
-              // If no asset-specific failures, score stays HIGH — "the asset is fine"
-              const assetKeywords = ['ASSET_QUALITY', 'OVERVAL', 'BUBBLE', 'DEPRECIAT', 'DEFECT', 'TITLE'];
-              const assetRaw = calcScore(assetKeywords);
-              const hasAssetFailures = failureModes.some((f: any) =>
-                assetKeywords.some(k => ((f.mode || '') + ' ' + (f.description || '')).toUpperCase().includes(k))
-              );
-              const finalAssetScore = hasAssetFailures ? assetRaw : Math.min(10, Math.max(8, baseline + 3));
-
-              // Operator alignment: behavioral bias, decision quality, hallucination
-              const operatorScore = calcScore(['OPERATOR', 'BEHAVIO', 'DECISION', 'BIAS', 'KAHNEMAN', 'HALLUCIN', 'DELUSION', 'EXPECT', 'PROJEC', 'OVERCONFID']);
-
-              // Valuation reality: NPV, cost destruction, day-one loss, pricing
-              const valuationScore = calcScore(['VALUATION', 'PRICE', 'COST', 'NPV', 'NEGATIVE', 'OVERVAL', 'DAY_ONE', 'CAPITAL_DESTROY', 'LOSS', 'PREMIUM', 'SURCHARGE', 'OVERPAY']);
-
-              const scores = [
-                { label: 'Antifragility', shortLabel: 'Antifragile', score: antifragilityScore, maxScore: 10 },
-                { label: 'Liquidity', shortLabel: 'Liquidity', score: liquidityScore, maxScore: 10 },
-                { label: 'Regulatory', shortLabel: 'Regulatory', score: regulatoryScore, maxScore: 10 },
-                { label: 'Asset Quality', shortLabel: 'Asset', score: finalAssetScore, maxScore: 10 },
-                { label: 'Operator', shortLabel: 'Operator', score: operatorScore, maxScore: 10 },
-                { label: 'Valuation', shortLabel: 'Valuation', score: valuationScore, maxScore: 10 },
-              ];
-
-              return (
-                <SectionReveal direction="scale">
-                  <RiskRadarChart
-                    scores={scores}
-                    antifragilityAssessment={doctrineMetadata.antifragility_assessment}
-                    failureModeCount={doctrineMetadata.failure_mode_count}
-                    totalRiskFlags={doctrineMetadata.risk_flags_total}
-                    isVetoed={isViaNegativa}
-                  />
-                </SectionReveal>
-              );
-            })()}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 1B: RISK ASSESSMENT (Position 2 — always shown)                           */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 2. Risk Assessment & Verdict - Executive Summary (BLUF) */}
-            <SectionReveal>
-              <Page2AuditVerdict
-                mistakes={backendData?.all_mistakes || memoData.preview_data.all_mistakes}
-                opportunitiesCount={memoData.preview_data.opportunities_count}
-                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                ddChecklist={memoData.preview_data.dd_checklist}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                dataQuality={memoData.preview_data.peer_cohort_stats?.data_quality}
-                dataQualityNote={memoData.preview_data.peer_cohort_stats?.data_quality_note}
-                mitigationTimeline={backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline}
-                riskAssessment={backendData?.risk_assessment || memoData.preview_data.risk_assessment}
-                viaNegativa={isViaNegativa ? viaNegativaContext : undefined}
-              />
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* AWE ELEMENT 2: Liquidity Trap Flowchart (The Prison Diagram)                     */}
-            {/* Visualizes capital being destroyed by acquisition barriers                       */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {(() => {
-              const acqAudit = crossBorderAudit?.acquisition_audit;
-              if (!acqAudit) return null;
-
-              const propertyValue = acqAudit.property_value || 0;
-              const totalCost = acqAudit.total_acquisition_cost || 0;
-              const absd = acqAudit.absd_additional_stamp_duty || 0;
-              const bsd = acqAudit.bsd_stamp_duty || 0;
-              const otherCosts = totalCost - propertyValue - absd - bsd;
-
-              // Primary barrier: ABSD if present, else total stamp duties
-              const hasMajorABSD = absd > 0;
-              const primaryBarrierLabel = hasMajorABSD
-                ? `ABSD (${((absd / propertyValue) * 100).toFixed(0)}%)`
-                : `Stamp Duties`;
-              const primaryBarrierCost = hasMajorABSD ? absd : (absd + bsd);
-
-              // Secondary: US tax drag / BSD / other
-              const secondaryLabel = hasMajorABSD
-                ? (bsd > 0 ? `BSD + Transfer Taxes` : (hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined))
-                : (hasUSWorldwideTax ? 'US Worldwide Tax Drag' : undefined);
-              const secondaryCost = hasMajorABSD
-                ? (bsd > 0 ? bsd + Math.max(0, otherCosts) : 0)
-                : 0;
-
-              const capitalOut = propertyValue; // recoverable = property value only
-
-              return (
-                <SectionReveal direction="left">
-                  <LiquidityTrapFlowchart
-                    capitalIn={totalCost}
-                    capitalOut={capitalOut}
-                    primaryBarrier={primaryBarrierLabel}
-                    primaryBarrierCost={primaryBarrierCost}
-                    secondaryBarrier={secondaryLabel}
-                    secondaryBarrierCost={secondaryCost}
-                    dayOneLossPct={acqAudit.day_one_loss_pct || viaNegativaContext?.dayOneLoss || 0}
-                    dayOneLossNote={crossBorderAudit?.bsd_note || (acqAudit as any)?.day_one_loss_label}
-                    assetLabel={`${memoData.preview_data.destination_jurisdiction || 'Destination'} Residential Property`}
-                  />
-                </SectionReveal>
-              );
-            })()}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 2: CROSS-BORDER TAX ANALYSIS                                              */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 3. Cross-Border Tax Audit / Confiscation Exposure (renders in both modes) */}
-            {hasCrossBorderAudit && (
-              <SectionReveal>
-                <CrossBorderTaxAudit
-                  audit={crossBorderAudit}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  viaNegativa={viaNegativaContext}
-                />
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* AWE ELEMENT 3: Peer Benchmarking Ticker (The FOMO Killer)                        */}
-            {/* Weaponizes precedent data to invoke "God View" of the market                     */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {(() => {
-              const doctrineMetadata = memoData.preview_data.scenario_tree_data?.doctrine_metadata;
-              const precedentCount = memoData.memo_data?.kgv3_intelligence_used?.precedents || 0;
-              if (!doctrineMetadata || !doctrineMetadata.failure_modes?.length || precedentCount === 0) return null;
-
-              const failurePatterns = (doctrineMetadata.failure_modes || []).map((f: any) => ({
-                mode: f.mode || '',
-                doctrinBook: f.doctrine_book || '',
-                severity: f.severity || 'MEDIUM',
-                description: f.description || '',
-                nightmareName: f.nightmare_name,
-              }));
-
-              return (
-                <SectionReveal direction="right">
-                  <PeerBenchmarkTicker
-                    precedentCount={precedentCount}
-                    failurePatterns={failurePatterns}
-                    failureModeCount={doctrineMetadata.failure_mode_count || failurePatterns.length}
-                    totalRiskFlags={doctrineMetadata.risk_flags_total || 0}
-                    sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                    destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                    antifragilityAssessment={doctrineMetadata.antifragility_assessment}
-                    patternIntelligence={memoData.preview_data.pattern_intelligence}
-                  />
-                </SectionReveal>
-              );
-            })()}
-
-            {/* 3.5 Structure Comparison Matrix - MCP CORE OUTPUT */}
-            {/* Shows all ownership structures analyzed with net benefit comparison */}
-            {memoData.preview_data.structure_optimization && (
-              <SectionReveal>
-                <StructureComparisonMatrix
-                  structureOptimization={memoData.preview_data.structure_optimization}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            )}
-
-            {/* 4. Tax Jurisdiction Analysis - ALWAYS show (even with US worldwide tax) */}
-            {/* CRITICAL FIX: Don't hide section when showTheoreticalTaxSavings is false - component handles display */}
-            <SectionReveal>
-              <Page1TaxDashboard
-                totalSavings={memoData.preview_data.total_savings}
-                exposureClass={memoData.preview_data.exposure_class}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                executionSequence={memoData.preview_data.execution_sequence}
-                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-                taxDifferential={memoData.preview_data.tax_differential}
-                sections={['tax']}
-                showTaxSavings={showTheoreticalTaxSavings}
-              />
-            </SectionReveal>
-
-            {/* 5. Regime Intelligence (NHR, 13O, Special Tax Regimes) - Part of Tax Analysis */}
-            {/* CRITICAL FIX: regime_intelligence is at preview_data level, NOT inside peer_cohort_stats */}
-            {memoData.preview_data.regime_intelligence?.has_special_regime && (
-              <SectionReveal direction="left">
-                <RegimeIntelligenceSection
-                  regimeIntelligence={memoData.preview_data.regime_intelligence}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            )}
-
-            {/* 4. 10-Year Wealth Projection - Part of Tax/Value Analysis */}
-            {(memoData.preview_data.wealth_projection_analysis ||
-              (memoData.preview_data.wealth_projection_data &&
-               Object.keys(memoData.preview_data.wealth_projection_data).length > 0)) && (
-              <SectionReveal>
-                <WealthProjectionSection
-                  data={memoData.preview_data.wealth_projection_data || {}}
-                  rawAnalysis={memoData.preview_data.wealth_projection_analysis}
-                  structures={memoData.preview_data.structure_optimization?.structures_analyzed || []}
-                  structureProjections={memoData.preview_data.structure_projections || {}}
-                  optimalStructureName={memoData.preview_data.structure_optimization?.optimal_structure?.name}
-                />
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 3: SOCIAL PROOF (Interest - "Others Like You Are Moving")                */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 6. Peer Intelligence - Drivers, Peer Analysis & Corridor (Social Proof) */}
-            <SectionReveal>
-              <Page3PeerIntelligence
-                opportunities={memoData.preview_data.all_opportunities}
-                peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
-                onCitationClick={handleCitationClick}
-                citationMap={computedCitationMap}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCountry={memoData.preview_data.source_country}
-                destinationCountry={memoData.preview_data.destination_country}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                peerCohortStats={memoData.preview_data.peer_cohort_stats}
-                capitalFlowData={memoData.preview_data.capital_flow_data}
-                sections={['drivers', 'peer', 'corridor']}
-                isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
-              />
-            </SectionReveal>
-
-            {/* 7. HNWI Migration Trends - More Social Proof */}
-            {memoData.preview_data.hnwi_trends && memoData.preview_data.hnwi_trends.length > 0 && (
-              <SectionReveal direction="right">
-                <HNWITrendsSection
-                  trends={memoData.preview_data.hnwi_trends}
-                  confidence={memoData.preview_data.hnwi_trends_confidence}
-                  dataQuality={memoData.preview_data.hnwi_trends_data_quality}
-                  citations={memoData.preview_data.hnwi_trends_citations}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  sourceCountry={memoData.preview_data.source_country}
-                  destinationCountry={memoData.preview_data.destination_country}
-                />
-              </SectionReveal>
-            )}
-
-            {/* 8. Geographic Opportunity Distribution - Tied to Migration Trends */}
-            <SectionReveal>
-              <Page3PeerIntelligence
-                opportunities={memoData.preview_data.all_opportunities}
-                peerCount={memoData.preview_data.peer_cohort_stats?.total_peers || 0}
-                onCitationClick={handleCitationClick}
-                citationMap={computedCitationMap}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCountry={memoData.preview_data.source_country}
-                destinationCountry={memoData.preview_data.destination_country}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                peerCohortStats={memoData.preview_data.peer_cohort_stats}
-                capitalFlowData={memoData.preview_data.capital_flow_data}
-                sections={['geographic']}
-                isRelocating={memoData.preview_data.peer_cohort_stats?.is_relocating ?? memoData.preview_data.is_relocating ?? false}
-              />
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 4: RISK DETAILS (Detailed Risk Analysis)                                 */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 9. Transparency Regime Impact - Specific Risk */}
-            {(memoData.preview_data.transparency_data || memoData.preview_data.transparency_regime_impact) && (
-              <SectionReveal>
-                <TransparencyRegimeSection
-                  transparencyData={memoData.preview_data.transparency_data}
-                  content={memoData.preview_data.transparency_regime_impact}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            )}
-
-            {/* 9.5 Real Asset Audit Intelligence - KGv3 Verified */}
-            {memoData.preview_data.real_asset_audit && (
-              <SectionReveal direction="left">
-                <RealAssetAuditSection
-                  data={memoData.preview_data.real_asset_audit}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                  transactionValue={memoData.preview_data.deal_overview?.target_size
-                    ? parseFloat(memoData.preview_data.deal_overview.target_size.replace(/[^0-9.]/g, '')) * 1000000
-                    : 0}
-                />
-              </SectionReveal>
-            )}
-
-            {/* 10. Crisis Resilience Stress Test - Antifragile Framework */}
-            {(memoData.preview_data.crisis_data || memoData.preview_data.crisis_resilience_stress_test) && (
-              <SectionReveal direction="scale">
-                <CrisisResilienceSection
-                  crisisData={memoData.preview_data.crisis_data}
-                  content={memoData.preview_data.crisis_resilience_stress_test}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 5: OPPORTUNITY (Desire - After Risk is Addressed)                        */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 11. Golden Visa / Investment Migration (Single Unified Section) */}
-            {/* Prioritize KGv3 intelligence if available, otherwise show basic visa programs */}
-            {memoData.preview_data.golden_visa_intelligence ? (
-              <SectionReveal direction="right">
-                <GoldenVisaIntelligenceSection
-                  intelligence={memoData.preview_data.golden_visa_intelligence}
-                  sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            ) : (memoData.preview_data.destination_drivers?.visa_programs &&
-                 memoData.preview_data.destination_drivers.visa_programs.length > 0 && (
-              <SectionReveal direction="right">
-                <GoldenVisaSection
-                  destinationDrivers={memoData.preview_data.destination_drivers}
-                  destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                />
-              </SectionReveal>
-            ))}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 6: DECISION ANALYSIS (Strategic Decision Support)                        */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 12. Decision Scenario Tree (Expert 15) */}
-            {(memoData.preview_data.scenario_tree_analysis ||
-              (memoData.preview_data.scenario_tree_data &&
-               Object.keys(memoData.preview_data.scenario_tree_data).length > 0)) && (
-              <SectionReveal>
-                <ScenarioTreeSection
-                  data={memoData.preview_data.scenario_tree_data || {}}
-                  rawAnalysis={memoData.preview_data.scenario_tree_analysis}
-                />
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 7: LEGACY (Emotional Connection - Family & Succession)                   */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 13. Heir Management & Succession (Expert 13 - Hughes Framework) */}
-            {(memoData.preview_data.heir_management_analysis ||
-              (memoData.preview_data.heir_management_data &&
-               Object.keys(memoData.preview_data.heir_management_data).length > 0)) && (
-              <SectionReveal>
-                <HeirManagementSection
-                  data={memoData.preview_data.heir_management_data || {}}
-                  rawAnalysis={memoData.preview_data.heir_management_analysis}
-                />
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PHASE 8: ACTION (Call to Action - Implementation Roadmap at End)               */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-
-            {/* 14. Implementation Roadmap - Action Items */}
-            <SectionReveal>
-              <Page1TaxDashboard
-                totalSavings={memoData.preview_data.total_savings}
-                exposureClass={memoData.preview_data.exposure_class}
-                sourceJurisdiction={memoData.preview_data.source_jurisdiction}
-                destinationJurisdiction={memoData.preview_data.destination_jurisdiction}
-                sourceCity={memoData.preview_data.source_city}
-                destinationCity={memoData.preview_data.destination_city}
-                executionSequence={memoData.preview_data.execution_sequence}
-                sourceTaxRates={memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source}
-                destinationTaxRates={memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination}
-                taxDifferential={memoData.preview_data.tax_differential}
-                sections={['implementation']}
-              />
-            </SectionReveal>
-
-            {/* Premium Footer */}
-            <SectionReveal>
-            <div
-              className="relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/20 border border-border rounded-2xl sm:rounded-3xl p-6 sm:p-10"
-            >
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
-                    Pattern Intelligence Complete
-                  </h3>
-                  <p className="text-sm text-muted-foreground max-w-xl">
-                    This audit analyzed{' '}
-                    <span className="text-foreground font-medium">
-                      {fullArtifact.intelligenceSources.developmentsMatched.toLocaleString()} developments
-                    </span>
-                    , matched{' '}
-                    <span className="text-foreground font-medium">
-                      {fullArtifact.intelligenceSources.failurePatternsMatched} failure patterns
-                    </span>
-                    , and applied{' '}
-                    <span className="text-foreground font-medium">
-                      {fullArtifact.intelligenceSources.sequencingRulesApplied} sequencing rules
-                    </span>
-                    .
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Reference</p>
-                    <p className="text-sm font-mono font-medium text-primary">
-                      {intakeId.slice(0, 20).toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Disclaimer */}
-              <div className="mt-8 pt-6 border-t border-border">
-                <p className="text-xs text-muted-foreground text-center max-w-3xl mx-auto">
-                  Pattern & Market Intelligence Report based on {(memoData.memo_data?.kgv3_intelligence_used?.precedents || 0).toLocaleString()}+ analyzed corridor signals.
-                  This report provides strategic intelligence and pattern analysis for informed decision-making.
-                  For execution and implementation, consult your legal, tax, and financial advisory teams.
-                </p>
-              </div>
-            </div>
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* SHARE + NEXT AUDIT CTA (Web Only — hidden in print)                             */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <SectionReveal>
-            <div className="print:hidden space-y-6">
-              {/* Share Button */}
-              <div className="flex justify-center">
-                <button
-                  onClick={handleShare}
-                  className={`inline-flex items-center gap-2.5 px-8 py-3 border-2 rounded-xl text-sm font-medium transition-colors ${
-                    linkCopied
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {linkCopied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Link Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Share2 className="w-4 h-4" />
-                      Share This Audit
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Next Audit CTA */}
-              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/10 p-8 sm:p-12">
-                {/* Decorative corner */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/10 to-transparent rounded-bl-full" />
-
-                <div className="relative z-10 text-center max-w-2xl mx-auto">
-                  <p className="text-xs sm:text-sm font-bold text-primary uppercase tracking-widest mb-4">
-                    Pattern Recognition Engine
-                  </p>
-
-                  <h3 className="text-xl sm:text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-4">
-                    DOES YOUR NEXT DEAL SURVIVE THE RED TEAM?
-                  </h3>
-
-                  <p className="text-sm text-muted-foreground mb-4 max-w-lg mx-auto leading-relaxed">
-                    The same system that produced this analysis stress-tests high-value Alternative Asset acquisitions (Art, Real Estate, Collectibles) across 50+ jurisdictions.
-                  </p>
-
-                  <p className="text-sm text-foreground font-medium mb-2">Result: Certainty.</p>
-                  <p className="text-sm text-foreground font-medium mb-8">Turnaround: 48 Hours.</p>
-
-                  {/* Allocation line — current month */}
-                  <p className="text-xs font-semibold text-primary/80 uppercase tracking-wider mb-6">
-                    {(() => {
-                      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                      return `${monthNames[new Date().getMonth()]} Allocation: Accepting Mandates`;
-                    })()}
-                  </p>
-
-                  {/* Single CTA Button */}
-                  <div className="flex justify-center">
-                    <a
-                      href="/decision-memo"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl text-sm tracking-wide hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-                    >
-                      INITIATE RED TEAM AUDIT ($5,000)
-                      <ArrowRight className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </SectionReveal>
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* LEGAL REFERENCES - MFO Audit Requirement (Feb 2026)                             */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {legalReferences && legalReferences.total_count > 0 && (
-              <SectionReveal>
-                <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
-                  <ReferencesSection
-                    references={legalReferences}
-                    developmentsCount={hnwiWorldCount}
-                    precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                  />
-                </section>
-              </SectionReveal>
-            )}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* REGULATORY SOURCES - Complete Citations & Legal Framework                       */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {(() => {
-              const regulatoryCitations = memoData.preview_data?.regulatory_citations ||
-                                          legalReferences?.regulatory_sources ||
-                                          [];
-              if (!regulatoryCitations || (Array.isArray(regulatoryCitations) && regulatoryCitations.length === 0)) {
-                return null;
-              }
-              return (
-                <SectionReveal>
-                  <section className="mb-10 sm:mb-16 px-4 sm:px-8 lg:px-12">
-                    <RegulatorySourcesSection citations={regulatoryCitations as any} />
-                  </section>
-                </SectionReveal>
-              );
-            })()}
-
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            {/* PDF LAST PAGE - HNWI Chronicles Branding & Legal                                */}
-            {/* ══════════════════════════════════════════════════════════════════════════════ */}
-            <SectionReveal direction="scale" duration={1.0}>
-              <MemoLastPage
-                intakeId={intakeId}
-                precedentCount={memoData.memo_data?.kgv3_intelligence_used?.precedents || 0}
-                generatedAt={memoData.generated_at}
-                viaNegativa={viaNegativaContext}
-              />
-            </SectionReveal>
-          </div>
+          <DecisionMemoLinearReport
+            memoData={memoData as any}
+            intakeId={intakeId}
+            backendData={resolvedBackendData}
+            hnwiWorldCount={developmentsCount ?? undefined}
+            fullArtifact={resolvedFullArtifact as any}
+            onCitationClick={handleCitationClick}
+            citationMap={computedCitationMap}
+            onShare={handleShare}
+            linkCopied={linkCopied}
+          />
         </div>
       </div>
 

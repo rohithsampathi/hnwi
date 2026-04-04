@@ -6,7 +6,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import {
   Shield,
@@ -24,29 +24,15 @@ import {
   Anchor,
   Zap
 } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface DecisionMemoLandingProps {
   onContinue: () => void;
 }
 
 export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onContinue }) => {
-  const [briefCount, setBriefCount] = useState<number>(1900);
-
-  useEffect(() => {
-    async function fetchBriefCount() {
-      try {
-        const response = await fetch('/api/developments/counts');
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total || data.count || 1900;
-          setBriefCount(count);
-        }
-      } catch {
-        // Use fallback
-      }
-    }
-    fetchBriefCount();
-  }, []);
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,7 +85,9 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
 
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-8">
             Don&rsquo;t just diligence the asset. Stress-test the structure. We validate your deal against{' '}
-            <span className="text-foreground font-medium">{briefCount.toLocaleString()}+ HNWI corridor signals</span> to strip out
+            <span className="text-foreground font-medium">
+              {briefCountLabel ? `${briefCountLabel} HNWI corridor signals` : 'live HNWI corridor signals'}
+            </span>{' '}to strip out
             regulatory friction, tax drag, and hidden ruin pathways.
           </p>
 
@@ -209,7 +197,7 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             <DeliverableCard
               icon={Anchor}
               title="PRECEDENT ANCHORS"
-              description={`Data-backed confidence levels derived from ${briefCount.toLocaleString()}+ similar patterns since 2023.`}
+              description={`Data-backed confidence levels derived from ${briefCountLabel ? `${briefCountLabel} similar patterns` : 'live similar patterns'} since 2023.`}
             />
           </div>
         </motion.section>
@@ -234,7 +222,7 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             <div className="grid grid-cols-3 gap-4 sm:gap-8 text-center my-6 sm:my-8">
               <div>
                 <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary mb-1">
-                  {briefCount.toLocaleString()}+
+                  {briefCountLabel || 'Live'}
                 </div>
                 <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wider">
                   HNWI Developments<br />Analyzed

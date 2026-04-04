@@ -14,6 +14,7 @@ import { handleResetPassword } from "@/lib/auth-actions"
 import { ParticlesBackground } from "./particles-background"
 import { ThemeToggle } from "./theme-toggle"
 import { MetaTags } from "./meta-tags"
+import { LOGIN_ROUTE } from "@/lib/auth-navigation"
 
 export function ResetPasswordForm() {
   const { theme } = useTheme()
@@ -34,8 +35,7 @@ export function ResetPasswordForm() {
     if (tokenParam) {
       setToken(tokenParam)
     } else {
-      // No token provided, redirect to login
-      router.push('/')
+      router.replace(LOGIN_ROUTE)
     }
   }, [searchParams, router])
 
@@ -100,7 +100,7 @@ export function ResetPasswordForm() {
   }
 
   const handleBackToLogin = () => {
-    router.push('/')
+    router.push(LOGIN_ROUTE)
   }
 
   if (isSuccess) {
@@ -109,6 +109,8 @@ export function ResetPasswordForm() {
         <MetaTags
           title="Password Reset Successful | HNWI Chronicles"
           description="Your password has been successfully reset. You can now log in to your HNWI Chronicles account."
+          image="/logo.png"
+          url="/reset-password"
         />
         <div className="min-h-screen flex flex-col bg-background">
           <ParticlesBackground />
@@ -162,6 +164,8 @@ export function ResetPasswordForm() {
       <MetaTags
         title="Reset Password | HNWI Chronicles"
         description="Reset your HNWI Chronicles password. Enter your new password to regain access to your account."
+        image="/logo.png"
+        url="/reset-password"
       />
       <div className="min-h-screen flex flex-col bg-background">
         <ParticlesBackground />

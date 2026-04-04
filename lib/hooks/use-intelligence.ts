@@ -173,7 +173,18 @@ export function useCrownVaultAlerts() {
   return useMemo(() => {
     if (!crownVault) return null
 
-    const alerts = []
+    const alerts: Array<{
+      id: string
+      type: 'threat' | 'opportunity'
+      severity: 'high' | 'medium' | 'low'
+      title: string
+      message: string
+      exposure?: unknown
+      timeframe?: string
+      rationale?: string
+      timeline?: string
+      actionRequired: boolean
+    }> = []
 
     // Add immediate threat alerts
     crownVault.immediate_threats?.forEach(threat => {

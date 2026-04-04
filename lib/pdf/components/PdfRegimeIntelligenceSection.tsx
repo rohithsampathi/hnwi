@@ -16,23 +16,23 @@ import { PdfRegimeComparison } from './PdfRegimeComparison';
 // --- Interfaces (local, matching web UI) ---
 
 interface RegimeRates { foreign_income?: number; foreign_dividends?: number; capital_gains_foreign?: number }
-interface CriticalDate { date: string; event: string }
-interface DetectedRegime { regime_key: string; regime_name: string; jurisdiction: string; status: "ACTIVE" | "ENDED" | "ENDING"; rates?: RegimeRates; warning?: string; successor_regime?: string; critical_dates?: CriticalDate[] }
-interface QualificationRoute { route: string; minimum_investment: string; processing_time: string }
-interface TaxComparison { source_jurisdiction: string; source_income_tax: number; source_cgt: number; destination_jurisdiction: string; destination_income_tax: number; destination_cgt: number; total_savings_pct: number; note?: string }
-interface CriticalConsideration { item: string; detail: string; priority: "HIGH" | "MEDIUM" | "LOW" }
-interface ApplicationStep { step: number; action: string; timeline: string }
-interface EstimatedCosts { visa_fee?: string; emirates_id?: string; medical_test?: string; total_range: string }
+interface CriticalDate { date?: string; event?: string }
+interface DetectedRegime { regime_key?: string; regime_name?: string; jurisdiction?: string; status?: "ACTIVE" | "ENDED" | "ENDING" | string; rates?: RegimeRates; warning?: string; successor_regime?: string; critical_dates?: CriticalDate[] }
+interface QualificationRoute { route?: string; minimum_investment?: string; processing_time?: string }
+interface TaxComparison { source_jurisdiction?: string; source_income_tax?: number; source_cgt?: number; destination_jurisdiction?: string; destination_income_tax?: number; destination_cgt?: number; total_savings_pct?: number; note?: string }
+interface CriticalConsideration { item?: string; detail?: string; priority?: "HIGH" | "MEDIUM" | "LOW" | string }
+interface ApplicationStep { step?: number; action?: string; timeline?: string }
+interface EstimatedCosts { visa_fee?: string; emirates_id?: string; medical_test?: string; total_range?: string }
 interface RegimeScenario {
-  regime_name: string; status: string; end_date?: string;
-  with_regime?: { dest_income_tax: number; dest_cgt: number; tax_differential: number; note: string };
-  without_regime?: { dest_income_tax: number; dest_cgt: number; tax_differential: number; note: string };
+  regime_name?: string; status?: string; end_date?: string;
+  with_regime?: { dest_income_tax?: number; dest_cgt?: number; tax_differential?: number; note?: string };
+  without_regime?: { dest_income_tax?: number; dest_cgt?: number; tax_differential?: number; note?: string };
   successor_regime?: string; action_required?: string; key_benefits?: string[];
   qualification_routes?: QualificationRoute[]; tax_comparison?: TaxComparison;
   critical_considerations?: CriticalConsideration[]; application_process?: ApplicationStep[];
   estimated_costs?: EstimatedCosts;
 }
-interface RegimeWarning { regime: string; status: string; warning: string; critical_dates?: CriticalDate[] }
+interface RegimeWarning { regime?: string; status?: string; warning?: string; critical_dates?: CriticalDate[] }
 
 export interface RegimeIntelligence {
   has_special_regime: boolean;
@@ -67,14 +67,14 @@ export function PdfRegimeIntelligenceSection({ regimeIntelligence, sourceJurisdi
     paddingHorizontal: 56, backgroundColor: darkTheme.pageBg, color: darkTheme.textSecondary,
   };
 
-  const getStatusBadge = (status: string) => {
-    const s = status.toLowerCase();
+  const getStatusBadge = (status?: string) => {
+    const s = (status || '').toLowerCase();
     if (s === 'active') return { bg: colors.tints.goldMedium, border: colors.amber[500], color: colors.amber[500], label: 'ACTIVE' };
     if (s === 'ended') return { bg: darkTheme.surfaceBg, border: darkTheme.textFaint, color: darkTheme.textMuted, label: 'ENDED' };
     return { bg: colors.tints.goldMedium, border: colors.amber[500], color: colors.amber[500], label: 'ENDING SOON' };
   };
 
-  const badge = getStatusBadge(regime_scenario.status);
+  const badge = getStatusBadge(regime_scenario.status || '');
 
   return (
     <Page size="A4" style={ps}>
@@ -95,7 +95,7 @@ export function PdfRegimeIntelligenceSection({ regimeIntelligence, sourceJurisdi
 
         {/* Hero Card */}
         <View style={{ backgroundColor: darkTheme.surfaceBg, padding: 24, marginBottom: 20 }} wrap={false}>
-          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, color: darkTheme.textPrimary, marginBottom: 6 }}>{regime_scenario.regime_name}</Text>
+          <Text style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 18, color: darkTheme.textPrimary, marginBottom: 6 }}>{regime_scenario.regime_name || 'Special Tax Regime'}</Text>
           <Text style={{ fontFamily: 'Inter', fontSize: 10, color: darkTheme.textFaint }}>{destinationJurisdiction || 'Destination'} Special Tax Program</Text>
         </View>
 

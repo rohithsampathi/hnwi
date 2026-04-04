@@ -137,6 +137,9 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
   return (
     <div
       className="min-h-screen flex flex-col font-sans bg-background text-foreground p-0 m-0"
+      style={{
+        minHeight: 'var(--app-viewport-height, 100dvh)'
+      }}
     >
       {/* Sidebar for all devices - hidden when War Room sidebar is active */}
       {!hideSidebar && (
@@ -261,7 +264,8 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
             ? (hideSidebar ? '64px' : (sidebarState ? '64px' : '256px'))
             : '0',
           paddingTop: `${headerHeight}px`,
-          height: isPersonalMode ? `calc(100vh)` : undefined,
+          ['--app-shell-offset-top' as string]: `${headerHeight}px`,
+          height: isPersonalMode ? 'var(--app-viewport-height, 100dvh)' : undefined,
           filter: isDesktop && !sidebarState && !isPersonalMode ? 'blur(2px)' : 'none',
           opacity: isDesktop && !sidebarState && !isPersonalMode ? 0.6 : 1,
           transition: 'all 0.3s ease'
@@ -281,12 +285,16 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
               </div>
             )}
 
-            <div className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')} style={{
-              paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
-              paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
-              paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
-              marginTop: getPageHeader(pathname, user) ? '' : '0px'
-            }}>
+            <div
+              key={pathname}
+              className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')}
+              style={{
+                paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
+                paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
+                paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
+                marginTop: getPageHeader(pathname, user) ? '' : '0px'
+              }}
+            >
               {children}
             </div>
           </div>

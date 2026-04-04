@@ -49,7 +49,10 @@ export async function GET(
     if (response.status === 401) {
       return NextResponse.json(
         { error: 'Authentication required' },
-        { status: 401 }
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'no-store' },
+        }
       );
     }
 
@@ -58,7 +61,10 @@ export async function GET(
       logger.error('Backend error in unified endpoint', { status: response.status });
       return NextResponse.json(
         { success: false, error: `Backend returned ${response.status}` },
-        { status: response.status }
+        {
+          status: response.status,
+          headers: { 'Cache-Control': 'no-store' },
+        }
       );
     }
 
@@ -71,7 +77,9 @@ export async function GET(
     // - risk_assessment: { total_exposure_formatted, critical_items, high_priority, is_mcp }
     // - all_mistakes: array with cost_numeric field
     // - preview_data, memo_data, artifact (depending on unlock status)
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
 
   } catch (error) {
     logger.error('Error fetching decision memo', { error: error instanceof Error ? error.message : String(error) });

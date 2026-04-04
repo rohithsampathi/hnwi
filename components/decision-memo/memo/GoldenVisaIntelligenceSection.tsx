@@ -18,7 +18,7 @@ import {
   Wallet,
   Building2
 } from 'lucide-react';
-import { GoldenVisaIntelligence } from '@/lib/decision-memo/memo-types';
+import type { GoldenVisaIntelligence } from '@/lib/pdf/pdf-types';
 
 interface GoldenVisaIntelligenceSectionProps {
   intelligence?: GoldenVisaIntelligence | null;
@@ -98,7 +98,6 @@ export function GoldenVisaIntelligenceSection({
   return (
     <div ref={sectionRef}>
       <motion.div
-        ref={ref}
         className="mb-8"
         initial={{ opacity: 0, y: 12 }}
         animate={isVisible ? { opacity: 1, y: 0 } : {}}
@@ -123,10 +122,10 @@ export function GoldenVisaIntelligenceSection({
           <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
             <div className="flex flex-col sm:flex-row items-start justify-between gap-6 mb-8">
               <div>
-                <h3 className="text-xl font-normal text-foreground tracking-tight">{gvi.program_name}</h3>
-                <p className="text-sm text-muted-foreground/60 mt-1">{gvi.jurisdiction}</p>
+                <h3 className="text-xl font-normal text-foreground tracking-tight">{gvi.program_name || 'Golden Visa Program'}</h3>
+                <p className="text-sm text-muted-foreground/60 mt-1">{gvi.jurisdiction || destinationJurisdiction || 'Destination jurisdiction'}</p>
               </div>
-              <StatusBadge status={gvi.status} />
+              {gvi.status ? <StatusBadge status={gvi.status} /> : null}
             </div>
 
             {/* Qualification Summary Badge */}
@@ -168,17 +167,21 @@ export function GoldenVisaIntelligenceSection({
               </p>
 
               <div className="grid sm:grid-cols-2 gap-4">
-                {gvi.key_benefits.map((item, i) => (
-                  <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
-                    <div className="flex items-start gap-3">
-                      <CheckIcon className="w-3.5 h-3.5 text-gold/60 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{item.benefit}</p>
-                        <p className="text-sm text-muted-foreground/60 mt-1 font-normal">{item.detail}</p>
+                {gvi.key_benefits.map((item, i) => {
+                  const benefit = typeof item === 'string' ? { benefit: item, detail: undefined } : item;
+
+                  return (
+                    <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <div className="flex items-start gap-3">
+                        <CheckIcon className="w-3.5 h-3.5 text-gold/60 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{benefit.benefit}</p>
+                          {benefit.detail ? <p className="text-sm text-muted-foreground/60 mt-1 font-normal">{benefit.detail}</p> : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </motion.div>

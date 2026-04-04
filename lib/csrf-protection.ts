@@ -138,8 +138,8 @@ export class CSRFProtection {
         const context = sanitizeLoggingContext({
           endpoint: new URL(request.url).pathname,
           method: request.method,
-          userAgent: request.headers.get('user-agent'),
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          ip: extractClientIP(request),
           secureCookieName,
           legacyCookieName: CSRF_COOKIE_NAME,
           allCookieNames: requestCookies ? Array.from(requestCookies.getAll().map(c => c.name)).join(', ') : 'none'
@@ -152,8 +152,8 @@ export class CSRFProtection {
         const context = sanitizeLoggingContext({
           endpoint: new URL(request.url).pathname,
           method: request.method,
-          userAgent: request.headers.get('user-agent'),
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          ip: extractClientIP(request)
         });
         logger.warn('CSRF validation failed - no header found', context);
         return { valid: false, error: 'CSRF token missing in header' };
@@ -232,8 +232,8 @@ export class CSRFProtection {
             method: request.method,
             endpoint: new URL(request.url).pathname,
             error: validation.error,
-            userAgent: request.headers.get('user-agent'),
-            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip')
+            userAgent: request.headers.get('user-agent') ?? undefined,
+            ip: extractClientIP(request)
           });
           logger.warn('CSRF protection blocked request', context);
           

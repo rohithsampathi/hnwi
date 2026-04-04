@@ -33,6 +33,7 @@ export interface Answer {
 
 export interface ProgressiveSignal {
   leading_tier: 'architect' | 'operator' | 'observer';
+  tier_leaning?: 'architect' | 'operator' | 'observer';
   confidence: number;
   scores: {
     architect: number;
@@ -46,6 +47,7 @@ export interface ProgressiveSignal {
 export interface TermDefinition {
   term: string;
   full_name: string;
+  fullName?: string;
   definition: string;
   category: 'tax' | 'legal' | 'financial' | 'trust' | 'regulatory' | 'investment';
 }
@@ -84,6 +86,16 @@ export interface AssessmentResults {
   user_id?: string;
   tier: 'architect' | 'operator' | 'observer';
   confidence: number;
+  classification: {
+    tier: 'ARCHITECT' | 'OPERATOR' | 'OBSERVER';
+    confidence: number;
+    scores: {
+      architect: number;
+      operator: number;
+      observer: number;
+    };
+  };
+  description: string;
   simulation: {
     outcome: 'SURVIVED' | 'DAMAGED' | 'DESTROYED';
     tier: string;
@@ -100,8 +112,18 @@ export interface AssessmentResults {
     evidence: {
       avg_response_time: number;
       pattern_consistency: string;
+      sophistication_levels?: number[];
     };
     verdict: string;
+  };
+  enhanced_report?: {
+    full_analytics?: Record<string, any>;
+    celebrity_opportunities?: {
+      celebrity_opportunities?: any[];
+      total_missed?: number;
+      [key: string]: any;
+    };
+    [key: string]: any;
   };
   pdf_url: string;
   completed_at: string;

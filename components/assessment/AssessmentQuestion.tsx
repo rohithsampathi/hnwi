@@ -320,7 +320,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
 
     // Check if this city is new (for blinking animation)
     const cityId = enhancedCity._id || enhancedCity.id;
-    if (newCityIds.has(cityId)) {
+    if (cityId && newCityIds.has(cityId)) {
       enhancedCity.isNew = true;
     }
 

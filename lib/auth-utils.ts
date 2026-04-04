@@ -167,10 +167,10 @@ export const getLastActivity = (): number => {
 };
 
 // Get when session was locked
-export const getLockedAt = (): number | null => {
-  if (typeof window === 'undefined') return null;
+export const getLockedAt = (): number | undefined => {
+  if (typeof window === 'undefined') return undefined;
   const stored = localStorage.getItem(LOCKED_AT_KEY);
-  return stored ? parseInt(stored) : null;
+  return stored ? parseInt(stored) : undefined;
 };
 
 // Check if session is locked due to inactivity

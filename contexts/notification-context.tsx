@@ -35,6 +35,11 @@ interface NotificationContextType extends UseNotificationsReturn {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+type IdleCallbackWindow = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 export interface NotificationProviderProps {
   children: React.ReactNode;
   enablePolling?: boolean;
@@ -155,12 +160,12 @@ export function NotificationProvider({
           icon: '/icon-192x192.png',
           badge: '/badge-72x72.png',
           tag: notification.id,
-          timestamp: Date.now(),
           requireInteraction: notification.priority === 'urgent',
           data: {
             notificationId: notification.id,
             eventType: notification.event_type,
-            priority: notification.priority
+            priority: notification.priority,
+            createdAt: Date.now()
           }
         });
 
@@ -184,19 +189,40 @@ export function NotificationProvider({
         // Silently fail browser notification
       }
     }
-  }, [enableBrowserNotifications, notificationHook.markAsRead, setCenterOpen]);
+  }, [enableBrowserNotifications, notificationHook, setCenterOpen]);
 
   // Request notification permission on mount
   useEffect(() => {
-    if (enableBrowserNotifications && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            // Permission granted
-          }
-        });
-      }
+    if (!enableBrowserNotifications || !('Notification' in window)) {
+      return;
     }
+
+    if (Notification.permission !== 'default') {
+      return;
+    }
+
+    const idleWindow = window as IdleCallbackWindow;
+    let timeoutId: number | null = null;
+    let idleId: number | null = null;
+
+    const requestPermission = () => {
+      void Notification.requestPermission();
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      idleId = idleWindow.requestIdleCallback(requestPermission, { timeout: 2500 });
+    } else {
+      timeoutId = window.setTimeout(requestPermission, 1500);
+    }
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      if (idleId !== null) {
+        idleWindow.cancelIdleCallback?.(idleId);
+      }
+    };
   }, [enableBrowserNotifications]);
 
   // Trigger sound and browser notification for new unread notifications
@@ -253,7 +279,7 @@ export function NotificationProvider({
       newSet.delete(id);
       return newSet;
     });
-  }, [notificationHook.markAsRead]);
+  }, [notificationHook]);
 
   // Enhanced delete that clears selection if notification was selected
   const enhancedDeleteNotification = useCallback(async (id: string) => {
@@ -264,7 +290,7 @@ export function NotificationProvider({
       newSet.delete(id);
       return newSet;
     });
-  }, [notificationHook.deleteNotification]);
+  }, [notificationHook]);
 
   const value: NotificationContextType = useMemo(() => ({
     // Hook values

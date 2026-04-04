@@ -1,22 +1,20 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import dynamic from "next/dynamic"
+import { useState, useCallback, useEffect } from "react"
 import { motion } from "framer-motion"
-import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useTheme } from "@/contexts/theme-context"
-import { ParticlesBackground } from "./particles-background"
 import { ThemeToggle } from "./theme-toggle"
 import { Heading1, Lead, Paragraph, Heading2 } from "@/components/ui/typography"
-import { OnboardingPage } from "./onboarding-page"
-import { ForgotPasswordForm } from "./forgot-password-form"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
 import { usePageTitleSimple } from "@/hooks/use-page-title"
-import { ShieldCheck, KeyRound, Award, Earth, ScanEye, Server, Fingerprint, ChevronLeft, Loader2, EyeOff, Eye, Lock, Shield } from "lucide-react"
-import { MfaCodeInput } from "./mfa-code-input"
+import { ChevronLeft, Loader2, EyeOff, Eye } from "lucide-react"
+import { SecurityArchitectureStrip, SplashScreenFooter } from "./splash-screen-security"
+import { DASHBOARD_ROUTE, markDashboardEntryIntent } from "@/lib/auth-navigation"
 
 interface SplashScreenProps {
   onLogin?: () => void;
@@ -24,10 +22,42 @@ interface SplashScreenProps {
   showLogin?: boolean;
 }
 
+const ParticlesBackground = dynamic(
+  () => import("./particles-background").then((mod) => mod.ParticlesBackground),
+  {
+    ssr: false,
+  },
+)
+
+const OnboardingPage = dynamic(
+  () => import("./onboarding-page").then((mod) => mod.OnboardingPage),
+  {
+    ssr: false,
+    loading: () => <FullScreenLoader label="Preparing secure onboarding" />,
+  },
+)
+
+const ForgotPasswordForm = dynamic(
+  () => import("./forgot-password-form").then((mod) => mod.ForgotPasswordForm),
+  {
+    ssr: false,
+    loading: () => <InlinePanelLoader label="Loading password recovery" />,
+  },
+)
+
+const MfaCodeInput = dynamic(
+  () => import("./mfa-code-input").then((mod) => mod.MfaCodeInput),
+  {
+    ssr: false,
+    loading: () => <InlinePanelLoader label="Loading verification step" compact />,
+  },
+)
+
 export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: SplashScreenProps) {
   const { theme } = useTheme()
   const { resetOnboarding, setIsFromSignupFlow } = useOnboarding()
   const { toast } = useToast()
+  const [showParticles, setShowParticles] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showLoginForm, setShowLoginForm] = useState(showLogin)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
@@ -57,6 +87,44 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   };
 
   usePageTitleSimple(getPageTitle(), getPageDescription(), [showOnboarding, showForgotPassword, showLoginForm]);
+
+  useEffect(() => {
+    let cancelled = false
+
+    const showDeferredParticles = () => {
+      if (!cancelled) {
+        setShowParticles(true)
+      }
+    }
+
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const idleApi = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+
+    if (idleApi.requestIdleCallback) {
+      const handle = idleApi.requestIdleCallback(showDeferredParticles, { timeout: 1200 })
+      return () => {
+        cancelled = true
+        idleApi.cancelIdleCallback?.(handle)
+      }
+    }
+
+    const timer = window.setTimeout(showDeferredParticles, 180)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [])
+
+  const getAuthManager = useCallback(async () => {
+    const mod = await import("@/lib/unified-auth-manager")
+    return mod.unifiedAuthManager
+  }, [])
 
   const handleCreateAccount = () => {
     setShowOnboarding(true)
@@ -98,132 +166,154 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     setMfaToken(null)
     setIsResending(false)
     setRememberDevice(false)
-
-    // Set session flags to prevent splash screen loop
-    sessionStorage.setItem("skipSplash", "true")
-    sessionStorage.setItem("currentPage", "dashboard")
+    markDashboardEntryIntent()
   }
 
-  const handleOnboardingComplete = (userData: any) => {
-    // Handle successful registration
+  const showLoginSuccessToast = async (firstName?: string) => {
+    const resolvedFirstName = firstName || "there"
 
-    // Instead of redirecting to login, automatically log the user in
-    const authData = {
-      userId: userData.user_id,
-      email: userData.email,
-      firstName: userData.firstName || userData.name?.split(' ')[0] || "User",
-      lastName: userData.lastName || (userData.name?.split(' ').slice(1).join(' ') || ""),
-      profile: userData.profile || {},
-      token: userData.token || "auto-login-token"
+    if (!rememberDevice) {
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${resolvedFirstName}!`,
+      })
+      return
     }
 
-    // Store auth data in localStorage (same pattern as login-page.tsx)
-    localStorage.setItem("userId", authData.userId);
-    localStorage.setItem("userEmail", authData.email);
-    // Backend sets cookies
+    try {
+      const { trustCurrentDevice } = await import("@/lib/auth-utils")
+      const trustSuccess = trustCurrentDevice()
 
-    // Store user object for recovery if needed
-    localStorage.setItem("userObject", JSON.stringify(authData));
+      toast({
+        title: "Login Successful",
+        description: trustSuccess
+          ? `Welcome back, ${resolvedFirstName}! Device trusted for 7 days.`
+          : `Welcome back, ${resolvedFirstName}!`,
+      })
+    } catch {
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${resolvedFirstName}!`,
+      })
+    }
+  }
 
-    // Set skipSplash flag to bypass login screen on page refresh
-    sessionStorage.setItem("skipSplash", "true");
-    sessionStorage.setItem("currentPage", "dashboard");
+  const transitionToMfaStep = (token: string, message?: string) => {
+    setShowOnboarding(false)
+    setShowLoginForm(true)
+    setShowForgotPassword(false)
+    setMfaToken(token)
+    setShowMfa(true)
 
-    // Call the onLoginSuccess callback if provided
+    toast({
+      title: "Security code sent",
+      description: message || "Check your email for the 6-digit authentication code.",
+    })
+  }
+
+  const finalizeAuthenticatedEntry = async (normalizedUser: any) => {
+    await showLoginSuccessToast(normalizedUser?.firstName || normalizedUser?.name?.split(" ")[0])
+    handleClose()
+
     if (onLoginSuccess) {
-      onLoginSuccess(authData)
+      onLoginSuccess(normalizedUser)
     } else {
-      // Fallback: Navigate to dashboard after signup
-      window.location.href = "/"
+      window.location.assign(DASHBOARD_ROUTE)
+    }
+
+    resetOnboarding()
+    setIsFromSignupFlow(false)
+  }
+
+  const handleOnboardingComplete = async (userData: any) => {
+    if (!userData?.email || !userData?.password) {
+      setShowOnboarding(false)
+      setShowLoginForm(true)
+      setError("Account created, but secure sign-in could not start. Please sign in to continue.")
+      return
+    }
+
+    setEmail(userData.email)
+    setPassword(userData.password)
+    setShowOnboarding(false)
+    setShowLoginForm(true)
+    setShowForgotPassword(false)
+    setShowMfa(false)
+    setMfaToken(null)
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const authManager = await getAuthManager()
+      const result = await authManager.login(userData.email, userData.password, false)
+
+      if (result.requiresMFA) {
+        if (result.mfaToken) {
+          transitionToMfaStep(result.mfaToken, result.message)
+          return
+        }
+
+        setError("Account created, but the security challenge could not start. Please sign in to continue.")
+        return
+      }
+
+      if (result.success && result.user) {
+        await finalizeAuthenticatedEntry(result.user)
+        return
+      }
+
+      setError(result.error || "Account created, but automatic sign-in failed. Please sign in to continue.")
+    } catch (error) {
+      setError("Account created, but secure sign-in failed. Please sign in to continue.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const handleLogin = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-      if (!email || !password) {
-        setError("Please enter both email and password")
-        return
-      }
+    if (!email || !password) {
+      setError("Please enter both email and password")
+      return
+    }
 
-      if (isLoading) {
-        return
-      }
+    if (isLoading) {
+      return
+    }
 
-      setIsLoading(true)
-      setError("")
+    setIsLoading(true)
+    setError("")
 
-      try {
-        // Use unified auth manager (leverages secure-api with URL masking)
-        const result = await unifiedAuthManager.login(email, password, rememberDevice)
+    try {
+      // Use unified auth manager (leverages secure-api with URL masking)
+      const authManager = await getAuthManager()
+      const result = await authManager.login(email, password, rememberDevice)
 
-        if (result.requiresMFA) {
-          // MFA is required - show MFA input
-          setMfaToken(result.mfaToken || '')
-          setShowMfa(true)
-          toast({
-            title: "Security code sent",
-            description: result.message || "Check your email for the 6-digit authentication code.",
-          })
-        } else if (result.success && result.user) {
-          // Direct login success - unified auth manager already handled all state sync
-          const normalizedUser = result.user
-
-          if (!normalizedUser) {
-            setError('Authentication failed. Please try again.')
-            return
-          }
-
-          // Handle device trust if checkbox was checked
-          if (rememberDevice) {
-            try {
-              // Import device trust function
-              const { trustCurrentDevice } = await import("@/lib/device-trust")
-              const trustSuccess = trustCurrentDevice()
-              if (trustSuccess) {
-                toast({
-                  title: "Login Successful",
-                  description: `Welcome back, ${normalizedUser.firstName}! Device trusted for 7 days.`,
-                })
-              } else {
-                toast({
-                  title: "Login Successful",
-                  description: `Welcome back, ${normalizedUser.firstName}!`,
-                })
-              }
-            } catch (error) {
-              toast({
-                title: "Login Successful",
-                description: `Welcome back, ${normalizedUser.firstName}!`,
-              })
-            }
-          } else {
-            toast({
-              title: "Login Successful",
-              description: `Welcome back, ${normalizedUser.firstName}!`,
-            })
-          }
-
-          handleClose()
-
-          if (onLoginSuccess) {
-            onLoginSuccess(normalizedUser)
-          }
-
-          resetOnboarding()
-          setIsFromSignupFlow(false)
-        } else if (!result.success) {
-          setError(result.error || "Login failed")
+      if (result.requiresMFA) {
+        if (result.mfaToken) {
+          transitionToMfaStep(result.mfaToken, result.message)
+        } else {
+          setError("Authentication challenge unavailable. Please try again.")
         }
-      } catch (error) {
-        setError("An unexpected error occurred. Please try again.")
-      } finally {
-        setIsLoading(false)
+      } else if (result.success && result.user) {
+        const normalizedUser = result.user
+
+        if (!normalizedUser) {
+          setError('Authentication failed. Please try again.')
+          return
+        }
+
+        await finalizeAuthenticatedEntry(normalizedUser)
+      } else if (!result.success) {
+        setError(result.error || "Login failed")
       }
-    },
-    [email, password, isLoading, toast, rememberDevice]
-  )
+    } catch (error) {
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleMfaSubmit = async (code: string) => {
     if (!mfaToken) {
@@ -233,79 +323,17 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
 
     try {
       // Use unified auth manager (leverages secure-api with URL masking)
-      const result = await unifiedAuthManager.verifyMFA(code, mfaToken, rememberDevice)
+      const authManager = await getAuthManager()
+      const result = await authManager.verifyMFA(code, mfaToken, rememberDevice)
 
       if (result.success && result.user) {
-        // Unified auth manager already handled all state sync
         const normalizedUser = result.user
 
         if (!normalizedUser) {
           setError('Authentication failed. Please try again.')
           return
         }
-
-
-        // Handle device trust if checkbox was checked
-        if (rememberDevice) {
-          try {
-            // Import device trust function
-            const { trustCurrentDevice } = await import("@/lib/device-trust")
-            const trustSuccess = trustCurrentDevice()
-            if (trustSuccess) {
-              toast({
-                title: "Login Successful",
-                description: `Welcome back, ${normalizedUser.firstName}! Device trusted for 7 days.`,
-              })
-            } else {
-              toast({
-                title: "Login Successful",
-                description: `Welcome back, ${normalizedUser.firstName}!`,
-              })
-            }
-          } catch (error) {
-            toast({
-              title: "Login Successful",
-              description: `Welcome back, ${normalizedUser.firstName}!`,
-            })
-          }
-        } else {
-          toast({
-            title: "Login Successful",
-            description: `Welcome back, ${normalizedUser.firstName}!`,
-          })
-        }
-
-        // Reset form
-        handleClose()
-
-        // Set flags to prevent splash screen from showing again
-        sessionStorage.setItem("skipSplash", "true")
-        sessionStorage.setItem("currentPage", "dashboard")
-
-        // Verify user data is available before navigation
-        const { getCurrentUser } = await import("@/lib/auth-manager")
-        const verifyAndNavigate = () => {
-          const storedUser = getCurrentUser()
-          if (storedUser) {
-            // User data is confirmed stored, safe to navigate
-            if (onLoginSuccess) {
-              onLoginSuccess(normalizedUser)
-            }
-          } else {
-            // If not yet available, retry once more
-            setTimeout(() => {
-              if (onLoginSuccess) {
-                onLoginSuccess(normalizedUser)
-              }
-            }, 50)
-          }
-        }
-
-        // Small delay to ensure auth state is fully synchronized before triggering navigation
-        setTimeout(verifyAndNavigate, 150)
-
-        resetOnboarding()
-        setIsFromSignupFlow(false)
+        await finalizeAuthenticatedEntry(normalizedUser)
       } else {
         setError(result.error || "Invalid verification code")
       }
@@ -324,14 +352,11 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
 
     try {
       // Re-initiate login process using unified auth manager to get a new MFA code
-      const result = await unifiedAuthManager.login(email, password, rememberDevice)
+      const authManager = await getAuthManager()
+      const result = await authManager.login(email, password, rememberDevice)
 
       if (result.requiresMFA && result.mfaToken) {
-        setMfaToken(result.mfaToken)
-        toast({
-          title: "Code resent",
-          description: result.message || "A new security code has been sent to your email.",
-        })
+        transitionToMfaStep(result.mfaToken, result.message || "A new security code has been sent to your email.")
       } else {
         setError("Failed to resend code")
       }
@@ -349,183 +374,15 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   if (showForgotPassword) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <ParticlesBackground />
+        {showParticles ? <ParticlesBackground /> : null}
         <div className="absolute top-4 right-4 z-10">
           <ThemeToggle />
         </div>
         <div className="flex-grow flex items-center justify-center p-4">
           <ForgotPasswordForm onBack={handleBack} />
         </div>
-
-        {/* Security Standards Section */}
-        <div className="w-full flex justify-center py-6 md:py-8 border-t border-border/20">
-          <div className="w-full max-w-7xl px-4">
-            <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-              Enterprise Security Architecture
-            </p>
-
-            {/* Auto-scrolling container optimized for 55" screens */}
-            <div className="relative overflow-hidden w-full h-20">
-              <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
-                {/* Security badges with larger sizing for 55" display */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-
-                {/* Duplicate set for seamless loop */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
-          <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
-            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              A product of <span className="font-semibold text-primary">Montaigne</span>
-              {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
-            </Paragraph>
-            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              © 2026 All Rights Reserved. HNWI Chronicles.
-            </Paragraph>
-          </div>
-        </footer>
+        <SecurityArchitectureStrip />
+        <SplashScreenFooter />
       </div>
     )
   }
@@ -533,7 +390,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   if (showLoginForm) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <ParticlesBackground />
+        {showParticles ? <ParticlesBackground /> : null}
 
         <div className="absolute top-4 right-4 z-10">
           <ThemeToggle />
@@ -704,175 +561,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
           </motion.div>
         </div>
 
-        {/* Security Standards Section - Full Screen Width */}
-        <div className="w-full flex justify-center py-6 md:py-8 border-t border-border/20">
-          <div className="w-full max-w-7xl px-4">
-            <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-              Enterprise Security Architecture
-            </p>
-
-            {/* Auto-scrolling container optimized for 55" screens */}
-            <div className="relative overflow-hidden w-full h-20">
-              <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
-                {/* Security badges with larger sizing for 55" display */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-
-                {/* Duplicate set for seamless loop */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
-          <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
-            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              A product of <span className="font-semibold text-primary">Montaigne</span>
-              {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
-            </Paragraph>
-            <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-              © 2026 All Rights Reserved. HNWI Chronicles.
-            </Paragraph>
-          </div>
-        </footer>
+        <SecurityArchitectureStrip />
+        <SplashScreenFooter />
       </div>
     )
   }
@@ -881,7 +571,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     <div
       className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-300 bg-background`}
     >
-      <ParticlesBackground />
+      {showParticles ? <ParticlesBackground /> : null}
 
       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
@@ -958,176 +648,38 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
 
         </motion.div>
 
-        {/* Security Standards Section - Centered and Full Width for 55" Display */}
-        <div className="w-full flex justify-center mt-8 md:mt-12 py-6 md:py-8 border-t border-border/20">
-          <div className="w-full max-w-7xl px-4">
-            <p className="text-center text-base md:text-lg font-medium text-muted-foreground mb-6 md:mb-8">
-              Enterprise-Security Standard Architecture
-            </p>
-
-            {/* Auto-scrolling container optimized for 55" screens */}
-            <div className="relative overflow-hidden w-full h-20">
-              <div className="absolute flex animate-scroll space-x-8 md:space-x-12 whitespace-nowrap" style={{ animationDuration: '30s' }}>
-                {/* Security badges with larger sizing for 55" display */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-
-                {/* Duplicate set for seamless loop */}
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/shield-check.svg"
-                    alt="SOC 2"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">SOC 2 TYPE II</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/standardresume.svg"
-                    alt="ISO"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ISO 27001</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg"
-                    alt="PCI DSS"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">PCI DSS</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/europeanunion.svg"
-                    alt="GDPR"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">GDPR</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlemaps.svg"
-                    alt="CCPA"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">CCPA</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/letsencrypt.svg"
-                    alt="AES-256"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">AES-256</span>
-                </div>
-                <div className="flex items-center justify-center min-w-fit px-4 py-3 bg-card/95 backdrop-blur-sm rounded-lg border border-border/30 shadow-md">
-                  <Image
-                    src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/cloudflare.svg"
-                    alt="Zero-Trust"
-                    width={24}
-                    height={24}
-                    className={`h-5 w-5 object-contain opacity-80 mr-2 ${theme === "dark" ? "filter invert" : ""}`}
-                  />
-                  <span className="text-foreground font-bold text-sm tracking-tight">ZERO-TRUST</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SecurityArchitectureStrip title="Enterprise-Security Standard Architecture" />
       </div>
 
-      <footer className="w-full py-4 md:py-6 px-4 text-center z-10 bg-background/80 backdrop-blur-sm border-t border-border/20">
-        <div className="max-w-2xl mx-auto space-y-1 md:space-y-2">
-          <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-            A product of <span className="font-semibold text-primary">Montaigne</span>
-            {/* • Powered by <span className={`font-semibold ${theme === "dark" ? "text-gray-400" : "text-gray-700"}`}>Market Unwinded AI</span> */}
-          </Paragraph>
-          <Paragraph className="text-[10px] md:text-xs text-muted-foreground leading-tight">
-            © 2026 All Rights Reserved. HNWI Chronicles.
-          </Paragraph>
-        </div>
-      </footer>
+      <SplashScreenFooter />
+    </div>
+  )
+}
+
+function FullScreenLoader({ label }: { label: string }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background text-center px-6">
+      <div className="space-y-4">
+        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+function InlinePanelLoader({
+  label,
+  compact = false,
+}: {
+  label: string
+  compact?: boolean
+}) {
+  return (
+    <div className={`flex items-center justify-center ${compact ? "py-8" : "min-h-[320px]"}`}>
+      <div className="space-y-3 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
     </div>
   )
 }

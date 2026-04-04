@@ -7,9 +7,14 @@ import { useEffect } from "react"
 import { BackgroundSyncService } from "@/lib/services/background-sync-service"
 import { EnhancedCacheService } from "@/lib/services/enhanced-cache-service"
 import { AdvancedPWAService } from "@/lib/services/advanced-pwa-service"
+import { PWA_ENABLED } from "@/lib/platform/runtime-flags"
 
 export default function BackgroundSyncInitializer() {
   useEffect(() => {
+    if (!PWA_ENABLED) {
+      return
+    }
+
     // Skip PWA initialization in production if there are issues
     // This prevents IndexedDB errors from blocking the main app
     const isProduction = process.env.NODE_ENV === 'production'

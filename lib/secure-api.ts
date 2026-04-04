@@ -39,6 +39,93 @@ export interface StepUpHandlerResult {
 
 type StepUpHandler = (payload: StepUpHandlerPayload) => Promise<StepUpHandlerResult>;
 
+export interface SecureApiRequestOptions {
+  requireAuth?: boolean;
+  bustCache?: boolean;
+  enableCache?: boolean;
+  cacheDuration?: number;
+  cacheKey?: string;
+  headers?: Record<string, string>;
+}
+
+interface SecureApiClient {
+  get(
+    endpoint: string,
+    requireAuthOrOptions?: boolean | SecureApiRequestOptions,
+    bustCacheOrOptions?: boolean | SecureApiRequestOptions,
+  ): Promise<any>;
+  post(
+    endpoint: string,
+    data?: any,
+    requireAuthOrOptions?: boolean | SecureApiRequestOptions,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any>;
+  put(
+    endpoint: string,
+    data: any,
+    requireAuthOrOptions?: boolean | SecureApiRequestOptions,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any>;
+  delete(
+    endpoint: string,
+    requireAuthOrOptions?: boolean | SecureApiRequestOptions,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any>;
+}
+
+const isSecureApiRequestOptions = (value: unknown): value is SecureApiRequestOptions => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const resolveRequireAuth = (
+  value: boolean | SecureApiRequestOptions | undefined,
+  fallback: boolean,
+): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (isSecureApiRequestOptions(value) && typeof value.requireAuth === 'boolean') {
+    return value.requireAuth;
+  }
+
+  return fallback;
+};
+
+const resolveBustCache = (
+  value: boolean | SecureApiRequestOptions | undefined,
+  fallback: boolean,
+): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (isSecureApiRequestOptions(value)) {
+    if (typeof value.bustCache === 'boolean') {
+      return value.bustCache;
+    }
+
+    if (value.enableCache === false) {
+      return true;
+    }
+  }
+
+  return fallback;
+};
+
+const buildRequestHeaders = (...headerSets: Array<Record<string, string> | undefined>): Record<string, string> => {
+  return headerSets.reduce<Record<string, string>>((merged, current) => {
+    if (!current) {
+      return merged;
+    }
+
+    return {
+      ...merged,
+      ...current,
+    };
+  }, {});
+};
+
 // Helper to read CSRF token from cookie (only CSRF is readable)
 const csrfCookieNames = ['csrf_token', '__Secure-csrf_token', '__Host-csrf_token'];
 
@@ -688,7 +775,7 @@ export const secureApiCall = async (
     return response;
   } catch (error) {
     // Network errors - retry with exponential backoff
-    if (retryCount < maxRetries && !error.message.includes('Authentication')) {
+    if (retryCount < maxRetries && error instanceof Error && !error.message.includes('Authentication')) {
       const backoffDelay = Math.min(500 * Math.pow(2, retryCount), 3000); // Start smaller for network errors
       await new Promise(resolve => setTimeout(resolve, backoffDelay));
       return secureApiCall(endpoint, options, requireAuth, retryCount + 1, maxRetries);
@@ -706,8 +793,22 @@ export const secureApiCall = async (
 const pendingRequests = new Map<string, Promise<any>>();
 
 // SOTA: Simplified secure API methods (caching handled by Service Worker)
-export const secureApi = {
-  async get(endpoint: string, requireAuth: boolean = true, bustCache: boolean = false): Promise<any> {
+export const secureApi: SecureApiClient = {
+  async get(
+    endpoint: string,
+    requireAuthOrOptions: boolean | SecureApiRequestOptions = true,
+    bustCacheOrOptions: boolean | SecureApiRequestOptions = false,
+  ): Promise<any> {
+    const options = isSecureApiRequestOptions(requireAuthOrOptions)
+      ? requireAuthOrOptions
+      : isSecureApiRequestOptions(bustCacheOrOptions)
+        ? bustCacheOrOptions
+        : undefined;
+    const requireAuth = resolveRequireAuth(requireAuthOrOptions, true);
+    const bustCache = typeof bustCacheOrOptions === 'boolean'
+      ? bustCacheOrOptions
+      : resolveBustCache(options, false);
+
     // Request deduplication - prevent multiple parallel requests to the same endpoint
     // Skip deduplication if cache busting is requested
     const requestKey = `GET:${endpoint}`;
@@ -719,11 +820,14 @@ export const secureApi = {
     const requestPromise = (async () => {
       try {
         // Add cache-busting headers if requested
-        const headers = bustCache ? {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        } : {};
+        const headers = buildRequestHeaders(
+          bustCache ? {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          } : undefined,
+          options?.headers,
+        );
 
         // CRITICAL: Add timestamp query parameter to prevent browser from caching by URL
         // This prevents returning cached 400 "results not ready" responses
@@ -735,7 +839,7 @@ export const secureApi = {
 
         const response = await secureApiCall(finalEndpoint, {
           method: 'GET',
-          headers
+          ...(Object.keys(headers).length > 0 ? { headers } : {})
         }, requireAuth);
 
         if (!response.ok) {
@@ -775,12 +879,24 @@ export const secureApi = {
     return requestPromise;
   },
 
-  async post(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
+  async post(
+    endpoint: string,
+    data: any = {},
+    requireAuthOrOptions: boolean | SecureApiRequestOptions = true,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any> {
+    const options = isSecureApiRequestOptions(requireAuthOrOptions)
+      ? requireAuthOrOptions
+      : requestOptions;
+    const requireAuth = resolveRequireAuth(requireAuthOrOptions, true);
+    const headers = buildRequestHeaders(options?.headers);
+
     const response = await secureApiCall(
       endpoint,
       {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        ...(Object.keys(headers).length > 0 ? { headers } : {})
       },
       requireAuth
     );
@@ -823,12 +939,24 @@ export const secureApi = {
     return await response.json();
   },
 
-  async put(endpoint: string, data: any, requireAuth: boolean = true): Promise<any> {
+  async put(
+    endpoint: string,
+    data: any,
+    requireAuthOrOptions: boolean | SecureApiRequestOptions = true,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any> {
+    const options = isSecureApiRequestOptions(requireAuthOrOptions)
+      ? requireAuthOrOptions
+      : requestOptions;
+    const requireAuth = resolveRequireAuth(requireAuthOrOptions, true);
+    const headers = buildRequestHeaders(options?.headers);
+
     const response = await secureApiCall(
       endpoint,
       {
         method: 'PUT',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        ...(Object.keys(headers).length > 0 ? { headers } : {})
       },
       requireAuth
     );
@@ -853,8 +981,25 @@ export const secureApi = {
     return await response.json();
   },
 
-  async delete(endpoint: string, requireAuth: boolean = true): Promise<any> {
-    const response = await secureApiCall(endpoint, { method: 'DELETE' }, requireAuth);
+  async delete(
+    endpoint: string,
+    requireAuthOrOptions: boolean | SecureApiRequestOptions = true,
+    requestOptions?: SecureApiRequestOptions,
+  ): Promise<any> {
+    const options = isSecureApiRequestOptions(requireAuthOrOptions)
+      ? requireAuthOrOptions
+      : requestOptions;
+    const requireAuth = resolveRequireAuth(requireAuthOrOptions, true);
+    const headers = buildRequestHeaders(options?.headers);
+
+    const response = await secureApiCall(
+      endpoint,
+      {
+        method: 'DELETE',
+        ...(Object.keys(headers).length > 0 ? { headers } : {})
+      },
+      requireAuth
+    );
 
     if (!response.ok) {
       // Extract error details from response body before throwing

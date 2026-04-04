@@ -24,6 +24,7 @@ import {
   Zap
 } from "lucide-react"
 import { 
+  IntelligenceType,
   useElitePulse, 
   useElitePulseData,
   useCrownVaultImpact,
@@ -101,7 +102,7 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
   // Track intelligence view when data loads
   useEffect(() => {
     if (elitePulseData && state.intelligence.dashboard) {
-      trackIntelligenceView('elite_pulse', state.intelligence.dashboard.user_id)
+      trackIntelligenceView(IntelligenceType.ELITE_PULSE, state.intelligence.dashboard.user_id)
     }
   }, [elitePulseData, state.intelligence.dashboard, trackIntelligenceView])
 
@@ -274,7 +275,7 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
           size="sm"
           onClick={() => {
             refreshIntelligence()
-            trackIntelligenceAction('manual_refresh', { timestamp: Date.now() })
+            trackIntelligenceAction("elite_pulse_dashboard", "manual_refresh", { timestamp: Date.now() })
           }}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -515,7 +516,7 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
                             <div key={index} className="bg-red-50 dark:bg-red-950/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
                               <div className="flex justify-between items-start mb-1">
                                 <span className="font-medium text-sm">{threat.asset}</span>
-                                <Badge variant="destructive" size="sm">{threat.risk_level}</Badge>
+                                <Badge variant="destructive" className="px-2 py-0.5 text-[10px]">{threat.risk_level}</Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">{threat.thirty_day_impact}</p>
                             </div>
@@ -548,7 +549,7 @@ export function ElitePulseDashboardNew({ onLoadingComplete, userData }: ElitePul
                             <div key={index} className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
                               <div className="flex justify-between items-start mb-1">
                                 <span className="font-medium text-sm">{opp.opportunity}</span>
-                                <Badge variant="default" size="sm">{Math.round(opp.alignment_score * 100)}%</Badge>
+                                <Badge variant="default" className="px-2 py-0.5 text-[10px]">{Math.round(opp.alignment_score * 100)}%</Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">{opp.thesis}</p>
                             </div>

@@ -54,10 +54,30 @@ function createAiMarkerIcon(): L.DivIcon {
 const crisisIcon = createCrisisMarkerIcon();
 const aiIcon = createAiMarkerIcon();
 
+// ─── DATE FORMATTER — HH:MM, DD/MM/YYYY ────────────────────────────
+function formatEventDate(dateStr?: string): string {
+  if (!dateStr || !dateStr.trim()) return "";
+  try {
+    // Backend sends "YYYY-MM-DDTHH:MM" or legacy "YYYY-MM-DD"
+    const hasTime = dateStr.includes("T");
+    const d = hasTime ? new Date(dateStr + "Z") : new Date(dateStr + "T00:00:00Z");
+    if (isNaN(d.getTime())) return dateStr;
+    const hh = String(d.getUTCHours()).padStart(2, "0");
+    const mm = String(d.getUTCMinutes()).padStart(2, "0");
+    const dd = String(d.getUTCDate()).padStart(2, "0");
+    const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = d.getUTCFullYear();
+    return hasTime ? `${hh}:${mm}, ${dd}/${mo}/${yyyy}` : `${dd}/${mo}/${yyyy}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 // ─── TOOLTIP: GEOPOLITICAL ───────────────────────────────────────────
 function GeopoliticalTooltip({ loc }: { loc: CrisisLocation }) {
+  const dateLabel = formatEventDate(loc.event_date);
   return (
-    <div style={{ width: 220, overflow: "hidden", overflowWrap: "break-word" }}>
+    <div style={{ maxWidth: 264, overflowWrap: "break-word", wordBreak: "break-word" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
         <span style={{
           display: "inline-block", width: 7, height: 7, borderRadius: "50%",
@@ -67,6 +87,11 @@ function GeopoliticalTooltip({ loc }: { loc: CrisisLocation }) {
           {loc.key.replace(/_/g, " ")}
         </strong>
       </div>
+      {dateLabel && (
+        <p style={{ fontSize: 10, color: "#D4A843", margin: "0 0 2px 0", fontWeight: 600 }}>
+          {dateLabel}
+        </p>
+      )}
       <p style={{ fontSize: 11, color: "#A3A3A3", lineHeight: 1.4, margin: 0 }}>
         {loc.event}
       </p>
@@ -78,9 +103,18 @@ function GeopoliticalTooltip({ loc }: { loc: CrisisLocation }) {
 function AiTooltip({ loc }: { loc: CrisisLocation }) {
   const wi = loc.workforce_impact;
   const assets = loc.asset_impacts;
+  const dateLabel = formatEventDate(loc.event_date);
 
   return (
-    <div style={{ width: 280, overflow: "hidden", overflowWrap: "break-word" }}>
+    <div
+      className="ai-tooltip-scroll"
+      style={{
+        maxWidth: 280,
+        overflowWrap: "break-word",
+        wordBreak: "break-word",
+        overflowX: "hidden",
+      }}
+    >
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
         <span style={{
@@ -99,7 +133,12 @@ function AiTooltip({ loc }: { loc: CrisisLocation }) {
         </span>
       </div>
 
-      {/* Event description */}
+      {/* Date + Event description */}
+      {dateLabel && (
+        <p style={{ fontSize: 10, color: "#D4A843", margin: "0 0 2px 0", fontWeight: 600 }}>
+          {dateLabel}
+        </p>
+      )}
       <p style={{ fontSize: 11, color: "#A3A3A3", lineHeight: 1.4, margin: "0 0 6px 0" }}>
         {loc.event}
       </p>
@@ -154,7 +193,7 @@ function AiTooltip({ loc }: { loc: CrisisLocation }) {
                 fontSize: 10, color: "#F59E0B", background: "rgba(245,158,11,0.1)",
                 padding: "1px 5px", borderRadius: 4, border: "1px solid rgba(245,158,11,0.2)",
               }}>
-                {a}
+                {typeof a === "string" ? a : (a as any).asset || String(a)}
               </span>
             ))}
           </div>

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "target": "ES6",
+    "target": "ES2020",
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -22,6 +22,41 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "middleware.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "contexts/**/*.ts",
+    "contexts/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "types/**/*.ts",
+    "types/**/*.tsx",
+    "types/**/*.d.ts",
+    "utils/**/*.ts",
+    "utils/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "app/page-old.tsx",
+    "components/app-content.tsx",
+    "components/app-root.tsx",
+    "components/app-shell.tsx",
+    "components/app-wrapper.tsx",
+    "components/debug-auth.tsx",
+    "components/development-stream-broken.tsx",
+    "components/decision-memo/OpportunitiesMap.tsx",
+    "components/decision-memo/PreviewModal.tsx",
+    "components/opportunity-atlas.tsx",
+    "components/playbook-formatter.tsx",
+    "components/pricing-strategy.tsx",
+    "components/quick-login.tsx",
+    "components/target-audience-segmentation.tsx"
+  ]
 }

@@ -6,10 +6,11 @@
 
 import { useEffect } from 'react';
 import { SW_VERSION, getServiceWorkerVersion, forceServiceWorkerUpdate } from '@/lib/sw-version';
+import { PWA_ENABLED } from '@/lib/platform/runtime-flags';
 
 export function ServiceWorkerUpdateManager() {
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    if (!PWA_ENABLED || typeof window === 'undefined' || !('serviceWorker' in navigator)) {
       return;
     }
 

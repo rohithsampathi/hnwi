@@ -9,6 +9,7 @@ import { InteractiveWorldMap, City } from "@/components/interactive-world-map"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { useToast } from "@/components/ui/use-toast"
 import { secureApi } from "@/lib/secure-api"
+import { getCommandCentreOpportunities } from "@/lib/api"
 import { usePageDataCache } from "@/contexts/page-data-cache-context"
 
 export function MapPage() {
@@ -41,23 +42,16 @@ export function MapPage() {
       setIsLoading(true)
 
       // Fetch all data sources in parallel with proper authentication
-      const [crownVaultData, priveData, hnwiData] = await Promise.allSettled([
+      const [crownVaultData, commandCentreData] = await Promise.allSettled([
         // Crown Vault assets with detailed information
         secureApi.get('/api/crown-vault/assets/detailed', true, {
           enableCache: true,
           cacheDuration: 600000 // 10 minutes
         }),
-
-        // Privé Exchange opportunities
-        secureApi.get('/api/opportunities', true, {
-          enableCache: true,
-          cacheDuration: 600000 // 10 minutes
-        }),
-
-        // HNWI World developments (recent patterns)
-        secureApi.get('/api/developments?timeframe=30D', true, {
-          enableCache: true,
-          cacheDuration: 300000 // 5 minutes
+        getCommandCentreOpportunities({
+          includeCrownVault: false,
+          view: 'all',
+          timeframe: 'LIVE'
         })
       ])
 
@@ -86,50 +80,35 @@ export function MapPage() {
         allCities.push(...crownCities)
       }
 
-      // Process Privé opportunities
-      if (priveData.status === 'fulfilled' && Array.isArray(priveData.value)) {
-        const priveCities = priveData.value
-          .filter((opp: any) => opp.location?.coordinates?.latitude && opp.location?.coordinates?.longitude)
+      // Process unified Command Centre opportunities
+      if (commandCentreData.status === 'fulfilled' && Array.isArray(commandCentreData.value)) {
+        const opportunityCities = commandCentreData.value
+          .filter((opp: any) => opp.latitude && opp.longitude)
           .map((opp: any) => ({
-            _id: opp._id || opp.id,
-            name: opp.location?.city || opp.title,
-            country: opp.location?.country || 'Unknown',
-            latitude: opp.location.coordinates.latitude,
-            longitude: opp.location.coordinates.longitude,
-            type: 'prive',
+            _id: opp._id || opp.id || opp.opportunity_id,
+            id: opp.id || opp._id || opp.opportunity_id,
+            name: opp.location || opp.title,
+            country: opp.country || opp.product || 'Unknown',
+            latitude: Number(opp.latitude),
+            longitude: Number(opp.longitude),
+            type: opp.source === 'Privé Exchange' ? 'prive' : 'hnwi',
             title: opp.title,
             tier: opp.tier,
-            value: opp.investment_required?.min?.toString() || '0',
+            value: opp.value || opp.minimum_investment_display || opp.minimum_investment_usd?.toString() || '0',
             category: opp.category,
             industry: opp.industry,
-            victor_score: opp.victor_score,
+            product: opp.product,
+            analysis: opp.analysis,
             elite_pulse_analysis: opp.elite_pulse_analysis,
-            risk: opp.risk_level || 'medium',
+            victor_score: opp.victor_score || opp.prive_rating,
+            risk: opp.risk_level || opp.risk || 'medium',
+            source: opp.source,
+            start_date: opp.start_date || opp.date,
+            devIds: opp.devIds || opp.dev_ids || (opp.devid ? [opp.devid] : undefined),
+            hasCitations: Array.isArray(opp.devIds || opp.dev_ids) ? true : !!opp.devid,
             is_new: opp.is_new || false
           }))
-        allCities.push(...priveCities)
-      }
-
-      // Process HNWI developments
-      if (hnwiData.status === 'fulfilled' && hnwiData.value?.developments) {
-        const hnwiCities = hnwiData.value.developments
-          .filter((dev: any) => dev.location?.latitude && dev.location?.longitude)
-          .map((dev: any) => ({
-            _id: dev.id,
-            name: dev.location?.city || dev.title,
-            country: dev.location?.country || dev.product || 'Unknown',
-            latitude: dev.location.latitude,
-            longitude: dev.location.longitude,
-            type: 'hnwi',
-            title: dev.title,
-            industry: dev.industry,
-            product: dev.product,
-            analysis: dev.summary,
-            start_date: dev.date,
-            devIds: [dev.id],
-            hasCitations: true
-          }))
-        allCities.push(...hnwiCities)
+        allCities.push(...opportunityCities)
       }
 
       setCities(allCities)

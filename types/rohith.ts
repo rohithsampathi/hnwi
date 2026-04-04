@@ -24,7 +24,7 @@ export type SourceDocument = DevelopmentSource | KGIntelligenceSource
 export interface UserPortfolioContext {
   userId: string
   portfolio: {
-    totalValue: string
+    totalValue: string | number
     totalAssets: number
     realEstateHoldings: string
     preciousMetalsPosition: string
@@ -80,6 +80,7 @@ export interface Conversation {
   lastMessage?: string
   messageCount: number
   isActive?: boolean
+  messages?: Message[]
 }
 
 export interface ConversationWithMessages extends Conversation {
@@ -223,7 +224,7 @@ export interface StatusIndicatorsProps {
 export interface QuickInsightsProps {
   insights: QuickInsight[]
   portfolioSummary: {
-    totalValue: string
+    totalValue: string | number
     assetCount: number
     topPerformer?: string
   }

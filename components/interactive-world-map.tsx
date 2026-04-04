@@ -5,11 +5,12 @@
 "use client"
 
 import React, { useState, useMemo, useCallback } from "react"
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from "react-leaflet"
+import { TileLayer, Marker, Popup, Polyline, Tooltip } from "react-leaflet"
 import L from "leaflet"
 import { useTheme } from "@/contexts/theme-context"
-import "leaflet/dist/leaflet.css"
 import { MAP_CONFIG } from "@/lib/map-config"
+import "@/lib/leaflet-container-patch"
+import { SafeMapContainer } from "@/components/map/safe-map-container"
 
 // Components
 import { FlyToCity, ResetView, MapClickHandler, ZoomTracker, PopupZoomHandler } from "@/components/map/map-helpers"
@@ -55,6 +56,7 @@ export interface City {
   product?: string
   start_date?: string
   is_new?: boolean
+  isNew?: boolean
   // Citation data
   devIds?: string[]
   hasCitations?: boolean
@@ -252,14 +254,32 @@ export function InteractiveWorldMap({
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
-  const [forceRender, setForceRender] = useState(0)
-  // Unique key per mount — prevents "Map container already initialized" on HMR/Strict Mode remount
-  const [mapKey] = useState(() => `map-${Date.now()}`)
   const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 2000000 })
   const [hoveredCorridorKey, setHoveredCorridorKey] = useState<string | null>(null)
   const [selectedCorridorKey, setSelectedCorridorKey] = useState<string | null>(null) // Persist highlight when popup is open
   const [hoveredDestination, setHoveredDestination] = useState<string | null>(null)
   const markerRefs = React.useRef<Map<string, any>>(new Map())
+  const timeoutRefs = React.useRef<number[]>([])
+
+  const scheduleTimeout = useCallback((callback: () => void, delayMs: number) => {
+    const timeoutId = window.setTimeout(() => {
+      timeoutRefs.current = timeoutRefs.current.filter(id => id !== timeoutId)
+      callback()
+    }, delayMs)
+
+    timeoutRefs.current.push(timeoutId)
+    return timeoutId
+  }, [])
+
+  React.useEffect(() => {
+    const markerRegistry = markerRefs.current
+
+    return () => {
+      timeoutRefs.current.forEach(timeoutId => window.clearTimeout(timeoutId))
+      timeoutRefs.current = []
+      markerRegistry.clear()
+    }
+  }, [])
 
   // Wrapper to prevent unnecessary price range updates (prevents infinite loop in rc-slider)
   const handlePriceRangeChange = useCallback((newRange: { min: number; max: number }) => {
@@ -275,6 +295,13 @@ export function InteractiveWorldMap({
   // ROOT FIX: Store scroll positions at MAP level, keyed by clusterId
   // This survives all re-renders caused by city updates during calibration
   const [clusterScrollPositions, setClusterScrollPositions] = useState<Map<string, number>>(new Map())
+
+  const navigateToRoute = useCallback((route: string) => {
+    if (!onNavigate) return
+
+    const normalizedRoute = route.startsWith("/") ? route : `/${route}`
+    onNavigate(normalizedRoute)
+  }, [onNavigate])
 
   // Callback to update scroll position for a cluster
   const updateScrollPosition = useCallback((clusterId: string, position: number) => {
@@ -336,19 +363,19 @@ export function InteractiveWorldMap({
     }
 
     // Open the popup after a small delay
-    setTimeout(() => {
+    scheduleTimeout(() => {
       const markerKey = `${city.latitude}-${city.longitude}-${city.title}`
       const markerRef = markerRefs.current.get(markerKey)
       if (markerRef) {
         markerRef.openPopup()
       }
     }, 100)
-  }, [])
+  }, [scheduleTimeout])
 
   // Auto-expand details after zoom completes
   React.useEffect(() => {
     if (cityToExpand && currentZoom >= 7) {
-      const timer = setTimeout(() => {
+      const timer = window.setTimeout(() => {
         const clusterId = getClusterId(cityToExpand)
         setExpandedClusterId(clusterId)
 
@@ -356,15 +383,21 @@ export function InteractiveWorldMap({
         const markerRef = markerRefs.current.get(markerKey)
 
         if (markerRef) {
-          setTimeout(() => {
+          const popupTimeout = window.setTimeout(() => {
             markerRef.openPopup()
           }, 200)
+          timeoutRefs.current.push(popupTimeout)
         }
 
         setCityToExpand(null)
       }, 2600)
 
-      return () => clearTimeout(timer)
+      timeoutRefs.current.push(timer)
+
+      return () => {
+        window.clearTimeout(timer)
+        timeoutRefs.current = timeoutRefs.current.filter(id => id !== timer)
+      }
     }
   }, [cityToExpand, currentZoom, getClusterId])
 
@@ -375,7 +408,6 @@ export function InteractiveWorldMap({
     setOpenClusterId(null)
     setExpandedClusterId(null)
     setResetView(true)
-    setForceRender(prev => prev + 1)
 
     markerRefs.current.forEach((markerRef) => {
       if (markerRef && markerRef.closePopup) {
@@ -397,10 +429,6 @@ export function InteractiveWorldMap({
         markerRef.closePopup()
       }
     })
-
-    setTimeout(() => {
-      setForceRender(prev => prev + 1)
-    }, 10)
   }, [])
 
   // Two separate zoom concepts:
@@ -424,16 +452,18 @@ export function InteractiveWorldMap({
       }
     }
 
+    const handleOrientationChange = () => {
+      scheduleTimeout(handleResize, 100)
+    }
+
     window.addEventListener('resize', handleResize)
-    window.addEventListener('orientationchange', () => {
-      setTimeout(handleResize, 100)
-    })
+    window.addEventListener('orientationchange', handleOrientationChange)
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      window.removeEventListener('orientationchange', handleResize)
+      window.removeEventListener('orientationchange', handleOrientationChange)
     }
-  }, [])
+  }, [scheduleTimeout])
 
   // Define map bounds from centralized config
   const maxBounds: [[number, number], [number, number]] = [
@@ -443,8 +473,7 @@ export function InteractiveWorldMap({
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
-      <MapContainer
-        key={mapKey}
+      <SafeMapContainer
         center={[20, 0]}
         zoom={startingZoom}
         minZoom={MAP_CONFIG.zoom.min}
@@ -515,6 +544,21 @@ export function InteractiveWorldMap({
                     setSelectedCity(center)
                     setFlyToCity(center)
                   }
+                },
+                popupopen: () => {
+                  setOpenClusterId(clusterId)
+                  if (!cityToExpand) {
+                    setExpandedClusterId(null)
+                  }
+                },
+                popupclose: () => {
+                  scheduleTimeout(() => {
+                    setOpenClusterId(null)
+                    setExpandedClusterId(null)
+                    setSelectedCity(null)
+                    setFlyToCity(null)
+                    setCityToExpand(null)
+                  }, 0)
                 }
               }}
             >
@@ -523,25 +567,6 @@ export function InteractiveWorldMap({
                 maxWidth={isCluster ? 500 : 400}
                 autoPan={false}
                 keepInView={false}
-                onOpen={() => {
-                  setOpenClusterId(clusterId)
-                  if (!cityToExpand) {
-                    setExpandedClusterId(null)
-                  }
-                }}
-                onClose={() => {
-                  setTimeout(() => {
-                    setOpenClusterId(null)
-                    setExpandedClusterId(null)
-                    setSelectedCity(null)
-                    setFlyToCity(null)
-                    setCityToExpand(null)
-
-                    setTimeout(() => {
-                      setForceRender(prev => prev + 1)
-                    }, 10)
-                  }, 0)
-                }}
               >
                 {isCluster ? (
                   <MapPopupCluster
@@ -792,7 +817,12 @@ export function InteractiveWorldMap({
                         {flow.midpoint.exploreUrl && onNavigate && (
                           <div className={`${flow.midpoint.totalAudits && flow.midpoint.totalAudits > 1 ? 'pt-2 mt-2' : 'pt-3 mt-3 border-t border-border'}`}>
                             <button
-                              onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); const url = flow.midpoint!.exploreUrl!.replace(/^\//, ''); setTimeout(() => onNavigate(url), 0); }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.nativeEvent.stopImmediatePropagation()
+                                const url = flow.midpoint!.exploreUrl!
+                                setTimeout(() => navigateToRoute(url), 0)
+                              }}
                               className="w-full px-3 py-2 text-xs font-medium rounded transition-colors bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center gap-1"
                             >
                               {flow.midpoint.hasAccess ? 'Explore Full Memo' : 'Initiate New Plan'}
@@ -1024,7 +1054,12 @@ export function InteractiveWorldMap({
                         {flow.midpoint.exploreUrl && onNavigate && (
                           <div className={`${flow.midpoint.totalAudits && flow.midpoint.totalAudits > 1 ? 'pt-2 mt-2' : 'pt-3 mt-3 border-t border-border'}`}>
                             <button
-                              onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); const url = flow.midpoint!.exploreUrl!.replace(/^\//, ''); setTimeout(() => onNavigate(url), 0); }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                e.nativeEvent.stopImmediatePropagation()
+                                const url = flow.midpoint!.exploreUrl!
+                                setTimeout(() => navigateToRoute(url), 0)
+                              }}
                               className="w-full px-3 py-2 text-xs font-medium rounded transition-colors bg-primary text-primary-foreground hover:opacity-90 flex items-center justify-center gap-1"
                             >
                               {flow.midpoint.hasAccess ? 'Explore Full Memo' : 'Initiate New Plan'}
@@ -1066,7 +1101,7 @@ export function InteractiveWorldMap({
         <MapClickHandler onMapClick={handleMapClick} />
         <ZoomTracker onZoomChange={setCurrentZoom} />
         <PopupZoomHandler />
-      </MapContainer>
+      </SafeMapContainer>
 
       {/* Filter Controls - Mobile */}
       {onToggleCrownAssets && onTogglePriveOpportunities && onToggleHNWIPatterns && (

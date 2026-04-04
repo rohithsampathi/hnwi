@@ -13,7 +13,7 @@ interface TierPricingModalProps {
   currentTier: 'architect' | 'operator' | 'observer';
   sessionId: string;
   onArchitectSubmit: (email: string, whatsapp: string) => Promise<void>;
-  onPaymentSuccess: (tier: 'operator' | 'observer') => void;
+  onPayment: (tier: 'operator' | 'observer') => void;
 }
 
 export function TierPricingModal({
@@ -22,7 +22,7 @@ export function TierPricingModal({
   currentTier,
   sessionId,
   onArchitectSubmit,
-  onPaymentSuccess
+  onPayment
 }: TierPricingModalProps) {
   if (!isOpen) return null;
 
@@ -59,7 +59,7 @@ export function TierPricingModal({
               currentTier={currentTier}
               sessionId={sessionId}
               onArchitectSubmit={onArchitectSubmit}
-              onPaymentSuccess={onPaymentSuccess}
+              onPayment={onPayment}
             />
           </div>
         </motion.div>

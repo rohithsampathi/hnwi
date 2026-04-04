@@ -81,7 +81,8 @@ import {
 import type {
   Executor,
   ExecutorCategory,
-  ExecutorSubcategory
+  ExecutorSubcategory,
+  ExecutorTier
 } from "@/types/executor";
 import { CATEGORY_METADATA, SUBCATEGORY_NAMES } from "@/types/executor";
 import {
@@ -125,7 +126,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
   const [jurisdictionFilter, setJurisdictionFilter] = useState("all");
   const [languageFilter, setLanguageFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [tierFilter, setTierFilter] = useState<"all" | "trusted_partner" | "general_listing">("all");
+  const [tierFilter, setTierFilter] = useState<"all" | ExecutorTier>("all");
   const [ratingFilter, setRatingFilter] = useState<"all" | "4+" | "3+" | "any">("all");
   const [sortBy, setSortBy] = useState<"rating" | "reviews" | "experience" | "name">("rating");
 
@@ -196,8 +197,8 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
       // Sort executors based on selected sort option
       const sortedExecutors = filteredExecutors.sort((a, b) => {
         // Always prioritize trusted partners
-        if (a.tier === 'trusted_partner' && b.tier !== 'trusted_partner') return -1;
-        if (a.tier !== 'trusted_partner' && b.tier === 'trusted_partner') return 1;
+        if (a.tier === 'strategic_partner' && b.tier !== 'strategic_partner') return -1;
+        if (a.tier !== 'strategic_partner' && b.tier === 'strategic_partner') return 1;
 
         // Then apply secondary sort
         switch (sortBy) {
@@ -473,8 +474,8 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Tiers</SelectItem>
-              <SelectItem value="trusted_partner">Verified Partners</SelectItem>
-              <SelectItem value="general_listing">General Listing</SelectItem>
+              <SelectItem value="strategic_partner">Verified Partners</SelectItem>
+              <SelectItem value="trusted_network">General Listing</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -541,7 +542,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
             )}
             {tierFilter !== "all" && (
               <Badge variant="secondary" className="gap-1">
-                {tierFilter === "trusted_partner" ? "Verified Partners" : "General Listing"}
+                {tierFilter === "strategic_partner" ? "Verified Partners" : "General Listing"}
                 <X className="h-3 w-3 cursor-pointer" onClick={() => setTierFilter("all")} />
               </Badge>
             )}
@@ -559,7 +560,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center py-12">
-          <CrownLoader message="Loading Executors..." />
+          <CrownLoader text="Loading Executors..." />
         </div>
       )}
 
@@ -629,7 +630,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                       {/* Header Row: Name and Chevron */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1 pr-4">
-                          {executor.tier === "trusted_partner" && (
+                          {executor.tier === "strategic_partner" && (
                             <PremiumBadge className="font-bold px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1.5 mb-2">
                               <Shield className="h-3.5 w-3.5" />
                               VERIFIED PARTNER
@@ -684,7 +685,7 @@ export function TrustedNetworkPage({ onNavigate }: TrustedNetworkPageProps) {
                       </div>
 
                       {/* Links - Only for Verified Partners */}
-                      {executor.tier === "trusted_partner" && (executor.linkedin_url || executor.website_url) && (
+                      {executor.tier === "strategic_partner" && (executor.linkedin_url || executor.website_url) && (
                         <div className="flex gap-2 mb-4">
                           {executor.linkedin_url && (
                             <Button

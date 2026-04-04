@@ -1166,7 +1166,7 @@ export function OpportunityAtlasNew({
         }
 
         // Main flow: Use intelligent fuzzy matching for all title-based searches
-        category.opportunities.forEach(opp => {
+        for (const opp of category.opportunities) {
           const oppTitle = opp.title.toLowerCase();
           let matchScore = 0;
 
@@ -1179,15 +1179,15 @@ export function OpportunityAtlasNew({
             const titleWords = oppTitle.split(' ').filter(w => w.length > 2);
 
             // Score each matching word
-            searchWords.forEach(searchWord => {
-              titleWords.forEach(titleWord => {
+            for (const searchWord of searchWords) {
+              for (const titleWord of titleWords) {
                 if (titleWord === searchWord) {
                   matchScore += 3; // Exact word match
                 } else if (titleWord.includes(searchWord) || searchWord.includes(titleWord)) {
                   matchScore += 2; // Partial word match
                 }
-              });
-            });
+              }
+            }
 
             // Industry/type specific matching
             const keyTerms = [
@@ -1200,20 +1200,20 @@ export function OpportunityAtlasNew({
               ['equity', 'private', 'venture', 'capital']
             ];
 
-            keyTerms.forEach(termGroup => {
+            for (const termGroup of keyTerms) {
               const searchHasTerm = termGroup.some(term => searchTerm.includes(term));
               const titleHasTerm = termGroup.some(term => oppTitle.includes(term));
               if (searchHasTerm && titleHasTerm) {
                 matchScore += 5; // Bonus for matching industry/type
               }
-            });
+            }
           }
 
           // Track the best match
           if (matchScore > 0 && (!bestMatch || matchScore > bestMatch.score)) {
             bestMatch = { opportunity: opp, category, score: matchScore };
           }
-        });
+        }
       }
 
       // Use the best match found (lowered threshold to 1 for any match)
@@ -1354,11 +1354,11 @@ export function OpportunityAtlasNew({
       }
 
       // Use Web Share API for mobile/PWA (native share sheet)
+      // Only pass title + url (no text) to prevent platforms from concatenating text into the URL on copy
       if (navigator.share) {
         try {
           await navigator.share({
-            title: opportunity.title,
-            text: `Check out this investment opportunity: ${opportunity.title}`,
+            title: `Check out this investment opportunity: ${opportunity.title}`,
             url: data.shareUrl
           });
 
@@ -1455,7 +1455,7 @@ export function OpportunityAtlasNew({
     setConciergeState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
     
     try {
-      const user = null; // Get user from auth context if needed
+      const user = null as { id?: string; email?: string; firstName?: string; lastName?: string } | null // Get user from auth context if needed
       const userId = user?.id || localStorage.getItem("userId") || "";
       const userEmail = user?.email || localStorage.getItem("userEmail") || "";
       const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User";
@@ -1505,7 +1505,7 @@ export function OpportunityAtlasNew({
         duration: 5000,
       });
     } catch (error) {
-      const errorMessage = error.name === 'AbortError' 
+      const errorMessage = error instanceof Error && error.name === 'AbortError'
         ? 'Request timed out. Please try again.'
         : 'Unable to reach concierge. Please try again.';
         

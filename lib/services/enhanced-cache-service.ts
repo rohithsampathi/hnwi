@@ -2,6 +2,7 @@
 // Enhanced caching service that works with the existing PWA setup
 
 import { CachePolicyService } from './cache-policy-service'
+import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags'
 
 export class EnhancedCacheService {
   private static readonly CACHE_PREFIX = 'hnwi-chronicles-v1'
@@ -9,7 +10,7 @@ export class EnhancedCacheService {
 
   // Initialize enhanced caching
   static async initialize() {
-    if (!('serviceWorker' in navigator)) return
+    if (!canUseServiceWorkerRuntime()) return
 
     try {
       const registration = await navigator.serviceWorker.ready

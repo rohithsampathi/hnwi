@@ -39,7 +39,6 @@ export function AdvancedScrollArea({
         paddingAbsolute: false,
         showNativeOverlaidScrollbars: false,
         update: {
-          elementEvents: [["scroll"]],
           debounce: [0, 0],
         },
       }}

@@ -15,7 +15,7 @@ import {
   ExternalLink,
   BarChart3
 } from 'lucide-react';
-import { HNWITrendsData, HNWITrendsCitation, HNWITrendsDataQuality } from '@/lib/decision-memo/memo-types';
+import type { HNWITrendsCitation, HNWITrendsDataQuality } from '@/lib/pdf/pdf-types';
 
 interface HNWITrendsSectionProps {
   trends?: string[];
@@ -59,14 +59,15 @@ function ConfidenceIndicator({ confidence }: { confidence: number }) {
 function DataQualityBadge({ quality }: { quality: HNWITrendsDataQuality }) {
   const grounding = quality.scientific_grounding;
 
-  const config: Record<string, { bg: string; text: string; label: string }> = {
+  const config: Record<NonNullable<HNWITrendsDataQuality['scientific_grounding']>, { bg: string; text: string; label: string }> = {
     kgv3_primary: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'KGv3 Primary' },
     kgv3_fallback: { bg: 'bg-amber-500/20 border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', label: 'KGv3 Fallback' },
     no_data: { bg: 'bg-muted border-border', text: 'text-muted-foreground', label: 'No Data' },
     error: { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-500', label: 'Error' }
   };
 
-  const { bg, text, label } = config[grounding] || config.no_data;
+  const key = grounding ?? 'no_data';
+  const { bg, text, label } = config[key];
 
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full border ${bg}`}>
@@ -178,58 +179,60 @@ export function HNWITrendsSection({
 
   return (
     <div ref={sectionRef}>
-      {/* Premium Section Header */}
-      <motion.div
-        className="mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.6 }}
-      >
-        <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-          HNWI Trends
-        </h2>
-        <div className="h-px bg-border" />
-      </motion.div>
-
       <div className="space-y-6">
-        {/* Confidence & Data Quality Header */}
-        <motion.div
-          className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 border border-border rounded-xl"
-          initial={{ opacity: 0, y: 20 }}
-          animate={isVisible ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.1 }}
-        >
-          <div className="flex items-center gap-6">
-            {/* Confidence Score */}
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Confidence</p>
-              <ConfidenceIndicator confidence={confidence} />
-            </div>
+        <div data-print-block="keep" data-print-max-height="260">
+          {/* Premium Section Header */}
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+              HNWI Trends
+            </h2>
+            <div className="h-px bg-border" />
+          </motion.div>
 
-            {/* Trend Count */}
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Trends</p>
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold text-foreground">{trends.length}</span>
-              </div>
-            </div>
-
-            {/* Collections Queried */}
-            {dataQuality && (
+          {/* Confidence & Data Quality Header */}
+          <motion.div
+            className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 border border-border rounded-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <div className="flex items-center gap-6">
+              {/* Confidence Score */}
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Sources</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Confidence</p>
+                <ConfidenceIndicator confidence={confidence} />
+              </div>
+
+              {/* Trend Count */}
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Trends</p>
                 <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-bold text-foreground">{dataQuality.collections_queried}</span>
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold text-foreground">{trends.length}</span>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Data Quality Badge */}
-          {dataQuality && <DataQualityBadge quality={dataQuality} />}
-        </motion.div>
+              {/* Collections Queried */}
+              {dataQuality && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Sources</p>
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-bold text-foreground">{dataQuality.collections_queried}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Data Quality Badge */}
+            {dataQuality && <DataQualityBadge quality={dataQuality} />}
+          </motion.div>
+        </div>
 
         {/* Trends List */}
         <motion.div

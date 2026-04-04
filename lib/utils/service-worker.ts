@@ -1,10 +1,12 @@
 // Service Worker utility functions for cache management
 
+import { canUseServiceWorkerRuntime } from "@/lib/platform/runtime-flags";
+
 /**
  * Clear all service worker caches
  */
 export const clearAllCaches = async (): Promise<void> => {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+  if (canUseServiceWorkerRuntime() && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
   }
 
@@ -19,7 +21,7 @@ export const clearAllCaches = async (): Promise<void> => {
  * Clear only assessment-related caches
  */
 export const clearAssessmentCache = async (): Promise<void> => {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+  if (canUseServiceWorkerRuntime() && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_ASSESSMENT_CACHE' });
   }
 
@@ -37,7 +39,7 @@ export const clearAssessmentCache = async (): Promise<void> => {
  * Force service worker update
  */
 export const updateServiceWorker = async (): Promise<void> => {
-  if ('serviceWorker' in navigator) {
+  if (canUseServiceWorkerRuntime()) {
     const registration = await navigator.serviceWorker.getRegistration();
     if (registration) {
       await registration.update();
@@ -56,7 +58,7 @@ export const updateServiceWorker = async (): Promise<void> => {
  * Check if service worker needs update (useful for mobile PWAs)
  */
 export const checkForServiceWorkerUpdate = async (): Promise<boolean> => {
-  if ('serviceWorker' in navigator) {
+  if (canUseServiceWorkerRuntime()) {
     const registration = await navigator.serviceWorker.getRegistration();
     if (registration) {
       // Check for updates
@@ -74,7 +76,7 @@ export const initServiceWorkerListener = (callbacks?: {
   onCacheCleared?: () => void;
   onAssessmentCacheCleared?: () => void;
 }): void => {
-  if ('serviceWorker' in navigator) {
+  if (canUseServiceWorkerRuntime()) {
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data) {
         switch (event.data.type) {

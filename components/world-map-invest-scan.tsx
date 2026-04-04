@@ -16,6 +16,9 @@ import { regions } from "@/lib/invest-scan-data"
 import Link from "next/link"
 
 const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
+type SimpleMapGeography = {
+  rsmKey: string
+}
 
 export function WorldMapInvestScan() {
   const { theme } = useTheme()
@@ -54,8 +57,8 @@ export function WorldMapInvestScan() {
           <ComposableMap projection="geoMercator">
             <ZoomableGroup center={[0, 20]} zoom={1}>
               <Geographies geography={geoUrl}>
-                {({ geographies }) =>
-                  geographies.map((geo) => (
+                {({ geographies }: { geographies: SimpleMapGeography[] }) =>
+                  geographies.map((geo: SimpleMapGeography) => (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}

@@ -50,13 +50,13 @@ export default function TestSecureApiPage() {
         timestamp: new Date().toISOString()
       };
 
-      setApiTestResults(prev => ({ ...prev, crownVault: results }));
+      setApiTestResults((prev: Record<string, unknown>) => ({ ...prev, crownVault: results }));
     } catch (error) {
-      setApiTestResults(prev => ({ 
+      setApiTestResults((prev: Record<string, unknown>) => ({ 
         ...prev, 
         crownVault: { 
           success: false, 
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           timestamp: new Date().toISOString()
         } 
       }));
@@ -81,13 +81,13 @@ export default function TestSecureApiPage() {
         timestamp: new Date().toISOString()
       };
 
-      setApiTestResults(prev => ({ ...prev, dashboard: results }));
+      setApiTestResults((prev: Record<string, unknown>) => ({ ...prev, dashboard: results }));
     } catch (error) {
-      setApiTestResults(prev => ({ 
+      setApiTestResults((prev: Record<string, unknown>) => ({ 
         ...prev, 
         dashboard: { 
           success: false, 
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           timestamp: new Date().toISOString()
         } 
       }));

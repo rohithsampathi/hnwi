@@ -3,11 +3,10 @@
 
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import dynamic from "next/dynamic"
 import type { HomeDashboardEliteProps } from "@/types/dashboard"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { secureApi } from "@/lib/secure-api"
 import type { City } from "@/components/interactive-world-map"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { useCitationManager } from "@/hooks/use-citation-manager"
@@ -18,6 +17,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { PersonalModeToggle } from "@/components/personal-mode-toggle"
 import { useOpportunities } from "@/lib/hooks/useOpportunities"
 import { usePersonalMode } from "@/lib/hooks/usePersonalMode"
+import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -25,10 +25,13 @@ const InteractiveWorldMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-screen bg-background">
-        <div className="flex items-center justify-center h-full">
-          <CrownLoader size="lg" text="Loading Elite Pulse" />
-        </div>
+      <div
+        className="flex w-full items-center justify-center bg-background"
+        style={{
+          minHeight: 'calc(var(--app-viewport-height, 100dvh) - var(--app-shell-offset-top, 0px))'
+        }}
+      >
+        <CrownLoader size="lg" text="Loading Elite Pulse" />
       </div>
     )
   }
@@ -54,6 +57,7 @@ export function HomeDashboardElite({
   // Category filter state
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+  const previousAvailableCategoriesRef = useRef<string[]>([])
 
   // Citation management
   const {
@@ -87,7 +91,7 @@ export function HomeDashboardElite({
     timeframe,
     isPersonalMode,
     hasCompletedAssessment,
-    includeCrownVault: isPersonalMode && hasCompletedAssessment,
+    includeCrownVault: true,
     cleanCategories: true // Clean category names for better UI
   })
 
@@ -101,11 +105,30 @@ export function HomeDashboardElite({
     }
   }, [loading, initialLoad])
 
-  // Initialize selected categories when available categories change
+  // Keep category selection aligned with the current dataset.
+  // If the prior state represented "all categories", preserve that intent when the source list changes.
   useEffect(() => {
-    if (availableCategories.length > 0 && selectedCategories.length === 0) {
-      setSelectedCategories(availableCategories)
-    }
+    setSelectedCategories(prev => {
+      if (availableCategories.length === 0) {
+        previousAvailableCategoriesRef.current = availableCategories
+        return []
+      }
+
+      const previousAvailable = previousAvailableCategoriesRef.current
+      const previousWasAll =
+        previousAvailable.length > 0 &&
+        prev.length === previousAvailable.length &&
+        previousAvailable.every(category => prev.includes(category))
+
+      const validSelection = prev.filter(category => availableCategories.includes(category))
+      previousAvailableCategoriesRef.current = availableCategories
+
+      if (prev.length === 0 || previousWasAll || validSelection.length === 0) {
+        return availableCategories
+      }
+
+      return validSelection
+    })
   }, [availableCategories])
 
   // Extract citations from cities when they change
@@ -205,20 +228,22 @@ export function HomeDashboardElite({
 
   // Check if user has completed C10 Assessment
   useEffect(() => {
+    if (hasCompletedAssessmentProp !== undefined) {
+      return
+    }
+
     const checkAssessmentCompletion = async () => {
       if (!user?.id && !user?.user_id) return
 
       try {
         const userId = user.id || user.user_id
-        const response = await secureApi.get(`/api/assessment/history/${userId}`, true, {
-          enableCache: true,
-          cacheDuration: 300000 // 5 minutes cache
-        })
+        if (!userId) {
+          return
+        }
+        const response = await fetchAssessmentHistory(userId)
 
         // Check if user has any completed assessments
-        const hasCompleted = response?.assessments?.length > 0 ||
-          response?.length > 0 ||
-          false
+        const hasCompleted = hasRecentAssessmentResult(response)
 
         setHasCompletedAssessment(hasCompleted)
       } catch (error) {
@@ -227,7 +252,7 @@ export function HomeDashboardElite({
     }
 
     checkAssessmentCompletion()
-  }, [user])
+  }, [user, hasCompletedAssessmentProp])
 
   // Handle citation click from map popup
   const handleCitationClick = useCallback((citationId: string) => {
@@ -277,10 +302,13 @@ export function HomeDashboardElite({
   // Only show full-screen loader on initial load, not on subsequent data fetches
   if (initialLoad && loading) {
     return (
-      <div className="w-full h-screen bg-background">
-        <div className="flex items-center justify-center h-full">
-          <CrownLoader size="lg" text="Loading Elite Pulse" />
-        </div>
+      <div
+        className="flex w-full items-center justify-center bg-background"
+        style={{
+          minHeight: 'calc(var(--app-viewport-height, 100dvh) - var(--app-shell-offset-top, 0px))'
+        }}
+      >
+        <CrownLoader size="lg" text="Loading Elite Pulse" />
       </div>
     )
   }
@@ -335,7 +363,7 @@ export function HomeDashboardElite({
     }
 
     // Privé Opportunities: Victor-scored opportunities from Privé Exchange
-    const isPriveOpportunity = !!city.victor_score ||
+    const isPriveOpportunity =
       city.source?.toLowerCase().includes('privé') ||
       city.source?.toLowerCase().includes('prive')
 
@@ -356,6 +384,9 @@ export function HomeDashboardElite({
             ? 'personal-mode-active'
             : ''
           }`}
+        style={{
+          height: 'var(--app-viewport-height, 100dvh)'
+        }}
       >
         {/* Personal Mode Visual Effect - Animated Border */}
         {isPersonalMode && hasCompletedAssessment && (
@@ -368,6 +399,7 @@ export function HomeDashboardElite({
         )}
 
         <InteractiveWorldMap
+          key="dashboard-world-map"
           width="100%"
           height="100%"
           showControls={true}

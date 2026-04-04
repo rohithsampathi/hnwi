@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react"
 import Particles from "react-particles"
 import type { Engine } from "tsparticles-engine"
+import type { ISourceOptions } from "tsparticles-engine"
 import { loadSlim } from "tsparticles-slim"
 import { useTheme } from "@/contexts/theme-context"
 
@@ -13,7 +14,7 @@ export function ParticlesBackground() {
     await loadSlim(engine)
   }, [])
 
-  const options = useMemo(() => {
+  const options = useMemo<ISourceOptions>(() => {
     return {
       fpsLimit: 120,
       particles: {
@@ -80,4 +81,3 @@ export function ParticlesBackground() {
 
   return <Particles className="absolute inset-0" id="tsparticles" init={particlesInit} options={options} />
 }
-

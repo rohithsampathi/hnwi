@@ -18,7 +18,14 @@ export function FooterNavigation({
   const { isBusinessMode } = useBusinessMode()
   const router = useRouter()
 
-  const navItems = [
+  const navItems: Array<{
+    name: string
+    icon: typeof Brain
+    route: string
+    alwaysShow: boolean
+    beta?: boolean
+    live?: boolean
+  }> = [
     { name: "Home", icon: Brain, route: "/dashboard", alwaysShow: true },
     { name: "HNWI World", icon: Globe, route: "/hnwi-world", alwaysShow: true },
     { name: "Crown Vault", icon: Crown, route: "/crown-vault", alwaysShow: true },

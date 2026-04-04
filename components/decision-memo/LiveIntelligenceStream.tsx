@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Diamond } from 'lucide-react';
 import type { City } from '@/components/interactive-world-map';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 // Dynamically import the map component
 const InteractiveWorldMap = dynamic(
@@ -40,12 +41,16 @@ interface Opportunity {
 
 interface LiveIntelligenceStreamProps {
   opportunities?: Opportunity[];
+  mistakes?: unknown[];
+  intelligenceMatches?: unknown[];
+  sseConnected?: boolean;
+  sseError?: string | null;
 }
 
 export function LiveIntelligenceStream({
   opportunities = []
 }: LiveIntelligenceStreamProps) {
-  const [developmentCount, setDevelopmentCount] = React.useState<number>(1875);
+  const developmentCount = useCastleBriefCount();
   const [showPriveOpportunities, setShowPriveOpportunities] = React.useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = React.useState(true);
 
@@ -64,23 +69,6 @@ export function LiveIntelligenceStream({
         type: 'opportunity'
       }));
   }, [opportunities]);
-
-  // Fetch actual development count
-  React.useEffect(() => {
-    async function fetchCount() {
-      try {
-        const response = await fetch('/api/developments/counts');
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total_count || data.count || 1875;
-          setDevelopmentCount(count);
-        }
-      } catch {
-        // Keep default fallback
-      }
-    }
-    fetchCount();
-  }, []);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -108,7 +96,7 @@ export function LiveIntelligenceStream({
               </motion.div>
             )}
             <div className="text-xs text-muted-foreground">
-              {developmentCount.toLocaleString()} tracked
+              {developmentCount !== null ? `${developmentCount.toLocaleString()} tracked` : 'Live tracking'}
             </div>
           </div>
         </div>

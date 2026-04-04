@@ -45,11 +45,17 @@ function makeRequest(opts: {
 
   const cookies: Record<string, string> = {};
   if (opts.csrfCookieValue) cookies['csrf_token'] = opts.csrfCookieValue;
+  const cookieHeader = Object.entries(cookies)
+    .map(([key, value]) => `${key}=${value}`)
+    .join('; ');
+
+  if (cookieHeader) {
+    headers.cookie = cookieHeader;
+  }
 
   return new NextRequest(opts.url || 'http://localhost/api/auth/login', {
     method: opts.method || 'POST',
     headers,
-    cookies,
   });
 }
 

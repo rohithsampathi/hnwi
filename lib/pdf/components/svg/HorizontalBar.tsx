@@ -43,10 +43,10 @@ export const HorizontalBar: React.FC<HorizontalBarProps> = ({
       <Rect x="0" y={String(barH + gap)} width={String(width)} height={String(barH)} rx="2" fill={darkTheme.surfaceBg} />
       <Rect x="0" y={String(barH + gap)} width={String(Math.max(optimizedW, 2))} height={String(barH)} rx="2" fill={darkTheme.textFaint} />
       {/* Labels */}
-      <SvgText x={String(width + 6)} y={String(barH - 1)} fontSize="9" fontFamily="Inter" fontWeight={700} fill={colors.amber[500]}>
+      <SvgText x={String(width + 6)} y={String(barH - 1)} style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, fill: colors.amber[500] }}>
         {`${currentRate}%`}
       </SvgText>
-      <SvgText x={String(width + 6)} y={String(barH + gap + barH - 1)} fontSize="9" fontFamily="Inter" fontWeight={700} fill={darkTheme.textFaint}>
+      <SvgText x={String(width + 6)} y={String(barH + gap + barH - 1)} style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textFaint }}>
         {`${optimizedRate}%`}
       </SvgText>
     </Svg>

@@ -1,17 +1,17 @@
 /* app/globals.css */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Import Golden Dollar Scroll Styling */
 @import url("../styles/golden-scroll.css");
 
 /* Import Leaflet CSS */
-@import 'leaflet/dist/leaflet.css';
+@import "../styles/vendor/leaflet.css";
 
 /* Import OverlayScrollbars CSS for advanced scroll handling */
 @import 'overlayscrollbars/overlayscrollbars.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
   font-family: var(--font-inter, "Inter"), "SF Pro Display", system-ui, sans-serif;

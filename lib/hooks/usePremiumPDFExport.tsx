@@ -28,6 +28,7 @@ import { setPdfThemeMode } from '@/lib/pdf/pdf-styles';
 interface ExtendedArtifact extends ICArtifact {
   preview_data?: any;
   memo_data?: any;
+  generated_at?: string;
 }
 
 // Note: Using built-in PDF fonts (Helvetica, Times-Roman, Courier) to avoid CSP issues
@@ -65,19 +66,22 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
   // Extract values from preview_data or compute defaults
   const preview: PdfPreviewData = {
     // Header info - use safeString for all text fields to prevent object rendering
-    source_jurisdiction: safeString(previewData.source_jurisdiction, artifact.intake?.sourceCountry || 'Unknown'),
-    destination_jurisdiction: safeString(previewData.destination_jurisdiction, artifact.intake?.destinationCountry || 'Unknown'),
-    exposure_class: safeString(previewData.exposure_class, artifact.intake?.wealthBracket || 'Strategic Investor'),
+    source_jurisdiction: safeString(previewData.source_jurisdiction, 'Unknown'),
+    destination_jurisdiction: safeString(previewData.destination_jurisdiction, 'Unknown'),
+    exposure_class: safeString(previewData.exposure_class, 'Strategic Investor'),
     value_creation: safeString(previewData.value_creation, formatValueCreation(previewData.value_creation_raw?.total_annual)),
     five_year_projection: safeString(previewData.five_year_projection, formatCurrencyValue(previewData.value_creation_raw?.five_year_projected)),
     total_tax_benefit: safeString(previewData.total_tax_benefit, '+29%'),
-    precedent_count: typeof previewData.precedent_count === 'number' ? previewData.precedent_count : (memoData.kgv3_intelligence_used?.precedents || 21),
+    precedent_count:
+      typeof previewData.precedent_count === 'number'
+        ? previewData.precedent_count
+        : (memoData.kgv3_intelligence_used?.precedents || artifact.intelligenceSources?.developmentsMatched || 0),
     data_quality: safeString(previewData.data_quality, 'Strong'),
 
     // Verdict
-    verdict: safeString(previewData.verdict, artifact.ic_verdict?.verdict || 'CONDITIONAL'),
-    verdict_rationale: safeString(previewData.verdict_rationale, artifact.ic_verdict?.rationale || ''),
-    risk_level: safeString(previewData.risk_level, artifact.ic_verdict?.riskLevel || 'MODERATE'),
+    verdict: safeString(previewData.verdict, artifact.verdict?.verdict || 'CONDITIONAL'),
+    verdict_rationale: safeString(previewData.verdict_rationale, artifact.verdict?.singleSentence || ''),
+    risk_level: safeString(previewData.risk_level, 'MODERATE'),
 
     // Tax analysis
     tax_differential: previewData.tax_differential,
@@ -85,7 +89,7 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
     destination_tax_rates: previewData.destination_tax_rates || previewData.tax_differential?.destination,
 
     // Risk factors - ensure all text fields are strings
-    risk_factors: (previewData.risk_factors || artifact.ic_verdict?.riskFactors || []).map((rf: any) => ({
+    risk_factors: (previewData.risk_factors || []).map((rf: any) => ({
       title: safeString(rf.factor || rf.title, 'Risk Factor'),
       severity: safeString(rf.severity, 'medium'),
       description: safeString(rf.description, ''),
@@ -94,7 +98,7 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
     })),
 
     // Due diligence - ensure all text fields are strings
-    due_diligence: (previewData.due_diligence || artifact.ic_verdict?.dueDiligence || []).map((dd: any) => ({
+    due_diligence: (previewData.due_diligence || []).map((dd: any) => ({
       task: safeString(dd.task || dd.item, 'Task'),
       category: safeString(dd.category, 'compliance'),
       timeline: safeString(dd.timeline, ''),
@@ -181,9 +185,9 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
 
     // KGv3 Intelligence
     kgv3_intelligence_used: memoData.kgv3_intelligence_used || {
-      precedents: previewData.precedent_count || 21,
-      failure_modes: 2,
-      sequencing_rules: 2,
+      precedents: previewData.precedent_count || artifact.intelligenceSources?.developmentsMatched || 0,
+      failure_modes: artifact.intelligenceSources?.failurePatternsMatched || 0,
+      sequencing_rules: artifact.intelligenceSources?.sequencingRulesApplied || 0,
       jurisdictions: 2,
     },
 
@@ -210,7 +214,7 @@ function transformArtifactToMemoData(artifact: ExtendedArtifact): PdfMemoData {
   return {
     success: true,
     intake_id: artifact.intakeId || `intake_${Date.now()}`,
-    generated_at: artifact.timestamp || new Date().toISOString(),
+    generated_at: artifact.generated_at || artifact.generatedAt || new Date().toISOString(),
     preview_data: preview,
     memo_data: memo,
     // MCP fields from artifact (if present at top level or in risk_assessment)

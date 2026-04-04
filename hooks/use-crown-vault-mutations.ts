@@ -31,7 +31,7 @@ export function useCrownVaultMutations({ onDataRefresh }: UseCrownVaultMutations
       const result = await createHeir(heirData);
       
       // Trigger data refresh in parent component
-      if (onDataRefresh) {
+      if (onDataRefresh && result.refreshedData) {
         onDataRefresh(result.refreshedData);
       }
       
@@ -68,7 +68,7 @@ export function useCrownVaultMutations({ onDataRefresh }: UseCrownVaultMutations
       const result = await updateHeir(heirId, heirData);
       
       // Trigger data refresh in parent component
-      if (onDataRefresh) {
+      if (onDataRefresh && result.refreshedData) {
         onDataRefresh(result.refreshedData);
       }
       
@@ -96,7 +96,7 @@ export function useCrownVaultMutations({ onDataRefresh }: UseCrownVaultMutations
       const result = await deleteHeir(heirId);
       
       // Trigger data refresh in parent component
-      if (onDataRefresh) {
+      if (onDataRefresh && result.refreshedData) {
         onDataRefresh(result.refreshedData);
       }
       
@@ -124,7 +124,7 @@ export function useCrownVaultMutations({ onDataRefresh }: UseCrownVaultMutations
       const result = await updateAssetHeirs(assetId, heirIds);
       
       // Trigger data refresh in parent component
-      if (onDataRefresh) {
+      if (onDataRefresh && result.refreshedData) {
         onDataRefresh(result.refreshedData);
       }
       

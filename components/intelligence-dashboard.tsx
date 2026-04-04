@@ -24,6 +24,9 @@ import {
   Eye
 } from "lucide-react"
 import { 
+  type CrownVaultImpact as CrownVaultImpactData,
+  type OpportunityAlignment as OpportunityAlignmentData,
+  type PeerIntelligence as PeerIntelligenceData,
   useElitePulse, 
   useElitePulseData,
   useCrownVaultImpact,
@@ -32,9 +35,6 @@ import {
   useIntelligenceLoading,
   useIntelligenceError
 } from "@/contexts/elite-pulse-context"
-import { CrownVaultAssetsTags } from "./unused/intelligence/crown-vault-assets-tags"
-import { OpportunityAlignment } from "./intelligence/opportunity-alignment"
-import { PeerIntelligence } from "./intelligence/peer-intelligence"
 import { useState, useMemo } from "react"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +42,143 @@ interface IntelligenceDashboardProps {
   className?: string
   defaultTab?: 'overview' | 'crown_vault' | 'opportunities' | 'peer'
   onIntelligenceAction?: (action: string, context: any) => void
+}
+
+interface CrownVaultAssetsPanelProps {
+  data?: CrownVaultImpactData
+  onActionClick: (action: string, context?: unknown) => void
+}
+
+function CrownVaultAssetsPanel({ data, onActionClick }: CrownVaultAssetsPanelProps) {
+  if (!data) {
+    return null
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center space-x-2">
+          <Crown className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Crown Vault Assets</h3>
+          <Badge variant="outline" className="text-xs">
+            {data.immediate_threats.length} threats
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {data.immediate_threats.slice(0, 3).map((threat) => (
+          <button
+            key={`${threat.asset}-${threat.risk_level}`}
+            type="button"
+            className="w-full rounded-lg border border-border bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
+            onClick={() => onActionClick("view_threat", threat)}
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-semibold">{threat.asset}</span>
+              <Badge variant={threat.risk_level === "HIGH" ? "destructive" : "outline"} className="text-[10px]">
+                {threat.risk_level}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{threat.thirty_day_impact}</p>
+          </button>
+        ))}
+        {data.hedging_opportunities.length > 0 && (
+          <Button variant="outline" size="sm" className="w-full" onClick={() => onActionClick("view_hedges", data.hedging_opportunities)}>
+            Review Hedging Opportunities
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface OpportunityAlignmentPanelProps {
+  data?: OpportunityAlignmentData
+  onOpportunityClick: (opportunity: OpportunityAlignmentData["high_conviction"][number] | OpportunityAlignmentData["medium_conviction"][number]) => void
+}
+
+function OpportunityAlignmentPanel({ data, onOpportunityClick }: OpportunityAlignmentPanelProps) {
+  if (!data) {
+    return null
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center space-x-2">
+          <Target className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Opportunity Alignment</h3>
+          <Badge variant="outline" className="text-xs">
+            {data.total_opportunities} tracked
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.high_conviction.slice(0, 3).map((opportunity) => (
+          <button
+            key={opportunity.opportunity}
+            type="button"
+            className="w-full rounded-lg border border-border bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
+            onClick={() => onOpportunityClick(opportunity)}
+          >
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold">{opportunity.opportunity}</span>
+              <Badge variant="default" className="text-[10px]">
+                {Math.round(opportunity.alignment_score * 100)}%
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{opportunity.thesis}</p>
+          </button>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface PeerIntelligencePanelProps {
+  data?: PeerIntelligenceData
+  onPeerActionClick: (action: string, context?: unknown) => void
+}
+
+function PeerIntelligencePanel({ data, onPeerActionClick }: PeerIntelligencePanelProps) {
+  if (!data) {
+    return null
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center space-x-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Peer Intelligence</h3>
+          <Badge variant="outline" className="text-xs">
+            {data.active_members_today} active
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {data.portfolio_moves.slice(0, 3).map((move) => (
+          <button
+            key={`${move.action}-${move.timeframe}`}
+            type="button"
+            className="w-full rounded-lg border border-border bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50"
+            onClick={() => onPeerActionClick("view_move", move)}
+          >
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold">{move.action}</span>
+              <Badge variant="outline" className="text-[10px]">
+                {move.timeframe}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{move.rationale}</p>
+          </button>
+        ))}
+        <Button variant="outline" size="sm" className="w-full" onClick={() => onPeerActionClick("view_whisper_network", data.whisper_network)}>
+          Open Peer Network Summary
+        </Button>
+      </CardContent>
+    </Card>
+  )
 }
 
 export function IntelligenceDashboard({ 
@@ -409,23 +546,26 @@ export function IntelligenceDashboard({
               )}
 
               {/* Crown Vault Assets Tags */}
-              <CrownVaultAssetsTags 
+              <CrownVaultAssetsPanel 
                 key="crown-vault-assets-overview"
+                data={crownVaultData}
                 onActionClick={(action, context) => handleIntelligenceAction(`crown_vault_${action}`, context)}
               />
 
               {/* Opportunity Alignment */}
               {intelligenceSummary.opportunities.available && (
-                <OpportunityAlignment 
+                <OpportunityAlignmentPanel 
                   key="opportunities-overview"
+                  data={opportunityData}
                   onOpportunityClick={(opportunity) => handleIntelligenceAction('opportunity_selected', opportunity)}
                 />
               )}
 
               {/* Peer Intelligence */}
               {intelligenceSummary.peer.available && (
-                <PeerIntelligence 
+                <PeerIntelligencePanel 
                   key="peer-overview"
+                  data={peerData}
                   onPeerActionClick={(action, context) => handleIntelligenceAction(`peer_${action}`, context)}
                 />
               )}
@@ -483,7 +623,8 @@ export function IntelligenceDashboard({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <CrownVaultAssetsTags 
+            <CrownVaultAssetsPanel 
+              data={crownVaultData}
               onActionClick={(action, context) => handleIntelligenceAction(`crown_vault_${action}`, context)}
             />
           </motion.div>
@@ -497,7 +638,8 @@ export function IntelligenceDashboard({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <OpportunityAlignment 
+            <OpportunityAlignmentPanel 
+              data={opportunityData}
               onOpportunityClick={(opportunity) => handleIntelligenceAction('opportunity_selected', opportunity)}
             />
           </motion.div>
@@ -511,7 +653,8 @@ export function IntelligenceDashboard({
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <PeerIntelligence 
+            <PeerIntelligencePanel 
+              data={peerData}
               onPeerActionClick={(action, context) => handleIntelligenceAction(`peer_${action}`, context)}
             />
           </motion.div>

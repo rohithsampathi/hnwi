@@ -12,14 +12,14 @@ interface TierPricingComparisonProps {
   currentTier: 'architect' | 'operator' | 'observer';
   sessionId: string;
   onArchitectSubmit: (email: string, whatsapp: string) => Promise<void>;
-  onPaymentSuccess: (tier: 'operator' | 'observer', userData?: any) => void;
+  onPayment: (tier: 'operator' | 'observer', userData?: any) => void;
 }
 
 export function TierPricingComparison({
   currentTier,
   sessionId,
   onArchitectSubmit,
-  onPaymentSuccess
+  onPayment
 }: TierPricingComparisonProps) {
   // Architect form state
   const [architectEmail, setArchitectEmail] = useState('');
@@ -60,7 +60,7 @@ export function TierPricingComparison({
         (verifyData) => {
           // Payment successful and verified
           setProcessingPaymentTier(null);
-          onPaymentSuccess(tier, verifyData);
+          onPayment(tier, verifyData);
         },
         (error) => {
           // Payment failed or cancelled

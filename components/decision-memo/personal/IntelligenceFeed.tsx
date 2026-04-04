@@ -1,10 +1,15 @@
 'use client';
 
 import { CheckCircle2 } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 export default function IntelligenceFeed() {
+  const castleBriefCount = useCastleBriefCount();
   const dataPoints = [
-    { label: 'Regulatory Developments', value: '1,875' },
+    {
+      label: 'Regulatory Developments',
+      value: castleBriefCount !== null ? castleBriefCount.toLocaleString() : 'Live',
+    },
     { label: 'Precedent Transactions', value: '238' },
     { label: 'Risk Indicators', value: '47' },
   ];

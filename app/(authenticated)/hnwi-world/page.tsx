@@ -15,7 +15,7 @@ export default function HNWIWorldPage() {
   useEffect(() => {
     async function fetchBriefCount() {
       try {
-        const response = await fetch('/api/developments/counts')
+        const response = await fetch('/api/castle-briefs/counts')
         if (response.ok) {
           const data = await response.json()
           const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs

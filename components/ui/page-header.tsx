@@ -56,7 +56,7 @@ export function PageHeader({
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-14 pb-0">
+    <div className="px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 lg:pt-14 pb-0">
       {config.showBackButton && (
         <div className="mb-6">
           <Button

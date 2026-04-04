@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/secure-logger'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
-import { secureApi } from '@/lib/secure-api'
+import { API_BASE_URL } from '@/config/api'
 import { CSRFProtection } from '@/lib/csrf-protection'
 
 async function handlePost(request: NextRequest) {
@@ -75,13 +75,43 @@ async function handlePost(request: NextRequest) {
     });
 
     try {
-      // Use secureApi to call backend
-      const backendResponse = await secureApi.post('/api/auth/forgot-password', { email: body.email }, false);
+      // Call FastAPI backend directly with absolute URL (not secureApi which uses relative URLs)
+      const backendUrl = `${API_BASE_URL}/api/auth/forgot-password`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const backendFetchResponse = await fetch(backendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: body.email }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const backendData = await backendFetchResponse.json();
 
       logger.info("Backend forgot password response received", {
         email: body.email,
-        success: backendResponse.success !== false
+        status: backendFetchResponse.status,
+        success: backendData.success !== false
       });
+
+      if (backendFetchResponse.status === 429) {
+        const response = NextResponse.json(
+          { success: false, error: 'Too many password reset attempts. Please wait before trying again.' },
+          { status: 429 }
+        );
+        response.headers.set('Retry-After', backendFetchResponse.headers.get('Retry-After') || '60');
+        return ApiAuth.addSecurityHeaders(response);
+      }
+
+      if (backendFetchResponse.status >= 500) {
+        const response = NextResponse.json(
+          { success: false, error: 'Password reset is temporarily unavailable. Please try again.' },
+          { status: 503 }
+        );
+        return ApiAuth.addSecurityHeaders(response);
+      }
 
       // Always return success to avoid email enumeration attacks
       const response = NextResponse.json({
@@ -91,19 +121,17 @@ async function handlePost(request: NextRequest) {
 
       response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
       return ApiAuth.addSecurityHeaders(response);
-      
+
     } catch (apiError) {
-      logger.warn("Backend forgot password request failed", { 
+      logger.warn("Backend forgot password request failed", {
         error: apiError instanceof Error ? apiError.message : String(apiError),
         email: body.email
       });
-      
-      // Still return success to avoid email enumeration
-      const response = NextResponse.json({
-        success: true,
-        message: "If an account with this email exists, you will receive a password reset link."
-      });
-      
+
+      const response = NextResponse.json(
+        { success: false, error: 'Password reset is temporarily unavailable. Please try again.' },
+        { status: 503 }
+      );
       return ApiAuth.addSecurityHeaders(response);
     }
     

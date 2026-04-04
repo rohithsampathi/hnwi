@@ -78,7 +78,11 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
         setDevelopments(data.developments)
         
         // Extract industries for the industry selector
-        const industries = [...new Set(data.developments.map((dev: any) => dev.industry).filter(Boolean))]
+        const industries = Array.from(new Set<string>(
+          data.developments
+            .map((dev: any) => dev.industry)
+            .filter((industry: unknown): industry is string => typeof industry === "string" && industry.length > 0)
+        ))
         setAvailableIndustries(industries)
       } else {
         setDevelopments([])
@@ -357,4 +361,3 @@ export function IndustryPulsePage({ onNavigate }: { onNavigate: (route: string) 
     </>
   )
 }
-

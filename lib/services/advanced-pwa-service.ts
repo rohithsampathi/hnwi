@@ -5,6 +5,7 @@ import { WebPermissionsService } from './web-permissions-service'
 import { WebShareService } from './web-share-service'
 import { BackgroundSyncService } from './background-sync-service'
 import { EnhancedCacheService } from './enhanced-cache-service'
+import { canUseServiceWorkerRuntime, isPwaEnabled } from '@/lib/platform/runtime-flags'
 
 export interface PWACapabilities {
   installable: boolean
@@ -32,6 +33,10 @@ export class AdvancedPWAService {
 
   // Initialize all advanced PWA services
   static async initialize(): Promise<PWACapabilities> {
+    if (typeof window === 'undefined' || !isPwaEnabled()) {
+      return this.getBasicCapabilities()
+    }
+
     try {
       // Initialize all services in parallel
       await Promise.all([
@@ -87,6 +92,10 @@ export class AdvancedPWAService {
 
   // Check if app is installable
   static isInstallable(): boolean {
+    if (!isPwaEnabled()) {
+      return false
+    }
+
     return this.installPrompt !== null || this.isStandalone()
   }
 
@@ -101,9 +110,13 @@ export class AdvancedPWAService {
 
   // Check if app has offline capability
   static async isOfflineCapable(): Promise<boolean> {
+    if (!isPwaEnabled()) {
+      return false
+    }
+
     try {
       const caches = await window.caches.keys()
-      return caches.length > 0 && 'serviceWorker' in navigator
+      return caches.length > 0 && canUseServiceWorkerRuntime()
     } catch {
       return false
     }
@@ -342,17 +355,19 @@ export class AdvancedPWAService {
     available: boolean
     version?: string
   }> {
+    if (!canUseServiceWorkerRuntime()) {
+      return { available: false }
+    }
+
     try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration()
+      const registration = await navigator.serviceWorker.getRegistration()
 
-        if (registration) {
-          await registration.update()
+      if (registration) {
+        await registration.update()
 
-          return {
-            available: !!registration.waiting,
-            version: 'latest'
-          }
+        return {
+          available: !!registration.waiting,
+          version: 'latest'
         }
       }
 
@@ -364,14 +379,16 @@ export class AdvancedPWAService {
 
   // Apply app update
   static async applyUpdate(): Promise<boolean> {
-    try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration()
+    if (!canUseServiceWorkerRuntime()) {
+      return false
+    }
 
-        if (registration?.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-          return true
-        }
+    try {
+      const registration = await navigator.serviceWorker.getRegistration()
+
+      if (registration?.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+        return true
       }
 
       return false

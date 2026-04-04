@@ -15,11 +15,12 @@ export function MapStyles({ theme }: MapStylesProps) {
         overflow: hidden !important;
       }
       .leaflet-tooltip-pane {
-        overflow: visible;
+        overflow: visible !important;
+        z-index: 45000 !important;
       }
-      /* Force Leaflet popup pane to high z-index to appear above Live Data button */
+      /* Keep hover summaries and detail popups above every map overlay/control layer */
       .leaflet-popup-pane {
-        z-index: 700 !important;
+        z-index: 46000 !important;
       }
       /* CRITICAL: Override Leaflet's default scroll blocking on popup content */
       .leaflet-popup-content {
@@ -282,7 +283,7 @@ export function MapStyles({ theme }: MapStylesProps) {
         padding: 10px 12px !important;
         max-width: 290px !important;
         width: 290px !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
         white-space: normal !important;
@@ -307,12 +308,33 @@ export function MapStyles({ theme }: MapStylesProps) {
         border-radius: 8px !important;
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 20px rgba(217, 70, 239, 0.1) !important;
         padding: 10px 12px !important;
-        max-width: 320px !important;
-        width: 320px !important;
-        overflow: hidden !important;
+        max-width: 300px !important;
+        width: min(300px, calc(100vw - 40px)) !important;
+        overflow: visible !important;
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
         white-space: normal !important;
+      }
+      .ai-crisis-tooltip .ai-tooltip-scroll {
+        max-height: min(240px, calc(100vh - 220px)) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding-right: 4px !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(232, 121, 249, 0.45) transparent;
+      }
+      .ai-crisis-tooltip .ai-tooltip-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .ai-crisis-tooltip .ai-tooltip-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .ai-crisis-tooltip .ai-tooltip-scroll::-webkit-scrollbar-thumb {
+        background: rgba(232, 121, 249, 0.45);
+        border-radius: 999px;
+      }
+      .ai-crisis-tooltip .ai-tooltip-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(232, 121, 249, 0.7);
       }
       .ai-crisis-tooltip.leaflet-tooltip-top::before {
         border-top-color: rgba(8, 12, 20, 0.96) !important;

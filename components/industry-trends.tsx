@@ -46,6 +46,12 @@ interface TimeSeriesResponse {
   end_date: string
 }
 
+interface IndustryTrendsProps {
+  timeRange?: string
+  selectedIndustry?: string | null
+  onBack?: () => void
+}
+
 // Import secure API for all backend requests
 import { secureApi } from "@/lib/secure-api"
 
@@ -126,8 +132,12 @@ function calculatePreviousCount(industry: Industry | null | undefined, timeRange
   return previousPeriodCount
 }
 
-export function IndustryTrends() {
-  const [timeRange, setTimeRange] = useState("1w")
+export function IndustryTrends({
+  timeRange: initialTimeRange = "1w",
+  selectedIndustry: initialSelectedIndustry = null,
+  onBack,
+}: IndustryTrendsProps = {}) {
+  const [timeRange, setTimeRange] = useState(initialTimeRange)
   const [industries, setIndustries] = useState<Industry[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
@@ -140,6 +150,21 @@ export function IndustryTrends() {
   const [cardPosition, setCardPosition] = useState({ x: 0, y: 0 })
   const chartRef = useRef<HTMLDivElement>(null)
   const [productClassifications, setProductClassifications] = useState<{ [key: string]: string[] }>({})
+
+  useEffect(() => {
+    setTimeRange(initialTimeRange)
+  }, [initialTimeRange])
+
+  useEffect(() => {
+    if (!initialSelectedIndustry) {
+      return
+    }
+
+    const matchedIndustry = industries.find((industry) => industry.industry === initialSelectedIndustry)
+    if (matchedIndustry && matchedIndustry.industry !== selectedIndustry?.industry) {
+      setSelectedIndustry(matchedIndustry)
+    }
+  }, [initialSelectedIndustry, industries, selectedIndustry?.industry])
 
   const fetchIndustryTrends = useCallback(async () => {
     setIsLoading(true)
@@ -192,8 +217,9 @@ export function IndustryTrends() {
       setSelectedProduct(null)
     } else {
       setSelectedIndustry(null)
+      onBack?.()
     }
-  }, [selectedProduct])
+  }, [onBack, selectedProduct])
 
   const handleSearch = useCallback((term: string) => {
     setSearchTerm(term)
@@ -344,7 +370,10 @@ export function IndustryTrends() {
       .append("circle")
       .attr("r", (d) => (d as any).r)
       .attr("fill", (d, i) => color(i.toString()))
-      .attr("stroke", (d, i) => d3.color(color(i.toString()))?.darker(0.5) as string)
+      .attr("stroke", (_d, i) => {
+        const bubbleColor = d3.color(color(i.toString()))
+        return bubbleColor ? bubbleColor.darker(0.5).formatHex() : color(i.toString())
+      })
       .attr("stroke-width", 2)
       .style("cursor", "pointer")
 
@@ -599,7 +628,12 @@ ${(d as any).value} development${(d as any).value !== 1 ? "s" : ""}`,
 
       renderBubbleChart(
         industryData,
-        (item) => handleIndustryClick(industries.find((i) => i.industry === item.id) || null),
+        (item) => {
+          const matchedIndustry = industries.find((industry) => industry.industry === item.id)
+          if (matchedIndustry) {
+            handleIndustryClick(matchedIndustry)
+          }
+        },
         radiusScale,
       )
     } else if (!selectedProduct) {
@@ -773,4 +807,3 @@ ${(d as any).value} development${(d as any).value !== 1 ? "s" : ""}`,
     </Card>
   )
 }
-

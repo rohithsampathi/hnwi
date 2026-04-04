@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { PublicThemeShell } from "@/components/public-theme-shell"
 import { ResetPasswordForm } from "@/components/reset-password-form"
 
 function ResetPasswordContent() {
@@ -7,8 +8,10 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <ResetPasswordContent />
-    </Suspense>
+    <PublicThemeShell>
+      <Suspense fallback={<div>Loading...</div>}>
+        <ResetPasswordContent />
+      </Suspense>
+    </PublicThemeShell>
   )
 }

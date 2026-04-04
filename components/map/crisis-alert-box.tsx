@@ -104,24 +104,24 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
             </span>
           </div>
 
-          {/* One-liner summary — always visible */}
-          <p style={{
-            fontSize: 11,
-            color: isDark ? "#A3A3A3" : "#666",
-            margin: "6px 0 0 18px",
-            lineHeight: 1.4,
-          }}>
-            {alert.body}
-          </p>
         </button>
 
-        {/* Expanded details */}
+        {/* Expanded: summary + details together */}
         {expanded && (
           <div
             style={{ padding: "10px 14px 14px", maxHeight: "40vh", overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}
             onTouchMove={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
           >
+            {/* Summary */}
+            <p style={{
+              fontSize: 11,
+              color: isDark ? "#A3A3A3" : "#666",
+              margin: "0 0 10px 0",
+              lineHeight: 1.4,
+            }}>
+              {alert.body}
+            </p>
             {/* Zone counts */}
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
               <ZoneChip color={colors.red.text} count={counts.red} label="Active Conflict" />

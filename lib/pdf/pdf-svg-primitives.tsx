@@ -147,9 +147,7 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
         x={String(cx)}
         y={String(cy + 2)}
         textAnchor="middle"
-        fontSize={size * 0.28}
-        fontFamily="Inter" fontWeight={700}
-        fill={darkTheme.textPrimary}
+        style={{ fontSize: size * 0.28, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
       >
         {String(Math.round(clampedScore))}
       </SvgText>
@@ -159,9 +157,7 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
           x={String(cx)}
           y={String(cy + size * 0.18)}
           textAnchor="middle"
-          fontSize={size * 0.1}
-          fontFamily="Inter" fontWeight={700}
-          fill={darkTheme.textMuted}
+          style={{ fontSize: size * 0.1, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textMuted }}
         >
           {label}
         </SvgText>
@@ -204,10 +200,10 @@ export const HorizontalBar: React.FC<HorizontalBarProps> = ({
       <Rect x="0" y={String(barH + gap)} width={String(width)} height={String(barH)} rx="2" fill={darkTheme.surfaceBg} />
       <Rect x="0" y={String(barH + gap)} width={String(Math.max(optimizedW, 2))} height={String(barH)} rx="2" fill={darkTheme.textFaint} />
       {/* Labels */}
-      <SvgText x={String(width + 4)} y={String(barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={colors.amber[500]}>
+      <SvgText x={String(width + 4)} y={String(barH - 1)} style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, fill: colors.amber[500] }}>
         {`${currentRate}%`}
       </SvgText>
-      <SvgText x={String(width + 4)} y={String(barH + gap + barH - 1)} fontSize="7" fontFamily="Inter" fontWeight={700} fill={darkTheme.textFaint}>
+      <SvgText x={String(width + 4)} y={String(barH + gap + barH - 1)} style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textFaint }}>
         {`${optimizedRate}%`}
       </SvgText>
     </Svg>
@@ -329,9 +325,7 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
         x={String(cx)}
         y={score !== undefined ? String(cy - 4) : String(cy + 4)}
         textAnchor="middle"
-        fontSize={fontSize}
-        fontFamily="Inter" fontWeight={700}
-        fill={t.primary}
+        style={{ fontSize, fontFamily: 'Inter', fontWeight: 700, fill: t.primary }}
       >
         {verdict.toUpperCase()}
       </SvgText>
@@ -341,9 +335,7 @@ export const VerdictStamp: React.FC<VerdictStampProps> = ({
           x={String(cx)}
           y={String(cy + size * 0.16)}
           textAnchor="middle"
-          fontSize={size * 0.2}
-          fontFamily="Inter" fontWeight={700}
-          fill={darkTheme.textPrimary}
+          style={{ fontSize: size * 0.2, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
         >
           {String(Math.round(score))}
         </SvgText>
@@ -397,9 +389,7 @@ export const RiskHeatBar: React.FC<RiskHeatBarProps> = ({
               x={String(rx + w / 2)}
               y={String(height + 11)}
               textAnchor="middle"
-              fontSize="7"
-              fontFamily="Inter" fontWeight={700}
-              fill={seg.color}
+              style={{ fontSize: 7, fontFamily: 'Inter', fontWeight: 700, fill: seg.color }}
             >
               {`${seg.count} ${seg.label}`}
             </SvgText>
@@ -438,7 +428,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
   return (
     <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
       {/* From label */}
-      <SvgText x="4" y={String(arrowY + 4)} fontSize="10" fontFamily="Inter" fontWeight={700} fill={darkTheme.textPrimary}>
+      <SvgText x="4" y={String(arrowY + 4)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}>
         {from}
       </SvgText>
       {/* Arrow line */}
@@ -462,9 +452,7 @@ export const FlowArrow: React.FC<FlowArrowProps> = ({
       <SvgText
         x={String(arrowEndX + 8)}
         y={String(arrowY + 4)}
-        fontSize="10"
-        fontFamily="Inter" fontWeight={700}
-        fill={darkTheme.textPrimary}
+        style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
       >
         {to}
       </SvgText>

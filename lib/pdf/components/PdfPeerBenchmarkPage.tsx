@@ -160,8 +160,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
   const primaryPattern = failurePatterns?.[0];
   const kgPattern = patternIntelligence?.primary_pattern;
 
-  const patternId = kgPattern?.pattern_id ||
-    (primaryPattern?.mode ? `FM_${primaryPattern.mode.slice(0, 3).toUpperCase()}` : null);
+  const patternId = kgPattern?.pattern_id || null;
   const patternName = kgPattern?.pattern_name ||
     primaryPattern?.nightmareName ||
     getPatternName(primaryPattern?.mode || '');
@@ -348,8 +347,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
                 color: darkTheme.textSecondary,
                 lineHeight: 1.6,
               }}>
-                <Text style={{ color: colors.amber[500] }}>Corridor-specific data pending. </Text>
-                {historicalOutcome?.note || 'Pattern analysis based on failure mode detection.'}
+                {historicalOutcome?.note || 'Native route pattern identified, but no direct failure-rate study is asserted for this corridor surface.'}
               </Text>
             </View>
           )}
@@ -489,7 +487,7 @@ export const PdfPeerBenchmarkPage: React.FC<PdfPeerBenchmarkPageProps> = ({
                   ...typography.small,
                   color: darkTheme.textSecondary,
                   flex: 1,
-                }} numberOfLines={1}>
+                }}>
                   {fp.nightmareName || getPatternName(fp.mode)}
                 </Text>
               </View>

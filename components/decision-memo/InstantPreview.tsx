@@ -48,11 +48,13 @@ export function InstantPreview({ previewData, onPaymentSuccess }: InstantPreview
     );
   }
 
-  const exposureColor = {
+  const exposureColorMap = {
     HIGH: 'red',
     MEDIUM: 'orange',
     LOW: 'green',
-  }[preview.exposure_class];
+  } as const;
+  const exposureColor =
+    exposureColorMap[preview.exposure_class as keyof typeof exposureColorMap] ?? 'amber';
 
   return (
     <div className="min-h-screen bg-background">

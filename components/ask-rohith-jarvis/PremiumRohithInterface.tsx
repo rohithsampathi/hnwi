@@ -6,7 +6,10 @@
 import { useRef, useEffect, useState } from 'react';
 import { useRohith } from '@/contexts/rohith-context';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, MessageSquare, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Send, Plus, MessageSquare, Trash2, ChevronRight, ChevronLeft, Share2, Check } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { secureApi } from '@/lib/secure-api';
+import { getConversationHistory } from '@/lib/rohith-api';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import PremiumLoader from './PremiumLoader';
@@ -18,6 +21,7 @@ import { CitationText } from '@/components/elite/citation-text';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { Citation } from '@/lib/parse-dev-citations';
+import type { KGIntelligenceSource, SourceDocument } from '@/types/rohith';
 
 interface PreloadedDevelopment {
   id: string;
@@ -37,6 +41,10 @@ interface PremiumRohithInterfaceProps {
   onNewChat?: () => void;
   showNewChatDialog?: boolean;
   onCloseNewChatDialog?: () => void;
+}
+
+function isKgIntelligenceSource(source: SourceDocument): source is KGIntelligenceSource {
+  return source.type === 'kg_intelligence';
 }
 
 /**
@@ -74,6 +82,8 @@ export default function PremiumRohithInterface({
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState('');
+  const [linkCopied, setLinkCopied] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Unified citation panel state — handles both DEVID and KG sources
   const [citationPanelOpen, setCitationPanelOpen] = useState(false);
@@ -264,6 +274,70 @@ export default function PremiumRohithInterface({
     }
   };
 
+  // Handle share conversation
+  const handleShareConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const conv = conversations.find(c => c.id === conversationId);
+
+      // Use current messages if active, otherwise fetch from API
+      let msgs = conversationId === activeConversationId ? currentMessages : [];
+      if (msgs.length === 0) {
+        const historyData = await getConversationHistory(conversationId);
+        if (historyData?.messages) {
+          msgs = historyData.messages;
+        }
+      }
+
+      const messagesWithDates = msgs.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp instanceof Date ? msg.timestamp : new Date(msg.timestamp)
+      }));
+
+      const conversationData = {
+        id: conversationId,
+        title: conv?.title || "Conversation",
+        userId: userContext?.userId || "anonymous",
+        createdAt: conv?.createdAt || new Date(),
+        updatedAt: conv?.updatedAt || new Date(),
+        messageCount: msgs.length,
+        isActive: true,
+        messages: messagesWithDates
+      };
+
+      const data = await secureApi.post("/api/conversations/share", {
+        conversationId,
+        userId: userContext?.userId || "anonymous",
+        conversationData
+      }, true);
+
+      if (!data.shareUrl) throw new Error("Invalid share response");
+
+      await navigator.clipboard.writeText(data.shareUrl);
+      setLinkCopied(conversationId);
+      setTimeout(() => setLinkCopied(null), 2000);
+
+      toast({
+        title: "Link copied!",
+        description: "The conversation link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "NotAllowedError") {
+        toast({
+          title: "Clipboard access denied",
+          description: "Please allow clipboard access to copy the share link.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to share",
+          description: "Could not create share link. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   return (
     <div className="flex h-full w-full bg-background relative">
       {/* Toggleable History Sidebar */}
@@ -338,12 +412,26 @@ export default function PremiumRohithInterface({
                               {conv.messageCount} messages
                             </p>
                           </div>
-                          <button
-                            onClick={(e) => handleDeleteConversation(conv.id, e)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-surface-hover rounded transition-all"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                          </button>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              onClick={(e) => handleShareConversation(conv.id, e)}
+                              className="p-1 hover:bg-surface-hover rounded transition-all"
+                              title="Share conversation"
+                            >
+                              {linkCopied === conv.id ? (
+                                <Check className="w-3.5 h-3.5 text-green-500" />
+                              ) : (
+                                <Share2 className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteConversation(conv.id, e)}
+                              className="p-1 hover:bg-surface-hover rounded transition-all"
+                              title="Delete conversation"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                            </button>
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -511,16 +599,18 @@ export default function PremiumRohithInterface({
 
                         {/* Inline Intelligence Cards - Rich Visual Display */}
                         {(() => {
-                          const hasIntelligence = message.context?.sourceDocuments && message.context.sourceDocuments.some(s => s.type === 'kg_intelligence' && s.intelligence);
-                          return hasIntelligence;
+                          const intelligenceSources = (message.context?.sourceDocuments ?? []).filter(
+                            (source): source is KGIntelligenceSource => isKgIntelligenceSource(source) && Boolean(source.intelligence)
+                          );
+                          return intelligenceSources.length > 0;
                         })() && (
                           <div className="mt-6">
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 font-mono">
                               Intelligence Analysis
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {message.context.sourceDocuments
-                                .filter(s => s.type === 'kg_intelligence' && s.intelligence)
+                              {(message.context?.sourceDocuments ?? [])
+                                .filter((source): source is KGIntelligenceSource => isKgIntelligenceSource(source) && Boolean(source.intelligence))
                                 .slice(0, 6)
                                 .map((source, idx) => {
                                   // Find the actual kgId from kgSources by matching properties

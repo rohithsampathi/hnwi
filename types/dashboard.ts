@@ -1,6 +1,8 @@
 // types/dashboard.ts
 // TypeScript interfaces for Elite Dashboard
 
+import type { CrownVaultAsset, CrownVaultStats } from "@/lib/api"
+
 export interface User {
   firstName?: string
   lastName?: string
@@ -21,31 +23,49 @@ export interface HomeDashboardEliteProps {
   hasCompletedAssessmentProp?: boolean
 }
 
-export interface IntelligenceData {
-  intelligence: {
-    opportunity_alignment?: {
-      data: any[]
-    }
-    crown_vault_impact?: {
-      data: {
-        immediate_threats?: any[]
-        peer_intelligence?: any
-        executive_summary?: string
-      }
-    }
-    peer_signals?: any
-    ruscha_intelligence?: {
-      data: string
-      confidence?: number
-      generated_at?: string
-    }
-    wealth_flow?: {
-      data: any
+export interface ApiEnvelope<T = any> {
+  success?: boolean
+  data?: T
+  message?: string
+  [key: string]: any
+}
+
+export interface IntelligencePayload {
+  opportunity_alignment?: {
+    data: any[]
+  }
+  crown_vault_impact?: {
+    data: {
+      immediate_threats?: any[]
+      peer_intelligence?: any
+      executive_summary?: string
     }
   }
+  peer_signals?: any
+  ruscha_intelligence?: {
+    data: string
+    confidence?: number
+    generated_at?: string
+  }
+  wealth_flow?: {
+    data: any
+  }
+  [key: string]: any
+}
+
+export interface IntelligenceData extends Partial<IntelligencePayload> {
+  intelligence?: ApiEnvelope<IntelligencePayload> | IntelligencePayload | null
   processing_metadata?: {
-    timestamp: string
-  }
+    timestamp?: string
+    [key: string]: any
+  } | null
+  dashboardSummary?: ApiEnvelope<any> | null
+  crownVaultData?: ApiEnvelope<any> | null
+  opportunitiesData?: ApiEnvelope<any> | null
+  realOpportunities?: any[]
+  realCrownVaultAssets?: CrownVaultAsset[]
+  realCrownVaultStats?: CrownVaultStats | null
+  [key: string]: any
 }
 
 export interface ProcessedIntelligenceData {
@@ -58,15 +78,18 @@ export interface ProcessedIntelligenceData {
   dashboardSummary?: any
 
   // Victor Opportunities Data (for Opportunities tab)
+  realOpportunities?: any[]
   victorOpportunities: any[]
   juicyOpportunities: any[]
   moderateOpportunities: any[]
   farFetchedOpportunities: any[]
 
   // Katherine Crown Vault Data (for Crown Vault Impact tab)
+  realCrownVaultAssets?: CrownVaultAsset[]
+  realCrownVaultStats?: CrownVaultStats | null
   crownVaultAnalysis: any
   crownVaultSummary: string
-  totalExposure: string
+  totalExposure: string | number
   impactedAssets: any[]
 
   // Intelligence Content Data (for Overview and display)

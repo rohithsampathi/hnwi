@@ -174,7 +174,6 @@ export default function WarRoomMap({
   audits,
   onAuditClick
 }: WarRoomMapProps) {
-  const [globeInstance, setGlobeInstance] = useState<GlobeMethods>();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [hoveredAudit, setHoveredAudit] = useState<string | null>(null);
   const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null);
@@ -193,8 +192,24 @@ export default function WarRoomMap({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
+  type ArcDatum = {
+    startLat: number;
+    startLng: number;
+    endLat: number;
+    endLng: number;
+    color: string;
+    audit: Audit;
+  };
+
+  type LabelDatum = {
+    lat: number;
+    lng: number;
+    audit: Audit;
+    color: string;
+  };
+
   // Convert audits to arc data (routes between countries)
-  const arcsData = useMemo(() => {
+  const arcsData = useMemo<ArcDatum[]>(() => {
     return audits.map(audit => {
       const sourceCoords = findCoords(audit.source_country) || findCoords(audit.source_jurisdiction);
       const destCoords = findCoords(audit.destination_country) || findCoords(audit.destination_jurisdiction);
@@ -211,14 +226,12 @@ export default function WarRoomMap({
         color: getVerdictColor(audit.verdict),
         audit,
       };
-    }).filter(Boolean);
+    }).filter((arc): arc is ArcDatum => arc !== null);
   }, [audits]);
 
   // Labels data for audit cards (positioned at midpoint of route)
-  const labelsData = useMemo(() => {
+  const labelsData = useMemo<LabelDatum[]>(() => {
     return arcsData.map(arc => {
-      if (!arc) return null;
-
       // Calculate midpoint
       const midLat = (arc.startLat + arc.endLat) / 2;
       const midLng = (arc.startLng + arc.endLng) / 2;
@@ -229,13 +242,12 @@ export default function WarRoomMap({
         audit: arc.audit,
         color: arc.color,
       };
-    }).filter(Boolean);
+    });
   }, [arcsData]);
 
   return (
     <div className="relative w-full h-full">
       <Globe
-        ref={setGlobeInstance}
         width={dimensions.width}
         height={dimensions.height}
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"

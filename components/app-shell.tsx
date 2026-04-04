@@ -435,3 +435,7 @@ export function AppShell() {
 }
 
 export default AppShell
+// LEGACY APP SHELL STACK
+// This file belongs to the pre-App Router navigation/auth architecture.
+// The live application now enters through `app/` route layouts instead.
+// Keep this file only as a legacy reference until the old stack is archived.

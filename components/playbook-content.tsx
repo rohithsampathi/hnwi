@@ -46,12 +46,27 @@ interface PlaybookContentProps {
   analysisResult?: any // Add analysisResult prop
 }
 
+interface AnalysisSourceMetadata {
+  url: string
+  title: string
+}
+
+interface AnalysisSourceResult {
+  metadata: AnalysisSourceMetadata
+}
+
+interface AnalysisResult {
+  supporting_data?: {
+    vector_results?: AnalysisSourceResult[]
+  }
+}
+
 const getSourceIndices = (content: string, url: string, analysisResult: any) => {
   // Assuming analysisResult is available in the component's props
-  return (analysisResult?.supporting_data?.vector_results || [])
-    .map((result, index) => ({ index: index + 1, url: result.metadata.url }))
-    .filter((source) => source.url === url)
-    .map((source) => source.index)
+  return ((analysisResult as AnalysisResult | undefined)?.supporting_data?.vector_results || [])
+    .map((result: AnalysisSourceResult, index: number) => ({ index: index + 1, url: result.metadata.url }))
+    .filter((source: { index: number; url: string }) => source.url === url)
+    .map((source: { index: number; url: string }) => source.index)
 }
 
 const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; level: number; isFirst?: boolean }> = ({
@@ -374,6 +389,7 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
 
 export function PlaybookContent({ section, industry, analysisResult }: PlaybookContentProps) {
   const { theme } = useTheme()
+  const typedAnalysisResult = analysisResult as AnalysisResult | undefined
 
   // Filter out empty elements
   const nonEmptyElements = section.elements.filter(
@@ -396,11 +412,11 @@ export function PlaybookContent({ section, industry, analysisResult }: PlaybookC
               <React.Fragment key={elementIndex}>{renderElement(element, theme, 0, industry)}</React.Fragment>
             ))}
           </div>
-          {analysisResult && analysisResult.supporting_data && analysisResult.supporting_data.vector_results && (
+          {typedAnalysisResult?.supporting_data?.vector_results && (
             <div className="mt-6">
               <h3 className="text-xl font-bold mb-2">Sources</h3>
               <ol className="list-decimal list-inside space-y-2">
-                {analysisResult.supporting_data.vector_results.map((source, index) => (
+                {typedAnalysisResult.supporting_data.vector_results.map((source: AnalysisSourceResult, index: number) => (
                   <li key={index} className="text-sm">
                     <a
                       href={source.metadata.url}
@@ -423,4 +439,3 @@ export function PlaybookContent({ section, industry, analysisResult }: PlaybookC
 
 // Placeholder for formatAnalysis function.  Replace with your actual implementation.
 const formatAnalysis = (content: string) => ({ summary: content })
-

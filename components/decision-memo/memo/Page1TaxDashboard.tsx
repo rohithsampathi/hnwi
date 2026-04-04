@@ -5,28 +5,38 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
 
 interface ExecutionStep {
-  order: number;
-  action: string;
-  owner: string;
+  order?: number;
+  step?: number;
+  action?: string;
+  title?: string;
+  owner?: string;
   timeline?: string;
   whyThisOrder?: string;
+  description?: string;
 }
 
 interface TaxRates {
-  income_tax: number;
-  cgt: number;
-  wealth_tax: number;
-  estate_tax: number;
+  income_tax?: number;
+  capital_gains?: number;
+  cgt?: number;
+  wealth_tax?: number;
+  estate_tax?: number;
 }
 
 interface TaxDifferential {
-  source: TaxRates;
-  destination: TaxRates;
+  source?: TaxRates;
+  destination?: TaxRates;
+  savings?: string;
   income_tax_differential_pct?: number;
   cgt_differential_pct?: number;
   estate_tax_differential_pct?: number;
@@ -48,8 +58,8 @@ interface ValueCreation {
 }
 
 interface Page1Props {
-  totalSavings: string;
-  exposureClass: string;
+  totalSavings?: string;
+  exposureClass?: string;
   sourceJurisdiction?: string;      // Country level - e.g., "India"
   destinationJurisdiction?: string; // Country level - e.g., "UAE"
   sourceCity?: string;              // City level - e.g., "Pune"
@@ -62,6 +72,7 @@ interface Page1Props {
   valueCreation?: ValueCreation;    // Detailed value creation breakdown
   // Section visibility control for flexible layout
   sections?: ('tax' | 'implementation' | 'all')[];
+  showTaxSavings?: boolean;
 }
 
 // Animated counter component for dramatic number reveals
@@ -78,32 +89,13 @@ function AnimatedCounter({
   suffix?: string;
   decimals?: number;
 }) {
-  const [count, setCount] = useState(0);
+  const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  useEffect(() => {
-    if (!isInView) return;
-
-    let startTime: number;
-    let animationFrame: number;
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-
-      // Easing function for smooth deceleration
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      setCount(end * easeOutQuart);
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      }
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [end, duration, isInView]);
+  const isInView = useReportInView(ref, { once: true, margin: "-100px" });
+  const count = useAnimatedMetric(end, {
+    duration,
+    enabled: motionEnabled && isInView,
+  });
 
   return (
     <span ref={ref}>
@@ -126,9 +118,10 @@ export function Page1TaxDashboard({
   valueCreation,
   sections = ['all']
 }: Page1Props) {
-  const [isVisible, setIsVisible] = useState(false);
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(sectionRef, { once: true, margin: "-50px" });
 
   // Section visibility helpers
   const showTax = sections.includes('all') || sections.includes('tax');
@@ -143,12 +136,14 @@ export function Page1TaxDashboard({
   const defaultTaxRates: TaxRates = { income_tax: 0, cgt: 0, wealth_tax: 0, estate_tax: 0 };
   const sourceTaxes = taxDifferential?.source || sourceTaxRates || defaultTaxRates;
   const destTaxes = taxDifferential?.destination || destinationTaxRates || defaultTaxRates;
+  const sourceCgt = sourceTaxes.cgt ?? sourceTaxes.capital_gains ?? 0;
+  const destinationCgt = destTaxes.cgt ?? destTaxes.capital_gains ?? 0;
 
   // Calculate individual tax differentials (positive = savings)
-  const incomeDiff = sourceTaxes.income_tax - destTaxes.income_tax;
-  const cgtDiff = sourceTaxes.cgt - destTaxes.cgt;
-  const estateDiff = sourceTaxes.estate_tax - destTaxes.estate_tax;
-  const wealthDiff = sourceTaxes.wealth_tax - destTaxes.wealth_tax;
+  const incomeDiff = (sourceTaxes.income_tax ?? 0) - (destTaxes.income_tax ?? 0);
+  const cgtDiff = sourceCgt - destinationCgt;
+  const estateDiff = (sourceTaxes.estate_tax ?? 0) - (destTaxes.estate_tax ?? 0);
+  const wealthDiff = (sourceTaxes.wealth_tax ?? 0) - (destTaxes.wealth_tax ?? 0);
 
   // Format display labels: "Pune, India" or just "India" if no city
   const formatJurisdictionLabel = (city?: string, country?: string): string => {
@@ -169,18 +164,18 @@ export function Page1TaxDashboard({
     source: {
       jurisdiction: sourceJurisdiction,
       displayLabel: sourceDisplayLabel,
-      income_tax: sourceTaxes.income_tax,
-      cgt: sourceTaxes.cgt,
-      wealth_tax: sourceTaxes.wealth_tax,
-      estate_tax: sourceTaxes.estate_tax
+      income_tax: sourceTaxes.income_tax ?? 0,
+      cgt: sourceCgt,
+      wealth_tax: sourceTaxes.wealth_tax ?? 0,
+      estate_tax: sourceTaxes.estate_tax ?? 0
     },
     destination: {
       jurisdiction: destinationJurisdiction,
       displayLabel: destDisplayLabel,
-      income_tax: destTaxes.income_tax,
-      cgt: destTaxes.cgt,
-      wealth_tax: destTaxes.wealth_tax,
-      estate_tax: destTaxes.estate_tax
+      income_tax: destTaxes.income_tax ?? 0,
+      cgt: destinationCgt,
+      wealth_tax: destTaxes.wealth_tax ?? 0,
+      estate_tax: destTaxes.estate_tax ?? 0
     },
     differentials: {
       income_tax: incomeDiff,
@@ -197,6 +192,7 @@ export function Page1TaxDashboard({
   // When not relocating, show the differential but explain it's not capturable
   const isRelocating = taxDifferential?.is_relocating ?? true;
   const capturableDiff = taxDifferential?.cumulative_tax_capturable_pct ?? totalTaxDiff;
+  const noRelocationTaxCredit = !isRelocating || taxDifferential?.cumulative_impact === 'none_without_relocation';
   const cumulativeImpactLabel = taxDifferential?.cumulative_impact_label;
   const taxSavingsNote = taxDifferential?.tax_savings_note;
 
@@ -221,9 +217,12 @@ export function Page1TaxDashboard({
         const colorIntensity = ['bg-primary', 'bg-primary/80', 'bg-primary/60', 'bg-primary/50'];
 
         return {
-          id: step.order,
-          name: step.action.length > 25 ? step.action.slice(0, 22) + '...' : step.action,
-          description: step.whyThisOrder || step.action,
+          id: step.order ?? step.step ?? idx + 1,
+          name: (() => {
+            const stepLabel = step.action || step.title || `Step ${idx + 1}`;
+            return stepLabel.length > 25 ? stepLabel.slice(0, 22) + '...' : stepLabel;
+          })(),
+          description: step.whyThisOrder || step.description || step.action || step.title || `Step ${idx + 1}`,
           start,
           duration,
           color: colorIntensity[idx] || 'bg-primary/40',
@@ -241,41 +240,42 @@ export function Page1TaxDashboard({
       {/* Tax Sections */}
       {showTax && (
         <>
-          {/* Section Title */}
-          <motion.div
-            className="mb-8 sm:mb-12"
-            initial={{ opacity: 0, y: 12 }}
-            animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
-          >
-            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
-              Jurisdiction Intelligence
-            </p>
-            <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
-              Tax Jurisdiction Analysis
-            </h2>
-            <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mt-6" />
-          </motion.div>
+          <div data-print-block="keep" data-print-max-height="1040">
+            {/* Section Title */}
+            <motion.div
+              className="mb-8 sm:mb-12"
+              initial={{ opacity: 0, y: 12 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+            >
+              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+                Jurisdiction Intelligence
+              </p>
+              <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
+                Tax Jurisdiction Analysis
+              </h2>
+              <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mt-6" />
+            </motion.div>
 
-          {/* Tax Transformation Hero */}
-          <motion.div
-            className="mb-10 sm:mb-16"
-            initial={{ opacity: 0, y: 12 }}
-            animate={isVisible ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
-          >
-            <div className="relative rounded-2xl border border-border/30 overflow-hidden">
-              {/* Ambient glow */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+            {/* Tax Transformation Hero */}
+            <motion.div
+              className="mb-10 sm:mb-16"
+              initial={{ opacity: 0, y: 12 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
+            >
+              <div className="relative rounded-2xl border border-border/30 overflow-hidden">
+                {/* Ambient glow */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-              <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
-                {/* Header */}
-                <div className="text-center mb-8 sm:mb-12">
-                  <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
-                    Tax Rate Comparison by Category
-                  </p>
-                  <div className="w-12 sm:w-16 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mx-auto" />
-                </div>
+                <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                  {/* Header */}
+                  <div className="text-center mb-8 sm:mb-12">
+                    <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
+                      Tax Rate Comparison by Category
+                    </p>
+                    <div className="w-12 sm:w-16 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mx-auto" />
+                  </div>
 
                 {/* Total Tax Differential Hero */}
                 <motion.div
@@ -288,7 +288,7 @@ export function Page1TaxDashboard({
                     Cumulative Tax Impact
                   </p>
                   <div className={`inline-flex flex-col items-center gap-3 px-8 py-6 rounded-xl border ${
-                    !isRelocating
+                    noRelocationTaxCredit
                       ? 'border-amber-500/20 bg-amber-500/[0.03]'
                       : capturableDiff > 0
                         ? 'border-emerald-500/20 bg-emerald-500/[0.03]'
@@ -298,7 +298,7 @@ export function Page1TaxDashboard({
                   }`}>
                     <div className="flex items-center gap-4">
                       <span className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tabular-nums tracking-tight ${
-                        !isRelocating
+                        noRelocationTaxCredit
                           ? 'text-amber-500'
                           : capturableDiff > 0
                             ? 'text-emerald-500'
@@ -307,21 +307,16 @@ export function Page1TaxDashboard({
                               : 'text-muted-foreground'
                       }`}>
                         {/* Show actual differential for comparison, but highlight capturable amount */}
-                        {!isRelocating ? (
-                          <>
-                            <span className="text-xl sm:text-2xl lg:text-3xl line-through opacity-30 mr-2 tracking-tight">
-                              {totalTaxDiff > 0 ? '+' : ''}{totalTaxDiff.toFixed(0)}%
-                            </span>
-                            <span>0%</span>
-                          </>
+                        {noRelocationTaxCredit ? (
+                          <>N/A</>
                         ) : (
                           <>{capturableDiff > 0 ? '+' : ''}{capturableDiff.toFixed(0)}%</>
                         )}
                       </span>
                       <div className="text-left">
                         <p className="text-sm sm:text-base font-normal text-foreground">
-                          {!isRelocating
-                            ? 'Not Capturable'
+                          {noRelocationTaxCredit
+                            ? 'No Tax Arbitrage Claimed'
                             : capturableDiff > 0
                               ? 'Total Tax Savings'
                               : capturableDiff < 0
@@ -333,7 +328,6 @@ export function Page1TaxDashboard({
                         </p>
                       </div>
                     </div>
-                    {/* SOTA: US Worldwide Taxation Label */}
                     {cumulativeImpactLabel && (
                       <div className="mt-2 px-4 py-2 rounded-lg border border-amber-500/20">
                         <p className="text-xs font-medium text-amber-500/80">
@@ -565,9 +559,10 @@ export function Page1TaxDashboard({
                     ))}
                   </div>
                 </div>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
         </>
       )}

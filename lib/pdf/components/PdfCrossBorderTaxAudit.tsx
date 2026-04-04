@@ -16,7 +16,7 @@
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { Svg, Rect, Text as SvgText } from '@react-pdf/renderer';
+import { Svg, Rect } from '@react-pdf/renderer';
 import { darkTheme, colors, typography, spacing, formatCurrency } from '../pdf-styles';
 import { PdfSectionHeader } from './primitives/PdfSectionHeader';
 import { PdfCard } from './primitives/PdfCard';
@@ -28,61 +28,75 @@ import { PdfBadge } from './primitives/PdfBadge';
 // ---------------------------------------------------------------------------
 
 interface AcquisitionAudit {
-  property_value: number;
-  bsd_stamp_duty: number;
-  absd_additional_stamp_duty: number;
-  total_stamp_duties: number;
-  total_acquisition_cost: number;
-  day_one_loss_pct: number;
+  property_value?: number;
+  bsd_stamp_duty?: number;
+  absd_additional_stamp_duty?: number;
+  total_stamp_duties?: number;
+  total_acquisition_cost?: number;
+  day_one_loss_pct?: number;
   fta_benefit_applied?: boolean;
   buyer_category?: string;
 }
 
 interface RentalIncomeAudit {
-  destination_tax_rate_pct: number;
-  source_tax_rate_pct: number;
-  ftc_available: boolean;
-  net_tax_rate_pct: number;
-  tax_savings_pct: number;
-  explanation: string;
+  destination_tax_rate_pct?: number;
+  source_tax_rate_pct?: number;
+  destination_rate?: number;
+  source_rate?: number;
+  ftc_available?: boolean;
+  net_tax_rate_pct?: number;
+  net_rate?: number;
+  tax_savings_pct?: number;
+  savings_pct?: number;
+  explanation?: string;
 }
 
 interface CapitalGainsAudit {
-  destination_cgt_pct: number;
-  source_cgt_pct: number;
-  ftc_available: boolean;
-  net_cgt_rate_pct: number;
-  tax_savings_pct: number;
-  explanation: string;
+  destination_cgt_pct?: number;
+  source_cgt_pct?: number;
+  destination_rate?: number;
+  source_rate?: number;
+  ftc_available?: boolean;
+  net_cgt_rate_pct?: number;
+  net_rate?: number;
+  tax_savings_pct?: number;
+  savings_pct?: number;
+  explanation?: string;
 }
 
 interface EstateTaxAudit {
-  destination_estate_pct: number;
-  source_estate_pct: number;
-  worldwide_applies: boolean;
-  net_estate_rate_pct: number;
-  tax_savings_pct: number;
-  explanation: string;
+  destination_estate_pct?: number;
+  source_estate_pct?: number;
+  destination_rate?: number;
+  source_rate?: number;
+  worldwide_applies?: boolean;
+  net_estate_rate_pct?: number;
+  net_rate?: number;
+  tax_savings_pct?: number;
+  savings_pct?: number;
+  explanation?: string;
 }
 
 interface NetYieldAudit {
-  gross_yield_pct: number;
-  tax_rate_applied_pct: number;
-  net_yield_pct: number;
-  annual_gross_income: number;
-  annual_tax_paid: number;
-  annual_net_income: number;
-  explanation: string;
+  gross_yield_pct?: number;
+  tax_rate_applied_pct?: number;
+  effective_tax_rate_pct?: number;
+  net_yield_pct?: number;
+  annual_gross_income?: number;
+  annual_tax_paid?: number;
+  annual_tax?: number;
+  annual_net_income?: number;
+  explanation?: string;
 }
 
 interface CrossBorderAuditData {
-  executive_summary: string;
+  executive_summary?: string;
   acquisition_audit?: AcquisitionAudit;
   rental_income_audit?: RentalIncomeAudit;
   capital_gains_audit?: CapitalGainsAudit;
   estate_tax_audit?: EstateTaxAudit;
   net_yield_audit?: NetYieldAudit;
-  total_tax_savings_pct: number;
+  total_tax_savings_pct?: number;
   compliance_flags?: string[];
   warnings?: string[];
 }
@@ -347,7 +361,8 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
   const hasComplianceFlags =
     audit.compliance_flags && audit.compliance_flags.length > 0;
   const hasWarnings = audit.warnings && audit.warnings.length > 0;
-  const isZeroSavings = audit.total_tax_savings_pct === 0;
+  const totalTaxSavingsPct = audit.total_tax_savings_pct ?? 0;
+  const isZeroSavings = totalTaxSavingsPct === 0;
 
   // Build the top-level metric grid items
   const topMetrics: Array<{
@@ -357,20 +372,21 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
   }> = [
     {
       label: 'Tax Savings',
-      value: `${audit.total_tax_savings_pct.toFixed(1)}%`,
+      value: `${totalTaxSavingsPct.toFixed(1)}%`,
       color: isZeroSavings ? colors.red[700] : colors.amber[500],
     },
   ];
 
   if (audit.acquisition_audit) {
+    const acquisitionAudit = audit.acquisition_audit;
     topMetrics.push({
       label: 'Day-One Loss',
-      value: `${audit.acquisition_audit.day_one_loss_pct.toFixed(2)}%`,
+      value: `${(acquisitionAudit.day_one_loss_pct ?? 0).toFixed(2)}%`,
       color: colors.red[700],
     });
     topMetrics.push({
       label: 'Total Acquisition Cost',
-      value: formatCurrency(audit.acquisition_audit.total_acquisition_cost),
+      value: formatCurrency(acquisitionAudit.total_acquisition_cost ?? 0),
       color: colors.amber[500],
     });
   }
@@ -382,12 +398,12 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     const r = audit.rental_income_audit;
     taxCards.push({
       title: 'Rental Income Tax',
-      destRate: r.destination_tax_rate_pct,
-      sourceRate: r.source_tax_rate_pct,
-      netRate: r.net_tax_rate_pct,
-      ftcAvailable: r.ftc_available,
-      savingsPct: r.tax_savings_pct,
-      explanation: r.explanation,
+      destRate: r.destination_tax_rate_pct ?? r.destination_rate ?? 0,
+      sourceRate: r.source_tax_rate_pct ?? r.source_rate ?? 0,
+      netRate: r.net_tax_rate_pct ?? r.net_rate ?? 0,
+      ftcAvailable: Boolean(r.ftc_available),
+      savingsPct: r.tax_savings_pct ?? r.savings_pct ?? 0,
+      explanation: r.explanation || 'Tax treatment analysis unavailable.',
     });
   }
 
@@ -395,12 +411,12 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     const c = audit.capital_gains_audit;
     taxCards.push({
       title: 'Capital Gains Tax',
-      destRate: c.destination_cgt_pct,
-      sourceRate: c.source_cgt_pct,
-      netRate: c.net_cgt_rate_pct,
-      ftcAvailable: c.ftc_available,
-      savingsPct: c.tax_savings_pct,
-      explanation: c.explanation,
+      destRate: c.destination_cgt_pct ?? c.destination_rate ?? 0,
+      sourceRate: c.source_cgt_pct ?? c.source_rate ?? 0,
+      netRate: c.net_cgt_rate_pct ?? c.net_rate ?? 0,
+      ftcAvailable: Boolean(c.ftc_available),
+      savingsPct: c.tax_savings_pct ?? c.savings_pct ?? 0,
+      explanation: c.explanation || 'Capital gains analysis unavailable.',
     });
   }
 
@@ -408,12 +424,12 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
     const e = audit.estate_tax_audit;
     taxCards.push({
       title: 'Estate Tax',
-      destRate: e.destination_estate_pct,
-      sourceRate: e.source_estate_pct,
-      netRate: e.net_estate_rate_pct,
+      destRate: e.destination_estate_pct ?? e.destination_rate ?? 0,
+      sourceRate: e.source_estate_pct ?? e.source_rate ?? 0,
+      netRate: e.net_estate_rate_pct ?? e.net_rate ?? 0,
       ftcAvailable: !e.worldwide_applies,
-      savingsPct: e.tax_savings_pct,
-      explanation: e.explanation,
+      savingsPct: e.tax_savings_pct ?? e.savings_pct ?? 0,
+      explanation: e.explanation || 'Estate tax analysis unavailable.',
     });
   }
 
@@ -431,7 +447,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
             lineHeight: 1.65,
           }}
         >
-          {audit.executive_summary}
+          {audit.executive_summary || 'Cross-border tax analysis available, but the summary payload is incomplete.'}
         </Text>
       </PdfCard>
 
@@ -527,22 +543,22 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
               {[
                 {
                   label: 'Property Value',
-                  value: formatCurrency(audit.acquisition_audit.property_value),
+                  value: formatCurrency(audit.acquisition_audit.property_value ?? 0),
                   color: darkTheme.textPrimary,
                 },
                 {
                   label: 'BSD Stamp Duty',
-                  value: formatCurrency(audit.acquisition_audit.bsd_stamp_duty),
+                  value: formatCurrency(audit.acquisition_audit.bsd_stamp_duty ?? 0),
                   color: colors.amber[500],
                 },
                 {
                   label: 'ABSD (Foreign)',
-                  value: formatCurrency(audit.acquisition_audit.absd_additional_stamp_duty),
+                  value: formatCurrency(audit.acquisition_audit.absd_additional_stamp_duty ?? 0),
                   color: colors.red[700],
                 },
                 {
                   label: 'Total Acquisition',
-                  value: formatCurrency(audit.acquisition_audit.total_acquisition_cost),
+                  value: formatCurrency(audit.acquisition_audit.total_acquisition_cost ?? 0),
                   color: colors.amber[500],
                 },
               ].map((item, idx) => (
@@ -624,7 +640,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   color: colors.red[700],
                 }}
               >
-                {audit.acquisition_audit.day_one_loss_pct.toFixed(2)}%
+                {(audit.acquisition_audit.day_one_loss_pct ?? 0).toFixed(2)}%
               </Text>
             </View>
 
@@ -729,17 +745,17 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
               {[
                 {
                   label: 'Gross Yield',
-                  value: `${Number(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%`,
+                  value: `${Number(audit.net_yield_audit.gross_yield_pct ?? 0).toFixed(2)}%`,
                   color: darkTheme.textPrimary,
                 },
                 {
                   label: 'Tax Rate',
-                  value: `${Number(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%`,
+                  value: `${Number(audit.net_yield_audit.tax_rate_applied_pct ?? audit.net_yield_audit.effective_tax_rate_pct ?? 0).toFixed(2)}%`,
                   color: darkTheme.textSecondary,
                 },
                 {
                   label: 'Net Yield',
-                  value: `${audit.net_yield_audit.net_yield_pct.toFixed(2)}%`,
+                  value: `${Number(audit.net_yield_audit.net_yield_pct ?? 0).toFixed(2)}%`,
                   color: colors.amber[500],
                 },
               ].map((item, idx) => (
@@ -795,7 +811,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                     color: darkTheme.textPrimary,
                   }}
                 >
-                  {formatCurrency(audit.net_yield_audit.annual_gross_income)}
+                  {formatCurrency(audit.net_yield_audit.annual_gross_income ?? 0)}
                 </Text>
               </View>
 
@@ -816,7 +832,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                     color: colors.red[700],
                   }}
                 >
-                  -{formatCurrency(audit.net_yield_audit.annual_tax_paid)}
+                  -{formatCurrency(audit.net_yield_audit.annual_tax_paid ?? audit.net_yield_audit.annual_tax ?? 0)}
                 </Text>
               </View>
 
@@ -851,7 +867,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                     color: colors.amber[500],
                   }}
                 >
-                  {formatCurrency(audit.net_yield_audit.annual_net_income)}
+                  {formatCurrency(audit.net_yield_audit.annual_net_income ?? 0)}
                 </Text>
               </View>
             </View>
@@ -864,7 +880,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                 lineHeight: 1.5,
               }}
             >
-              {audit.net_yield_audit.explanation}
+              {audit.net_yield_audit.explanation || 'Net yield analysis unavailable.'}
             </Text>
           </PdfCard>
         </View>

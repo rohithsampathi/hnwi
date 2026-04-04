@@ -73,7 +73,7 @@ export const PdfRealAssetAuditSection: React.FC<PdfRealAssetAuditSectionProps> =
               </View>
 
               <PdfRealAssetStampDuty stampDuty={auditData.stamp_duty} transactionValue={transactionValue} />
-              <PdfRealAssetLoopholes strategies={auditData.loophole_strategies} />
+              <PdfRealAssetLoopholes strategies={auditData.loophole_strategies || []} />
               <PdfRealAssetTrusts auditData={auditData} />
             </View>
           );

@@ -1,4 +1,7 @@
-// components/app-root.tsx - World-Class App Root with Centralized State
+// LEGACY APP SHELL STACK
+// This file belongs to the pre-App Router navigation/auth architecture.
+// The live application now enters through `app/` route layouts instead.
+// Keep this file only as a legacy reference until the old stack is archived.
 
 "use client"
 

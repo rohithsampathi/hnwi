@@ -5,7 +5,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   CheckCircle,
   XCircle,
@@ -19,6 +19,11 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
 
 type StringOrObject = string | Record<string, unknown>;
 
@@ -42,13 +47,13 @@ function toDisplayString(item: StringOrObject): string {
 }
 
 interface Structure {
-  name: string;
-  type: string;
-  verdict: string;
-  net_benefit_10yr: number;
-  tax_savings_pct: number;
-  viable: boolean;
-  warnings: StringOrObject[];
+  name?: string;
+  type?: string;
+  verdict?: string;
+  net_benefit_10yr?: number;
+  tax_savings_pct?: number;
+  viable?: boolean;
+  warnings?: StringOrObject[];
   setup_cost?: number;
   annual_cost?: number;
   rental_income_rate?: number;
@@ -60,14 +65,14 @@ interface Structure {
 
 interface StructureComparisonMatrixProps {
   structureOptimization: {
-    verdict: string;
-    verdict_reason: string;
+    verdict?: string;
+    verdict_reason?: string;
     optimal_structure?: {
-      name: string;
-      type: string;
-      net_benefit_10yr: number;
-      tax_savings_pct: number;
-      warnings: StringOrObject[];
+      name?: string;
+      type?: string;
+      net_benefit_10yr?: number;
+      tax_savings_pct?: number;
+      warnings?: StringOrObject[];
       setup_cost?: number;
       annual_cost?: number;
       rental_income_rate?: number;
@@ -77,12 +82,12 @@ interface StructureComparisonMatrixProps {
       is_nra?: boolean;
       anti_avoidance_flags?: string[];
     };
-    structures_analyzed: Structure[];
-    alternative_corridors: StringOrObject[];
-    alternative_strategies: StringOrObject[];
+    structures_analyzed?: Structure[];
+    alternative_corridors?: StringOrObject[];
+    alternative_strategies?: StringOrObject[];
   };
-  sourceJurisdiction: string;
-  destinationJurisdiction: string;
+  sourceJurisdiction?: string;
+  destinationJurisdiction?: string;
 }
 
 // Format benefit for display
@@ -110,23 +115,13 @@ function formatRate(value?: number): string {
 
 // Animated counter
 function AnimatedBenefit({ value }: { value: number }) {
+  const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    let start: number;
-    const duration = 1400;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      setDisplay(value * eased);
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [value, isInView]);
+  const isInView = useReportInView(ref, { once: true });
+  const display = useAnimatedMetric(value, {
+    duration: 1400,
+    enabled: motionEnabled && isInView,
+  });
 
   return <span ref={ref}>{formatBenefit(display)}</span>;
 }
@@ -186,10 +181,11 @@ export function StructureComparisonMatrix({
   sourceJurisdiction,
   destinationJurisdiction
 }: StructureComparisonMatrixProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const [showAllRemaining, setShowAllRemaining] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(sectionRef, { once: true, margin: "-50px" });
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -199,9 +195,9 @@ export function StructureComparisonMatrix({
     verdict,
     verdict_reason,
     optimal_structure,
-    structures_analyzed,
-    alternative_corridors,
-    alternative_strategies
+    structures_analyzed = [],
+    alternative_corridors = [],
+    alternative_strategies = []
   } = structureOptimization;
 
   // Sort: optimal first, then viable, then by benefit (highest first)
@@ -209,7 +205,7 @@ export function StructureComparisonMatrix({
     if (a.name === optimal_structure?.name) return -1;
     if (b.name === optimal_structure?.name) return 1;
     if (a.viable !== b.viable) return a.viable ? -1 : 1;
-    return b.net_benefit_10yr - a.net_benefit_10yr;
+    return (b.net_benefit_10yr ?? 0) - (a.net_benefit_10yr ?? 0);
   });
 
   const viableCount = structures_analyzed.filter(s => s.viable || s.verdict === 'PROCEED' || s.verdict === 'PROCEED_MODIFIED').length;
@@ -226,45 +222,46 @@ export function StructureComparisonMatrix({
 
   return (
     <div ref={sectionRef} className="relative">
-      {/* SECTION HEADER */}
-      <motion.div
-        className="mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">Structure Optimization</p>
-
-        <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">
-          Ownership Structure
-          <br />
-          <span className="text-gold/80">Analysis</span>
-        </h2>
-
-        <div className="flex items-center gap-2 text-muted-foreground/60 flex-wrap">
-          <span className="text-xs font-normal">{sourceJurisdiction}</span>
-          <ArrowRight className="w-3.5 h-3.5 text-gold/70" />
-          <span className="text-xs font-normal">{destinationJurisdiction}</span>
-          <span className="text-sm text-muted-foreground/60 ml-2">{structures_analyzed.length} structures analyzed</span>
-        </div>
-
+      <div data-print-block="keep" data-print-max-height="880">
+        {/* SECTION HEADER */}
         <motion.div
-          className="mt-4 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent"
-          initial={{ scaleX: 0 }}
-          animate={isVisible ? { scaleX: 1 } : {}}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          style={{ transformOrigin: 'left' }}
-        />
-      </motion.div>
+          className="mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">Structure Optimization</p>
 
-      {/* OVERALL VERDICT */}
-      <motion.div
-        className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+          <h2 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight mb-2">
+            Ownership Structure
+            <br />
+            <span className="text-gold/80">Analysis</span>
+          </h2>
+
+          <div className="flex items-center gap-2 text-muted-foreground/60 flex-wrap">
+            <span className="text-xs font-normal">{sourceJurisdiction}</span>
+            <ArrowRight className="w-3.5 h-3.5 text-gold/70" />
+            <span className="text-xs font-normal">{destinationJurisdiction}</span>
+            <span className="text-sm text-muted-foreground/60 ml-2">{structures_analyzed.length} structures analyzed</span>
+          </div>
+
+          <motion.div
+            className="mt-4 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent"
+            initial={{ scaleX: 0 }}
+            animate={isVisible ? { scaleX: 1 } : {}}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            style={{ transformOrigin: 'left' }}
+          />
+        </motion.div>
+
+        {/* OVERALL VERDICT */}
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
         <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
           <div className="flex-1">
@@ -294,7 +291,8 @@ export function StructureComparisonMatrix({
             </div>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* OPTIMAL STRUCTURE - Premium hero card */}
       {optimal_structure && (
@@ -312,8 +310,8 @@ export function StructureComparisonMatrix({
 
             <div className="grid md:grid-cols-2 gap-4 sm:gap-12">
               <div>
-                <p className="text-2xl sm:text-3xl font-normal text-foreground tracking-tight mb-1">{optimal_structure.name}</p>
-                <p className="text-sm text-muted-foreground/60 font-normal mb-6">{optimal_structure.type}</p>
+                <p className="text-2xl sm:text-3xl font-normal text-foreground tracking-tight mb-1">{optimal_structure.name || 'Unnamed Structure'}</p>
+                <p className="text-sm text-muted-foreground/60 font-normal mb-6">{optimal_structure.type || 'Unknown type'}</p>
 
                 {((optimal_structure.setup_cost !== undefined && optimal_structure.setup_cost > 0) ||
                  (optimal_structure.annual_cost !== undefined && optimal_structure.annual_cost > 0)) && (
@@ -367,12 +365,12 @@ export function StructureComparisonMatrix({
                 <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 text-center">
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">10-Year Net Benefit</p>
                   <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
-                    optimal_structure.net_benefit_10yr >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
+                    (optimal_structure.net_benefit_10yr ?? 0) >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                   }`}>
-                    <AnimatedBenefit value={optimal_structure.net_benefit_10yr} />
+                    <AnimatedBenefit value={optimal_structure.net_benefit_10yr ?? 0} />
                   </p>
                   <p className="text-sm text-muted-foreground/60 mt-3 font-normal">
-                    {optimal_structure.tax_savings_pct >= 0 ? '+' : ''}{optimal_structure.tax_savings_pct.toFixed(1)}% tax savings vs. current structure
+                    {(optimal_structure.tax_savings_pct ?? 0) >= 0 ? '+' : ''}{(optimal_structure.tax_savings_pct ?? 0).toFixed(1)}% tax savings vs. current structure
                   </p>
                 </div>
 
@@ -471,6 +469,8 @@ export function StructureComparisonMatrix({
       {/* TOP 5 STRUCTURES - Comparison Table */}
       <motion.div
         className="mb-8 sm:mb-12"
+        data-print-block="keep"
+        data-print-max-height="960"
         initial={{ opacity: 0 }}
         animate={isVisible ? { opacity: 1 } : {}}
         transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
@@ -483,10 +483,10 @@ export function StructureComparisonMatrix({
         <div className="md:hidden space-y-4">
           {top5.map((structure, index) => {
             const isOptimal = structure.name === optimal_structure?.name;
-            const isPositive = structure.net_benefit_10yr >= 0;
+            const isPositive = (structure.net_benefit_10yr ?? 0) >= 0;
             return (
               <div
-                key={structure.name}
+                key={structure.name || `structure-${index}`}
                 className={`rounded-xl border p-5 ${
                   isOptimal ? 'border-gold/30 bg-gold/[0.03]' : 'border-border/20 bg-card/50'
                 }`}
@@ -498,18 +498,18 @@ export function StructureComparisonMatrix({
                     </span>
                     <div className="min-w-0">
                       <p className={`text-sm font-normal ${isOptimal ? 'text-gold/80' : 'text-foreground'} line-clamp-2`}>
-                        {structure.name}
+                        {structure.name || 'Unnamed Structure'}
                       </p>
-                      <p className="text-sm text-muted-foreground/60 font-normal">{structure.type}</p>
+                      <p className="text-sm text-muted-foreground/60 font-normal">{structure.type || 'Unknown type'}</p>
                     </div>
                   </div>
-                  <VerdictBadge verdict={structure.verdict} compact />
+                  <VerdictBadge verdict={structure.verdict || 'DO_NOT_PROCEED'} compact />
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:gap-5 text-xs">
                   <div>
                     <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">10yr Benefit</p>
                     <p className={`font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                      {formatBenefit(structure.net_benefit_10yr)}
+                      {formatBenefit(structure.net_benefit_10yr ?? 0)}
                     </p>
                   </div>
                   {!allIdenticalRates && (
@@ -570,11 +570,11 @@ export function StructureComparisonMatrix({
               <tbody>
                 {top5.map((structure, index) => {
                   const isOptimal = structure.name === optimal_structure?.name;
-                  const isPositive = structure.net_benefit_10yr >= 0;
+                  const isPositive = (structure.net_benefit_10yr ?? 0) >= 0;
 
                   return (
                     <tr
-                      key={structure.name}
+                      key={structure.name || `top-structure-${index}`}
                       className={`transition-colors ${
                         isOptimal
                           ? 'bg-gold/[0.03] hover:bg-gold/[0.05]'
@@ -593,14 +593,14 @@ export function StructureComparisonMatrix({
                       <td className="px-4 py-4">
                         <div>
                           <p className={`text-sm font-normal ${isOptimal ? 'text-gold/80' : 'text-foreground'}`}>
-                            {structure.name}
+                            {structure.name || 'Unnamed Structure'}
                           </p>
-                          <p className="text-xs text-muted-foreground/60 mt-0.5 font-normal">{structure.type}</p>
+                          <p className="text-xs text-muted-foreground/60 mt-0.5 font-normal">{structure.type || 'Unknown type'}</p>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
                         <span className={`text-sm font-medium tabular-nums ${isPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                          {formatBenefit(structure.net_benefit_10yr)}
+                          {formatBenefit(structure.net_benefit_10yr ?? 0)}
                         </span>
                       </td>
                       {!allIdenticalRates && (
@@ -629,7 +629,7 @@ export function StructureComparisonMatrix({
                         <span className="text-xs font-medium tabular-nums text-muted-foreground/60">{formatCost(structure.annual_cost)}</span>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <VerdictBadge verdict={structure.verdict} compact />
+                        <VerdictBadge verdict={structure.verdict || 'DO_NOT_PROCEED'} compact />
                       </td>
                     </tr>
                   );
@@ -685,19 +685,19 @@ export function StructureComparisonMatrix({
                     <tbody>
                       {remaining.map((structure, index) => (
                         <tr
-                          key={structure.name}
+                          key={structure.name || `remaining-structure-${index}`}
                           className={`${index < remaining.length - 1 ? 'border-b border-border/20' : ''} hover:bg-card/30 transition-colors`}
                         >
                           <td className="px-4 py-3 text-xs font-medium text-muted-foreground/60 tabular-nums">{index + 6}</td>
                           <td className="px-4 py-3">
-                            <p className="text-sm font-normal text-foreground">{structure.name}</p>
-                            <p className="text-xs text-muted-foreground/60 font-normal">{structure.type}</p>
+                            <p className="text-sm font-normal text-foreground">{structure.name || 'Unnamed Structure'}</p>
+                            <p className="text-xs text-muted-foreground/60 font-normal">{structure.type || 'Unknown type'}</p>
                           </td>
                           <td className="px-4 py-3 text-right">
                             <span className={`text-xs font-medium tabular-nums ${
-                              structure.net_benefit_10yr >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
+                              (structure.net_benefit_10yr ?? 0) >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'
                             }`}>
-                              {formatBenefit(structure.net_benefit_10yr)}
+                              {formatBenefit(structure.net_benefit_10yr ?? 0)}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right text-xs font-medium tabular-nums text-muted-foreground/60">
@@ -707,7 +707,7 @@ export function StructureComparisonMatrix({
                             {formatCost(structure.annual_cost)}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <VerdictBadge verdict={structure.verdict} compact />
+                            <VerdictBadge verdict={structure.verdict || 'DO_NOT_PROCEED'} compact />
                           </td>
                         </tr>
                       ))}

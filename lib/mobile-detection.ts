@@ -2,6 +2,8 @@
 // Mobile device detection and optimization utilities
 // Provides SOTA mobile-specific handling
 
+import { PWA_ENABLED } from "@/lib/platform/runtime-flags";
+
 export interface DeviceInfo {
   isMobile: boolean;
   isIOS: boolean;
@@ -39,8 +41,8 @@ export function getDeviceInfo(): DeviceInfo {
     isAndroid,
     isSafari,
     isChrome,
-    supportsServiceWorker: 'serviceWorker' in navigator,
-    supportsPWA: 'serviceWorker' in navigator && 'PushManager' in window,
+    supportsServiceWorker: PWA_ENABLED && 'serviceWorker' in navigator,
+    supportsPWA: PWA_ENABLED && 'serviceWorker' in navigator && 'PushManager' in window,
   };
 }
 

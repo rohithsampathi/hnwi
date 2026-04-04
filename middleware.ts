@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AuditLogger, AuditEventType } from "./lib/audit-logger";
-import { CSRFProtection } from "./lib/csrf-protection";
-import { sanitizeLoggingContext } from "./lib/security/sanitization";
 
 const PUBLIC_API_ENDPOINTS = ["/api/auth/csrf-token", "/api/og", "/api/auth/refresh"];
 
@@ -110,6 +107,16 @@ export async function middleware(request: NextRequest) {
     url.pathname.startsWith(endpoint),
   );
 
+  if (
+    isDev &&
+    !isApiRoute &&
+    url.pathname !== "/manifest.json" &&
+    url.pathname !== "/sw.js" &&
+    url.pathname !== "/sw-auth-handler.js"
+  ) {
+    return NextResponse.next();
+  }
+
   const allowedOrigins =
     process.env.ALLOWED_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ??
     ["http://localhost:3000"];
@@ -183,6 +190,11 @@ async function handleAPIRequest(request: NextRequest, requestId: string) {
   const pathname = new URL(request.url).pathname;
 
   try {
+    const [{ AuditLogger, AuditEventType }, { sanitizeLoggingContext }] = await Promise.all([
+      import("./lib/audit-logger"),
+      import("./lib/security/sanitization"),
+    ]);
+
     const context = sanitizeLoggingContext({
       endpoint: pathname,
       method: request.method,
@@ -219,6 +231,6 @@ function getClientIP(request: NextRequest): string {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|css|js|map|txt|xml)$).*)",
   ],
 };

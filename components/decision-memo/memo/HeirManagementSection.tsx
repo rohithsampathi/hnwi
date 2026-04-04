@@ -34,9 +34,10 @@ import {
   formatPercentage,
   formatCurrency
 } from '@/lib/decision-memo/sfo-expert-types';
+import type { HeirManagementData as PdfHeirManagementData } from '@/lib/pdf/pdf-types';
 
 interface HeirManagementSectionProps {
-  data?: HeirManagementData | Record<string, never>;
+  data?: HeirManagementData | PdfHeirManagementData | Record<string, never>;
   rawAnalysis?: string;
 }
 

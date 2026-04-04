@@ -2,25 +2,34 @@
 import type { Metadata, Viewport } from "next"
 import type React from "react"
 import { headers } from "next/headers"
-import { Inter, JetBrains_Mono } from "next/font/google"
-import { ThemeProvider } from "@/contexts/theme-context"
-import { BusinessModeProvider } from "@/contexts/business-mode-context"
-import { OnboardingProvider } from "@/contexts/onboarding-context"
-import { AuthProvider } from "@/components/auth-provider"
-import { AuthPopupProvider } from "@/contexts/auth-popup-context"
-import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
-import { AuthSyncProvider } from "@/components/auth-sync-provider"
+import Script from "next/script"
+import localFont from "next/font/local"
 import './globals.css'
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    {
+      path: "../public/fonts/Inter-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/Inter-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-inter",
-  display: "swap",
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
   display: "swap",
 })
 
@@ -128,66 +137,25 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Get nonce from middleware for CSP
-  const headersList = headers()
-  const nonce = headersList.get('X-CSP-Nonce') || undefined
+  const nonce =
+    process.env.NODE_ENV === "production"
+      ? headers().get("X-CSP-Nonce") || undefined
+      : undefined
   
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`dark ${inter.variable}`}>
       <head>
-        {/* Suppress known Razorpay and service worker errors - load first */}
-        <script
+        <Script
           src="/suppress-errors.js"
+          strategy="beforeInteractive"
           nonce={nonce || undefined}
-          suppressHydrationWarning={true}
-        />
-        <script
-          nonce={nonce || undefined}
-          suppressHydrationWarning={true}
-          dangerouslySetInnerHTML={{
-            __html: `
-              // PWA removed — unregister any existing service workers and clear caches
-              (async function cleanupPWA() {
-                try {
-                  if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (const registration of registrations) {
-                      await registration.unregister();
-                    }
-                  }
-                  if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    for (const cacheName of cacheNames) {
-                      await caches.delete(cacheName);
-                    }
-                  }
-                } catch (e) {
-                  // Silent fail
-                }
-              })();
-            `,
-          }}
         />
       </head>
       <body>
-        <AuthProvider>
-          <AuthSyncProvider>
-            <OnboardingProvider>
-              <ThemeProvider>
-                <BusinessModeProvider>
-                  <AuthPopupProvider>
-                    <StepUpMfaProvider>
-                      {children}
-                      <div id="toast-container" className="fixed top-0 right-0 z-50">
-                        {/* Toast container for notifications */}
-                      </div>
-                    </StepUpMfaProvider>
-                  </AuthPopupProvider>
-                </BusinessModeProvider>
-              </ThemeProvider>
-            </OnboardingProvider>
-          </AuthSyncProvider>
-        </AuthProvider>
+        {children}
+        <div id="toast-container" className="fixed top-0 right-0 z-50">
+          {/* Toast container for notifications */}
+        </div>
       </body>
     </html>
   )

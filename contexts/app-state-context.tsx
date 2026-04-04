@@ -1,4 +1,7 @@
-// contexts/app-state-context.tsx - World-Class Centralized State Management for HNWI Chronicles
+// LEGACY APP SHELL STACK
+// This file belongs to the pre-App Router navigation/auth architecture.
+// The live application now enters through `app/` route layouts instead.
+// Keep this file only as a legacy reference until the old stack is archived.
 
 "use client"
 
@@ -6,13 +9,14 @@ import { createContext, useContext, useReducer, useEffect, useCallback, useMemo 
 import DeviceTrustManager from "@/lib/device-trust"
 import { SessionState, getSessionState } from "@/lib/auth-utils"
 import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser, logoutUser } from "@/lib/auth-manager"
+import { fetchAuthSession } from "@/lib/client-auth-session"
 
 // ================== TYPES ==================
 
 interface User {
   id: string
   email: string
-  firstName: string
+  firstName?: string
   lastName?: string
   role?: string
   createdAt?: Date
@@ -339,14 +343,11 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
   }, [initialPage])
 
   // Background session validation
-  const validateSessionInBackground = useCallback(async (currentUser: User) => {
+  const validateSessionInBackground = useCallback(async (_currentUser: User) => {
     try {
-      const response = await fetch("/api/auth/session", {
-        credentials: 'include'
-      })
-      const data = await response.json()
+      const data = await fetchAuthSession()
       
-      if (!data.user) {
+      if (!data?.user) {
         // Session expired - use centralized logout
         dispatch({ type: 'SET_USER', payload: null })
         logoutUser()
@@ -433,8 +434,8 @@ export function AppStateProvider({ children, initialPage }: AppStateProviderProp
   const trustDevice = useCallback(() => {
     const userId = getCurrentUserId()
     if (userId) {
-      const success = DeviceTrustManager.trustDevice(userId)
-      dispatch({ type: 'TRUST_DEVICE', payload: success })
+      const trust = DeviceTrustManager.trustDevice(userId)
+      dispatch({ type: 'TRUST_DEVICE', payload: !!trust })
     }
   }, [])
 

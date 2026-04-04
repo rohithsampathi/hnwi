@@ -1,7 +1,22 @@
 // utils/calendar-utils.ts
 import type { CalendarEvent } from "@/types/calendar"
 
-export function addEventToCalendar(event: CalendarEvent) {
+type CalendarEventInput = CalendarEvent & Partial<{
+  start_date: string | Date
+  end_date: string | Date
+  name: string
+  venue: string
+  attendees: string[]
+  tags: string[]
+  summary: string
+  industry: string
+  source: string
+  metadata: {
+    capacity?: number
+  }
+}>
+
+export function addEventToCalendar(event: CalendarEventInput) {
   const storedEvents = localStorage.getItem("userEvents")
   let events = storedEvents ? JSON.parse(storedEvents) : []
   

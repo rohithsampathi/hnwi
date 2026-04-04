@@ -6,6 +6,7 @@
 
 import { motion } from 'framer-motion';
 import { TrendingDown, TrendingUp, AlertTriangle, Database } from 'lucide-react';
+import type { PatternIntelligence as PdfPatternIntelligence } from '@/lib/pdf/pdf-types';
 
 interface FailurePattern {
   mode: string;
@@ -17,34 +18,34 @@ interface FailurePattern {
 
 // FIX #24 SOTA: Pattern Intelligence from KGv3 - Verified data with provenance
 interface PatternIntelligence {
-  found: boolean;
+  found?: boolean;
   primary_pattern?: {
-    pattern_id: string;     // REAL ID from KGv3 (e.g., "FM_CON_001")
-    pattern_name: string;   // REAL name (e.g., "Concentration Risk")
-    description: string;
-    severity: string;
+    pattern_id?: string;     // REAL ID from KGv3 (e.g., "FM_CON_001")
+    pattern_name?: string;   // REAL name (e.g., "Concentration Risk")
+    description?: string;
+    severity?: string;
     provenance?: string;    // 'derived' from deal analysis
   };
   historical_outcome?: {
-    failure_rate_pct: number | null;  // REAL from kgv3_verified_failure_rates
-    success_rate_pct: number | null;
-    sample_size: number;
-    time_period: string;
-    data_source: string;
+    failure_rate_pct?: number | null;  // REAL from kgv3_verified_failure_rates
+    success_rate_pct?: number | null;
+    sample_size?: number;
+    time_period?: string;
+    data_source?: string;
     provenance?: 'verified' | 'derived' | 'estimated' | 'unavailable';  // SOTA: Data source type
     source_citation?: string;  // SOTA: Citable reference
     confidence_note?: string;  // SOTA: Shown when data is estimated
     note?: string;  // Shown when data is insufficient
   };
   peer_movement?: {
-    signal: 'entering' | 'stable' | 'cooling' | 'exiting';
-    velocity_pct: number;
-    narrative: string;
+    signal?: 'entering' | 'stable' | 'cooling' | 'exiting' | string;
+    velocity_pct?: number;
+    narrative?: string;
     asset_pivot?: string;
     provenance?: string;
     source_citation?: string;
   };
-  confidence_level?: 'high' | 'medium' | 'low';  // SOTA: Overall confidence
+  confidence_level?: 'high' | 'medium' | 'low' | string;  // SOTA: Overall confidence
   kgv2_pattern_evidence?: {
     developments_found: number;
     quantified_stats: Array<{ rate_pct: number; source_title: string }>;
@@ -68,7 +69,7 @@ interface PeerBenchmarkTickerProps {
   /** Antifragility assessment */
   antifragilityAssessment?: string;
   /** FIX #24: Pattern Intelligence from KGv3 - REAL data */
-  patternIntelligence?: PatternIntelligence;
+  patternIntelligence?: PatternIntelligence | PdfPatternIntelligence;
 }
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
@@ -140,7 +141,7 @@ export function PeerBenchmarkTicker({
   const kgPattern = patternIntelligence?.primary_pattern;
 
   // Use KGv3 pattern ID and name if available
-  const patternId = kgPattern?.pattern_id || (primaryPattern?.mode ? `FM_${primaryPattern.mode.slice(0, 3).toUpperCase()}` : null);
+  const patternId = kgPattern?.pattern_id || null;
   const patternName = kgPattern?.pattern_name || primaryPattern?.nightmareName || getPatternName(primaryPattern?.mode || '');
   const patternDescription = kgPattern?.description || primaryPattern?.description;
 
@@ -161,35 +162,38 @@ export function PeerBenchmarkTicker({
     : 'this corridor';
 
   return (
-    <div className="space-y-8 sm:space-y-12">
-      {/* Header */}
-      <motion.div
-        className="flex items-center gap-4"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
-      >
-        <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-            Pattern Intelligence
-          </p>
-          <h3 className="text-xl md:text-2xl font-normal text-foreground tracking-tight">
-            Corridor Intelligence Match
-          </h3>
-          <p className="text-sm text-muted-foreground/60 mt-1">
-            Pattern-Matched Against {precedentCount.toLocaleString()}+ Analyzed Corridor Signals
-          </p>
-        </div>
-      </motion.div>
+    <div className="print-peer-benchmark space-y-8 sm:space-y-12">
+      <div data-print-block="keep" data-print-max-height="940">
+        {/* Header */}
+        <motion.div
+          className="flex items-center gap-4"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: EASE_OUT_EXPO }}
+        >
+          <div>
+            <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+              Pattern Intelligence
+            </p>
+            <h3 className="text-xl md:text-2xl font-normal text-foreground tracking-tight">
+              Corridor Intelligence Match
+            </h3>
+            <p className="text-sm text-muted-foreground/60 mt-1">
+              Pattern-Matched Against {precedentCount.toLocaleString()}+ Analyzed Corridor Signals
+            </p>
+          </div>
+        </motion.div>
 
-      {/* System Match Ticker — The "God View" box */}
-      <motion.div
-        className="relative rounded-2xl border border-border/30 overflow-hidden"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
-      >
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+        {/* System Match Ticker — The "God View" box */}
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden"
+          data-print-block="keep"
+          data-print-max-height="980"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
         {/* Top Status Bar */}
         <div className="relative border-b border-red-500/10 px-6 sm:px-10 py-3">
@@ -292,8 +296,7 @@ export function PeerBenchmarkTicker({
               ) : (
                 <p className="text-sm text-muted-foreground/60 font-normal">
                   <span className="text-foreground font-normal">HISTORICAL OUTCOME:</span>{' '}
-                  <span className="text-amber-500/60">Corridor-specific data pending.</span>{' '}
-                  {historicalOutcome?.note || 'Pattern analysis based on failure mode detection.'}
+                  {historicalOutcome?.note || 'Native route pattern identified, but no direct failure-rate study is asserted for this corridor surface.'}
                 </p>
               )}
               {dataSource && dataSource !== 'INSUFFICIENT_DATA' && dataSource !== 'FALLBACK' && !historicalOutcome?.source_citation && (
@@ -408,7 +411,8 @@ export function PeerBenchmarkTicker({
             </div>
           )}
         </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

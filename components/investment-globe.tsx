@@ -4,7 +4,7 @@
 
 import { useRef, useEffect } from "react"
 import { useTheme } from "@/contexts/theme-context"
-import Globe from "react-globe.gl"
+import Globe, { type GlobeMethods } from "react-globe.gl"
 import * as d3 from "d3"
 import type { Region } from "@/lib/invest-scan-data"
 
@@ -14,8 +14,9 @@ interface InvestmentGlobeProps {
 }
 
 export function InvestmentGlobe({ regions, onRegionSelect }: InvestmentGlobeProps) {
-  const globeEl = useRef<any>()
+  const globeEl = useRef<GlobeMethods | undefined>(undefined)
   const { theme } = useTheme()
+  const toRegion = (region: object) => region as Region
 
   useEffect(() => {
     if (globeEl.current) {
@@ -36,19 +37,19 @@ export function InvestmentGlobe({ regions, onRegionSelect }: InvestmentGlobeProp
       width={800}
       height={600}
       labelsData={regions}
-      labelLat={(d) => d.position[1]}
-      labelLng={(d) => d.position[0]}
-      labelText={(d) => d.name}
-      labelSize={(d) => Math.sqrt(d.opportunities.length) * 4 + 3}
-      labelDotRadius={(d) => Math.sqrt(d.opportunities.length) * 4 + 3}
-      labelColor={(d) => colorScale(d.opportunities.length)}
+      labelLat={(region) => toRegion(region).position[1]}
+      labelLng={(region) => toRegion(region).position[0]}
+      labelText={(region) => toRegion(region).name}
+      labelSize={(region) => Math.sqrt(toRegion(region).opportunities.length) * 4 + 3}
+      labelDotRadius={(region) => Math.sqrt(toRegion(region).opportunities.length) * 4 + 3}
+      labelColor={(region) => colorScale(toRegion(region).opportunities.length)}
       labelResolution={2}
       onLabelClick={(label) => {
-        const region = label as unknown as Region
+        const region = toRegion(label)
         onRegionSelect(region.id)
       }}
       labelLabel={(label) => {
-        const region = label as unknown as Region
+        const region = toRegion(label)
         return `
           <div class="p-2 bg-white rounded shadow">
             <strong>${region.name}</strong><br/>
@@ -59,4 +60,3 @@ export function InvestmentGlobe({ regions, onRegionSelect }: InvestmentGlobeProp
     />
   )
 }
-

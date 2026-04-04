@@ -393,13 +393,14 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     try {
       setIsCreatingHeir(true);
       
-      const newHeir = await createHeir({
+      const result = await createHeir({
         name: newHeirData.name.trim(),
         relationship: finalRelationship.trim(),
         email: newHeirData.email.trim() || undefined,
         phone: newHeirData.phone.trim() || undefined,
         notes: newHeirData.notes.trim() || undefined
       });
+      const newHeir = result.heir
 
       setHeirs(prevHeirs => [...prevHeirs, newHeir]);
 

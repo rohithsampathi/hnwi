@@ -36,6 +36,7 @@ interface User {
   land_investor?: boolean
   company?: string
   company_info?: any
+  password?: string
 }
 
 interface LoginData {
@@ -48,6 +49,7 @@ interface AuthResponse {
   user?: User
   error?: string
   token?: string
+  message?: string
 }
 
 interface SessionResponse {
@@ -103,10 +105,48 @@ async function createToken(user: Partial<User>): Promise<string> {
     .sign(getJWTSecret())
 }
 
+function normalizeVerifiedUser(payload: unknown): User | null {
+  if (!payload || typeof payload !== "object") {
+    return null
+  }
+
+  const candidate = payload as Partial<User> & { sub?: string }
+  const id = candidate.id || candidate.user_id || candidate.sub
+  const email = candidate.email
+
+  if (!id || !email) {
+    return null
+  }
+
+  return {
+    id,
+    user_id: candidate.user_id || id,
+    email,
+    firstName: candidate.firstName || "",
+    lastName: candidate.lastName,
+    role: candidate.role,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+    profile: candidate.profile,
+    net_worth: candidate.net_worth,
+    city: candidate.city,
+    country: candidate.country,
+    bio: candidate.bio,
+    industries: candidate.industries,
+    phone_number: candidate.phone_number,
+    linkedin: candidate.linkedin,
+    office_address: candidate.office_address,
+    crypto_investor: candidate.crypto_investor,
+    land_investor: candidate.land_investor,
+    company: candidate.company,
+    company_info: candidate.company_info
+  }
+}
+
 export async function verifyToken(token: string): Promise<User | null> {
   try {
     const verified = await jwtVerify(token, getJWTSecret())
-    return verified.payload as User
+    return normalizeVerifiedUser(verified.payload)
   } catch (err) {
     logger.error("Token verification failed", { error: err instanceof Error ? err.message : String(err) })
     return null

@@ -1,5 +1,6 @@
 import { PdfMemoData } from '@/lib/pdf/pdf-types';
 import { computeRiskRadarScores } from './compute-risk-radar-scores';
+import { resolveIntelligenceBasisCounts } from './resolve-intelligence-basis-counts';
 
 /**
  * Maps section IDs to their specific component props
@@ -12,6 +13,36 @@ export function getComponentProps(
   intakeId: string,
   computedProps: any
 ): Record<string, any> {
+  const intelligenceBasisCounts = resolveIntelligenceBasisCounts({
+    memoData,
+    backendData,
+    fullArtifact: backendData?.fullArtifact || backendData?.full_artifact,
+  });
+
+  const formattedAnnualRentalIncome =
+    memoData.preview_data.annual_rental_income_formatted ||
+    memoData.preview_data.rental_income ||
+    (typeof memoData.preview_data.annual_rental_income === 'number'
+      ? `$${memoData.preview_data.annual_rental_income.toLocaleString()}`
+      : undefined);
+
+  const formattedAnnualAppreciation =
+    memoData.preview_data.annual_appreciation_formatted ||
+    memoData.preview_data.appreciation ||
+    (typeof memoData.preview_data.annual_appreciation === 'number'
+      ? `$${memoData.preview_data.annual_appreciation.toLocaleString()}`
+      : undefined);
+
+  const formattedTaxSavings =
+    memoData.preview_data.tax_savings ||
+    memoData.preview_data.tax_differential?.savings ||
+    memoData.preview_data.total_savings;
+
+  const totalExposure =
+    memoData.preview_data.total_exposure ||
+    memoData.preview_data.risk_assessment?.total_exposure_formatted ||
+    '$0';
+
   const baseProps = {
     intakeId,
     memoData,
@@ -23,8 +54,8 @@ export function getComponentProps(
   // Section-specific prop mappings
   const propMappings: Record<string, Record<string, any>> = {
     'audit-overview': {
-      developmentsCount: backendData?.hnwiWorldCount || 1966,
-      precedentCount: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+      developmentsCount: intelligenceBasisCounts.developmentsCount,
+      precedentCount: intelligenceBasisCounts.corridorSignalsCount || 0,
       sourceJurisdiction: memoData.preview_data.source_jurisdiction,
       destinationJurisdiction: memoData.preview_data.destination_jurisdiction,
       sourceCity: memoData.preview_data.source_city,
@@ -55,11 +86,11 @@ export function getComponentProps(
       intakeId,
       totalValueCreation: memoData.preview_data.total_savings,
       optimalStructure: memoData.preview_data.structure_optimization?.optimal_structure,
-      intelligenceDepth: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+      intelligenceDepth: intelligenceBasisCounts.corridorSignalsCount || 0,
       returnsAnalysis: {
-        rentalIncome: memoData.preview_data.rental_income,
-        appreciation: memoData.preview_data.appreciation,
-        taxSavings: memoData.preview_data.tax_savings,
+        rentalIncome: formattedAnnualRentalIncome,
+        appreciation: formattedAnnualAppreciation,
+        taxSavings: formattedTaxSavings,
         taxSavingsNote: memoData.preview_data.tax_savings_note,
       },
       sourceJurisdiction: memoData.preview_data.source_jurisdiction,
@@ -73,27 +104,27 @@ export function getComponentProps(
       opportunitiesCount: memoData.preview_data.opportunities_count || 0,
       riskFactorsCount: backendData?.all_mistakes?.length || 0,
       dataQuality: memoData.preview_data.peer_cohort_stats?.data_quality || 'strong',
-      intelligenceDepth: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
-      totalExposure: memoData.preview_data.total_exposure || '$0',
+      intelligenceDepth: intelligenceBasisCounts.corridorSignalsCount || 0,
+      totalExposure,
       highPriorityCount: backendData?.all_mistakes?.filter((m: any) => m.severity === 'High').length || 0,
       mitigationTimeline: backendData?.mitigationTimeline || backendData?.risk_assessment?.mitigation_timeline || '14 days',
       sourceJurisdiction: memoData.preview_data.source_jurisdiction,
       destinationJurisdiction: memoData.preview_data.destination_jurisdiction,
       riskFactors: backendData?.all_mistakes || [],
       dueDiligence: memoData.preview_data.dd_checklist || [],
-      liquidityAnalysis: memoData.preview_data.liquidity_analysis || undefined,
+      liquidityAnalysis: memoData.preview_data.liquidity_analysis || memoData.preview_data.liquidity_trap_analysis || undefined,
     },
 
     'memo-header': {
       ...baseProps,
       exposureClass: memoData.preview_data.exposure_class,
       totalSavings: memoData.preview_data.total_savings,
-      precedentCount: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+      precedentCount: intelligenceBasisCounts.corridorSignalsCount || 0,
       sourceTaxRates: memoData.preview_data.source_tax_rates || memoData.preview_data.tax_differential?.source,
       destinationTaxRates: memoData.preview_data.destination_tax_rates || memoData.preview_data.tax_differential?.destination,
       taxDifferential: memoData.preview_data.tax_differential,
       valueCreation: computedProps.valueCreation,
-      crossBorderTaxSavingsPct: computedProps.crossBorderAudit?.total_tax_savings_pct,
+      crossBorderTaxSavingsPct: computedProps.crossBorderMetrics.displayTaxSavingsPct,
       crossBorderComplianceFlags: computedProps.crossBorderAudit?.compliance_flags,
       showTaxSavings: computedProps.showTheoreticalTaxSavings,
       optimalStructure: memoData.preview_data.structure_optimization?.optimal_structure,
@@ -104,7 +135,7 @@ export function getComponentProps(
     'audit-verdict': {
       mistakes: backendData?.all_mistakes || memoData.preview_data.all_mistakes || [],
       opportunitiesCount: memoData.preview_data.opportunities_count,
-      precedentCount: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+      precedentCount: intelligenceBasisCounts.corridorSignalsCount || 0,
       ddChecklist: memoData.preview_data.dd_checklist,
       sourceJurisdiction: memoData.preview_data.source_jurisdiction,
       destinationJurisdiction: memoData.preview_data.destination_jurisdiction,
@@ -247,7 +278,7 @@ export function getComponentProps(
       }));
 
       return {
-        precedentCount: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+        precedentCount: intelligenceBasisCounts.corridorSignalsCount || 0,
         failurePatterns,
         failureModeCount: doctrineMetadata?.failure_mode_count || failurePatterns.length,
         totalRiskFlags: doctrineMetadata?.risk_flags_total || 0,
@@ -374,8 +405,8 @@ export function getComponentProps(
 
     'references': {
       references: memoData.preview_data.legal_references,
-      developmentsCount: 1875, // HNWI World developments count
-      precedentCount: memoData.memo_data?.kgv3_intelligence_used?.precedents || 0,
+      developmentsCount: intelligenceBasisCounts.developmentsCount,
+      precedentCount: intelligenceBasisCounts.corridorSignalsCount || 0,
     },
 
     'regulatory-sources': {

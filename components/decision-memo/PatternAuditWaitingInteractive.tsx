@@ -19,6 +19,7 @@ import {
   Target,
   Clock
 } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface PatternAuditWaitingProps {
   intakeId: string;
@@ -37,21 +38,14 @@ type ProcessingStep = {
   metrics?: string[];
 };
 
-const HNWI_FACTS = [
-  { icon: Globe, text: "Cross-referencing your thesis against 1,875 wealth developments from 67 jurisdictions" },
-  { icon: Brain, text: "Matching decision patterns from our library of 159 documented failure modes" },
-  { icon: Shield, text: "Identifying liquidity timing conflicts and regulatory window closures" },
-  { icon: TrendingUp, text: "Analyzing sequencing dependencies for optimal execution order" },
-  { icon: AlertTriangle, text: "Stress-testing your decision posture against historical corridor signals" },
-  { icon: FileText, text: "Generating IC-ready artifact with actionable next steps" }
-];
-
 export function PatternAuditWaitingInteractive({
   intakeId,
   onPreviewReady,
   sseConnected,
   ssePreviewReady
 }: PatternAuditWaitingProps) {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : 'live';
   const [elapsedTime, setElapsedTime] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -64,6 +58,15 @@ export function PatternAuditWaitingInteractive({
     { label: "Sequencing Rules", current: 0, target: 12, suffix: "" },
     { label: "Pattern Anchors", current: 0, target: 2, suffix: "" }
   ]);
+
+  const hnwiFacts = [
+    { icon: Globe, text: `Cross-referencing your thesis against ${briefCountLabel} wealth developments from 67 jurisdictions` },
+    { icon: Brain, text: 'Matching decision patterns from our library of 159 documented failure modes' },
+    { icon: Shield, text: 'Identifying liquidity timing conflicts and regulatory window closures' },
+    { icon: TrendingUp, text: 'Analyzing sequencing dependencies for optimal execution order' },
+    { icon: AlertTriangle, text: 'Stress-testing your decision posture against historical corridor signals' },
+    { icon: FileText, text: 'Generating IC-ready artifact with actionable next steps' }
+  ];
 
   const [steps, setSteps] = useState<ProcessingStep[]>([
     {
@@ -78,11 +81,11 @@ export function PatternAuditWaitingInteractive({
     {
       id: 'developments',
       label: 'Matching HNWI World developments',
-      description: 'Cross-referencing against 1,875+ wealth developments',
+      description: `Cross-referencing against ${briefCountLabel} wealth developments`,
       icon: <Globe className="w-5 h-5" />,
       estimatedSeconds: 5,
       status: 'pending',
-      metrics: ['1,875+ developments', '67 jurisdictions']
+      metrics: [`${briefCountLabel} developments`, '67 jurisdictions']
     },
     {
       id: 'patterns',
@@ -129,10 +132,10 @@ export function PatternAuditWaitingInteractive({
     if (hasCompleted) return;
 
     const interval = setInterval(() => {
-      setCurrentFactIndex(prev => (prev + 1) % HNWI_FACTS.length);
+      setCurrentFactIndex(prev => (prev + 1) % hnwiFacts.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, [hasCompleted]);
+  }, [hasCompleted, hnwiFacts.length]);
 
   // Progress through steps based on elapsed time
   useEffect(() => {
@@ -444,19 +447,19 @@ export function PatternAuditWaitingInteractive({
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
                     <div className="flex-shrink-0 mt-0.5 sm:mt-1">
-                      {React.createElement(HNWI_FACTS[currentFactIndex].icon, {
+                      {React.createElement(hnwiFacts[currentFactIndex].icon, {
                         className: "w-5 h-5 sm:w-6 sm:h-6 text-primary"
                       })}
                     </div>
                     <p className="text-xs sm:text-sm text-foreground leading-snug">
-                      {HNWI_FACTS[currentFactIndex].text}
+                      {hnwiFacts[currentFactIndex].text}
                     </p>
                   </div>
                 </motion.div>
               </AnimatePresence>
 
               <div className="flex justify-center gap-1 mt-4">
-                {HNWI_FACTS.map((_, index) => (
+                {hnwiFacts.map((_, index) => (
                   <motion.div
                     key={index}
                     className={`h-1.5 rounded-full transition-all cursor-pointer ${

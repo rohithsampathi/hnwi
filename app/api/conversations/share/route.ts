@@ -1,17 +1,17 @@
 // API route to share a conversation
-// Creates and retrieves shareable links for Rohith conversations using MongoDB storage
+// Proxies to backend /api/sharing/conversations endpoints
 
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { CSRFProtection } from '@/lib/csrf-protection'
-import { storeSharedConversation, getSharedConversation } from '@/lib/mongodb-shared-conversations'
+import { serverApi } from '@/lib/server-api'
 import crypto from 'crypto'
 
 // Force dynamic runtime - don't pre-render during build
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-// GET - Retrieve a shared conversation
+// GET - Retrieve a shared conversation (public, no auth)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -24,10 +24,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Retrieve the shared conversation from MongoDB
-    const sharedConversation = await getSharedConversation(shareId)
+    const data = await serverApi.get(`/api/sharing/conversations/${shareId}`)
 
-    if (!sharedConversation) {
+    if (!data.success) {
       return NextResponse.json(
         { success: false, error: 'Conversation not found or has expired' },
         { status: 404 }
@@ -36,10 +35,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      conversation: sharedConversation.conversationData
+      conversation: data.conversation
     })
 
   } catch (error) {
+    // Backend returns 404 for not found — surface it
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('404')) {
+      return NextResponse.json(
+        { success: false, error: 'Conversation not found or has expired' },
+        { status: 404 }
+      )
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -60,7 +67,7 @@ async function handlePost(request: NextRequest) {
       )
     }
 
-    // Get the access token from cookies for authentication check
+    // Auth check
     const cookieStore = cookies()
     const accessToken = cookieStore.get('access_token')?.value
 
@@ -71,19 +78,19 @@ async function handlePost(request: NextRequest) {
       )
     }
 
-    // Generate a unique share ID
+    // Generate share ID on frontend (we own the URL)
     const shareId = crypto.randomUUID()
 
-    // Store the conversation in MongoDB
-    await storeSharedConversation({
+    // Store via backend
+    await serverApi.post('/api/sharing/conversations', {
       shareId,
       conversationId,
       userId: userId || 'anonymous',
       conversationData,
       sharedBy: userId || 'anonymous'
-    })
+    }, request.headers)
 
-    // Generate the shareable URL - use environment variable or dynamically detect from request headers
+    // Generate the shareable URL
     const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
     const protocol = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https')
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_PRODUCTION_URL || (host ? `${protocol}://${host}` : '')

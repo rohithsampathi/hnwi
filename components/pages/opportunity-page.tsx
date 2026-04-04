@@ -23,7 +23,7 @@ import {
   Target, ChevronDown, ChevronUp
 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
-import { getOpportunities, Opportunity } from "@/lib/api"  // removed any placeholders
+import { getCommandCentreOpportunities, Opportunity } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
 import {
   Dialog,
@@ -33,6 +33,10 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog"
+
+type NavigationWindow = Window & {
+  handleGlobalNavigation?: (path: string) => void;
+}
 
 interface OpportunityPageProps {
   region?: string // Make region optional since not all opportunities come from regions
@@ -69,6 +73,34 @@ export function OpportunityPage({
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
 
+  const getNumericValue = (value: unknown): number | null => {
+    if (typeof value === "number") return value
+    if (typeof value === "string") {
+      const parsed = Number.parseFloat(value)
+      return Number.isNaN(parsed) ? null : parsed
+    }
+    if (typeof value === "object" && value !== null) {
+      const candidate = value as Record<string, unknown>
+      for (const key of ["value", "amount", "total", "usd", "price", "cost", "$numberDecimal"]) {
+        const nestedValue = candidate[key]
+        if (typeof nestedValue === "number") return nestedValue
+        if (typeof nestedValue === "string") {
+          const parsed = Number.parseFloat(nestedValue)
+          if (!Number.isNaN(parsed)) return parsed
+        }
+      }
+    }
+    return null
+  }
+
+  const formatUnknownValue = (value: unknown) => {
+    if (typeof value === "number") return value.toLocaleString()
+    if (typeof value === "string") return value
+    if (Array.isArray(value)) return value.join(", ")
+    if (value && typeof value === "object") return JSON.stringify(value)
+    return "N/A"
+  }
+
   // Expandable sections state
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
     thesis: false,
@@ -92,7 +124,12 @@ export function OpportunityPage({
         setLoading(true)
 
         // CRITICAL: Always bust cache to get fresh opportunity data
-        const opportunities = await getOpportunities(true)
+        const opportunities = await getCommandCentreOpportunities({
+          bustCache: true,
+          includeCrownVault: true,
+          view: "all",
+          timeframe: "LIVE",
+        })
 
         const foundOpportunity = opportunities.find(o => o.id === opportunityId)
         if (foundOpportunity) {
@@ -101,7 +138,7 @@ export function OpportunityPage({
           setError("Opportunity not found")
         }
       } catch (err) {
-        setError("Failed to load investment opportunity")
+        setError("Failed to load Command Centre opportunity")
       } finally {
         setLoading(false)
       }
@@ -123,8 +160,11 @@ export function OpportunityPage({
       // Fallback for direct Next.js navigation when we're in app router context
       
       // First try to use the global navigation handler if available
-      if (typeof window !== 'undefined' && window.handleGlobalNavigation) {
-        window.handleGlobalNavigation(path);
+      const navigationWindow =
+        typeof window !== "undefined" ? (window as NavigationWindow) : undefined
+
+      if (navigationWindow?.handleGlobalNavigation) {
+        navigationWindow.handleGlobalNavigation(path);
         return;
       }
       
@@ -248,7 +288,7 @@ export function OpportunityPage({
       <div className="mb-6 px-4 sm:px-6 lg:px-8">
         <PageHeaderWithBack
           title={opportunity.title}
-          subtitle="Investment Opportunity Details"
+          description="Investment Opportunity Details"
           onBack={() => handleNavigation("back")}
         />
       </div>
@@ -794,11 +834,11 @@ export function OpportunityPage({
                               </p>
                             </div>
                           )}
-                          {opportunity.pricing.per_acre && (
+                          {opportunity.pricing.price_breakdown?.per_acre_inr && (
                             <div className="p-4 rounded-lg bg-muted/30">
                               <p className="text-sm text-muted-foreground">Per Acre</p>
                               <p className={`text-xl font-bold ${theme === "dark" ? "text-primary" : "text-black"}`}>
-                                ${opportunity.pricing.per_acre.toLocaleString()}
+                                ₹{(getNumericValue(opportunity.pricing.price_breakdown.per_acre_inr) || 0).toLocaleString()}
                               </p>
                             </div>
                           )}
@@ -1092,7 +1132,7 @@ export function OpportunityPage({
                                     {key.replace(/_/g, ' ')}
                                   </span>
                                   <span className="text-sm text-foreground">
-                                    ${typeof value === 'number' ? value.toLocaleString() : value}
+                                    ${formatUnknownValue(value)}
                                   </span>
                                 </div>
                               ))}
@@ -1309,19 +1349,11 @@ export function OpportunityPage({
                         </p>
                       </div>
                     )}
-                    {opportunity.asset_details.soil_climate.rainfall_mm && (
+                    {opportunity.asset_details.soil_climate.annual_rainfall && (
                       <div className="p-3 rounded-lg bg-muted/30">
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Annual Rainfall</p>
                         <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
-                          {opportunity.asset_details.soil_climate.rainfall_mm} mm
-                        </p>
-                      </div>
-                    )}
-                    {opportunity.asset_details.soil_climate.water_table_depth && (
-                      <div className="p-3 rounded-lg bg-muted/30">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Water Table Depth</p>
-                        <p className={`text-sm font-semibold ${theme === "dark" ? "text-white" : "text-black"}`}>
-                          {opportunity.asset_details.soil_climate.water_table_depth}
+                          {opportunity.asset_details.soil_climate.annual_rainfall}
                         </p>
                       </div>
                     )}
@@ -1340,10 +1372,10 @@ export function OpportunityPage({
                     Water Resources
                   </h3>
                   <div className="space-y-2">
-                    {opportunity.asset_details.water_resources.source && (
+                    {opportunity.asset_details.water_resources.primary_source && (
                       <p className="text-sm text-foreground">
                         <span className="text-muted-foreground">Source: </span>
-                        {opportunity.asset_details.water_resources.source}
+                        {opportunity.asset_details.water_resources.primary_source}
                       </p>
                     )}
                     {opportunity.asset_details.water_resources.note && (

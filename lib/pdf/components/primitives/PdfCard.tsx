@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { View, Style } from '@react-pdf/renderer';
+import { View } from '@react-pdf/renderer';
 import { darkTheme, spacing, colors } from '../../pdf-styles';
 
 interface PdfCardProps {
@@ -21,7 +21,7 @@ interface PdfCardProps {
   children: React.ReactNode;
 }
 
-const variantStyles: Record<string, Style> = {
+const variantStyles: Record<string, Record<string, string | number>> = {
   default: {
     backgroundColor: darkTheme.cardBg,
     borderWidth: 1,

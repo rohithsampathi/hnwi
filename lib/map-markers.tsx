@@ -388,10 +388,12 @@ export function createCustomIcon(
   }
 
   // Default: always show fully visible colored dot
-  const isCrownVault = city.source?.toLowerCase().includes('crown vault')
-  const isPriveExchange = !!city.victor_score ||
-                          city.source?.toLowerCase().includes('privé') ||
-                          city.source?.toLowerCase().includes('prive')
+  const sourceLower = city.source?.toLowerCase() || ''
+  const isCrownVault = city.type === 'crown' || sourceLower.includes('crown vault')
+  const isPriveExchange =
+    city.type === 'prive' ||
+    sourceLower.includes('privé') === true ||
+    sourceLower.includes('prive') === true
 
   // Choose icon SVG based on source priority: Crown Vault > Privé Exchange > Category
   const iconSvg = getSmallMarkerIcon(city, isCrownVault, isPriveExchange)

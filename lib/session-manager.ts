@@ -1,10 +1,10 @@
 // lib/session-manager.ts - Enhanced session management with security features
 
 import { cookies } from 'next/headers';
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { logger } from './secure-logger';
 
-interface SessionData {
+interface SessionData extends JWTPayload {
   userId: string;
   email: string;
   role: string;

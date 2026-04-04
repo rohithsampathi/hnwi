@@ -308,7 +308,10 @@ export const SECTIONS: SectionDefinition[] = [
     title: 'Golden Visa Intelligence',
     category: 'wealth-structuring',
     component: GoldenVisaIntelligenceSection,
-    shouldRender: (data) => data.preview_data.golden_visa_intelligence?.exists === true,
+    shouldRender: (data) => Boolean(
+      data.preview_data.golden_visa_intelligence?.exists ??
+      data.preview_data.golden_visa_intelligence?.program_name
+    ),
     estimatedReadTime: 5,
     aidaNext: ['structure-comparison', 'heir-management'],
     description: 'KGv3-powered residency program analysis'
@@ -319,7 +322,10 @@ export const SECTIONS: SectionDefinition[] = [
     category: 'wealth-structuring',
     component: GoldenVisaSection,
     shouldRender: (data) => {
-      const hasKGv3 = data.preview_data.golden_visa_intelligence?.exists === true;
+      const hasKGv3 = Boolean(
+        data.preview_data.golden_visa_intelligence?.exists ??
+        data.preview_data.golden_visa_intelligence?.program_name
+      );
       const hasVisaPrograms = !!(data.preview_data.destination_drivers?.visa_programs?.length);
       return !hasKGv3 && hasVisaPrograms;
     },
@@ -384,7 +390,7 @@ export const SECTIONS: SectionDefinition[] = [
     category: 'implementation',
     component: ReferencesSection,
     // CRITICAL FIX: Match War Room conditional logic - check if legal references exist
-    shouldRender: (data) => !!(data.preview_data.legal_references && data.preview_data.legal_references.total_count > 0),
+    shouldRender: (data) => !!(data.preview_data.legal_references && (data.preview_data.legal_references.total_count ?? 0) > 0),
     estimatedReadTime: 2,
     aidaNext: ['regulatory-sources'],
     description: 'Legal citations and sources'

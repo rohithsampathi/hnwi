@@ -124,7 +124,7 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
                   <div className="mt-6">
                     <h2 className="text-subtitle text-primary mb-4">Sources</h2>
                     <div className="space-y-1">
-                      {analysisResult.supporting_data.vector_results.map((source, index) => (
+                      {analysisResult.supporting_data.vector_results.map((source: { metadata?: { url?: string; title?: string } }, index: number) => (
                         <a
                           key={index}
                           href={source.metadata?.url || "#"}
@@ -148,4 +148,3 @@ export function HNWIThinkingSection({ industry }: HNWIThinkingSectionProps) {
     </Card>
   )
 }
-

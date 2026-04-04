@@ -29,7 +29,7 @@ import { getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors"
 interface PlanUpgradeModalProps {
   isOpen: boolean
   onClose: () => void
-  currentTier?: SubscriptionTier
+  currentTier?: SubscriptionTier | 'family_office' | 'professional' | 'essential'
   onSuccess?: (tier: SubscriptionTier, billingCycle: 'monthly' | 'yearly') => void
 }
 

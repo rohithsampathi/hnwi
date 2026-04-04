@@ -6,24 +6,26 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Globe, Brain, TrendingUp, Shield, Zap } from 'lucide-react';
-
-const ANALYSIS_STEPS = [
-  { id: 'dependencies', label: 'Mapping coordination dependencies...', icon: Activity },
-  { id: 'liquidity', label: 'Detecting liquidity mismatches...', icon: TrendingUp },
-  { id: 'cascade', label: 'Calculating cascade exposure...', icon: Zap },
-  { id: 'precedents', label: 'Cross-referencing 1,875 corridor signals...', icon: Globe },
-  { id: 'opportunities', label: 'Matching opportunities to your profile...', icon: Brain },
-  { id: 'losses', label: 'Quantifying prevented losses...', icon: Shield },
-];
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 export function AnalyzingScreen() {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : 'live';
+  const analysisSteps = [
+    { id: 'dependencies', label: 'Mapping coordination dependencies...', icon: Activity },
+    { id: 'liquidity', label: 'Detecting liquidity mismatches...', icon: TrendingUp },
+    { id: 'cascade', label: 'Calculating cascade exposure...', icon: Zap },
+    { id: 'precedents', label: `Cross-referencing ${briefCountLabel} corridor signals...`, icon: Globe },
+    { id: 'opportunities', label: 'Matching opportunities to your profile...', icon: Brain },
+    { id: 'losses', label: 'Quantifying prevented losses...', icon: Shield },
+  ];
   const [currentStep, setCurrentStep] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => {
-        if (prev < ANALYSIS_STEPS.length - 1) {
+        if (prev < analysisSteps.length - 1) {
           return prev + 1;
         }
         return prev;
@@ -31,7 +33,7 @@ export function AnalyzingScreen() {
     }, 500);
 
     return () => clearInterval(stepInterval);
-  }, []);
+  }, [analysisSteps.length]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -58,7 +60,7 @@ export function AnalyzingScreen() {
                     ANALYZING YOUR ALLOCATION
                   </h1>
                   <p className="text-primary-foreground/90">
-                    Processing against 1,875 developments + 159 failure modes
+                    Processing against {briefCountLabel} developments + 159 failure modes
                   </p>
                 </div>
                 <div className="text-right">
@@ -90,7 +92,7 @@ export function AnalyzingScreen() {
             </h2>
 
             <div className="space-y-3">
-              {ANALYSIS_STEPS.map((step, index) => {
+              {analysisSteps.map((step, index) => {
                 const Icon = step.icon;
                 const isComplete = index < currentStep;
                 const isActive = index === currentStep;
@@ -128,7 +130,10 @@ export function AnalyzingScreen() {
 
           {/* Live Metrics */}
           <div className="grid grid-cols-3 gap-4">
-            <MetricCard label="Developments" value={Math.min(1875, Math.floor(elapsedTime * 312))} />
+            <MetricCard
+              label="Developments"
+              value={briefCount ? Math.min(briefCount, Math.floor(elapsedTime * Math.max(1, Math.ceil(briefCount / 6)))) : 0}
+            />
             <MetricCard label="Patterns" value={Math.min(159, Math.floor(elapsedTime * 26))} />
             <MetricCard label="Links" value={Math.min(414127, Math.floor(elapsedTime * 69021))} suffix="+" />
           </div>

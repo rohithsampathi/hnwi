@@ -3,6 +3,9 @@
 
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET() {
   try {
     const envCheck = {
@@ -14,7 +17,6 @@ export async function GET() {
       // Don't expose secrets, just check if they exist
       has_jwt_secret: !!process.env.JWT_SECRET,
       has_api_secret: !!process.env.API_SECRET_KEY,
-      has_mongodb_uri: !!process.env.MONGODB_URI,
       // Try to ping the backend
       backend_url_configured: process.env.API_BASE_URL || 'http://localhost:8000',
     }

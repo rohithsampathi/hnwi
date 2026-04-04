@@ -33,7 +33,7 @@ export class RohithAI {
     private conversations: Conversation[],
     private currentMessages: Message[],
     private activeConversationId: string | null,
-    private userContext?: UserPortfolioContext
+    private userContext?: UserPortfolioContext | null
   ) {}
 
   /**

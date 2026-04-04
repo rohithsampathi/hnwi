@@ -179,11 +179,11 @@ const FALLBACK_PLAYBOOK: Playbook = {
 
 export function PlayBooksPage({
   onNavigate,
-  userEmail,
+  userEmail = "",
   userData,
 }: {
   onNavigate: (route: string) => void
-  userEmail: string
+  userEmail?: string
   userData?: any
 }) {
   const { theme } = useTheme()
@@ -246,6 +246,7 @@ export function PlayBooksPage({
     try {
       // Try multiple auth methods
       let userId = localStorage.getItem("userId");
+      let token = localStorage.getItem("token") || localStorage.getItem("authToken");
       // Auth via cookies
       
       // If not in localStorage, try from userData
@@ -260,8 +261,8 @@ export function PlayBooksPage({
       if (purchasedReports.length > 0) {
         // We already have report data from userData, use it directly
         const userPlaybooks = purchasedReports
-          .filter(report => report.is_active)
-          .map(report => {
+          .filter((report: PurchasedReport) => report.is_active)
+          .map((report: PurchasedReport): Playbook => {
             // Create a playbook entry from the report data
             return {
               id: report.report_id,
@@ -287,11 +288,11 @@ export function PlayBooksPage({
           const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true);
             
           // Filter active purchased reports
-          const activeReports = userDataResponse.purchased_reports.filter(report => report.is_active);
+          const activeReports = userDataResponse.purchased_reports.filter((report: PurchasedReport) => report.is_active);
           
           // If there are active reports, fetch details for each
           if (activeReports.length > 0) {
-            const playbookPromises = activeReports.map(async (report) => {
+            const playbookPromises: Promise<Playbook | null>[] = activeReports.map(async (report: PurchasedReport) => {
               try {
                 const reportData: ReportData = await secureApi.get(`/api/reports/${report.report_id}`, true);
                     

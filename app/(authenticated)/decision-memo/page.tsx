@@ -23,6 +23,7 @@ import { MfaCodeInput } from '@/components/mfa-code-input';
 import { Shield, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 type FlowStage = 'vault' | 'landing' | 'login';
 
@@ -37,7 +38,7 @@ export default function DecisionMemoPage() {
     return 'vault';
   });
   const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [briefCount, setBriefCount] = useState<number>(1875);
+  const briefCount = useCastleBriefCount();
   // Login form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,20 +66,12 @@ export default function DecisionMemoPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [oppsRes, countsRes] = await Promise.all([
-          fetch('/api/public/assessment/preview-opportunities?show_all=true'),
-          fetch('/api/developments/counts')
-        ]);
+        const oppsRes = await fetch('/api/public/assessment/preview-opportunities?show_all=true');
 
         if (oppsRes.ok) {
           const data = await oppsRes.json();
           let opps = Array.isArray(data) ? data : (data.opportunities || data.data || []);
           setOpportunities(opps.filter((o: any) => o.latitude && o.longitude));
-        }
-
-        if (countsRes.ok) {
-          const data = await countsRes.json();
-          setBriefCount(data.developments?.total_count || data.total || data.count || 1875);
         }
       } catch {
         // Silent fail - use defaults

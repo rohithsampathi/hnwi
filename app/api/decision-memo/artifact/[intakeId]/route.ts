@@ -59,7 +59,10 @@ export async function GET(
         if (response.status === 401) {
           return NextResponse.json(
             { error: 'Authentication required' },
-            { status: 401 }
+            {
+              status: 401,
+              headers: { 'Cache-Control': 'no-store' },
+            }
           );
         }
 
@@ -202,7 +205,9 @@ export async function GET(
             data.memo_data.crisis_resilience_stress_test = crisisResilience;
           }
 
-          return NextResponse.json(data);
+          return NextResponse.json(data, {
+            headers: { 'Cache-Control': 'no-store' },
+          });
         } else {
           logger.warn('Artifact backend returned non-OK status', { status: response.status });
         }
@@ -215,7 +220,10 @@ export async function GET(
     logger.error('All backend endpoints failed for artifact', { intakeId });
     return NextResponse.json(
       { success: false, error: 'Artifact not available from any endpoint' },
-      { status: 404 }
+      {
+        status: 404,
+        headers: { 'Cache-Control': 'no-store' },
+      }
     );
 
   } catch (error) {

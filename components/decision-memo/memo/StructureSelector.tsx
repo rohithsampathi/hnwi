@@ -6,13 +6,13 @@ import { AlertTriangle, ChevronDown, Sparkles } from 'lucide-react';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface Structure {
-  name: string;
-  type: string;
-  net_benefit_10yr: number;
-  tax_savings_pct: number;
-  viable: boolean;
-  verdict: string;
-  warnings: string[];
+  name?: string;
+  type?: string;
+  net_benefit_10yr?: number;
+  tax_savings_pct?: number;
+  viable?: boolean;
+  verdict?: string;
+  warnings?: string[];
   setup_cost?: number;
   annual_cost?: number;
   rental_income_rate?: number;
@@ -79,7 +79,7 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
                 const isOpt = structure.name === optimalStructureName;
                 return (
                   <option key={structure.name} value={structure.name}>
-                    {structure.name} {isOpt ? '*' : ''} ({formatBenefit(structure.net_benefit_10yr)})
+                    {structure.name || 'Unnamed Structure'} {isOpt ? '*' : ''} ({formatBenefit(structure.net_benefit_10yr ?? 0)})
                   </option>
                 );
               })}
@@ -114,10 +114,10 @@ export const StructureSelector: React.FC<StructureSelectorProps> = ({
                 </span>
               )}
               <span className={`text-base font-medium tabular-nums ${benefitPositive ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                {formatBenefit(selectedStructure.net_benefit_10yr)} 10yr
+                {formatBenefit(selectedStructure.net_benefit_10yr ?? 0)} 10yr
               </span>
               <span className="text-muted-foreground/20">&middot;</span>
-              <span className="text-xs text-muted-foreground/60 font-normal">{selectedStructure.type.replace(/_/g, ' ')}</span>
+              <span className="text-xs text-muted-foreground/60 font-normal">{(selectedStructure.type || 'structure').replace(/_/g, ' ')}</span>
             </div>
 
             {/* Tax rates grid */}

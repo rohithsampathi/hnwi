@@ -89,23 +89,40 @@ export interface AuditLogEntry {
 const auditLogStore: AuditLogEntry[] = [];
 
 // Data retention policies for different event types
-const RETENTION_POLICIES = {
-  [AuditEventType.USER_LOGIN]: 365, // 1 year
-  [AuditEventType.USER_LOGIN_FAILED]: 90, // 3 months
-  [AuditEventType.ASSET_CREATED]: 2555, // 7 years (financial records)
-  [AuditEventType.ASSET_VIEWED]: 365, // 1 year
-  [AuditEventType.ASSET_UPDATED]: 2555, // 7 years
-  [AuditEventType.ASSET_DELETED]: 2555, // 7 years
-  [AuditEventType.PROFILE_UPDATED]: 1095, // 3 years
-  [AuditEventType.SENSITIVE_DATA_ACCESSED]: 2555, // 7 years
-  [AuditEventType.PAYMENT_PROCESSED]: 2555, // 7 years
-  [AuditEventType.RATE_LIMIT_EXCEEDED]: 30, // 30 days
-  [AuditEventType.CSRF_VALIDATION_FAILED]: 90, // 3 months
-  [AuditEventType.UNAUTHORIZED_ACCESS]: 365, // 1 year
-  [AuditEventType.SUSPICIOUS_ACTIVITY]: 1095, // 3 years
-  [AuditEventType.GDPR_REQUEST_PROCESSED]: 2555, // 7 years
-  // Default retention
-  default: 365
+const DEFAULT_RETENTION_DAYS = 365;
+
+const RETENTION_POLICIES: Record<AuditEventType, number> = {
+  [AuditEventType.USER_LOGIN]: 365,
+  [AuditEventType.USER_LOGOUT]: 365,
+  [AuditEventType.USER_LOGIN_FAILED]: 90,
+  [AuditEventType.USER_SIGNUP]: 365,
+  [AuditEventType.SESSION_EXPIRED]: 90,
+  [AuditEventType.PASSWORD_CHANGE]: 365,
+  [AuditEventType.ASSET_CREATED]: 2555,
+  [AuditEventType.ASSET_VIEWED]: 365,
+  [AuditEventType.ASSET_UPDATED]: 2555,
+  [AuditEventType.ASSET_DELETED]: 2555,
+  [AuditEventType.ASSET_SHARED]: 2555,
+  [AuditEventType.HEIR_ADDED]: 2555,
+  [AuditEventType.HEIR_REMOVED]: 2555,
+  [AuditEventType.PROFILE_VIEWED]: 365,
+  [AuditEventType.PROFILE_UPDATED]: 1095,
+  [AuditEventType.SENSITIVE_DATA_ACCESSED]: 2555,
+  [AuditEventType.EXPORT_DATA]: 2555,
+  [AuditEventType.IMPORT_DATA]: 2555,
+  [AuditEventType.INVESTMENT_VIEWED]: 365,
+  [AuditEventType.OPPORTUNITY_ACCESSED]: 365,
+  [AuditEventType.FINANCIAL_REPORT_GENERATED]: 2555,
+  [AuditEventType.PAYMENT_PROCESSED]: 2555,
+  [AuditEventType.RATE_LIMIT_EXCEEDED]: 30,
+  [AuditEventType.CSRF_VALIDATION_FAILED]: 90,
+  [AuditEventType.UNAUTHORIZED_ACCESS]: 365,
+  [AuditEventType.SUSPICIOUS_ACTIVITY]: 1095,
+  [AuditEventType.IP_BLOCKED]: 365,
+  [AuditEventType.ADMIN_ACTION]: 2555,
+  [AuditEventType.DATA_RETENTION_POLICY_EXECUTED]: 2555,
+  [AuditEventType.GDPR_REQUEST_PROCESSED]: 2555,
+  [AuditEventType.SYSTEM_CONFIGURATION_CHANGED]: 2555
 };
 
 export class AuditLogger {
@@ -136,7 +153,7 @@ export class AuditLogger {
     try {
       const eventId = crypto.randomUUID();
       const timestamp = new Date().toISOString();
-      const retentionDays = RETENTION_POLICIES[eventType] || RETENTION_POLICIES.default;
+      const retentionDays = RETENTION_POLICIES[eventType] || DEFAULT_RETENTION_DAYS;
       
       // Determine severity based on event type if not provided
       let severity = options.severity || AuditSeverity.LOW;

@@ -13,7 +13,12 @@ if (typeof window !== 'undefined') {
     isAuthenticated: () => authManager.isAuthenticated(),
     
     // Debug info
-    debug: () => authManager.debug(),
+    debug: () => ({
+      authenticated: authManager.isAuthenticated(),
+      userId: authManager.getUserId(),
+      user: authManager.getCurrentUser(),
+      tokenAccessible: false,
+    }),
     
     // Test login (cookies handle auth - no token needed)
     testLogin: () => {
@@ -40,7 +45,7 @@ if (typeof window !== 'undefined') {
     }),
     
     // Force initialization
-    init: () => authManager.ensureInitialized(),
+    init: () => authManager.waitForInitialization(),
     
     // Clear all
     clearAll: () => {

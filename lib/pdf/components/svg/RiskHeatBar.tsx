@@ -57,9 +57,7 @@ export const RiskHeatBar: React.FC<RiskHeatBarProps> = ({
               x={String(rx + w / 2)}
               y={String(height + 12)}
               textAnchor="middle"
-              fontSize="9"
-              fontFamily="Inter" fontWeight={700}
-              fill={seg.color}
+              style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, fill: seg.color }}
             >
               {shortLabel}
             </SvgText>

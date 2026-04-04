@@ -10,16 +10,10 @@ import secureApi, {
 
 // Use centralized auth check from secure-api
 // Import auth manager to ensure initialization
-import { authManager } from '@/lib/auth-manager';
-
 const getCurrentUserId = () => {
-  // Ensure auth manager is initialized before getting user ID
-  authManager.ensureInitialized();
   return getAuthenticatedUserId();
 };
 const getCurrentUser = () => {
-  // Ensure auth manager is initialized before getting user
-  authManager.ensureInitialized();
   return getAuthenticatedUser();
 };
 
@@ -215,6 +209,9 @@ export interface Opportunity {
     price_per_sqft?: number;
     market_rate_per_sqft?: number;
     discount_percentage?: number;
+    price_breakdown?: {
+      per_acre_inr?: number | string | Record<string, unknown>;
+    };
     transaction_costs?: any;
     total_investment_required?: number;
   };
@@ -256,6 +253,16 @@ export interface Opportunity {
     property_type?: string;
     bedrooms?: number;
     total_area_sqft?: number;
+    soil_climate?: {
+      soil_type?: string;
+      soil_note?: string;
+      climate?: string;
+      annual_rainfall?: string;
+    };
+    water_resources?: {
+      primary_source?: string;
+      note?: string;
+    };
     location?: {
       full_address?: string;
       coordinates?: { latitude: number; longitude: number };
@@ -281,6 +288,13 @@ export interface Opportunity {
 
   // TIER 9: Citations
   citations_and_sources?: any[];
+  next_steps?: Array<{
+    step?: number | string;
+    action?: string;
+    title?: string;
+    description?: string;
+    timeline?: string;
+  }>;
 
   // Legacy Compatibility Fields
   description?: string;
@@ -312,6 +326,15 @@ export interface Opportunity {
   hnwi_alignment?: string;
 }
 
+function normalizeOpportunityList(data: any): Opportunity[] {
+  const opportunities = Array.isArray(data) ? data : (data?.opportunities || [])
+
+  return opportunities.map((opp: any) => ({
+    ...opp,
+    id: opp.id || opp._id || opp.opportunity_id || String(Math.random())
+  })) as Opportunity[]
+}
+
 export async function getOpportunities(bustCache: boolean = false): Promise<Opportunity[]> {
   try {
     // Add timestamp parameter to bust cache when needed
@@ -325,15 +348,7 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
     // Backend can return either:
     // 1. Direct array: [opp1, opp2, ...]
     // 2. Wrapped object: { success: true, opportunities: [...], total_count: 4 }
-    const opportunities = Array.isArray(data) ? data : (data?.opportunities || []);
-
-    // Normalize MongoDB _id to id field for consistent access
-    const normalized = opportunities.map((opp: any) => ({
-      ...opp,
-      id: opp.id || opp._id || opp.opportunity_id || String(Math.random()) // Ensure every opportunity has an id
-    }));
-
-    return normalized as Opportunity[];
+    return normalizeOpportunityList(data);
   } catch (error: any) {
     // Enhanced error handling with details from API route
     // Note: secureApi throws errors with .detail (singular), not .details (plural)
@@ -354,6 +369,54 @@ export async function getOpportunities(bustCache: boolean = false): Promise<Oppo
       throw new Error(`Backend error: ${specificError}`);
     } else {
       throw new Error('Unable to load investment opportunities. Please try again later.');
+    }
+  }
+}
+
+export async function getCommandCentreOpportunities(
+  {
+    bustCache = false,
+    includeCrownVault = false,
+    view = "all",
+    timeframe = "LIVE",
+  }: {
+    bustCache?: boolean
+    includeCrownVault?: boolean
+    view?: string
+    timeframe?: string
+  } = {}
+): Promise<Opportunity[]> {
+  try {
+    const params = new URLSearchParams({
+      view,
+      timeframe,
+      include_crown_vault: includeCrownVault ? "true" : "false",
+    })
+
+    if (bustCache) {
+      params.set("_t", Date.now().toString())
+    }
+
+    const endpoint = `/api/command-centre/opportunities?${params.toString()}`
+    const data = await secureApi.get(endpoint, true, bustCache)
+
+    return normalizeOpportunityList(data)
+  } catch (error: any) {
+    const errorMessage = error?.message || 'Unknown error'
+    const errorDetail = error?.detail || error?.response?.data || {}
+    const errorDetails = errorDetail?.details || errorDetail?.error || ''
+    const errorType = errorDetail?.type || 'unknown'
+    const backendUrl = errorDetail?.backendUrl || ''
+
+    if (errorType === 'timeout') {
+      throw new Error('Request timed out. Command Centre data may still be rebuilding. Please try again.')
+    } else if (errorType === 'network') {
+      throw new Error(`Cannot connect to backend API (${backendUrl}). Please check your internet connection and try again.`)
+    } else if (error?.status === 500 || errorMessage.includes('500')) {
+      const specificError = errorDetails || errorDetail?.message || 'Internal server error'
+      throw new Error(`Backend error: ${specificError}`)
+    } else {
+      throw new Error('Unable to load Command Centre opportunities. Please try again later.')
     }
   }
 }
@@ -391,7 +454,51 @@ export interface AppreciationMetrics {
   time_held_days: number;
 }
 
+export interface PriceRefreshAppreciation {
+  percentage: number;
+  absolute: number;
+  annualized: number;
+  time_held_days?: number;
+}
+
+const deriveTimeHeldDays = (createdAt?: string, existingTimeHeldDays?: number) => {
+  if (typeof existingTimeHeldDays === "number" && Number.isFinite(existingTimeHeldDays)) {
+    return existingTimeHeldDays;
+  }
+
+  if (!createdAt) {
+    return 0;
+  }
+
+  const createdAtTimestamp = Date.parse(createdAt);
+  if (Number.isNaN(createdAtTimestamp)) {
+    return 0;
+  }
+
+  const elapsedDays = Math.floor((Date.now() - createdAtTimestamp) / (1000 * 60 * 60 * 24));
+  return Math.max(0, elapsedDays);
+};
+
+export function normalizeAppreciationMetrics(
+  appreciation: PriceRefreshAppreciation | AppreciationMetrics | null | undefined,
+  options: {
+    createdAt?: string;
+    existingTimeHeldDays?: number;
+  } = {},
+): AppreciationMetrics {
+  return {
+    percentage: appreciation?.percentage ?? 0,
+    absolute: appreciation?.absolute ?? 0,
+    annualized: appreciation?.annualized ?? 0,
+    time_held_days:
+      appreciation?.time_held_days ??
+      deriveTimeHeldDays(options.createdAt, options.existingTimeHeldDays),
+  };
+}
+
 export interface CrownVaultAsset {
+  _id?: string;
+  id?: string;
   asset_id: string;
   asset_data: {
     name: string;
@@ -738,7 +845,7 @@ export async function createHeir(
     notes?: string;
   },
   ownerId?: string
-): Promise<{ heir: CrownVaultHeir; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
+): Promise<{ heir: CrownVaultHeir; refreshedData?: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
@@ -770,7 +877,10 @@ export async function createHeir(
       created_at: data.created_at || new Date().toISOString()
     };
     
-    return heir;
+    return {
+      heir,
+      refreshedData: data.refreshedData,
+    };
   } catch (error) {
     throw error;
   }
@@ -786,7 +896,7 @@ export async function updateHeir(
     notes?: string;
   },
   ownerId?: string
-): Promise<{ heir: CrownVaultHeir; refreshedData: { assets: any[]; heirs: any[]; stats: any } }> {
+): Promise<{ heir: CrownVaultHeir; refreshedData?: { assets: any[]; heirs: any[]; stats: any } }> {
   try {
     const userId = ownerId || getCurrentUserId();
     if (!userId) {
@@ -805,9 +915,6 @@ export async function updateHeir(
     
     const data = await secureApi.put(`/api/crown-vault/heirs/${heirId}?owner_id=${userId}`, filteredData);
     
-    // Return updated heir data - cache will auto-refresh on next request
-    return data;
-    
     const heir = {
       id: data.heir?.id || heirId,
       name: data.heir?.name || heirData.name || '',
@@ -818,7 +925,7 @@ export async function updateHeir(
       created_at: data.heir?.created_at || new Date().toISOString()
     };
     
-    return { heir, refreshedData };
+    return { heir, refreshedData: data.refreshedData };
   } catch (error) {
     throw error;
   }
@@ -951,11 +1058,7 @@ export interface PriceRefreshResponse {
   new_price: number;
   price_source: 'katherine_analysis' | 'manual';
   confidence_score?: number;
-  appreciation: {
-    percentage: number;
-    absolute: number;
-    annualized: number;
-  };
+  appreciation: PriceRefreshAppreciation;
   message: string;
   price_history_updated: boolean;
 }
@@ -990,7 +1093,7 @@ export async function refreshAssetPrice(
       appreciation: result.appreciation || {
         percentage: 0,
         absolute: 0,
-        annualized: 0
+        annualized: 0,
       },
       message: result.message || 'Price updated successfully',
       price_history_updated: result.price_history_updated || true

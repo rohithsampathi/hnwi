@@ -63,9 +63,7 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
         x={String(cx)}
         y={String(cy + 2)}
         textAnchor="middle"
-        fontSize={size * 0.28}
-        fontFamily="Inter" fontWeight={700}
-        fill={darkTheme.textPrimary}
+        style={{ fontSize: size * 0.28, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
       >
         {String(Math.round(clampedScore))}
       </SvgText>
@@ -75,9 +73,7 @@ export const CircularGauge: React.FC<CircularGaugeProps> = ({
           x={String(cx)}
           y={String(cy + size * 0.18)}
           textAnchor="middle"
-          fontSize={size * 0.1}
-          fontFamily="Inter" fontWeight={700}
-          fill={darkTheme.textMuted}
+          style={{ fontSize: size * 0.1, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textMuted }}
         >
           {label}
         </SvgText>

@@ -1,11 +1,11 @@
 // API route to share an opportunity
-// Creates shareable links for opportunities using MongoDB storage
+// Proxies to backend /api/sharing/opportunities endpoints
 
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { CSRFProtection } from '@/lib/csrf-protection'
-import { storeSharedOpportunity } from '@/lib/mongodb-shared-opportunities'
-import type { Opportunity } from '@/lib/api'
+import { serverApi } from '@/lib/server-api'
+import crypto from 'crypto'
 
 // Force dynamic runtime
 export const dynamic = 'force-dynamic'
@@ -24,7 +24,7 @@ async function handlePost(request: NextRequest) {
       )
     }
 
-    // Get the access token from cookies for authentication check
+    // Auth check
     const cookieStore = cookies()
     const accessToken = cookieStore.get('access_token')?.value
 
@@ -36,22 +36,18 @@ async function handlePost(request: NextRequest) {
     }
 
     // Security: Use random UUID instead of predictable opportunityId
-    // This prevents enumeration attacks and URL guessing
-    const crypto = require('crypto')
     const shareId = crypto.randomUUID()
 
-    // Store the opportunity in MongoDB
-    await storeSharedOpportunity({
+    // Store via backend (sanitization happens on backend)
+    await serverApi.post('/api/sharing/opportunities', {
       shareId,
       opportunityId,
       userId: userId || 'anonymous',
-      opportunityData: opportunityData as Opportunity,
+      opportunityData,
       sharedBy: userId || 'anonymous'
-    })
+    }, request.headers)
 
     // Generate the shareable URL
-    // In production builds, always use the production URL for shares
-    // In development, use the base URL (localhost)
     const isProduction = process.env.NODE_ENV === 'production'
     const baseUrl = isProduction
       ? process.env.NEXT_PUBLIC_PRODUCTION_URL || process.env.NEXT_PUBLIC_BASE_URL

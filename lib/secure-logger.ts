@@ -98,28 +98,28 @@ class SecureLogger {
     return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
   }
 
-  debug(message: string, data?: any) {
+  debug(message: string, ...data: unknown[]) {
     if (this.shouldLog('debug')) {
     }
   }
 
-  info(message: string, data?: any) {
+  info(message: string, ...data: unknown[]) {
     if (this.shouldLog('info')) {
     }
   }
 
-  warn(message: string, data?: any) {
+  warn(message: string, ...data: unknown[]) {
     if (this.shouldLog('warn')) {
     }
   }
 
-  error(message: string, data?: any) {
+  error(message: string, ...data: unknown[]) {
     if (this.shouldLog('error')) {
     }
   }
 
   // Production-safe logging for critical errors only
-  critical(message: string, data?: any) {
+  critical(message: string, ...data: unknown[]) {
   }
 }
 

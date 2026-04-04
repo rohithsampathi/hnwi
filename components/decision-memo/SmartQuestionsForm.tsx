@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { smartQuestionsSchema, type SmartQuestionsFormData } from '@/lib/decision-memo/schemas';
 import { LiveIntelligenceStream } from './LiveIntelligenceStream';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 import {
   TrendingUp,
   Globe,
@@ -34,7 +35,7 @@ const SMART_QUESTIONS = [
     subtitle: 'What major allocation or restructuring decisions are you considering?',
     icon: TrendingUp,
     fields: ['q1_primary_move', 'q1_secondary_move', 'q1_asset_focus', 'q1_move_size'],
-    insight: 'Based on 1,562+ HNWI intelligence signals, 73% of allocation mistakes stem from unclear move definition.'
+    insight: 'Based on live HNWI intelligence signals, 73% of allocation mistakes stem from unclear move definition.'
   },
   {
     id: 'q2_geography',
@@ -119,6 +120,7 @@ export function SmartQuestionsForm({
   intakeId
 }: SmartQuestionsFormProps) {
   const router = useRouter();
+  const briefCount = useCastleBriefCount();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedQuestions, setCompletedQuestions] = useState<number[]>([]);
@@ -265,6 +267,12 @@ export function SmartQuestionsForm({
 
   const CurrentIcon = SMART_QUESTIONS[currentQuestion].icon;
   const isLastQuestion = currentQuestion === SMART_QUESTIONS.length - 1;
+  const currentInsight =
+    currentQuestion === 0
+      ? `Based on ${
+          briefCount !== null ? briefCount.toLocaleString() : 'live'
+        } HNWI intelligence signals, 73% of allocation mistakes stem from unclear move definition.`
+      : SMART_QUESTIONS[currentQuestion].insight;
 
   // Show generating state while waiting for preview_ready SSE
   if (waitingForPreview) {
@@ -770,7 +778,7 @@ export function SmartQuestionsForm({
                     >
                       <p className="text-xs sm:text-sm text-muted-foreground">
                         <span className="text-primary font-semibold">Pattern Insight:</span>{' '}
-                        {SMART_QUESTIONS[currentQuestion].insight}
+                        {currentInsight}
                       </p>
                     </motion.div>
 
@@ -850,10 +858,11 @@ interface DecisionMemoAnalyzingProps {
 
 function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingProps) {
   const router = useRouter();
+  const developmentCount = useCastleBriefCount();
+  const developmentCountLabel = developmentCount !== null ? developmentCount.toLocaleString() : null;
   const [elapsedTime, setElapsedTime] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(1);
-  const [developmentCount, setDevelopmentCount] = useState(1875);
   const [steps, setSteps] = useState<ProcessingStep[]>([
     { id: 'intake', label: 'Intake analysis completed', estimatedSeconds: 0, status: 'complete' },
     { id: 'precedents', label: 'Cross-referencing HNWI corridor signals', estimatedSeconds: 5, status: 'processing' },
@@ -861,23 +870,6 @@ function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingPr
     { id: 'risks', label: 'Calculating exposure risks', estimatedSeconds: 5, status: 'pending' },
     { id: 'memo', label: 'Generating Decision Memo', estimatedSeconds: 7, status: 'pending' },
   ]);
-
-  // Fetch actual development count
-  useEffect(() => {
-    async function fetchCount() {
-      try {
-        const response = await fetch('/api/developments/counts');
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total_count || data.count || 1875;
-          setDevelopmentCount(count);
-        }
-      } catch {
-        // Keep default
-      }
-    }
-    fetchCount();
-  }, []);
 
   // SSE connection for analysis_step and preview_ready events
   useEffect(() => {
@@ -1000,7 +992,8 @@ function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingPr
             Decision Memo Generation
           </h1>
           <p className="text-primary-foreground/80">
-            Analyzing your wealth profile against {developmentCount.toLocaleString()}+ HNWI corridor signals
+            Analyzing your wealth profile against{' '}
+            {developmentCountLabel ? `${developmentCountLabel} HNWI corridor signals` : 'live HNWI corridor signals'}
           </p>
         </div>
 
@@ -1095,7 +1088,8 @@ function DecisionMemoAnalyzing({ intakeId, onComplete }: DecisionMemoAnalyzingPr
         <div className="p-4 bg-muted/50 border-t border-border">
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              This analysis requires deep pattern matching across {developmentCount.toLocaleString()}+ HNWI World developments.
+              This analysis requires deep pattern matching across{' '}
+              {developmentCountLabel ? `${developmentCountLabel} HNWI World developments` : 'live HNWI World developments'}.
             </p>
             <p className="text-xs text-muted-foreground">
               Your personalized Decision Memo identifies opportunities and blind spots.

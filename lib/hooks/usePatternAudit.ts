@@ -18,8 +18,6 @@ import {
   AuditSession,
   PatternAuditAPIPayload
 } from '@/lib/decision-memo/pattern-audit-types';
-import { exportInstitutionalPDF } from './usePremiumPDFExport';
-import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 
 const API_BASE = '/api/decision-memo';
 
@@ -96,7 +94,8 @@ export function usePatternAudit() {
   const getSession = useCallback(async (intakeId: string, authToken?: string | null): Promise<AuditSession> => {
     const response = await fetch(`${API_BASE}/session/${intakeId}`, {
       headers: buildHeaders(authToken),
-      credentials: 'include'
+      credentials: 'include',
+      cache: 'no-store'
     });
 
     if (response.status === 401) {
@@ -130,7 +129,8 @@ export function usePatternAudit() {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
       headers: buildHeaders(authToken),
-      credentials: 'include'
+      credentials: 'include',
+      cache: 'no-store'
     });
 
     if (response.status === 401) {
@@ -387,7 +387,8 @@ export function usePatternAudit() {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
       headers: buildHeaders(authToken),
-      credentials: 'include'
+      credentials: 'include',
+      cache: 'no-store'
     });
 
     if (response.status === 401) {
@@ -406,18 +407,6 @@ export function usePatternAudit() {
 
     return transformArtifactFromAPI(artifactData);
   }, []);
-
-  // ==========================================================================
-  // EXPORT PDF
-  // Client-side PDF generation - each section on new page
-  // ==========================================================================
-
-  const exportPDF = useCallback(async (artifact: ICArtifact | PdfMemoData, theme?: 'light' | 'dark') => {
-    // Use institutional-grade PDF export for $2,500 audits
-    return await exportInstitutionalPDF(artifact as any, theme);
-  }, []);
-
-  // Old PDF generation code removed - now using institutional-grade export
 
   // ==========================================================================
   // SHARE ARTIFACT
@@ -463,7 +452,6 @@ export function usePatternAudit() {
     openPaymentCheckout,
     // Artifact methods
     getFullArtifact,
-    exportPDF,
     shareArtifact
   };
 }
@@ -549,7 +537,7 @@ function transformIntakeToAPI(intake: SFOPatternAuditIntake): PatternAuditAPIPay
   };
 }
 
-function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICArtifact; preview_data?: any; memo_data?: any; generated_at?: string } {
+function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICArtifact; rawFullArtifact?: any; preview_data?: any; memo_data?: any; generated_at?: string } {
   // Map backend status to frontend status
   // Backend may return: SUBMITTED, IN_REVIEW, PREVIEW_READY, PAID, FULL_READY
   const status = data.status || data.payment_status || 'PREVIEW_READY';
@@ -557,7 +545,7 @@ function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICA
   // Check if paid/unlocked - backend might use different field names
   const isPaid = data.is_paid || data.paid || data.is_unlocked || status === 'PAID' || status === 'FULL_READY';
 
-  const session: AuditSession & { fullArtifact?: ICArtifact; preview_data?: any; memo_data?: any } = {
+  const session: AuditSession & { fullArtifact?: ICArtifact; rawFullArtifact?: any; preview_data?: any; memo_data?: any; generated_at?: string } = {
     intakeId: data.intake_id,
     principalId: 'sfo_audit',
     status: isPaid ? 'PAID' : status,
@@ -575,6 +563,7 @@ function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICA
   // If session includes full_artifact (from unlocked state), transform and include it
   if (data.full_artifact) {
     session.fullArtifact = transformArtifactFromAPI(data.full_artifact);
+    session.rawFullArtifact = data.full_artifact;
   }
 
   // Pass through generated_at for immutable report date
@@ -712,6 +701,7 @@ export function transformArtifactFromAPI(data: any): ICArtifact {
   const oldIntel = data.intelligence_sources || {};
 
   return {
+    ...data,
     intakeId: data.intake_id,
     principalId: data.principal_id || 'sfo_audit',
     thesisSummary: data.thesis_summary || '',

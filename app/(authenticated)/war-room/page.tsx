@@ -1,11 +1,12 @@
 // War Room - Full-viewport Command Centre Map (mirrors Home Dashboard)
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CrownLoader } from "@/components/ui/crown-loader";
 import { getCurrentUser } from "@/lib/auth-manager";
+import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history";
 import { useOpportunities } from "@/lib/hooks/useOpportunities";
 import { usePersonalMode } from "@/lib/hooks/usePersonalMode";
 import { useCitationManager } from "@/hooks/use-citation-manager";
@@ -264,6 +265,17 @@ interface Audit {
   has_access: boolean;
 }
 
+function buildCorridorGroupKey(audit: Audit): string {
+  const sourceRaw = (audit.source_jurisdiction || audit.source_country || '').trim().toLowerCase();
+  const destinationRaw = (audit.destination_jurisdiction || audit.destination_country || '').trim().toLowerCase();
+  return `${sourceRaw}→${destinationRaw}`;
+}
+
+function getPreferredCorridorIndex(corridorAudits: Audit[]): number {
+  const accessibleIndex = corridorAudits.findIndex(audit => audit.has_access);
+  return accessibleIndex >= 0 ? accessibleIndex : 0;
+}
+
 function getStatusColor(_status: string): string {
   // Uniform gold for all midpoint dots — no traffic-light colors
   return '#D4A843';
@@ -305,6 +317,7 @@ export default function WarRoomPage() {
   const [showCrownAssets, setShowCrownAssets] = useState(true);
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
+  const previousAvailableCategoriesRef = useRef<string[]>([]);
   // UI
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -335,14 +348,10 @@ export default function WarRoomPage() {
 
       try {
         const userId = user.id || user.user_id;
-        const response = await fetch(`/api/assessment/history/${userId}`, {
-          credentials: 'include'
-        });
+        const data = await fetchAssessmentHistory(userId);
 
-        if (response.ok) {
-          const data = await response.json();
-          const assessments = data?.assessments || data || [];
-          setHasCompletedAssessment(assessments.length > 0);
+        if (data) {
+          setHasCompletedAssessment(hasRecentAssessmentResult(data));
         }
       } catch {
         // Silent fail
@@ -382,7 +391,10 @@ export default function WarRoomPage() {
       if (SKIP_VALUES.includes(srcRaw.toLowerCase()) || SKIP_VALUES.includes(dstRaw.toLowerCase())) {
         return; // silently skip — no coords possible
       }
-      const corridorKey = `${normalizeName(audit.source_jurisdiction)}→${normalizeName(audit.destination_jurisdiction)}`;
+      // Group by the raw resolved route, not the plot-normalized route.
+      // Otherwise `United States -> Singapore` collapses into
+      // `New York -> Singapore` and can mask a user's owned memo.
+      const corridorKey = buildCorridorGroupKey(audit);
       if (!groups[corridorKey]) {
         groups[corridorKey] = [];
       }
@@ -402,8 +414,8 @@ export default function WarRoomPage() {
     Object.entries(corridorGroups).forEach(([corridorKey, corridorAudits]) => {
       if (corridorAudits.length === 0) return;
 
-      // Get current index for this corridor (default to 0)
-      const currentIdx = corridorIndices[corridorKey] || 0;
+      // Default to an accessible audit when a corridor has multiple entries.
+      const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits);
       const audit = corridorAudits[currentIdx] || corridorAudits[0];
 
       // Normalize to city names (resolves country→city), then look up coords
@@ -486,14 +498,14 @@ export default function WarRoomPage() {
       // false (no access) comes before true (has access) → restricted renders first, accessible on top
       return aHasAccess === bHasAccess ? 0 : aHasAccess ? 1 : -1;
     });
-  }, [audits, corridorGroups, corridorIndices]);
+  }, [corridorGroups, corridorIndices]);
 
   // Handler for corridor navigation (left/right arrows)
   const handleCorridorNavigate = useCallback((corridorKey: string, direction: 'prev' | 'next') => {
     const corridorAudits = corridorGroups[corridorKey];
     if (!corridorAudits || corridorAudits.length <= 1) return;
 
-    const currentIdx = corridorIndices[corridorKey] || 0;
+    const currentIdx = corridorIndices[corridorKey] ?? getPreferredCorridorIndex(corridorAudits);
     let newIdx: number;
 
     if (direction === 'next') {
@@ -508,13 +520,14 @@ export default function WarRoomPage() {
     }));
   }, [corridorGroups, corridorIndices]);
 
-  // Handler for popup close - reset audit index to 0 so reopening shows first audit
+  // Handler for popup close - reset to the preferred audit, not blindly to index 0
   const handlePopupClose = useCallback((corridorKey: string) => {
+    const corridorAudits = corridorGroups[corridorKey];
     setCorridorIndices(prev => ({
       ...prev,
-      [corridorKey]: 0
+      [corridorKey]: corridorAudits ? getPreferredCorridorIndex(corridorAudits) : 0
     }));
-  }, []);
+  }, [corridorGroups]);
 
   // Fetch opportunities using centralized hook (dashboard mode with personal mode support)
   const {
@@ -526,7 +539,7 @@ export default function WarRoomPage() {
     timeframe,
     isPersonalMode,
     hasCompletedAssessment,
-    includeCrownVault: isPersonalMode && hasCompletedAssessment,
+    includeCrownVault: true,
     cleanCategories: true
   });
 
@@ -539,11 +552,30 @@ export default function WarRoomPage() {
     }
   }, [loading, initialLoad]);
 
-  // Initialize selected categories when available
+  // Keep category selection aligned with the current dataset.
+  // If the prior state represented "all categories", preserve that intent when the source list changes.
   useEffect(() => {
-    if (availableCategories.length > 0 && selectedCategories.length === 0) {
-      setSelectedCategories(availableCategories);
-    }
+    setSelectedCategories(prev => {
+      if (availableCategories.length === 0) {
+        previousAvailableCategoriesRef.current = availableCategories;
+        return [];
+      }
+
+      const previousAvailable = previousAvailableCategoriesRef.current;
+      const previousWasAll =
+        previousAvailable.length > 0 &&
+        prev.length === previousAvailable.length &&
+        previousAvailable.every(category => prev.includes(category));
+
+      const validSelection = prev.filter(category => availableCategories.includes(category));
+      previousAvailableCategoriesRef.current = availableCategories;
+
+      if (prev.length === 0 || previousWasAll || validSelection.length === 0) {
+        return availableCategories;
+      }
+
+      return validSelection;
+    });
   }, [availableCategories]);
 
   // Extract citations from cities
@@ -645,13 +677,15 @@ export default function WarRoomPage() {
   });
 
   const handleNavigate = (route: string) => {
-    router.push(`/${route}`);
+    const normalizedRoute = route.startsWith('/') ? route : `/${route}`;
+    router.push(normalizedRoute);
   };
 
   return (
     <>
       <div className="fixed inset-0 overflow-hidden">
         <InteractiveWorldMap
+          key="war-room-world-map"
           width="100%"
           height="100%"
           showControls={true}

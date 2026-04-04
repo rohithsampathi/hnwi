@@ -13,9 +13,9 @@ import { Variants, Transition } from 'framer-motion';
 // TIMING SYSTEM — Consistent easing & duration across the app
 // ═══════════════════════════════════════════════════════════════
 
-export const EASE_OUT_EXPO: number[] = [0.16, 1, 0.3, 1];
-export const EASE_OUT_QUART: number[] = [0.25, 1, 0.5, 1];
-export const EASE_IN_OUT: number[] = [0.4, 0, 0.2, 1];
+export const EASE_OUT_EXPO: Transition["ease"] = [0.16, 1, 0.3, 1];
+export const EASE_OUT_QUART: Transition["ease"] = [0.25, 1, 0.5, 1];
+export const EASE_IN_OUT: Transition["ease"] = [0.4, 0, 0.2, 1];
 
 export const DURATION = {
   fast: 0.3,

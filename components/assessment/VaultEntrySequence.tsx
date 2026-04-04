@@ -24,7 +24,7 @@ const InteractiveWorldMap = dynamic(
 
 interface VaultEntrySequenceProps {
   onComplete: () => void;
-  briefCount?: number;
+  briefCount?: number | null;
   opportunities?: any[];
 }
 
@@ -41,7 +41,7 @@ let vaultSequenceHasRun = false;
 
 export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
   onComplete,
-  briefCount = 1875,
+  briefCount,
   opportunities = []
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -331,7 +331,7 @@ export const VaultEntrySequence: React.FC<VaultEntrySequenceProps> = ({
                   animate={{ opacity: 1 }}
                   className="text-xs text-muted-foreground mt-6 tracking-wider"
                 >
-                  {briefCount.toLocaleString()} intelligence briefs loaded
+                  {briefCount ? `${briefCount.toLocaleString()} intelligence briefs loaded` : 'Intelligence briefs loaded'}
                 </motion.p>
               )}
             </div>

@@ -117,7 +117,7 @@ export const MapIntroduction: React.FC<MapIntroductionProps> = ({ onContinue }) 
               category: opp.category,
             } as City;
           })
-          .filter((city): city is City => city !== null);
+          .filter((city: City | null): city is City => city !== null);
 
         // Deduplicate by ID
         const seenIds = new Set<string>();

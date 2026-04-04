@@ -27,6 +27,7 @@ export interface PdfPreviewData {
   // Header info
   source_jurisdiction?: string;
   destination_jurisdiction?: string;
+  hnwi_world_count?: number;
   exposure_class?: string;
   value_creation?: string | { amount?: number; formatted?: string; description?: string };
   five_year_projection?: string;
@@ -34,6 +35,16 @@ export interface PdfPreviewData {
   total_savings?: string;
   precedent_count?: number;
   data_quality?: string;
+
+  // Legacy compatibility aliases still emitted by older memo routes
+  rental_income?: string;
+  appreciation?: string;
+  tax_savings?: string;
+  tax_savings_note?: string;
+  total_exposure?: string;
+  liquidity_analysis?: string | Record<string, unknown>;
+  liquidity_trap_analysis?: string | Record<string, unknown>;
+  peer_benchmarks?: PeerCohortStats | PeerIntelligenceData | Record<string, unknown>;
 
   // Verdict
   verdict?: string;
@@ -113,6 +124,7 @@ export interface PdfPreviewData {
   // ═══════════════════════════════════════════════════════════════════════
   wealth_projection_data?: WealthProjectionData;
   wealth_projection_analysis?: string;
+  structure_projections?: Record<string, WealthProjectionData>;
   scenario_tree_data?: ScenarioTreeData;
   scenario_tree_analysis?: string;
   heir_management_data?: HeirManagementData;
@@ -126,18 +138,8 @@ export interface PdfPreviewData {
   hnwi_trends?: string[];
   hnwi_trends_confidence?: number;
   hnwi_trends_analysis?: string | HnwiTrendsData;
-  hnwi_trends_data_quality?: {
-    scientific_grounding?: string;
-    collections_queried?: number;
-    data_sources?: string[];
-    trend_count?: number;
-  };
-  hnwi_trends_citations?: Array<{
-    source: string;
-    date?: string;
-    confidence?: string;
-    count?: number;
-  }>;
+  hnwi_trends_data_quality?: HNWITrendsDataQuality;
+  hnwi_trends_citations?: HNWITrendsCitation[];
 
   // ═══════════════════════════════════════════════════════════════════════
   // RISK ASSESSMENT (MCP Fields)
@@ -324,6 +326,7 @@ export interface DueDiligenceDataStructured {
 
 // Golden Visa Intelligence
 export interface GoldenVisaIntelligence {
+  exists?: boolean;
   program_name?: string;
   jurisdiction?: string;
   status?: 'ACTIVE' | 'MODIFIED' | 'ENDED';
@@ -494,8 +497,24 @@ export interface Opportunity {
   id?: string;
   dev_id?: string;
   title: string;
+  location?: string;
+  tier?: string;
+  expected_return?: string;
   description?: string;
   category?: string;
+  location_jurisdiction?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  alignment_score?: number;
+  dna_match_score?: number;
+  minimum_investment?: string;
+  industry?: string;
+  hnwi_analysis?: string;
+  opportunity_narrative?: string;
+  key_insights?: string[];
+  risk_level?: string;
+  source?: string;
   rating?: 'juicy' | 'moderate' | 'far-fetched';
   potential_value?: number | string;
   timeline?: string;
@@ -505,6 +524,9 @@ export interface ExecutionStep {
   id?: string;
   step: number;
   title: string;
+  order?: number;
+  action?: string;
+  owner?: string;
   description?: string;
   timeline?: string;
   dependencies?: string[];
@@ -523,16 +545,18 @@ export interface PeerCohortStats {
     avg_deal_value_subtitle?: string;
   };
   // Core metrics
-  total_peers: number;
-  last_6_months: number;
-  avg_deal_value_m: number;
+  total_peers?: number;
+  last_6_months?: number;
+  avg_deal_value_m?: number;
   // Driver analysis
-  drivers: {
+  drivers?: {
     tax_optimization: number;
     asset_protection: number;
     lifestyle: number;
   };
   // Additional fields
+  total_hnwis?: number;
+  dimensions?: string[];
   movement_velocity?: string;
   flow_intensity?: number;
   regime_intelligence?: RegimeIntelligence;
@@ -541,7 +565,6 @@ export interface PeerCohortStats {
   is_relocating?: boolean;
 
   // Legacy fields (for backward compatibility with old audits)
-  total_hnwis?: number;
   recent_movements?: number;
   average_value?: number | string;
 }
@@ -603,7 +626,8 @@ export interface WealthProjectionData {
     transaction_value?: number;
     transaction_amount?: number;
     current_net_worth?: number;
-    cross_border_audit_summary?: Record<string, unknown>;
+    cross_border_audit_summary?: CrossBorderAuditSummary;
+    [key: string]: unknown;
   };
   scenarios?: {
     base?: ProjectionScenario;
@@ -621,6 +645,7 @@ export interface WealthProjectionData {
     if_stay?: number;
     net_benefit?: number;
   };
+  [key: string]: unknown;
 }
 
 export interface ProjectionScenario {
@@ -648,6 +673,7 @@ export interface ScenarioTreeData {
   expected_vs_reality?: ExpectedVsReality;
   validity_period?: string;
   reassess_conditions?: string[];
+  doctrine_metadata?: DoctrineMetadata;
 }
 
 export interface ScenarioBranch {
@@ -822,6 +848,9 @@ export interface HeirAllocation {
 
 export interface DestinationDrivers {
   visa_programs?: VisaProgram[];
+  tax_benefits?: string[];
+  lifestyle_factors?: string[];
+  business_environment?: string[];
   primary_drivers?: {
     tax_optimization?: number;
     asset_protection?: number;
@@ -864,6 +893,20 @@ export interface HnwiTrendsData {
   insights?: TrendInsight[];
   collections_queried?: string[];
   source_citations?: SourceCitation[];
+}
+
+export interface HNWITrendsCitation {
+  source: string;
+  date?: string;
+  confidence?: string;
+  count?: number;
+}
+
+export interface HNWITrendsDataQuality {
+  scientific_grounding?: 'kgv3_primary' | 'kgv3_fallback' | 'no_data' | 'error';
+  collections_queried?: number;
+  data_sources?: string[];
+  trend_count?: number;
 }
 
 export interface TrendInsight {
@@ -1010,6 +1053,7 @@ export interface JurisdictionAssetAudit {
     total_sources?: number;
     confidence?: string;
   };
+  [key: string]: unknown;
 }
 
 export interface StampDutyData {
@@ -1018,10 +1062,12 @@ export interface StampDutyData {
     rate_pct?: number;
     applies_to?: string;
     exemptions?: string[];
+    effective_date?: string;
   };
   commercial_rates?: {
     base_rate_pct?: number;
     foreign_surcharge_pct?: number;
+    note?: string;
     notes?: string;
   };
   residential_rates?: StampDutyTier[];
@@ -1048,12 +1094,16 @@ export interface LoopholeStrategy {
 export interface DynastyTrustData {
   found?: boolean;
   jurisdictions?: DynastyTrustJurisdiction[];
+  best_for_perpetuity?: string;
   recommended?: string;
   rationale?: string;
 }
 
 export interface DynastyTrustJurisdiction {
   name: string;
+  jurisdiction?: string;
+  perpetuity_period?: string;
+  perpetuity_years?: number;
   max_duration?: string;
   tax_benefits?: string[];
   asset_protection?: string;
@@ -1064,8 +1114,10 @@ export interface DynastyTrustJurisdiction {
 
 export interface SuccessionVehicle {
   name: string;
+  vehicle_type?: string;
   type?: string;
   jurisdiction?: string;
+  tax_benefits?: string[];
   benefits?: string[];
   limitations?: string[];
   recommended_for?: string;
@@ -1079,6 +1131,7 @@ export interface FreeportData {
 
 export interface Freeport {
   name: string;
+  jurisdiction?: string;
   location?: string;
   asset_types?: string[];
   tax_benefits?: string[];
@@ -1096,28 +1149,71 @@ export interface RegimeIntelligence {
     regime_key: string;
     regime_name: string;
     jurisdiction: string;
-    status: string;
-    rates?: Record<string, unknown>;
+    status?: 'ACTIVE' | 'ENDED' | 'ENDING' | string;
+    rates?: {
+      foreign_income?: number;
+      foreign_dividends?: number;
+      capital_gains_foreign?: number;
+    } | Record<string, unknown>;
     warning?: string;
     successor_regime?: string;
     critical_dates?: Array<{ date: string; event: string; impact?: string }>;
   }>;
   regime_scenario?: {
-    regime_name: string;
-    status: string;
+    regime_name?: string;
+    status?: 'ACTIVE' | 'ENDED' | 'ENDING' | string;
     end_date?: string;
-    with_regime?: Record<string, unknown>;
-    without_regime?: Record<string, unknown>;
+    with_regime?: {
+      dest_income_tax?: number;
+      dest_cgt?: number;
+      tax_differential?: number;
+      note?: string;
+    } | Record<string, unknown>;
+    without_regime?: {
+      dest_income_tax?: number;
+      dest_cgt?: number;
+      tax_differential?: number;
+      note?: string;
+    } | Record<string, unknown>;
     successor_regime?: string;
     action_required?: string;
     key_benefits?: string[];
-    qualification_routes?: Array<Record<string, string>>;
-    tax_comparison?: Record<string, unknown>;
+    qualification_routes?: Array<{
+      route?: string;
+      minimum_investment?: string;
+      processing_time?: string;
+    }>;
+    tax_comparison?: {
+      source_jurisdiction?: string;
+      source_income_tax?: number;
+      source_cgt?: number;
+      destination_jurisdiction?: string;
+      destination_income_tax?: number;
+      destination_cgt?: number;
+      total_savings_pct?: number;
+      note?: string;
+    } | Record<string, unknown>;
+    critical_considerations?: Array<{
+      item?: string;
+      detail?: string;
+      priority?: 'HIGH' | 'MEDIUM' | 'LOW' | string;
+    }>;
+    application_process?: Array<{
+      step?: number;
+      action?: string;
+      timeline?: string;
+    }>;
+    estimated_costs?: {
+      visa_fee?: string;
+      emirates_id?: string;
+      medical_test?: string;
+      total_range?: string;
+    };
   };
   regime_warnings?: Array<{
-    regime: string;
-    status: string;
-    warning: string;
+    regime?: string;
+    status?: 'ACTIVE' | 'ENDED' | 'ENDING' | string;
+    warning?: string;
     critical_dates?: Array<{ date: string; event: string; impact?: string }>;
   }>;
 }
@@ -1228,6 +1324,7 @@ export interface CrossBorderAuditSummary {
     property_value?: number;
     bsd_stamp_duty?: number;
     absd_additional_stamp_duty?: number;
+    total_stamp_duties?: number;
     total_acquisition_cost?: number;
     day_one_loss_pct?: number;
     day_one_loss_label?: string;
@@ -1253,10 +1350,21 @@ export interface CrossBorderAuditSummary {
 }
 
 export interface TaxTreatmentAudit {
+  destination_tax_rate_pct?: number;
+  source_tax_rate_pct?: number;
+  net_tax_rate_pct?: number;
+  destination_cgt_pct?: number;
+  source_cgt_pct?: number;
+  net_cgt_rate_pct?: number;
+  destination_estate_pct?: number;
+  source_estate_pct?: number;
+  net_estate_rate_pct?: number;
   destination_rate?: number;
   source_rate?: number;
   net_rate?: number;
   ftc_available?: boolean;
+  worldwide_applies?: boolean;
+  tax_savings_pct?: number;
   savings_pct?: number;
   explanation?: string;
 }

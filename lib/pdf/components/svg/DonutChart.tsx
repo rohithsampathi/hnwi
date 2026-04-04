@@ -72,10 +72,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
                 x={String(labelPos.x)}
                 y={String(labelPos.y + 3)}
                 textAnchor="middle"
-                fontSize={10}
-                fontFamily="Inter"
-                fontWeight={700}
-                fill={darkTheme.textPrimary}
+                style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, fill: darkTheme.textPrimary }}
               >
                 {seg.label}
               </SvgText>

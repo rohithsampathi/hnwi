@@ -30,6 +30,7 @@ import {
 import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
 import Link from 'next/link';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface PageProps {
   params: {
@@ -147,6 +148,8 @@ const PRICING = {
 };
 
 export default function DecisionMemoPreviewPage({ params }: PageProps) {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
   const { intakeId } = params;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -280,7 +283,7 @@ export default function DecisionMemoPreviewPage({ params }: PageProps) {
         <CrownLoader
           size="lg"
           text="Analyzing Your Profile"
-          subtext="Matching against 1,562 HNWI precedents..."
+          subtext={briefCountLabel ? `Matching against ${briefCountLabel} HNWI precedents...` : 'Matching against live HNWI precedents...'}
         />
       </div>
     );

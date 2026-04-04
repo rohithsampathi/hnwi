@@ -7,11 +7,22 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Target, DollarSign, Users, TrendingUp, Award } from "lucide-react"
+import { Target, DollarSign, Users, TrendingUp, Award, type LucideIcon } from "lucide-react"
 import type { ProcessedIntelligenceData } from "@/types/dashboard"
 
 interface EliteMetricsProps {
   data: ProcessedIntelligenceData
+}
+
+interface MetricConfig {
+  icon: LucideIcon
+  value: string | number
+  label: string
+  delay: number
+  delta?: string
+  deltaLabel?: string
+  subValue?: string | number
+  subLabel?: string
 }
 
 export function EliteMetrics({ data }: EliteMetricsProps) {
@@ -62,7 +73,7 @@ export function EliteMetrics({ data }: EliteMetricsProps) {
     return '$0'; // No data available
   }
 
-  const metrics = [
+  const metrics: MetricConfig[] = [
     {
       icon: Target,
       value: data.opportunities?.length || 0,

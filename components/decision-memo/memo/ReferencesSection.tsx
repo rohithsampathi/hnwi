@@ -13,7 +13,7 @@
 
 import { motion } from 'framer-motion';
 import { Scale, Building, Globe, FileText, Database, Handshake, BookOpen, ExternalLink } from 'lucide-react';
-import type { LegalReferences, CitationEntry } from '@/lib/decision-memo/memo-types';
+import type { LegalReferences, CitationEntry } from '@/lib/pdf/pdf-types';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface ReferencesSectionProps {
@@ -25,7 +25,7 @@ interface ReferencesSectionProps {
 interface CitationCategoryProps {
   title: string;
   icon: React.ReactNode;
-  citations: CitationEntry[];
+  citations?: CitationEntry[];
   delay: number;
 }
 

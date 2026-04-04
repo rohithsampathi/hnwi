@@ -1,3 +1,5 @@
+import type { NotificationEventType, NotificationRecord } from "@/lib/services/notification-service";
+
 export interface NotificationTypeConfig {
   icon: string;
   title: string;
@@ -6,12 +8,26 @@ export interface NotificationTypeConfig {
   priority?: 'low' | 'medium' | 'high' | 'urgent';
 }
 
-export const NotificationTypeConfigs: Record<string, NotificationTypeConfig> = {
+export const NotificationTypeConfigs: Record<NotificationEventType, NotificationTypeConfig> = {
+  elite_pulse: {
+    icon: '🏛️',
+    title: 'Elite Pulse Intelligence',
+    color: '#d4af37',
+    actionText: 'View Analysis',
+    priority: 'high'
+  },
   elite_pulse_generated: {
     icon: '🏛️',
     title: 'Elite Pulse Intelligence',
     color: '#d4af37',
     actionText: 'View Analysis',
+    priority: 'high'
+  },
+  hnwi_world: {
+    icon: '💎',
+    title: 'Investment Opportunity',
+    color: '#3b82f6',
+    actionText: 'View Opportunity',
     priority: 'high'
   },
   opportunity_added: {
@@ -21,11 +37,25 @@ export const NotificationTypeConfigs: Record<string, NotificationTypeConfig> = {
     actionText: 'View Opportunity',
     priority: 'high'
   },
+  crown_vault: {
+    icon: '👑',
+    title: 'Crown Vault Update',
+    color: '#8b5cf6',
+    actionText: 'View Vault',
+    priority: 'medium'
+  },
   crown_vault_update: {
     icon: '👑',
     title: 'Crown Vault Update',
     color: '#8b5cf6',
     actionText: 'View Vault',
+    priority: 'medium'
+  },
+  social_hub: {
+    icon: '🎭',
+    title: 'Social Event',
+    color: '#ec4899',
+    actionText: 'View Event',
     priority: 'medium'
   },
   social_event_added: {
@@ -60,24 +90,37 @@ export const NotificationTypeConfigs: Record<string, NotificationTypeConfig> = {
 
 export const EventTypeLabels: Record<string, string> = {
   elite_pulse: 'Elite Pulse Intelligence Reports',
+  elite_pulse_generated: 'Elite Pulse Intelligence Reports',
   hnwi_world: 'Investment Opportunities',
+  opportunity_added: 'Investment Opportunities',
   crown_vault: 'Crown Vault Updates',
+  crown_vault_update: 'Crown Vault Updates',
   social_hub: 'Social Events & Gatherings',
+  social_event_added: 'Social Events & Gatherings',
+  market_alert: 'Market Alerts',
+  regulatory_update: 'Regulatory Updates',
   system_notification: 'System Notifications'
 };
 
 export const EventTypeDescriptions: Record<string, string> = {
   elite_pulse: 'Strategic market intelligence and analysis',
+  elite_pulse_generated: 'Strategic market intelligence and analysis',
   hnwi_world: 'Exclusive investment and wealth opportunities',
+  opportunity_added: 'Exclusive investment and wealth opportunities',
   crown_vault: 'Updates to your assets and heirs',
+  crown_vault_update: 'Updates to your assets and heirs',
   social_hub: 'High-society events and networking opportunities',
+  social_event_added: 'High-society events and networking opportunities',
+  market_alert: 'Important market movement and exposure alerts',
+  regulatory_update: 'Important regulatory and compliance updates',
   system_notification: 'Important system updates and maintenance'
 };
 
-export function getNotificationContent(notification: any) {
+export function getNotificationContent(notification: NotificationRecord) {
   const config = NotificationTypeConfigs[notification.event_type];
   
   switch (notification.event_type) {
+    case 'elite_pulse':
     case 'elite_pulse_generated':
       return {
         icon: config?.icon || '🏛️',
@@ -87,6 +130,7 @@ export function getNotificationContent(notification: any) {
         color: config?.color
       };
     
+    case 'hnwi_world':
     case 'opportunity_added':
       return {
         icon: config?.icon || '💎',
@@ -96,6 +140,7 @@ export function getNotificationContent(notification: any) {
         color: config?.color
       };
     
+    case 'crown_vault':
     case 'crown_vault_update':
       return {
         icon: config?.icon || '👑',
@@ -105,6 +150,7 @@ export function getNotificationContent(notification: any) {
         color: config?.color
       };
     
+    case 'social_hub':
     case 'social_event_added':
       return {
         icon: config?.icon || '🎭',
@@ -145,7 +191,7 @@ export function getNotificationContent(notification: any) {
   }
 }
 
-export function handleCrownVaultNotification(notification: any): string {
+export function handleCrownVaultNotification(notification: NotificationRecord): string {
   const { update_type, details } = notification.data || {};
   
   switch (update_type) {

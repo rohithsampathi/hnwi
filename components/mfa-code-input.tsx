@@ -7,21 +7,25 @@ import { Loader2, Shield, RefreshCw } from "lucide-react"
 import { useTheme } from "@/contexts/theme-context"
 
 interface MfaCodeInputProps {
-  onSubmit: (code: string) => Promise<void>
-  onResend: () => Promise<void>
+  onSubmit?: (code: string) => Promise<void> | void
+  onComplete?: (code: string) => void
+  onResend?: () => Promise<void> | void
   isLoading?: boolean
   isResending?: boolean
   error?: string | null
   className?: string
+  disabled?: boolean
 }
 
 export function MfaCodeInput({ 
   onSubmit, 
+  onComplete,
   onResend, 
   isLoading = false, 
   isResending = false,
   error,
-  className = ""
+  className = "",
+  disabled = false
 }: MfaCodeInputProps) {
   const { theme } = useTheme()
   const [code, setCode] = useState("")
@@ -144,7 +148,7 @@ export function MfaCodeInput({
     const finalCode = codeToSubmit || code
     
     // Prevent submission if already submitting or if this code was already submitted
-    if (isSubmitting || isLoading || finalCode.length !== 6 || lastSubmittedCodeRef.current === finalCode) {
+    if (isSubmitting || isLoading || disabled || finalCode.length !== 6 || lastSubmittedCodeRef.current === finalCode) {
       return
     }
 
@@ -153,7 +157,11 @@ export function MfaCodeInput({
     lastSubmittedCodeRef.current = finalCode
 
     try {
-      await onSubmit(finalCode)
+      if (onSubmit) {
+        await onSubmit(finalCode)
+      } else {
+        onComplete?.(finalCode)
+      }
     } catch (error) {
       // Reset on error so user can retry
       lastSubmittedCodeRef.current = ""
@@ -163,7 +171,7 @@ export function MfaCodeInput({
   }
 
   const handleResend = async () => {
-    if (canResend && !isResending) {
+    if (canResend && !isResending && onResend) {
       // Reset submission tracking when getting a new code
       lastSubmittedCodeRef.current = ""
       setCode("")
@@ -186,14 +194,16 @@ export function MfaCodeInput({
         {Array.from({ length: 6 }).map((_, index) => (
           <Input
             key={index}
-            ref={el => inputRefs.current[index] = el}
+            ref={(el) => {
+              inputRefs.current[index] = el
+            }}
             type="text"
             maxLength={1}
             value={code[index] || ''}
             onChange={(e) => handleCodeChange(e.target.value, index)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             onPaste={index === 0 ? handlePaste : undefined}
-            disabled={isLoading || isSubmitting}
+            disabled={disabled || isLoading || isSubmitting}
             className={`w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 text-center text-base sm:text-lg font-mono border-2 transition-all duration-200 flex-shrink-0 ${
               theme === "dark"
                 ? "bg-gray-800 border-gray-600 focus:border-primary"
@@ -225,7 +235,7 @@ export function MfaCodeInput({
       <div className="flex flex-col gap-2 sm:gap-3 px-2">
         <Button
           onClick={() => handleSubmit()}
-          disabled={code.length !== 6 || isLoading || isSubmitting}
+          disabled={disabled || code.length !== 6 || isLoading || isSubmitting}
           className={`w-full h-11 sm:h-12 text-base sm:text-lg rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
             theme === "dark"
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
@@ -246,7 +256,7 @@ export function MfaCodeInput({
           type="button"
           variant="outline"
           onClick={handleResend}
-          disabled={!canResend || isResending}
+          disabled={disabled || !canResend || isResending || !onResend}
           className={`w-full h-10 sm:h-11 text-sm sm:text-base transition-all duration-200 ${
             canResend && !isResending
               ? 'hover:bg-gray-50 dark:hover:bg-gray-800'

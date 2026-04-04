@@ -9,51 +9,53 @@ import { motion, useInView } from 'framer-motion';
 
 // Structured JSON interfaces
 interface ReportingTrigger {
-  framework: string;
-  status: "TRIGGERED" | "NOT_TRIGGERED" | "NOT TRIGGERED"; // Backend may send with space or underscore
-  threshold: string;
-  your_exposure: string;
-  deadline: string;
-  penalty: string;
+  framework?: string;
+  status?: "TRIGGERED" | "NOT_TRIGGERED" | "NOT TRIGGERED"; // Backend may send with space or underscore
+  threshold?: string;
+  your_exposure?: string;
+  deadline?: string;
+  penalty?: string;
 }
 
 interface ComplianceRisk {
-  rank: number;
-  framework: string;
-  exposure: string;
-  trigger: string;
-  fix: string;
+  rank?: number;
+  framework?: string;
+  regime?: string;
+  consequence?: string;
+  exposure?: string;
+  trigger?: string;
+  fix?: string;
 }
 
 interface RegimeChange {
-  regime: string;
-  change: string;
-  impact_on_you: string;
+  regime?: string;
+  change?: string;
+  impact_on_you?: string;
 }
 
 interface CalendarItem {
-  date: string;
-  action: string;
-  penalty_if_missed: string;
+  date?: string;
+  action?: string;
+  penalty_if_missed?: string;
 }
 
 interface BottomLine {
-  total_exposure_if_noncompliant: string;
+  total_exposure_if_noncompliant?: string;
   total_exposure_raw?: number;  // Fix #3: Raw number for calculations
-  immediate_actions: string[];
-  estimated_compliance_cost: string;
+  immediate_actions?: string[];
+  estimated_compliance_cost?: string;
   compliance_cost_raw?: number;  // Fix #3: Raw number for calculations
   protection_ratio?: number;  // Fix #3: Dynamic protection ratio from backend
   protection_ratio_note?: string;  // Fix #3: Explanation note
 }
 
 export interface TransparencyData {
-  reporting_triggers: ReportingTrigger[];
-  compliance_risks: ComplianceRisk[];
-  regime_changes_2026: RegimeChange[];
-  calendar: CalendarItem[];
-  bottom_line: BottomLine;
-  risk_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  reporting_triggers?: ReportingTrigger[];
+  compliance_risks?: ComplianceRisk[];
+  regime_changes_2026?: RegimeChange[];
+  calendar?: CalendarItem[];
+  bottom_line?: BottomLine;
+  risk_level?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 }
 
 interface TransparencyRegimeSectionProps {
@@ -93,7 +95,7 @@ function TriggerCard({ trigger }: { trigger: ReportingTrigger }) {
           {trigger.framework}
         </span>
         <span className={`text-[10px] font-semibold uppercase ${isTriggered ? 'text-primary' : 'text-muted-foreground'}`}>
-          {trigger.status.replace('_', ' ')}
+          {(trigger.status || 'NOT_TRIGGERED').replace('_', ' ')}
         </span>
       </div>
 
@@ -104,7 +106,7 @@ function TriggerCard({ trigger }: { trigger: ReportingTrigger }) {
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-muted-foreground">Your Exposure:</span>
-          <span className={`font-semibold ${isTriggered ? 'text-primary' : 'text-foreground'}`}>{trigger.your_exposure}</span>
+          <span className={`font-semibold ${isTriggered ? 'text-primary' : 'text-foreground'}`}>{trigger.your_exposure || '—'}</span>
         </div>
         {isTriggered && trigger.deadline && (
           <div className="flex justify-between text-xs">
@@ -476,8 +478,8 @@ function LegacyTextTransparencySection({
   destinationJurisdiction
 }: {
   content: string;
-  sourceJurisdiction: string;
-  destinationJurisdiction: string;
+  sourceJurisdiction?: string;
+  destinationJurisdiction?: string;
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);

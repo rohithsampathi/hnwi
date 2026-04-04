@@ -40,9 +40,9 @@ const FUCHSIA_COLORS = {
   },
   yellow: {
     fill: "#F0ABFC",       // fuchsia-300 — monitoring severity
-    fillOpacity: 0.10,
+    fillOpacity: 0.16,
     stroke: "#F0ABFC",
-    strokeOpacity: 0.35,
+    strokeOpacity: 0.5,
     text: "#F0ABFC",
   },
 } as const;
@@ -85,9 +85,9 @@ function fixAntimeridianFeature(feature: Feature): Feature {
 }
 
 // Lazy-load and convert TopoJSON → GeoJSON (only once)
-let cachedAllCountries: FeatureCollection | null = null;
+let cachedAllCountries: FeatureCollection<Geometry> | null = null;
 
-async function loadAllCountriesGeoJSON(): Promise<FeatureCollection> {
+async function loadAllCountriesGeoJSON(): Promise<FeatureCollection<Geometry>> {
   if (cachedAllCountries) return cachedAllCountries;
 
   const [topoData, topojsonClient] = await Promise.all([
@@ -99,13 +99,13 @@ async function loadAllCountriesGeoJSON(): Promise<FeatureCollection> {
   cachedAllCountries = topojsonClient.feature(
     topo as any,
     (topo as any).objects.countries
-  ) as FeatureCollection;
+  ) as unknown as FeatureCollection<Geometry>;
 
   return cachedAllCountries;
 }
 
 export function CrisisOverlay({ visible, zoneMap, colors }: CrisisOverlayProps) {
-  const [allCountries, setAllCountries] = useState<FeatureCollection | null>(null);
+  const [allCountries, setAllCountries] = useState<FeatureCollection<Geometry> | null>(null);
 
   useEffect(() => {
     if (visible && !allCountries) {
@@ -114,7 +114,7 @@ export function CrisisOverlay({ visible, zoneMap, colors }: CrisisOverlayProps) 
   }, [visible, allCountries]);
 
   // Filter to crisis countries whenever zoneMap or allCountries changes
-  const geoData = useMemo(() => {
+  const geoData = useMemo<FeatureCollection<Geometry> | null>(() => {
     if (!allCountries) return null;
     const crisisIds = new Set(Object.keys(zoneMap));
     if (crisisIds.size === 0) return null;
@@ -122,7 +122,7 @@ export function CrisisOverlay({ visible, zoneMap, colors }: CrisisOverlayProps) 
     return {
       type: "FeatureCollection" as const,
       features: allCountries.features
-        .filter((f) => f.id && crisisIds.has(String(f.id)))
+        .filter((f): f is Feature<Geometry> => Boolean(f.id) && crisisIds.has(String(f.id)))
         .map(fixAntimeridianFeature),
     };
   }, [allCountries, zoneMap]);
@@ -169,7 +169,7 @@ export function CrisisOverlay({ visible, zoneMap, colors }: CrisisOverlayProps) 
 
         // Everything else (AI, banking, geopolitical, macro) — fuchsia palette
         const fuchsiaTier = FUCHSIA_COLORS[zone.status] || FUCHSIA_COLORS.yellow;
-        const dimFactor = isRed ? 1 : isAmber ? 0.6 : 0.4;
+        const dimFactor = isRed ? 1 : isAmber ? 0.75 : 0.8;
 
         return {
           fillColor: fuchsiaTier.fill,

@@ -7,8 +7,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle, Mail, FileText, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 export function SuccessConfirmation() {
+  const briefCount = useCastleBriefCount();
+  const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="max-w-2xl mx-auto text-center">
@@ -49,7 +53,7 @@ export function SuccessConfirmation() {
               />
               <StatusItem
                 icon={FileText}
-                label="Analyzing 1,875 corridor signals"
+                label={briefCountLabel ? `Analyzing ${briefCountLabel} corridor signals` : 'Analyzing live corridor signals'}
                 status="in-progress"
               />
               <StatusItem

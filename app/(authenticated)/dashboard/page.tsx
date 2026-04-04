@@ -7,7 +7,10 @@ import { useEffect, useState } from "react"
 import { HomeDashboardElite } from "@/components/home-dashboard-elite"
 import { getCurrentUser } from "@/lib/auth-manager"
 import { usePageTitle } from "@/hooks/use-page-title"
+import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
 import "@/lib/utils/clear-dashboard-cache" // Load cache clearing utilities
+
+const DASHBOARD_GATE_TIMEOUT_MS = 5000
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -69,24 +72,19 @@ export default function DashboardPage() {
 
         // SOTA AUTHENTICATION: Backend API calls use httpOnly cookies
         // No need to check auth state - fetch will send cookies automatically
-        const response = await fetch(`/api/assessment/history/${userId}`, {
-          credentials: 'include' // Ensure cookies are sent
-        }).catch(() => null) // Silently catch network errors
+        const data = await fetchAssessmentHistory(userId, {
+          timeoutMs: DASHBOARD_GATE_TIMEOUT_MS,
+        }).catch(() => null)
 
-        if (response && response.ok) {
-          const data = await response.json()
+        if (data) {
           const assessments = data?.assessments || data || []
 
-          if (assessments.length > 0) {
+          if (assessments.length > 0 && hasRecentAssessmentResult(data)) {
             setHasAssessment(true)
           } else {
             // Show dashboard anyway - the P toggle will prompt them to take assessment
             setHasAssessment(false)
           }
-        } else if (response && (response.status === 401 || response.status === 403)) {
-          // Backend says not authenticated - auth expired during page load
-          // Layout will handle redirect on next navigation
-          setHasAssessment(false)
         } else {
           // On other API error (including 404), allow access (fail open to prevent blocking)
           setHasAssessment(false)
@@ -103,6 +101,8 @@ export default function DashboardPage() {
   }, [user, hasCheckedAccess, router])
 
   const handleNavigation = (route: string) => {
+    const normalizedRoute = route.startsWith("/") ? route : `/${route}`
+
     // Map internal routes to Next.js routes
     if (route === "strategy-vault") {
       router.push("/prive-exchange")
@@ -125,7 +125,7 @@ export default function DashboardPage() {
       router.push(`/opportunity/${opportunityId}`)
     } else {
       // For other routes, try direct navigation
-      router.push(`/${route}`)
+      router.push(normalizedRoute)
     }
   }
 

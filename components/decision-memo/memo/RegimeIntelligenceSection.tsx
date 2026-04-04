@@ -7,6 +7,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { AlertTriangle, Clock, Calendar } from 'lucide-react';
+import type { RegimeIntelligence as PdfRegimeIntelligence } from '@/lib/pdf/pdf-types';
 
 // Interfaces matching backend API
 interface RegimeRates {
@@ -24,7 +25,7 @@ interface DetectedRegime {
   regime_key: string;      // e.g., "NHR"
   regime_name: string;     // e.g., "Non-Habitual Residency"
   jurisdiction: string;    // e.g., "Portugal"
-  status: "ACTIVE" | "ENDED" | "ENDING";
+  status: string;
   rates?: RegimeRates;
   warning?: string;
   successor_regime?: string;
@@ -33,9 +34,9 @@ interface DetectedRegime {
 
 // Qualification route for Golden Visa programs
 interface QualificationRoute {
-  route: string;
-  minimum_investment: string;
-  processing_time: string;
+  route?: string;
+  minimum_investment?: string;
+  processing_time?: string;
 }
 
 // Tax comparison between source and destination
@@ -52,16 +53,16 @@ interface TaxComparison {
 
 // Critical consideration with priority
 interface CriticalConsideration {
-  item: string;
-  detail: string;
-  priority: "HIGH" | "MEDIUM" | "LOW";
+  item?: string;
+  detail?: string;
+  priority?: "HIGH" | "MEDIUM" | "LOW" | string;
 }
 
 // Application process step
 interface ApplicationStep {
-  step: number;
-  action: string;
-  timeline: string;
+  step?: number;
+  action?: string;
+  timeline?: string;
 }
 
 // Estimated costs breakdown
@@ -69,7 +70,7 @@ interface EstimatedCosts {
   visa_fee?: string;
   emirates_id?: string;
   medical_test?: string;
-  total_range: string;
+  total_range?: string;
 }
 
 interface RegimeScenario {
@@ -92,7 +93,7 @@ interface RegimeScenario {
   successor_regime?: string;
   action_required?: string;
   // NEW: Enhanced Golden Visa fields
-  key_benefits?: (string | { benefit: string; detail?: string })[];
+  key_benefits?: (string | { benefit?: string; detail?: string })[];
   qualification_routes?: QualificationRoute[];
   tax_comparison?: TaxComparison;
   critical_considerations?: CriticalConsideration[];
@@ -115,7 +116,7 @@ export interface RegimeIntelligence {
 }
 
 interface RegimeIntelligenceSectionProps {
-  regimeIntelligence?: RegimeIntelligence;
+  regimeIntelligence?: RegimeIntelligence | PdfRegimeIntelligence;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
 }
@@ -173,6 +174,7 @@ export function RegimeIntelligenceSection({
   sourceJurisdiction,
   destinationJurisdiction
 }: RegimeIntelligenceSectionProps) {
+  const typedRegimeIntelligence = regimeIntelligence as RegimeIntelligence | undefined;
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
@@ -182,11 +184,12 @@ export function RegimeIntelligenceSection({
   }, [isInView]);
 
   // Don't render if no special regime detected
-  if (!regimeIntelligence?.has_special_regime) {
+  if (!typedRegimeIntelligence?.has_special_regime) {
     return null;
   }
 
-  const { detected_regimes, regime_scenario, regime_warnings } = regimeIntelligence;
+  const { detected_regimes, regime_scenario, regime_warnings } = typedRegimeIntelligence;
+  const withoutRegime = regime_scenario?.without_regime;
 
   return (
     <div ref={sectionRef}>
@@ -308,7 +311,7 @@ export function RegimeIntelligenceSection({
                 <div className="space-y-3">
                   {regime_scenario.critical_considerations.map((consideration, i) => (
                     <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-border/20 bg-card/50">
-                      <PriorityBadge priority={consideration.priority} />
+                      <PriorityBadge priority={(consideration.priority as "HIGH" | "MEDIUM" | "LOW") || "MEDIUM"} />
                       <div className="flex-1">
                         <p className="text-sm font-normal text-foreground">{consideration.item}</p>
                         <p className="text-sm text-muted-foreground/60 mt-1">{consideration.detail}</p>
@@ -380,14 +383,14 @@ export function RegimeIntelligenceSection({
                   )}
                   <div className="rounded-xl border border-primary/20 bg-card/50 p-4 text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Total Range</p>
-                    <p className="text-base font-medium tabular-nums text-primary/80">{regime_scenario.estimated_costs.total_range}</p>
+                    <p className="text-base font-medium tabular-nums text-primary/80">{regime_scenario.estimated_costs.total_range || '—'}</p>
                   </div>
                 </div>
               </motion.div>
             )}
 
             {/* Dual Scenario Comparison (for ENDED/ENDING regimes) */}
-            {regime_scenario && (regime_scenario.status === 'ENDED' || regime_scenario.status === 'ENDING') && regime_scenario.with_regime && (
+            {regime_scenario && (regime_scenario.status === 'ENDED' || regime_scenario.status === 'ENDING') && regime_scenario.with_regime && withoutRegime && (
               <motion.div
                 className="grid md:grid-cols-2 gap-4 mb-8 sm:mb-12"
                 initial={{ opacity: 0, y: 12 }}
@@ -433,22 +436,22 @@ export function RegimeIntelligenceSection({
                     </h4>
                   </div>
                   <p className="text-sm text-muted-foreground/60 mb-4">
-                    {regime_scenario.without_regime.note}
+                    {withoutRegime.note}
                   </p>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground/60">Income Tax:</span>
-                      <span className="font-medium tabular-nums text-foreground">{regime_scenario.without_regime.dest_income_tax}%</span>
+                      <span className="font-medium tabular-nums text-foreground">{withoutRegime.dest_income_tax}%</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground/60">Capital Gains:</span>
-                      <span className="font-medium tabular-nums text-foreground">{regime_scenario.without_regime.dest_cgt}%</span>
+                      <span className="font-medium tabular-nums text-foreground">{withoutRegime.dest_cgt}%</span>
                     </div>
                     <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent my-2" />
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground/60">Differential:</span>
-                      <span className={`font-medium tabular-nums ${regime_scenario.without_regime.tax_differential >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
-                        {regime_scenario.without_regime.tax_differential >= 0 ? '+' : ''}{regime_scenario.without_regime.tax_differential}%
+                      <span className={`font-medium tabular-nums ${withoutRegime.tax_differential >= 0 ? 'text-emerald-500/80' : 'text-red-500/80'}`}>
+                        {withoutRegime.tax_differential >= 0 ? '+' : ''}{withoutRegime.tax_differential}%
                       </span>
                     </div>
                   </div>

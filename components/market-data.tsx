@@ -732,11 +732,15 @@ const cityData = {
   },
 }
 
+type CityKey = keyof typeof cityData
+type SelectedCity = CityKey | "India"
+
 const MarketData: React.FC = () => {
-  const [selectedCity, setSelectedCity] = useState<string | null>(null)
+  const [selectedCity, setSelectedCity] = useState<SelectedCity | null>(null)
+  const selectedCityData = selectedCity && selectedCity !== "India" ? cityData[selectedCity] : undefined
 
   const handleCityChange = useCallback((city: string) => {
-    setSelectedCity(city)
+    setSelectedCity(city as SelectedCity)
   }, [])
 
   return (
@@ -770,7 +774,7 @@ const MarketData: React.FC = () => {
         </div>
 
         {selectedCity ? (
-          <CitySpecificData city={selectedCity} data={selectedCity === "India" ? cityData : cityData[selectedCity]} />
+          <CitySpecificData city={selectedCity} data={selectedCityData} />
         ) : (
           <div>
             <div className="pt-4 pb-2">
@@ -787,4 +791,3 @@ const MarketData: React.FC = () => {
 }
 
 export default MarketData
-

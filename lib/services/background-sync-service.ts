@@ -2,6 +2,7 @@
 // Background sync service for offline form submissions and data synchronization
 
 import { ensureClientCsrfToken, getClientCsrfToken } from "@/lib/secure-api"
+import { canUseServiceWorkerRuntime } from "@/lib/platform/runtime-flags"
 
 export interface SyncData {
   id: string
@@ -40,7 +41,7 @@ export class BackgroundSyncService {
 
   // Check if Background Sync is supported
   static isSupported(): boolean {
-    return 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype
+    return canUseServiceWorkerRuntime() && 'sync' in window.ServiceWorkerRegistration.prototype
   }
 
   // Initialize background sync service

@@ -1,6 +1,7 @@
-// components/app-content.tsx
-
-// components/app-content.tsx
+// LEGACY APP SHELL STACK
+// This file belongs to the pre-App Router navigation/auth architecture.
+// The live application now enters through `app/` route layouts instead.
+// Keep this file only as a legacy reference until the old stack is archived.
 
 "use client"
 
@@ -32,6 +33,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { setupLegacyNavigation, useNewNavigation } from "@/lib/unified-navigation"
 import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser, loginUser as authManagerLogin } from "@/lib/auth-manager"
 import { secureApi } from "@/lib/secure-api"
+import { fetchAuthSession } from "@/lib/client-auth-session"
 
 // LoginPage is now consolidated into SplashScreen
 
@@ -126,13 +128,10 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
         // PRIORITY 2: Server validation only if no valid local session
         if (!hasCheckedSession && !user) {
           setIsLoading(true);
-          const response = await fetch("/api/auth/session", {
-            credentials: 'include' // Include httpOnly cookies
-          });
-          const data = await response.json();
+          const data = await fetchAuthSession({ force: true });
   
           if (isMounted) {
-            if (data.user) {
+          if (data?.user) {
               // Create consistent user object — handle both camelCase and snake_case from backend
               const firstName = data.user.firstName || data.user.first_name || '';
               const lastName = data.user.lastName || data.user.last_name || '';
@@ -197,18 +196,15 @@ export function AppContent({ currentPage, onNavigate }: AppContentProps) {
     // Background session validation (doesn't affect navigation)
     const validateSessionInBackground = async (currentUser: User) => {
       try {
-        const response = await fetch("/api/auth/session", {
-          credentials: 'include'
-        });
-        const data = await response.json();
+        const data = await fetchAuthSession();
 
-        if (!data.user && isMounted) {
+        if (!data?.user && isMounted) {
           // Session expired, need to logout
           setUser(null);
           localStorage.removeItem("userId");
           localStorage.removeItem("userObject");
           sessionStorage.removeItem("userDisplay");
-        } else if (data.user && isMounted) {
+        } else if (data?.user && isMounted) {
           // Hydrate stored user with any missing fields from server (e.g. name, firstName)
           const serverFirstName = data.user.firstName || data.user.first_name || '';
           const serverLastName = data.user.lastName || data.user.last_name || '';

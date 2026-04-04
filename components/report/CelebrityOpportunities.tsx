@@ -39,11 +39,11 @@ export interface CelebrityOpportunity {
 }
 
 export interface CelebrityOpportunitiesData {
-  celebrity_opportunities: CelebrityOpportunity[];
-  total_missed: number;
-  avg_match_score: number;
-  total_performance_captured: number;
-  estimated_opportunity_cost_usd: number;
+  celebrity_opportunities?: CelebrityOpportunity[];
+  total_missed?: number;
+  avg_match_score?: number;
+  total_performance_captured?: number;
+  estimated_opportunity_cost_usd?: number;
   strategic_positioning_gaps?: any[];
 }
 
@@ -202,7 +202,16 @@ interface CelebrityOpportunitiesProps {
 
 export function HighProfilePeerOpportunities({ data, onCitationClick }: CelebrityOpportunitiesProps) {
   const [showAll, setShowAll] = useState(false);
-  const displayedOpportunities = showAll ? data.celebrity_opportunities : data.celebrity_opportunities.slice(0, 9);
+  const opportunities = data.celebrity_opportunities ?? [];
+  const avgMatchScore =
+    typeof data.avg_match_score === 'number'
+      ? data.avg_match_score
+      : opportunities.length > 0
+        ? opportunities.reduce((sum, opp) => sum + (opp.dna_match_score || opp.match_score || 0), 0) / opportunities.length
+        : 0;
+  const totalMissed = data.total_missed ?? opportunities.length;
+  const estimatedOpportunityCostUsd = data.estimated_opportunity_cost_usd ?? 0;
+  const displayedOpportunities = showAll ? opportunities : opportunities.slice(0, 9);
 
   return (
     <section className="space-y-6">
@@ -213,7 +222,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
             High Profile Peer Opportunities
           </h2>
           <p className="text-muted-foreground mb-3">
-            <span className="font-semibold text-primary">{data.total_missed}</span> tracked signals across{' '}
+            <span className="font-semibold text-primary">{totalMissed}</span> tracked signals across{' '}
             <span className="font-semibold text-primary">51 countries</span> matched to your posture.
             Each pin includes sources + case notes from{' '}
             <span className="font-semibold text-primary">1,860+</span> HNWI World developments
@@ -228,7 +237,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
           <div className="flex items-center gap-2 text-foreground mb-1">
             <Users className="w-5 h-5 text-primary" />
             <span className="text-3xl font-bold text-primary">
-              ${(data.estimated_opportunity_cost_usd / 1000000).toFixed(1)}M
+              ${(estimatedOpportunityCostUsd / 1000000).toFixed(1)}M
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -249,7 +258,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
       </div>
 
       {/* Show More/Less Button */}
-      {data.celebrity_opportunities.length > 9 && (
+      {opportunities.length > 9 && (
         <div className="text-center">
           <button
             onClick={() => setShowAll(!showAll)}
@@ -263,7 +272,7 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
             ) : (
               <>
                 <ChevronDown className="w-4 h-4" />
-                Show {data.celebrity_opportunities.length - 9} More Opportunities
+                Show {opportunities.length - 9} More Opportunities
               </>
             )}
           </button>
@@ -273,8 +282,8 @@ export function HighProfilePeerOpportunities({ data, onCitationClick }: Celebrit
       {/* Summary Footer */}
       <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4">
         <p className="text-sm text-muted-foreground text-center">
-          <span className="font-semibold text-primary">{data.total_missed} tracked signals</span> from HNWI World intelligence matched to your strategic DNA • Average alignment score:{' '}
-          <span className="font-semibold text-foreground">{data.avg_match_score.toFixed(1)}/10</span>
+          <span className="font-semibold text-primary">{totalMissed} tracked signals</span> from HNWI World intelligence matched to your strategic DNA • Average alignment score:{' '}
+          <span className="font-semibold text-foreground">{avgMatchScore.toFixed(1)}/10</span>
         </p>
       </div>
     </section>

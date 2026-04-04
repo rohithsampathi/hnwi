@@ -10,12 +10,21 @@ export function IndustryPulse() {
   const [timeRange, setTimeRange] = useState("1w")
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null)
 
-  const handleIndustriesUpdate = useCallback(() => {
+  const handleIndustriesUpdate = useCallback((_industries: string[]) => {
     // This function can be used to trigger any updates needed when industries data changes
   }, [])
 
   const handleBubbleClick = useCallback((industry: string) => {
     setSelectedIndustry(industry)
+  }, [])
+
+  const getIndustryColor = useCallback((industry: string) => {
+    let hash = 0
+    for (let i = 0; i < industry.length; i++) {
+      hash = industry.charCodeAt(i) + ((hash << 5) - hash)
+    }
+
+    return `hsl(${Math.abs(hash) % 360}, 70%, 60%)`
   }, [])
 
   return (
@@ -48,10 +57,11 @@ export function IndustryPulse() {
             duration={timeRange}
             onIndustriesUpdate={handleIndustriesUpdate}
             onBubbleClick={handleBubbleClick}
+            getIndustryColor={getIndustryColor}
+            selectedIndustry={selectedIndustry ?? "All"}
           />
         )}
       </CardContent>
     </Card>
   )
 }
-

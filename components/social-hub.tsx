@@ -158,7 +158,7 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
   const formatDateRange = (start: string, end: string) => {
     const startDate = new Date(start)
     const endDate = new Date(end)
-    const options = { month: "short", day: "numeric", year: "numeric" }
+    const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }
     return `${startDate.toLocaleDateString("en-US", options)} - ${endDate.toLocaleDateString("en-US", options)}`
   }
 

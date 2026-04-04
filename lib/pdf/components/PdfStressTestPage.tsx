@@ -363,15 +363,15 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, alignItems: 'center' }}>
               <Text style={styles.probMetricLabel}>Starting Value</Text>
-              <Text style={{ fontFamily: 'Courier-Bold', ...typography.metricSm, color: darkTheme.textPrimary }}>{formatCurrency(startingValue)}</Text>
+              <Text style={{ ...typography.metricSm, fontFamily: 'Courier-Bold', color: darkTheme.textPrimary }}>{formatCurrency(startingValue)}</Text>
             </View>
             <View style={{ flex: 1, alignItems: 'center', borderLeftWidth: 1, borderLeftColor: darkTheme.border, borderRightWidth: 1, borderRightColor: darkTheme.border }}>
               <Text style={styles.probMetricLabel}>Expected Net Worth</Text>
-              <Text style={{ fontFamily: 'Courier-Bold', ...typography.metricSm, color: darkTheme.textPrimary }}>{formatCurrency(expectedNetWorth)}</Text>
+              <Text style={{ ...typography.metricSm, fontFamily: 'Courier-Bold', color: darkTheme.textPrimary }}>{formatCurrency(expectedNetWorth)}</Text>
             </View>
             <View style={{ flex: 1, alignItems: 'center' }}>
               <Text style={styles.probMetricLabel}>Value Creation</Text>
-              <Text style={{ fontFamily: 'Courier-Bold', ...typography.metricSm, color: valueCreation >= 0 ? colors.amber[500] : colors.red[700] }}>
+              <Text style={{ ...typography.metricSm, fontFamily: 'Courier-Bold', color: valueCreation >= 0 ? colors.amber[500] : colors.red[700] }}>
                 {valueCreation >= 0 ? '+' : ''}{formatCurrency(valueCreation)}
               </Text>
             </View>
@@ -396,7 +396,7 @@ export const PdfStressTestPage: React.FC<PdfStressTestPageProps> = ({
                   {scenario.impact && (
                     <View style={styles.crisisImpactRow}>
                       <Text style={pdfStyles.caption}>Impact</Text>
-                      <Text style={{ fontFamily: 'Courier-Bold', ...typography.caption, color: colors.red[700] }}>
+                      <Text style={{ ...typography.caption, fontFamily: 'Courier-Bold', color: colors.red[700] }}>
                         {typeof scenario.impact === 'number' ? formatCurrency(scenario.impact) : scenario.impact}
                       </Text>
                     </View>

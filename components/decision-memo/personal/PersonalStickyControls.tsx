@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Download, Share2, Check, Loader2, LayoutGrid, ArrowLeft, Shield } from 'lucide-react';
 import { useTheme } from '@/contexts/theme-context';
 
@@ -9,15 +9,16 @@ interface PersonalStickyControlsProps {
   intakeId: string;
   onExportPDF?: () => void;
   isExportingPDF?: boolean;
+  onSwitchToReportView?: () => void;
 }
 
 export default function PersonalStickyControls({
   intakeId,
   onExportPDF,
-  isExportingPDF = false
+  isExportingPDF = false,
+  onSwitchToReportView,
 }: PersonalStickyControlsProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { theme } = useTheme();
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -30,12 +31,6 @@ export default function PersonalStickyControls({
     } catch (err) {
       console.error('Failed to copy link:', err);
     }
-  };
-
-  const handleExitWarRoom = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('personal');
-    router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
   return (
@@ -64,7 +59,11 @@ export default function PersonalStickyControls({
         <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Left — HC branding + ref */}
-            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => router.push('/war-room')}>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="flex items-center gap-3 text-left cursor-pointer hover:opacity-80 transition-opacity"
+            >
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/70 rounded-lg flex items-center justify-center shadow-lg">
                 <span className="text-primary-foreground font-bold text-sm">HC</span>
               </div>
@@ -74,12 +73,13 @@ export default function PersonalStickyControls({
                   Ref: {intakeId.slice(7, 19).toUpperCase()}
                 </p>
               </div>
-            </div>
+            </button>
 
             {/* Right — action buttons */}
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
-                onClick={handleExitWarRoom}
+                onClick={onSwitchToReportView}
+                type="button"
                 className="min-h-[44px] min-w-[44px] px-2 sm:px-3 text-sm border border-gold bg-gold/5 hover:bg-gold/10 rounded-lg flex items-center justify-center gap-2 transition-colors group"
               >
                 <LayoutGrid className="w-4 h-4 text-gold" />

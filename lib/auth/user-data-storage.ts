@@ -1,8 +1,8 @@
 // lib/auth/user-data-storage.ts
-// Layer 2: User Data Storage - Depends ONLY on token storage
+// Layer 2: User Data Storage - Aligned to cookie-backed auth manager
 // Handles user object storage and normalization
 
-import { tokenStorage } from './secure-token-storage'
+import { authManager } from '../auth-manager'
 
 /**
  * Normalized user interface - consistent across all backend responses
@@ -219,9 +219,9 @@ export class UserDataStorage {
    */
   public getUser(): NormalizedUser | null {
     if (typeof window === 'undefined') return null
-    
-    // Check if we have a valid token
-    if (!tokenStorage.hasValidToken()) {
+
+    const currentSessionUser = authManager.getCurrentUser()
+    if (!currentSessionUser) {
       // Only clear and warn if we actually had user data
       if (this.cachedUser) {
         this.clearUser()
@@ -338,18 +338,18 @@ export class UserDataStorage {
   }
 
   /**
-   * Get user from token payload
+   * Get the current authenticated user in a token-like compatibility shape
    */
   public getUserFromToken(): Partial<NormalizedUser> | null {
-    const payload = tokenStorage.decodeToken()
-    if (!payload) return null
-    
+    const currentUser = authManager.getCurrentUser()
+    if (!currentUser) return null
+
     return {
-      userId: payload.sub || payload.user_id || payload.userId,
-      email: payload.email,
-      role: payload.role,
-      firstName: payload.firstName,
-      lastName: payload.lastName
+      userId: currentUser.id || currentUser.user_id,
+      email: currentUser.email,
+      role: currentUser.role,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName
     }
   }
 }

@@ -2,13 +2,15 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'
-import { secureApi } from "@/lib/secure-api"
+import { getCurrentUser } from "@/lib/auth-manager"
+import { clearAuthSessionCache, primeAuthSessionCache } from "@/lib/client-auth-session"
+import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 
 interface AuthContextType {
   user: any | null
   loading: boolean
   isAuthenticated: boolean
-  refreshSession: () => Promise<void>
+  refreshSession: (force?: boolean) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -19,37 +21,88 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [sessionChecked, setSessionChecked] = useState(false)
+  const initialAuthState = unifiedAuthManager.getAuthState()
+  const [user, setUser] = useState<any | null>(() => initialAuthState.user ?? getCurrentUser())
+  const [loading, setLoading] = useState(() => initialAuthState.isLoading && !(initialAuthState.user ?? getCurrentUser()))
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (force = true) => {
+    const currentState = unifiedAuthManager.getAuthState()
+
+    if (!force && currentState.user) {
+      setUser(currentState.user)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
-      // Auth checked via cookies - no token needed
-      const response = await fetch('/api/auth/session', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      })
-      const data = await response.json()
-      setUser(data.user)
+      const nextState = await unifiedAuthManager.checkSession()
+      setUser(nextState.user ?? null)
+      setLoading(nextState.isLoading)
     } catch (error) {
       setUser(null)
-    } finally {
       setLoading(false)
-      setSessionChecked(true)
+    } finally {
+      const nextUser = getCurrentUser()
+      if (nextUser) {
+        primeAuthSessionCache({ user: nextUser })
+      } else {
+        clearAuthSessionCache()
+      }
     }
   }, [])
 
   useEffect(() => {
-    // Only check session once on mount
-    if (!sessionChecked) {
-      refreshSession()
+    const unsubscribe = unifiedAuthManager.subscribe((state) => {
+      setUser(state.user ?? null)
+      setLoading(state.isLoading)
+
+      if (state.user) {
+        primeAuthSessionCache({ user: state.user })
+      } else {
+        clearAuthSessionCache()
+      }
+    })
+
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    const handleAuthLogin = () => {
+      const nextUser = getCurrentUser()
+      if (nextUser) {
+        primeAuthSessionCache({ user: nextUser })
+      } else {
+        clearAuthSessionCache()
+      }
+      setUser(nextUser)
+      setLoading(false)
     }
-  }, [sessionChecked, refreshSession])
+
+    const handleAuthUserUpdated = () => {
+      const nextUser = getCurrentUser()
+      if (nextUser) {
+        primeAuthSessionCache({ user: nextUser })
+      }
+      setUser(nextUser)
+    }
+
+    const handleAuthLogout = () => {
+      clearAuthSessionCache()
+      setUser(null)
+      setLoading(false)
+    }
+
+    window.addEventListener('auth:login', handleAuthLogin)
+    window.addEventListener('auth:userUpdated', handleAuthUserUpdated)
+    window.addEventListener('auth:logout', handleAuthLogout)
+
+    return () => {
+      window.removeEventListener('auth:login', handleAuthLogin)
+      window.removeEventListener('auth:userUpdated', handleAuthUserUpdated)
+      window.removeEventListener('auth:logout', handleAuthLogout)
+    }
+  }, [])
 
   // Memoize context value to prevent unnecessary rerenders
   const contextValue = useMemo(() => ({

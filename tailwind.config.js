@@ -1,7 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+    "!./app/page-old.tsx",
+    "!./components/app-content.tsx",
+    "!./components/app-root.tsx",
+    "!./components/app-shell.tsx",
+    "!./components/app-wrapper.tsx",
+    "!./components/debug-auth.tsx",
+    "!./components/development-stream-broken.tsx",
+    "!./components/decision-memo/OpportunitiesMap.tsx",
+    "!./components/decision-memo/PreviewModal.tsx",
+    "!./components/opportunity-atlas.tsx",
+    "!./components/playbook-formatter.tsx",
+    "!./components/pricing-strategy.tsx",
+    "!./components/quick-login.tsx",
+    "!./components/target-audience-segmentation.tsx",
+  ],
   theme: {
     container: {
       center: true,
@@ -221,4 +240,3 @@ module.exports = {
   },
   plugins: [require("tailwindcss-animate")],
 }
-

@@ -1,9 +1,40 @@
 import { secureApi } from "@/lib/secure-api";
 
+export const LEGACY_NOTIFICATION_EVENT_TYPES = [
+  'elite_pulse',
+  'hnwi_world',
+  'crown_vault',
+  'social_hub',
+  'system_notification'
+] as const;
+
+export const DETAILED_NOTIFICATION_EVENT_TYPES = [
+  'elite_pulse_generated',
+  'opportunity_added',
+  'crown_vault_update',
+  'social_event_added',
+  'market_alert',
+  'regulatory_update',
+  'system_notification'
+] as const;
+
+export const NOTIFICATION_EVENT_TYPES = Array.from(
+  new Set([
+    ...LEGACY_NOTIFICATION_EVENT_TYPES,
+    ...DETAILED_NOTIFICATION_EVENT_TYPES
+  ])
+) as NotificationEventType[];
+
+export type LegacyNotificationEventType = typeof LEGACY_NOTIFICATION_EVENT_TYPES[number];
+export type DetailedNotificationEventType = typeof DETAILED_NOTIFICATION_EVENT_TYPES[number];
+export type NotificationEventType = LegacyNotificationEventType | DetailedNotificationEventType;
+export type NotificationPreferenceEventType = NotificationEventType;
+export type NotificationEventPreferences = Record<NotificationPreferenceEventType, boolean>;
+
 export interface NotificationRecord {
   id: string;
   user_id: string;
-  event_type: 'elite_pulse' | 'hnwi_world' | 'crown_vault' | 'social_hub' | 'system_notification';
+  event_type: NotificationEventType;
   channel: 'email' | 'push' | 'in_app' | 'sms';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   title: string;
@@ -38,16 +69,59 @@ export interface UserNotificationPreferences {
   quiet_hours_enabled: boolean;
   quiet_hours_start: string;
   quiet_hours_end: string;
-  event_types: {
-    elite_pulse: boolean;
-    hnwi_world: boolean;
-    crown_vault: boolean;
-    social_hub: boolean;
-    system_notification: boolean;
-  };
+  event_types: NotificationEventPreferences;
   frequency_limits: {
     max_per_hour: number;
     max_per_day: number;
+  };
+}
+
+export const DEFAULT_NOTIFICATION_EVENT_PREFERENCES: NotificationEventPreferences = {
+  elite_pulse: true,
+  hnwi_world: true,
+  crown_vault: true,
+  social_hub: true,
+  elite_pulse_generated: true,
+  opportunity_added: true,
+  crown_vault_update: true,
+  social_event_added: true,
+  market_alert: true,
+  regulatory_update: true,
+  system_notification: true
+};
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: UserNotificationPreferences = {
+  email_enabled: true,
+  push_enabled: false,
+  in_app_enabled: true,
+  sms_enabled: false,
+  quiet_hours_enabled: false,
+  quiet_hours_start: "22:00",
+  quiet_hours_end: "08:00",
+  event_types: DEFAULT_NOTIFICATION_EVENT_PREFERENCES,
+  frequency_limits: {
+    max_per_hour: 10,
+    max_per_day: 50
+  }
+};
+
+export function normalizeNotificationPreferences(
+  preferences?: Partial<UserNotificationPreferences> | null
+): UserNotificationPreferences {
+  const eventTypes = preferences?.event_types as Partial<NotificationEventPreferences> | undefined;
+  const frequencyLimits = preferences?.frequency_limits;
+
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...preferences,
+    event_types: {
+      ...DEFAULT_NOTIFICATION_EVENT_PREFERENCES,
+      ...eventTypes
+    },
+    frequency_limits: {
+      ...DEFAULT_NOTIFICATION_PREFERENCES.frequency_limits,
+      ...frequencyLimits
+    }
   };
 }
 
@@ -67,7 +141,7 @@ class NotificationService {
     limit = 20, 
     offset = 0, 
     unreadOnly = false,
-    eventType?: string
+    eventType?: NotificationEventType
   ): Promise<NotificationInboxResponse> {
     const params = new URLSearchParams({
       limit: limit.toString(),

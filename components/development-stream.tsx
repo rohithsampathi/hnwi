@@ -17,26 +17,19 @@ import { useAuthPopup } from "@/contexts/auth-popup-context"
 import { CitationText } from "@/components/elite/citation-text"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { formatAnalysis, type FormattedAnalysis, type AnalysisSection } from "@/lib/format-text"
+import type {
+  HNWIWorldBrainContract,
+  HNWIWorldDevelopment,
+  HNWIWorldLibraryContract,
+  HNWIWorldPatternMetadata,
+} from "@/types/hnwi-world"
 
-interface Development {
-  id: string
-  title: string
-  description: string
-  industry: string
-  product: string
-  date?: string
-  url: string
-  summary: string
-  source?: string
-  numerical_data?: Array<{
-    number: string
-    context: string
-    unit: string
-    industry: string
-    product: string
-    source: string
-    article_date: string
-  }>
+interface ElitePulseImpactMeta {
+  impact_level?: "HIGH" | "MEDIUM" | "LOW"
+}
+
+type DevelopmentRecord = HNWIWorldDevelopment & {
+  elite_pulse_impact?: ElitePulseImpactMeta
 }
 
 // Removed: AnalysisSection and FormattedAnalysis now imported from @/lib/format-text
@@ -50,7 +43,7 @@ interface DevelopmentStreamProps {
   onLoadingChange?: (loading: boolean) => void
   startDate?: string
   endDate?: string
-  developments?: any[] // Accept developments as props
+  developments?: DevelopmentRecord[] // Accept developments as props
   isLoading?: boolean
   elitePulseBriefIds?: string[] // Elite Pulse source brief IDs for tagging
   showElitePulseOnly?: boolean // Filter to show only Elite Pulse developments
@@ -67,6 +60,49 @@ interface DevelopmentStreamProps {
 // Removed: formatAnalysis and toTitleCase now imported from @/lib/format-text
 
 const queenBullet = "list-none";
+
+const formatPatternValue = (value?: string | null) => {
+  if (!value) return null
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+const hasPatternMetadata = (metadata?: HNWIWorldPatternMetadata) => {
+  if (!metadata) return false
+
+  return Boolean(
+    metadata.signal_count ||
+      metadata.bundle_count ||
+      metadata.related_development_count ||
+      metadata.citation_count ||
+      metadata.quality_score ||
+      metadata.validation_status ||
+      metadata.native_version ||
+      metadata.verdict ||
+      metadata.pattern_labels?.length ||
+      metadata.signal_labels?.length ||
+      metadata.bundle_labels?.length
+  )
+}
+
+const hasLibraryContract = (contract?: HNWIWorldLibraryContract) => {
+  if (!contract) return false
+  return Boolean(
+    contract.surface ||
+      contract.canonical_projection_key ||
+      contract.substrate_family ||
+      contract.native_version ||
+      contract.validation_status ||
+      contract.verdict ||
+      contract.write_back_targets?.length
+  )
+}
+
+const hasBrainContract = (contract?: HNWIWorldBrainContract) => {
+  if (!contract) return false
+  return Boolean(contract.dimensions?.length || contract.state_channels?.length)
+}
 
 export function DevelopmentStream({
   selectedIndustry,
@@ -95,7 +131,7 @@ export function DevelopmentStream({
   // Component now receives developments as props, no need to fetch
 
   // Helper function to get Elite Pulse impact level from development
-  const getElitePulseImpact = (dev: any): 'HIGH' | 'MEDIUM' | 'LOW' | null => {
+  const getElitePulseImpact = (dev: DevelopmentRecord): 'HIGH' | 'MEDIUM' | 'LOW' | null => {
     // Check if development has Elite Pulse impact data
     if (dev.elite_pulse_impact && dev.elite_pulse_impact.impact_level) {
       return dev.elite_pulse_impact.impact_level;
@@ -583,7 +619,7 @@ export function DevelopmentStream({
                             Numerical data
                           </h4>
                           <ul className={`${queenBullet} space-y-2`}>
-                            {dev.numerical_data.map((item, index) => (
+                            {dev.numerical_data.map((item: NonNullable<Development["numerical_data"]>[number], index: number) => (
                               <li key={`numerical-${index}`} className="text-sm text-muted-foreground dark:text-gray-100 flex items-start">
                                 <Lightbulb className={`h-4 w-4 mr-2 flex-shrink-0 mt-1 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                                 <span>
@@ -598,6 +634,204 @@ export function DevelopmentStream({
                               </li>
                             ))}
                           </ul>
+                        </div>
+                      )}
+
+                      {hasPatternMetadata(dev.pattern_metadata) && (
+                        <div className="bg-muted/60 dark:bg-primary-900/20 border border-border p-4 rounded-md mt-4">
+                          <div className="flex items-center mb-3">
+                            <BarChart3 className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Castle Pattern Footprint
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {typeof dev.pattern_metadata?.signal_count === "number" && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Signals</div>
+                                <div className="text-sm font-semibold">{dev.pattern_metadata.signal_count}</div>
+                              </div>
+                            )}
+                            {typeof dev.pattern_metadata?.bundle_count === "number" && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Bundles</div>
+                                <div className="text-sm font-semibold">{dev.pattern_metadata.bundle_count}</div>
+                              </div>
+                            )}
+                            {typeof dev.pattern_metadata?.related_development_count === "number" && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Related Briefs</div>
+                                <div className="text-sm font-semibold">{dev.pattern_metadata.related_development_count}</div>
+                              </div>
+                            )}
+                            {typeof dev.pattern_metadata?.citation_count === "number" && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Citations</div>
+                                <div className="text-sm font-semibold">{dev.pattern_metadata.citation_count}</div>
+                              </div>
+                            )}
+                            {typeof dev.pattern_metadata?.quality_score === "number" && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Quality Score</div>
+                                <div className="text-sm font-semibold">{Math.round(dev.pattern_metadata.quality_score)}/100</div>
+                              </div>
+                            )}
+                            {dev.pattern_metadata?.validation_status && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Validation</div>
+                                <div className="text-sm font-semibold">{formatPatternValue(dev.pattern_metadata.validation_status)}</div>
+                              </div>
+                            )}
+                            {dev.pattern_metadata?.verdict && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Verdict</div>
+                                <div className="text-sm font-semibold">{formatPatternValue(dev.pattern_metadata.verdict)}</div>
+                              </div>
+                            )}
+                            {dev.pattern_metadata?.native_version && (
+                              <div className="rounded-md border border-border/70 px-3 py-2">
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Native Version</div>
+                                <div className="text-sm font-semibold">{dev.pattern_metadata.native_version}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {dev.pattern_metadata?.pattern_labels && dev.pattern_metadata.pattern_labels.length > 0 && (
+                            <div className="mt-4">
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Pattern Themes</div>
+                              <div className="flex flex-wrap gap-2">
+                                {dev.pattern_metadata.pattern_labels.map((label, index) => (
+                                  <Badge key={`pattern-label-${index}`} variant="outline" className="text-xs">
+                                    {label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {dev.pattern_metadata?.signal_labels && dev.pattern_metadata.signal_labels.length > 0 && (
+                            <div className="mt-4">
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Signal Labels</div>
+                              <div className="flex flex-wrap gap-2">
+                                {dev.pattern_metadata.signal_labels.map((label, index) => (
+                                  <Badge key={`signal-label-${index}`} variant="outline" className="text-xs">
+                                    {label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {dev.pattern_metadata?.bundle_labels && dev.pattern_metadata.bundle_labels.length > 0 && (
+                            <div className="mt-4">
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Bundle Labels</div>
+                              <div className="flex flex-wrap gap-2">
+                                {dev.pattern_metadata.bundle_labels.map((label, index) => (
+                                  <Badge key={`bundle-label-${index}`} variant="outline" className="text-xs">
+                                    {label}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {(hasLibraryContract(dev.library_contract) || hasBrainContract(dev.brain_contract)) && (
+                        <div className="bg-muted/60 dark:bg-primary-900/20 border border-border p-4 rounded-md mt-4">
+                          <div className="flex items-center mb-3">
+                            <Brain className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Kingdom Library Contract
+                            </h4>
+                          </div>
+
+                          {hasLibraryContract(dev.library_contract) && (
+                            <>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {dev.library_contract?.surface && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Surface</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.surface)}</div>
+                                  </div>
+                                )}
+                                {dev.library_contract?.canonical_projection_key && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Projection</div>
+                                    <div className="text-sm font-semibold">{dev.library_contract.canonical_projection_key}</div>
+                                  </div>
+                                )}
+                                {dev.library_contract?.substrate_family && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Substrate</div>
+                                    <div className="text-sm font-semibold">{dev.library_contract.substrate_family}</div>
+                                  </div>
+                                )}
+                                {dev.library_contract?.native_version && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Native Version</div>
+                                    <div className="text-sm font-semibold">{dev.library_contract.native_version}</div>
+                                  </div>
+                                )}
+                                {dev.library_contract?.validation_status && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Validation</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.validation_status)}</div>
+                                  </div>
+                                )}
+                                {dev.library_contract?.verdict && (
+                                  <div className="rounded-md border border-border/70 px-3 py-2">
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Verdict</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.verdict)}</div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {dev.library_contract?.write_back_targets?.length > 0 && (
+                                <div className="mt-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Write-Back Targets</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {dev.library_contract.write_back_targets.map((target, index) => (
+                                      <Badge key={`write-back-target-${index}`} variant="outline" className="text-xs">
+                                        {target}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {hasBrainContract(dev.brain_contract) && (
+                            <>
+                              {dev.brain_contract?.dimensions?.length > 0 && (
+                                <div className="mt-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Brain Dimensions</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {dev.brain_contract.dimensions.map((dimension, index) => (
+                                      <Badge key={`brain-dimension-${index}`} variant="outline" className="text-xs">
+                                        {formatPatternValue(dimension)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {dev.brain_contract?.state_channels?.length > 0 && (
+                                <div className="mt-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">State Channels</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {dev.brain_contract.state_channels.map((channel, index) => (
+                                      <Badge key={`brain-channel-${index}`} variant="outline" className="text-xs">
+                                        {formatPatternValue(channel)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       )}
                           </div>

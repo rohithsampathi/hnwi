@@ -4,6 +4,11 @@
 
 import { secureApi } from "@/lib/secure-api";
 
+const CRISIS_CACHE_TTL_MS = 60000
+let cachedCrisisIntelligence: CrisisIntelligenceResponse | null = null
+let cachedCrisisIntelligenceAt = 0
+let inflightCrisisIntelligence: Promise<CrisisIntelligenceResponse> | null = null
+
 export type CrisisStatus = "red" | "amber" | "yellow";
 
 export interface CrisisZone {
@@ -43,7 +48,7 @@ export interface CrisisColorConfig {
   label: string;
 }
 
-export type CrisisDomain = "geopolitical" | "ai" | "macro";
+export type CrisisDomain = "war" | "geopolitical" | "ai" | "macro" | "banking";
 
 export interface CrisisWorkforceImpact {
   companies: string[];
@@ -57,6 +62,7 @@ export interface CrisisLocation {
   lat: number;
   lng: number;
   event: string;
+  event_date?: string;
   status?: CrisisStatus;
   crisis_domain?: CrisisDomain;
   workforce_impact?: CrisisWorkforceImpact;
@@ -81,6 +87,25 @@ export interface CrisisCounts {
 // ─── FETCH FROM BACKEND ─────────────────────────────────────────────
 
 // Convert snake_case backend response → camelCase frontend types
+function normalizeCrisisDomain(value: unknown): CrisisDomain | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  switch (value) {
+    case "military_conflict":
+      return "war";
+    case "war":
+    case "geopolitical":
+    case "ai":
+    case "macro":
+    case "banking":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
 function transformBackendResponse(data: any): CrisisIntelligenceResponse {
   const zones: CrisisZone[] = (data.zones || []).map((z: any) => ({
     name: z.name,
@@ -89,7 +114,7 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
     status: z.status,
     label: z.label,
     detail: z.detail,
-    crisisDomain: z.crisis_domain || z.crisisDomain || undefined,
+    crisisDomain: normalizeCrisisDomain(z.crisis_domain || z.crisisDomain),
   }));
 
   const alert: CrisisAlert = {
@@ -131,10 +156,15 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
           lat: loc.lat,
           lng: loc.lng,
           event: loc.event || "",
+          event_date: loc.event_date || undefined,
           status: loc.status || undefined,
-          crisis_domain: loc.crisis_domain || undefined,
+          crisis_domain: normalizeCrisisDomain(loc.crisis_domain),
           workforce_impact: loc.workforce_impact || undefined,
-          asset_impacts: loc.asset_impacts || undefined,
+          asset_impacts: Array.isArray(loc.asset_impacts)
+            ? loc.asset_impacts.map((a: any) =>
+                typeof a === "string" ? a : a.asset || a.movement || String(a)
+              )
+            : undefined,
         });
       }
     }
@@ -150,6 +180,15 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
 }
 
 export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceResponse> {
+  const now = Date.now()
+  if (cachedCrisisIntelligence && now - cachedCrisisIntelligenceAt < CRISIS_CACHE_TTL_MS) {
+    return cachedCrisisIntelligence
+  }
+
+  if (inflightCrisisIntelligence) {
+    return inflightCrisisIntelligence
+  }
+
   // Viewer accounts (audit.viewer / hnwi@montaigne.co) authenticate via report Bearer token.
   // The report token is stored in sessionStorage by the audit popup on login.
   // We pass it as Authorization so the Next.js route can forward it to the backend —
@@ -159,17 +198,36 @@ export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceRespo
       ? sessionStorage.getItem("latest_report_token")
       : null;
 
-  if (reportToken) {
-    const resp = await fetch("/api/crisis-intelligence", {
-      credentials: "include",
-      headers: { Authorization: `Bearer ${reportToken}` },
-    });
-    if (!resp.ok) throw new Error(`${resp.status}`);
-    return transformBackendResponse(await resp.json());
-  }
+  inflightCrisisIntelligence = (async () => {
+    if (reportToken) {
+      const bust = Date.now();
+      const resp = await fetch(`/api/crisis-intelligence?t=${bust}`, {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${reportToken}`,
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      });
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      const payload = transformBackendResponse(await resp.json());
+      cachedCrisisIntelligence = payload
+      cachedCrisisIntelligenceAt = Date.now()
+      return payload
+    }
 
-  const data = await secureApi.get("/api/crisis-intelligence", true);
-  return transformBackendResponse(data);
+    const data = await secureApi.get("/api/crisis-intelligence", true, true);
+    const payload = transformBackendResponse(data)
+    cachedCrisisIntelligence = payload
+    cachedCrisisIntelligenceAt = Date.now()
+    return payload
+  })().finally(() => {
+    inflightCrisisIntelligence = null
+  })
+
+  return inflightCrisisIntelligence
 }
 
 // ─── DERIVED HELPERS ─────────────────────────────────────────────────

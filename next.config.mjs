@@ -5,6 +5,8 @@ try {
   // ignore error
 }
 
+const isDevelopment = process.env.NODE_ENV === 'development'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -18,12 +20,13 @@ const nextConfig = {
     unoptimized: true,
   },
   transpilePackages: ['react-leaflet', '@react-leaflet/core'],
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
-    optimizeCss: true,
-  },
+  experimental: isDevelopment
+    ? {
+        turbo: {
+          useSwcCss: true,
+        },
+      }
+    : {},
 
   // Cache control headers for OG meta tags and social sharing
   async headers() {
@@ -36,6 +39,10 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'no-store, no-cache, must-revalidate',
           },
+          {
+            key: 'Vary',
+            value: 'Cookie, Authorization',
+          },
         ],
       },
       {
@@ -47,6 +54,10 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'private, no-store, must-revalidate',
           },
+          {
+            key: 'Vary',
+            value: 'Cookie, Authorization',
+          },
         ],
       },
       {
@@ -57,19 +68,9 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'private, no-store, must-revalidate',
           },
-        ],
-      },
-      {
-        // Public pages — cache for OG meta tags and social sharing
-        source: '/:path*',
-        headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=3600, must-revalidate',
-          },
-          {
-            key: 'X-Robots-Tag',
-            value: 'index, follow',
+            key: 'Vary',
+            value: 'Cookie, Authorization',
           },
         ],
       },
@@ -86,18 +87,9 @@ const nextConfig = {
     ];
   },
   
-  // Suppress development warnings
-  onDemandEntries: {
-    // Period (in ms) where the server will keep pages in the buffer
-    maxInactiveAge: 25 * 1000,
-    // Number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 2,
-  },
-  
   // Reduce webpack warnings in development
   webpack: (config, { dev, isServer }) => {
     if (dev) {
-      config.devtool = 'eval-source-map'
       // Suppress specific warnings
       config.ignoreWarnings = [
         /Critical dependency: the request of a dependency is an expression/,

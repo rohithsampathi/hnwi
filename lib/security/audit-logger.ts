@@ -311,18 +311,18 @@ export class AuditLogger {
 export const auditLogger = {
   log: async (data: { action: string; resource?: string; ip?: string; error?: string; timestamp: string; userId?: string }) => {
     try {
-      AuditLogger.log(
-        SecurityEventType.API_CALL,
-        SeverityLevel.INFO,
-        data.action,
-        data.resource || '',
-        true,
-        {
+      AuditLogger.log({
+        type: SecurityEventType.API_CALL,
+        severity: SeverityLevel.INFO,
+        action: data.action,
+        resource: data.resource || '',
+        success: true,
+        details: {
           ip: data.ip,
           error: data.error,
           userId: data.userId
         }
-      );
+      });
     } catch (error) {
       // Silent fail for audit logging to prevent breaking app functionality
     }

@@ -5,7 +5,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   AlertTriangle,
   TrendingDown,
@@ -24,6 +24,13 @@ import {
   Lock
 } from 'lucide-react';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
+import { resolveCrossBorderDisplayMetrics } from '@/lib/decision-memo/resolve-cross-border-display-metrics';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
+import type { CrossBorderAuditSummary as PdfCrossBorderAuditSummary } from '@/lib/pdf/pdf-types';
 
 // Types for the cross-border audit data
 interface AcquisitionAudit {
@@ -83,12 +90,16 @@ export interface CrossBorderAuditSummary {
   estate_tax_audit?: EstateAudit;
   net_yield_audit?: NetYieldAudit;
   total_tax_savings_pct: number;
+  ongoing_tax_savings_pct?: number;
+  ongoing_tax_savings_note?: string;
+  fta_acquisition_savings_pct?: number;
+  fta_acquisition_savings_usd?: number;
   compliance_flags?: string[];
   warnings?: string[];
 }
 
 interface CrossBorderTaxAuditProps {
-  audit: CrossBorderAuditSummary | null | undefined;
+  audit: CrossBorderAuditSummary | PdfCrossBorderAuditSummary | null | undefined;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
   viaNegativa?: ViaNegativaContext;
@@ -106,23 +117,13 @@ function formatCurrency(amount: number): string {
 
 // Animated number counter
 function AnimatedNumber({ value, suffix = '%', decimals = 1 }: { value: number; suffix?: string; decimals?: number }) {
+  const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    let start: number;
-    const duration = 1200;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(value * eased);
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [value, isInView]);
+  const isInView = useReportInView(ref, { once: true });
+  const display = useAnimatedMetric(value, {
+    duration: 1200,
+    enabled: motionEnabled && isInView,
+  });
 
   return <span ref={ref}>{display.toFixed(decimals)}{suffix}</span>;
 }
@@ -239,14 +240,16 @@ function TaxComparison({
 }
 
 export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
-  audit,
+  audit: rawAudit,
   sourceJurisdiction = 'Source',
   destinationJurisdiction = 'Destination',
   viaNegativa
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
+  const audit = rawAudit as CrossBorderAuditSummary | null | undefined;
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(sectionRef, { once: true, margin: "-50px" });
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -256,70 +259,99 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
 
   const hasWarnings = audit.warnings && audit.warnings.length > 0;
   const hasComplianceFlags = audit.compliance_flags && audit.compliance_flags.length > 0;
-  const isZeroSavings = audit.total_tax_savings_pct === 0;
+  const {
+    displayTaxSavingsPct,
+    acquisitionReliefPct,
+    acquisitionReliefUsd,
+    dayOneLossPct,
+  } = resolveCrossBorderDisplayMetrics(audit);
+  const isZeroSavings = displayTaxSavingsPct === 0;
 
   return (
-    <div ref={sectionRef} className="relative">
-      {/* SECTION HEADER */}
-      <motion.div
-        className="mb-8"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-          Cross-Border Tax Audit
-        </h2>
-        <div className="h-px bg-border" />
-      </motion.div>
+    <div ref={sectionRef} className="print-cross-border-audit relative">
+      <div data-print-block="keep" data-print-max-height="780">
+        {/* SECTION HEADER */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Cross-Border Tax Audit
+          </h2>
+          <div className="h-px bg-border" />
+        </motion.div>
 
-      {/* EXECUTIVE SUMMARY */}
-      <motion.div
-        className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+        {/* EXECUTIVE SUMMARY */}
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          data-print-block="keep"
+          data-print-max-gap="240"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-        <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
-          <div className="mb-8">
-            <p className="text-sm sm:text-base font-normal text-foreground leading-relaxed">
-              {audit.executive_summary}
-            </p>
-          </div>
-
-          {/* Key metric: Total Tax Savings */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Tax Savings</p>
-              <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
-                isZeroSavings ? 'text-red-500/80' : 'text-emerald-500/80'
-              }`}>
-                <AnimatedNumber value={audit.total_tax_savings_pct} />
+          <div className="relative z-10 px-5 sm:px-8 md:px-12 py-10 md:py-12">
+            <div className="mb-8">
+              <p className="text-sm sm:text-base font-normal text-foreground leading-relaxed">
+                {audit.executive_summary}
               </p>
             </div>
 
-            {audit.acquisition_audit && (
-              <>
-                <div className="text-center">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Day-One Loss</p>
-                  <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-red-500/80">
-                    <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} decimals={2} />
+            {/* Key metric: Total Tax Savings */}
+            <div className={`grid gap-3 sm:gap-6 ${acquisitionReliefPct ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Tax Savings</p>
+                <p className={`text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight ${
+                  isZeroSavings ? 'text-red-500/80' : 'text-emerald-500/80'
+                }`}>
+                  <AnimatedNumber value={displayTaxSavingsPct} />
+                </p>
+                {audit.ongoing_tax_savings_note && (
+                  <p className="mt-2 text-xs text-muted-foreground/60 font-normal leading-relaxed">
+                    {audit.ongoing_tax_savings_note}
                   </p>
-                </div>
+                )}
+              </div>
 
-                <div className="text-center col-span-2 sm:col-span-1">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Total Cost</p>
-                  <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-gold/80">
-                    {formatCurrency(audit.acquisition_audit.total_acquisition_cost)}
-                  </p>
-                </div>
-              </>
-            )}
+              {audit.acquisition_audit && (
+                <>
+                  {acquisitionReliefPct ? (
+                    <div className="text-center">
+                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Acquisition Relief</p>
+                      <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-emerald-500/80">
+                        <AnimatedNumber value={acquisitionReliefPct} />
+                      </p>
+                      {acquisitionReliefUsd ? (
+                        <p className="mt-2 text-xs text-muted-foreground/60 font-normal">
+                          {formatCurrency(acquisitionReliefUsd)} stamp-duty relief
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="text-center">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Day-One Loss</p>
+                    <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-red-500/80">
+                      <AnimatedNumber value={dayOneLossPct ?? 0} decimals={2} />
+                    </p>
+                  </div>
+
+                  <div className={`text-center ${acquisitionReliefPct ? 'col-span-2 lg:col-span-1' : 'col-span-2 sm:col-span-1'}`}>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Total Cost</p>
+                    <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-gold/80">
+                      {formatCurrency(audit.acquisition_audit.total_acquisition_cost)}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
 
       {/* COMPLIANCE FLAGS */}
       {hasComplianceFlags && (
@@ -387,6 +419,8 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
       {audit.acquisition_audit && (
         <motion.div
           className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          data-print-block="keep"
+          data-print-max-gap="220"
           initial={{ opacity: 0, y: 12 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -426,7 +460,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 <p className="text-sm text-muted-foreground/60 font-normal">Immediate cost as percentage of property value</p>
               </div>
               <p className="text-2xl sm:text-3xl md:text-4xl font-semibold tabular-nums tracking-tight text-red-500/80">
-                <AnimatedNumber value={audit.acquisition_audit.day_one_loss_pct} decimals={2} />
+                <AnimatedNumber value={dayOneLossPct ?? 0} decimals={2} />
               </p>
             </div>
 
@@ -445,13 +479,19 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
       {/* TAX TREATMENT GRID */}
       <motion.div
         className="mb-8 sm:mb-12"
+        data-print-block="keep"
+        data-print-max-height="760"
         initial={{ opacity: 0 }}
         animate={isVisible ? { opacity: 1 } : {}}
         transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
         <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">Tax Treatment by Category</p>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div
+          className="grid md:grid-cols-2 gap-6"
+          data-print-block="keep"
+          data-print-max-gap="160"
+        >
           {/* Rental Income */}
           {audit.rental_income_audit && (
             <TaxComparison

@@ -29,11 +29,12 @@ import {
   getBranchDisplayName,
   MarketValidation
 } from '@/lib/decision-memo/sfo-expert-types';
+import type { ScenarioTreeData as PdfScenarioTreeData } from '@/lib/pdf/pdf-types';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
 interface ScenarioTreeSectionProps {
-  data?: ScenarioTreeData | Record<string, never>;
+  data?: ScenarioTreeData | PdfScenarioTreeData | Record<string, never>;
   rawAnalysis?: string;
   viaNegativa?: ViaNegativaContext;
 }
@@ -80,6 +81,7 @@ function ConditionBadge({ status }: { status: ConditionStatus }) {
     MET: { icon: <CheckCircle className="w-3 h-3" />, color: 'border-primary/20 text-primary/80', label: 'Met' },
     CONFIRMED: { icon: <CheckCircle className="w-3 h-3" />, color: 'border-primary/20 text-primary/80', label: 'Confirmed' },
     CONDITIONAL: { icon: <RefreshCw className="w-3 h-3" />, color: 'border-amber-500/20 text-amber-500/80', label: 'Conditional' },
+    MODELED: { icon: <Info className="w-3 h-3" />, color: 'border-border/20 text-muted-foreground/80', label: 'Modeled' },
     PENDING: { icon: <AlertTriangle className="w-3 h-3" />, color: 'border-border/20 text-muted-foreground/80', label: 'Pending' },
     BLOCKED: { icon: <XCircle className="w-3 h-3" />, color: 'border-border/20 text-muted-foreground/60', label: 'Blocked' }
   };

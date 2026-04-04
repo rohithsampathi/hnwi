@@ -109,10 +109,7 @@ export function SubscriptionCard({
   }
   const status = subscription?.status || 'active'
   const billing_cycle = subscription?.billing_cycle || 'monthly'
-  // Normalize billing cycle to match PLAN_PRICING keys
-  const normalizedBillingCycle = billing_cycle === 'yearly' || billing_cycle === 'annual' || billing_cycle === 'year'
-    ? 'yearly'
-    : 'monthly'
+  const normalizedBillingCycle = billing_cycle === 'yearly' ? 'yearly' : 'monthly'
 
   const getTierIcon = (tier: string) => {
     switch (tier) {

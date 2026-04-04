@@ -65,7 +65,7 @@ export default function PersonalMobileNav({
     return sections.some(s => s.id === activeSection);
   })?.id;
 
-  const handleCategoryClick = (categoryId: string) => {
+  const handleCategoryClick = (categoryId: Category['id']) => {
     // If clicking the active category, navigate to its first section
     const sections = getSectionsByCategory(categoryId, memoData);
     if (sections.length > 0) {

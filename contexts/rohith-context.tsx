@@ -32,21 +32,24 @@ interface RohithContextActions {
   selectConversation: (conversationId: string) => Promise<void>
   createNewConversation: (firstMessage: string) => Promise<string>
   sendMessage: (message: string) => Promise<void>
-  deleteConversation: (conversationId: string) => Promise<void>
-  updateConversationTitle: (conversationId: string, newTitle: string) => Promise<void>
+  deleteConversation: (conversationId: string) => Promise<boolean>
+  updateConversationTitle: (conversationId: string, newTitle: string) => Promise<boolean>
   clearCurrentConversation: () => void
   setTyping: (isTyping: boolean) => void
   clearError: () => void
   submitMessageFeedback: (messageId: string, isPositive: boolean) => Promise<void>
 }
 
-type RohithContextType = RohithContextState & RohithContextActions & {
-  // JARVIS-specific state (Feb 2026: Now default mode)
+type JarvisState = {
   visualizations: VisualizationCommand[]
   predictivePrompts: string[]
   narration: { text: string; delivery: string } | null
   currentMode: "jarvis" | "classic" | null // Track current response mode from backend
 }
+
+type RohithInternalState = RohithContextState & JarvisState
+
+type RohithContextType = RohithInternalState & RohithContextActions
 
 // JARVIS-specific interfaces
 interface JarvisNarration {
@@ -95,7 +98,7 @@ const initialJarvisState = {
   currentMode: null as "jarvis" | "classic" | null
 }
 
-function rohithReducer(state: RohithContextState, action: RohithAction): RohithContextState {
+function rohithReducer(state: RohithInternalState, action: RohithAction): RohithInternalState {
   switch (action.type) {
     case "SET_LOADING":
       return { ...state, isLoading: action.payload }

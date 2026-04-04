@@ -16,6 +16,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { useAuthPopup } from "@/contexts/auth-popup-context"
 import { getMetallicCardStyle } from "@/lib/colors"
 import type { ProcessedIntelligenceData, User } from "@/types/dashboard"
+import type { CrownVaultAsset } from "@/lib/api"
 
 interface CrownVaultTabProps {
   data: ProcessedIntelligenceData
@@ -24,6 +25,52 @@ interface CrownVaultTabProps {
   onCitationClick?: (citationId: string) => void
   citations?: Array<{ id: string; number: number; originalText: string }>
   citationMap?: Map<string, number>
+}
+
+type RiskLevel = "HIGH" | "MEDIUM" | "LOW"
+
+interface DisplayElitePulseImpact {
+  risk_level: RiskLevel
+  risk_badge_color?: string
+  key_concern?: string
+  action_timeline?: string
+  portfolio_conviction?: string
+  whisper_intelligence?: string
+  confidence_score?: number
+  ui_display?: {
+    action_needed?: string
+  }
+}
+
+interface DisplayAsset {
+  id: string
+  asset_id?: string
+  unit_count?: number
+  unit_type?: string
+  tags?: string[]
+  asset_data: {
+    name: string
+    asset_type: string
+    value: number
+    currency: string
+    location?: string
+    notes?: string
+  }
+  total_value: number
+  elite_pulse_impact: DisplayElitePulseImpact | null
+}
+
+function normalizeRiskLevel(value: unknown): RiskLevel {
+  if (typeof value !== "string") {
+    return "LOW"
+  }
+
+  const upperValue = value.toUpperCase()
+  if (upperValue === "HIGH" || upperValue === "MEDIUM") {
+    return upperValue
+  }
+
+  return "LOW"
 }
 
 export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citations = [], citationMap: citationMapProp }: CrownVaultTabProps) {
@@ -45,67 +92,81 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
   // Use intelligence data from the hook
 
   // Use real Crown Vault data from MongoDB first, analysis as fallback
-  const realCrownVaultAssets = data.realCrownVaultAssets || []
-  const realCrownVaultStats = data.realCrownVaultStats || {}
+  const realCrownVaultAssets = data.realCrownVaultAssets ?? []
+  const realCrownVaultStats = data.realCrownVaultStats
   const crownVaultAnalysis = data.crownVaultAnalysis || {}
-  const analysisImpactedAssets = data.impactedAssets || []
+  const analysisImpactedAssets = (data.impactedAssets || []) as Array<Record<string, any>>
 
   // Prioritize real MongoDB data over analysis
   const impactedAssets = realCrownVaultAssets.length > 0 ? realCrownVaultAssets : analysisImpactedAssets
-  const totalExposure = realCrownVaultStats.total_value || data.totalExposure
-  const crownVaultSummary = realCrownVaultStats.last_updated ?
+  const totalExposure = realCrownVaultStats?.total_value || data.totalExposure
+  const crownVaultSummary = realCrownVaultStats?.last_updated ?
     `${realCrownVaultStats.total_assets} assets worth $${(realCrownVaultStats.total_value || 0).toLocaleString()}` :
     data.crownVaultSummary
 
 
   // Process assets data - use elite_pulse_impact from backend directly
-  const assets = impactedAssets.map((asset: any, index: number) => {
-    const assetValue = asset.total_value || asset.current_value || asset.value ||
-                      (asset.unit_count && asset.cost_per_unit ? asset.unit_count * asset.cost_per_unit : 0)
+  const assets: DisplayAsset[] = impactedAssets.map((asset, index) => {
+    const rawAsset = asset as CrownVaultAsset & Record<string, any>
+    const rawImpact = rawAsset.elite_pulse_impact as Record<string, any> | undefined
+    const assetValue = rawAsset.total_value || rawAsset.current_value || rawAsset.value ||
+                      (rawAsset.unit_count && rawAsset.cost_per_unit ? rawAsset.unit_count * rawAsset.cost_per_unit : 0)
+    const normalizedRiskLevel = normalizeRiskLevel(rawImpact?.risk_level)
 
     return {
-      ...asset,
-      id: asset.id || asset._id || asset.asset_id || `asset-${index}`,
+      id: rawAsset.id || rawAsset._id || rawAsset.asset_id || `asset-${index}`,
+      asset_id: rawAsset.asset_id,
+      unit_count: rawAsset.unit_count,
+      unit_type: rawAsset.unit_type,
+      tags: rawAsset.tags || [],
       // Real Crown Vault assets have asset_data structure
-      asset_data: asset.asset_data || {
-        name: asset.asset_name || asset.name || asset.decrypted_data?.name || `Asset ${index + 1}`,
-        asset_type: asset.asset_type || asset.type || asset.unit_type || 'Investment',
-        value: assetValue,
-        currency: asset.currency || 'USD',
-        location: asset.location || asset.decrypted_data?.location || '',
-        notes: asset.notes || asset.decrypted_data?.notes || ''
-      },
+      asset_data: rawAsset.asset_data
+        ? {
+            name: rawAsset.asset_data.name,
+            asset_type: rawAsset.asset_data.asset_type,
+            value: rawAsset.asset_data.value,
+            currency: rawAsset.asset_data.currency,
+            location: rawAsset.asset_data.location,
+            notes: rawAsset.asset_data.notes,
+          }
+        : {
+            name: rawAsset.asset_name || rawAsset.name || rawAsset.decrypted_data?.name || `Asset ${index + 1}`,
+            asset_type: rawAsset.asset_type || rawAsset.type || rawAsset.unit_type || 'Investment',
+            value: assetValue,
+            currency: rawAsset.currency || 'USD',
+            location: rawAsset.location || rawAsset.decrypted_data?.location || '',
+            notes: rawAsset.notes || rawAsset.decrypted_data?.notes || ''
+          },
       total_value: assetValue,
       // Use elite_pulse_impact from backend if available
-      elite_pulse_impact: asset.elite_pulse_impact ? (() => {
-        const normalizedRiskLevel = asset.elite_pulse_impact.risk_level?.toUpperCase() || 'LOW';
+      elite_pulse_impact: rawImpact ? (() => {
         return {
-          ...asset.elite_pulse_impact,
+          ...rawImpact,
           // Normalize risk_level to uppercase for consistency
           risk_level: normalizedRiskLevel,
           // Map backend fields to UI fields for consistency
-          risk_badge_color: asset.elite_pulse_impact.ui_display?.risk_badge_color ||
+          risk_badge_color: rawImpact.ui_display?.risk_badge_color ||
                            (normalizedRiskLevel === 'HIGH' ? 'red' :
                             normalizedRiskLevel === 'MEDIUM' ? 'orange' : 'green'),
-          key_concern: asset.elite_pulse_impact.analysis ||
-                      asset.elite_pulse_impact.ui_display?.concern_summary ||
-                      asset.elite_pulse_impact.asset_specific_threat ||
+          key_concern: rawImpact.analysis ||
+                      rawImpact.ui_display?.concern_summary ||
+                      rawImpact.asset_specific_threat ||
                       'Latest portfolio analysis',
-          action_timeline: asset.elite_pulse_impact.timeline || 'Review recommended',
+          action_timeline: rawImpact.timeline || 'Review recommended',
           portfolio_conviction: 'High',
-          whisper_intelligence: asset.elite_pulse_impact.recommendation ||
-                              asset.elite_pulse_impact.recommended_action ||
+          whisper_intelligence: rawImpact.recommendation ||
+                              rawImpact.recommended_action ||
                               'Monitor asset performance closely',
-          confidence_score: asset.elite_pulse_impact.confidence_score ||
-                           asset.elite_pulse_impact.confidence_level ||
+          confidence_score: rawImpact.confidence_score ||
+                           rawImpact.confidence_level ||
                            (normalizedRiskLevel === 'HIGH' ? 0.85 :
                             normalizedRiskLevel === 'MEDIUM' ? 0.75 : 0.65),
-          ui_display: asset.elite_pulse_impact.ui_display || {
+          ui_display: rawImpact.ui_display || {
             badge_text: normalizedRiskLevel,
-            concern_summary: asset.elite_pulse_impact.analysis || asset.elite_pulse_impact.asset_specific_threat || '',
-            action_needed: asset.elite_pulse_impact.recommendation || asset.elite_pulse_impact.recommended_action || 'Monitor asset performance'
+            concern_summary: rawImpact.analysis || rawImpact.asset_specific_threat || '',
+            action_needed: rawImpact.recommendation || rawImpact.recommended_action || 'Monitor asset performance'
           }
-        };
+        }
       })() : null // If no elite_pulse_impact from backend, set to null to filter out later
     }
   })
@@ -125,13 +186,13 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
     }
   }
   
-  const getActionUrgency = (timeline: string) => {
+  const getActionUrgency = (timeline?: string) => {
     if (timeline?.includes('30 days') || timeline?.includes('immediate')) return 'urgent'
     if (timeline?.includes('60 days') || timeline?.includes('near-term')) return 'moderate'
     return 'normal'
   }
   
-  const formatAssetType = (assetType: string) => {
+  const formatAssetType = (assetType?: string) => {
     if (!assetType) return ''
     // Convert snake_case to sentence case
     return assetType
@@ -161,13 +222,14 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
           <div className="mt-6 space-y-4 max-w-4xl mx-auto">
             {(() => {
               // Only count assets that have impact analysis from backend
-              const assetsWithImpact = assets.filter((asset: any) =>
+              const assetsWithImpact = assets.filter((asset) =>
                 asset.elite_pulse_impact !== null && asset.elite_pulse_impact !== undefined
-              );
-              const criticalAssets = assets.filter((asset: any) =>
+              )
+              const criticalAssets = assets.filter((asset) =>
                 asset.elite_pulse_impact &&
-                asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH'
-              );
+                asset.elite_pulse_impact.risk_level === 'HIGH'
+              )
+              const riskPriority: Record<RiskLevel, number> = { HIGH: 3, MEDIUM: 2, LOW: 1 }
               
               return (
                 <>
@@ -181,15 +243,14 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
 
                   <div className="grid gap-4">
                     {assets
-                      .filter((asset: any) =>
+                      .filter((asset) =>
                         // Show ALL assets with impact analysis from backend
                         asset.elite_pulse_impact !== null && asset.elite_pulse_impact !== undefined
                       )
-                .sort((a: any, b: any) => {
+                .sort((a, b) => {
                   // Sort by risk level priority: HIGH > MEDIUM > LOW (handle case variations)
-                  const riskPriority = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-                  const aRisk = riskPriority[a.elite_pulse_impact?.risk_level?.toUpperCase()] || 0;
-                  const bRisk = riskPriority[b.elite_pulse_impact?.risk_level?.toUpperCase()] || 0;
+                  const aRisk = a.elite_pulse_impact ? riskPriority[a.elite_pulse_impact.risk_level] : 0
+                  const bRisk = b.elite_pulse_impact ? riskPriority[b.elite_pulse_impact.risk_level] : 0
                   if (aRisk !== bRisk) return bRisk - aRisk;
                   
                   // Secondary sort by asset value for same risk level
@@ -198,7 +259,7 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
                   return bValue - aValue;
                 })
                 .slice(0, 3)
-                .map((asset: any, index: number) => {
+                .map((asset, index: number) => {
                   const impactTags = asset.tags || []
                   const eliteImpact = asset.elite_pulse_impact
                   const riskLevel = eliteImpact?.risk_level || 'LOW'
@@ -353,8 +414,8 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
                     {/* No high/medium impact assets found */}
                     {assets.length > 0 && assets.filter(asset =>
                       asset.elite_pulse_impact &&
-                      (asset.elite_pulse_impact.risk_level?.toUpperCase() === 'HIGH' ||
-                       asset.elite_pulse_impact.risk_level?.toUpperCase() === 'MEDIUM')
+                      (asset.elite_pulse_impact.risk_level === 'HIGH' ||
+                       asset.elite_pulse_impact.risk_level === 'MEDIUM')
                     ).length === 0 && (
                       <div className="text-center py-8">
                         <Shield className="h-12 w-12 text-green-500/60 mx-auto mb-4" />
@@ -413,7 +474,7 @@ export function CrownVaultTab({ data, onNavigate, user, onCitationClick, citatio
 
         {loading && (
           <div className="flex justify-center py-12">
-            <CrownLoader message="Loading Asset Impact Analysis through Encrypted Route" />
+            <CrownLoader text="Loading Asset Impact Analysis through Encrypted Route" />
           </div>
         )}
       </div>

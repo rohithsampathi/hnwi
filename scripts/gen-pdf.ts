@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
 import fs from 'fs';
 import { PatternAuditDocument } from '../lib/pdf/PatternAuditDocument';
+import type { PdfMemoData } from '../lib/pdf/pdf-types';
 
 const memoData = {
   success: true,
@@ -56,7 +57,10 @@ const memoData = {
 
 async function main() {
   console.log('Rendering PDF...');
-  const buffer = await renderToBuffer(React.createElement(PatternAuditDocument, { memoData: memoData as any }));
+  const documentElement = React.createElement(PatternAuditDocument, {
+    memoData: memoData as PdfMemoData,
+  }) as unknown as React.ReactElement;
+  const buffer = await renderToBuffer(documentElement);
   fs.writeFileSync('/tmp/pdf-audit-v2.pdf', buffer);
   console.log(`PDF generated: ${buffer.length} bytes (${Math.round(buffer.length/1024)}KB)`);
 }

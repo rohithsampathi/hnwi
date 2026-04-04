@@ -10,11 +10,20 @@ import { IndiaPageData } from "./india-page-data"
 
 interface CitySpecificDataProps {
   city: string
-  data: any
+  data?: CityMarketDataset
 }
 
-interface CityData {
-  city: string
+interface MarketDatum {
+  microMarket: string
+  q42023: number
+  q32024: number
+  q42024: number
+  qoqChange: number
+  yoyChange: number
+  outlook: string
+}
+
+interface SegmentDatum {
   q42024: number
   midSegment: number
   highSegment: number
@@ -31,9 +40,46 @@ interface PropertyData {
   status: string
 }
 
+interface SegmentSlice {
+  name: string
+  value: number
+}
+
+interface CityMarketDataset {
+  marketData?: MarketDatum[]
+  segmentData?: SegmentDatum
+  propertyData?: PropertyData[]
+}
+
 const richRuby = "#E0115F"
 const richGold = "#FFD700"
 const richEmerald = "#50C878"
+const premiumColors = [
+  "#E0115F",
+  "#00A86B",
+  "#FFA500",
+  "#0F52BA",
+  "#800080",
+  "#FFD700",
+  "#FF4500",
+  "#1E90FF",
+  "#8B4513",
+  "#4B0082",
+  "#32CD32",
+  "#FF69B4",
+  "#1E90FF",
+  "#FF6347",
+  "#00CED1",
+  "#FF8C00",
+  "#9400D3",
+  "#FF1493",
+  "#00FA9A",
+  "#DC143C",
+  "#00BFFF",
+  "#F4A460",
+  "#9370DB",
+  "#3CB371",
+]
 
 const getScoreColor = (score: number) => {
   if (score < 1) return richRuby
@@ -41,26 +87,46 @@ const getScoreColor = (score: number) => {
   return richGold
 }
 
-const wrapText = (text: string, width: number) => {
-  const words = text.split(/\s+/).reverse()
-  let line = []
-  const lines = []
-  let word
-  let lineLength = 0
+const getGrowthIndicator = (outlook: string) => {
+  switch (outlook) {
+    case "Growing":
+      return { symbol: "↗", color: "#FFD700", rotation: "60deg" }
+    case "Up":
+      return { symbol: "↑", color: "#00A86B", rotation: "0deg" }
+    default:
+      return { symbol: "→", color: "#E0115F", rotation: "0deg" }
+  }
+}
 
-  while ((word = words.pop())) {
-    line.push(word)
-    lineLength += word.length + 1
-    if (lineLength > width) {
-      lines.push(line.join(" "))
-      line = []
-      lineLength = 0
-    }
-  }
-  if (line.length > 0) {
-    lines.push(line.join(" "))
-  }
-  return lines
+const getPremiumStrokeColor = (index: number) => {
+  const baseColor = premiumColors[index % premiumColors.length]
+  const darkened = d3.color(baseColor)?.darker(0.5)
+  return darkened ? darkened.formatHex() : baseColor
+}
+
+const appendWrappedAxisLabels = (
+  selection: d3.Selection<SVGTextElement, string, SVGGElement, unknown>,
+) => {
+  selection
+    .attr("y", 10)
+    .attr("x", 0)
+    .attr("dy", ".35em")
+    .attr("transform", "rotate(0)")
+    .style("text-anchor", "middle")
+    .style("font-size", "10px")
+    .style("font-weight", "bold")
+    .each(function (d: string) {
+      const text = d3.select(this)
+      const words = d.split(/[/,]/)
+      text.text("")
+      words.forEach((word, index) => {
+        text
+          .append("tspan")
+          .text(word)
+          .attr("x", 0)
+          .attr("dy", index ? "1.2em" : "0.7em")
+      })
+    })
 }
 
 export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }) => {
@@ -69,44 +135,6 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
   const pieChartRef = useRef<SVGSVGElement | null>(null)
   const qoqChartRef = useRef<SVGSVGElement | null>(null)
   const yoyChartRef = useRef<SVGSVGElement | null>(null)
-
-  const premiumColors = [
-    "#E0115F",
-    "#00A86B",
-    "#FFA500",
-    "#0F52BA",
-    "#800080",
-    "#FFD700",
-    "#FF4500",
-    "#1E90FF",
-    "#8B4513",
-    "#4B0082",
-    "#32CD32",
-    "#FF69B4",
-    "#1E90FF",
-    "#FF6347",
-    "#00CED1",
-    "#FF8C00",
-    "#9400D3",
-    "#FF1493",
-    "#00FA9A",
-    "#DC143C",
-    "#00BFFF",
-    "#F4A460",
-    "#9370DB",
-    "#3CB371",
-  ]
-
-  const growthIndicator = (outlook: string) => {
-    switch (outlook) {
-      case "Growing":
-        return { symbol: "↗", color: "#FFD700", rotation: "60deg" }
-      case "Up":
-        return { symbol: "↑", color: "#00A86B", rotation: "0deg" }
-      default:
-        return { symbol: "→", color: "#E0115F", rotation: "0deg" }
-    }
-  }
 
   useEffect(() => {
     if (!chartRef.current || !data) return
@@ -124,43 +152,27 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
       .append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`)
 
-    const chartData = data.marketData
+    const chartData = data.marketData ?? []
 
-    if (chartData) {
+    if (chartData.length > 0) {
+      const maxQuotedCapital = d3.max(chartData, (d) => d.q42024) ?? 0
       const x = d3
-        .scaleBand()
+        .scaleBand<string>()
         .range([0, width])
         .domain(chartData.map((d) => d.microMarket))
         .padding(0.1)
       const y = d3
-        .scaleLinear()
+        .scaleLinear<number>()
         .range([height, 0])
-        .domain([0, d3.max(chartData, (d) => d.q42024) * 1.2 || 0])
+        .domain([0, maxQuotedCapital * 1.2])
 
-      chart
+      appendWrappedAxisLabels(
+        chart
         .append("g")
         .attr("transform", `translate(0,${height})`)
         .call(d3.axisBottom(x).tickSize(0))
         .selectAll("text")
-        .attr("y", 10)
-        .attr("x", 0)
-        .attr("dy", ".35em")
-        .attr("transform", "rotate(0)")
-        .style("text-anchor", "middle")
-        .style("font-size", "10px")
-        .style("font-weight", "bold")
-        .each(function (d) {
-          const text = d3.select(this)
-          const words = d.split(/[/,]/)
-          text.text("")
-          for (let i = 0; i < words.length; i++) {
-            const tspan = text
-              .append("tspan")
-              .text(words[i])
-              .attr("x", 0)
-              .attr("dy", i ? "1.2em" : "0.7em")
-          }
-        })
+      )
 
       chart.append("g").call(d3.axisLeft(y)).style("font-weight", "bold")
 
@@ -170,12 +182,12 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
         .enter()
         .append("rect")
         .attr("class", "bar")
-        .attr("x", (d) => x(d.microMarket) || 0)
+        .attr("x", (d: MarketDatum) => x(d.microMarket) ?? 0)
         .attr("width", x.bandwidth())
-        .attr("y", (d) => y(d.q42024 * 0.9))
-        .attr("height", (d) => height - y(d.q42024 * 0.9))
-        .attr("fill", (d, i) => premiumColors[i % premiumColors.length])
-        .attr("stroke", (d, i) => d3.color(premiumColors[i % premiumColors.length])?.darker(0.5) as string)
+        .attr("y", (d: MarketDatum) => y(d.q42024 * 0.9))
+        .attr("height", (d: MarketDatum) => height - y(d.q42024 * 0.9))
+        .attr("fill", (_d: MarketDatum, i: number) => premiumColors[i % premiumColors.length])
+        .attr("stroke", (_d: MarketDatum, i: number) => getPremiumStrokeColor(i))
         .attr("stroke-width", 2)
         .style("filter", "drop-shadow(0px 6px 8px rgba(0, 0, 0, 0.3))")
 
@@ -185,21 +197,21 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
         .enter()
         .append("text")
         .attr("class", "growth-indicator")
-        .attr("x", (d) => (x(d.microMarket) || 0) + x.bandwidth() / 2)
-        .attr("y", (d) => y(d.q42024) - 10)
+        .attr("x", (d: MarketDatum) => (x(d.microMarket) ?? 0) + x.bandwidth() / 2)
+        .attr("y", (d: MarketDatum) => y(d.q42024) - 10)
         .attr("text-anchor", "middle")
-        .text((d) => growthIndicator(d.outlook).symbol)
+        .text((d: MarketDatum) => getGrowthIndicator(d.outlook).symbol)
         .style("font-size", "24px")
         .style("font-weight", "bold")
-        .style("fill", (d) => growthIndicator(d.outlook).color)
+        .style("fill", (d: MarketDatum) => getGrowthIndicator(d.outlook).color)
         .attr(
           "transform",
-          (d) =>
-            `translate(0,0) rotate(${growthIndicator(d.outlook).rotation}, ${(x(d.microMarket) || 0) + x.bandwidth() / 2}, ${y(d.q42024) - 10})`,
+          (d: MarketDatum) =>
+            `translate(0,0) rotate(${getGrowthIndicator(d.outlook).rotation}, ${(x(d.microMarket) ?? 0) + x.bandwidth() / 2}, ${y(d.q42024) - 10})`,
         )
-        .each(function (d) {
+        .each(function (_d: MarketDatum) {
           const element = this as SVGTextElement
-          const animation = d3
+          d3
             .select(element)
             .append("animate")
             .attr("attributeName", "opacity")
@@ -208,7 +220,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
             .attr("repeatCount", "indefinite")
         })
     }
-  }, [data, growthIndicator]) // Added growthIndicator to dependencies
+  }, [data])
 
   useEffect(() => {
     if (!pieChartRef.current || !data || !data.segmentData) return
@@ -226,21 +238,21 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
       .append("g")
       .attr("transform", `translate(${width / 2},${height / 2})`)
 
-    const pie = d3.pie().value((d: any) => d.value)
+    const pie = d3.pie<SegmentSlice>().value((d) => d.value)
 
-    const segments = [
+    const segments: SegmentSlice[] = [
       { name: "Mid Segment", value: data.segmentData.midSegment },
       { name: "High Segment", value: data.segmentData.highSegment },
       { name: "Affordable Segment", value: data.segmentData.affordableSegment },
     ]
 
     const arc = d3
-      .arc()
+      .arc<d3.PieArcDatum<SegmentSlice>>()
       .innerRadius(radius * 0.6)
       .outerRadius(radius * 0.9)
 
     const arcHover = d3
-      .arc()
+      .arc<d3.PieArcDatum<SegmentSlice>>()
       .innerRadius(radius * 0.6)
       .outerRadius(radius * 1.1)
 
@@ -249,18 +261,18 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
     arcs
       .append("path")
       .attr("d", arc as any)
-      .attr("fill", (d: any, i: number) => premiumColors[i % premiumColors.length])
-      .attr("stroke", (d: any, i: number) => d3.color(premiumColors[i % premiumColors.length])?.darker(0.5) as string)
+      .attr("fill", (_d: d3.PieArcDatum<SegmentSlice>, i: number) => premiumColors[i % premiumColors.length])
+      .attr("stroke", (_d: d3.PieArcDatum<SegmentSlice>, i: number) => getPremiumStrokeColor(i))
       .attr("stroke-width", 2)
       .style("filter", "drop-shadow(0px 6px 8px rgba(0, 0, 0, 0.3))")
       .style("opacity", 0.8)
-      .on("mouseover", function (event, d) {
+      .on("mouseover", function (_event, d: d3.PieArcDatum<SegmentSlice>) {
         d3.select(this)
           .transition()
           .duration(200)
           .attr("d", arcHover as any)
       })
-      .on("mouseout", function (event, d) {
+      .on("mouseout", function (_event, d: d3.PieArcDatum<SegmentSlice>) {
         d3.select(this)
           .transition()
           .duration(200)
@@ -269,13 +281,13 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
 
     arcs
       .append("text")
-      .attr("transform", (d: any) => `translate(${arc.centroid(d)})`)
+      .attr("transform", (d: d3.PieArcDatum<SegmentSlice>) => `translate(${arc.centroid(d)})`)
       .attr("dy", ".35em")
       .style("text-anchor", "middle")
       .style("font-size", "12px")
       .style("font-weight", "bold")
       .style("fill", "white")
-      .text((d: any) => `${d.data.value}%`)
+      .text((d: d3.PieArcDatum<SegmentSlice>) => `${d.data.value}%`)
 
     const legend = svg
       .append("g")
@@ -286,14 +298,14 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
       .data(segments)
       .enter()
       .append("g")
-      .attr("transform", (d, i) => `translate(10,${(i * 20) + height - 60})`)
+      .attr("transform", (_d: SegmentSlice, i: number) => `translate(10,${(i * 20) + height - 60})`)
 
     legend
       .append("rect")
       .attr("x", 0)
       .attr("width", 19)
       .attr("height", 19)
-      .attr("fill", (d, i) => premiumColors[i % premiumColors.length])
+      .attr("fill", (_d: SegmentSlice, i: number) => premiumColors[i % premiumColors.length])
 
     legend
       .append("text")
@@ -302,183 +314,90 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
       .attr("dy", "0.32em")
       .style("fill", theme === "dark" ? "#E0E0E0" : "#333333")
       .style("font-weight", "bold")
-      .text((d) => `${d.name}: ${d.value}%`)
-  }, [data])
-
-  const renderQoQChart = () => {
-    if (!qoqChartRef.current || !data || !data.marketData) return
-
-    const svg = d3.select(qoqChartRef.current)
-    svg.selectAll("*").remove()
-
-    const margin = { top: 20, right: 30, bottom: 120, left: 60 }
-    const width = qoqChartRef.current.clientWidth - margin.left - margin.right
-    const height = 400 - margin.top - margin.bottom
-
-    const chart = svg
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-
-    const x = d3
-      .scaleBand()
-      .range([0, width])
-      .domain(data.marketData.map((d) => d.microMarket))
-      .padding(0.1)
-
-    const y = d3
-      .scaleLinear()
-      .range([height, 0])
-      .domain([
-        Math.min(0, d3.min(data.marketData, (d) => d.qoqChange) || 0),
-        Math.max(0, d3.max(data.marketData, (d) => d.qoqChange) || 0),
-      ])
-
-    chart
-      .append("g")
-      .attr("transform", `translate(0,${y(0)})`)
-      .call(d3.axisBottom(x).tickSize(0))
-      .selectAll("text")
-      .attr("y", 10)
-      .attr("x", 0)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(0)")
-      .style("text-anchor", "middle")
-      .style("font-size", "10px")
-      .style("font-weight", "bold")
-      .each(function (d) {
-        const text = d3.select(this)
-        const words = d.split(/[/,]/)
-        text.text("")
-        for (let i = 0; i < words.length; i++) {
-          const tspan = text
-            .append("tspan")
-            .text(words[i])
-            .attr("x", 0)
-            .attr("dy", i ? "1.2em" : "0.7em")
-        }
-      })
-
-    chart.append("g").call(d3.axisLeft(y)).style("font-weight", "bold")
-
-    chart
-      .selectAll(".bar")
-      .data(data.marketData)
-      .enter()
-      .append("rect")
-      .attr("class", "bar")
-      .attr("x", (d) => x(d.microMarket) || 0)
-      .attr("width", x.bandwidth())
-      .attr("y", (d) => y(Math.max(0, d.qoqChange)))
-      .attr("height", (d) => Math.abs(y(d.qoqChange) - y(0)))
-      .attr("fill", (d) => getScoreColor(d.qoqChange))
-
-    chart
-      .selectAll(".label")
-      .data(data.marketData)
-      .enter()
-      .append("text")
-      .attr("class", "label")
-      .attr("x", (d) => (x(d.microMarket) || 0) + x.bandwidth() / 2)
-      .attr("y", (d) => y(d.qoqChange) + (d.qoqChange >= 0 ? -5 : 15))
-      .attr("text-anchor", "middle")
-      .text((d) => `${d.qoqChange}%`)
-      .style("font-size", "12px")
-      .style("font-weight", "bold")
-      .style("fill", theme === "dark" ? "#E0E0E0" : "#333333")
-      .style("animation", "blink 1s infinite")
-  }
-
-  const renderYoYChart = () => {
-    if (!yoyChartRef.current || !data || !data.marketData) return
-
-    const svg = d3.select(yoyChartRef.current)
-    svg.selectAll("*").remove()
-
-    const margin = { top: 20, right: 30, bottom: 120, left: 60 }
-    const width = yoyChartRef.current.clientWidth - margin.left - margin.right
-    const height = 400 - margin.top - margin.bottom
-
-    const chart = svg
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-
-    const x = d3
-      .scaleBand()
-      .range([0, width])
-      .domain(data.marketData.map((d) => d.microMarket))
-      .padding(0.1)
-
-    const y = d3
-      .scaleLinear()
-      .range([height, 0])
-      .domain([
-        Math.min(0, d3.min(data.marketData, (d) => d.yoyChange) || 0),
-        Math.max(0, d3.max(data.marketData, (d) => d.yoyChange) || 0),
-      ])
-
-    chart
-      .append("g")
-      .attr("transform", `translate(0,${y(0)})`)
-      .call(d3.axisBottom(x).tickSize(0))
-      .selectAll("text")
-      .attr("y", 10)
-      .attr("x", 0)
-      .attr("dy", ".35em")
-      .attr("transform", "rotate(0)")
-      .style("text-anchor", "middle")
-      .style("font-size", "10px")
-      .style("font-weight", "bold")
-      .each(function (d) {
-        const text = d3.select(this)
-        const words = d.split(/[/,]/)
-        text.text("")
-        for (let i = 0; i < words.length; i++) {
-          const tspan = text
-            .append("tspan")
-            .text(words[i])
-            .attr("x", 0)
-            .attr("dy", i ? "1.2em" : "0.7em")
-        }
-      })
-
-    chart.append("g").call(d3.axisLeft(y)).style("font-weight", "bold")
-
-    chart
-      .selectAll(".bar")
-      .data(data.marketData)
-      .enter()
-      .append("rect")
-      .attr("class", "bar")
-      .attr("x", (d) => x(d.microMarket) || 0)
-      .attr("width", x.bandwidth())
-      .attr("y", (d) => y(Math.max(0, d.yoyChange)))
-      .attr("height", (d) => Math.abs(y(d.yoyChange) - y(0)))
-      .attr("fill", (d) => getScoreColor(d.yoyChange))
-
-    chart
-      .selectAll(".label")
-      .data(data.marketData)
-      .enter()
-      .append("text")
-      .attr("class", "label")
-      .attr("x", (d) => (x(d.microMarket) || 0) + x.bandwidth() / 2)
-      .attr("y", (d) => y(d.yoyChange) + (d.yoyChange >= 0 ? -5 : 15))
-      .attr("text-anchor", "middle")
-      .text((d) => `${d.yoyChange}%`)
-      .style("font-size", "12px")
-      .style("font-weight", "bold")
-      .style("fill", theme === "dark" ? "#E0E0E0" : "#333333")
-      .style("animation", "blink 1s infinite")
-  }
+      .text((d: SegmentSlice) => `${d.name}: ${d.value}%`)
+  }, [data, theme])
 
   useEffect(() => {
-    renderQoQChart()
-    renderYoYChart()
-  }, [data])
+    const renderGrowthChart = (
+      svgElement: SVGSVGElement | null,
+      valueAccessor: (datum: MarketDatum) => number,
+    ) => {
+      if (!svgElement || !data?.marketData) return
+
+      const svg = d3.select(svgElement)
+      svg.selectAll("*").remove()
+
+      const margin = { top: 20, right: 30, bottom: 120, left: 60 }
+      const width = svgElement.clientWidth - margin.left - margin.right
+      const height = 400 - margin.top - margin.bottom
+
+      const chart = svg
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`)
+
+      const marketData = data.marketData ?? []
+      const x = d3
+        .scaleBand<string>()
+        .range([0, width])
+        .domain(marketData.map((d) => d.microMarket))
+        .padding(0.1)
+
+      const minValue = d3.min(marketData, valueAccessor) ?? 0
+      const maxValue = d3.max(marketData, valueAccessor) ?? 0
+      const y = d3
+        .scaleLinear<number>()
+        .range([height, 0])
+        .domain([Math.min(0, minValue), Math.max(0, maxValue)])
+
+      appendWrappedAxisLabels(
+        chart
+          .append("g")
+          .attr("transform", `translate(0,${y(0)})`)
+          .call(d3.axisBottom(x).tickSize(0))
+          .selectAll("text"),
+      )
+
+      chart.append("g").call(d3.axisLeft(y)).style("font-weight", "bold")
+
+      chart
+        .selectAll(".bar")
+        .data(marketData)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", (d: MarketDatum) => x(d.microMarket) ?? 0)
+        .attr("width", x.bandwidth())
+        .attr("y", (d: MarketDatum) => y(Math.max(0, valueAccessor(d))))
+        .attr("height", (d: MarketDatum) => Math.abs(y(valueAccessor(d)) - y(0)))
+        .attr("fill", (d: MarketDatum) => getScoreColor(valueAccessor(d)))
+
+      chart
+        .selectAll(".label")
+        .data(marketData)
+        .enter()
+        .append("text")
+        .attr("class", "label")
+        .attr("x", (d: MarketDatum) => (x(d.microMarket) ?? 0) + x.bandwidth() / 2)
+        .attr("y", (d: MarketDatum) => {
+          const value = valueAccessor(d)
+          return y(value) + (value >= 0 ? -5 : 15)
+        })
+        .attr("text-anchor", "middle")
+        .text((d: MarketDatum) => `${valueAccessor(d)}%`)
+        .style("font-size", "12px")
+        .style("font-weight", "bold")
+        .style("fill", theme === "dark" ? "#E0E0E0" : "#333333")
+        .style("animation", "blink 1s infinite")
+    }
+
+    renderGrowthChart(qoqChartRef.current, (d) => d.qoqChange)
+    renderGrowthChart(yoyChartRef.current, (d) => d.yoyChange)
+  }, [data, theme])
+
+  const segmentData = data?.segmentData
+  const propertyData = data?.propertyData ?? []
 
   const renderPropertyTables = (propertyData: PropertyData[]) => {
     const launchedProjects = propertyData.filter((project) => project.status === "Launched")
@@ -603,7 +522,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
             </CardContent>
           </Card>
 
-          {data.segmentData && data.segmentData.yoyGrowth !== undefined && (
+          {segmentData && segmentData.yoyGrowth !== undefined && (
             <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
               <CardHeader>
                 <h3 className="text-lg font-semibold mb-2">YOY Growth</h3>
@@ -611,20 +530,20 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
               <CardContent>
                 <p
                   className={`text-6xl font-bold transition-colors duration-300 ${
-                    data.segmentData.yoyGrowth > 5
+                    segmentData.yoyGrowth > 5
                       ? "text-green-500"
-                      : data.segmentData.yoyGrowth >= 0
+                      : segmentData.yoyGrowth >= 0
                         ? "text-yellow-500"
                         : "text-red-500"
                   }`}
                 >
-                  {data.segmentData.yoyGrowth}%
+                  {segmentData.yoyGrowth}%
                 </p>
               </CardContent>
             </Card>
           )}
 
-          {data.segmentData && (
+          {segmentData && (
             <Card className="bg-white dark:bg-gray-800 hover:bg-primary/5 dark:hover:bg-gray-700">
               <CardHeader>
                 <h3 className="text-lg font-semibold mb-2">2024 Q4 Launches by Segment</h3>
@@ -637,7 +556,7 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
             </Card>
           )}
 
-          {data.propertyData && data.propertyData.length > 0 && renderPropertyTables(data.propertyData)}
+          {propertyData.length > 0 && renderPropertyTables(propertyData)}
         </>
       )}
     </div>
@@ -645,4 +564,3 @@ export const CitySpecificData: React.FC<CitySpecificDataProps> = ({ city, data }
 }
 
 export default CitySpecificData
-

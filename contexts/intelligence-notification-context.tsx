@@ -61,7 +61,7 @@ export function IntelligenceNotificationProvider({
   useEffect(() => {
     if (!enableAutoNotifications || !hasIntelligence || !isAuthenticated) return;
 
-    const currentUpdateTime = state.intelligence.lastUpdate?.getTime();
+    const currentUpdateTime = state.intelligence.lastUpdated;
     if (!currentUpdateTime || currentUpdateTime === lastUpdateTime) return;
 
     setLastUpdateTime(currentUpdateTime);
@@ -81,7 +81,7 @@ export function IntelligenceNotificationProvider({
       autoHide: true,
       hideAfter: 10000
     });
-  }, [state.intelligence.lastUpdate, hasIntelligence, enableAutoNotifications, lastUpdateTime, addNotification, isAuthenticated]);
+  }, [state.intelligence.lastUpdated, hasIntelligence, enableAutoNotifications, lastUpdateTime, addNotification, isAuthenticated]);
 
   // Handle notification actions (navigation, etc.)
   const handleNotificationAction = useCallback((notification: IntelligenceNotification) => {

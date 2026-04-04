@@ -507,7 +507,7 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       }
 
       // Victor analysis endpoint removed - was returning 404
-      // Opportunities are fetched from /api/opportunities instead
+      // Live opportunities are fetched from the unified Command Centre feed instead
       if (shouldLoadVictorAnalysis) {
         // Skip - victor analysis integrated into opportunities data
         opportunitiesData = null
@@ -515,8 +515,14 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
 
       // Batch 3: MongoDB data (sequential - no parallel to avoid rate limits)
       try {
-        // Get opportunities first
-        realOpportunities = await fetchWithDelay('/api/opportunities', 600000, 300).then(data => data || [])
+        const opportunitiesResponse = await fetchWithDelay(
+          '/api/command-centre/opportunities?view=all&timeframe=LIVE&include_crown_vault=false',
+          600000,
+          300
+        )
+        realOpportunities = Array.isArray(opportunitiesResponse)
+          ? opportunitiesResponse
+          : (opportunitiesResponse?.opportunities || [])
 
         if (shouldLoadCrownVaultMongoDB) {
           // Get Crown Vault data sequentially with delays
@@ -598,16 +604,25 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
   const processedData = useMemo(() => {
     if (!intelligenceData) return null
 
+    const unwrapApiData = <T,>(value: unknown, fallback: T): T => {
+      if (value && typeof value === "object" && "data" in value) {
+        const wrapped = (value as { data?: T }).data
+        return wrapped ?? fallback
+      }
+
+      return (value as T) ?? fallback
+    }
+
     // Extract data from different sources - all APIs return {success: true, data: {...}}
-    const summaryData = intelligenceData.dashboardSummary?.data || {}
-    const intelligenceData_inner = intelligenceData.intelligence?.data || {}
-    const crownVaultData = intelligenceData.crownVaultData?.data || {}
-    const opportunitiesData_inner = intelligenceData.opportunitiesData?.data || {}
+    const summaryData = unwrapApiData<Record<string, any>>(intelligenceData.dashboardSummary, {})
+    const intelligenceData_inner = unwrapApiData<Record<string, any>>(intelligenceData.intelligence, {})
+    const crownVaultData = unwrapApiData<Record<string, any>>(intelligenceData.crownVaultData, {})
+    const opportunitiesData_inner = unwrapApiData<Record<string, any>>(intelligenceData.opportunitiesData, {})
 
     // Real MongoDB data - prioritize this over analysis data
     const realOpportunities = intelligenceData.realOpportunities || []
     const realCrownVaultAssets = intelligenceData.realCrownVaultAssets || []
-    const realCrownVaultStats = intelligenceData.realCrownVaultStats || {}
+    const realCrownVaultStats = intelligenceData.realCrownVaultStats ?? null
 
     // Helper function to replace MOE v4 with HNWI in text content AND clean citations
     const replaceMoeV4 = (text: string | null | undefined): string => {
@@ -702,8 +717,8 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       totalOpportunityValueDelta: summaryData.totalOpportunityValueDelta,
       peerSignals: summaryData.peerSignals,
 
-      // Use Victor opportunities exclusively (NO MongoDB merging)
-      realOpportunities: [], // Empty to force Victor-only data
+      // Prefer live Command Centre opportunities, then fall back to Victor-derived analysis
+      realOpportunities: realOpportunities,
 
       // Victor analysis opportunities (standalone for any not in real DB)
       victorOpportunities: victorOpportunities,
@@ -732,10 +747,10 @@ export function useIntelligenceData(userData?: any, options?: UseIntelligenceDat
       fullRuschaData: replaceMoeV4(intel.ruscha_analysis || intel.intelligence),
 
       // Crown Vault specific data - PRIORITIZE real MongoDB data over Katherine analysis
-      crownVaultSummary: realCrownVaultStats.last_updated ?
+      crownVaultSummary: realCrownVaultStats?.last_updated ?
         `Last updated: ${new Date(realCrownVaultStats.last_updated).toLocaleDateString()}` :
         replaceMoeV4(crownVaultData.summary || crownVaultData.analysis_summary || crownVaultData.executive_summary),
-      totalExposure: realCrownVaultStats.total_value ||
+      totalExposure: realCrownVaultStats?.total_value ||
                      crownVaultData.total_exposure || crownVaultData.totalExposure || crownVaultData.total_value,
       impactedAssets: realCrownVaultAssets.length > 0 ? realCrownVaultAssets :
                      (crownVaultData.impacted_assets ||

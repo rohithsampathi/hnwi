@@ -197,10 +197,10 @@ async function handler(request: NextRequest) {
     let errorMessage = 'Failed to proxy request to backend'
     let statusCode = 500
 
-    if (error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       errorMessage = 'Backend request timeout'
       statusCode = 504
-    } else if (error.message?.includes('fetch')) {
+    } else if (error instanceof Error && error.message.includes('fetch')) {
       errorMessage = 'Backend service unavailable'
       statusCode = 503
     }

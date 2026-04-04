@@ -50,6 +50,8 @@ export default function ConversationCanvas({
 }: ConversationCanvasProps) {
   // Check if this is the first interaction (empty state)
   const isEmpty = currentMessages.length === 0 && !isTyping;
+  const portfolioValue = Number(userContext?.portfolio?.totalValue ?? 0);
+  const normalizedPortfolioValue = Number.isFinite(portfolioValue) ? portfolioValue : 0;
 
   // Get the last message to show context
   const lastMessage = currentMessages[currentMessages.length - 1];
@@ -167,7 +169,7 @@ export default function ConversationCanvas({
                 {userContext.portfolio && (
                   <div>
                     <span className="text-gold font-semibold">
-                      ${(userContext.portfolio.totalValue / 1_000_000).toFixed(1)}M
+                      ${(normalizedPortfolioValue / 1_000_000).toFixed(1)}M
                     </span>{' '}
                     portfolio synced
                   </div>

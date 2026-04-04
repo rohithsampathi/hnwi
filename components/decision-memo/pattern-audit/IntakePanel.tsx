@@ -54,7 +54,7 @@ export function IntakePanel({
   const [patternCount, setPatternCount] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch('/api/developments/counts')
+    fetch('/api/castle-briefs/counts')
       .then(res => res.json())
       .then(data => {
         const count = data.developments?.total_count || data.total || data.count || data.total_count;

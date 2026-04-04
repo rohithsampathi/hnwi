@@ -6,6 +6,12 @@ import { useState } from "react"
 import { ComposableMap, Geographies, Geography } from "react-simple-maps"
 
 const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
+type SimpleMapGeography = {
+  rsmKey: string
+  properties: {
+    name?: string
+  }
+}
 
 export function WorldMap({ theme }: { theme: "dark" | "light" }) {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
@@ -14,13 +20,13 @@ export function WorldMap({ theme }: { theme: "dark" | "light" }) {
     <div className="w-full h-[400px]">
       <ComposableMap>
         <Geographies geography={geoUrl}>
-          {({ geographies }) =>
-            geographies.map((geo) => (
+          {({ geographies }: { geographies: SimpleMapGeography[] }) =>
+            geographies.map((geo: SimpleMapGeography) => (
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
                 onMouseEnter={() => {
-                  setSelectedRegion(geo.properties.name)
+                  setSelectedRegion(geo.properties.name || null)
                 }}
                 onMouseLeave={() => {
                   setSelectedRegion(null)
@@ -48,4 +54,3 @@ export function WorldMap({ theme }: { theme: "dark" | "light" }) {
     </div>
   )
 }
-

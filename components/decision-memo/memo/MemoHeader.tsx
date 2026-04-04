@@ -5,24 +5,29 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Download } from 'lucide-react';
 import { ViaNegativaContext } from '@/lib/decision-memo/memo-types';
 import { EASE_OUT_EXPO, EASE_OUT_QUART } from '@/lib/animations/motion-variants';
+import {
+  useAnimatedMetric,
+  useDecisionMemoRenderContext,
+  useReportInView,
+} from './decision-memo-render-context';
 
 interface TaxRates {
-  income_tax: number;
-  cgt: number;
-  wealth_tax: number;
-  estate_tax: number;
+  income_tax?: number;
+  cgt?: number;
+  wealth_tax?: number;
+  estate_tax?: number;
 }
 
 interface TaxDifferential {
-  source: TaxRates;
-  destination: TaxRates;
-  income_tax_differential_pct: number;
-  cgt_differential_pct: number;
-  estate_tax_differential_pct: number;
+  source?: TaxRates;
+  destination?: TaxRates;
+  income_tax_differential_pct?: number;
+  cgt_differential_pct?: number;
+  estate_tax_differential_pct?: number;
   cumulative_tax_differential_pct?: number;
   weighted_tax_differential_pct?: number;
   cumulative_impact?: "saved" | "cost" | "none_without_relocation";
@@ -56,8 +61,8 @@ interface ValueCreation {
 interface MemoHeaderProps {
   intakeId: string;
   generatedAt: string;
-  exposureClass: string;
-  totalSavings: string;
+  exposureClass?: string;
+  totalSavings?: string;
   precedentCount?: number;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
@@ -69,9 +74,9 @@ interface MemoHeaderProps {
   crossBorderComplianceFlags?: string[];
   showTaxSavings?: boolean;
   optimalStructure?: {
-    name: string;
-    type: string;
-    net_benefit_10yr: number;
+    name?: string;
+    type?: string;
+    net_benefit_10yr?: number;
   };
   verdict?: string;
   viaNegativa?: ViaNegativaContext;
@@ -108,30 +113,20 @@ const THEME = {
 // Animated counter — monospace display
 function AnimatedValue({ value, className }: { value: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const [displayValue, setDisplayValue] = useState('');
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const isInView = useReportInView(ref, { once: true, margin: "-50px" });
+  const numMatch = value.match(/([\d.]+)/);
+  const decimals = numMatch?.[1].includes('.') ? 2 : 0;
+  const animatedValue = useAnimatedMetric(numMatch ? parseFloat(numMatch[1]) : 0, {
+    duration: 1800,
+    enabled: Boolean(numMatch) && motionEnabled && isInView,
+  });
 
-  useEffect(() => {
-    if (!isInView) return;
-    const numMatch = value.match(/([\d.]+)/);
-    if (!numMatch) { setDisplayValue(value); return; }
-    const targetNum = parseFloat(numMatch[1]);
-    let startTime: number;
-    const duration = 1800;
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const currentNum = targetNum * easeOutQuart;
-      const formatted = value.replace(numMatch[1], currentNum.toFixed(numMatch[1].includes('.') ? 2 : 0));
-      setDisplayValue(formatted);
-      if (progress < 1) requestAnimationFrame(animate);
-      else setDisplayValue(value);
-    };
-    requestAnimationFrame(animate);
-  }, [value, isInView]);
+  const displayValue = numMatch
+    ? value.replace(numMatch[1], animatedValue.toFixed(decimals))
+    : value;
 
-  return <span ref={ref} className={className}>{displayValue || value}</span>;
+  return <span ref={ref} className={className}>{displayValue}</span>;
 }
 
 export function MemoHeader({
@@ -146,9 +141,10 @@ export function MemoHeader({
   viaNegativa,
   onExportPDF,
 }: MemoHeaderProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const { motionEnabled } = useDecisionMemoRenderContext();
+  const [isVisible, setIsVisible] = useState(!motionEnabled);
   const headerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(headerRef, { once: true, margin: "-50px" });
+  const isInView = useReportInView(headerRef, { once: true, margin: "-50px" });
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
@@ -198,9 +194,9 @@ export function MemoHeader({
     }] : []),
     {
       label: optimalStructure ? 'Optimal Structure' : 'Strategy Classification',
-      value: optimalStructure ? optimalStructure.name : exposureClass,
+      value: optimalStructure?.name || exposureClass,
       description: optimalStructure
-        ? `${(optimalStructure.net_benefit_10yr / 1000000).toFixed(2)}M 10-yr benefit`
+        ? `${((optimalStructure.net_benefit_10yr ?? 0) / 1000000).toFixed(2)}M 10-yr benefit`
         : 'Risk-adjusted profile',
       numeric: false,
     },
@@ -252,11 +248,10 @@ export function MemoHeader({
 
     if (hasPotentialCut) {
       items.push({
-        strikeValue: `+${Math.round(potentialDiff)}%`,
-        value: '$0',
-        label: 'Tax Savings',
+        value: 'N/A',
+        label: 'Tax Arbitrage',
         color: 'text-muted-foreground',
-        note: 'Requires relocation',
+        note: 'No relocation-linked credit taken',
       });
     } else {
       items.push({
@@ -302,7 +297,11 @@ export function MemoHeader({
       {/* Ambient gold glow */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
 
-      <div className="relative rounded-2xl border border-border/30 overflow-hidden max-w-full">
+      <div
+        className="relative rounded-2xl border border-border/30 overflow-hidden max-w-full"
+        data-print-block="keep"
+        data-print-max-gap="260"
+      >
         {/* Gradient gold hairline */}
         <motion.div
           className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent"

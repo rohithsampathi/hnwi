@@ -12,7 +12,7 @@ export function StrategyAtomAnimation() {
       transition: {
         duration: 8,
         repeat: Number.POSITIVE_INFINITY,
-        ease: "linear",
+        ease: "linear" as const,
       },
     },
   }
@@ -23,7 +23,7 @@ export function StrategyAtomAnimation() {
       transition: {
         duration: 2,
         repeat: Number.POSITIVE_INFINITY,
-        ease: "linear",
+        ease: "linear" as const,
       },
     },
   }
@@ -35,7 +35,7 @@ export function StrategyAtomAnimation() {
       transition: {
         duration: 1.5,
         repeat: Number.POSITIVE_INFINITY,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     },
   }
@@ -49,7 +49,7 @@ export function StrategyAtomAnimation() {
       <motion.div
         className="relative w-40 h-40"
         animate={{ rotate: 360 }}
-        transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+        transition={{ duration: 20, repeat: Number.POSITIVE_INFINITY, ease: "linear" as const }}
       >
         <motion.div
           className="absolute inset-0 rounded-full"
@@ -95,4 +95,3 @@ export function StrategyAtomAnimation() {
     </div>
   )
 }
-

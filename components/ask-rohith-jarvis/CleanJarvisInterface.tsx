@@ -62,9 +62,10 @@ export default function CleanJarvisInterface() {
   };
 
   // Portfolio value
-  const portfolioValue = userContext?.portfolio?.totalValue || 0;
-  const formattedValue = portfolioValue > 0
-    ? `$${(portfolioValue / 1_000_000).toFixed(1)}M`
+  const portfolioValue = Number(userContext?.portfolio?.totalValue ?? 0);
+  const normalizedPortfolioValue = Number.isFinite(portfolioValue) ? portfolioValue : 0;
+  const formattedValue = normalizedPortfolioValue > 0
+    ? `$${(normalizedPortfolioValue / 1_000_000).toFixed(1)}M`
     : null;
 
   return (

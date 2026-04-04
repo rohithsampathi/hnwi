@@ -20,8 +20,13 @@ import type {
   CrossBorderAuditSummary,
   LegalReferences,
   RegulatoryCitation,
+  ProjectionScenario,
+  TaxRates,
+  WealthProjectionData,
 } from '../pdf-types';
 import { computeRiskRadarScores } from '@/lib/decision-memo/compute-risk-radar-scores';
+import { resolveCrossBorderDisplayMetrics } from '@/lib/decision-memo/resolve-cross-border-display-metrics';
+import { resolveIntelligenceBasisCounts } from '@/lib/decision-memo/resolve-intelligence-basis-counts';
 import { formatCurrency } from '../pdf-styles';
 import { getVerdictTheme, VerdictTheme } from '../pdf-verdict-theme';
 import { safeText } from './pdf-utils';
@@ -37,6 +42,14 @@ import {
   getRegimeIntelligence,
   getHnwiTrendsData,
 } from './pdf-type-guards';
+
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord | undefined {
+  return typeof value === 'object' && value !== null
+    ? (value as UnknownRecord)
+    : undefined;
+}
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
 
@@ -177,8 +190,8 @@ export interface MemoVariables {
   showTaxSavings: boolean;
   totalTaxBenefit: string;
   valueCreation: string;
-  sourceTaxRates: Record<string, unknown>;
-  destTaxRates: Record<string, unknown>;
+  sourceTaxRates: TaxRates;
+  destTaxRates: TaxRates;
   taxDifferential: PdfPreviewData['tax_differential'];
 
   // Risk
@@ -201,7 +214,7 @@ export interface MemoVariables {
   exposureClass: string;
   peerStats: PdfPreviewData['peer_cohort_stats'];
   capitalFlow: PdfPreviewData['capital_flow_data'];
-  evidenceAnchors: Array<Record<string, unknown>>;
+  evidenceAnchors: NonNullable<PdfMemoData['memo_data']['evidence_anchors']>;
 
   // Expert sections
   crisisData: CrisisData | null;
@@ -223,7 +236,7 @@ export interface MemoVariables {
   baseProbability: number;
   stressProbability: number;
   opportunityProbability: number;
-  costOfInaction: PdfPreviewData['wealth_projection_data'] extends { cost_of_inaction?: infer C } ? C : unknown;
+  costOfInaction: PdfPreviewData['wealth_projection_data'] extends { cost_of_inaction?: infer C } ? C : WealthProjectionData['cost_of_inaction'];
 
   // Via Negativa
   isViaNegativa: boolean;
@@ -266,12 +279,15 @@ export interface MemoVariables {
 
 export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   const { preview_data, memo_data, intake_id, generated_at } = memoData;
+  const memoDataRecord = asRecord(memoData);
+  const previewDataRecord = asRecord(preview_data);
+  const memoDataMeta = asRecord(memo_data);
 
   const sourceJurisdiction = safeText(preview_data.source_jurisdiction, '—');
   const destJurisdiction = safeText(preview_data.destination_jurisdiction, '—');
 
   // Verdict — check root-level risk_assessment first (matches web: backendData?.risk_assessment || preview_data.risk_assessment)
-  const riskAssessment = (memoData as Record<string, unknown>).risk_assessment as RiskAssessment | undefined
+  const riskAssessment = memoDataRecord?.risk_assessment as RiskAssessment | undefined
     || getRiskAssessment(preview_data);
   const verdict = safeText(riskAssessment?.verdict || preview_data.verdict, '—');
   const riskLevel = safeText(riskAssessment?.risk_level || preview_data.risk_level, '—');
@@ -285,7 +301,10 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   const hasUSWorldwideTax = sourceJurisdiction?.toLowerCase().includes('united_states') ||
     sourceJurisdiction?.toLowerCase().includes('usa') ||
     sourceJurisdiction?.toLowerCase().includes('us');
-  const showTaxSavings = getShowTaxSavings(preview_data) && !hasUSWorldwideTax;
+  const noRelocationTaxCredit =
+    preview_data.tax_differential?.cumulative_impact === 'none_without_relocation'
+    || preview_data.tax_differential?.is_relocating === false;
+  const showTaxSavings = getShowTaxSavings(preview_data) && !hasUSWorldwideTax && !noRelocationTaxCredit;
 
   const taxDiff = preview_data.tax_differential;
   const cumulativeTaxDiff = (taxDiff as Record<string, unknown> | undefined)?.cumulative_tax_differential_pct as number | undefined;
@@ -306,13 +325,13 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
 
   // Risks — check root-level data first (matches web: backendData?.all_mistakes || preview_data.all_mistakes)
   const riskFactors = preview_data.risk_factors || [];
-  const rootMistakes = (memoData as Record<string, unknown>).all_mistakes as Mistake[] | undefined;
+  const rootMistakes = memoDataRecord?.all_mistakes as Mistake[] | undefined;
   const allMistakes = (rootMistakes && rootMistakes.length > 0) ? rootMistakes : getAllMistakes(preview_data);
   const mistakesAsRiskFactors = mapMistakesToRiskFactors(allMistakes);
 
   // identified_risks lives at memoData root (from MongoDB document root), NOT inside preview_data
   const identifiedRisks = (memoData.identified_risks as Array<Record<string, unknown>> | undefined)
-    || (preview_data as Record<string, unknown>).identified_risks as Array<Record<string, unknown>> | undefined;
+    || previewDataRecord?.identified_risks as Array<Record<string, unknown>> | undefined;
 
   const identifiedRisksAsFactors: RiskFactor[] = (identifiedRisks || []).map((r) => {
     // Map severity: check string fields first, then numeric urgency_level (1-10 scale)
@@ -380,23 +399,23 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   const wpScenarios = wealthProjection?.scenarios;
   const findScenario = (name: string, fallbackKey: 'base' | 'stress' | 'opportunity') => {
     if (Array.isArray(wpScenarios)) {
-      return wpScenarios.find((s: Record<string, unknown>) => s.name === name);
+      return wpScenarios.find((s) => s.name === name);
     }
-    return (wpScenarios as Record<string, unknown> | undefined)?.[fallbackKey] as Record<string, unknown> | undefined;
+    return asRecord(wpScenarios)?.[fallbackKey] as ProjectionScenario | undefined;
   };
-  const baseScenario = findScenario('BASE_CASE', 'base') as Record<string, unknown> | undefined;
-  const stressScenario = findScenario('STRESS_CASE', 'stress') as Record<string, unknown> | undefined;
-  const opportunityScenario = findScenario('OPPORTUNITY_CASE', 'opportunity') as Record<string, unknown> | undefined;
+  const baseScenario = findScenario('BASE_CASE', 'base');
+  const stressScenario = findScenario('STRESS_CASE', 'stress');
+  const opportunityScenario = findScenario('OPPORTUNITY_CASE', 'opportunity');
 
-  const getStartPos = (key: string) => (wealthProjection?.starting_position as Record<string, unknown> | undefined)?.[key] as number | undefined;
+  const getStartPos = (key: string) => asRecord(wealthProjection?.starting_position)?.[key] as number | undefined;
   const startingValue = (getStartPos('transaction_value')
     || getStartPos('transaction_amount')
     || getStartPos('current_net_worth')
     || wealthProjection?.starting_value
-    || (wealthProjection as Record<string, unknown> | undefined)?.transaction_value as number) ?? 0;
+    || asRecord(wealthProjection)?.transaction_value as number) ?? 0;
 
-  const getYear10 = (scenario: Record<string, unknown> | undefined) => {
-    const tyo = scenario?.ten_year_outcome as Record<string, unknown> | undefined;
+  const getYear10 = (scenario: ProjectionScenario | undefined) => {
+    const tyo = asRecord(scenario?.ten_year_outcome);
     return (tyo?.final_value ?? tyo?.final_total_value ?? scenario?.year_10_value ?? 0) as number;
   };
   const baseYear10 = getYear10(baseScenario);
@@ -415,8 +434,9 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   let pdfViaNegativa: PdfViaNegativa | undefined;
   if (isViaNegativa) {
     const backendVN = getViaNegativa(preview_data);
-    const crossBorderAudit = wealthProjection?.starting_position?.cross_border_audit_summary as Record<string, unknown> | undefined;
-    const acqAudit = crossBorderAudit?.acquisition_audit as Record<string, unknown> | undefined;
+    const crossBorderAudit = asRecord(wealthProjection?.starting_position?.cross_border_audit_summary);
+    const crossBorderMetrics = resolveCrossBorderDisplayMetrics(crossBorderAudit);
+    const acqAudit = asRecord(crossBorderAudit?.acquisition_audit);
     const propValue = (acqAudit?.property_value as number) || 0;
     const totalAcqCost = (acqAudit?.total_acquisition_cost as number) || 0;
     const dayOneLossPct = backendVN?.day_one_loss_pct ?? (acqAudit?.day_one_loss_pct as number) ?? 0;
@@ -427,7 +447,7 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
       badgeLabel: backendVN?.header?.badge_label || 'ELEVATED RISK',
       dayOneLoss: dayOneLossPct,
       dayOneLossAmount,
-      taxEfficiencyPassed: backendVN?.tax_efficiency_passed ?? (showTaxSavings && ((crossBorderAudit?.total_tax_savings_pct as number) || 0) > 0),
+      taxEfficiencyPassed: backendVN?.tax_efficiency_passed ?? (showTaxSavings && crossBorderMetrics.displayTaxSavingsPct > 0),
       liquidityPassed: backendVN?.liquidity_passed ?? dayOneLossPct < 10,
       structurePassed: backendVN?.structure_passed ?? false,
       verdictHeader: backendVN?.verdict_section?.header || 'Structural Review',
@@ -453,8 +473,8 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
     || null;
 
   // Doctrine Metadata (from scenario tree data)
-  const doctrineMetadata = (preview_data as Record<string, unknown>).doctrine_metadata as DoctrineMetadata | undefined
-    || (preview_data.scenario_tree_data as Record<string, unknown> | undefined)?.doctrine_metadata as DoctrineMetadata | undefined;
+  const doctrineMetadata = asRecord(preview_data.scenario_tree_data)?.doctrine_metadata as DoctrineMetadata | undefined
+    || previewDataRecord?.doctrine_metadata as DoctrineMetadata | undefined;
 
   // Risk Radar Scores
   const riskRadarScores = computeRiskRadarScores(memoData, isViaNegativa);
@@ -470,8 +490,8 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   ) || undefined;
 
   // Resolve fullThesis: handle thesis as object { move_description, expected_outcome } or string
-  const rootThesisRaw = (memoData as Record<string, unknown>).thesis;
-  const fullArtifactRaw = (memoData as Record<string, unknown>).full_artifact as Record<string, unknown> | undefined;
+  const rootThesisRaw = memoDataRecord?.thesis;
+  const fullArtifactRaw = asRecord(memoDataRecord?.full_artifact);
   let fullThesis: string | undefined;
   // 1. full_artifact.thesis_summary is the cleanest combined text
   if (fullArtifactRaw?.thesis_summary && typeof fullArtifactRaw.thesis_summary === 'string') {
@@ -488,9 +508,9 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
   // 4. Fallback to preview_data fields
   if (!fullThesis) {
     fullThesis = safeText(
-      (preview_data as Record<string, unknown>).thesis as string ||
-      (preview_data as Record<string, unknown>).user_input as string ||
-      (memo_data as Record<string, unknown>).thesis as string ||
+      previewDataRecord?.thesis as string ||
+      previewDataRecord?.user_input as string ||
+      memoDataMeta?.thesis as string ||
       preview_data.decision_context ||
       thesisSummary,
       undefined
@@ -499,15 +519,12 @@ export function extractMemoVariables(memoData: PdfMemoData): MemoVariables {
 
   // Verdict for MemoHeader display (web uses structure_optimization.verdict = "PROCEED"/"PROCEED_MODIFIED"/etc.)
   // distinct from risk_assessment.verdict ("APPROVED") which is for the cover badge
-  const structureOptVerdict = (preview_data.structure_optimization as Record<string, unknown> | undefined)?.verdict as string | undefined;
+  const structureOptVerdict = asRecord(preview_data.structure_optimization)?.verdict as string | undefined;
   const memoVerdict = safeText(structureOptVerdict || verdict, '—');
   const sourceCity = safeText(preview_data.source_city, undefined) || undefined;
   const destinationCity = safeText(preview_data.destination_city, undefined) || undefined;
-  // developmentsCount: HNWI World global DB count — web uses backendData?.hnwiWorldCount || 1966
-  // Not per-audit; use memo_data field if present, else 1966 as platform default
-  const developmentsCount = (preview_data as Record<string, unknown>).developments_count as number
-    || (memo_data as Record<string, unknown>).hnwi_world_count as number
-    || 1966;
+  const intelligenceBasisCounts = resolveIntelligenceBasisCounts({ memoData });
+  const developmentsCount = intelligenceBasisCounts.developmentsCount ?? 0;
 
   // Legal References & Regulatory Citations
   const legalReferences = preview_data.legal_references as LegalReferences | undefined;

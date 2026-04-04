@@ -19,7 +19,7 @@ export function groupMetalDataByLocation(metalsData: MetalData[]) {
 
   return Array.from(locationMap.entries()).map(([location, prices]) => ({
     location,
-    prices: prices.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    prices: prices.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()),
   }))
 }
 
@@ -28,9 +28,8 @@ export function getLatestLocationPrices(metalsData: MetalData[]) {
 
   // Get the most recent metal data entry
   const latestData = metalsData.reduce((latest, current) => {
-    return new Date(current.timestamp) > new Date(latest.timestamp) ? current : latest
+    return new Date(current.timestamp).getTime() > new Date(latest.timestamp).getTime() ? current : latest
   }, metalsData[0])
 
   return latestData.location_prices
 }
-

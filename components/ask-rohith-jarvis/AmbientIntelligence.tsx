@@ -33,9 +33,10 @@ export default function AmbientIntelligence({
   recommendation
 }: AmbientIntelligenceProps) {
   // Calculate portfolio metrics from user context
-  const portfolioValue = userContext?.portfolio?.totalValue || 0;
+  const portfolioValue = Number(userContext?.portfolio?.totalValue ?? 0);
+  const normalizedPortfolioValue = Number.isFinite(portfolioValue) ? portfolioValue : 0;
   const formattedValue = portfolioValue > 0
-    ? `$${(portfolioValue / 1_000_000).toFixed(1)}M`
+    ? `$${(normalizedPortfolioValue / 1_000_000).toFixed(1)}M`
     : 'Loading...';
 
   // Determine risk level based on recommendation priority

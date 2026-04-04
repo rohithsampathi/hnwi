@@ -16,6 +16,7 @@ interface PersonalShellProps {
   intakeId: string;
   onExportPDF?: () => void;
   isExportingPDF?: boolean;
+  onSwitchToReportView?: () => void;
 }
 
 export default function PersonalShell({
@@ -23,7 +24,8 @@ export default function PersonalShell({
   backendData,
   intakeId,
   onExportPDF,
-  isExportingPDF
+  isExportingPDF,
+  onSwitchToReportView,
 }: PersonalShellProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -134,6 +136,7 @@ export default function PersonalShell({
           intakeId={intakeId}
           onExportPDF={onExportPDF}
           isExportingPDF={isExportingPDF}
+          onSwitchToReportView={onSwitchToReportView}
         />
       </div>
 

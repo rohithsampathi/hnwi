@@ -16,7 +16,15 @@ import {
   Brain, Target, TrendingUp, RefreshCw, TrendingDown, Eye
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CrownVaultAsset, CrownVaultHeir, updateAssetHeirs, updateCrownVaultAsset, deleteCrownVaultAsset, refreshAssetPrice } from "@/lib/api";
+import {
+  CrownVaultAsset,
+  CrownVaultHeir,
+  deleteCrownVaultAsset,
+  normalizeAppreciationMetrics,
+  refreshAssetPrice,
+  updateAssetHeirs,
+  updateCrownVaultAsset,
+} from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle, getVisibleSubtextColor } from "@/lib/colors";
 import { getAssetImageForDisplay } from "@/lib/asset-image-assignment";
@@ -568,17 +576,24 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
       setAssets(prevAssets =>
         prevAssets.map(a =>
           a.asset_id === asset.asset_id
-            ? {
-                ...a,
-                asset_data: {
-                  ...a.asset_data,
-                  cost_per_unit: result.new_price,
-                  current_price: result.new_price,
-                  value: (a.asset_data.unit_count || 1) * result.new_price
-                },
-                appreciation: result.appreciation,
-                last_price_update: new Date().toISOString()
-              }
+            ? (() => {
+                const appreciation = normalizeAppreciationMetrics(result.appreciation, {
+                  createdAt: a.created_at,
+                  existingTimeHeldDays: a.appreciation?.time_held_days,
+                });
+
+                return {
+                  ...a,
+                  asset_data: {
+                    ...a.asset_data,
+                    cost_per_unit: result.new_price,
+                    current_price: result.new_price,
+                    value: (a.asset_data.unit_count || 1) * result.new_price
+                  },
+                  appreciation,
+                  last_price_update: new Date().toISOString()
+                };
+              })()
             : a
         )
       );

@@ -59,9 +59,7 @@ export default function TestAuthPage() {
       lastName: 'User'
     }
     
-    const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItMTIzIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiZXhwIjoxOTk5OTk5OTk5fQ.test'
-    
-    const user = loginUser(testUser, testToken)
+    loginUser(testUser)
     
     // Refresh state
     window.location.reload()

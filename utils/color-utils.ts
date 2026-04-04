@@ -64,9 +64,6 @@ export const baseIndustryColors: Record<string, string> = {
   "Luxury Fashion": "#DC2626", // Bright red for luxury fashion
   
   // Base industries
-  "Real Estate": "#32CD32",
-  Finance: "#FFD700",
-  Banking: "#FF8C00",
   "Wealth Management": "#DAA520",
   
   // Event categories

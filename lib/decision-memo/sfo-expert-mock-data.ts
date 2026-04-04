@@ -387,13 +387,13 @@ export const mockScenarioTreeData: ScenarioTreeData = {
     {
       branch: "Proceed Now",
       expected_value: "+$1.8M",
-      risk_level: "MODERATE",
+      risk_level: "MEDIUM",
       recommended_if: "All conditions MET or PENDING with clear path"
     },
     {
       branch: "Proceed Modified",
       expected_value: "+$1.1M",
-      risk_level: "MODERATE",
+      risk_level: "MEDIUM",
       recommended_if: "1-2 conditions BLOCKED but resolvable"
     },
     {

@@ -4,7 +4,9 @@ import {
   NotificationRecord, 
   NotificationInboxResponse, 
   NotificationStats,
-  UserNotificationPreferences 
+  UserNotificationPreferences,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  normalizeNotificationPreferences
 } from '@/lib/services/notification-service';
 import { canAccessFeaturesWithFallback } from '@/lib/auth-utils';
 
@@ -154,30 +156,10 @@ export function useNotifications(
     try {
       setPreferencesLoading(true);
       const prefs = await notificationService.getPreferences();
-      setPreferences(prefs);
+      setPreferences(normalizeNotificationPreferences(prefs));
     } catch (err) {
       // Set default preferences on error
-      const defaultPrefs = {
-        email_enabled: true,
-        push_enabled: false,
-        in_app_enabled: true,
-        sms_enabled: false,
-        quiet_hours_enabled: false,
-        quiet_hours_start: "22:00",
-        quiet_hours_end: "08:00",
-        event_types: {
-          elite_pulse: true,
-          hnwi_world: true,
-          crown_vault: true,
-          social_hub: true,
-          system_notification: true
-        },
-        frequency_limits: {
-          max_per_hour: 10,
-          max_per_day: 50
-        }
-      };
-      setPreferences(defaultPrefs);
+      setPreferences(DEFAULT_NOTIFICATION_PREFERENCES);
     } finally {
       setPreferencesLoading(false);
     }
@@ -274,7 +256,7 @@ export function useNotifications(
   const updatePreferences = useCallback(async (prefs: Partial<UserNotificationPreferences>) => {
     try {
       const updatedPrefs = await notificationService.updatePreferences(prefs);
-      setPreferences(updatedPrefs);
+      setPreferences(normalizeNotificationPreferences(updatedPrefs));
     } catch (err) {
       throw err;
     }

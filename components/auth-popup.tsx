@@ -10,7 +10,6 @@ import { useToast } from "@/components/ui/use-toast"
 import { getMetallicCardStyle } from "@/lib/colors"
 import { MfaCodeInput } from "@/components/mfa-code-input"
 import { SessionState, setSessionState, isSessionLocked, getSessionInfo, trustCurrentDevice, shouldSkip2FA } from "@/lib/auth-utils"
-import { ShieldLoader } from "@/components/ui/shield-loader"
 import { unifiedAuthManager } from "@/lib/unified-auth-manager"
 import { setAuthState, ensureClientCsrfToken } from "@/lib/secure-api"
 import { pwaStorage } from "@/lib/storage/pwa-storage"
@@ -52,7 +51,7 @@ const getClientCsrfToken = (): string | null => {
 interface AuthPopupProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (userData?: unknown) => void
   title?: string
   description?: string
 }
@@ -120,7 +119,7 @@ export function AuthPopup({
       const sessionInfo = getSessionInfo();
       const isLocked = isSessionLocked();
       
-      if (isLocked && sessionInfo.token) {
+      if (isLocked && sessionInfo.state === SessionState.LOCKED_INACTIVE) {
         // This is a reauth scenario - user was locked due to inactivity but token is still valid
         setIsReauthMode(true);
         

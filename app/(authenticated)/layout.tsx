@@ -2,29 +2,30 @@
 
 "use client"
 
-import { useState, useEffect, useLayoutEffect, ReactNode } from "react"
+import { useState, useEffect, useLayoutEffect, useCallback, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/components/auth-provider"
+import { AuthSyncProvider } from "@/components/auth-sync-provider"
+import { LegacyServiceWorkerCleanup } from "@/components/platform/legacy-service-worker-cleanup"
 import { BusinessModeProvider } from "@/contexts/business-mode-context"
-import { ThemeProvider } from "@/contexts/theme-context"
-import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { AuthPopupProvider } from "@/contexts/auth-popup-context"
 import { StepUpMfaProvider } from "@/contexts/step-up-mfa-context"
-import { AppDataProvider } from "@/contexts/app-data-context"
-import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
+import { OnboardingProvider } from "@/contexts/onboarding-context"
 import { NotificationProvider } from "@/contexts/notification-context"
-import { IntelligenceNotificationProvider } from "@/contexts/intelligence-notification-context"
 import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
 import { CitationPanelProvider } from "@/contexts/elite-citation-panel-context"
 import { CrisisIntelligenceProvider } from "@/contexts/crisis-intelligence-context"
+import { ThemeProvider } from "@/contexts/theme-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
 import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib/auth-manager"
 import { secureApi } from "@/lib/secure-api"
 import { isLoginAttemptInProgress } from "@/lib/unified-auth-manager"
+import logger from "@/lib/secure-logger"
 import TokenRefreshManager from "@/components/token-refresh-manager"
-import '@/lib/auth/debug-helper' // Load debug helper
+import { PUBLIC_HOME_ROUTE } from "@/lib/auth-navigation"
 
 // Helper to check if this is a public route
 const isPublicRoute = (pathname: string): boolean => {
@@ -35,14 +36,29 @@ interface AuthenticatedLayoutProps {
   children: ReactNode
 }
 
+const AUTH_REQUEST_TIMEOUT_MS = 5000
+const AUTH_JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = AUTH_REQUEST_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    })
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
+}
+
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   // CRITICAL: Start with null to match SSR, check localStorage in useEffect
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [currentPage, setCurrentPage] = useState("")
 
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
@@ -64,15 +80,16 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   
   const pageConfig = getPageConfig(pathname)
   const [mounted, setMounted] = useState(false)
-
-  // Update current page based on pathname
-  useEffect(() => {
-    setCurrentPage(pageConfig.currentPage)
-  }, [pathname])
+  const needsCrisisIntelligence = pathname.includes('/dashboard') || pathname.includes('/war-room')
+  const needsPageDataCache =
+    pathname.includes('/hnwi-world') ||
+    pathname.includes('/profile') ||
+    pathname.includes('/crown-vault') ||
+    pathname.includes('/trusted-network')
+  const needsCitationPanel = pathname.includes('/decision-memo')
   
 
   const handleNavigation = (route: string) => {
-    setCurrentPage(route)
     // Map internal routes to Next.js routes
     if (route === "dashboard") {
       router.push("/dashboard")
@@ -112,9 +129,112 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     }
   }
 
+  const redirectToPublicHome = useCallback(() => {
+    router.replace(PUBLIC_HOME_ROUTE)
+  }, [router])
+
+  const fetchSessionUser = useCallback(async () => {
+    const sessionResponse = await fetchWithTimeout('/api/auth/session', {
+      credentials: 'include',
+      headers: AUTH_JSON_HEADERS
+    })
+
+    if (!sessionResponse.ok) {
+      return null
+    }
+
+    const data = await sessionResponse.json()
+    return data.user ?? null
+  }, [])
+
+  const refreshSessionUser = useCallback(async () => {
+    const refreshResponse = await fetchWithTimeout('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: AUTH_JSON_HEADERS
+    })
+
+    if (!refreshResponse.ok) {
+      return null
+    }
+
+    return fetchSessionUser()
+  }, [fetchSessionUser])
+
+  const resolveSessionUser = useCallback(async () => {
+    const directUser = await fetchSessionUser()
+    if (directUser) {
+      return directUser
+    }
+
+    return refreshSessionUser()
+  }, [fetchSessionUser, refreshSessionUser])
+
+  const applyValidatedUser = useCallback((nextUser: any, markSessionValidated = false) => {
+    authManager.login(nextUser)
+    setIsAuthenticated(true)
+
+    if (markSessionValidated) {
+      setSessionValidated(true)
+    }
+
+    const userId = nextUser?.user_id || nextUser?.id
+    if (userId && !nextUser?.name) {
+      secureApi.get(`/api/users/${userId}`, true)
+        .then((fullUser: any) => {
+          if (fullUser?.name) {
+            const mergedUser = { ...nextUser, ...fullUser }
+            updateAuthUser(mergedUser)
+            setUser(mergedUser)
+          } else {
+            setUser(nextUser)
+          }
+        })
+        .catch(() => setUser(nextUser))
+      return
+    }
+
+    setUser(nextUser)
+  }, [])
+
   // Handle mounting
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") {
+      return
+    }
+
+    void import("@/lib/auth/debug-helper")
+  }, [])
+
+  // Keep a single viewport height source of truth for mobile browsers.
+  // `100vh` overstates visible height on deployed mobile Safari/Chrome when browser chrome is present.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const root = document.documentElement
+
+    const updateViewportHeight = () => {
+      const viewportHeight = Math.round(window.visualViewport?.height ?? window.innerHeight)
+      root.style.setProperty("--app-viewport-height", `${viewportHeight}px`)
+    }
+
+    updateViewportHeight()
+
+    window.addEventListener("resize", updateViewportHeight)
+    window.addEventListener("orientationchange", updateViewportHeight)
+    window.visualViewport?.addEventListener("resize", updateViewportHeight)
+    window.visualViewport?.addEventListener("scroll", updateViewportHeight)
+
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight)
+      window.removeEventListener("orientationchange", updateViewportHeight)
+      window.visualViewport?.removeEventListener("resize", updateViewportHeight)
+      window.visualViewport?.removeEventListener("scroll", updateViewportHeight)
+    }
   }, [])
 
   // Track if we've validated the session with backend (for PWA)
@@ -131,7 +251,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       const authUser = getCurrentUser()
       setUser(authUser) // Will be null for non-authenticated users
       setIsAuthenticated(true) // Allow access regardless
-      setIsInitialLoad(false)
       setMounted(true)
       return
     }
@@ -147,7 +266,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
         setUser(cachedUser)
         setIsAuthenticated(true)
-        setIsInitialLoad(false)
         setMounted(true)
         return
       }
@@ -176,112 +294,32 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         const loginTimestamp = localStorage.getItem('loginTimestamp')
         const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000 // 30 seconds
 
-        // Quick session check - if this fails, cookies are gone
-        const sessionResponse = await fetch('/api/auth/session', {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (sessionResponse.ok) {
-          const data = await sessionResponse.json()
-          if (data.user) {
-            // Session is valid - update user data if changed
-            authManager.login(data.user)
-            setSessionValidated(true)
-            // Hydrate full profile if name is missing (JWT only has id/email)
-            const userId = data.user.user_id || data.user.id
-            if (userId && !data.user.name) {
-              secureApi.get(`/api/users/${userId}`, true)
-                .then((fullUser: any) => {
-                  if (fullUser?.name) {
-                    const merged = { ...data.user, ...fullUser }
-                    updateAuthUser(merged)
-                    setUser(merged)
-                  } else {
-                    setUser(data.user)
-                  }
-                })
-                .catch(() => setUser(data.user))
-            } else {
-              setUser(data.user)
-            }
-            return
-          }
+        const resolvedUser = await resolveSessionUser()
+        if (resolvedUser) {
+          applyValidatedUser(resolvedUser, true)
+          return
         }
 
         // Session check returned no user - if this is a recent login,
         // trust localStorage and retry later instead of logging out immediately
         if (isRecentLogin) {
-          console.log('[Auth] Session check returned no user but login was recent - trusting localStorage')
+          logger.debug('[Auth] Session check returned no user but login was recent - trusting localStorage')
           setSessionValidated(true)
           return
         }
 
         // Session invalid - try to refresh token
-        const refreshResponse = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        })
-
-        if (refreshResponse.ok) {
-          // Token refreshed - get new session
-          const newSessionResponse = await fetch('/api/auth/session', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-
-          if (newSessionResponse.ok) {
-            const data = await newSessionResponse.json()
-            if (data.user) {
-              setUser(data.user)
-              authManager.login(data.user)
-              setSessionValidated(true)
-              return
-            }
-          }
-        }
-
         // MOBILE FIX: If session + refresh both failed but localStorage has a userId,
         // cookies may not have synced from the mobile OS cookie store yet.
         // Wait and retry once before giving up.
         const hasLocalUser = !!localStorage.getItem('userId')
         if (hasLocalUser && !isRecentLogin) {
-          console.log('[Auth] Session validation failed but localStorage has userId — retrying after delay')
+          logger.debug('[Auth] Session validation failed but localStorage has userId — retrying after delay')
           await new Promise(resolve => setTimeout(resolve, 500))
-          const retryResponse = await fetch('/api/auth/session', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          if (retryResponse.ok) {
-            const retryData = await retryResponse.json()
-            if (retryData.user) {
-              authManager.login(retryData.user)
-              setUser(retryData.user)
-              setSessionValidated(true)
-              return
-            }
-          }
-          // Also retry refresh
-          const retryRefresh = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          if (retryRefresh.ok) {
-            const retrySession = await fetch('/api/auth/session', {
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' }
-            })
-            if (retrySession.ok) {
-              const retryData = await retrySession.json()
-              if (retryData.user) {
-                authManager.login(retryData.user)
-                setUser(retryData.user)
-                setSessionValidated(true)
-                return
-              }
-            }
+          const retryUser = await resolveSessionUser()
+          if (retryUser) {
+            applyValidatedUser(retryUser, true)
+            return
           }
         }
 
@@ -289,13 +327,13 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         // But if a login attempt is currently in progress (auth popup or splash screen),
         // don't interfere — let the login flow handle errors inline.
         if (isLoginAttemptInProgress()) {
-          console.log('[Auth] Session validation failed but login in progress - deferring')
+          logger.debug('[Auth] Session validation failed but login in progress - deferring')
           setSessionValidated(true)
           return
         }
 
         // Do NOT trust localStorage here — it's stale. Redirect immediately.
-        console.log('[Auth] Session validation failed - clearing stale state and redirecting')
+        logger.debug('[Auth] Session validation failed - clearing stale state and redirecting')
         authManager.logout()
         setIsAuthenticated(false)
         setUser(null)
@@ -304,11 +342,11 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         localStorage.removeItem('loginTimestamp')
 
         // Redirect to login
-        router.push("/")
+        redirectToPublicHome()
       } catch (error) {
         // Network error - don't logout, let user continue with cached data
         // secure-api will handle 401/403 on actual API calls
-        console.log('[Auth] Session validation network error - continuing with cached auth')
+        logger.debug('[Auth] Session validation network error - continuing with cached auth')
         setSessionValidated(true)
       }
     }
@@ -323,7 +361,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     const validationDelay = isRecentLogin ? 2000 : (hasSessionStorage ? 500 : 100)
     const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
-  }, [isAuthenticated, sessionValidated, pathname, router])
+  }, [applyValidatedUser, isAuthenticated, pathname, redirectToPublicHome, resolveSessionUser, sessionValidated])
 
   // SINGLE AUTH CHECK - Only runs if useLayoutEffect didn't find cached user
   useEffect(() => {
@@ -348,37 +386,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         const { authManager } = await import('@/lib/auth-manager')
         await authManager.waitForInitialization()
 
-        // Helper: try session + refresh validation
-        const tryValidateSession = async (): Promise<any | null> => {
-          const sessionResponse = await fetch('/api/auth/session', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          if (sessionResponse.ok) {
-            const data = await sessionResponse.json()
-            if (data.user) return data.user
-          }
-          // Session invalid - try refresh token
-          const refreshResponse = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-          })
-          if (refreshResponse.ok) {
-            const newSessionResponse = await fetch('/api/auth/session', {
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' }
-            })
-            if (newSessionResponse.ok) {
-              const data = await newSessionResponse.json()
-              if (data.user) return data.user
-            }
-          }
-          return null
-        }
-
         // First attempt
-        let validatedUser = await tryValidateSession()
+        let validatedUser = await resolveSessionUser()
 
         // MOBILE FIX: If first attempt fails but localStorage indicates a prior session,
         // cookies may not have synced from the mobile OS cookie store yet.
@@ -386,28 +395,23 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         if (!validatedUser && typeof window !== 'undefined') {
           const hasLocalUser = !!localStorage.getItem('userId')
           if (hasLocalUser) {
-            console.log('[Auth] Session check failed but localStorage has userId — retrying after delay (mobile cookie sync)')
+            logger.debug('[Auth] Session check failed but localStorage has userId — retrying after delay (mobile cookie sync)')
             await new Promise(resolve => setTimeout(resolve, 500))
-            validatedUser = await tryValidateSession()
+            validatedUser = await resolveSessionUser()
           }
         }
 
         if (validatedUser) {
-          authManager.login(validatedUser)
-          setUser(validatedUser)
-          setIsAuthenticated(true)
-          setIsInitialLoad(false)
+          applyValidatedUser(validatedUser)
           return
         }
 
         // No valid session - redirect to login (unless login is in progress)
         if (isLoginAttemptInProgress()) {
-          setIsInitialLoad(false)
           return
         }
         setIsAuthenticated(false)
-        setIsInitialLoad(false)
-        router.push("/")
+        redirectToPublicHome()
       } catch (error) {
         // Network error — only allow if sessionStorage has full user (active session)
         // Don't trust localStorage alone — it's stale from a previous session
@@ -417,23 +421,20 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
             setUser(fallbackUser)
             setIsAuthenticated(true)
-            setIsInitialLoad(false)
             return
           }
         }
         // No active session — redirect to splash (unless login is in progress)
         if (isLoginAttemptInProgress()) {
-          setIsInitialLoad(false)
           return
         }
         setIsAuthenticated(false)
-        setIsInitialLoad(false)
-        router.push("/")
+        redirectToPublicHome()
       }
     }
 
     checkAuthStatus()
-  }, [mounted, pathname, router])
+  }, [applyValidatedUser, isAuthenticated, mounted, pathname, redirectToPublicHome, resolveSessionUser])
 
   // Listen for logout events (but ignore on public routes)
   useEffect(() => {
@@ -451,12 +452,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
       setUser(null)
       setIsAuthenticated(false)
-      router.push("/")
+      redirectToPublicHome()
     }
 
     window.addEventListener('auth:logout', handleLogout)
     return () => window.removeEventListener('auth:logout', handleLogout)
-  }, [router, pathname])
+  }, [pathname, redirectToPublicHome])
 
   // Listen for auth updates to refresh user data
   // CRITICAL: Listen for BOTH auth:login AND auth:userUpdated
@@ -489,53 +490,62 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     return null // Will redirect
   }
 
+  const shellContent = (
+    <NotificationProvider
+      enablePolling={false}
+      pollInterval={30000}
+      enableSounds={true}
+      enableBrowserNotifications={true}
+    >
+      <Layout
+        title={pageConfig.title}
+        onNavigate={handleNavigation}
+        currentPage={pageConfig.currentPage}
+        showBackButton={pageConfig.showBackButton}
+        user={user}
+        isUserAuthenticated={!!user}
+      >
+        <TokenRefreshManager refreshIntervalMinutes={45} />
+        {children}
+        <Toaster />
+      </Layout>
+    </NotificationProvider>
+  )
+
+  const cacheScopedShell = needsPageDataCache ? (
+    <PageDataCacheProvider>{shellContent}</PageDataCacheProvider>
+  ) : (
+    shellContent
+  )
+
+  const citationScopedShell = needsCitationPanel ? (
+    <CitationPanelProvider>{cacheScopedShell}</CitationPanelProvider>
+  ) : (
+    cacheScopedShell
+  )
+
   return (
     <ThemeProvider>
-      <BusinessModeProvider>
-        <AuthPopupProvider>
-          <StepUpMfaProvider>
-            <OnboardingProvider>
-              <AppDataProvider>
-                <PageDataCacheProvider>
-                  <CitationPanelProvider>
-                    <ElitePulseErrorBoundary>
-                      <CrisisIntelligenceProvider>
-                      <ElitePulseProvider>
-                        <NotificationProvider
-                        enablePolling={false}
-                        pollInterval={30000}
-                        enableSounds={true}
-                        enableBrowserNotifications={true}
-                      >
-                        <IntelligenceNotificationProvider
-                          position="top-right"
-                          maxNotifications={5}
-                          enableAutoNotifications={true}
-                        >
-                          <Layout
-                            title={pageConfig.title}
-                            onNavigate={handleNavigation}
-                            currentPage={pageConfig.currentPage}
-                            showBackButton={pageConfig.showBackButton}
-                            user={user}
-                            isUserAuthenticated={!!user}
-                          >
-                            <TokenRefreshManager refreshIntervalMinutes={45} />
-                            {children}
-                            <Toaster />
-                          </Layout>
-                        </IntelligenceNotificationProvider>
-                      </NotificationProvider>
-                      </ElitePulseProvider>
-                      </CrisisIntelligenceProvider>
-                    </ElitePulseErrorBoundary>
-                  </CitationPanelProvider>
-                </PageDataCacheProvider>
-              </AppDataProvider>
-            </OnboardingProvider>
-          </StepUpMfaProvider>
-        </AuthPopupProvider>
-      </BusinessModeProvider>
+      <LegacyServiceWorkerCleanup />
+      <OnboardingProvider>
+        <AuthProvider>
+          <AuthSyncProvider>
+            <BusinessModeProvider>
+              <AuthPopupProvider>
+                <StepUpMfaProvider>
+                  <ElitePulseErrorBoundary>
+                    {needsCrisisIntelligence ? (
+                      <CrisisIntelligenceProvider>{citationScopedShell}</CrisisIntelligenceProvider>
+                    ) : (
+                      citationScopedShell
+                    )}
+                  </ElitePulseErrorBoundary>
+                </StepUpMfaProvider>
+              </AuthPopupProvider>
+            </BusinessModeProvider>
+          </AuthSyncProvider>
+        </AuthProvider>
+      </OnboardingProvider>
     </ThemeProvider>
   )
 }

@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync, createHash } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync, createHash, type CipherGCM, type DecipherGCM } from "crypto";
 
 interface EncryptedData {
   encryptedData: string;
@@ -30,7 +30,7 @@ export class AES256Encryption {
     const key = AES256Encryption.deriveKey(masterKey, salt);
     const iv = randomBytes(AES256Encryption.IV_LENGTH);
     
-    const cipher = createCipheriv(AES256Encryption.ALGORITHM, key, iv);
+    const cipher = createCipheriv(AES256Encryption.ALGORITHM, key, iv) as CipherGCM;
     
     let encrypted = cipher.update(text, "utf8", "hex");
     encrypted += cipher.final("hex");
@@ -56,7 +56,7 @@ export class AES256Encryption {
     const iv = Buffer.from(encryptedData.iv, "hex");
     const authTag = Buffer.from(encryptedData.authTag, "hex");
     
-    const decipher = createDecipheriv(AES256Encryption.ALGORITHM, key, iv);
+    const decipher = createDecipheriv(AES256Encryption.ALGORITHM, key, iv) as DecipherGCM;
     decipher.setAuthTag(authTag);
     
     let decrypted = decipher.update(encryptedData.encryptedData, "hex", "utf8");

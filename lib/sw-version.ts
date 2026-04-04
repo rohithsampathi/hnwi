@@ -2,6 +2,8 @@
 // Service Worker Version Management
 // Auto-updates service worker when version changes
 
+import { canUseServiceWorkerRuntime } from "@/lib/platform/runtime-flags";
+
 export const SW_VERSION = '2.2.0'; // Increment this to force SW update
 export const SW_CACHE_NAME = `hnwi-sw-v${SW_VERSION}`;
 
@@ -13,7 +15,7 @@ export function shouldUpdateServiceWorker(currentVersion?: string): boolean {
 
 // Get service worker version from registration
 export async function getServiceWorkerVersion(): Promise<string | null> {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+  if (!canUseServiceWorkerRuntime()) {
     return null;
   }
 
@@ -44,7 +46,7 @@ export async function getServiceWorkerVersion(): Promise<string | null> {
 
 // Force service worker update
 export async function forceServiceWorkerUpdate(): Promise<boolean> {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+  if (!canUseServiceWorkerRuntime()) {
     return false;
   }
 

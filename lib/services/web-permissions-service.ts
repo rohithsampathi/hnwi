@@ -1,6 +1,8 @@
 // lib/services/web-permissions-service.ts
 // Advanced web permissions management for PWA features
 
+import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags'
+
 export type PermissionName =
   | 'notifications'
   | 'geolocation'
@@ -30,7 +32,7 @@ export class WebPermissionsService {
       case 'microphone':
         return 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices
       case 'background-sync':
-        return 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype
+        return canUseServiceWorkerRuntime() && 'sync' in window.ServiceWorkerRegistration.prototype
       case 'persistent-storage':
         return 'storage' in navigator && 'persist' in navigator.storage
       default:
@@ -58,7 +60,7 @@ export class WebPermissionsService {
       }
     }
 
-    let state: 'granted' | 'denied' | 'prompt' | 'unsupported' = 'prompt'
+    let state: PermissionStatus['state'] = 'prompt'
 
     try {
       switch (permission) {
@@ -75,14 +77,6 @@ export class WebPermissionsService {
           }
           break
 
-        case 'camera':
-          // Blocked by Permissions-Policy - handled above
-          break
-
-        case 'microphone':
-          // Blocked by Permissions-Policy - handled above
-          break
-
         case 'persistent-storage':
           if ('storage' in navigator) {
             const isPersistent = await navigator.storage.persisted()
@@ -92,7 +86,7 @@ export class WebPermissionsService {
 
         case 'background-sync':
           // Background sync permission is implicit with service worker registration
-          if ('serviceWorker' in navigator) {
+          if (canUseServiceWorkerRuntime()) {
             try {
               await navigator.serviceWorker.ready
               state = 'granted'
@@ -125,7 +119,7 @@ export class WebPermissionsService {
       return currentStatus
     }
 
-    let newState = currentStatus.state
+    let newState: PermissionStatus['state'] = currentStatus.state
 
     try {
       switch (permission) {

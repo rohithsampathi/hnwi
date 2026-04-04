@@ -216,7 +216,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
           <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Cumulative Tax Impact</Text>
           <Text style={{ ...styles.heroDisabled, marginBottom: spacing.sm }}>N/A</Text>
           <Text style={{ ...styles.body, textAlign: 'center', maxWidth: 360 }}>
-            {taxDifferential?.cumulative_impact_label || 'US Worldwide Taxation — US citizens and residents are taxed on worldwide income regardless of residency. Tax optimization through jurisdiction change is not applicable.'}
+            {taxDifferential?.cumulative_impact_label || 'No relocation-linked tax arbitrage is claimed in this route. Jurisdictional tax obligations remain in scope until residence changes.'}
           </Text>
         </View>
       ) : (

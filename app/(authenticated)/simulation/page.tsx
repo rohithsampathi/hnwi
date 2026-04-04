@@ -486,6 +486,15 @@ export default function AuthenticatedAssessmentPage() {
     }
   }, [flowStage]);
 
+  // Keep this transition safety net above the render branches so the hook order
+  // never changes as flowStage moves through the assessment lifecycle.
+  useEffect(() => {
+    if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
+      setFlowStage('digital_twin');
+      setStatus('generating_pdf');
+    }
+  }, [flowStage, sessionId, currentQuestionIndex, allQuestions.length, setStatus]);
+
   // CRITICAL FIX: Do NOT reset refs on unmount
   // These refs need to persist across component remounts within the same session
   // Module-level flags (simulationFlowStarted, assessmentSessionActive) already handle session-level persistence
@@ -555,19 +564,6 @@ export default function AuthenticatedAssessmentPage() {
       </>
     );
   }
-
-  // Fallback: Assessment completed but not transitioned properly
-  // This is now handled by the defensive guard in the assessment render block above
-  // Keeping this useEffect as an additional safety net for edge cases
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - TS doesn't understand this is reachable via dependency changes
-    if (flowStage === 'assessment' && sessionId && currentQuestionIndex >= allQuestions.length) {
-      // Force transition to digital_twin stage
-      setFlowStage('digital_twin');
-      setStatus('generating_pdf');
-    }
-  }, [flowStage, sessionId, currentQuestionIndex, allQuestions.length, setFlowStage, setStatus]);
 
   // Loading or error state
   return (

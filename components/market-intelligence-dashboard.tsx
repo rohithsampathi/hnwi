@@ -50,28 +50,13 @@ import {
 import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
+import type { HNWIWorldDevelopment } from "@/types/hnwi-world"
 
 interface IndustryTrend {
   industry: string
   total_count: number
   trend?: 'up' | 'down' | 'stable'
   change_percentage?: number
-}
-
-interface Development {
-  id: string
-  title: string
-  description: string
-  industry: string
-  date: string
-  summary: string
-  product?: string
-  numerical_data?: Array<{
-    number: string
-    unit: string
-    context: string
-    source?: string
-  }>
 }
 
 // Time range options - matching the original format
@@ -272,7 +257,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   // State management - Unified data approach - Initialize with cached data if available
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
-  const [allDevelopments, setAllDevelopments] = useState<any[]>(cachedData?.developments || []) // ALL developments (no industry filter)
+  const [allDevelopments, setAllDevelopments] = useState<HNWIWorldDevelopment[]>(cachedData?.developments || []) // ALL developments (no industry filter)
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(cachedData?.industryTrends || [])
   const [isLoading, setIsLoading] = useState(!hasValidCache)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -336,7 +321,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
           setManagedCitations(newCitations)
 
           if (newCitations.length > 0) {
-            setSelectedCitationId((current) => (current && uniqueIds.includes(current) ? current : newCitations[0].id))
+            const nextSelectedCitationId =
+              selectedCitationId && uniqueIds.includes(selectedCitationId)
+                ? selectedCitationId
+                : newCitations[0].id
+            setSelectedCitationId(nextSelectedCitationId)
           } else {
             setSelectedCitationId(null)
           }
@@ -351,7 +340,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setSelectedCitationId(null)
       closePanel()
     }
-  }, [allDevelopments, setManagedCitations, setSelectedCitationId, closePanel])
+  }, [allDevelopments, closePanel, selectedCitationId, setManagedCitations, setSelectedCitationId])
   
   // Screen size detection for mobile/desktop check
   useEffect(() => {
@@ -540,7 +529,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
     } catch (error) {
       // Only show toast error if it's not a timeout/abort
-      if (error.name !== 'AbortError' && error.name !== 'TimeoutError') {
+      if (!(error instanceof Error) || (error.name !== 'AbortError' && error.name !== 'TimeoutError')) {
         toast({
           title: "Loading Error",
           description: "Unable to load data. Using cached version.",

@@ -43,8 +43,6 @@ import {
   Plus,
   CreditCard
 } from "lucide-react"
-import { OnboardingWizard } from "./onboarding-wizard"
-import { useOnboarding } from "@/contexts/onboarding-context"
 import { useToast } from "@/components/ui/use-toast"
 import { ChangePasswordPopup } from "./change-password-popup"
 import { MetaTags } from "./meta-tags"
@@ -62,7 +60,7 @@ import { SubscriptionCard } from "@/components/subscription/subscription-card"
 import { BillingHistory } from "@/components/subscription/billing-history"
 import { PlanUpgradeModal } from "@/components/subscription/plan-upgrade-modal"
 import { BillingManagementModal } from "@/components/billing/billing-management-modal"
-import type { SubscriptionTier } from "@/types/user"
+import type { BillingTransaction, SubscriptionTier } from "@/types/user"
 import { usePageDataCache } from "@/contexts/page-data-cache-context"
 
 const formatLinkedInUrl = (url: string): string => {
@@ -82,37 +80,64 @@ interface ProfilePageProps {
   loadVaultData?: boolean // Optional prop to control when to load Crown Vault data
 }
 
+type EditableUser = User & Record<string, any>
+type BillingHistoryEntry = BillingTransaction & {
+  invoice_number?: string
+  can_download_invoice?: boolean
+}
+
+const normalizeSubscriptionTier = (tier?: string): SubscriptionTier => {
+  switch (tier) {
+    case "architect":
+    case "family_office":
+      return "architect"
+    case "operator":
+    case "professional":
+      return "operator"
+    case "observer":
+    case "essential":
+    default:
+      return "observer"
+  }
+}
+
+const buildEnhancedUser = (user: User | null | undefined): EditableUser => {
+  const baseUser = (user ?? {}) as EditableUser
+  const initialCompanyName = baseUser.company ||
+    baseUser.company_info?.name ||
+    baseUser.profile?.company_info?.name ||
+    ""
+
+  return {
+    ...baseUser,
+    user_id: baseUser.user_id || baseUser._id || baseUser.id || "",
+    email: baseUser.email || "",
+    name: baseUser.name || "",
+    net_worth: baseUser.net_worth || 0,
+    city: baseUser.city || "",
+    country: baseUser.country || "",
+    industries: Array.isArray(baseUser.industries) ? baseUser.industries : [],
+    company: initialCompanyName,
+    phone_number: baseUser.phone_number || "",
+    linkedin: baseUser.linkedin || "",
+    office_address: baseUser.office_address || "",
+    crypto_investor: Boolean(baseUser.crypto_investor),
+    land_investor: Boolean(baseUser.land_investor),
+    bio: baseUser.bio || "",
+    company_info: {
+      ...(baseUser.company_info || baseUser.profile?.company_info || {}),
+      name: initialCompanyName
+    }
+  }
+}
+
 export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = false }: ProfilePageProps) {
   const { theme } = useTheme()
   const searchParams = useSearchParams()
   const [isEditing, setIsEditing] = useState(false)
-  const { showOnboardingWizard, setShowOnboardingWizard } = useOnboarding()
   const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
-
-  // Guard clause: Return loading state if user is not defined
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <CrownLoader size="lg" text="Loading profile..." />
-      </div>
-    )
-  }
-
-  // Ensure user data includes necessary properties, especially company info
-  const initialCompanyName = user.company ||
-                            user.company_info?.name ||
-                            user.profile?.company_info?.name ||
-                            "";
-
-  const enhancedUser = {
-    ...user,
-    company: initialCompanyName,
-    company_info: {
-      ...(user.company_info || user.profile?.company_info || {}),
-      name: initialCompanyName
-    }
-  }
-  const [editedUser, setEditedUser] = useState(enhancedUser)
+  const effectiveUser = buildEnhancedUser(user)
+  const [editedUser, setEditedUser] = useState<EditableUser>(effectiveUser)
   const { toast } = useToast()
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
@@ -144,8 +169,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
         return 'Observer'
     }
   }
-  const [billingHistory, setBillingHistory] = useState([])
+  const [billingHistory, setBillingHistory] = useState<BillingHistoryEntry[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+
+  useEffect(() => {
+    setEditedUser(buildEnhancedUser(user))
+  }, [user])
 
   // Enhanced billing history fetch with better error handling
   const fetchBillingHistory = useCallback(async () => {
@@ -155,7 +184,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       
       if (response && response.success) {
         // Convert backend format to frontend format
-        const formattedTransactions = (response.payments || []).map((payment: any) => ({
+        const formattedTransactions: BillingHistoryEntry[] = (response.payments || []).map((payment: any) => ({
           id: payment.transaction_id || payment.id,
           amount: payment.amount, // Keep in original format (INR)
           currency: payment.currency || 'INR',
@@ -183,7 +212,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   const handleDownloadInvoice = useCallback(async (transactionId: string) => {
     try {
       // Find the payment in billing history
-      const payment = billingHistory.find((p: any) => p.id === transactionId)
+      const payment = billingHistory.find((p) => p.id === transactionId)
       
       if (payment && payment.invoice_url && payment.can_download_invoice) {
         // Direct download available
@@ -370,8 +399,9 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
 
   // Resolve userId once from user prop — don't re-run on callback changes
   useEffect(() => {
-    if (user && (user.user_id || user._id)) {
-      const userApiId = user.user_id || user._id || user.id
+    const sourceUser = user as (User & { _id?: string; id?: string }) | null | undefined
+    const userApiId = sourceUser?.user_id || sourceUser?._id || sourceUser?.id || null
+    if (userApiId) {
       setUserId(userApiId)
     } else {
       const storedUserId = getCurrentUserId()
@@ -441,7 +471,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
         name: String(editedUser.name),
         city: String(editedUser.city),
         country: String(editedUser.country),
-        industries: editedUser.industries.map(String),
+        industries: (editedUser.industries ?? []).map(String),
         company: String(editedUser.company),
         phone_number: String(editedUser.phone_number),
         linkedin: formattedLinkedIn,
@@ -456,7 +486,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
         name: String(editedUser.name),
         city: String(editedUser.city),
         country: String(editedUser.country),
-        industries: editedUser.industries.map(String),
+        industries: (editedUser.industries ?? []).map(String),
         phone_number: String(editedUser.phone_number),
         linkedin: formattedLinkedIn,
         office_address: String(editedUser.office_address),
@@ -474,7 +504,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       // First try to update via the default handler - if it fails, fall back to direct API
       // First update the UI with the local handler to give immediate feedback
       try {
-        await onUpdateUser({ ...user, ...updatedUserData });
+        await onUpdateUser({ ...effectiveUser, ...updatedUserData });
       } catch (handlerError) {
       }
       
@@ -487,14 +517,14 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
       
       // Create merged user object
       const mergedUser = { 
-        ...user, 
+        ...effectiveUser, 
         ...updatedUserData,
         ...responseData,
         // Ensure these are carried over
-        id: user.id || userId,
-        user_id: user.user_id || userId,
+        id: effectiveUser.id || userId,
+        user_id: effectiveUser.user_id || userId,
         profile: {
-          ...(user.profile || {}),
+          ...(effectiveUser.profile || {}),
           ...responseData,
           city: updatedUserData.city,
           country: updatedUserData.country,
@@ -506,7 +536,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
           crypto_investor: updatedUserData.crypto_investor,
           land_investor: updatedUserData.land_investor,
           company_info: {
-            ...(user.profile?.company_info || {}),
+            ...(effectiveUser.profile?.company_info || {}),
             name: String(editedUser.company || ""),
             about: editedUser.company_info?.about || ""
           }
@@ -539,10 +569,6 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
     }
   }
 
-  const toggleOnboardingWizard = () => {
-    setShowOnboardingWizard(!showOnboardingWizard)
-  }
-
   const handleChangePassword = () => {
     setIsChangePasswordOpen(true)
   }
@@ -567,7 +593,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
     return `${value.toLocaleString()}`
   }
 
-  if (isLoading) {
+  if (isLoading || (!user && !editedUser.user_id && !editedUser.email)) {
     return (
       <div className="flex justify-center items-center h-screen">
         <CrownLoader size="lg" text="Loading your profile..." />
@@ -632,7 +658,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                     }
 
                     // Fallback to email username
-                    return editedUser.email?.split('@')[0] || user.email?.split('@')[0] || 'Welcome';
+                    return editedUser.email?.split('@')[0] || effectiveUser.email?.split('@')[0] || 'Welcome';
                   })()}
                 </h1>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground mb-4">
@@ -1123,7 +1149,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                         )}
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Email</p>
-                          <p className="font-medium">{editedUser.email || user.email || "Not specified"}</p>
+                          <p className="font-medium">{editedUser.email || effectiveUser.email || "Not specified"}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -1211,7 +1237,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                       {/* Subscription Overview */}
                       <SubscriptionCard
                         subscription={editedUser.subscription || {
-                          tier: (editedUser.tier || editedUser.subscription_tier || 'family_office') as SubscriptionTier,
+                          tier: normalizeSubscriptionTier(editedUser.tier || editedUser.subscription_tier),
                           status: 'active',
                           auto_renew: true,
                           billing_cycle: 'monthly'
@@ -1298,7 +1324,9 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
         <PlanUpgradeModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
-          currentTier={editedUser.subscription?.tier || editedUser.tier || editedUser.subscription_tier || 'family_office'}
+          currentTier={normalizeSubscriptionTier(
+            editedUser.subscription?.tier || editedUser.tier || editedUser.subscription_tier
+          )}
           onSuccess={(tier, billingCycle) => {
             // Update user subscription in state
             const updatedUser = {
@@ -1315,22 +1343,21 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
             setEditedUser(updatedUser)
             onUpdateUser(updatedUser)
             
-            // Add mock transaction
-            const getPlanAmount = () => {
-              const amounts = {
-                essential: { monthly: 9900, yearly: 99000 },
-                professional: { monthly: 29900, yearly: 299000 },
-                family_office: { monthly: 59900, yearly: 599000 }
-              }
-              return amounts[tier as keyof typeof amounts]?.[billingCycle] || 0
-            }
-            
-            const getPlanName = () => {
-              if (tier === 'architect') return 'Architect'
-              if (tier === 'operator') return 'Operator'
-              if (tier === 'observer') return 'Observer'
-              return tier.charAt(0).toUpperCase() + tier.slice(1)
-            }
+	            // Add mock transaction
+	            const getPlanAmount = () => {
+	              const amounts = {
+	                observer: { monthly: 9900, yearly: 99000 },
+	                operator: { monthly: 29900, yearly: 299000 },
+	                architect: { monthly: 59900, yearly: 599000 }
+	              }
+	              return amounts[tier as keyof typeof amounts]?.[billingCycle] || 0
+	            }
+	            
+	            const getPlanName = () => {
+	              if (tier === 'architect') return 'Architect'
+	              if (tier === 'operator') return 'Operator'
+	              return 'Observer'
+	            }
             
             // Refresh billing history after successful upgrade
             fetchBillingHistory()

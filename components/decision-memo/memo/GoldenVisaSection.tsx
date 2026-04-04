@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   Calendar
 } from 'lucide-react';
-import { VisaProgram, DestinationDrivers } from '@/lib/decision-memo/memo-types';
+import type { DestinationDrivers, VisaProgram } from '@/lib/pdf/pdf-types';
 
 interface GoldenVisaSectionProps {
   destinationDrivers?: DestinationDrivers;
@@ -59,7 +59,7 @@ function VisaProgramCard({ program, index }: { program: VisaProgram; index: numb
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h4 className="text-lg font-normal text-foreground tracking-tight">{program.program_name}</h4>
+            <h4 className="text-lg font-normal text-foreground tracking-tight">{program.program_name || program.name || 'Visa Program'}</h4>
             {program.investment_type && (
               <p className="text-sm text-muted-foreground/60 mt-1">{program.investment_type}</p>
             )}
@@ -72,7 +72,7 @@ function VisaProgramCard({ program, index }: { program: VisaProgram; index: numb
           {/* Investment */}
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Investment</p>
-            <p className="text-base font-medium tabular-nums text-foreground">{program.minimum_investment}</p>
+            <p className="text-base font-medium tabular-nums text-foreground">{program.minimum_investment || program.investment_min || '—'}</p>
           </div>
 
           {/* Duration */}
@@ -104,11 +104,11 @@ function VisaProgramCard({ program, index }: { program: VisaProgram; index: numb
         <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-8" />
 
         {/* Key Benefits */}
-        {program.key_benefits && program.key_benefits.length > 0 && (
+        {(program.key_benefits || program.benefits) && (program.key_benefits || program.benefits || []).length > 0 && (
           <div className="mb-8">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Key Benefits</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              {program.key_benefits.map((benefit, i) => (
+              {(program.key_benefits || program.benefits || []).map((benefit, i) => (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle className="w-3.5 h-3.5 text-gold/60 mt-0.5 flex-shrink-0" />
                   <span className="text-sm text-muted-foreground font-normal">{benefit}</span>
@@ -188,7 +188,7 @@ export function GoldenVisaSection({
       <div className="space-y-8 sm:space-y-12">
         {/* Visa Program Cards */}
         {visaPrograms.map((program, index) => (
-          <VisaProgramCard key={program.program_name} program={program} index={index} />
+          <VisaProgramCard key={program.program_name || program.name || `visa-program-${index}`} program={program} index={index} />
         ))}
 
         {/* Additional Drivers Section */}
