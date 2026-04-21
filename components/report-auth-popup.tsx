@@ -26,7 +26,7 @@ const REPORT_AUTH_API = "/api/decision-memo/auth"
 interface ReportAuthPopupProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: (token: string, rememberDevice: boolean) => void
+  onSuccess: (rememberDevice: boolean) => void
   intakeId: string
 }
 
@@ -100,7 +100,8 @@ export function ReportAuthPopup({
         body: JSON.stringify({
           slug: intakeId,
           email,
-          password
+          password,
+          remember_device: rememberDevice,
         })
       })
 
@@ -125,20 +126,9 @@ export function ReportAuthPopup({
           title: "Verification code sent",
           description: data.message || "Check your email for the 6-digit code."
         })
-      } else if (data.token) {
-        // Direct access (no MFA) — viewer account with skip_mfa
-        // If platform access_token also returned, flag this as a viewer session
-        // so the sidebar can mute Simulation (which requires $599/mo subscription)
-        if (data.access_token && typeof window !== 'undefined') {
-          sessionStorage.setItem('viewer_session', 'true')
-          // Store report token under a well-known key so fetchCrisisIntelligence
-          // can pass it as Authorization Bearer to the backend — the backend's
-          // SecurityMiddleware accepts report_access JWTs (same JWT_SECRET_KEY)
-          sessionStorage.setItem('latest_report_token', data.token)
-          // Notify crisis intel context to re-fetch immediately with the token
-          window.dispatchEvent(new Event('hnwi-auth-changed'))
-        }
-        completeAuth(data.token)
+      } else if (data.report_session || data.success) {
+        window.dispatchEvent(new Event('hnwi-auth-changed'))
+        completeAuth()
       }
     } catch (err) {
       setError("Connection error. Please check your internet and try again.")
@@ -184,8 +174,9 @@ export function ReportAuthPopup({
         return
       }
 
-      if (data.success && data.token) {
-        completeAuth(data.token)
+      if (data.success || data.report_session) {
+        window.dispatchEvent(new Event('hnwi-auth-changed'))
+        completeAuth()
       } else {
         setError("Verification failed. Please try again.")
       }
@@ -238,7 +229,7 @@ export function ReportAuthPopup({
 
   // ─── Auth Completion ───────────────────────────────────────────────────────
 
-  const completeAuth = (token: string) => {
+  const completeAuth = () => {
     toast({
       title: "Document unlocked",
       description: "Encrypted document access verified."
@@ -246,7 +237,7 @@ export function ReportAuthPopup({
 
     setTimeout(() => {
       handleClose()
-      onSuccess(token, rememberDevice)
+      onSuccess(rememberDevice)
     }, 100)
   }
 

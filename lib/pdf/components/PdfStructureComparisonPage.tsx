@@ -172,6 +172,10 @@ export const PdfStructureComparisonPage: React.FC<
       (optimal_structure.annual_cost !== undefined &&
         optimal_structure.annual_cost > 0));
 
+  if (structures_analyzed.length === 0) {
+    return null;
+  }
+
   // Build table rows
   const tableHeaders = ["#", "STRUCTURE", "10YR BENEFIT", "SETUP", "ANNUAL", "VERDICT"];
   const tableColumnWidths = [0.4, 2.5, 1.2, 0.8, 0.8, 1];

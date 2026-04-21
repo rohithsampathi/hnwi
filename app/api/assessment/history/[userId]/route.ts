@@ -6,9 +6,9 @@ import { cookies } from 'next/headers';
 import { API_BASE_URL } from '@/config/api';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     userId: string;
-  };
+  }>;
 }
 
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await params;
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
 

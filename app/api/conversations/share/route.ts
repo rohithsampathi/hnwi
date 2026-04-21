@@ -68,7 +68,7 @@ async function handlePost(request: NextRequest) {
     }
 
     // Auth check
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const accessToken = cookieStore.get('access_token')?.value
 
     if (!accessToken) {

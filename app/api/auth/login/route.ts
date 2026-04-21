@@ -6,10 +6,26 @@ import { logger } from '@/lib/secure-logger'
 import { validateInput, loginSchema } from '@/lib/validation'
 import { RateLimiter } from '@/lib/rate-limiter'
 import { ApiAuth } from '@/lib/api-auth'
-import { secureApi } from '@/lib/secure-api'
 import { SessionEncryption } from '@/lib/session-encryption'
 import { createSafeErrorResponse, sanitizeLoggingContext } from '@/lib/security/sanitization'
 import { CSRFProtection } from '@/lib/csrf-protection'
+import {
+  resolveAuthSessionMaxAge,
+  REMEMBERED_SESSION_MAX_AGE_SECONDS,
+} from '@/lib/auth-cookie-policy'
+import { applyBackendAuthCookies, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
+
+const DEFAULT_AUTH_LOGIN_TIMEOUT_MS = 120_000
+
+function resolveAuthLoginTimeoutMs(): number {
+  const rawValue = process.env.AUTH_LOGIN_TIMEOUT_MS
+  if (!rawValue) return DEFAULT_AUTH_LOGIN_TIMEOUT_MS
+
+  const parsed = Number.parseInt(rawValue, 10)
+  return Number.isFinite(parsed) && parsed >= 5_000
+    ? parsed
+    : DEFAULT_AUTH_LOGIN_TIMEOUT_MS
+}
 
 // Helper to get cookie domain for PWA cross-subdomain support
 function getCookieDomain(): string | undefined {
@@ -33,52 +49,17 @@ function getCookieDomain(): string | undefined {
 }
 
 // Helper to forward backend cookies to client with PWA-compatible settings
-function forwardBackendCookies(response: NextResponse, backendCookieHeader: string | null) {
-  if (!backendCookieHeader) return;
+function forwardBackendCookies(
+  response: NextResponse,
+  backendCookieHeaders: string[],
+  rememberDevice: boolean,
+) {
+  if (backendCookieHeaders.length === 0) return;
 
   const cookieDomain = getCookieDomain();
-  const cookies = backendCookieHeader.split(',').map(c => c.trim());
-  cookies.forEach(cookie => {
-    const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim());
-    const [name, value] = nameValue.split('=');
-
-    // PWA-compatible cookie configuration
-    const isProd = process.env.NODE_ENV === 'production';
-
-    // Parse sameSite attribute from backend cookie
-    let sameSiteValue: 'strict' | 'lax' | 'none' = isProd ? 'none' : 'lax';
-    if (!isProd) {
-      if (cookie.includes('SameSite=Strict')) sameSiteValue = 'strict';
-      else if (cookie.includes('SameSite=Lax')) sameSiteValue = 'lax';
-      else if (cookie.includes('SameSite=None')) sameSiteValue = 'none';
-    }
-
-    // CRITICAL FIX: If sameSite is 'none', secure MUST be true (browser requirement)
-    // This is especially important for incognito mode
-    const requiresSecure = sameSiteValue === 'none' || isProd || cookie.includes('Secure');
-
-    const cookieOptions: any = {
-      name,
-      value,
-      httpOnly: cookie.includes('HttpOnly'),
-      // Always secure in production for PWA or when sameSite is 'none'
-      secure: requiresSecure,
-      // Use 'none' in production for PWA cross-context support
-      sameSite: sameSiteValue,
-      path: '/',
-      // Set to 7 days (before iOS Safari auto-clear)
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-    };
-
-    // Add domain for cross-subdomain support (only in production)
-    if (cookieDomain) {
-      cookieOptions.domain = cookieDomain;
-    }
-
-    // Note: partitioned:true intentionally omitted — conflicts with domain
-    // attribute per CHIPS spec; causes Safari to silently drop the cookie.
-
-    response.cookies.set(cookieOptions);
+  applyBackendAuthCookies(response, backendCookieHeaders, rememberDevice, {
+    cookieDomain,
+    secureDefault: process.env.NODE_ENV === 'production',
   });
 }
 
@@ -151,6 +132,8 @@ async function handlePost(request: NextRequest) {
       );
     }
 
+    const rememberDevice = validation.data?.rememberDevice === true;
+
     logger.debug("Login request received", {
       email: validation.data!.email,
       hasPassword: !!validation.data!.password
@@ -160,14 +143,19 @@ async function handlePost(request: NextRequest) {
     try {
       const { API_BASE_URL } = await import("@/config/api");
       const backendUrl = `${API_BASE_URL}/api/auth/login`;
+      const authLoginTimeoutMs = resolveAuthLoginTimeoutMs()
+      const backendRequestStartedAt = Date.now()
 
       // Get cookies from request to forward to backend
       const cookies = request.cookies.getAll();
       const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+      const csrfHeader = request.headers.get('x-csrf-token');
 
-      // Add timeout to prevent hanging on slow/unreachable backend
+      // MFA login can legitimately take time because the backend sends the email
+      // before returning the challenge. Keep a bounded timeout, but not one so
+      // short that a healthy provider round-trip becomes a frontend failure.
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), authLoginTimeoutMs);
 
       let backendFetchResponse;
       try {
@@ -176,6 +164,7 @@ async function handlePost(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             ...(cookieHeader && { 'Cookie': cookieHeader }),
+            ...(csrfHeader && { 'X-CSRF-Token': csrfHeader }),
           },
           credentials: 'include',
           body: JSON.stringify(validation.data!),
@@ -189,11 +178,13 @@ async function handlePost(request: NextRequest) {
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           logger.warn("Backend login request timed out", {
             email: validation.data!.email,
-            backendUrl
+            backendUrl,
+            timeoutMs: authLoginTimeoutMs,
+            elapsedMs: Date.now() - backendRequestStartedAt
           });
 
           const response = NextResponse.json(
-            createSafeErrorResponse('Authentication service is taking too long to respond. Please try again.'),
+            createSafeErrorResponse('Authentication is still processing. MFA email delivery is taking longer than expected. Please wait a moment and try again.'),
             { status: 504 }
           );
           return ApiAuth.addSecurityHeaders(response);
@@ -206,7 +197,7 @@ async function handlePost(request: NextRequest) {
       const backendResponse = await backendFetchResponse.json();
 
       // Forward Set-Cookie headers from backend
-      const backendCookies = backendFetchResponse.headers.get('set-cookie');
+      const backendCookies = getSetCookieHeaders(backendFetchResponse.headers);
 
       logger.info("Backend login response received", {
         success: !!backendResponse.success,
@@ -214,7 +205,8 @@ async function handlePost(request: NextRequest) {
         hasBackendToken: !!backendResponse.mfa_token,
         hasMessage: !!backendResponse.message,
         message: backendResponse.message,
-        email: validation.data!.email
+        email: validation.data!.email,
+        elapsedMs: Date.now() - backendRequestStartedAt
       });
 
       // Check if backend call was successful
@@ -322,16 +314,15 @@ async function handlePost(request: NextRequest) {
         });
 
         // Forward backend cookies
-        forwardBackendCookies(response, backendCookies);
+        forwardBackendCookies(response, backendCookies, rememberDevice);
 
-        // Store encrypted session in HTTP-only cookie for serverless persistence
-        // PWA-compatible configuration
+        // Store encrypted MFA session in same-site HTTP-only cookies.
         const isProd = process.env.NODE_ENV === 'production';
         const cookieDomain = getCookieDomain();
         const mfaCookieOptions = {
           httpOnly: true,
           secure: isProd,
-          sameSite: isProd ? ('none' as const) : ('lax' as const), // 'none' for PWA in production
+          sameSite: 'lax' as const,
           maxAge: 5 * 60, // 5 minutes
           path: '/',
           ...(cookieDomain ? { domain: cookieDomain } : {})
@@ -361,12 +352,12 @@ async function handlePost(request: NextRequest) {
         return ApiAuth.addSecurityHeaders(response);
       }
 
-      // Direct login success (no MFA) - check for access token or success indicator
-      if (backendResponse.access_token || (backendResponse.success && !backendResponse.requires_mfa)) {
+      // Direct login success (no MFA) - rely on backend-set cookies, not tokens in JSON.
+      if (!backendResponse.requires_mfa && (backendResponse.success || backendResponse.user || backendCookies.length > 0)) {
         const response = NextResponse.json(backendResponse);
 
         // Forward backend cookies
-        forwardBackendCookies(response, backendCookies);
+        forwardBackendCookies(response, backendCookies, rememberDevice);
 
         // CRITICAL FIX: Set session_user cookie for immediate session recovery
         // This ensures /api/auth/session can validate the user before backend cookies propagate
@@ -390,8 +381,8 @@ async function handlePost(request: NextRequest) {
           const sessionUserOptions: any = {
             httpOnly: true,
             secure: isProd,
-            sameSite: isProd ? ('none' as const) : ('lax' as const),
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            sameSite: 'lax' as const,
+            maxAge: resolveAuthSessionMaxAge(rememberDevice),
             path: '/'
           };
           if (cookieDomain) sessionUserOptions.domain = cookieDomain;
@@ -404,43 +395,22 @@ async function handlePost(request: NextRequest) {
           });
         }
 
-        // CRITICAL: Also explicitly set access_token cookie if backend returned it in body
-        // This ensures session validation works even if backend doesn't set it via Set-Cookie header
-        if (backendResponse.access_token) {
-          const isProd = process.env.NODE_ENV === 'production';
-          const cookieDomain = getCookieDomain();
+        const isProd = process.env.NODE_ENV === 'production';
+        const cookieDomain = getCookieDomain();
 
-          const accessTokenOptions: any = {
+        if (rememberDevice) {
+          const rememberOptions: any = {
             httpOnly: true,
             secure: isProd,
-            sameSite: isProd ? ('none' as const) : ('lax' as const),
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            sameSite: 'lax' as const,
+            maxAge: REMEMBERED_SESSION_MAX_AGE_SECONDS,
             path: '/'
           };
-          if (cookieDomain) accessTokenOptions.domain = cookieDomain;
+          if (cookieDomain) rememberOptions.domain = cookieDomain;
 
-          response.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
-
-          logger.info('Set access_token cookie from response body', {
-            tokenLength: backendResponse.access_token.length
-          });
-        }
-
-        // Also set refresh_token if provided
-        if (backendResponse.refresh_token) {
-          const isProd = process.env.NODE_ENV === 'production';
-          const cookieDomain = getCookieDomain();
-
-          const refreshTokenOptions: any = {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: isProd ? ('none' as const) : ('lax' as const),
-            maxAge: 7 * 24 * 60 * 60, // 7 days
-            path: '/'
-          };
-          if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
-
-          response.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
+          response.cookies.set('remember_me', 'true', rememberOptions);
+        } else {
+          response.cookies.delete('remember_me');
         }
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
@@ -450,7 +420,6 @@ async function handlePost(request: NextRequest) {
         // Backend provided neither MFA flow nor direct login success
         logger.warn("Backend response missing both MFA and direct login indicators", {
           email: validation.data!.email,
-          hasAccessToken: !!backendResponse.access_token,
           requiresMfa: !!backendResponse.requires_mfa,
           hasMfaToken: !!backendResponse.mfa_token,
           hasError: !!backendResponse.error

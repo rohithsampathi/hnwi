@@ -1,7 +1,7 @@
 // lib/hooks/useValidatedCitations.ts
 // Hook to validate Dev IDs and only return citations for existing developments
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Citation } from '@/lib/parse-dev-citations';
 
 interface UseValidatedCitationsConfig {
@@ -22,9 +22,15 @@ export function useValidatedCitations({
   const [validCitations, setValidCitations] = useState<Citation[]>([]);
   const [validDevIds, setValidDevIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const devIdsKey = devIds.join(',');
+  const stableDevIds = useMemo(() => [...devIds], [devIds]);
+  const endpointBase = useMemo(
+    () => (isPublic ? '/api/developments/public' : '/api/developments'),
+    [isPublic]
+  );
 
   useEffect(() => {
-    if (!devIds || devIds.length === 0) {
+    if (stableDevIds.length === 0) {
       setValidCitations([]);
       setValidDevIds(new Set());
       return;
@@ -35,12 +41,11 @@ export function useValidatedCitations({
       const validIds = new Set<string>();
       const citations: Citation[] = [];
       let citationNumber = 1;
-
       // Batch validate all Dev IDs in parallel
-      const validationPromises = devIds.map(async (devId) => {
+      const validationPromises = stableDevIds.map(async (devId) => {
         try {
           // Check if development exists using HEAD request (more efficient)
-          const response = await fetch(`/api/developments/public/${devId}`, {
+          const response = await fetch(`${endpointBase}/${devId}`, {
             method: 'HEAD'
           });
 
@@ -74,7 +79,7 @@ export function useValidatedCitations({
     };
 
     validateDevIds();
-  }, [devIds.join(','), isPublic]); // Depend on stringified array to avoid infinite loops
+  }, [endpointBase, isPublic, stableDevIds]);
 
   return {
     validCitations,

@@ -19,6 +19,8 @@ interface ParsedSection {
   level?: number
 }
 
+const SUMMARY_HEADINGS = new Set(["executive summary", "hbyte summary", "summary"])
+
 /**
  * Parse analysis text:
  * - Remove ONLY standalone metadata lines (short single-line metadata)
@@ -91,15 +93,22 @@ function parseAnalysis(text: string): ParsedSection[] {
         currentContent = ''
       }
 
+      const headingText = headingMatch[2].trim()
+      if (SUMMARY_HEADINGS.has(headingText.toLowerCase())) {
+        continue
+      }
+
       // Add heading
       sections.push({
         type: 'heading',
-        content: headingMatch[2],
+        content: headingText,
         level: headingMatch[1].length
       })
     } else {
       // Accumulate regular content
-      currentContent += (currentContent ? ' ' : '') + trimmedLine
+      const cleanedLine = trimmedLine.replace(/^(?:Executive Summary|HByte Summary|Summary)\s*:?\s*/i, '').trim()
+      if (!cleanedLine) continue
+      currentContent += (currentContent ? ' ' : '') + cleanedLine
     }
   }
 
@@ -158,4 +167,3 @@ export function FormattedAnalysis({
     </div>
   )
 }
-

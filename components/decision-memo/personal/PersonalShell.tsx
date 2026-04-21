@@ -14,6 +14,8 @@ interface PersonalShellProps {
   memoData: PdfMemoData;
   backendData: any;
   intakeId: string;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number> | Record<string, any>;
   onExportPDF?: () => void;
   isExportingPDF?: boolean;
   onSwitchToReportView?: () => void;
@@ -23,6 +25,8 @@ export default function PersonalShell({
   memoData,
   backendData,
   intakeId,
+  onCitationClick,
+  citationMap,
   onExportPDF,
   isExportingPDF,
   onSwitchToReportView,
@@ -158,6 +162,8 @@ export default function PersonalShell({
           activeSection={activeSection}
           onSectionChange={handleSectionChange}
           riskLevel={riskLevel}
+          onCitationClick={onCitationClick}
+          citationMap={citationMap}
         />
       </div>
 

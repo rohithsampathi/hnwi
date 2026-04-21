@@ -294,7 +294,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   // Handle citation selection from panel
   const handleCitationSelect = useCallback((citationId: string) => {
     setSelectedCitationId(citationId)
-  }, [])
+  }, [setSelectedCitationId])
 
   // Client-side filter developments by selected industry (instant - no API call)
   const developments = useMemo(() => {
@@ -546,7 +546,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [selectedTimeRange, getCachedData, setCachedData, toast])
+  }, [allDevelopments.length, getCachedData, isLoading, selectedTimeRange, setCachedData, toast])
 
   // Initial load and when duration changes ONLY - NOT when industry changes
   useEffect(() => {

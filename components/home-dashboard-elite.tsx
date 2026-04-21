@@ -43,6 +43,7 @@ export function HomeDashboardElite({
   userData,
   hasCompletedAssessmentProp
 }: HomeDashboardEliteProps) {
+  const userId = user?.id || user?.user_id || null
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)
@@ -233,13 +234,9 @@ export function HomeDashboardElite({
     }
 
     const checkAssessmentCompletion = async () => {
-      if (!user?.id && !user?.user_id) return
+      if (!userId) return
 
       try {
-        const userId = user.id || user.user_id
-        if (!userId) {
-          return
-        }
         const response = await fetchAssessmentHistory(userId)
 
         // Check if user has any completed assessments
@@ -252,7 +249,7 @@ export function HomeDashboardElite({
     }
 
     checkAssessmentCompletion()
-  }, [user, hasCompletedAssessmentProp])
+  }, [userId, hasCompletedAssessmentProp])
 
   // Handle citation click from map popup
   const handleCitationClick = useCallback((citationId: string) => {

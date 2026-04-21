@@ -16,9 +16,26 @@ export interface CitationMapEntry {
 }
 export type CitationMap = Record<string, CitationMapEntry>
 
-// Match both [Dev ID: 164] and simple [164] formats
-const DEV_ID_CAPTURE = /\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*([^\]\r\n]+)\]/gi
+const CITATION_LABEL = '(?:Dev\\s*ID|DEVID|Article\\s*ID)'
+const BRACKETED_CITATION_PATTERN = `\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*([^\\]\\r\\n]+)\\]`
+
+// Match bracketed reference forms like [Dev ID: 164], [DEVID - abc], [Article ID: xyz]
+const DEV_ID_CAPTURE = new RegExp(BRACKETED_CITATION_PATTERN, 'gi')
 const SIMPLE_NUMERIC_CITATION = /\[(\d+)\]/g
+const RAW_ID_CAPTURE = new RegExp(`\\b${CITATION_LABEL}\\s*[:\\-–—]\\s*([A-Za-z0-9_-]{8,})\\b`, 'gi')
+
+export function normalizeCitationReferences(text: string): string {
+  if (!text) return ''
+
+  return text.replace(RAW_ID_CAPTURE, (match, citationId, offset, source) => {
+    const before = source[offset - 1]
+    const after = source[offset + match.length]
+    if (before === '[' && after === ']') {
+      return match
+    }
+    return `[DEVID: ${String(citationId).trim()}]`
+  })
+}
 
 // Helper to get value from either Map or plain object
 // Uses duck typing instead of instanceof to handle cross-realm cases
@@ -51,9 +68,11 @@ export function parseDevCitations(
     return { formattedText: '', citations }
   }
 
+  const normalizedText = normalizeCitationReferences(text)
+
   // Collect unique citation IDs from both formats
-  const devIdMatches = Array.from(text.matchAll(DEV_ID_CAPTURE))
-  const simpleMatches = Array.from(text.matchAll(SIMPLE_NUMERIC_CITATION))
+  const devIdMatches = Array.from(normalizedText.matchAll(DEV_ID_CAPTURE))
+  const simpleMatches = Array.from(normalizedText.matchAll(SIMPLE_NUMERIC_CITATION))
 
   // Combine both match types
   const matches = [...devIdMatches, ...simpleMatches]
@@ -73,13 +92,13 @@ export function parseDevCitations(
     }
   })
 
-  let formattedText = text
+  let formattedText = normalizedText
 
   citations.forEach(citation => {
     const escapedId = citation.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-    // Match both formats: [Dev ID: 164] and [164]
-    const fullPattern = new RegExp(`\\[(?:Dev\\s*ID|DEVID)\\s*[:\\-–—]\\s*${escapedId}\\]`, 'gi')
+    // Match both labeled formats ([Dev ID: 164], [DEVID: abc], [Article ID: xyz]) and [164]
+    const fullPattern = new RegExp(`\\[${CITATION_LABEL}\\s*[:\\-–—]\\s*${escapedId}\\]`, 'gi')
     const simplePattern = new RegExp(`\\[${escapedId}\\]`, 'g')
 
     // Replace full format first
@@ -109,9 +128,11 @@ export function extractDevIds(text: string): string[] {
 
   if (!text) return ids
 
+  const normalizedText = normalizeCitationReferences(text)
+
   // Extract from both formats
-  const devIdMatches = Array.from(text.matchAll(DEV_ID_CAPTURE))
-  const simpleMatches = Array.from(text.matchAll(SIMPLE_NUMERIC_CITATION))
+  const devIdMatches = Array.from(normalizedText.matchAll(DEV_ID_CAPTURE))
+  const simpleMatches = Array.from(normalizedText.matchAll(SIMPLE_NUMERIC_CITATION))
 
   const allMatches = [...devIdMatches, ...simpleMatches]
 

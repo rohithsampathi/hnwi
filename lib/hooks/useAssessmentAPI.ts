@@ -108,15 +108,10 @@ export const useAssessmentAPI = () => {
     setError(null);
 
     try {
-      // Use secureApi.fetchWithAuth for authenticated file downloads
-      const token = localStorage.getItem('access_token');
-
       const response = await fetch(
         `/api/assessment/${sessionId}/pdf?dynamic=${dynamic}`,
         {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',
         }
       );
 

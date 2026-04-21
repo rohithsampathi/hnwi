@@ -3,6 +3,7 @@
 
 import { useEffect, useCallback, useRef } from 'react'
 import { loginUser, logoutUser, getCurrentUser, isAuthenticated as authManagerAuthenticated } from '@/lib/auth-manager'
+import { fetchAuthSession } from '@/lib/client-auth-session'
 import { setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
 import { logger } from '@/lib/secure-logger'
 
@@ -57,18 +58,9 @@ export function useAuthSync(options: UseAuthSyncOptions = {}) {
 
       // Try to get session from backend
       try {
-        const response = await fetch('/api/auth/session', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
+        const data = await fetchAuthSession({ force: true })
 
-        if (response.ok) {
-          const data = await response.json()
-
-          if (data.user) {
+        if (data?.user) {
             log('Session found, syncing auth states', { user: data.user.email })
 
             // Sync all auth systems
@@ -84,23 +76,7 @@ export function useAuthSync(options: UseAuthSyncOptions = {}) {
 
             onAuthChange?.(true, normalizedUser)
             log('Auth state sync completed successfully')
-          } else {
-            log('No session found - checking if we should clear auth states')
-
-            // Only clear auth states if we have no existing user data
-            // This prevents clearing auth when cookies are temporarily not available
-            if (!currentUser) {
-              log('No existing user data found, clearing auth states')
-              logoutUser()
-              setAuthState(false)
-              onAuthChange?.(false, null)
-            } else {
-              log('Keeping existing user data despite session check failure')
-              // Keep existing auth state but don't mark as authenticated
-              // This allows for a grace period while cookie issues are resolved
-            }
-          }
-        } else if (response.status === 401) {
+        } else {
           log('Session expired - checking if we should clear auth states')
 
           // Only clear auth states if we have no existing user data
@@ -115,8 +91,6 @@ export function useAuthSync(options: UseAuthSyncOptions = {}) {
             // Keep existing user data but mark as potentially unauthenticated
             // This prevents immediate logout on navigation when cookies aren't sent properly
           }
-        } else {
-          log('Session check failed', { status: response.status })
         }
       } catch (error) {
         log('Session check network error', error)

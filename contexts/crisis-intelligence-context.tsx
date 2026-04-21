@@ -28,6 +28,11 @@ interface CrisisIntelligenceState {
 
 const CrisisIntelligenceContext = createContext<CrisisIntelligenceState | null>(null)
 const CRISIS_FETCH_TIMEOUT_MS = 5000
+const CRISIS_CACHE_TTL_MS = 30000
+
+let cachedCrisisData: CrisisIntelligenceResponse | null = null
+let cachedCrisisFetchedAt = 0
+let inflightCrisisRequest: Promise<CrisisIntelligenceResponse> | null = null
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -45,9 +50,46 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   })
 }
 
+function getValidCachedCrisisData(): CrisisIntelligenceResponse | null {
+  if (!cachedCrisisData) return null
+  if (Date.now() - cachedCrisisFetchedAt > CRISIS_CACHE_TTL_MS) {
+    cachedCrisisData = null
+    cachedCrisisFetchedAt = 0
+    return null
+  }
+
+  return cachedCrisisData
+}
+
+async function fetchCrisisIntelligenceCached(force: boolean = false): Promise<CrisisIntelligenceResponse> {
+  if (!force) {
+    const cached = getValidCachedCrisisData()
+    if (cached) {
+      return cached
+    }
+
+    if (inflightCrisisRequest) {
+      return inflightCrisisRequest
+    }
+  }
+
+  const request = withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
+    .then((data) => {
+      cachedCrisisData = data
+      cachedCrisisFetchedAt = Date.now()
+      return data
+    })
+    .finally(() => {
+      inflightCrisisRequest = null
+    })
+
+  inflightCrisisRequest = request
+  return request
+}
+
 export function CrisisIntelligenceProvider({ children }: { children: React.ReactNode }) {
   const [showCrisisAlert, setShowCrisisAlert] = useState(false)
-  const [crisisData, setCrisisData] = useState<CrisisIntelligenceResponse | null>(null)
+  const [crisisData, setCrisisData] = useState<CrisisIntelligenceResponse | null>(() => getValidCachedCrisisData())
 
   const toggleCrisisAlert = useCallback(() => {
     setShowCrisisAlert(prev => !prev)
@@ -57,58 +99,41 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
   useEffect(() => {
     let cancelled = false
 
-    const doFetch = () =>
-      withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
+    const doFetch = (force: boolean = false) =>
+      fetchCrisisIntelligenceCached(force)
         .then((data) => { if (!cancelled) setCrisisData(data) })
         .catch(() => {})
 
-    // Quick auth check — skip the initial fetch if user clearly isn't logged in yet.
-    // This avoids noisy 401s when the provider mounts on unauthenticated pages
-    // (e.g. /decision-memo before login). The auth-event listeners below will
-    // trigger a fetch as soon as login completes.
-    const hasAuth = typeof window !== 'undefined' && (
-      !!localStorage.getItem('userId') ||
-      !!sessionStorage.getItem('userId') ||
-      !!sessionStorage.getItem('latest_report_token')
-    )
-
     let initTimeout: ReturnType<typeof setTimeout> | null = null
 
-    if (hasAuth) {
-      // User appears authenticated — fetch with a short delay for session to settle
-      initTimeout = setTimeout(() => {
-        withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
-          .then((data) => { if (!cancelled) setCrisisData(data) })
-          .catch(() => {
-            // Single retry after 5s if auth wasn't ready
-            if (!cancelled) {
-              setTimeout(() => {
-                withTimeout(fetchCrisisIntelligence(), CRISIS_FETCH_TIMEOUT_MS)
-                  .then((data) => { if (!cancelled) setCrisisData(data) })
-                  .catch(() => {})
-              }, 5000)
-            }
-          })
-      }, 1500)
-    }
+    initTimeout = setTimeout(() => {
+      fetchCrisisIntelligenceCached()
+        .then((data) => { if (!cancelled) setCrisisData(data) })
+        .catch(() => {
+          if (!cancelled) {
+            setTimeout(() => {
+              fetchCrisisIntelligenceCached(true)
+                .then((data) => { if (!cancelled) setCrisisData(data) })
+                .catch(() => {})
+            }, 5000)
+          }
+        })
+    }, 1500)
 
-    // Refresh every 5 minutes
-    const interval = setInterval(doFetch, 300_000)
+    // Refresh every 10 minutes
+    const interval = setInterval(() => { void doFetch(true) }, CRISIS_CACHE_TTL_MS)
 
-    // Re-fetch immediately when auth state changes:
-    // - 'hnwi-auth-changed': viewer logs in via audit popup OR Decision Memo popup
-    // - 'auth:login': platform user logs in (syncAuthSystems dispatches this)
-    // This covers the case where provider mounts before login.
-    const handleAuthChanged = () => { if (!cancelled) doFetch() }
+    // Re-fetch immediately when viewer access changes inside an already-mounted app surface.
+    // The authenticated layout mounts this provider after platform login, so generic
+    // auth:login listeners only create redundant refetches during session revalidation.
+    const handleAuthChanged = () => { if (!cancelled) void doFetch(true) }
     window.addEventListener('hnwi-auth-changed', handleAuthChanged)
-    window.addEventListener('auth:login', handleAuthChanged)
 
     return () => {
       cancelled = true
       if (initTimeout) clearTimeout(initTimeout)
       clearInterval(interval)
       window.removeEventListener('hnwi-auth-changed', handleAuthChanged)
-      window.removeEventListener('auth:login', handleAuthChanged)
     }
   }, [])
 
@@ -124,10 +149,7 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
   const crisisColors = crisisData?.colors ?? null
   const crisisLocations = useMemo(() => {
     if (!crisisData?.locations) return []
-    // Show: red geopolitical locations + ALL AI disruption locations (any status)
-    return crisisData.locations.filter(loc =>
-      loc.crisis_domain === "ai" || !loc.status || loc.status === "red"
-    )
+    return crisisData.locations
   }, [crisisData?.locations])
 
   const value = useMemo(() => ({

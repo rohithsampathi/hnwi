@@ -145,8 +145,7 @@ async function handlePost(request: NextRequest) {
       )
     }
     
-    // Set the session cookie on the response
-    // Include the token in the response so frontend can store it in localStorage
+    // Set the session cookies on the response. Frontend remains cookie-backed.
     const responseData = {
       success: result.success,
       user: result.user ?? null,
@@ -162,7 +161,7 @@ async function handlePost(request: NextRequest) {
       const sessionTokenOptions: any = {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' as const : 'lax' as const, // 'none' for PWA in production
+        sameSite: 'lax' as const,
         maxAge: 7 * 24 * 60 * 60, // 7 days (before iOS Safari auto-clear)
         path: '/'
       };
@@ -183,7 +182,7 @@ async function handlePost(request: NextRequest) {
       const sessionUserOptions: any = {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' as const : 'lax' as const, // 'none' for PWA in production
+        sameSite: 'lax' as const,
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/'
       };

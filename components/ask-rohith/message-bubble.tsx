@@ -12,6 +12,7 @@ import { useTheme } from "@/contexts/theme-context"
 import { Bot, User, Clock, BookOpen, Copy, Check, FileText, ThumbsUp, ThumbsDown } from "lucide-react"
 import { cn, parseMessageContent } from "@/lib/utils"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
+import { sanitizeRichHtml } from "@/lib/security/sanitization"
 import type { Message } from "@/types/rohith"
 import type { Citation } from "@/lib/parse-dev-citations"
 import VisualizationEngine from "@/components/ask-rohith-jarvis/VisualizationEngine"
@@ -46,9 +47,9 @@ export function MessageBubble({
 
   // Parse bullet points with side headings (• Heading: content)
   const parseBulletPoints = (text: string): string => {
-    // Convert bullet points like "• Dubai luxury surge: content" to structured HTML
+    // Convert bullet points into a narrow HTML subset that can be sanitized safely.
     return text.replace(/• ([^:]+):\s*([^\n•]+)/g, (match, heading, content) => {
-      return `<div><span class="text-primary mr-2">•</span><strong class="text-foreground font-semibold">${heading.trim()}:</strong> <span class="text-foreground">${content.trim()}</span></div>`
+      return `<p><strong>${heading.trim()}:</strong> ${content.trim()}</p>`
     })
   }
 
@@ -106,6 +107,11 @@ export function MessageBubble({
       setMessageCitations([])
     }
   }, [message.content, isAssistant, globalCitations])
+
+  const sanitizedFormattedContent = sanitizeRichHtml(formattedContent, {
+    allowCitations: true,
+    allowLinks: true,
+  })
 
   // Format timestamp
   const formatTime = (date: Date | string) => {
@@ -218,7 +224,7 @@ export function MessageBubble({
                         "text-foreground"
                       )}
                       dangerouslySetInnerHTML={{
-                        __html: formattedContent.replace(
+                        __html: sanitizedFormattedContent.replace(
                           /<citation data-id="([^"]+)" data-number="(\d+)">\[(\d+)\]<\/citation>/g,
                           (match, id, number) => {
                             return `<button
@@ -253,7 +259,7 @@ export function MessageBubble({
                       isUser ? "text-primary-foreground" : "text-foreground"
                     )}
                     dangerouslySetInnerHTML={{
-                      __html: formattedContent
+                      __html: sanitizedFormattedContent
                     }}
                   />
                 )}

@@ -349,7 +349,7 @@ const AssessmentQuestionInner: React.FC<AssessmentQuestionProps> = ({
     });
 
     setManagedCitations(allCitations);
-  }, [filteredCities.length, showPriveOpportunities, showHNWIPatterns]); // Only depend on the length and filter states
+  }, [filteredCities, setManagedCitations]);
 
   // Track when filtered cities count changes to update previous count and show banner
   useEffect(() => {

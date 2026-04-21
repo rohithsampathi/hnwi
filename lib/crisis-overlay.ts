@@ -2,9 +2,8 @@
 // Crisis Intelligence Overlay — country-level threat classification
 // All data fetched from backend API: GET /api/crisis-intelligence
 
-import { secureApi } from "@/lib/secure-api";
 
-const CRISIS_CACHE_TTL_MS = 60000
+const CRISIS_CACHE_TTL_MS = 5000
 let cachedCrisisIntelligence: CrisisIntelligenceResponse | null = null
 let cachedCrisisIntelligenceAt = 0
 let inflightCrisisIntelligence: Promise<CrisisIntelligenceResponse> | null = null
@@ -36,6 +35,12 @@ export interface CrisisAlert {
 export interface CrisisImpact {
   asset: string;
   movement: string;
+  value?: string;
+  current_value?: string;
+  previous_value?: string;
+  delta?: string;
+  delta_value?: string;
+  direction?: "up" | "down" | "flat";
   detail: string;
 }
 
@@ -126,6 +131,12 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
     impacts: (data.alert?.impacts || []).map((i: any) => ({
       asset: i.asset,
       movement: i.movement,
+      value: i.value,
+      current_value: i.current_value,
+      previous_value: i.previous_value,
+      delta: i.delta,
+      delta_value: i.delta_value,
+      direction: i.direction,
       detail: i.detail,
     })),
     chokepoints: data.alert?.chokepoints || [],
@@ -189,37 +200,23 @@ export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceRespo
     return inflightCrisisIntelligence
   }
 
-  // Viewer accounts (audit.viewer / hnwi@montaigne.co) authenticate via report Bearer token.
-  // The report token is stored in sessionStorage by the audit popup on login.
-  // We pass it as Authorization so the Next.js route can forward it to the backend —
-  // the SecurityMiddleware accepts any valid JWT signed with the same secret.
-  const reportToken =
-    typeof window !== "undefined"
-      ? sessionStorage.getItem("latest_report_token")
-      : null;
-
   inflightCrisisIntelligence = (async () => {
-    if (reportToken) {
-      const bust = Date.now();
-      const resp = await fetch(`/api/crisis-intelligence?t=${bust}`, {
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          Authorization: `Bearer ${reportToken}`,
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      });
-      if (!resp.ok) throw new Error(`${resp.status}`);
-      const payload = transformBackendResponse(await resp.json());
-      cachedCrisisIntelligence = payload
-      cachedCrisisIntelligenceAt = Date.now()
-      return payload
+    const bust = Date.now()
+    const response = await fetch(`/api/crisis-intelligence?t=${bust}`, {
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`${response.status}`)
     }
 
-    const data = await secureApi.get("/api/crisis-intelligence", true, true);
-    const payload = transformBackendResponse(data)
+    const payload = transformBackendResponse(await response.json())
     cachedCrisisIntelligence = payload
     cachedCrisisIntelligenceAt = Date.now()
     return payload
@@ -233,13 +230,30 @@ export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceRespo
 // ─── DERIVED HELPERS ─────────────────────────────────────────────────
 
 export function buildZoneMap(zones: CrisisZone[]): Record<string, CrisisZone> {
-  // Hierarchy: War > Geopolitical > AI. If duplicate numeric IDs exist,
-  // keep the highest-severity entry (red > amber > yellow).
+  // Prefer the highest-severity zone first, then break ties by domain.
+  // War must outrank non-war domains; within non-war ties, geopolitical
+  // outranks AI, which outranks banking/macro.
   const statusRank: Record<string, number> = { red: 0, amber: 1, yellow: 2 };
+  const domainRank: Record<string, number> = {
+    war: 0,
+    geopolitical: 1,
+    ai: 2,
+    banking: 3,
+    macro: 4,
+  };
   const map: Record<string, CrisisZone> = {};
   for (const z of zones) {
     const existing = map[z.numericId];
-    if (!existing || (statusRank[z.status] ?? 9) < (statusRank[existing.status] ?? 9)) {
+    const candidateStatus = statusRank[z.status] ?? 9;
+    const existingStatus = existing ? (statusRank[existing.status] ?? 9) : 9;
+    const candidateDomain = domainRank[z.crisisDomain || "macro"] ?? 9;
+    const existingDomain = existing ? (domainRank[existing.crisisDomain || "macro"] ?? 9) : 9;
+
+    if (
+      !existing ||
+      candidateStatus < existingStatus ||
+      (candidateStatus === existingStatus && candidateDomain < existingDomain)
+    ) {
       map[z.numericId] = z;
     }
   }

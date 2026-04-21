@@ -1,11 +1,20 @@
 // lib/asset-images.ts
 // Centralized Ultra-Premium Asset Image System
 
+import { createLabeledCoverImage } from './playbook-cover'
+
 export interface AssetImageConfig {
   unsplashId: string;
   alt: string;
   keywords: string[];
 }
+
+const buildUnsplashImageUrl = (
+  unsplashId: string,
+  width: number,
+  height: number,
+): string =>
+  `https://images.unsplash.com/${unsplashId}?auto=format&fit=crop&w=${width}&h=${height}&q=80`;
 
 // Ultra-premium Unsplash image mappings for different asset types
 export const ASSET_IMAGE_MAP: Record<string, AssetImageConfig> = {
@@ -652,7 +661,7 @@ export const getAssetImageByTitle = (assetTitle: string, assetType: string): Ass
   return config;
 };
 
-// Generate Unsplash URL with optimal settings for asset cards
+// Generate premium photo-style images for asset cards.
 export const getAssetImageUrl = (assetTitle: string, assetType: string, size: "sm" | "md" | "lg" = "md"): string => {
   const config = getAssetImageByTitle(assetTitle, assetType);
   
@@ -664,8 +673,28 @@ export const getAssetImageUrl = (assetTitle: string, assetType: string, size: "s
   };
   
   const { w, h } = sizeConfig[size];
-  
-  return `https://images.unsplash.com/${config.unsplashId}?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=${w}&h=${h}&q=80`;
+
+  return buildUnsplashImageUrl(config.unsplashId, w, h);
+};
+
+export const getAssetImageFallbackUrl = (assetTitle: string, assetType: string, size: "sm" | "md" | "lg" = "md"): string => {
+  const config = getAssetImageByTitle(assetTitle, assetType);
+  const sizeConfig = {
+    sm: { w: 400, h: 300 },
+    md: { w: 600, h: 400 },
+    lg: { w: 800, h: 600 }
+  };
+
+  const { w, h } = sizeConfig[size];
+
+  return createLabeledCoverImage({
+    seed: `${assetTitle}:${assetType}:${config.unsplashId}`,
+    title: assetTitle || config.alt,
+    label: assetType || config.alt,
+    width: w,
+    height: h,
+    footer: 'HNWI CHRONICLES ASSET',
+  });
 };
 
 // Get image alt text for accessibility

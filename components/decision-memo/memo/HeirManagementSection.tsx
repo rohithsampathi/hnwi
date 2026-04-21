@@ -30,6 +30,7 @@ import {
   ProtectionLevel,
   HumanCapitalProvision,
   GovernanceInsuranceProvision,
+  StructureSpecificProvisions,
   EstateTaxByHeirType,
   formatPercentage,
   formatCurrency
@@ -53,8 +54,12 @@ function parseMarkdownBold(text: string): React.ReactNode {
   });
 }
 
-// Format large currency values
-function formatLargeCurrency(amount: number): string {
+// Format large currency values safely for partial report payloads.
+function formatLargeCurrency(amount?: number | null): string {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+    return 'N/A';
+  }
+
   if (Math.abs(amount) >= 1_000_000_000) {
     return `$${(amount / 1_000_000_000).toFixed(1)}B`;
   } else if (Math.abs(amount) >= 1_000_000) {
@@ -63,6 +68,24 @@ function formatLargeCurrency(amount: number): string {
     return `$${(amount / 1_000).toFixed(0)}K`;
   }
   return `$${amount.toLocaleString()}`;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function titleCaseLabel(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
 }
 
 // Urgency color based on mitigation timeline days
@@ -263,8 +286,78 @@ function HeirCard({ heir, index }: { heir: NonNullable<HeirManagementData['heirs
   );
 }
 
+function HeirSpecificReadCard({
+  item,
+  index,
+}: {
+  item: NonNullable<HeirManagementData['heir_specific_read']>[0];
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-xl border border-border/20 bg-card/50 p-6"
+    >
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h4 className="text-base font-normal text-foreground">{item.name}</h4>
+          {item.status ? (
+            <p className="text-sm text-muted-foreground/60 font-normal">{item.status}</p>
+          ) : null}
+        </div>
+        <span className="inline-flex items-center gap-1 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
+          <Scale className="w-3 h-3" />
+          House Read
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-4">
+          <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
+            {item.headline}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border/20 bg-background/40 p-4">
+          <div className="flex items-start gap-2">
+            <GraduationCap className="w-4 h-4 text-gold/70 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-muted-foreground/75 leading-loose sm:leading-relaxed">
+              {item.detail}
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // NEW: Heir Allocation Card
-function HeirAllocationCard({ allocation, index }: { allocation: HeirAllocation; index: number }) {
+function HeirAllocationCard({
+  allocation,
+  index,
+  fallbackStructure,
+  fallbackTiming,
+  totalAssetValue,
+}: {
+  allocation: HeirAllocation;
+  index: number;
+  fallbackStructure?: string;
+  fallbackTiming?: string;
+  totalAssetValue?: number;
+}) {
+  const relationshipLabel = titleCaseLabel(allocation.relationship);
+  const ageLabel = typeof allocation.age === 'number' ? `Age ${allocation.age}` : '';
+  const metaLine = [relationshipLabel, ageLabel].filter(Boolean).join(' · ');
+  const allocationValue =
+    toFiniteNumber(allocation.allocation_value) ??
+    (toFiniteNumber(totalAssetValue) !== undefined && typeof allocation.allocation_pct === 'number'
+      ? toFiniteNumber(totalAssetValue)! * allocation.allocation_pct
+      : undefined);
+  const structureText = allocation.recommended_structure || fallbackStructure;
+  const timingText = allocation.timing || fallbackTiming;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -276,25 +369,31 @@ function HeirAllocationCard({ allocation, index }: { allocation: HeirAllocation;
       <div className="flex items-start justify-between mb-5">
         <div>
           <h4 className="text-base font-normal text-foreground">{allocation.name}</h4>
-          <p className="text-sm text-muted-foreground/60 font-normal">Age: {allocation.age}</p>
+          <p className="text-sm text-muted-foreground/60 font-normal">
+            {metaLine || 'Allocation under route governance'}
+          </p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold tabular-nums tracking-tight text-gold/80">{(allocation.allocation_pct * 100).toFixed(0)}%</p>
-          <p className="text-sm text-muted-foreground/60 font-normal">{formatLargeCurrency(allocation.allocation_value)}</p>
+          <p className="text-sm text-muted-foreground/60 font-normal">{formatLargeCurrency(allocationValue)}</p>
         </div>
       </div>
 
       {/* Structure Info */}
-      <div className="rounded-xl border border-border/20 bg-card/50 p-4 mb-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Structure</p>
-        <p className="text-sm font-normal text-foreground">{allocation.recommended_structure}</p>
-      </div>
+      {structureText && (
+        <div className="rounded-xl border border-border/20 bg-card/50 p-4 mb-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Structure</p>
+          <p className="text-sm font-normal text-foreground">{structureText}</p>
+        </div>
+      )}
 
       {/* Timing */}
-      <div className="mb-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Timing</p>
-        <p className="text-xs text-muted-foreground/60 font-normal">{allocation.timing}</p>
-      </div>
+      {timingText && (
+        <div className="mb-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Timing</p>
+          <p className="text-xs text-muted-foreground/60 font-normal">{timingText}</p>
+        </div>
+      )}
 
       {/* Special Considerations */}
       {allocation.special_considerations && allocation.special_considerations.length > 0 && (
@@ -371,13 +470,55 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     const topRisk = typedData.top_succession_trigger;
     const nextAction = typedData.next_action;
     const heirAllocations = typedData.heir_allocations;
+    const beneficiaryMapAuthority = (typedData as any).beneficiary_map_authority;
+    const beneficiaryMapNote = (typedData as any).beneficiary_map_note;
+    const successionLockItems = Array.isArray((typedData as any).succession_lock_items)
+      ? (typedData as any).succession_lock_items.filter(Boolean)
+      : [];
+    const governanceUpliftClaimed = Boolean(
+      (typedData as any).governance_uplift_claimed ??
+      (withStructure && (
+        (toFiniteNumber(withStructure.wealth_preserved) || 0) > 0 ||
+        (
+          toFiniteNumber(withStructure.net_to_g3_with_structure) !== undefined &&
+          toFiniteNumber(g2ToG3?.net_to_g3_without_structure) !== undefined &&
+          toFiniteNumber(withStructure.net_to_g3_with_structure) !== toFiniteNumber(g2ToG3?.net_to_g3_without_structure)
+        )
+      ))
+    );
+    const governanceUpliftNote =
+      (typedData as any).governance_uplift_note ||
+      'No additional governance uplift is being credited yet; this route only gets stronger once the succession rail is evidenced and documented.';
+    const authoritativeHeirAllocations =
+      beneficiaryMapAuthority === 'authoritative'
+        ? heirAllocations
+        : [];
+    const heirSpecificRead = Array.isArray((typedData as any).heir_specific_read)
+      ? ((typedData as any).heir_specific_read as NonNullable<HeirManagementData['heir_specific_read']>)
+      : [];
 
     // Hughes Framework: Third Generation Problem + Governance Insurance
     const hughesFramework = typedData.hughes_framework;
     const thirdGenProblem = hughesFramework?.third_generation_problem ?? typedData.third_generation_problem;
     const humanCapitalProvisions = hughesFramework?.human_capital_provisions ?? typedData.human_capital_provisions;
     const governanceInsurance = hughesFramework?.governance_insurance ?? typedData.governance_insurance;
-    const structureProvisions = typedData.structure_specific_provisions;
+    const structureProvisions = Array.isArray(typedData.structure_specific_provisions)
+      ? typedData.structure_specific_provisions
+      : typedData.structure_specific_provisions
+        ? [typedData.structure_specific_provisions]
+        : [];
+    const governanceFramework = typedData.governance_framework;
+    const heirEducationPlan = typedData.heir_education_plan;
+    const hasGovernanceFramework = Boolean(
+      governanceFramework?.family_council_frequency ||
+      governanceFramework?.decision_threshold ||
+      governanceFramework?.veto_power ||
+      (governanceFramework?.succession_triggers || []).length
+    );
+    const hasHeirEducationPlan = Boolean(
+      (heirEducationPlan?.gen_2_actions || []).length ||
+      (heirEducationPlan?.gen_3_actions || []).length
+    );
 
     // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
     const estateTaxByHeirType = typedData.estate_tax_by_heir_type;
@@ -391,6 +532,32 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
       (preservationWithoutStructure !== undefined ? (100 - preservationWithoutStructure) : undefined);
     const thirdGenImprovedRisk = thirdGenProblem?.loss_with_structure_pct ??
       (preservationWithStructure !== undefined ? (100 - preservationWithStructure) : undefined);
+    const routeControlScore = toFiniteNumber(g1.route_control_score);
+    const g1RetentionScore = toFiniteNumber(g1.retention_score);
+    const g2RetentionScore = toFiniteNumber(g1ToG2?.retention_score);
+    const g3RetentionWithoutStructure = toFiniteNumber(g2ToG3?.retention_score_without_structure);
+    const g3RetentionWithStructure = toFiniteNumber(withStructure?.retention_score);
+    const forcedSaleHaircut = toFiniteNumber(g2ToG3?.forced_sale_haircut_pct);
+    const successionDollarsAtRisk =
+      toFiniteNumber(topRisk?.dollars_at_risk) ??
+      toFiniteNumber(g1ToG2?.estate_tax_hit) ??
+      toFiniteNumber(g1?.unplanned_loss);
+    const g3Status =
+      titleCaseLabel((hughesFramework?.components as any)?.g3?.status) ||
+      titleCaseLabel(withStructure?.preservation_rating) ||
+      (g3RetentionWithStructure !== undefined
+        ? g3RetentionWithStructure >= 75
+          ? 'Durable'
+          : g3RetentionWithStructure >= 60
+            ? 'Guarded'
+            : 'Fragile'
+        : '');
+    const hasThirdGenerationRiskModel = thirdGenCurrentRisk !== undefined && thirdGenImprovedRisk !== undefined;
+    const hasRouteSuccessionRead =
+      routeControlScore !== undefined ||
+      forcedSaleHaircut !== undefined ||
+      successionDollarsAtRisk !== undefined ||
+      Boolean(g3Status);
 
     // Improvement points (backend-calculated)
     const improvementPts = thirdGenProblem?.improvement_pts;
@@ -398,6 +565,62 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
     // Pre-formatted display strings from backend
     const displayLossArrow = thirdGenProblem?.display_loss_arrow;
     const displayPreservationArrow = thirdGenProblem?.display_preservation_arrow;
+    const derivedThirdGenHeadline =
+      thirdGenProblem?.headline ||
+      (displayPreservationArrow
+        ? `Modeled retained value at G3 improves ${displayPreservationArrow} only if succession, beneficiary routing, and governance are locked before close.`
+        : undefined) ||
+      (displayLossArrow
+        ? `Modeled third-generation loss risk remains ${displayLossArrow} until the house converts the asset from a purchase into a governed continuity route.`
+        : undefined);
+    const derivedThirdGenStatistic =
+      thirdGenProblem?.statistic ||
+      (displayLossArrow
+        ? `Third-generation loss risk moves ${displayLossArrow} once the house locks succession and governance before close.`
+        : undefined);
+    const derivedThirdGenCauses =
+      Array.isArray(thirdGenProblem?.causes) && thirdGenProblem.causes.length
+        ? thirdGenProblem.causes
+        : [
+            'Succession rail left open until or after closing',
+            'Beneficiary map not fixed before expectations harden',
+            'Governance duties left to post-close cleanup',
+          ];
+    const derivedThirdGenRiskFactors =
+      Array.isArray(thirdGenProblem?.risk_factors) && thirdGenProblem.risk_factors.length
+        ? thirdGenProblem.risk_factors
+        : [
+            'UK estate-tax exposure still depends on named residence and allowance confirmation.',
+            'Heirs do not yet inherit a clean governed seat until succession documents and veto logic are signed.',
+            'Banking, title, and succession still live inside one closing window, so route quality is what the family is really inheriting.',
+          ];
+    const rawContinuityProvisions = (typedData as any).continuity_provisions || {};
+    const continuityPreCloseLocks = Array.isArray(rawContinuityProvisions.pre_close_locks) && rawContinuityProvisions.pre_close_locks.length
+      ? rawContinuityProvisions.pre_close_locks
+      : successionLockItems;
+    const continuityHumanCapital = Array.isArray(rawContinuityProvisions.human_capital) && rawContinuityProvisions.human_capital.length
+      ? rawContinuityProvisions.human_capital
+      : (humanCapitalProvisions || []);
+    const continuityGovernanceInsurance =
+      Array.isArray(rawContinuityProvisions.governance_insurance) && rawContinuityProvisions.governance_insurance.length
+        ? rawContinuityProvisions.governance_insurance
+        : (governanceInsurance || []);
+    const continuityStructureSpecific =
+      Array.isArray(rawContinuityProvisions.structure_specific) && rawContinuityProvisions.structure_specific.length
+        ? rawContinuityProvisions.structure_specific
+        : structureProvisions;
+    const continuityBeneficiaryDiscipline =
+      typeof rawContinuityProvisions.beneficiary_discipline === 'string' && rawContinuityProvisions.beneficiary_discipline.trim()
+        ? rawContinuityProvisions.beneficiary_discipline.trim()
+        : beneficiaryMapNote;
+    const continuityHeadline =
+      typeof rawContinuityProvisions.headline === 'string' && rawContinuityProvisions.headline.trim()
+        ? rawContinuityProvisions.headline.trim()
+        : 'Continuity survives only when succession, beneficiary routing, banking authority, and heir preparation are locked before closing.';
+    const continuityNextAction =
+      typeof rawContinuityProvisions.next_action === 'string' && rawContinuityProvisions.next_action.trim()
+        ? rawContinuityProvisions.next_action.trim()
+        : nextAction;
 
     return (
       <div ref={sectionRef}>
@@ -416,7 +639,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
 
         <div className="space-y-8 sm:space-y-12">
           {/* Third Generation Risk Assessment */}
-          {withStructure && (
+          {withStructure && hasThirdGenerationRiskModel && (
             <motion.div
               className="relative rounded-2xl border border-border/30 overflow-hidden"
               initial={{ opacity: 0, y: 12 }}
@@ -489,6 +712,55 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
             </motion.div>
           )}
 
+          {withStructure && !hasThirdGenerationRiskModel && hasRouteSuccessionRead && (
+            <motion.div
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
+              initial={{ opacity: 0, y: 12 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+                  Third Generation Route Read
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Route Control</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">
+                      {routeControlScore !== undefined ? `${routeControlScore.toFixed(0)} / 100` : '\u2014'}
+                    </p>
+                  </div>
+                  <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Forced-Sale Pressure</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">
+                      {forcedSaleHaircut !== undefined ? `${forcedSaleHaircut.toFixed(0)}%` : '\u2014'}
+                    </p>
+                  </div>
+                  <div className="text-center rounded-xl border border-gold/20 bg-gold/[0.03] p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Dollars At Risk</p>
+                    <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">
+                      {successionDollarsAtRisk !== undefined ? formatLargeCurrency(successionDollarsAtRisk) : '\u2014'}
+                    </p>
+                  </div>
+                  <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">G3 Durability Read</p>
+                    <p className="text-xl font-medium tracking-tight text-foreground">
+                      {g3Status || '\u2014'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Why This Matters</p>
+                  <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
+                    {topRisk?.trigger || withStructure?.recommended_structure || nextAction || 'Succession discipline must lock before capital moves.'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Recommended Structure */}
           {withStructure && (
             <motion.div
@@ -542,6 +814,12 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <p className="text-base font-medium tabular-nums text-foreground">{(g1.estate_tax_rate * 100).toFixed(0)}%</p>
                       </div>
                     )}
+                    {g1RetentionScore !== undefined && (
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Retained Value</p>
+                        <p className="text-base font-medium tabular-nums text-gold/80">{g1RetentionScore.toFixed(0)}%</p>
+                      </div>
+                    )}
                   </div>
                   {/* Arrow connector */}
                   <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 items-center">
@@ -576,6 +854,12 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Net to G2</p>
                         <p className="text-base font-medium tabular-nums text-gold/80">{formatLargeCurrency(g1ToG2.net_to_g2)}</p>
                       </div>
+                      {g2RetentionScore !== undefined && (
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Retained Value</p>
+                          <p className="text-base font-medium tabular-nums text-gold/80">{g2RetentionScore.toFixed(0)}%</p>
+                        </div>
+                      )}
                     </div>
                     {/* Arrow connector */}
                     <div className="hidden md:flex absolute -right-5 top-1/2 -translate-y-1/2 z-10 items-center">
@@ -611,13 +895,19 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Net to G3</p>
                         <p className="text-base font-medium tabular-nums text-gold/80">{formatLargeCurrency(g2ToG3.net_to_g3_without_structure)}</p>
                       </div>
+                      {g3RetentionWithoutStructure !== undefined && (
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Retained Value</p>
+                          <p className="text-base font-medium tabular-nums text-gold/80">{g3RetentionWithoutStructure.toFixed(0)}%</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
 
               {/* With Structure Comparison */}
-              {withStructure && (
+              {withStructure && governanceUpliftClaimed ? (
                 <div className="mt-8">
                   <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-8" />
                   <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -640,11 +930,30 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                           </p>
                         </div>
                         <div className="text-center">
-                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Preservation Rate</p>
-                          <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">{preservationWithStructure !== undefined ? `${preservationWithStructure}%` : '\u2014'}</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Governance Uplift</p>
+                          <p className="text-xl font-bold tabular-nums tracking-tight text-foreground">
+                            {toFiniteNumber(withStructure.preservation_percentage) !== undefined
+                              ? `+${toFiniteNumber(withStructure.preservation_percentage)?.toFixed(1)}%`
+                              : '\u2014'}
+                          </p>
+                          {g3RetentionWithStructure !== undefined && (
+                            <p className="text-xs text-muted-foreground/60 mt-2">
+                              G3 retained value with governance: {g3RetentionWithStructure.toFixed(0)}%
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-8">
+                  <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-8" />
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Governance Uplift Read</p>
+                    <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
+                      {governanceUpliftNote}
+                    </p>
                   </div>
                 </div>
               )}
@@ -725,7 +1034,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           )}
 
           {/* Heir Allocations */}
-          {heirAllocations && heirAllocations.length > 0 && (
+          {authoritativeHeirAllocations && authoritativeHeirAllocations.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
@@ -736,8 +1045,40 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
               </p>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {heirAllocations.map((allocation, index) => (
-                  <HeirAllocationCard key={allocation.name} allocation={allocation} index={index} />
+                {authoritativeHeirAllocations.map((allocation, index) => (
+                  <HeirAllocationCard
+                    key={allocation.name}
+                    allocation={allocation}
+                    index={index}
+                    fallbackStructure={withStructure?.recommended_structure}
+                    fallbackTiming={topRisk?.mitigation_timeline || 'before_close'}
+                    totalAssetValue={toFiniteNumber(g1.asset_value)}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {heirSpecificRead.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={isVisible ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
+                    Heir-Specific Legal, Tax, And Education Read
+                  </p>
+                  <p className="text-sm text-muted-foreground/70 leading-relaxed max-w-4xl">
+                    This is the family-facing consequence map. It shows what each named heir actually inherits into, what tax and legal drag can sit in front of them, and what the house should teach before expectations harden.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {heirSpecificRead.map((item: NonNullable<HeirManagementData['heir_specific_read']>[number], index: number) => (
+                  <HeirSpecificReadCard key={`${item.name}-${index}`} item={item} index={index} />
                 ))}
               </div>
             </motion.div>
@@ -791,8 +1132,8 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
             </motion.div>
           )}
 
-          {/* Hughes Framework: Third Generation Problem */}
-          {thirdGenProblem && (
+          {/* Third-Generation Continuity Risk */}
+          {(thirdGenProblem || derivedThirdGenHeadline || derivedThirdGenStatistic) && (
             <motion.div
               className="relative rounded-2xl border border-border/30 overflow-hidden"
               initial={{ opacity: 0, y: 12 }}
@@ -800,26 +1141,29 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
               transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
-                <div className="flex items-center gap-3 mb-6">
-                  <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
-                    Third Generation Problem
-                  </p>
-                  <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
-                    HUGHES FRAMEWORK
-                  </span>
-                </div>
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+                  Third-Generation Continuity Risk
+                </p>
 
-                {thirdGenProblem.statistic && (
-                  <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5">
-                    <p className="text-xl font-bold text-foreground tracking-tight">{thirdGenProblem.statistic}</p>
+                {derivedThirdGenHeadline && (
+                  <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5 mb-5">
+                    <p className="text-sm font-normal text-foreground leading-loose sm:leading-relaxed">
+                      {derivedThirdGenHeadline}
+                    </p>
                   </div>
                 )}
 
-                {thirdGenProblem.causes && thirdGenProblem.causes.length > 0 && (
+                {derivedThirdGenStatistic && (
+                  <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-5">
+                    <p className="text-xl font-bold text-foreground tracking-tight">{derivedThirdGenStatistic}</p>
+                  </div>
+                )}
+
+                {derivedThirdGenCauses.length > 0 && (
                   <div className="mb-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Primary Causes</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Why This Degrades The House</p>
                     <div className="flex flex-wrap gap-2">
-                      {thirdGenProblem.causes.map((cause, i) => (
+                      {derivedThirdGenCauses.map((cause, i) => (
                         <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
                           {cause}
                         </span>
@@ -828,11 +1172,11 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
                   </div>
                 )}
 
-                {thirdGenProblem.risk_factors && thirdGenProblem.risk_factors.length > 0 && (
+                {derivedThirdGenRiskFactors.length > 0 && (
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Your Risk Factors</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Live Family Consequences</p>
                     <div className="space-y-2">
-                      {thirdGenProblem.risk_factors.map((factor, i) => (
+                      {derivedThirdGenRiskFactors.map((factor, i) => (
                         <div key={i} className="flex items-start gap-2">
                           <AlertTriangle className="w-3 h-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
                           <span className="text-xs text-muted-foreground/60 font-normal">{factor}</span>
@@ -845,8 +1189,12 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
             </motion.div>
           )}
 
-          {/* Hughes Framework: Human Capital Provisions */}
-          {humanCapitalProvisions && humanCapitalProvisions.length > 0 && (
+          {(continuityPreCloseLocks.length > 0 ||
+            continuityBeneficiaryDiscipline ||
+            continuityHumanCapital.length > 0 ||
+            continuityGovernanceInsurance.length > 0 ||
+            continuityStructureSpecific.length > 0 ||
+            continuityNextAction) && (
             <motion.div
               className="relative rounded-2xl border border-border/30 overflow-hidden"
               initial={{ opacity: 0, y: 12 }}
@@ -855,136 +1203,231 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
             >
               <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
                 <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-                  Human Capital Provisions
+                  House Continuity Provisions
+                </p>
+                <p className="text-sm text-foreground leading-loose sm:leading-relaxed mb-8">
+                  {continuityHeadline}
                 </p>
 
-                <p className="text-xs text-muted-foreground/60 mb-6 font-normal italic">
-                  Financial education and stewardship requirements to protect wealth across generations
-                </p>
-
-                <div className="space-y-4">
-                  {humanCapitalProvisions.map((provision, i) => (
-                    <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
-                      <div className="flex items-start justify-between mb-2">
-                        <p className="text-sm font-normal text-foreground">{provision.name}</p>
-                        {provision.structure_type && (
-                          <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/60">
-                            {provision.structure_type}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground/60 mb-3 font-normal">{provision.description}</p>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3 text-gold/70" />
-                        <span className="text-xs text-gold/80 font-normal">{provision.trigger}</span>
+                <div className="grid xl:grid-cols-[1.15fr_0.85fr] gap-6 mb-6">
+                  {continuityPreCloseLocks.length > 0 && (
+                    <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Pre-Close Continuity Locks</p>
+                      <div className="space-y-3">
+                        {continuityPreCloseLocks.map((item: string, index: number) => (
+                          <div key={`${item}-${index}`} className="flex items-start gap-3">
+                            <CheckCircle className="w-4 h-4 text-gold/70 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm text-foreground leading-loose sm:leading-relaxed">{item}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {continuityBeneficiaryDiscipline && (
+                    <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Beneficiary Discipline</p>
+                      <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
+                        {continuityBeneficiaryDiscipline}
+                      </p>
+                    </div>
+                  )}
                 </div>
+
+                <div className="grid xl:grid-cols-2 gap-6">
+                  {continuityHumanCapital.length > 0 && (
+                    <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Human Capital Provisions</p>
+                      <div className="space-y-4">
+                        {continuityHumanCapital.map((provision: HumanCapitalProvision, i: number) => (
+                          <div key={i} className="rounded-lg border border-border/15 bg-background/60 p-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+                              <p className="text-sm font-medium text-foreground">{provision.name}</p>
+                              {provision.structure_type && (
+                                <span className="text-[11px] tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/70">
+                                  {provision.structure_type}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground/70 leading-relaxed mb-3">{provision.description}</p>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-3 h-3 text-gold/70" />
+                              <span className="text-xs text-gold/80 font-normal">{provision.trigger}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {continuityGovernanceInsurance.length > 0 && (
+                    <div className="rounded-xl border border-border/20 bg-card/50 p-5">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Governance Insurance</p>
+                      <div className="space-y-4">
+                        {continuityGovernanceInsurance.map((provision: GovernanceInsuranceProvision, i: number) => (
+                          <div key={i} className="rounded-lg border border-border/15 bg-background/60 p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Shield className="w-3.5 h-3.5 text-gold/70 flex-shrink-0" />
+                              <p className="text-sm font-medium text-foreground">{provision.name}</p>
+                            </div>
+                            <p className="text-sm text-muted-foreground/70 leading-relaxed mb-2">{provision.description}</p>
+                            <p className="text-xs text-gold/80 leading-relaxed">{provision.rationale}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {continuityStructureSpecific.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70">Structure-Specific Provisions</p>
+                    {continuityStructureSpecific.map((provisionGroup: StructureSpecificProvisions, groupIndex: number) => (
+                      <div key={`${provisionGroup.structure_name}-${groupIndex}`} className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-gold/70 flex-shrink-0" />
+                            <p className="text-sm font-medium text-foreground">{provisionGroup.structure_name}</p>
+                          </div>
+                          <span className="text-[11px] tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
+                            {provisionGroup.jurisdiction}
+                          </span>
+                        </div>
+
+                        <div className="grid lg:grid-cols-2 gap-5">
+                          {provisionGroup.human_capital && provisionGroup.human_capital.length > 0 && (
+                            <div className="rounded-lg border border-border/15 bg-background/70 p-4">
+                              <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-3">Human Capital Requirements</p>
+                              <div className="space-y-3">
+                                {provisionGroup.human_capital.map((provision: HumanCapitalProvision, i: number) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <GraduationCap className="w-3.5 h-3.5 text-gold/70 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-sm text-foreground">{provision.name}</p>
+                                      <p className="text-xs text-muted-foreground/70 leading-relaxed">{provision.description}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {provisionGroup.governance_insurance && provisionGroup.governance_insurance.length > 0 && (
+                            <div className="rounded-lg border border-border/15 bg-background/70 p-4">
+                              <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-3">Governance Insurance</p>
+                              <div className="space-y-3">
+                                {provisionGroup.governance_insurance.map((provision: GovernanceInsuranceProvision, i: number) => (
+                                  <div key={i} className="flex items-start gap-2">
+                                    <Shield className="w-3.5 h-3.5 text-gold/70 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                      <p className="text-sm text-foreground">{provision.name}</p>
+                                      <p className="text-xs text-muted-foreground/70 leading-relaxed">{provision.description}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {continuityNextAction && (
+                  <div className="mt-6 rounded-xl border border-gold/20 bg-background/70 p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-3">Next Continuity Action</p>
+                    <p className="text-base text-foreground font-normal leading-relaxed">{parseMarkdownBold(continuityNextAction)}</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
-          {/* Hughes Framework: Governance Insurance */}
-          {governanceInsurance && governanceInsurance.length > 0 && (
+          {hasGovernanceFramework && (
             <motion.div
               className="relative rounded-2xl border border-border/30 overflow-hidden"
               initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.7, delay: 0.52, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
-                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-                  Governance Insurance
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+                  Governance Framework
                 </p>
 
-                <p className="text-xs text-muted-foreground/60 mb-6 font-normal italic">
-                  Structural protections: spendthrift clauses, trustee oversight, distribution gates, lifestyle caps
-                </p>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {governanceInsurance.map((provision, i) => (
-                    <div key={i} className="rounded-xl border border-border/20 bg-card/50 p-5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${provision.type === 'spendthrift_clause' ? 'bg-gold/60' :
-                          provision.type === 'distribution_gate' ? 'bg-gold/60' :
-                            provision.type === 'lifestyle_cap' ? 'bg-muted-foreground/40' :
-                              'bg-gold/60'
-                          }`} />
-                        <p className="text-xs font-medium text-foreground">{provision.name}</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground/60 mb-2 font-normal">{provision.description}</p>
-                      <p className="text-xs text-gold/70 italic font-normal">{provision.rationale}</p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Family Council</p>
+                    <p className="text-sm font-normal text-foreground">{governanceFramework?.family_council_frequency}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Threshold</p>
+                    <p className="text-sm font-normal text-foreground">{governanceFramework?.decision_threshold}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Veto Power</p>
+                    <p className="text-sm font-normal text-foreground">{governanceFramework?.veto_power}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Succession Triggers</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(governanceFramework?.succession_triggers || []).map((trigger: string, i: number) => (
+                        <span key={i} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
+                          {trigger}
+                        </span>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </motion.div>
           )}
 
-          {/* Structure-Specific Provisions (if applicable) */}
-          {structureProvisions && (
+          {hasHeirEducationPlan && (
             <motion.div
-              className="relative rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
+              className="relative rounded-2xl border border-border/30 overflow-hidden"
               initial={{ opacity: 0, y: 12 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.7, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.7, delay: 0.54, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex items-start justify-between mb-6">
-                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
-                  {structureProvisions.structure_name} Provisions
+              <div className="px-5 sm:px-8 md:px-12 py-10 md:py-12">
+                <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-6">
+                  Heir Education Plan
                 </p>
-                <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-gold/20 text-gold/80">
-                  {structureProvisions.jurisdiction}
-                </span>
-              </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Human Capital for this structure */}
-                {structureProvisions.human_capital && structureProvisions.human_capital.length > 0 && (
-                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Human Capital Requirements</p>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="rounded-xl border border-gold/20 bg-gold/[0.03] p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <GenerationBadge gen="G2" isActive />
+                      <p className="text-sm font-normal text-foreground">Generation 2 (Current Heirs)</p>
+                    </div>
                     <div className="space-y-2">
-                      {structureProvisions.human_capital.map((provision, i) => (
+                      {(heirEducationPlan?.gen_2_actions || []).map((action: string, i: number) => (
                         <div key={i} className="flex items-start gap-2">
-                          <GraduationCap className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground/60 font-normal">{provision.name}: {provision.description}</span>
+                          <CheckCircle className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
 
-                {/* Governance Insurance for this structure */}
-                {structureProvisions.governance_insurance && structureProvisions.governance_insurance.length > 0 && (
                   <div className="rounded-xl border border-border/20 bg-card/50 p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-4">Governance Insurance</p>
+                    <div className="flex items-center gap-2 mb-4">
+                      <GenerationBadge gen="G3" />
+                      <p className="text-sm font-normal text-foreground">Generation 3 (Grandchildren)</p>
+                    </div>
                     <div className="space-y-2">
-                      {structureProvisions.governance_insurance.map((provision, i) => (
+                      {(heirEducationPlan?.gen_3_actions || []).map((action: string, i: number) => (
                         <div key={i} className="flex items-start gap-2">
-                          <Shield className="w-3 h-3 text-gold/70 mt-0.5 flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground/60 font-normal">{provision.name}: {provision.description}</span>
+                          <CheckCircle className="w-3 h-3 text-muted-foreground/60 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground/60 font-normal">{parseMarkdownBold(action)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            </motion.div>
-          )}
-
-          {/* Next Action */}
-          {nextAction && (
-            <motion.div
-              className="rounded-xl border border-gold/20 bg-gold/[0.03] p-6 sm:p-8"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-3">
-                Next Action
-              </p>
-              <p className="text-base text-foreground font-normal">{parseMarkdownBold(nextAction)}</p>
             </motion.div>
           )}
 
@@ -997,7 +1440,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
           >
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
             <p className="text-xs text-muted-foreground/60 leading-relaxed">
-              Grounded in HNWI Chronicles KG Succession Framework + Hughes Family Wealth Framework
+              Grounded in HNWI Chronicles succession, tax, governance, and continuity intelligence
             </p>
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
           </motion.div>
@@ -1372,7 +1815,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         >
           <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Grounded in HNWI Chronicles KG Succession Framework + Family Office Best Practices
+            Grounded in HNWI Chronicles succession, tax, governance, and continuity intelligence
           </p>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
         </motion.div>
@@ -1608,7 +2051,7 @@ export const HeirManagementSection: React.FC<HeirManagementSectionProps> = ({
         >
           <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
           <p className="text-xs text-muted-foreground/60 leading-relaxed">
-            Grounded in HNWI Chronicles KG Succession Framework + Family Office Best Practices
+            Grounded in HNWI Chronicles succession, tax, governance, and continuity intelligence
           </p>
           <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
         </motion.div>

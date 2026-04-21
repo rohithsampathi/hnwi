@@ -66,10 +66,11 @@ async function getSharedOpportunity(opportunityId: string): Promise<Opportunity 
 export async function generateMetadata({
   params
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }): Promise<Metadata> {
-  const cleanId = extractUUID(params.id)
-  const opportunity = cleanId ? await getSharedOpportunity(params.id) : null
+  const { id } = await params
+  const cleanId = extractUUID(id)
+  const opportunity = cleanId ? await getSharedOpportunity(id) : null
 
   if (!opportunity) {
     return {
@@ -116,12 +117,13 @@ export async function generateMetadata({
 export default async function SharedOpportunityPage({
   params
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
-  const cleanId = extractUUID(params.id)
+  const { id } = await params
+  const cleanId = extractUUID(id)
   if (!cleanId) notFound()
 
-  const opportunity = await getSharedOpportunity(params.id)
+  const opportunity = await getSharedOpportunity(id)
 
   if (!opportunity) {
     notFound()

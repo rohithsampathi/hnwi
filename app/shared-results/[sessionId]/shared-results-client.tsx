@@ -264,7 +264,7 @@ export default function SharedResultsClient() {
         clearTimeout(timeoutId);
       }
     };
-  }, [sessionId, router]);
+  }, [sessionId, router, getResults]);
 
   if (loading) {
     return (

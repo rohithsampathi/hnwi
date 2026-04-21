@@ -2,7 +2,7 @@
 
 import { RegionPage } from "@/components/pages/region-page"
 
-export default function Page({ params }: { params: { region: string } }) {
-  return <RegionPage region={params.region} />
+export default async function Page({ params }: { params: Promise<{ region: string }> }) {
+  const { region } = await params
+  return <RegionPage region={region} />
 }
-

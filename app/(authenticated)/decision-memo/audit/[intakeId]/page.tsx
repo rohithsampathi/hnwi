@@ -7,7 +7,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Clock,
@@ -95,12 +95,6 @@ interface BackendAuditResponse {
   [key: string]: unknown;
 }
 
-interface PageProps {
-  params: {
-    intakeId: string;
-  };
-}
-
 type AuditTier = 'single' | 'annual';
 
 const TIER_CONFIG = {
@@ -141,8 +135,8 @@ function formatCountdown(ms: number): { hours: number; minutes: number; seconds:
   return { hours, minutes, seconds };
 }
 
-export default function PatternAuditPreviewPage({ params }: PageProps) {
-  const { intakeId } = params;
+export default function PatternAuditPreviewPage() {
+  const { intakeId } = useParams<{ intakeId: string }>();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -166,41 +160,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   const [isWaitingForPreview, setIsWaitingForPreview] = useState(false);
   const isFetchingPreviewRef = useRef(false); // Track if we're already fetching to prevent duplicates
 
-  // Report-scoped authentication
-  // MFA bypass for specific demo/testing intake IDs
-  const MFA_BYPASS_INTAKE_IDS = ['fo_audit_AijuqwJovDu_'];
-  const isMfaBypassed = MFA_BYPASS_INTAKE_IDS.includes(intakeId);
-
+  // Client bundles must never carry report bypass tokens. Any local bypass must
+  // live behind a server route that still enforces environment and audit rules.
+  const isMfaBypassed = false;
   const [showReportAuth, setShowReportAuth] = useState(false);
-  const [reportToken, setReportToken] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    // Bypass MFA for specific intake IDs (demo/testing)
-    if (MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
-      return 'mfa_bypass_token';
-    }
-    // Check localStorage first (remembered device), then sessionStorage
-    const remembered = localStorage.getItem(`report_token_${intakeId}`);
-    if (remembered) {
-      const expiresAt = localStorage.getItem(`report_token_exp_${intakeId}`);
-      if (expiresAt && Date.now() > parseInt(expiresAt, 10)) {
-        localStorage.removeItem(`report_token_${intakeId}`);
-        localStorage.removeItem(`report_token_exp_${intakeId}`);
-        return null;
-      }
-      return remembered;
-    }
-    return sessionStorage.getItem(`report_token_${intakeId}`);
-  });
 
   const buildPdfExportHeaders = useCallback((): HeadersInit | undefined => {
-    if (!reportToken || reportToken === 'mfa_bypass_token') {
-      return undefined;
-    }
-
-    return {
-      Authorization: `Bearer ${reportToken}`,
-    };
-  }, [reportToken]);
+    return undefined;
+  }, []);
 
   const buildAuditViewHref = useCallback((personalMode: boolean) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -345,9 +312,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     }
   }, [computedCitations, setManagedCitations]);
 
-  // Fetch session and artifact data (with report auth token)
-  const fetchData = useCallback(async (token?: string | null) => {
-    const authToken = token || reportToken;
+  // Fetch session and artifact data. Browser access stays cookie-backed.
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -396,10 +362,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       };
 
       const fetchResolvedMemoSurface = async () => {
-        const headers: Record<string, string> = {};
-        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         const response = await fetch(`/api/decision-memo/surface/${intakeId}`, {
-          headers,
           credentials: 'include',
           cache: 'no-store',
         });
@@ -414,7 +377,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       };
 
       // Get session status (now returns full_artifact when unlocked)
-      const sessionData = await getSession(intakeId, authToken) as any;
+      const sessionData = await getSession(intakeId) as any;
 
       // Check if session includes full artifact (unlocked state)
       if (sessionData.fullArtifact) {
@@ -456,7 +419,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         // Preview is ready - fetch it
         setSession(sessionData);
         try {
-          const preview = await getPreviewArtifact(intakeId, authToken);
+          const preview = await getPreviewArtifact(intakeId);
           setPreviewArtifact(preview);
           setIsWaitingForPreview(false);
         } catch (previewErr) {
@@ -477,7 +440,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
         // do NOT show the "Encrypted Document" popup — cookies should handle auth.
         // Only show popup for truly unauthenticated access (external advisors).
         const platformUser = getCurrentUser();
-        if (platformUser && !MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+        if (platformUser && !isMfaBypassed) {
           // Platform-authenticated user got 401 — likely a cookie forwarding issue.
           // Show a clear error instead of the misleading "Encrypted Document" popup.
           console.error('Platform-authenticated user got 401 on audit. Cookie forwarding may have failed.', { intakeId });
@@ -485,7 +448,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           setIsLoading(false);
           return;
         }
-        if (!MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+        if (!isMfaBypassed) {
           setShowReportAuth(true);
           setIsLoading(false);
           return;
@@ -497,7 +460,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [intakeId, reportToken, getSession, getPreviewArtifact]);
+  }, [intakeId, getSession, getPreviewArtifact, isMfaBypassed]);
 
   // Initial fetch
   useEffect(() => {
@@ -548,14 +511,14 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
     if (ssePreviewReady && isWaitingForPreview && !isFetchingPreviewRef.current) {
       isFetchingPreviewRef.current = true; // Prevent duplicate fetches
 
-      getPreviewArtifact(intakeId, reportToken)
+      getPreviewArtifact(intakeId)
         .then((preview) => {
           setPreviewArtifact(preview);
           setSession(prev => prev ? { ...prev, status: 'PREVIEW_READY' } : null);
           setIsWaitingForPreview(false); // Only set after successful fetch
         })
         .catch((err) => {
-          if (err instanceof ReportAuthRequiredError && !MFA_BYPASS_INTAKE_IDS.includes(intakeId)) {
+          if (err instanceof ReportAuthRequiredError && !isMfaBypassed) {
             const platformUser = getCurrentUser();
             if (platformUser) {
               console.error('Platform-authenticated user got 401 on preview fetch.');
@@ -573,7 +536,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
           isFetchingPreviewRef.current = false;
         });
     }
-  }, [ssePreviewReady, isWaitingForPreview, intakeId, getPreviewArtifact]);
+  }, [ssePreviewReady, isWaitingForPreview, intakeId, getPreviewArtifact, isMfaBypassed]);
 
   // Load Razorpay script
   useEffect(() => {
@@ -642,7 +605,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       // Handle already paid case - fetch full artifact directly
       if (data.already_paid) {
         try {
-          await fetchData(reportToken);
+          await fetchData();
           setIsProcessingPayment(false);
         } catch (artifactErr) {
           console.error('Failed to refresh paid memo surface:', artifactErr);
@@ -712,7 +675,7 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
       alert(`Payment error: ${errorMessage}`);
       setIsProcessingPayment(false);
     }
-  }, [fetchData, intakeId, initiatePayment, reportToken, selectedTier]);
+  }, [fetchData, intakeId, initiatePayment, selectedTier]);
 
   // Copy share link
   const handleCopyLink = async () => {
@@ -803,24 +766,10 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
   }, [intakeId, getPreviewArtifact]);
 
   // Report authentication popup (encrypted document access)
-  const handleReportAuthSuccess = useCallback((token: string, rememberDevice: boolean) => {
-    setReportToken(token);
-    if (typeof window !== 'undefined') {
-      if (rememberDevice) {
-        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-        localStorage.setItem(`report_token_${intakeId}`, token);
-        localStorage.setItem(`report_token_exp_${intakeId}`, String(Date.now() + sevenDaysMs));
-        sessionStorage.removeItem(`report_token_${intakeId}`);
-      } else {
-        sessionStorage.setItem(`report_token_${intakeId}`, token);
-        localStorage.removeItem(`report_token_${intakeId}`);
-        localStorage.removeItem(`report_token_exp_${intakeId}`);
-      }
-    }
+  const handleReportAuthSuccess = useCallback(() => {
     setShowReportAuth(false);
-    // Retry fetch with the new token
-    fetchData(token);
-  }, [intakeId, fetchData]);
+    fetchData();
+  }, [fetchData]);
 
   // Show auth popup if needed (render before all other states)
   if (showReportAuth && !isLoading) {
@@ -1262,6 +1211,8 @@ export default function PatternAuditPreviewPage({ params }: PageProps) {
             memoData={memoData as any}
             backendData={resolvedBackendData}
             intakeId={intakeId}
+            onCitationClick={handleCitationClick}
+            citationMap={computedCitationMap}
             onExportPDF={handleExportPDF}
             isExportingPDF={isExportingPDF}
             onSwitchToReportView={() => router.push(buildAuditViewHref(false))}

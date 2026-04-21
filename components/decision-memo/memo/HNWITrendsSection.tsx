@@ -62,11 +62,12 @@ function DataQualityBadge({ quality }: { quality: HNWITrendsDataQuality }) {
   const config: Record<NonNullable<HNWITrendsDataQuality['scientific_grounding']>, { bg: string; text: string; label: string }> = {
     kgv3_primary: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'KGv3 Primary' },
     kgv3_fallback: { bg: 'bg-amber-500/20 border-amber-500/30', text: 'text-amber-600 dark:text-amber-400', label: 'KGv3 Fallback' },
+    native_library_route_compiler: { bg: 'bg-primary/20 border-primary/30', text: 'text-primary', label: 'Native Route Compiler' },
     no_data: { bg: 'bg-muted border-border', text: 'text-muted-foreground', label: 'No Data' },
     error: { bg: 'bg-red-500/20 border-red-500/30', text: 'text-red-500', label: 'Error' }
   };
 
-  const key = grounding ?? 'no_data';
+  const key = grounding && grounding in config ? grounding : 'no_data';
   const { bg, text, label } = config[key];
 
   return (
@@ -152,10 +153,6 @@ export function HNWITrendsSection({
   confidence = 0,
   dataQuality,
   citations,
-  sourceJurisdiction,
-  destinationJurisdiction,
-  sourceCountry,
-  destinationCountry
 }: HNWITrendsSectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -170,12 +167,12 @@ export function HNWITrendsSection({
     return null;
   }
 
-  // Fix #11: Use country-level for corridor display (prefers sourceCountry over sourceJurisdiction)
-  const corridorSource = sourceCountry || sourceJurisdiction || '';
-  const corridorDest = destinationCountry || destinationJurisdiction || '';
-  const corridorLabel = corridorSource && corridorDest
-    ? `${corridorSource} → ${corridorDest}`
-    : 'Cross-Border';
+  const collectionsLabel = dataQuality?.scientific_grounding === 'native_library_route_compiler'
+    ? 'Collections Queried'
+    : 'KGv3 Collections Queried';
+  const footerLabel = dataQuality?.scientific_grounding === 'native_library_route_compiler'
+    ? 'Powered by HNWI Chronicles native route intelligence, castle transaction cases, and corridor macro data'
+    : 'Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data';
 
   return (
     <div ref={sectionRef}>
@@ -257,7 +254,7 @@ export function HNWITrendsSection({
             <div className="flex items-center gap-2 mb-4">
               <Database className="w-4 h-4 text-primary" />
               <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                KGv3 Collections Queried
+                {collectionsLabel}
               </h4>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -304,7 +301,7 @@ export function HNWITrendsSection({
         >
           <div className="w-1.5 h-1.5 rounded-full bg-primary" />
           <p className="text-[10px] text-muted-foreground">
-            Powered by HNWI Chronicles KG Migration Intelligence + Henley Private Wealth Data
+            {footerLabel}
           </p>
         </motion.div>
       </div>

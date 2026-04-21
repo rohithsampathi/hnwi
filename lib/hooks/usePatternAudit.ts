@@ -29,15 +29,6 @@ export class ReportAuthRequiredError extends Error {
   }
 }
 
-/** Build headers with optional report auth token */
-function buildHeaders(authToken?: string | null, extra?: Record<string, string>): Record<string, string> {
-  const headers: Record<string, string> = { ...extra }
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`
-  }
-  return headers
-}
-
 export function usePatternAudit() {
   // ==========================================================================
   // SUBMIT INTAKE
@@ -91,9 +82,8 @@ export function usePatternAudit() {
   // Check current status of an audit
   // ==========================================================================
 
-  const getSession = useCallback(async (intakeId: string, authToken?: string | null): Promise<AuditSession> => {
+  const getSession = useCallback(async (intakeId: string): Promise<AuditSession> => {
     const response = await fetch(`${API_BASE}/session/${intakeId}`, {
-      headers: buildHeaders(authToken),
       credentials: 'include',
       cache: 'no-store'
     });
@@ -124,11 +114,9 @@ export function usePatternAudit() {
 
   const getPreviewArtifact = useCallback(async (
     intakeId: string,
-    authToken?: string | null
   ): Promise<PreviewArtifact> => {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
-      headers: buildHeaders(authToken),
       credentials: 'include',
       cache: 'no-store'
     });
@@ -382,11 +370,9 @@ export function usePatternAudit() {
 
   const getFullArtifact = useCallback(async (
     intakeId: string,
-    authToken?: string | null
   ): Promise<ICArtifact> => {
     // Use unified endpoint
     const response = await fetch(`${API_BASE}/${intakeId}`, {
-      headers: buildHeaders(authToken),
       credentials: 'include',
       cache: 'no-store'
     });

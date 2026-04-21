@@ -5,29 +5,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
+import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
 
 export const maxDuration = 60; // 1 minute
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     intakeId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { intakeId } = await Promise.resolve(context.params);
+  const { intakeId } = await context.params;
 
   try {
     logger.info('Session status fetch', { intakeId });
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
 
     // Call backend preview endpoint (returns session status + artifact when unlocked)
     const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
 
-    // Forward auth headers and cookies to backend
-    const authHeader = request.headers.get('Authorization');
+    // Forward report-access bearer token and platform session cookies so
+    // authenticated app users can open audits without a separate report token.
+    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
     const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
 
@@ -36,14 +39,10 @@ export async function GET(
     }
     if (cookieHeader) {
       backendHeaders['Cookie'] = cookieHeader;
-      logger.info('Forwarding cookies to backend', {
-        intakeId,
-        cookieCount: cookieHeader.split(';').length,
-        hasSessionToken: cookieHeader.includes('session_token'),
-        hasAccessToken: cookieHeader.includes('access_token')
-      });
-    } else {
-      logger.warn('No cookies to forward to backend', { intakeId });
+    }
+    if (clientIp) {
+      backendHeaders['x-forwarded-for'] = clientIp;
+      backendHeaders['x-real-ip'] = clientIp;
     }
 
     const response = await fetch(backendUrl, {
@@ -56,10 +55,12 @@ export async function GET(
     // Frontend expects 401 to trigger ReportAuthRequiredError and show auth popup
     if (response.status === 401) {
       const data = await response.json().catch(() => ({ error: 'Authentication required' }));
-      return NextResponse.json(data, {
+      const unauthorizedResponse = NextResponse.json(data, {
         status: 401,
         headers: { 'Cache-Control': 'no-store' },
       });
+      clearReportAuthCookie(unauthorizedResponse, intakeId);
+      return unauthorizedResponse;
     }
 
     // Pass through 404 if audit not found

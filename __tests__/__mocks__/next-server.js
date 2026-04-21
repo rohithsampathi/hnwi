@@ -7,8 +7,16 @@ class MockNextResponse {
     this.headers = new Map();
     this._cookies = new Map();
     this.cookies = {
-      set: (name, value, opts) => this._cookies.set(name, { value, ...opts }),
+      set: (nameOrOptions, value, opts) => {
+        if (typeof nameOrOptions === 'object' && nameOrOptions !== null) {
+          const { name, ...rest } = nameOrOptions;
+          this._cookies.set(name, { ...rest });
+          return;
+        }
+        this._cookies.set(nameOrOptions, { value, ...opts });
+      },
       get: (name) => this._cookies.get(name),
+      getAll: () => Array.from(this._cookies.entries()).map(([name, value]) => ({ name, ...value })),
       delete: (name) => this._cookies.delete(name),
     };
   }
@@ -29,11 +37,27 @@ class MockNextRequest {
     this.url = url || 'http://localhost/test';
     this.method = init.method || 'GET';
     this._headers = new Map(Object.entries(init.headers || {}));
-    this._cookies = new Map(Object.entries(init.cookies || {}));
+    const cookieEntries = Object.entries(init.cookies || {});
+    const cookieHeader = this._headers.get('cookie') || this._headers.get('Cookie');
+    const parsedCookieEntries = typeof cookieHeader === 'string'
+      ? cookieHeader
+          .split(';')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map((part) => {
+            const separatorIndex = part.indexOf('=');
+            if (separatorIndex === -1) {
+              return null;
+            }
+            return [part.slice(0, separatorIndex), part.slice(separatorIndex + 1)];
+          })
+          .filter(Boolean)
+      : [];
+    this._cookies = new Map([...cookieEntries, ...parsedCookieEntries]);
     this.nextUrl = new URL(this.url);
 
     this.headers = {
-      get: (name) => this._headers.get(name.toLowerCase()) || null,
+      get: (name) => this._headers.get(name.toLowerCase()) || this._headers.get(name) || null,
     };
     this.cookies = {
       get: (name) => this._cookies.has(name) ? { name, value: this._cookies.get(name) } : undefined,

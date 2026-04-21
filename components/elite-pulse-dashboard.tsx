@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
@@ -158,12 +158,25 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
   const regulatoryRef = useRef<HTMLDivElement>(null)
   const problemRef = useRef<HTMLDivElement>(null)
 
-  const fetchElitePulse = async () => {
+  const fetchElitePulse = useCallback(async () => {
     try {
       setLoading(true)
       
-      // Fetch brief counts in parallel with Elite Pulse data - direct backend call
-      const countsPromise = secureApi.get('/api/castle-briefs/counts', true);
+      // Fetch brief counts through the Next.js bridge so the client never hits
+      // the backend auth-gated counts surface directly.
+      const countsPromise = fetch('/api/castle-briefs/counts', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }).then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+
+        return response.json();
+      });
       
       // Try user-specific first if authenticated, otherwise fallback to global
       let data = null
@@ -218,7 +231,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
         onLoadingComplete()
       }
     }
-  }
+  }, [onLoadingComplete])
 
 
   // Use context data when available, fallback to legacy fetch
@@ -235,7 +248,7 @@ export function ElitePulseDashboard({ onLoadingComplete }: ElitePulseDashboardPr
       // Fallback to legacy fetch if context data not available
       fetchElitePulse()
     }
-  }, [elitePulseDataFromContext, hasIntelligence, intelligenceLoading, trackIntelligenceView])
+  }, [elitePulseDataFromContext, fetchElitePulse, hasIntelligence, intelligenceLoading, trackIntelligenceView])
 
   // Ensure callback is called when component unmounts or loading state changes
   useEffect(() => {

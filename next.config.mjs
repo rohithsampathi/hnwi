@@ -5,28 +5,25 @@ try {
   // ignore error
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development'
+const isProd = process.env.NODE_ENV === 'production'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  // StrictMode intentionally re-runs Effects in development, which can flood
+  // this client-heavy app with duplicate authenticated fetches during local work.
   reactStrictMode: false,
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
+    tsconfigPath: isProd ? './tsconfig.build.json' : './tsconfig.json',
   },
   images: {
     unoptimized: true,
   },
   transpilePackages: ['react-leaflet', '@react-leaflet/core'],
-  experimental: isDevelopment
-    ? {
-        turbo: {
-          useSwcCss: true,
-        },
-      }
-    : {},
 
   // Cache control headers for OG meta tags and social sharing
   async headers() {
@@ -85,19 +82,6 @@ const nextConfig = {
         ],
       },
     ];
-  },
-  
-  // Reduce webpack warnings in development
-  webpack: (config, { dev, isServer }) => {
-    if (dev) {
-      // Suppress specific warnings
-      config.ignoreWarnings = [
-        /Critical dependency: the request of a dependency is an expression/,
-        /webpack\/lib\/cache\/PackFileCacheStrategy/,
-        /was preloaded using link preload but not used/,
-      ]
-    }
-    return config
   },
 }
 

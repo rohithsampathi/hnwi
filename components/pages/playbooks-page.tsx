@@ -12,7 +12,8 @@ import { CheckmateLoader } from "@/components/ui/checkmate-loader"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { useToast } from "@/components/ui/use-toast"
 import { MetaTags } from "../meta-tags"
-import { secureApi } from "@/lib/secure-api"
+import { createPlaybookCoverImage } from "@/lib/playbook-cover"
+import { getAuthenticatedUserId, secureApi } from "@/lib/secure-api"
 
 interface PurchasedReport {
   report_id: string
@@ -68,7 +69,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_001",
     title: "How to Sell 2 Crore Apartments in India",
     description: "Master the art of selling luxury apartments in India's competitive real estate market.",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Real Estate",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -77,7 +78,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_002",
     title: "Selling a ₹10 Cr Villa Holiday Home to HNWIs & NRIs",
     description: "Highlighting luxury, exclusivity, and investment potential to attract affluent buyers seeking a premium lifestyle getaway.",
-    image: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Real Estate",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -86,7 +87,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_003",
     title: "Selling a ₹35 Cr Ultra-Luxury Estate to Billionaire Buyers",
     description: "Positioning high-end estates as legacy investments with unique value propositions tailored to ultra-wealthy clientele.",
-    image: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Real Estate",
     paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
@@ -95,7 +96,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_004",
     title: "Positioning a ₹50 Cr Commercial Luxury Tower for Global Investors",
     description: "Showcasing commercial luxury real estate as a high-yield investment with premium brand positioning.",
-    image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Real Estate",
     paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
@@ -104,7 +105,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_005",
     title: "Selling a ₹90 Lakh Luxury Car in India to First-Time HNWI Buyers",
     description: "Targeting aspirational buyers by emphasizing exclusivity, performance, and lifestyle benefits.",
-    image: "https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Automotive",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -113,7 +114,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_006",
     title: "Introducing a ₹5 Cr Hypercar to Collectors and Enthusiasts",
     description: "Crafting elite experience-driven launches to attract high-net-worth auto enthusiasts and collectors.",
-    image: "https://images.unsplash.com/photo-1614200179396-2bdb77ebf81b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Automotive",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -122,7 +123,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_007",
     title: "Launching a ₹5 Million Watch in the Indian Market",
     description: "Creating demand by leveraging brand heritage, storytelling, and influencer-driven exclusivity.",
-    image: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Luxury Goods",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -131,7 +132,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_008",
     title: "Selling ₹10 Cr Private Memberships for Exclusive Global Retreats",
     description: "Marketing private retreats as status symbols and must-have lifestyle investments for HNWIs.",
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Travel & Hospitality",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -140,7 +141,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_009",
     title: "Launching a ₹2 Cr Private Art Collection to Elite Collectors",
     description: "Positioning art as an investment and passion purchase through storytelling and exclusivity.",
-    image: "https://images.unsplash.com/photo-1531913764164-f85c52e6e654?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Art & Collectibles",
     paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -149,7 +150,7 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_010",
     title: "Selling a ₹100 Cr Bespoke Investment Fund to HNWI Families",
     description: "Positioning bespoke financial products as secure, high-growth opportunities for wealth preservation.",
-    image: "https://images.unsplash.com/photo-1560520653-9e0e4c89eb11?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Finance",
     paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
@@ -158,19 +159,22 @@ const AVAILABLE_PLAYBOOKS: Playbook[] = [
     id: "pb_011",
     title: "Introducing a ₹25 Cr Private Island Experience to HNWIs",
     description: "Positioning private island experiences as the pinnacle of luxury and exclusivity.",
-    image: "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    image: "",
     isPurchased: false,
     industry: "Travel & Hospitality",
     paymentButtonId: PREMIUM_RAZORPAY_BUTTON_ID,
   },
-]
+].map((playbook) => ({
+  ...playbook,
+  image: createPlaybookCoverImage(playbook.id, playbook.title, playbook.industry),
+}))
 
 // Fallback playbook data for pb_001 which we know is purchased by users
 const FALLBACK_PLAYBOOK: Playbook = {
   id: "pb_001",
   title: "How to Sell 2 Crore Apartments in India",
   description: "Master the art of selling luxury apartments in India's competitive real estate market.",
-  image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+  image: createPlaybookCoverImage("pb_001", "How to Sell 2 Crore Apartments in India", "Real Estate"),
   isPurchased: true,
   industry: "Real Estate",
   paymentButtonId: DEFAULT_RAZORPAY_BUTTON_ID,
@@ -245,14 +249,11 @@ export function PlayBooksPage({
     
     try {
       // Try multiple auth methods
-      let userId = localStorage.getItem("userId");
-      let token = localStorage.getItem("token") || localStorage.getItem("authToken");
-      // Auth via cookies
+      let userId = getAuthenticatedUserId();
       
       // If not in localStorage, try from userData
-      if ((!userId || !token) && userData) {
+      if (!userId && userData) {
         userId = userData.user_id || userData.profile?.user_id;
-        token = userData.token;
       }
       
       // Get purchased reports from userData first
@@ -282,7 +283,7 @@ export function PlayBooksPage({
       }
       
       // If we have auth info, try to fetch from API
-      if (userId && token) {
+      if (userId) {
         try {
           // First fetch user data to get purchased reports
           const userDataResponse: UserData = await secureApi.get(`/api/users/${userId}`, true);
@@ -369,7 +370,7 @@ export function PlayBooksPage({
     } finally {
       setIsLoading(false);
     }
-  }, [userEmail, userData, getPurchasedReports, hasDefaultPlaybook, toast]);
+  }, [userData, getPurchasedReports, hasDefaultPlaybook, toast]);
 
   const handlePlaybookClick = useCallback((playbookId: string) => {
     onNavigate(`playbook/${playbookId}`);

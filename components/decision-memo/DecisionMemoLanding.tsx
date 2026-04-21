@@ -25,6 +25,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
+import { sanitizeRichHtml } from '@/lib/security/sanitization';
 
 interface DecisionMemoLandingProps {
   onContinue: () => void;
@@ -359,7 +360,7 @@ function MandateCard({
         </div>
         <div>
           <h4 className="font-bold text-foreground text-sm tracking-wide">{label}</h4>
-          <p className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: sublabel }} />
+          <p className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(sublabel) }} />
         </div>
       </div>
 

@@ -9,16 +9,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     sessionId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { sessionId } = await Promise.resolve(context.params);
+  const { sessionId } = await context.params;
 
   logger.info('Decision Memo SSE Proxy connecting', { sessionId });
 

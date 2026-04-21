@@ -18,6 +18,7 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog"
+import { getCurrentUserId } from "@/lib/auth-manager"
 import { getPatternClassForEvent } from "@/utils/calendar"
 import { 
   getCategoryColorClass, 
@@ -46,9 +47,8 @@ export function EventDetailsSection({ event, hideHeading = false }: EventDetails
   const handleReserveEvent = async () => {
     setIsProcessing(true);
     
-    // Get user information from localStorage
-    const userId = localStorage.getItem("userId") || ""
-    const userEmail = localStorage.getItem("userEmail") || ""
+    const userId = user?.id || user?.user_id || getCurrentUserId() || ""
+    const userEmail = user?.email || ""
     const userName = user?.name || "Unknown User"
     
     try {

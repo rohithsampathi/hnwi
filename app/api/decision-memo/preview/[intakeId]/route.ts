@@ -6,24 +6,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
+import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     intakeId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { intakeId } = await Promise.resolve(context.params);
+  const { intakeId } = await context.params;
 
   try {
     logger.info('Fetching preview', { intakeId });
 
     // Platform-verified client IP for backend geolocation (not the Vercel server IP)
-    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const cookieHeader = request.headers.get('cookie');
 
     // ==========================================================================
     // SFO PATTERN AUDIT PREVIEW
@@ -34,9 +36,12 @@ export async function GET(
 
       const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
       const previewHeaders: Record<string, string> = { 'Accept': 'application/json' };
-      const authHeader = request.headers.get('Authorization');
+      const authHeader = getReportAuthTokenFromRequest(request, intakeId);
       if (authHeader) {
         previewHeaders['Authorization'] = authHeader;
+      }
+      if (cookieHeader) {
+        previewHeaders['Cookie'] = cookieHeader;
       }
       if (clientIp) {
         previewHeaders['x-forwarded-for'] = clientIp;
@@ -46,6 +51,15 @@ export async function GET(
         method: 'GET',
         headers: previewHeaders,
       });
+
+      if (response.status === 401) {
+        const unauthorizedResponse = NextResponse.json(
+          { success: false, error: 'Authentication required' },
+          { status: 401, headers: { 'Cache-Control': 'no-store' } }
+        );
+        clearReportAuthCookie(unauthorizedResponse, intakeId);
+        return unauthorizedResponse;
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -160,9 +174,12 @@ export async function GET(
 
     const backendUrl = `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`;
     const legacyHeaders: Record<string, string> = { 'Accept': 'application/json' };
-    const legacyAuth = request.headers.get('Authorization');
+    const legacyAuth = getReportAuthTokenFromRequest(request, intakeId);
     if (legacyAuth) {
       legacyHeaders['Authorization'] = legacyAuth;
+    }
+    if (cookieHeader) {
+      legacyHeaders['Cookie'] = cookieHeader;
     }
     if (clientIp) {
       legacyHeaders['x-forwarded-for'] = clientIp;
@@ -172,6 +189,15 @@ export async function GET(
       method: 'GET',
       headers: legacyHeaders,
     });
+
+    if (response.status === 401) {
+      const unauthorizedResponse = NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      );
+      clearReportAuthCookie(unauthorizedResponse, intakeId);
+      return unauthorizedResponse;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

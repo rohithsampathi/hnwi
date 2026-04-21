@@ -17,6 +17,7 @@ import { useAuthPopup } from "@/contexts/auth-popup-context"
 import { CitationText } from "@/components/elite/citation-text"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { formatAnalysis, type FormattedAnalysis, type AnalysisSection } from "@/lib/format-text"
+import { sanitizeRichHtml } from "@/lib/security/sanitization"
 import type {
   HNWIWorldBrainContract,
   HNWIWorldDevelopment,
@@ -31,6 +32,8 @@ interface ElitePulseImpactMeta {
 type DevelopmentRecord = HNWIWorldDevelopment & {
   elite_pulse_impact?: ElitePulseImpactMeta
 }
+
+const sanitizeDevelopmentHtml = (value: string) => sanitizeRichHtml(value, { allowLinks: true })
 
 // Removed: AnalysisSection and FormattedAnalysis now imported from @/lib/format-text
 
@@ -61,8 +64,46 @@ interface DevelopmentStreamProps {
 
 const queenBullet = "list-none";
 
+const OUTWARD_TERM_LABEL_MAP: Record<string, string> = {
+  "Castle Pattern Footprint": "Pattern Intelligence",
+  "Kingdom Library Contract": "Library Intelligence",
+  "Surface": "Brief Format",
+  "Projection": "Library Rail",
+  "Substrate": "Knowledge Base",
+  "Native Version": "Library Version",
+  "Write-Back Targets": "Connected Feeds",
+  "Brain Dimensions": "Intelligence Dimensions",
+  "State Channels": "Decision Channels",
+  "Bundle Labels": "Pattern Clusters",
+  "Signal Labels": "Signal Themes",
+}
+
+const OUTWARD_TERM_VALUE_MAP: Record<string, string> = {
+  "castle_brief_v31": "Library Brief v31",
+  "castle brief v31": "Library Brief v31",
+  "castle_brief_v3.1": "Library Brief v3.1",
+  "castle brief v3.1": "Library Brief v3.1",
+  "castle_brief_v3_1": "Library Brief v3.1",
+  "castle_brief_v31_library": "Library Brief v31",
+  "native_castle_briefs": "Library Briefs",
+  "native castle briefs": "Library Briefs",
+  "native_kgv3_validated": "Validated Facts",
+  "native kgv3 validated": "Validated Facts",
+  "native_pattern_intelligence": "Pattern Intelligence",
+  "native pattern intelligence": "Pattern Intelligence",
+  "native_transaction_cases": "Transaction Cases",
+  "native transaction cases": "Transaction Cases",
+  "v3.1-library": "Library v3.1",
+}
+
+const outwardLabel = (label: string) => OUTWARD_TERM_LABEL_MAP[label] || label
+
 const formatPatternValue = (value?: string | null) => {
   if (!value) return null
+  const normalized = value.trim().toLowerCase()
+  if (OUTWARD_TERM_VALUE_MAP[normalized]) {
+    return OUTWARD_TERM_VALUE_MAP[normalized]
+  }
   return value
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase())
@@ -416,12 +457,12 @@ export function DevelopmentStream({
                                               citationMap={citationMap}
                                             />
                                           ) : (
-                                            <span
-                                              className="leading-relaxed font-medium"
-                                              dangerouslySetInnerHTML={{
-                                                __html: item.text
-                                              }}
-                                            />
+                                              <span
+                                                className="leading-relaxed font-medium"
+                                                dangerouslySetInnerHTML={{
+                                                __html: sanitizeDevelopmentHtml(item.text)
+                                                }}
+                                              />
                                           )}
                                         </div>
                                       ) : (
@@ -436,7 +477,7 @@ export function DevelopmentStream({
                                           <p
                                             className="leading-relaxed font-medium"
                                             dangerouslySetInnerHTML={{
-                                              __html: item.text
+                                              __html: sanitizeDevelopmentHtml(item.text)
                                             }}
                                           />
                                         )
@@ -473,7 +514,7 @@ export function DevelopmentStream({
                                                     <span
                                                       className="leading-relaxed font-medium"
                                                       dangerouslySetInnerHTML={{
-                                                        __html: item.text
+                                                        __html: sanitizeDevelopmentHtml(item.text)
                                                       }}
                                                     />
                                                   )}
@@ -490,7 +531,7 @@ export function DevelopmentStream({
                                                   <p
                                                     className="leading-relaxed font-medium"
                                                     dangerouslySetInnerHTML={{
-                                                      __html: item.text
+                                                      __html: sanitizeDevelopmentHtml(item.text)
                                                     }}
                                                   />
                                                 )
@@ -526,7 +567,7 @@ export function DevelopmentStream({
                                                     <span
                                                       className="leading-relaxed font-medium"
                                                       dangerouslySetInnerHTML={{
-                                                        __html: item.text
+                                                        __html: sanitizeDevelopmentHtml(item.text)
                                                       }}
                                                     />
                                                   )}
@@ -543,7 +584,7 @@ export function DevelopmentStream({
                                                   <p
                                                     className="leading-relaxed font-medium"
                                                     dangerouslySetInnerHTML={{
-                                                      __html: item.text
+                                                      __html: sanitizeDevelopmentHtml(item.text)
                                                     }}
                                                   />
                                                 )
@@ -579,7 +620,7 @@ export function DevelopmentStream({
                                                     <span
                                                       className="leading-relaxed font-medium"
                                                       dangerouslySetInnerHTML={{
-                                                        __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                        __html: sanitizeDevelopmentHtml(item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'))
                                                       }}
                                                     />
                                                   )}
@@ -596,7 +637,7 @@ export function DevelopmentStream({
                                                   <p
                                                     className="leading-relaxed font-medium"
                                                     dangerouslySetInnerHTML={{
-                                                      __html: item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                      __html: sanitizeDevelopmentHtml(item.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'))
                                                     }}
                                                   />
                                                 )
@@ -619,7 +660,7 @@ export function DevelopmentStream({
                             Numerical data
                           </h4>
                           <ul className={`${queenBullet} space-y-2`}>
-                            {dev.numerical_data.map((item: NonNullable<Development["numerical_data"]>[number], index: number) => (
+                            {dev.numerical_data.map((item: NonNullable<DevelopmentRecord["numerical_data"]>[number], index: number) => (
                               <li key={`numerical-${index}`} className="text-sm text-muted-foreground dark:text-gray-100 flex items-start">
                                 <Lightbulb className={`h-4 w-4 mr-2 flex-shrink-0 mt-1 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                                 <span>
@@ -642,7 +683,7 @@ export function DevelopmentStream({
                           <div className="flex items-center mb-3">
                             <BarChart3 className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              Castle Pattern Footprint
+                              {outwardLabel("Castle Pattern Footprint")}
                             </h4>
                           </div>
 
@@ -691,8 +732,8 @@ export function DevelopmentStream({
                             )}
                             {dev.pattern_metadata?.native_version && (
                               <div className="rounded-md border border-border/70 px-3 py-2">
-                                <div className="text-xs uppercase tracking-wide text-muted-foreground">Native Version</div>
-                                <div className="text-sm font-semibold">{dev.pattern_metadata.native_version}</div>
+                                <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Native Version")}</div>
+                                <div className="text-sm font-semibold">{formatPatternValue(dev.pattern_metadata.native_version)}</div>
                               </div>
                             )}
                           </div>
@@ -712,7 +753,7 @@ export function DevelopmentStream({
 
                           {dev.pattern_metadata?.signal_labels && dev.pattern_metadata.signal_labels.length > 0 && (
                             <div className="mt-4">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Signal Labels</div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Signal Labels")}</div>
                               <div className="flex flex-wrap gap-2">
                                 {dev.pattern_metadata.signal_labels.map((label, index) => (
                                   <Badge key={`signal-label-${index}`} variant="outline" className="text-xs">
@@ -725,7 +766,7 @@ export function DevelopmentStream({
 
                           {dev.pattern_metadata?.bundle_labels && dev.pattern_metadata.bundle_labels.length > 0 && (
                             <div className="mt-4">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Bundle Labels</div>
+                              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Bundle Labels")}</div>
                               <div className="flex flex-wrap gap-2">
                                 {dev.pattern_metadata.bundle_labels.map((label, index) => (
                                   <Badge key={`bundle-label-${index}`} variant="outline" className="text-xs">
@@ -743,7 +784,7 @@ export function DevelopmentStream({
                           <div className="flex items-center mb-3">
                             <Brain className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                             <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              Kingdom Library Contract
+                              {outwardLabel("Kingdom Library Contract")}
                             </h4>
                           </div>
 
@@ -752,26 +793,26 @@ export function DevelopmentStream({
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {dev.library_contract?.surface && (
                                   <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Surface</div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Surface")}</div>
                                     <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.surface)}</div>
                                   </div>
                                 )}
                                 {dev.library_contract?.canonical_projection_key && (
                                   <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Projection</div>
-                                    <div className="text-sm font-semibold">{dev.library_contract.canonical_projection_key}</div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Projection")}</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.canonical_projection_key)}</div>
                                   </div>
                                 )}
                                 {dev.library_contract?.substrate_family && (
                                   <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Substrate</div>
-                                    <div className="text-sm font-semibold">{dev.library_contract.substrate_family}</div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Substrate")}</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.substrate_family)}</div>
                                   </div>
                                 )}
                                 {dev.library_contract?.native_version && (
                                   <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Native Version</div>
-                                    <div className="text-sm font-semibold">{dev.library_contract.native_version}</div>
+                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Native Version")}</div>
+                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.native_version)}</div>
                                   </div>
                                 )}
                                 {dev.library_contract?.validation_status && (
@@ -788,13 +829,13 @@ export function DevelopmentStream({
                                 )}
                               </div>
 
-                              {dev.library_contract?.write_back_targets?.length > 0 && (
+                              {(dev.library_contract?.write_back_targets?.length ?? 0) > 0 && (
                                 <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Write-Back Targets</div>
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Write-Back Targets")}</div>
                                   <div className="flex flex-wrap gap-2">
-                                    {dev.library_contract.write_back_targets.map((target, index) => (
+                                    {(dev.library_contract?.write_back_targets ?? []).map((target, index) => (
                                       <Badge key={`write-back-target-${index}`} variant="outline" className="text-xs">
-                                        {target}
+                                        {formatPatternValue(target)}
                                       </Badge>
                                     ))}
                                   </div>
@@ -805,11 +846,11 @@ export function DevelopmentStream({
 
                           {hasBrainContract(dev.brain_contract) && (
                             <>
-                              {dev.brain_contract?.dimensions?.length > 0 && (
+                              {(dev.brain_contract?.dimensions?.length ?? 0) > 0 && (
                                 <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Brain Dimensions</div>
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Brain Dimensions")}</div>
                                   <div className="flex flex-wrap gap-2">
-                                    {dev.brain_contract.dimensions.map((dimension, index) => (
+                                    {(dev.brain_contract?.dimensions ?? []).map((dimension, index) => (
                                       <Badge key={`brain-dimension-${index}`} variant="outline" className="text-xs">
                                         {formatPatternValue(dimension)}
                                       </Badge>
@@ -818,11 +859,11 @@ export function DevelopmentStream({
                                 </div>
                               )}
 
-                              {dev.brain_contract?.state_channels?.length > 0 && (
+                              {(dev.brain_contract?.state_channels?.length ?? 0) > 0 && (
                                 <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">State Channels</div>
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("State Channels")}</div>
                                   <div className="flex flex-wrap gap-2">
-                                    {dev.brain_contract.state_channels.map((channel, index) => (
+                                    {(dev.brain_contract?.state_channels ?? []).map((channel, index) => (
                                       <Badge key={`brain-channel-${index}`} variant="outline" className="text-xs">
                                         {formatPatternValue(channel)}
                                       </Badge>

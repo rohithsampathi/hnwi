@@ -48,6 +48,8 @@ interface Structure {
 interface WealthProjectionSectionProps {
   data?: WealthProjectionData | PdfWealthProjectionData | Record<string, never>;
   rawAnalysis?: string;
+  annualWealthEngine?: Record<string, unknown>;
+  generationalMemory?: Record<string, unknown>;
   // STRUCTURE-AWARE PROJECTIONS (Jan 2026)
   structures?: Structure[];
   structureProjections?: Record<string, WealthProjectionData | PdfWealthProjectionData>;
@@ -93,6 +95,8 @@ function ProbabilityBadge({ probability, label }: { probability: string; label: 
 export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = ({
   data,
   rawAnalysis,
+  annualWealthEngine,
+  generationalMemory,
   structures = [],
   structureProjections = {},
   optimalStructureName
@@ -208,6 +212,281 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
 
   const hasStructuredData = data && 'scenarios' in data && Array.isArray(data.scenarios) && data.scenarios.length > 0;
   const hasNarrativeAnalysis = rawAnalysis && rawAnalysis.trim().length > 0;
+  const annualBuild = annualWealthEngine?.annual_wealth_build as Record<string, unknown> | undefined;
+  const generationCompounding = annualWealthEngine?.generation_compounding as Record<string, unknown> | undefined;
+  const scenarioGenerationPath = Array.isArray(annualWealthEngine?.scenario_generation_path)
+    ? annualWealthEngine.scenario_generation_path as Record<string, unknown>[]
+    : [];
+  const crisisPathway = annualWealthEngine?.crisis_pathway as Record<string, unknown> | undefined;
+  const hasAnnualEngine = Boolean(annualBuild || generationCompounding || crisisPathway || scenarioGenerationPath.length);
+
+  const compactMoney = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return formatCurrency(value);
+    if (typeof value === 'string' && value.trim()) return value;
+    return 'Not shown';
+  };
+
+  const compactPct = (value: unknown) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return `${value.toFixed(1)}%`;
+    if (typeof value === 'string' && value.trim()) return value;
+    return 'Not shown';
+  };
+
+  const toNumber = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  };
+
+  const annualEngineNarrativeData = (() => {
+    if (!hasAnnualEngine) return null;
+    const start = toNumber(annualWealthEngine?.starting_asset_value) || 0;
+    const entry = toNumber(annualWealthEngine?.entry_cost_basis) || start;
+    if (!start) return null;
+
+    const compoundingPath = Array.isArray(annualWealthEngine?.compounding_path)
+      ? annualWealthEngine.compounding_path as Record<string, unknown>[]
+      : [];
+    const baseRate = (toNumber(annualBuild?.appreciation_rate_pct) || 0) / 100;
+    const baseYield = (toNumber(annualBuild?.net_yield_pct) || 0) / 100;
+    const stressRate = (toNumber(crisisPathway?.stress_appreciation_rate_pct) ?? Math.max(0, (toNumber(annualBuild?.appreciation_rate_pct) || 0) - 3)) / 100;
+    const stressYield = (toNumber(crisisPathway?.stress_net_yield_pct) ?? Math.max(0, (toNumber(annualBuild?.net_yield_pct) || 0) - 1.5)) / 100;
+    const opportunityRate = baseRate + 0.015;
+    const opportunityYield = baseYield + 0.01;
+    const stressHaircut = (toNumber(crisisPathway?.stress_drawdown_pct) || 0) / 100;
+    const baseIncomeYearsByYear = compoundingPath.reduce<Record<number, number>>((acc, point) => {
+      const year = toNumber(point.year);
+      const income = toNumber(point.cumulative_net_rental_income);
+      if (year !== undefined && income !== undefined && baseYield > 0) {
+        acc[year] = income / (start * baseYield);
+      }
+      return acc;
+    }, {});
+
+    const buildPoint = (year: number, rate: number, yieldRate: number, haircut = 0) => {
+      const asset = start * ((1 + rate) ** year);
+      const incomeYears = baseIncomeYearsByYear[year] ?? (baseYield > 0 ? year : 0);
+      const income = start * yieldRate * incomeYears;
+      const routeValue = (asset + income) * (1 - haircut);
+      return {
+        year,
+        value: routeValue / 1000000,
+        property: (asset * (1 - haircut)) / 1000000,
+        rental: (income * (1 - haircut)) / 1000000,
+      };
+    };
+
+    const pointFromBase = (year: number) => {
+      const point = compoundingPath.find((item) => toNumber(item.year) === year);
+      if (!point) return buildPoint(year, baseRate, baseYield, 0);
+      const routeValue = toNumber(point.route_value_before_exit) || start;
+      return {
+        year,
+        value: routeValue / 1000000,
+        property: (toNumber(point.asset_value) || routeValue) / 1000000,
+        rental: (toNumber(point.cumulative_net_rental_income) || 0) / 1000000,
+      };
+    };
+
+    const chartDataByScenario = {
+      base: [0, 1, 5, 10].map((year) => year === 0 ? { year, value: entry / 1000000, property: start / 1000000, rental: 0 } : pointFromBase(year)),
+      stress: [0, 1, 5, 10].map((year) => year === 0 ? { year, value: entry / 1000000, property: start / 1000000, rental: 0 } : buildPoint(year, stressRate, stressYield, stressHaircut)),
+      opportunity: [0, 1, 5, 10].map((year) => year === 0 ? { year, value: entry / 1000000, property: start / 1000000, rental: 0 } : buildPoint(year, opportunityRate, opportunityYield, 0)),
+    };
+
+    const scenarioByCase = scenarioGenerationPath.reduce<Record<string, Record<string, unknown>>>((acc, scenario) => {
+      if (scenario.case) acc[String(scenario.case)] = scenario;
+      return acc;
+    }, {});
+
+    const y10Base = chartDataByScenario.base[chartDataByScenario.base.length - 1].value * 1000000;
+    const y10Stress = chartDataByScenario.stress[chartDataByScenario.stress.length - 1].value * 1000000;
+    const y10Opportunity = chartDataByScenario.opportunity[chartDataByScenario.opportunity.length - 1].value * 1000000;
+    const ifStay = start * ((1 + 0.04) ** 10);
+
+    return {
+      chartDataByScenario,
+      ifStay,
+      entry,
+      costOfInaction: {
+        year_1: Math.max(0, chartDataByScenario.base[1].value * 1000000 - entry),
+        year_5: Math.max(0, chartDataByScenario.base[2].value * 1000000 - entry),
+        year_10: Math.max(0, y10Base - entry),
+      },
+      overall: {
+        expectedNetWorth: y10Base,
+        valueCreation: y10Base - entry,
+        netBenefit: y10Base - ifStay,
+      },
+      scenarios: [
+        {
+          name: 'Base Case',
+          description: `${compactPct(annualBuild?.net_yield_pct)} net yield + ${compactPct(annualBuild?.appreciation_rate_pct)} appreciation`,
+          outcome: compactMoney(y10Base - entry),
+          verdict: `G3 governed path: ${compactMoney(scenarioByCase.base?.net_to_g3_with_governance)}`,
+          type: 'base' as const,
+        },
+        {
+          name: 'Stress Case',
+          description: `${compactPct(crisisPathway?.stress_drawdown_pct)} crisis haircut; ${compactPct(crisisPathway?.stress_appreciation_rate_pct)} stress appreciation`,
+          outcome: compactMoney(y10Stress - entry),
+          verdict: `G3 governed stress: ${compactMoney((scenarioByCase.governed_stress || scenarioByCase.stress)?.net_to_g3_with_governance)}`,
+          type: 'stress' as const,
+        },
+        {
+          name: 'Opportunity Case',
+          description: 'Upside case after route controls hold',
+          outcome: compactMoney(y10Opportunity - entry),
+          verdict: `G3 governed upside: ${compactMoney(scenarioByCase.opportunity?.net_to_g3_with_governance)}`,
+          type: 'opportunity' as const,
+        },
+      ],
+    };
+  })();
+
+  const AnnualWealthEnginePanel = () => {
+    if (!hasAnnualEngine) return null;
+    const g2Base = (generationCompounding?.g2_base || {}) as Record<string, unknown>;
+    const g3Base = (generationCompounding?.g3_base || {}) as Record<string, unknown>;
+    const compactScenarios = scenarioGenerationPath.slice(0, 4);
+    const thirdGeneration = (generationalMemory?.third_generation_problem || {}) as Record<string, unknown>;
+    const hughes = (generationalMemory?.hughes_framework || {}) as Record<string, unknown>;
+    const provisions = Array.isArray(hughes.human_capital_provisions)
+      ? hughes.human_capital_provisions.slice(0, 3).map(String)
+      : [
+          'Re-underwrite the asset annually against family use, liquidity, tax, and exit needs.',
+          'Teach the next generation the difference between route value and spendable liquidity.',
+          'Keep title, beneficiary, banking, and authority changes under one named route owner.',
+        ];
+
+    return (
+      <motion.div
+        className="grid gap-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={isVisible ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, delay: 0.18 }}
+      >
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-primary font-semibold mb-1">
+                Annual Wealth Built
+              </p>
+              <h3 className="text-base sm:text-lg font-semibold text-foreground">
+                Rental income + appreciation, before the family mistakes it for liquidity
+              </h3>
+            </div>
+            {annualBuild?.total_annual_route_build !== undefined ? (
+              <div className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-right">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Annual Route Build</p>
+                <p className="text-xl font-bold text-primary">{compactMoney(annualBuild.total_annual_route_build)}</p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ValueGauge
+              label="Gross Rental"
+              value={compactMoney(annualBuild?.gross_rental_income)}
+              subtext={`${compactPct(annualBuild?.gross_yield_pct)} gross yield`}
+            />
+            <ValueGauge
+              label="Net Rental"
+              value={compactMoney(annualBuild?.net_rental_income)}
+              subtext={`${compactPct(annualBuild?.net_yield_pct)} net yield`}
+            />
+            <ValueGauge
+              label="Appreciation"
+              value={compactMoney(annualBuild?.appreciation_basis)}
+              subtext={`${compactPct(annualBuild?.appreciation_rate_pct)} appreciation basis`}
+            />
+            <ValueGauge
+              label="Crisis Path"
+              value={compactPct(crisisPathway?.stress_drawdown_pct)}
+              subtext={crisisPathway?.decision_window_days ? `${crisisPathway.decision_window_days} day window` : 'Live stress window'}
+            />
+          </div>
+
+          {annualBuild?.note ? (
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{String(annualBuild.note)}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="bg-card border border-border rounded-xl p-5">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
+              G2 / G3 Compounding
+            </p>
+            <div className="grid gap-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">G2 Base Route Value</p>
+                <p className="text-lg font-bold text-foreground">{compactMoney(g2Base.route_value_before_exit)}</p>
+                <p className="text-xs text-muted-foreground">Net to G2 after estate-case drag: {compactMoney(g2Base.net_to_g2_after_estate_case)}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">G3 Governed Value</p>
+                <p className="text-lg font-bold text-foreground">{compactMoney(g3Base.net_to_g3_with_governance)}</p>
+                <p className="text-xs text-muted-foreground">Without governance: {compactMoney(g3Base.net_to_g3_without_governance)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
+              Scenario Path Through Crisis
+            </p>
+            <div className="grid gap-2">
+              {compactScenarios.map((scenario) => (
+                <div key={String(scenario.case)} className="grid grid-cols-[0.85fr_1.2fr_1.2fr] gap-3 rounded-lg border border-border/70 bg-muted/20 p-3 text-xs">
+                  <div>
+                    <p className="font-semibold uppercase tracking-wider text-foreground">{String(scenario.case || 'case').replace(/_/g, ' ')}</p>
+                    <p className="text-muted-foreground">{String(scenario.crisis_haircut_applied || '0.0%')} crisis haircut</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Route value</p>
+                    <p className="font-semibold text-foreground">{compactMoney(scenario.route_value_before_exit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">G3 governed</p>
+                    <p className="font-semibold text-foreground">{compactMoney(scenario.net_to_g3_with_governance)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {crisisPathway?.effect ? (
+              <p className="mt-4 text-xs leading-relaxed text-amber-600">{String(crisisPathway.effect)}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">
+                What Must Be Remembered
+              </p>
+              <h3 className="text-base font-semibold text-foreground">
+                {String(thirdGeneration.headline || 'The asset only compounds if office memory survives the founder.')}
+              </h3>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                Changing next-generation interests should be reviewed against use, liquidity, education, exit optionality, and governance. The memo should not let a 10-year return chart become a permanent family promise.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              {provisions.map((item, index) => (
+                <div key={index} className="rounded-lg border border-border/70 bg-muted/20 p-3 text-xs text-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
   // Extract key metrics from narrative text
   const extractMetricsFromNarrative = (text: string) => {
@@ -314,11 +593,11 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
   // Premium Narrative Fallback with visual components
   if (!hasStructuredData && hasNarrativeAnalysis) {
     const metrics = extractMetricsFromNarrative(rawAnalysis);
-    const scenarios = extractScenarios(rawAnalysis);
+    const scenarios = annualEngineNarrativeData?.scenarios || extractScenarios(rawAnalysis);
     const activeScenarioData = scenarios.find(s => s.type === activeScenario) || scenarios[0];
 
     // Scenario-specific chart data - changes based on selected scenario
-    const chartDataByScenario = {
+    const chartDataByScenario = annualEngineNarrativeData?.chartDataByScenario || {
       base: [
         { year: 0, value: 4.0, property: 4.0, liquid: 0 },
         { year: 1, value: 4.52, property: 4.32, liquid: 0.2 },
@@ -367,6 +646,9 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       totalCreation: `+$${totalCreation.toFixed(2)}M`,
       percentGain: `+${percentGain.toFixed(0)}%`
     };
+    const fallbackCostOfInaction = annualEngineNarrativeData?.costOfInaction;
+    const fallbackWeighted = annualEngineNarrativeData?.overall;
+    const fallbackStayValue = annualEngineNarrativeData?.ifStay || 8640000;
 
     return (
       <div ref={sectionRef}>
@@ -455,6 +737,8 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </div>
             </div>
           </motion.div>
+
+          <AnnualWealthEnginePanel />
 
           {/* Trajectory Chart - Updates based on selected scenario */}
           <motion.div
@@ -573,21 +857,21 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 1</p>
-                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-$0.20M</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">{fallbackCostOfInaction ? `-${formatCurrency(fallbackCostOfInaction.year_1)}` : '-$0.20M'}</p>
               </div>
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border border-border">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 5</p>
-                <p className="text-sm sm:text-lg font-bold text-muted-foreground">-$1.33M</p>
+                <p className="text-sm sm:text-lg font-bold text-muted-foreground">{fallbackCostOfInaction ? `-${formatCurrency(fallbackCostOfInaction.year_5)}` : '-$1.33M'}</p>
               </div>
               <div className="bg-card rounded-lg p-2 sm:p-3 text-center border-2 border-primary/50">
                 <p className="text-[10px] text-muted-foreground mb-1">Year 10</p>
-                <p className="text-base sm:text-xl font-bold text-foreground">-{metrics.costOfInaction}</p>
+                <p className="text-base sm:text-xl font-bold text-foreground">{fallbackCostOfInaction ? `-${formatCurrency(fallbackCostOfInaction.year_10)}` : `-${metrics.costOfInaction}`}</p>
               </div>
             </div>
 
             <div className="bg-card rounded-lg p-3">
               <p className="text-xs text-foreground break-words">
-                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {metrics.costOfInaction}</span>
+                <span className="font-semibold text-foreground">&ldquo;Do Nothing&rdquo; Locks Out {fallbackCostOfInaction ? formatCurrency(fallbackCostOfInaction.year_10) : metrics.costOfInaction}</span>
                 {' '}— Primary: Lost rental yield FV. Secondary: No TX diversification/tax arbitrage.
               </p>
             </div>
@@ -610,19 +894,19 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-card rounded-lg">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
-                <p className="text-xl font-bold text-foreground">{metrics.year10Value}</p>
+                <p className="text-xl font-bold text-foreground">{fallbackWeighted ? formatCurrency(fallbackWeighted.expectedNetWorth) : metrics.year10Value}</p>
               </div>
               <div className="text-center p-4 bg-card rounded-lg">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
-                <p className="text-xl font-bold text-primary">{metrics.totalCreation}</p>
+                <p className="text-xl font-bold text-primary">{fallbackWeighted ? formatCurrency(fallbackWeighted.valueCreation) : metrics.totalCreation}</p>
               </div>
               <div className="text-center p-4 bg-card rounded-lg">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (No Move)</p>
-                <p className="text-xl font-bold text-muted-foreground">$8.64M</p>
+                <p className="text-xl font-bold text-muted-foreground">{formatCurrency(fallbackStayValue)}</p>
               </div>
               <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
-                <p className="text-2xl font-bold text-primary">+{metrics.costOfInaction}</p>
+                <p className="text-2xl font-bold text-primary">+{fallbackWeighted ? formatCurrency(fallbackWeighted.netBenefit) : metrics.costOfInaction}</p>
               </div>
             </div>
           </motion.div>
@@ -646,7 +930,34 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
 
   // Return null if no data
   if (!hasStructuredData && !hasNarrativeAnalysis) {
-    return null;
+    if (!hasAnnualEngine) {
+      return null;
+    }
+
+    return (
+      <div ref={sectionRef}>
+        <motion.div
+          className="mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="flex items-center gap-3 mb-2 sm:mb-3">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground tracking-wide">
+              WEALTH COMPOUNDING ENGINE
+            </h2>
+            <span className="px-2 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+              G2 / G3
+            </span>
+          </div>
+          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
+          <p className="text-sm text-muted-foreground mt-3">
+            Annual rental income, appreciation, generation compounding, and crisis pressure are shown as one decision surface.
+          </p>
+        </motion.div>
+        <AnnualWealthEnginePanel />
+      </div>
+    );
   }
 
   // Structured data rendering with full visualization
@@ -695,9 +1006,13 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
     : 10;
   const structuredYAxisDomain: [number, number] = [0, structuredYAxisMax];
 
-  // Get starting position
+  // Starting asset value vs all-in capital deployed are different in property routes.
+  // Keep the chart on asset value, but make the deployed basis explicit.
   const startingValue = typedData.starting_position?.transaction_value || 0;
   const startingValueFormatted = formatCurrency(startingValue);
+  const capitalDeployed = typedData.starting_position?.total_acquisition_cost || startingValue;
+  const capitalDeployedFormatted = formatCurrency(capitalDeployed);
+  const stampDutiesPaid = typedData.starting_position?.stamp_duties_paid || 0;
 
   // Get 10-year outcomes
   const baseOutcome = baseScenario?.ten_year_outcome;
@@ -718,7 +1033,9 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       probability: baseScenario?.probability || 0.6,
       assumptions: baseScenario?.assumptions || [],
       outcome: baseOutcome ? formatCurrency(baseOutcome.total_value_creation) : 'N/A',
+      netOutcome: baseOutcome ? formatCurrency((baseOutcome as unknown as Record<string, number>).net_value_creation ?? baseOutcome.total_value_creation) : 'N/A',
       percentGain: baseOutcome ? `+${baseOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
+      trueRoi: baseOutcome ? `+${(((baseOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? baseOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
       verdict: 'Primary trajectory aligned with projections'
     },
     {
@@ -727,7 +1044,9 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       probability: stressScenario?.probability || 0.2,
       assumptions: stressScenario?.assumptions || [],
       outcome: stressOutcome ? formatCurrency(stressOutcome.total_value_creation) : 'N/A',
+      netOutcome: stressOutcome ? formatCurrency((stressOutcome as unknown as Record<string, number>).net_value_creation ?? stressOutcome.total_value_creation) : 'N/A',
       percentGain: stressOutcome ? `+${stressOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
+      trueRoi: stressOutcome ? `+${(((stressOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? stressOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
       verdict: 'Survivable with no leverage'
     },
     {
@@ -736,7 +1055,9 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
       probability: opportunityScenario?.probability || 0.2,
       assumptions: opportunityScenario?.assumptions || [],
       outcome: opportunityOutcome ? formatCurrency(opportunityOutcome.total_value_creation) : 'N/A',
+      netOutcome: opportunityOutcome ? formatCurrency((opportunityOutcome as unknown as Record<string, number>).net_value_creation ?? opportunityOutcome.total_value_creation) : 'N/A',
       percentGain: opportunityOutcome ? `+${opportunityOutcome.percentage_gain.toFixed(0)}%` : 'N/A',
+      trueRoi: opportunityOutcome ? `+${(((opportunityOutcome as unknown as Record<string, number>).true_roi_pct as number | undefined) ?? opportunityOutcome.percentage_gain).toFixed(0)}%` : 'N/A',
       verdict: 'Bull market upside potential'
     }
   ];
@@ -794,37 +1115,22 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
     };
   })();
 
-  // Per-scenario Probability-Weighted Outcome: show the active scenario's actual outcome
-  const activePW = (() => {
-    if (!pwOutcome || !activeOutcome) return pwOutcome;
-
-    const finalVal = activeOutcome.final_value
-      ?? (activeOutcome as unknown as Record<string, number>).final_total_value
-      ?? 0;
-    const valueCreation = activeOutcome.total_value_creation ?? 0;
-    // "If Stay" is scenario-independent (what your money does at 4% cash)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stayVal = (pwOutcome as any).vs_cash_at_4pct ?? pwOutcome.vs_stay_expected ?? 0;
-    const netBenefit = finalVal - stayVal;
-
-    return {
-      ...pwOutcome,
-      expected_net_worth: finalVal,
-      expected_total_value: finalVal,
-      expected_value_creation: valueCreation,
-      net_benefit_of_move: netBenefit,
-    };
-  })();
+  const weightedOutcome = pwOutcome;
+  const weightedStayValue = ((weightedOutcome as any)?.vs_cash_at_4pct ?? weightedOutcome?.vs_stay_expected ?? 0) as number;
+  const weightedRoiPct = (((weightedOutcome as any)?.true_roi_pct ?? weightedOutcome?.percentage_return ?? 0) as number);
+  const weightedProbabilitiesLabel = `${Math.round((baseScenario?.probability || 0) * 100)}/${Math.round((stressScenario?.probability || 0) * 100)}/${Math.round((opportunityScenario?.probability || 0) * 100)}`;
 
   // Dynamic metrics for the selected scenario (structured data)
   // Display backend data directly - no frontend calculations
   // Use final_value (new field) with fallback to final_total_value (legacy field)
+  const activeNetCreation = ((activeOutcome as unknown as Record<string, number> | undefined)?.net_value_creation as number | undefined);
   const structuredDynamicMetrics = {
     percentGain: activeOutcome?.percentage_gain || 0,
     year10Value: (activeOutcome?.final_value || activeOutcome?.final_total_value)
       ? formatCurrency(activeOutcome.final_value || activeOutcome.final_total_value || 0)
       : 'N/A',
-    valueCreation: activeOutcome?.total_value_creation ? formatCurrency(activeOutcome.total_value_creation ?? 0) : 'N/A'
+    valueCreation: activeOutcome?.total_value_creation ? formatCurrency(activeOutcome.total_value_creation ?? 0) : 'N/A',
+    netCreation: activeNetCreation !== undefined ? formatCurrency(activeNetCreation) : 'N/A'
   };
 
   return (
@@ -846,7 +1152,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
         </div>
         <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-primary to-primary/30" />
         <p className="text-sm text-muted-foreground mt-3">
-          Probability-weighted wealth trajectory analysis
+          Scenario-based wealth trajectory. Base, stress, and opportunity views react to the selected case; the weighted route outcome below stays constant because it combines all three.
         </p>
       </motion.div>
 
@@ -914,7 +1220,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                 </div>
               </div>); })()}
               <span className="mt-2 text-xs font-bold px-3 py-1 rounded-full bg-primary/20 text-primary">
-                10-YEAR GROWTH
+                10-YEAR ASSET GROWTH
               </span>
             </div>
 
@@ -924,7 +1230,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {activeScenario === 'base'
-                  ? `${Number(typedData.starting_position?.rental_yield_pct || 5).toFixed(1)}% rental yield + ${Number(typedData.starting_position?.appreciation_rate_pct || 8).toFixed(1)}% appreciation`
+                  ? `${Number(typedData.starting_position?.rental_yield_pct || 5).toFixed(1)}% gross yield basis + ${Number(typedData.starting_position?.appreciation_rate_pct || 8).toFixed(1)}% appreciation basis`
                   : activeScenario === 'stress'
                   ? 'Conservative scenario with market downturn and yield compression'
                   : 'Bull market scenario with enhanced returns and yield expansion'}
@@ -932,13 +1238,20 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
 
               {/* Key Metrics Grid - Uses activeOutcome from backend */}
               <div className="grid grid-cols-3 gap-3">
-                <ValueGauge label="Starting" value={startingValueFormatted} />
-                <ValueGauge label="Year 10" value={structuredDynamicMetrics.year10Value} highlight />
-                <ValueGauge label="Net Creation" value={structuredDynamicMetrics.valueCreation} highlight />
+                <ValueGauge label="Starting Asset" value={startingValueFormatted} subtext={`Capital deployed ${capitalDeployedFormatted}`} />
+                <ValueGauge label="Year 10 Asset" value={structuredDynamicMetrics.year10Value} highlight />
+                <ValueGauge label="Gross Value Creation" value={structuredDynamicMetrics.valueCreation} subtext={activeNetCreation !== undefined ? `Net of entry costs ${structuredDynamicMetrics.netCreation}` : undefined} highlight />
               </div>
+              {stampDutiesPaid > 0 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Includes ${formatCurrency(stampDutiesPaid)} of day-one transfer fees in the deployed-capital basis.
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
+
+        <AnnualWealthEnginePanel />
 
         {/* Trajectory Chart - Updates based on selected scenario */}
         {chartData.length > 0 && (
@@ -1028,10 +1341,10 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
                   </div>
                 </div>
 
-                <div className="bg-card/50 rounded-lg p-3 mb-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
+                  <div className="bg-card/50 rounded-lg p-3 mb-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Gross Value Creation</p>
                   <p className={`text-lg font-bold ${isActive ? 'text-primary' : 'text-foreground'}`}>{scenario.outcome}</p>
-                  <p className="text-xs text-muted-foreground">{scenario.percentGain} gain</p>
+                  <p className="text-xs text-muted-foreground">{scenario.percentGain} asset growth · {scenario.trueRoi} ROI on deployed capital</p>
                 </div>
 
                 <div className="border-t border-border/50 pt-3">
@@ -1056,7 +1369,7 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
                 Cost of Inaction
               </h3>
-              <span className="text-[10px] text-muted-foreground">(If You Don&apos;t Proceed)</span>
+              <span className="text-[10px] text-muted-foreground">({activeScenarioData.name} if you don&apos;t proceed)</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
@@ -1089,8 +1402,8 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
         )}
 
         <div data-print-block="keep" data-print-max-height="280">
-          {/* Probability-Weighted Summary — scenario-reactive */}
-          {activePW && (
+          {/* Probability-Weighted Summary — overall cross-scenario route summary */}
+          {weightedOutcome && (
             <motion.div
               className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/30 rounded-xl p-5"
               initial={{ opacity: 0, y: 20 }}
@@ -1100,28 +1413,38 @@ export const WealthProjectionSection: React.FC<WealthProjectionSectionProps> = (
               <div className="flex items-center gap-2 mb-4">
                 <Zap className="w-5 h-5 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  {activeScenario === 'base' ? 'Probability-Weighted' : activeScenario === 'stress' ? 'Stress Case' : 'Opportunity Case'} Expected Outcome
+                  Overall Probability-Weighted Route Outcome
                 </h3>
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider">
+                  Static Across Tabs
+                </span>
               </div>
+
+              <p className="mb-4 text-xs text-muted-foreground">
+                This is the overall route summary across Base, Stress, and Opportunity. It does not change when you switch the selected scenario above.
+              </p>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-card rounded-lg">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Net Worth</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency((activePW as any).expected_total_value ?? activePW.expected_net_worth)}</p>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(((weightedOutcome as any).expected_total_value ?? weightedOutcome.expected_net_worth) as number)}</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Value Creation</p>
-                  <p className="text-xl font-bold text-primary">{formatCurrency(activePW.expected_value_creation)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Expected Value Creation</p>
+                  <p className="text-xl font-bold text-primary">{formatCurrency(weightedOutcome.expected_value_creation)}</p>
                 </div>
                 <div className="text-center p-4 bg-card rounded-lg">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (No Move)</p>
-                  <p className="text-xl font-bold text-muted-foreground">{formatCurrency((activePW as any).vs_cash_at_4pct ?? activePW.vs_stay_expected)}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">If Stay (4% cash)</p>
+                  <p className="text-xl font-bold text-muted-foreground">{formatCurrency(weightedStayValue)}</p>
                 </div>
                 <div className="text-center p-4 bg-primary/20 rounded-lg border-2 border-primary/50">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Net Benefit</p>
-                  <p className="text-2xl font-bold text-primary">+{formatCurrency(activePW.net_benefit_of_move)}</p>
+                  <p className="text-2xl font-bold text-primary">+{formatCurrency(weightedOutcome.net_benefit_of_move)}</p>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground text-center">
+                Weighted across Base / Stress / Opportunity scenarios using {weightedProbabilitiesLabel} probabilities. True ROI on deployed capital: {weightedRoiPct.toFixed(1)}%.
+              </p>
             </motion.div>
           )}
 

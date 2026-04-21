@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { HomeRedirectController } from "@/components/home-redirect-controller"
+import { HomePageClientEnhancements } from "@/components/home-page-client-enhancements"
 import { SplashLanding } from "@/components/splash-landing"
 
 export const metadata: Metadata = {
@@ -11,9 +11,6 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <>
-      <HomeRedirectController />
-      <SplashLanding />
-    </>
+    <SplashLanding ambient={<HomePageClientEnhancements />} />
   )
 }

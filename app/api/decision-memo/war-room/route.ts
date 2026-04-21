@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
+import { getAnyReportAuthTokenFromRequest } from '@/lib/security/report-auth';
 
 export const maxDuration = 60;
 
@@ -17,10 +18,14 @@ export async function GET(request: NextRequest) {
 
     // Forward cookies for authentication check
     const cookieHeader = request.headers.get('cookie');
+    const reportAuthHeader = getAnyReportAuthTokenFromRequest(request);
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
 
     if (cookieHeader) {
       backendHeaders['Cookie'] = cookieHeader;
+    }
+    if (reportAuthHeader) {
+      backendHeaders['Authorization'] = reportAuthHeader;
     }
 
     const response = await fetch(backendUrl, {

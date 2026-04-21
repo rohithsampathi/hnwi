@@ -64,6 +64,17 @@ interface MemoHeaderProps {
   exposureClass?: string;
   totalSavings?: string;
   precedentCount?: number;
+  headlineMetric?: {
+    label?: string;
+    value?: string;
+    description?: string;
+  };
+  evidenceBasisNote?: string;
+  underwritingSnapshot?: Array<{
+    label: string;
+    value: string;
+    note?: string;
+  }>;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
   sourceTaxRates?: TaxRates;
@@ -83,6 +94,14 @@ interface MemoHeaderProps {
   onExportPDF?: () => void;
 }
 
+interface ValueComponent {
+  value: string;
+  label: string;
+  color: string;
+  note?: string;
+  strikeValue?: string;
+}
+
 // ─── Verdict Theme ──────────────────────────────────────────────────────────
 type VerdictTier = 'approved' | 'conditional' | 'vetoed';
 
@@ -97,7 +116,7 @@ const THEME = {
   conditional: {
     dot: 'bg-gold',
     text: 'text-gold',
-    label: 'UNDER REVIEW',
+    label: 'CONDITIONAL',
     title: 'text-gold',
     value: 'text-gold',
   },
@@ -134,6 +153,9 @@ export function MemoHeader({
   generatedAt,
   exposureClass,
   precedentCount = 0,
+  headlineMetric,
+  evidenceBasisNote,
+  underwritingSnapshot,
   taxDifferential,
   valueCreation,
   optimalStructure,
@@ -171,6 +193,7 @@ export function MemoHeader({
 
   // Compute true annual from individual components — NOT from total_annual (which is the 10-year figure)
   const annualSavings = (() => {
+    if (headlineMetric?.value) return headlineMetric.value;
     // Prefer pre-formatted annual total if backend provides it
     if (valueCreation?.annual?.total_formatted) return valueCreation.annual.total_formatted;
     if (valueCreation?.annual?.total) return `$${(valueCreation.annual.total / 1000000).toFixed(1)}M`;
@@ -186,9 +209,9 @@ export function MemoHeader({
 
   const metrics = [
     ...(annualSavings ? [{
-      label: 'Annual Savings',
+      label: headlineMetric?.label || 'Underwritten Annual Return',
       value: annualSavings,
-      description: 'Projected annual returns',
+      description: headlineMetric?.description || 'Net annual income plus appreciation basis',
       highlight: true,
       numeric: true,
     }] : []),
@@ -201,9 +224,9 @@ export function MemoHeader({
       numeric: false,
     },
     {
-      label: 'Intelligence Depth',
+      label: evidenceBasisNote ? 'Route Precedents' : 'Intelligence Depth',
       value: precedentCount > 0 ? `${precedentCount}` : '—',
-      description: 'Corridor signals analyzed',
+      description: evidenceBasisNote || 'Corridor signals analyzed',
       numeric: true,
     },
   ];
@@ -221,12 +244,21 @@ export function MemoHeader({
 
   // ─── Value Creation Components ────────────────────────────────────────────
   const valueComponents = (() => {
+    if (underwritingSnapshot?.length) {
+      return underwritingSnapshot.map((item): ValueComponent => ({
+        value: item.value,
+        label: item.label,
+        color: 'text-foreground',
+        note: item.note,
+        strikeValue: undefined,
+      }));
+    }
     if (!valueCreation) return null;
     const hasAnnual = valueCreation.annual && (valueCreation.annual.rental !== undefined || valueCreation.annual.appreciation !== undefined);
     const hasTax = typeof valueCreation.annual_tax_savings === 'number' || typeof valueCreation.annual_cgt_savings === 'number' || typeof valueCreation.annual_estate_benefit === 'number';
     if (!hasAnnual && !hasTax) return null;
 
-    const items: Array<{ value: string; label: string; color: string; note?: string; strikeValue?: string }> = [];
+    const items: ValueComponent[] = [];
 
     if (hasAnnual) {
       items.push({
@@ -283,7 +315,9 @@ export function MemoHeader({
   })();
 
   // ─── Notice ───────────────────────────────────────────────────────────────
-  const noticeBody = `Pattern & Market Intelligence Report based on ${precedentCount > 0 ? precedentCount.toLocaleString() : '0'}+ analyzed corridor signals. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.`;
+  const noticeBody = evidenceBasisNote
+    ? `Evidence basis: ${evidenceBasisNote}. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.`
+    : `Pattern & Market Intelligence Report based on ${precedentCount > 0 ? precedentCount.toLocaleString() : '0'} analyzed corridor signals. This report provides strategic intelligence and pattern analysis for informed decision-making. For execution and implementation, consult your legal, tax, and financial advisory teams.`;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (

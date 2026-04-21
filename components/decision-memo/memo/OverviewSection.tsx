@@ -9,16 +9,28 @@ import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { fadeInUp } from '@/lib/animations/motion-variants';
 
 interface OverviewSectionProps {
-  verdict?: 'PROCEED' | 'RESTRUCTURE' | 'ABORT';
+  verdict?: 'PROCEED' | 'PROCEED_MODIFIED' | 'RESTRUCTURE' | 'DEFER' | 'ABORT';
   generatedAt: string;
   intakeId: string;
   totalValueCreation?: string;
+  headlineMetric?: {
+    label?: string;
+    value?: string;
+    description?: string;
+  };
+  strategyLabel?: string;
   optimalStructure?: {
     name: string;
     net_benefit?: string;
     net_benefit_formatted?: string;
   };
   intelligenceDepth: number;
+  intelligenceSummaryNote?: string;
+  underwritingSnapshot?: Array<{
+    label: string;
+    value: string;
+    note?: string;
+  }>;
   returnsAnalysis?: {
     rentalIncome?: string;
     appreciation?: string;
@@ -34,8 +46,12 @@ export function OverviewSection({
   generatedAt,
   intakeId,
   totalValueCreation,
+  headlineMetric,
+  strategyLabel,
   optimalStructure,
   intelligenceDepth,
+  intelligenceSummaryNote,
+  underwritingSnapshot,
   returnsAnalysis,
   sourceJurisdiction,
   destinationJurisdiction
@@ -61,14 +77,24 @@ export function OverviewSection({
           bgColor: 'bg-verdict-proceed/10',
           borderColor: 'border-verdict-proceed/20'
         };
+      case 'PROCEED_MODIFIED':
       case 'RESTRUCTURE':
         return {
           label: 'CONDITIONAL',
-          sublabel: 'Restructure',
+          sublabel: 'Proceed Modified',
           icon: AlertTriangle,
           color: 'text-verdict-restructure',
           bgColor: 'bg-verdict-restructure/10',
           borderColor: 'border-verdict-restructure/20'
+        };
+      case 'DEFER':
+        return {
+          label: 'DEFER',
+          sublabel: 'Hold',
+          icon: AlertTriangle,
+          color: 'text-amber-500',
+          bgColor: 'bg-amber-500/10',
+          borderColor: 'border-amber-500/20'
         };
       case 'ABORT':
         return {
@@ -81,12 +107,12 @@ export function OverviewSection({
         };
       default:
         return {
-          label: 'APPROVED',
-          sublabel: 'Proceed',
-          icon: CheckCircle,
-          color: 'text-verdict-proceed',
-          bgColor: 'bg-verdict-proceed/10',
-          borderColor: 'border-verdict-proceed/20'
+          label: 'CONDITIONAL',
+          sublabel: 'Proceed Modified',
+          icon: AlertTriangle,
+          color: 'text-verdict-restructure',
+          bgColor: 'bg-verdict-restructure/10',
+          borderColor: 'border-verdict-restructure/20'
         };
     }
   };
@@ -124,23 +150,33 @@ export function OverviewSection({
         {/* Key Metrics Grid */}
         <div className="grid sm:grid-cols-2 gap-4 mb-6">
           {/* Total Value Creation */}
-          {totalValueCreation && (
+          {(headlineMetric?.value || totalValueCreation) && (
             <div className="p-4 rounded-lg bg-surface border border-border">
-              <p className="text-xs text-muted-foreground mb-1">Total Value Creation</p>
-              <p className="text-2xl font-bold text-gold">{totalValueCreation}</p>
-              <p className="text-xs text-muted-foreground mt-1">Projected annual returns</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                {headlineMetric?.label || 'Total Value Creation'}
+              </p>
+              <p className="text-2xl font-bold text-gold">{headlineMetric?.value || totalValueCreation}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {headlineMetric?.description || 'Projected annual returns'}
+              </p>
             </div>
           )}
 
           {/* Optimal Structure */}
-          {optimalStructure && (
+          {(strategyLabel || optimalStructure) && (
             <div className="p-4 rounded-lg bg-surface border border-border">
-              <p className="text-xs text-muted-foreground mb-1">Optimal Structure</p>
-              <p className="text-base font-bold text-foreground">{optimalStructure.name}</p>
-              {(optimalStructure.net_benefit_formatted || optimalStructure.net_benefit) && (
-                <p className="text-xs text-gold mt-1">
-                  {optimalStructure.net_benefit_formatted || optimalStructure.net_benefit} 10-yr benefit
-                </p>
+              <p className="text-xs text-muted-foreground mb-1">
+                {strategyLabel ? 'Strategy Classification' : 'Optimal Structure'}
+              </p>
+              <p className="text-base font-bold text-foreground">{strategyLabel || optimalStructure?.name}</p>
+              {strategyLabel ? (
+                <p className="text-xs text-muted-foreground mt-1">Risk-adjusted profile</p>
+              ) : (
+                (optimalStructure?.net_benefit_formatted || optimalStructure?.net_benefit) && (
+                  <p className="text-xs text-gold mt-1">
+                    {optimalStructure?.net_benefit_formatted || optimalStructure?.net_benefit} 10-yr benefit
+                  </p>
+                )
               )}
             </div>
           )}
@@ -148,38 +184,60 @@ export function OverviewSection({
 
         {/* Intelligence Depth */}
         <div className="p-4 rounded-lg bg-surface border border-border mb-6">
-          <p className="text-xs text-muted-foreground mb-1">Intelligence Depth</p>
+          <p className="text-xs text-muted-foreground mb-1">
+            {intelligenceSummaryNote ? 'Route Precedents' : 'Intelligence Depth'}
+          </p>
           <p className="text-xl font-bold text-foreground">{intelligenceDepth.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground mt-1">Corridor signals analyzed</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {intelligenceSummaryNote || 'Route evidence analyzed'}
+          </p>
         </div>
 
         {/* Returns Analysis */}
-        {returnsAnalysis && (
+        {(underwritingSnapshot?.length || returnsAnalysis) && (
           <div className="p-4 rounded-lg bg-surface border border-border">
-            <p className="text-xs font-bold text-muted-foreground mb-3">Returns Analysis</p>
+            <p className="text-xs font-bold text-muted-foreground mb-3">
+              {underwritingSnapshot?.length ? 'Underwriting Snapshot' : 'Returns Analysis'}
+            </p>
             <div className="space-y-2">
-              {returnsAnalysis.rentalIncome && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Rental Income</span>
-                  <span className="text-sm font-bold text-foreground">{returnsAnalysis.rentalIncome}</span>
-                </div>
-              )}
-              {returnsAnalysis.appreciation && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Appreciation</span>
-                  <span className="text-sm font-bold text-foreground">{returnsAnalysis.appreciation}</span>
-                </div>
-              )}
-              {returnsAnalysis.taxSavings && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Tax Savings</span>
-                  <div className="text-right">
-                    <span className="text-sm font-bold text-gold">{returnsAnalysis.taxSavings}</span>
-                    {returnsAnalysis.taxSavingsNote && (
-                      <p className="text-xs text-muted-foreground/60">{returnsAnalysis.taxSavingsNote}</p>
-                    )}
+              {underwritingSnapshot?.length ? (
+                underwritingSnapshot.map((item) => (
+                  <div key={item.label} className="flex justify-between items-start gap-4">
+                    <span className="text-sm text-muted-foreground">{item.label}</span>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-foreground">{item.value}</span>
+                      {item.note && (
+                        <p className="text-xs text-muted-foreground/60">{item.note}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                ))
+              ) : (
+                <>
+                  {returnsAnalysis?.rentalIncome && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Rental Income</span>
+                      <span className="text-sm font-bold text-foreground">{returnsAnalysis.rentalIncome}</span>
+                    </div>
+                  )}
+                  {returnsAnalysis?.appreciation && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Appreciation</span>
+                      <span className="text-sm font-bold text-foreground">{returnsAnalysis.appreciation}</span>
+                    </div>
+                  )}
+                  {returnsAnalysis?.taxSavings && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Tax Savings</span>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-gold">{returnsAnalysis.taxSavings}</span>
+                        {returnsAnalysis.taxSavingsNote && (
+                          <p className="text-xs text-muted-foreground/60">{returnsAnalysis.taxSavingsNote}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -188,7 +246,9 @@ export function OverviewSection({
         {/* Disclaimer */}
         <div className="mt-6 pt-6 border-t border-border">
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Pattern & Market Intelligence Report based on {intelligenceDepth}+ analyzed corridor signals.{' '}
+            {intelligenceSummaryNote
+              ? `Evidence basis: ${intelligenceSummaryNote}. `
+              : `Pattern & Market Intelligence Report based on ${intelligenceDepth}+ analyzed route records. `}
             This report provides strategic intelligence and pattern analysis for informed decision-making.{' '}
             For execution and implementation, consult your legal, tax, and financial advisory teams.
           </p>

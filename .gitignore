@@ -5,8 +5,15 @@
 
 # next.js
 /.next/
+/.next-webpack/
+/.next-reset-*/
+/.next-webpack-reset-*/
 /.next.stale*/
 /out/
+
+# codex/local generated artifacts
+/.codex_tmp/
+/.codex_write_test
 
 # production
 /build

@@ -31,11 +31,16 @@ interface AcquisitionAudit {
   property_value?: number;
   bsd_stamp_duty?: number;
   absd_additional_stamp_duty?: number;
+  dld_transfer_fee?: number;
+  additional_transfer_tax?: number;
   total_stamp_duties?: number;
   total_acquisition_cost?: number;
   day_one_loss_pct?: number;
   fta_benefit_applied?: boolean;
   buyer_category?: string;
+  transfer_tax_schedule_rate_pct?: number;
+  primary_fee_label?: string;
+  secondary_fee_label?: string;
 }
 
 interface RentalIncomeAudit {
@@ -358,6 +363,34 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
 }) => {
   if (!audit) return null;
 
+  const acquisitionAudit = audit.acquisition_audit;
+  const hasAnyFtc =
+    !!audit.rental_income_audit?.ftc_available
+    || !!audit.capital_gains_audit?.ftc_available
+    || !!(audit.estate_tax_audit && !audit.estate_tax_audit.worldwide_applies);
+  const footerLabel = hasAnyFtc ? 'Cross-Border Tax Audit  |  FTC Analysis' : 'Cross-Border Tax Audit  |  Route Tax Analysis';
+  const isDubaiResidentialRoute =
+    !!acquisitionAudit
+    && (
+      acquisitionAudit.dld_transfer_fee !== undefined
+      || /dubai|uae/i.test(destinationJurisdiction)
+    );
+  const primaryFeeLabel = acquisitionAudit?.primary_fee_label
+    || (isDubaiResidentialRoute
+      ? acquisitionAudit?.transfer_tax_schedule_rate_pct
+        ? `DLD Registration Fee (${Number(acquisitionAudit.transfer_tax_schedule_rate_pct).toFixed(1)}%)`
+        : 'DLD Registration Fee'
+      : 'BSD Stamp Duty');
+  const secondaryFeeLabel = acquisitionAudit?.secondary_fee_label
+    || (isDubaiResidentialRoute ? 'Additional Transfer Charges' : 'ABSD (Foreign)');
+  const primaryFeeValue = isDubaiResidentialRoute
+    ? acquisitionAudit?.dld_transfer_fee
+    : acquisitionAudit?.bsd_stamp_duty;
+  const secondaryFeeValue = isDubaiResidentialRoute
+    ? acquisitionAudit?.additional_transfer_tax
+    : acquisitionAudit?.absd_additional_stamp_duty;
+  const formatOptionalCharge = (value?: number) => (value && Math.abs(value) > 0.005 ? formatCurrency(value) : '—');
+
   const hasComplianceFlags =
     audit.compliance_flags && audit.compliance_flags.length > 0;
   const hasWarnings = audit.warnings && audit.warnings.length > 0;
@@ -520,7 +553,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
       )}
 
       {/* 6. Acquisition Cost Breakdown */}
-      {audit.acquisition_audit && (
+      {acquisitionAudit && (
         <View wrap={false}>
           <Text
             style={{
@@ -543,22 +576,22 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
               {[
                 {
                   label: 'Property Value',
-                  value: formatCurrency(audit.acquisition_audit.property_value ?? 0),
+                  value: formatCurrency(acquisitionAudit.property_value ?? 0),
                   color: darkTheme.textPrimary,
                 },
                 {
-                  label: 'BSD Stamp Duty',
-                  value: formatCurrency(audit.acquisition_audit.bsd_stamp_duty ?? 0),
+                  label: primaryFeeLabel,
+                  value: formatOptionalCharge(primaryFeeValue),
                   color: colors.amber[500],
                 },
                 {
-                  label: 'ABSD (Foreign)',
-                  value: formatCurrency(audit.acquisition_audit.absd_additional_stamp_duty ?? 0),
+                  label: secondaryFeeLabel,
+                  value: formatOptionalCharge(secondaryFeeValue),
                   color: colors.red[700],
                 },
                 {
                   label: 'Total Acquisition',
-                  value: formatCurrency(audit.acquisition_audit.total_acquisition_cost ?? 0),
+                  value: formatCurrency(acquisitionAudit.total_acquisition_cost ?? 0),
                   color: colors.amber[500],
                 },
               ].map((item, idx) => (
@@ -640,12 +673,12 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   color: colors.red[700],
                 }}
               >
-                {(audit.acquisition_audit.day_one_loss_pct ?? 0).toFixed(2)}%
+                {(acquisitionAudit?.day_one_loss_pct ?? 0).toFixed(2)}%
               </Text>
             </View>
 
             {/* FTA Benefit indicator */}
-            {audit.acquisition_audit.fta_benefit_applied && (
+            {acquisitionAudit.fta_benefit_applied && (
               <View
                 style={{
                   flexDirection: 'row',
@@ -667,8 +700,8 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
                   }}
                 >
                   FTA benefit applied
-                  {audit.acquisition_audit.buyer_category
-                    ? ` (${audit.acquisition_audit.buyer_category})`
+                  {acquisitionAudit.buyer_category
+                    ? ` (${acquisitionAudit.buyer_category})`
                     : ''}
                 </Text>
               </View>
@@ -912,7 +945,7 @@ export const PdfCrossBorderTaxAudit: React.FC<PdfCrossBorderTaxAuditProps> = ({
             marginHorizontal: spacing.sm,
           }}
         >
-          Cross-Border Tax Audit  |  FTC Analysis
+          {footerLabel}
         </Text>
         <View
           style={{

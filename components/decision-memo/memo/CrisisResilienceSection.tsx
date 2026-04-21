@@ -1,734 +1,819 @@
-// components/decision-memo/memo/CrisisResilienceSection.tsx
-// Premium Crisis Resilience Stress Test Section - Institutional Quality
-// Supports structured JSON data (preferred) and legacy text parsing (fallback)
-
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { EASE_OUT_EXPO, EASE_OUT_QUART } from '@/lib/animations/motion-variants';
-import type { CrisisData as PdfCrisisData } from '@/lib/pdf/pdf-types';
-
-// Structured JSON interfaces
-interface CrisisScenario {
-  id?: "ai_bubble" | "bank_crisis" | "recession_2008" | "liquidity_crisis";
-  name: string;
-  position?: string;
-  stress_factor?: string;
-  impact?: string | number;
-  recovery?: string;
-  risk_level?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  verdict?: string;
-}
-
-interface OverallResilience {
-  score: number;
-  // Fix #20: Match backend rating values from rate_resilience()
-  // Backend returns: EXCELLENT, STRONG, MODERATE, FRAGILE, CRITICAL
-  rating: "EXCELLENT" | "STRONG" | "MODERATE" | "FRAGILE" | "CRITICAL" | "VULNERABLE" | "AT_RISK";
-  summary?: string;
-}
-
-interface Recommendation {
-  priority: "IMMEDIATE" | "SHORT_TERM" | "LONG_TERM" | string;
-  action: string;
-  rationale?: string;
-}
-
-interface KeyMetrics {
-  worst_case_loss?: string;
-  recovery_time?: string;
-  required_buffer?: string;
-}
-
-// Taleb Antifragile Framework - "Profit from crisis"
-interface OpportunityCapitalDetail {
-  recommended_buffer: string;
-  buffer_multiple: string;
-  rationale: string;
-}
-
-interface CrisisScenarioDetail {
-  name: string;
-  trigger: string;
-  your_buying_power: string;
-  instant_equity_gain: string;
-  equivalent_roi: string;
-  annualized_return: string;
-}
-
-interface AntifragileOpportunity {
-  concept: string;
-  taleb_principle: string;
-  opportunity_capital: OpportunityCapitalDetail;
-  crisis_scenario: CrisisScenarioDetail;
-  comparison: {
-    fragile: string;
-    resilient: string;
-    antifragile: string;
-  };
-  action_required: string;
-  upside_if_crisis: string;
-}
-
-interface PositionComparison {
-  fragile: { label: string; description: string };
-  resilient: { label: string; description: string };
-  antifragile: { label: string; description: string };
-  current_position: "fragile" | "resilient" | "antifragile";
-}
-
-export interface CrisisData {
-  scenarios?: CrisisScenario[];
-  overall_resilience?: OverallResilience;
-  recommendations?: Recommendation[];
-  key_metrics?: KeyMetrics;
-  // Taleb Antifragile Framework
-  antifragile_opportunity?: AntifragileOpportunity;
-  position_comparison?: PositionComparison;
-}
+import {
+  AlertTriangle,
+  Clock3,
+  Gauge,
+  Radar,
+  Shield,
+  Siren,
+  TriangleAlert,
+} from 'lucide-react';
+import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
+import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
 
 interface CrisisResilienceSectionProps {
-  crisisData?: CrisisData | PdfCrisisData;        // Structured JSON (preferred)
-  content?: string;                // Legacy text (fallback)
+  crisisData?: Record<string, unknown>;
+  content?: string;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
 }
 
-// Risk level visual indicator
-function RiskIndicator({ level }: { level: string }) {
-  const config: Record<string, { bars: number; color: string; label: string }> = {
-    LOW: { bars: 1, color: 'bg-muted-foreground/40', label: 'Low' },
-    MEDIUM: { bars: 2, color: 'bg-foreground/60', label: 'Medium' },
-    HIGH: { bars: 3, color: 'bg-primary/80', label: 'High' },
-    CRITICAL: { bars: 4, color: 'bg-primary', label: 'Critical' }
+interface NormalizedScenario {
+  id: string;
+  name: string;
+  position?: string;
+  probability?: string;
+  impact?: string;
+  recovery?: string;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  stressFactor?: string;
+  verdict?: string;
+  historicalPrecedent?: string;
+  teciAmplifier?: string;
+  impactChannels: string[];
+  sources: string[];
+  decisionWindowDays?: number;
+}
+
+interface NormalizedDetailItem {
+  id: string;
+  label: string;
+  status?: string;
+  detail?: string;
+  routeScope?: string;
+  decisionWindowDays?: number;
+  impactChannels: string[];
+}
+
+interface NormalizedRecommendation {
+  priority: string;
+  action: string;
+  rationale?: string;
+}
+
+export interface NormalizedCrisisData {
+  overall: {
+    score?: number;
+    rating?: string;
+    summary?: string;
+    worstCaseLoss?: string;
+    recoveryTime?: string;
+    bufferRequired?: string;
+    keyVulnerabilities: string[];
   };
+  liveRead?: string;
+  executionFocus?: string;
+  macroRegime?: string;
+  crisisVerdict?: string;
+  operatingWindow?: string;
+  scenarios: NormalizedScenario[];
+  recommendations: NormalizedRecommendation[];
+  priorityEvents: NormalizedDetailItem[];
+  routeRisks: NormalizedDetailItem[];
+  decisionFlags: string[];
+  marketRegimes: NormalizedDetailItem[];
+  sourceFamilies: string[];
+  decisionWindowDays?: number;
+  stressDrawdownFloorPct?: number;
+  eventCount?: number;
+  marketRegimeCount?: number;
+  sourceCount?: number;
+  bottomLine?: {
+    surviveVerdict?: string;
+    thriveVerdict?: string;
+    oneSentence?: string;
+  };
+}
 
-  const { bars, color, label } = config[level] || config.MEDIUM;
+function toFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
 
+function toStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object") {
+        const record = item as Record<string, unknown>;
+        return String(
+          record.label ||
+          record.title ||
+          record.name ||
+          record.note ||
+          record.description ||
+          record.event ||
+          ""
+        ).trim();
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function riskLevel(value: unknown): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+  const label = String(value || "").trim().toUpperCase();
+  if (label === "CRITICAL") return "CRITICAL";
+  if (label === "HIGH" || label === "RED") return "HIGH";
+  if (label === "LOW" || label === "GREEN") return "LOW";
+  return "MEDIUM";
+}
+
+function dedupe(items: string[]): string[] {
+  return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+function canonicalSourceFamily(value: unknown): string {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const lowered = text.toLowerCase();
+  if (lowered === "crisis_bundle" || lowered === "crisis_event") return "Crisis World-State Rail";
+  if (lowered === "market_regime") return "Gulf Energy Market Rail";
+  if (lowered.includes("crisis world-state") || lowered.includes("crisis rail")) return "Crisis World-State Rail";
+  if (lowered.includes("castle")) return "Castle Transaction Cases";
+  if (lowered.includes("pattern")) return "Pattern Intelligence";
+  if (lowered.includes("kgv2.1") || lowered.includes("analytical surface")) return "KGv2.1 Analytical Surface";
+  if (lowered.includes("kgv3") || lowered.includes("validated market")) return "KGv3 Validated Market Surface";
+  if (lowered.includes("route metric")) return "Route Metric Packet";
+  if (lowered.includes("gulf energy") || lowered.includes("brent") || lowered.includes("oil")) return "Gulf Energy Market Rail";
+  return text;
+}
+
+function normalizeDetailItems(value: unknown): NormalizedDetailItem[] {
+  if (!Array.isArray(value)) return [];
+  const normalized: Array<NormalizedDetailItem | undefined> = value.map((item, index) => {
+      if (typeof item === "string") {
+        const label = item.trim();
+        return label
+          ? { id: `${label}-${index}`, label, impactChannels: [] }
+          : undefined;
+      }
+      if (!item || typeof item !== "object") return undefined;
+      const record = item as Record<string, unknown>;
+      const label = String(record.label || record.title || record.name || record.event || "").trim();
+      if (!label) return undefined;
+      return {
+        id: String(record.event_id || record.regime_id || record.id || label),
+        label,
+        status: String(record.status || record.risk_level || record.severity || record.magnitude || "").trim() || undefined,
+        detail: String(record.detail || record.description || record.note || record.impact || record.movement || "").trim() || undefined,
+        routeScope: String(record.route_scope || record.jurisdiction || "").trim() || undefined,
+        decisionWindowDays: toFiniteNumber(record.decision_window_days),
+        impactChannels: toStringList(record.impact_channels),
+      };
+    });
+  return normalized.filter((item): item is NormalizedDetailItem => item !== undefined);
+}
+
+function parseEmbeddedJson(content?: string): Record<string, unknown> | undefined {
+  if (!content) return undefined;
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) return undefined;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function normalizeCrisisData(
+  input?: Record<string, unknown>,
+  content?: string,
+): NormalizedCrisisData | undefined {
+  const parsed = input && Object.keys(input).length > 0 ? input : parseEmbeddedJson(content);
+  if (!parsed) return undefined;
+
+  const overallRecord = (parsed.overall_resilience || parsed.resilience_assessment || {}) as Record<string, unknown>;
+  const commanderBrief = (parsed.commander_brief || {}) as Record<string, unknown>;
+  const keyMetrics = (parsed.key_metrics || {}) as Record<string, unknown>;
+  const bottomLine = (parsed.bottom_line || {}) as Record<string, unknown>;
+
+  const scenarios = (Array.isArray(parsed.scenarios) ? parsed.scenarios : [])
+    .filter((scenario): scenario is Record<string, unknown> => Boolean(scenario && typeof scenario === "object"))
+    .map((scenario, index) => ({
+      id: String(scenario.id || scenario.event_id || scenario.name || `scenario_${index + 1}`),
+      name: String(scenario.name || scenario.title || scenario.label || `Scenario ${index + 1}`),
+      position: typeof scenario.position === "string" ? scenario.position : undefined,
+      probability: typeof scenario.probability === "string" ? scenario.probability : undefined,
+      impact:
+        typeof scenario.impact === "string"
+          ? scenario.impact
+          : typeof scenario.portfolio_drawdown === "string"
+            ? scenario.portfolio_drawdown
+            : undefined,
+      recovery: typeof scenario.recovery === "string" ? scenario.recovery : undefined,
+      riskLevel: riskLevel(scenario.risk_level || scenario.severity || scenario.status),
+      stressFactor:
+        typeof scenario.stress_factor === "string"
+          ? scenario.stress_factor
+          : typeof scenario.impact_on_thesis === "string"
+            ? scenario.impact_on_thesis
+            : typeof scenario.why_this_matters === "string"
+              ? scenario.why_this_matters
+              : undefined,
+      verdict:
+        typeof scenario.verdict === "string"
+          ? scenario.verdict
+          : typeof scenario.mitigation === "string"
+            ? scenario.mitigation
+            : undefined,
+      historicalPrecedent:
+        typeof scenario.historical_precedent === "string" ? scenario.historical_precedent : undefined,
+      teciAmplifier:
+        typeof scenario.teci_amplifier === "string" ? scenario.teci_amplifier : undefined,
+      impactChannels: toStringList(scenario.impact_channels),
+      sources: dedupe(toStringList(scenario.sources).map(canonicalSourceFamily).filter(Boolean)),
+      decisionWindowDays: toFiniteNumber(scenario.decision_window_days),
+    }));
+
+  const recommendations = (Array.isArray(parsed.recommendations) ? parsed.recommendations : [])
+    .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+    .map((item) => ({
+      priority: String(item.priority || "SHORT_TERM").toUpperCase(),
+      action: String(item.action || "").trim(),
+      rationale: String(item.rationale || item.context || item.note || "").trim() || undefined,
+    }))
+    .filter((item) => item.action);
+
+  const priorityEvents = normalizeDetailItems(parsed.priority_events);
+  const routeRisks = normalizeDetailItems(parsed.route_risks);
+  const marketRegimes = normalizeDetailItems(parsed.market_regimes);
+
+  const sourceFamilies = dedupe([
+    ...toStringList(parsed.source_families).map(canonicalSourceFamily),
+    ...toStringList(commanderBrief.source_families).map(canonicalSourceFamily),
+    ...scenarios.flatMap((scenario) => scenario.sources),
+  ].filter(Boolean));
+
+  const worstCaseLoss =
+    (typeof keyMetrics.worst_case_loss === "string" ? keyMetrics.worst_case_loss : undefined) ||
+    (typeof overallRecord.worst_case_loss === "string" ? overallRecord.worst_case_loss : undefined) ||
+    scenarios.find((scenario) => scenario.riskLevel === "CRITICAL" || scenario.riskLevel === "HIGH")?.impact;
+
+  const recoveryTime =
+    (typeof keyMetrics.recovery_time === "string" ? keyMetrics.recovery_time : undefined) ||
+    (typeof overallRecord.recovery_time === "string" ? overallRecord.recovery_time : undefined) ||
+    scenarios.find((scenario) => scenario.recovery)?.recovery;
+
+  const bufferRequired =
+    (typeof keyMetrics.required_buffer === "string" ? keyMetrics.required_buffer : undefined) ||
+    (typeof keyMetrics.cash_buffer_needed === "string" ? keyMetrics.cash_buffer_needed : undefined) ||
+    (typeof overallRecord.buffer_required === "string" ? overallRecord.buffer_required : undefined) ||
+    (toFiniteNumber(parsed.stress_drawdown_floor_pct) !== undefined
+      ? `${toFiniteNumber(parsed.stress_drawdown_floor_pct)?.toFixed(0)}% drawdown floor + external treasury outside the asset`
+      : undefined);
+
+  return {
+    overall: {
+      score: toFiniteNumber(overallRecord.score),
+      rating: typeof overallRecord.rating === "string" ? overallRecord.rating : undefined,
+      summary:
+        (typeof overallRecord.summary === "string" ? overallRecord.summary : undefined) ||
+        (typeof commanderBrief.route_read === "string" ? commanderBrief.route_read : undefined) ||
+        (typeof parsed.alert_summary === "string" ? parsed.alert_summary : undefined),
+      worstCaseLoss,
+      recoveryTime,
+      bufferRequired,
+      keyVulnerabilities: dedupe([
+        ...toStringList(overallRecord.key_vulnerabilities),
+        typeof commanderBrief.execution_focus === "string" ? commanderBrief.execution_focus : "",
+        typeof commanderBrief.macro_regime === "string" ? commanderBrief.macro_regime : "",
+      ]),
+    },
+    liveRead:
+      (typeof commanderBrief.route_read === "string" ? commanderBrief.route_read : undefined) ||
+      (typeof parsed.alert_summary === "string" ? parsed.alert_summary : undefined),
+    executionFocus: typeof commanderBrief.execution_focus === "string" ? commanderBrief.execution_focus : undefined,
+    macroRegime: typeof commanderBrief.macro_regime === "string" ? commanderBrief.macro_regime : undefined,
+    crisisVerdict:
+      (typeof commanderBrief.crisis_verdict === "string" ? commanderBrief.crisis_verdict : undefined) ||
+      (typeof bottomLine.one_sentence === "string" ? bottomLine.one_sentence : undefined),
+    operatingWindow: typeof commanderBrief.operating_window === "string" ? commanderBrief.operating_window : undefined,
+    scenarios,
+    recommendations,
+    priorityEvents,
+    routeRisks,
+    decisionFlags: toStringList(parsed.decision_flags),
+    marketRegimes,
+    sourceFamilies,
+    decisionWindowDays: toFiniteNumber(parsed.decision_window_days),
+    stressDrawdownFloorPct: toFiniteNumber(parsed.stress_drawdown_floor_pct),
+    eventCount: toFiniteNumber(parsed.event_count) ?? priorityEvents.length ?? scenarios.length,
+    marketRegimeCount: toFiniteNumber(parsed.market_regime_count) ?? marketRegimes.length,
+    sourceCount: toFiniteNumber(parsed.source_count) ?? sourceFamilies.length,
+    bottomLine: {
+      surviveVerdict: typeof bottomLine.survive_verdict === "string" ? bottomLine.survive_verdict : undefined,
+      thriveVerdict: typeof bottomLine.thrive_verdict === "string" ? bottomLine.thrive_verdict : undefined,
+      oneSentence: typeof bottomLine.one_sentence === "string" ? bottomLine.one_sentence : undefined,
+    },
+  };
+}
+
+function RiskBadge({ level }: { level: NormalizedScenario["riskLevel"] }) {
+  const styles: Record<NormalizedScenario["riskLevel"], string> = {
+    LOW: "border-border/20 text-muted-foreground/70",
+    MEDIUM: "border-amber-500/20 text-amber-500/80",
+    HIGH: "border-primary/20 text-primary/80",
+    CRITICAL: "border-red-500/20 text-red-500/80",
+  };
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4].map(i => (
-          <div
-            key={i}
-            className={`w-1 rounded-full ${i <= bars ? color : 'bg-muted/30'}`}
-            style={{ height: `${8 + i * 3}px` }}
-          />
-        ))}
-      </div>
-      <span className={`text-xs tracking-[0.15em] uppercase font-medium ${level === 'CRITICAL' || level === 'HIGH' ? 'text-primary/80' : 'text-muted-foreground/60'}`}>
-        {label}
-      </span>
-    </div>
+    <span className={`inline-flex text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${styles[level]}`}>
+      {level}
+    </span>
   );
 }
 
-// Scenario type icon
-function ScenarioIcon({ id }: { id: string }) {
-  const icons: Record<string, React.ReactNode> = {
-    ai_bubble: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    ),
-    bank_crisis: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    ),
-    recession_2008: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-      </svg>
-    ),
-    liquidity_crisis: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    )
-  };
-
+function PriorityBadge({ priority }: { priority: string }) {
+  const key = priority.toUpperCase();
+  const styles =
+    key === "IMMEDIATE"
+      ? "border-primary/20 text-primary/80"
+      : key === "LONG_TERM"
+        ? "border-border/20 text-muted-foreground/60"
+        : "border-border/20 text-muted-foreground/80";
   return (
-    <div className="text-muted-foreground/60">
-      {icons[id] || icons.liquidity_crisis}
-    </div>
+    <span className={`inline-flex text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border whitespace-nowrap ${styles}`}>
+      {key.replace("_", " ")}
+    </span>
   );
 }
 
-// Resilience score gauge — animated arc draw + counter
-function ResilienceGauge({ score, rating }: { score: number; rating: string }) {
-  const gaugeRef = useRef<HTMLDivElement>(null);
-  const gaugeInView = useInView(gaugeRef, { once: true, margin: "-50px" });
+function ResilienceGauge({ score = 0, rating = "MODERATE" }: { score?: number; rating?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-50px" });
   const [animatedScore, setAnimatedScore] = useState(0);
 
-  // Fix #20: Match backend rating values from rate_resilience() in programmatic_stress_calculator.py
-  // Backend ratings: EXCELLENT (≥80), STRONG (≥65), MODERATE (≥50), FRAGILE (≥35), CRITICAL (<35)
-  const ratingConfig: Record<string, { color: string; bg: string; label: string }> = {
-    // New backend ratings (Fix #20)
-    EXCELLENT: { color: 'text-green-600 dark:text-green-400', bg: 'border-green-500/20 text-green-500/80', label: 'EXCELLENT' },
-    STRONG: { color: 'text-primary', bg: 'border-primary/20 text-primary/80', label: 'STRONG' },
-    MODERATE: { color: 'text-amber-600 dark:text-amber-400', bg: 'border-amber-500/20 text-amber-500/80', label: 'MODERATE' },
-    FRAGILE: { color: 'text-orange-600 dark:text-orange-400', bg: 'border-orange-500/20 text-orange-500/80', label: 'FRAGILE' },
-    CRITICAL: { color: 'text-red-600 dark:text-red-400', bg: 'border-red-500/20 text-red-500/80', label: 'CRITICAL' },
-    // Legacy frontend ratings (backwards compatibility)
-    VULNERABLE: { color: 'text-orange-600 dark:text-orange-400', bg: 'border-orange-500/20 text-orange-500/80', label: 'VULNERABLE' },
-    AT_RISK: { color: 'text-red-600 dark:text-red-400', bg: 'border-red-500/20 text-red-500/80', label: 'AT RISK' }
-  };
-
-  // Use score-based fallback if rating not found (in case of legacy data)
-  const getFallbackRating = (s: number) => {
-    if (s >= 80) return 'EXCELLENT';
-    if (s >= 65) return 'STRONG';
-    if (s >= 50) return 'MODERATE';
-    if (s >= 35) return 'FRAGILE';
-    return 'CRITICAL';
-  };
-  const config = ratingConfig[rating] || ratingConfig[getFallbackRating(score)];
-
-  const r = 54;
-  const strokeW = 8;
-  const halfC = Math.PI * r;
-  const targetOffset = halfC - (halfC * score / 100);
-
-  // Animated counter synced with arc
   useEffect(() => {
-    if (!gaugeInView) return;
-    let startTime: number;
-    const duration = 1800;
+    if (!inView) return;
+    let startTime = 0;
+    const duration = 1200;
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
-      const elapsed = Math.min((timestamp - startTime) / duration, 1);
-      const easeOut = 1 - Math.pow(1 - elapsed, 4);
-      setAnimatedScore(Math.round(score * easeOut));
-      if (elapsed < 1) requestAnimationFrame(animate);
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      setAnimatedScore(Math.round(score * eased));
+      if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [score, gaugeInView]);
+  }, [inView, score]);
+
+  const ring = Math.PI * 54;
+  const offset = ring - (ring * Math.max(0, Math.min(100, score))) / 100;
 
   return (
-    <div ref={gaugeRef} className="flex flex-col items-center">
+    <div ref={ref} className="flex flex-col items-center">
       <div className="relative w-44 h-[90px]">
         <svg viewBox="0 0 128 76" className="w-full h-full overflow-visible">
-          <path d={`M ${64 - r} 66 A ${r} ${r} 0 0 1 ${64 + r} 66`} fill="none" stroke="currentColor" strokeWidth={strokeW} className="text-muted/20" />
+          <path d="M 10 66 A 54 54 0 0 1 118 66" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/20" />
           <motion.path
-            d={`M ${64 - r} 66 A ${r} ${r} 0 0 1 ${64 + r} 66`}
+            d="M 10 66 A 54 54 0 0 1 118 66"
             fill="none"
             stroke="currentColor"
-            strokeWidth={strokeW}
-            strokeDasharray={halfC}
+            strokeWidth="8"
+            strokeDasharray={ring}
             strokeLinecap="round"
             className="text-primary"
-            initial={{ strokeDashoffset: halfC }}
-            animate={gaugeInView ? { strokeDashoffset: targetOffset } : {}}
-            transition={{ duration: 1.8, ease: EASE_OUT_QUART }}
+            initial={{ strokeDashoffset: ring }}
+            animate={inView ? { strokeDashoffset: offset } : {}}
+            transition={{ duration: 1.2, ease: EASE_OUT_EXPO }}
           />
         </svg>
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
-          <span className="text-3xl md:text-4xl lg:text-5xl font-bold tabular-nums tracking-tight text-foreground">{animatedScore}</span>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center">
+          <span className={memoNumberClass('hero', 'default')}>{animatedScore}</span>
           <span className="text-sm text-muted-foreground/60">/100</span>
         </div>
       </div>
-      <motion.span
-        className={`mt-3 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${config.bg}`}
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={gaugeInView ? { opacity: 1, scale: 1 } : {}}
-        transition={{ delay: 1.5, duration: 0.4, ease: EASE_OUT_EXPO }}
-      >
-        {config.label}
-      </motion.span>
+      <span className="mt-3 text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">
+        {rating}
+      </span>
     </div>
-  );
-}
-
-// Priority badge for recommendations
-function PriorityBadge({ priority }: { priority: string }) {
-  const config: Record<string, { color: string; label: string }> = {
-    IMMEDIATE: { color: 'border-primary/20 text-primary/80', label: 'IMMEDIATE' },
-    SHORT_TERM: { color: 'border-border/20 text-muted-foreground/80', label: 'SHORT TERM' },
-    LONG_TERM: { color: 'border-border/20 text-muted-foreground/60', label: 'LONG TERM' }
-  };
-
-  const { color, label } = config[priority] || config.SHORT_TERM;
-
-  return (
-    <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border whitespace-nowrap ${color}`}>
-      {label}
-    </span>
   );
 }
 
 export function CrisisResilienceSection({
   crisisData,
   content,
-  sourceJurisdiction = '',
-  destinationJurisdiction = ''
+  sourceJurisdiction = "",
+  destinationJurisdiction = "",
 }: CrisisResilienceSectionProps) {
-  const structuredCrisisData = crisisData as CrisisData | undefined;
-  const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (isInView) setIsVisible(true);
   }, [isInView]);
 
-  // Try to parse JSON from content string if crisisData not provided
-  // Backend sometimes sends JSON wrapped in markdown header like "## TITLE\n{json...}"
-  let parsedData: CrisisData | undefined = structuredCrisisData;
+  const normalized = useMemo(
+    () => normalizeCrisisData(crisisData, content),
+    [crisisData, content],
+  );
 
-  if (!parsedData && content) {
-    try {
-      // Try to extract JSON from content (may have markdown header before it)
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        // Validate it looks like CrisisData structure
-        if (parsed.scenarios || parsed.overall_resilience || parsed.recommendations) {
-          parsedData = parsed as CrisisData;
-        }
-      }
-    } catch (e) {
-      // Not JSON, will fall through to legacy text rendering
-    }
-  }
+  if (!normalized) return null;
 
-  // Check if we have structured JSON data
-  const hasStructuredData = parsedData?.scenarios?.length ||
-                            parsedData?.overall_resilience;
-
-  // Don't render if no data at all
-  if (!hasStructuredData && (!content || content === 'N/A' || content.length < 50)) {
-    return null;
-  }
-
-  // =========================================================================
-  // PREFERRED: Render from structured JSON data
-  // =========================================================================
-  if (hasStructuredData && parsedData) {
-    return (
-      <div ref={sectionRef}>
-        {/* Section Header */}
-        <motion.div className="mb-8">
-          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
-            Crisis Resilience Stress Test
-          </h2>
-          <div className="h-px bg-border" />
-        </motion.div>
-
-        <div className="space-y-8 sm:space-y-12 mb-8">
-          {/* Overall Resilience Score Card */}
-          {parsedData.overall_resilience && (
-            <motion.div
-              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-8 md:px-12 py-10 md:py-12"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
-              <div className="relative flex flex-col md:flex-row items-center gap-4 sm:gap-8">
-                <ResilienceGauge
-                  score={parsedData.overall_resilience.score}
-                  rating={parsedData.overall_resilience.rating}
-                />
-                <div className="flex-1 text-center md:text-left">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
-                    Overall Resilience Assessment
-                  </p>
-                  <p className="text-sm text-muted-foreground/60 mb-6 leading-loose sm:leading-relaxed">
-                    {parsedData.overall_resilience.summary}
-                  </p>
-
-                  {/* Key Metrics */}
-                  <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="text-center">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Worst Case</p>
-                      <p className="text-base font-medium tabular-nums text-foreground">
-                        {parsedData.key_metrics?.worst_case_loss ||
-                         parsedData.scenarios?.find(s => s.risk_level === 'CRITICAL')?.impact ||
-                         '—'}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Recovery</p>
-                      <p className="text-base font-medium tabular-nums text-foreground">
-                        {parsedData.key_metrics?.recovery_time ||
-                         parsedData.scenarios?.find(s => s.risk_level === 'CRITICAL')?.recovery?.split(';')[0] ||
-                         '—'}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Buffer</p>
-                      <p className="text-base font-medium tabular-nums text-primary">
-                        {parsedData.key_metrics?.required_buffer ||
-                         parsedData.recommendations?.find(r => r.priority === 'IMMEDIATE')?.action?.match(/\$[\d,.]+[KMB]?/)?.[0] ||
-                         '—'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Scenario Cards Grid */}
-          {(parsedData.scenarios?.length ?? 0) > 0 && (
-            <motion.div
-              className="grid md:grid-cols-2 gap-4 sm:gap-6"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
-            >
-              {parsedData.scenarios?.map((scenario, idx) => (
-                <motion.div
-                  key={scenario.id || `${scenario.name}-${idx}`}
-                  className="relative rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6 transition-all duration-300"
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={isVisible ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: 0.3 + idx * 0.1, duration: 0.7, ease: EASE_OUT_EXPO }}
-                  whileHover={{ y: -3, boxShadow: '0 8px 30px -8px rgba(0,0,0,0.08)' }}
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      <ScenarioIcon id={scenario.id || 'liquidity_crisis'} />
-                      <div>
-                        <h4 className="text-sm font-normal text-foreground break-words line-clamp-2">{scenario.name}</h4>
-                        <p className="text-xs text-muted-foreground/60">{scenario.position || 'Scenario positioning under review'}</p>
-                      </div>
-                    </div>
-                      <RiskIndicator level={scenario.risk_level || 'MEDIUM'} />
-                  </div>
-
-                  {/* Stress Factor */}
-                  <div className="rounded-lg p-3 mb-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Stress Factor</p>
-                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.stress_factor || 'Stress factor not provided.'}</p>
-                  </div>
-
-                  {/* Impact & Recovery */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-5">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
-                      <p className="text-sm font-medium text-primary">{scenario.impact !== undefined ? String(scenario.impact) : '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>
-                      <p className="text-sm font-medium text-foreground">{scenario.recovery || '—'}</p>
-                    </div>
-                  </div>
-
-                  {/* Verdict */}
-                  <div className="pt-4">
-                    <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Verdict</p>
-                    <p className="text-sm text-muted-foreground/60 leading-loose sm:leading-relaxed">{scenario.verdict || 'Verdict pending further validation.'}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
-          {/* SFO Recommendations */}
-          {(parsedData.recommendations?.length ?? 0) > 0 && (
-            <motion.div
-              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.3, ease: EASE_OUT_EXPO }}
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
-                SFO Recommendations
-              </p>
-
-              <div className="space-y-5">
-                {parsedData.recommendations?.map((rec, idx) => (
-                  <div key={idx} className="flex items-start gap-4">
-                    <PriorityBadge priority={rec.priority} />
-                    <div className="flex-1">
-                      <p className="text-xs text-foreground font-normal">{rec.action}</p>
-                      <p className="text-sm text-muted-foreground/60 mt-0.5 leading-loose sm:leading-relaxed">{rec.rationale}</p>
-                      {idx < (parsedData.recommendations?.length ?? 0) - 1 && (
-                        <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mt-4" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Taleb Antifragile Opportunity - "Profit from Crisis" */}
-          {parsedData.antifragile_opportunity && (
-            <motion.div
-              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                  <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium">
-                    Antifragile Opportunity
-                  </p>
-                  <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-primary/20 text-primary/80">
-                    TALEB FRAMEWORK
-                  </span>
-                </div>
-
-                {/* Concept Header */}
-                <p className="text-sm font-normal text-primary mb-2">
-                  {parsedData.antifragile_opportunity.concept}
-                </p>
-
-                {/* Taleb Principle */}
-                <p className="text-sm text-muted-foreground/70 mb-8 italic leading-relaxed">
-                  {parsedData.antifragile_opportunity.taleb_principle}
-                </p>
-
-                {/* Main Metrics Grid */}
-                <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
-                <div className="grid sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
-                  {/* Opportunity Capital */}
-                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Opportunity Capital</p>
-                    <p className="text-xl md:text-2xl font-bold text-primary">
-                      {parsedData.antifragile_opportunity.opportunity_capital.recommended_buffer}
-                    </p>
-                    <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed">
-                      {parsedData.antifragile_opportunity.opportunity_capital.buffer_multiple}
-                    </p>
-                  </div>
-
-                  {/* Distressed Buying Power - from crisis_scenario */}
-                  <div className="rounded-xl border border-border/20 bg-card/50 p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Distressed Buying Power</p>
-                    <p className="text-xl md:text-2xl font-bold text-foreground">
-                      {parsedData.antifragile_opportunity.crisis_scenario.your_buying_power}
-                    </p>
-                    <p className="text-sm text-muted-foreground/60 mt-2 leading-relaxed">
-                      {parsedData.antifragile_opportunity.crisis_scenario.trigger}
-                    </p>
-                  </div>
-
-                  {/* Instant Equity Gain - from crisis_scenario */}
-                  <div className="relative rounded-xl border border-primary/20 bg-card/50 p-5 overflow-hidden">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
-                    <div className="relative">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Instant Equity Gain</p>
-                      <p className="text-xl md:text-2xl font-bold text-primary">
-                        {parsedData.antifragile_opportunity.crisis_scenario.instant_equity_gain}
-                      </p>
-                      <p className="text-xs text-muted-foreground/60 mt-2 leading-relaxed">
-                        {parsedData.antifragile_opportunity.crisis_scenario.equivalent_roi}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Comparison: Fragile vs Resilient vs Antifragile */}
-                <div className="rounded-xl border border-border/20 bg-card/50 p-5 mb-6">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-4">Position Spectrum</p>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 mt-1.5 flex-shrink-0" />
-                      <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                        <span className="font-normal text-foreground/60">Fragile:</span> {parsedData.antifragile_opportunity.comparison.fragile}
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-foreground/40 mt-1.5 flex-shrink-0" />
-                      <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                        <span className="font-normal text-foreground/60">Resilient:</span> {parsedData.antifragile_opportunity.comparison.resilient}
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-1.5 flex-shrink-0" />
-                      <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                        <span className="font-normal text-primary/80">Antifragile:</span> {parsedData.antifragile_opportunity.comparison.antifragile}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Required + Upside */}
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1 rounded-xl border border-border/20 bg-card/50 p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Action Required</p>
-                    <p className="text-xs text-foreground/60 font-normal leading-relaxed">{parsedData.antifragile_opportunity.action_required}</p>
-                  </div>
-                  <div className="flex-1 relative rounded-xl border border-primary/20 bg-card/50 p-4 overflow-hidden">
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
-                    <div className="relative">
-                      <p className="text-xs uppercase tracking-[0.2em] text-primary/60 mb-2">Upside If Crisis</p>
-                      <p className="text-xs text-foreground/80 font-normal leading-relaxed">{parsedData.antifragile_opportunity.upside_if_crisis}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Position Comparison: Fragile vs Resilient vs Antifragile */}
-          {parsedData.position_comparison && (
-            <motion.div
-              className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
-              initial={{ opacity: 0, y: 12 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
-                Your Position in Crisis
-              </p>
-
-              <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
-              <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
-                {/* Fragile */}
-                <div className={`rounded-xl p-5 border transition-all ${
-                  parsedData.position_comparison.current_position === 'fragile'
-                    ? 'border-muted-foreground/30 bg-card/50'
-                    : 'border-border/20 opacity-40'
-                }`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      parsedData.position_comparison.current_position === 'fragile' ? 'bg-muted-foreground/60' : 'bg-muted/30'
-                    }`} />
-                    <p className="text-xs tracking-[0.15em] uppercase font-medium text-foreground">Fragile</p>
-                    {parsedData.position_comparison.current_position === 'fragile' && (
-                      <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-muted-foreground/20 text-muted-foreground/80">YOU</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                    {parsedData.position_comparison.fragile?.description || "Harmed by volatility. Forced to sell at bottom."}
-                  </p>
-                </div>
-
-                {/* Resilient */}
-                <div className={`rounded-xl p-5 border transition-all ${
-                  parsedData.position_comparison.current_position === 'resilient'
-                    ? 'border-primary/30 bg-card/50'
-                    : 'border-border/20 opacity-40'
-                }`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      parsedData.position_comparison.current_position === 'resilient' ? 'bg-primary/60' : 'bg-muted/30'
-                    }`} />
-                    <p className="text-xs tracking-[0.15em] uppercase font-medium text-foreground">Resilient</p>
-                    {parsedData.position_comparison.current_position === 'resilient' && (
-                      <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-primary/20 text-primary/80">YOU</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                    {parsedData.position_comparison.resilient?.description || "Survives volatility. Maintains position through crisis."}
-                  </p>
-                </div>
-
-                {/* Antifragile */}
-                <div className={`rounded-xl p-5 border transition-all ${
-                  parsedData.position_comparison.current_position === 'antifragile'
-                    ? 'border-primary/40 bg-card/50'
-                    : 'border-border/20 opacity-40'
-                }`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      parsedData.position_comparison.current_position === 'antifragile' ? 'bg-primary' : 'bg-muted/30'
-                    }`} />
-                    <p className="text-xs tracking-[0.15em] uppercase font-medium text-foreground">Antifragile</p>
-                    {parsedData.position_comparison.current_position === 'antifragile' && (
-                      <span className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-primary/20 text-primary/80">YOU</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
-                    {parsedData.position_comparison.antifragile?.description || "Benefits from volatility. Buys distressed assets at discount."}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Intelligence Source Footer */}
-          <motion.div
-            className="flex items-center justify-center gap-2 pt-4"
-            initial={{ opacity: 0 }}
-            animate={isVisible ? { opacity: 1 } : {}}
-            transition={{ duration: 0.8, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <p className="text-xs text-muted-foreground/60 leading-relaxed">
-              Grounded in HNWI Chronicles KG Historical Precedents + Stress Models + Antifragile Framework
-            </p>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // FALLBACK: Render legacy text content
-  // =========================================================================
-  return <LegacyTextCrisisSection content={content || ''} />;
-}
-
-// Legacy text rendering component (fallback)
-function LegacyTextCrisisSection({ content }: { content: string }) {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-50px" });
-
-  useEffect(() => {
-    if (isInView) setIsVisible(true);
-  }, [isInView]);
-
-  if (!content || content.length < 50) return null;
-
-  // Simple rendering of the raw content with basic formatting
-  const paragraphs = content.split('\n\n').filter(p => p.trim());
+  const corridorLabel = [sourceJurisdiction, destinationJurisdiction].filter(Boolean).join(" → ");
 
   return (
     <div ref={sectionRef}>
-      <motion.div className="mb-8">
+      <motion.div
+        className="mb-8"
+        initial={{ opacity: 0, y: 12 }}
+        animate={isVisible ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+      >
         <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
           Crisis Resilience Stress Test
         </h2>
         <div className="h-px bg-border" />
       </motion.div>
 
-      <motion.div
-        className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
-        initial={{ opacity: 0, y: 12 }}
-        animate={isVisible ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="prose prose-sm max-w-none">
-          {paragraphs.map((paragraph, idx) => {
-            // Clean up markdown-style formatting
-            const cleaned = paragraph
-              .replace(/\*\*/g, '')
-              .replace(/^\s*[-•→]\s*/gm, '• ')
-              .trim();
-
-            return (
-              <p key={idx} className="text-xs text-muted-foreground/60 leading-loose sm:leading-relaxed mb-3 last:mb-0 whitespace-pre-wrap">
-                {cleaned}
+      <div className="space-y-8 sm:space-y-12">
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-8 md:px-12 py-10 md:py-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.05, ease: EASE_OUT_EXPO }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+          <div className="relative flex flex-col md:flex-row items-center gap-8">
+            <ResilienceGauge score={normalized.overall.score} rating={normalized.overall.rating} />
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
+                Overall Resilience Assessment
               </p>
-            );
-          })}
-        </div>
-      </motion.div>
+              <p className="text-sm text-muted-foreground/60 mb-6 leading-loose sm:leading-relaxed">
+                {normalized.overall.summary || "Live corridor stress requires re-underwriting."}
+              </p>
 
-      <motion.div
-        className="flex items-center justify-center gap-2 pt-6"
-        initial={{ opacity: 0 }}
-        animate={isVisible ? { opacity: 1 } : {}}
-        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <p className="text-xs text-muted-foreground/60 leading-relaxed">
-          Grounded in HNWI Chronicles KG Historical Precedents + Stress Models
-        </p>
-      </motion.div>
+              <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent mb-6" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Worst Case</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.worstCaseLoss || "—"}</p>
+                </div>
+                <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Recovery</p>
+                  <p className={memoNumberClass('small', 'default')}>{normalized.overall.recoveryTime || "—"}</p>
+                </div>
+                <div className="text-center rounded-xl border border-border/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Decision Window</p>
+                  <p className={memoNumberClass('small', 'default')}>
+                    {normalized.decisionWindowDays ? `${normalized.decisionWindowDays} days` : normalized.operatingWindow || "—"}
+                  </p>
+                </div>
+                <div className="text-center rounded-xl border border-primary/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Drawdown Floor</p>
+                  <p className={memoNumberClass('small', 'default')}>
+                    {normalized.stressDrawdownFloorPct !== undefined ? `${normalized.stressDrawdownFloorPct.toFixed(0)}%` : normalized.overall.bufferRequired || "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="grid lg:grid-cols-[1.4fr_0.6fr] gap-6"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.1, ease: EASE_OUT_EXPO }}
+        >
+          <div className="rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-8 py-8">
+            <div className="flex items-center gap-3 mb-5">
+              <Radar className="w-4 h-4 text-primary/60" />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Live Crisis Read</p>
+            </div>
+            <p className="text-sm text-foreground leading-loose sm:leading-relaxed">
+              {normalized.liveRead || normalized.crisisVerdict || "Crisis read unavailable."}
+            </p>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent my-6" />
+            <div className="space-y-4">
+              {normalized.executionFocus && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Execution Focus</p>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed">{normalized.executionFocus}</p>
+                </div>
+              )}
+              {normalized.macroRegime && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Macro Regime</p>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed">{normalized.macroRegime}</p>
+                </div>
+              )}
+              {normalized.crisisVerdict && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Crisis Verdict</p>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed">{normalized.crisisVerdict}</p>
+                </div>
+              )}
+              {corridorLabel && (
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Corridor</p>
+                  <p className="text-sm text-muted-foreground/60 leading-relaxed">{corridorLabel}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border/30 overflow-hidden px-6 py-8">
+            <div className="flex items-center gap-3 mb-5">
+              <Siren className="w-4 h-4 text-primary/60" />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Intelligence Rails</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Events</p>
+                <p className={memoNumberClass('stat', 'default')}>{normalized.eventCount ?? normalized.scenarios.length}</p>
+              </div>
+              <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Regimes</p>
+                <p className={memoNumberClass('stat', 'default')}>{normalized.marketRegimeCount ?? normalized.marketRegimes.length}</p>
+              </div>
+              <div className="text-center rounded-xl border border-border/20 bg-card/50 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Sources</p>
+                <p className={memoNumberClass('stat', 'default')}>{normalized.sourceCount ?? normalized.sourceFamilies.length}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {normalized.sourceFamilies.map((family) => (
+                <span key={family} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">
+                  {family}
+                </span>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {normalized.scenarios.length > 0 && (
+          <motion.div
+            className="grid lg:grid-cols-3 gap-6"
+            initial={{ opacity: 0, y: 12 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.15, ease: EASE_OUT_EXPO }}
+          >
+            {normalized.scenarios.map((scenario, index) => (
+              <motion.div
+                key={scenario.id}
+                className="relative rounded-xl border border-border/20 bg-card/50 p-6 transition-all duration-300"
+                initial={{ opacity: 0, y: 12 }}
+                animate={isVisible ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.2 + index * 0.08, duration: 0.7, ease: EASE_OUT_EXPO }}
+                whileHover={{ y: -3 }}
+              >
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h4 className="text-sm font-medium text-foreground leading-snug">{scenario.name}</h4>
+                    {scenario.position && (
+                      <p className="text-xs text-muted-foreground/60 mt-1">{scenario.position}</p>
+                    )}
+                  </div>
+                  <RiskBadge level={scenario.riskLevel} />
+                </div>
+
+                {scenario.stressFactor && (
+                  <div className="rounded-lg border border-border/20 bg-card/50 p-4 mb-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Stress Factor</p>
+                    <p className="text-sm text-muted-foreground/60 leading-relaxed">{scenario.stressFactor}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Impact</p>
+                    <p className="text-sm font-medium text-primary">{scenario.impact || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Recovery</p>
+                    <p className="text-sm font-medium text-foreground">{scenario.recovery || "—"}</p>
+                  </div>
+                </div>
+
+                {scenario.impactChannels.length > 0 && (
+                  <div className="mb-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Impact Channels</p>
+                    <div className="flex flex-wrap gap-2">
+                      {scenario.impactChannels.map((channel) => (
+                        <span key={channel} className="text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border border-border/20 text-muted-foreground/80">
+                          {channel}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(scenario.historicalPrecedent || scenario.teciAmplifier) && (
+                  <div className="rounded-lg border border-primary/10 bg-card/50 p-4 mb-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Crisis Intelligence Read</p>
+                    {scenario.historicalPrecedent && (
+                      <p className="text-sm text-muted-foreground/60 leading-relaxed mb-2">{scenario.historicalPrecedent}</p>
+                    )}
+                    {scenario.teciAmplifier && (
+                      <p className="text-sm text-muted-foreground/60 leading-relaxed">{scenario.teciAmplifier}</p>
+                    )}
+                  </div>
+                )}
+
+                {scenario.verdict && (
+                  <div className="pt-4">
+                    <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent mb-4" />
+                    <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">Verdict</p>
+                    <p className="text-sm text-muted-foreground/60 leading-relaxed">{scenario.verdict}</p>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+
+        {(normalized.priorityEvents.length > 0 || normalized.routeRisks.length > 0 || normalized.marketRegimes.length > 0 || normalized.decisionFlags.length > 0) && (
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, y: 12 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
+          >
+            {normalized.decisionFlags.length > 0 && (
+              <div className="rounded-2xl border border-border/30 overflow-hidden px-6 py-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <TriangleAlert className="w-4 h-4 text-primary/60" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Decision Flags</p>
+                </div>
+                <div className="space-y-3">
+                  {normalized.decisionFlags.map((flag) => (
+                    <div key={flag} className="flex items-start gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-2 flex-shrink-0" />
+                      <p className="text-sm text-muted-foreground/60 leading-relaxed">{flag}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="rounded-2xl border border-border/30 overflow-hidden px-6 py-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <Siren className="w-4 h-4 text-primary/60" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Priority Events</p>
+                </div>
+                <div className="space-y-4">
+                  {normalized.priorityEvents.map((event) => (
+                    <div key={event.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="text-sm text-foreground leading-relaxed">{event.label}</p>
+                        {event.status && <RiskBadge level={riskLevel(event.status)} />}
+                      </div>
+                      {event.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{event.detail}</p>}
+                      {(event.routeScope || event.decisionWindowDays || event.impactChannels.length > 0) && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {event.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{event.routeScope}</span>}
+                          {event.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{event.decisionWindowDays}d window</span>}
+                          {event.impactChannels.map((channel) => (
+                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border/30 overflow-hidden px-6 py-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <AlertTriangle className="w-4 h-4 text-primary/60" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Route Pressure Map</p>
+                </div>
+                <div className="space-y-4">
+                  {normalized.routeRisks.map((risk) => (
+                    <div key={risk.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="text-sm text-foreground leading-relaxed">{risk.label}</p>
+                        {risk.status && <RiskBadge level={riskLevel(risk.status)} />}
+                      </div>
+                      {risk.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{risk.detail}</p>}
+                      {(risk.routeScope || risk.decisionWindowDays || risk.impactChannels.length > 0) && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {risk.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{risk.routeScope}</span>}
+                          {risk.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{risk.decisionWindowDays}d window</span>}
+                          {risk.impactChannels.map((channel) => (
+                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border/30 overflow-hidden px-6 py-8">
+                <div className="flex items-center gap-3 mb-5">
+                  <Gauge className="w-4 h-4 text-primary/60" />
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Market Regime</p>
+                </div>
+                <div className="space-y-4">
+                  {normalized.marketRegimes.map((regime) => (
+                    <div key={regime.id} className="rounded-xl border border-border/20 bg-card/50 p-4">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <p className="text-sm text-foreground leading-relaxed">{regime.label}</p>
+                        {regime.status && <RiskBadge level={riskLevel(regime.status)} />}
+                      </div>
+                      {regime.detail && <p className="text-sm text-muted-foreground/60 leading-relaxed">{regime.detail}</p>}
+                      {(regime.routeScope || regime.decisionWindowDays || regime.impactChannels.length > 0) && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {regime.routeScope && <span className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{regime.routeScope}</span>}
+                          {regime.decisionWindowDays !== undefined && <span className="text-[11px] uppercase tracking-[0.15em] text-primary/80">{regime.decisionWindowDays}d window</span>}
+                          {regime.impactChannels.map((channel) => (
+                            <span key={channel} className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{channel}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {normalized.recommendations.length > 0 && (
+          <motion.div
+            className="relative rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+            initial={{ opacity: 0, y: 12 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.25, ease: EASE_OUT_EXPO }}
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-4 h-4 text-primary/60" />
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">Execution Recommendations</p>
+            </div>
+            <div className="space-y-5">
+              {normalized.recommendations.map((recommendation, index) => (
+                <div key={`${recommendation.priority}-${index}`} className="flex items-start gap-4">
+                  <PriorityBadge priority={recommendation.priority} />
+                  <div className="flex-1">
+                    <p className="text-sm text-foreground leading-relaxed">{recommendation.action}</p>
+                    {recommendation.rationale && (
+                      <p className="text-sm text-muted-foreground/60 mt-1 leading-relaxed">{recommendation.rationale}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {(normalized.bottomLine?.surviveVerdict || normalized.bottomLine?.thriveVerdict || normalized.bottomLine?.oneSentence) && (
+          <motion.div
+            className="rounded-2xl border border-border/30 overflow-hidden px-6 sm:px-10 py-8"
+            initial={{ opacity: 0, y: 12 }}
+            animate={isVisible ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.3, ease: EASE_OUT_EXPO }}
+          >
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-5">Bottom Line</p>
+            <div className="grid lg:grid-cols-3 gap-4">
+              {normalized.bottomLine?.surviveVerdict && (
+                <div className="rounded-xl border border-border/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Survive</p>
+                  <p className="text-sm text-foreground leading-relaxed">{normalized.bottomLine.surviveVerdict}</p>
+                </div>
+              )}
+              {normalized.bottomLine?.thriveVerdict && (
+                <div className="rounded-xl border border-border/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Thrive</p>
+                  <p className="text-sm text-foreground leading-relaxed">{normalized.bottomLine.thriveVerdict}</p>
+                </div>
+              )}
+              {normalized.bottomLine?.oneSentence && (
+                <div className="rounded-xl border border-primary/20 bg-card/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">One Sentence</p>
+                  <p className="text-sm text-foreground leading-relaxed">{normalized.bottomLine.oneSentence}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        <motion.div
+          className="flex items-center justify-center gap-2 pt-2"
+          initial={{ opacity: 0 }}
+          animate={isVisible ? { opacity: 1 } : {}}
+          transition={{ duration: 0.8, delay: 0.35, ease: EASE_OUT_EXPO }}
+        >
+          <Clock3 className="w-3.5 h-3.5 text-muted-foreground/40" />
+          <p className="text-xs text-muted-foreground/60 leading-relaxed">
+            Grounded in HNWI Chronicles crisis world-state rail, castle transaction cases, pattern intelligence, and corridor execution data
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 }

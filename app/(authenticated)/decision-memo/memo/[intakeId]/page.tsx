@@ -14,6 +14,7 @@ import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useParams } from 'next/navigation';
 
 // Import memo page components
 import { MemoHeader } from '@/components/decision-memo/memo/MemoHeader';
@@ -23,19 +24,37 @@ import { Page3PeerIntelligence } from '@/components/decision-memo/memo/Page3Peer
 import { RegulatorySourcesSection } from '@/components/decision-memo/memo/RegulatorySourcesSection';
 import { ReferencesSection } from '@/components/decision-memo/memo/ReferencesSection';
 
-interface PageProps {
-  params: {
-    intakeId: string;
-  };
-}
-
-export default function DecisionMemoPage({ params }: PageProps) {
-  const { intakeId } = params;
+export default function DecisionMemoPage() {
+  const { intakeId } = useParams<{ intakeId: string }>();
   const [data, setData] = useState<DecisionMemoData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const formatUsdCompact = (value: number | undefined): string | undefined => {
+    if (value === undefined || !Number.isFinite(value)) {
+      return undefined;
+    }
+    if (Math.abs(value) >= 1_000_000) {
+      return `~$${(value / 1_000_000).toFixed(2)}M`;
+    }
+    if (Math.abs(value) >= 1_000) {
+      return `$${Math.round(value / 1_000)}K`;
+    }
+    return `$${Math.round(value).toLocaleString()}`;
+  };
+
+  const toNumberOrUndefined = (value: unknown): number | undefined => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.replace(/[$,]/g, '').trim());
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+  };
 
   // Export PDF via native @react-pdf/renderer (server-side)
   const handleExportPDF = async () => {
@@ -181,6 +200,58 @@ export default function DecisionMemoPage({ params }: PageProps) {
     citationList.forEach(c => citMap.set(c.id, c.number));
 
     return { computedCitations: citationList, computedCitationMap: citMap };
+  }, [data]);
+
+  const resolvedHeadlineMetric = useMemo(() => {
+    if (!data?.preview_data) {
+      return undefined;
+    }
+
+    const executiveSummary = data.preview_data.executive_summary as Record<string, any> | undefined;
+    const headlineMetric = executiveSummary?.headline_metric;
+    if (headlineMetric && headlineMetric.label !== 'Probability-Weighted Route Value') {
+      return headlineMetric;
+    }
+
+    const startingPosition = data.preview_data.wealth_projection_data?.starting_position as Record<string, any> | undefined;
+    const transactionValue =
+      toNumberOrUndefined(startingPosition?.transaction_value)
+      ?? toNumberOrUndefined((data.preview_data as any)?.transaction_value);
+    const netYieldPct = toNumberOrUndefined(startingPosition?.net_rental_yield_pct);
+    const appreciationRatePct = toNumberOrUndefined(startingPosition?.appreciation_rate_pct);
+    const annualNetIncome =
+      toNumberOrUndefined(
+        data.preview_data.wealth_projection_data?.starting_position?.cross_border_audit_summary?.net_yield_audit?.annual_net_income
+      );
+
+    const computedAnnualNetIncome =
+      annualNetIncome
+      ?? (transactionValue !== undefined && netYieldPct !== undefined
+        ? transactionValue * (netYieldPct / 100)
+        : undefined);
+    const computedAnnualAppreciation =
+      transactionValue !== undefined && appreciationRatePct !== undefined
+        ? transactionValue * (appreciationRatePct / 100)
+        : undefined;
+    const annualReturnTotal =
+      (computedAnnualNetIncome ?? 0)
+      + (computedAnnualAppreciation ?? 0);
+    const formatted = formatUsdCompact(annualReturnTotal);
+
+    if (formatted) {
+      const netIncomeFormatted = formatUsdCompact(computedAnnualNetIncome);
+      const appreciationFormatted = formatUsdCompact(computedAnnualAppreciation);
+      return {
+        label: 'Underwritten Annual Return',
+        value: formatted,
+        description:
+          netIncomeFormatted && appreciationFormatted
+            ? `${netIncomeFormatted} net income + ${appreciationFormatted} appreciation basis`
+            : 'Net annual income plus appreciation basis on the validated route',
+      };
+    }
+
+    return headlineMetric;
   }, [data]);
 
   // Sync with useCitationManager for EliteCitationPanel
@@ -345,10 +416,13 @@ export default function DecisionMemoPage({ params }: PageProps) {
         {/* Document Header */}
         <MemoHeader
           intakeId={intakeId}
-          generatedAt={generated_at}
+          generatedAt={preview_data.assumption_ledger?.fix_date || preview_data.dm64_manual_repair?.repaired_at || generated_at}
           exposureClass={preview_data.exposure_class}
           totalSavings={preview_data.total_savings}
-          precedentCount={memo_data?.kgv3_intelligence_used?.precedents}
+          precedentCount={preview_data.precedent_count || preview_data.peer_cohort_stats?.direct_route_precedent_count || memo_data?.kgv3_intelligence_used?.precedents}
+          headlineMetric={resolvedHeadlineMetric}
+          evidenceBasisNote={preview_data.executive_summary?.evidence_basis_note || preview_data.data_quality_note}
+          underwritingSnapshot={preview_data.executive_summary?.underwriting_snapshot}
           sourceJurisdiction={preview_data.source_jurisdiction}
           destinationJurisdiction={preview_data.destination_jurisdiction}
           sourceTaxRates={preview_data.source_tax_rates as any}
@@ -395,22 +469,28 @@ export default function DecisionMemoPage({ params }: PageProps) {
           <Page2AuditVerdict
             mistakes={preview_data.all_mistakes}
             opportunitiesCount={preview_data.opportunities_count}
-            precedentCount={memo_data?.kgv3_intelligence_used?.precedents}
+            precedentCount={preview_data.precedent_count || memo_data?.kgv3_intelligence_used?.precedents}
             sourceJurisdiction={preview_data.source_jurisdiction}
             destinationJurisdiction={preview_data.destination_jurisdiction}
-            ddChecklist={memo_data?.dd_checklist}
+            ddChecklist={preview_data.dd_checklist}
             dataQuality={preview_data.data_quality}
             dataQualityNote={preview_data.data_quality_note}
             mitigationTimeline={preview_data.risk_assessment?.mitigation_timeline}
             riskAssessment={{
               risk_level: preview_data.risk_assessment?.risk_level,
-              total_exposure_formatted: preview_data.risk_assessment?.total_exposure,
+              total_exposure_formatted: preview_data.risk_assessment?.total_exposure_formatted || preview_data.risk_assessment?.total_exposure,
               critical_items: preview_data.risk_assessment?.critical_items,
               high_priority: preview_data.risk_assessment?.high_priority,
+              high_items: preview_data.risk_assessment?.high_items,
+              priority_risks_total: preview_data.risk_assessment?.priority_risks_total,
+              risk_factors_count: preview_data.risk_assessment?.risk_factors_count,
               verdict: preview_data.risk_assessment?.verdict,
               recommendation: preview_data.risk_assessment?.recommendation,
               verdict_note: preview_data.risk_assessment?.verdict_note,
-              structure_verdict: memo_data?.mcp_decision?.recommended_branch || preview_data.structure_optimization?.verdict
+              structure_verdict:
+                preview_data.risk_assessment?.structure_verdict ||
+                memo_data?.mcp_decision?.recommended_branch ||
+                preview_data.structure_optimization?.verdict
             }}
             scenarioTreeData={{
               recommended_branch: memo_data?.mcp_decision?.recommended_branch,

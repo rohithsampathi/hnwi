@@ -261,11 +261,15 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
           <Text style={{ ...styles.metricSm }}>{destClean}</Text>
         </View>
         <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: darkTheme.border, paddingLeft: spacing.md + 2 }}>
-          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>Annual Efficiency Gain</Text>
+          <Text style={{ ...styles.microLabel, marginBottom: spacing.sm }}>
+            {showTaxSavings ? 'Annual Efficiency Gain' : 'Route Tax Capture'}
+          </Text>
           <Text style={{ ...styles.metricEfficiency, color: isPositive ? colors.amber[500] : darkTheme.textMuted }}>
             {showTaxSavings ? `${isPositive ? '+' : ''}${benefitValue}%` : 'N/A'}
           </Text>
-          <Text style={{ ...styles.caption, marginTop: spacing.xs }}>Estimated tax optimization</Text>
+          <Text style={{ ...styles.caption, marginTop: spacing.xs }}>
+            {showTaxSavings ? 'Estimated tax optimization' : 'Comparison only — no relocation-linked credit'}
+          </Text>
         </View>
       </View>
 
@@ -294,9 +298,13 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
               <Text style={{ ...styles.cellValue, flex: 1, color: destIsHigher ? colors.red[700] : (!destIsHigher && sourceIsHigher) ? colors.amber[500] : darkTheme.textSecondary }}>
                 {destRate !== undefined ? `${destRate}%` : '—'}
               </Text>
-              <Text style={{ ...styles.cellImpact, flex: 1, color: impact.positive ? colors.amber[500] : !impact.neutral ? colors.red[700] : darkTheme.textMuted }}>
+              <Text style={{ ...styles.cellImpact, flex: 1, color: showTaxSavings ? (impact.positive ? colors.amber[500] : !impact.neutral ? colors.red[700] : darkTheme.textMuted) : colors.amber[500] }}>
                 {impact.value}
-                {!impact.neutral && <Text style={styles.impactAnnotation}>{impact.positive ? ' saved' : ' more'}</Text>}
+                {!impact.neutral && (
+                  <Text style={styles.impactAnnotation}>
+                    {showTaxSavings ? (impact.positive ? ' saved' : ' more') : ' not captured'}
+                  </Text>
+                )}
               </Text>
             </View>
           );
@@ -308,7 +316,7 @@ export const PdfTaxAnalysis: React.FC<PdfTaxAnalysisProps> = ({
           <Text style={{ flex: 1 }} />
           <Text style={{ flex: 1 }} />
           <Text style={{ ...styles.cellImpact, flex: 1, color: isPositive ? colors.amber[500] : isNeutral ? darkTheme.textFaint : colors.red[700], fontSize: 14 }}>
-            {isPositive ? '+' : ''}{benefitValue}%
+            {showTaxSavings ? `${isPositive ? '+' : ''}${benefitValue}%` : 'N/A'}
           </Text>
         </View>
       </View>

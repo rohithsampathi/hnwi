@@ -10,10 +10,10 @@ const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondig
 
 async function handlePost(
   request: NextRequest,
-  { params }: { params: { intakeId: string } }
+  { params }: { params: Promise<{ intakeId: string }> }
 ) {
   try {
-    const { intakeId } = params;
+    const { intakeId } = await params;
     const body = await request.json();
     const { currency = 'INR' } = body;
 

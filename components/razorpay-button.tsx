@@ -14,10 +14,11 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
-    if (!formRef.current) return
+    const formElement = formRef.current
+    if (!formElement) return
 
     // Only update if the form is empty or button ID changed
-    const existingScript = formRef.current.querySelector('script[data-payment_button_id]');
+    const existingScript = formElement.querySelector('script[data-payment_button_id]');
     const currentButtonId = existingScript?.getAttribute('data-payment_button_id');
 
     if (currentButtonId === paymentButtonId) {
@@ -25,7 +26,7 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
     }
 
     // Clear any existing content
-    formRef.current.innerHTML = ""
+    formElement.innerHTML = ""
 
     // Create and append the script element
     const script = document.createElement("script")
@@ -37,23 +38,21 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
     script.onerror = () => {
 
       // Create a fallback button in case script loading fails
-      if (formRef.current) {
-        formRef.current.innerHTML = "";
+      if (formElement) {
+        formElement.innerHTML = "";
         const fallbackButton = document.createElement("button");
         fallbackButton.textContent = "Purchase Playbook";
         fallbackButton.className = "w-full bg-primary text-white py-2 px-4 rounded";
         fallbackButton.onclick = () => window.open("https://rzp.io/l/" + paymentButtonId, "_blank");
-        formRef.current.appendChild(fallbackButton);
+        formElement.appendChild(fallbackButton);
       }
     };
 
-    formRef.current.appendChild(script);
+    formElement.appendChild(script);
 
     return () => {
       // Keep the cleanup to prevent memory leaks
-      if (formRef.current) {
-        formRef.current.innerHTML = "";
-      }
+      formElement.innerHTML = "";
     }
   }, [paymentButtonId])
 
@@ -70,4 +69,3 @@ export function RazorpayButton({ playbookId, onSuccess, paymentButtonId }: Razor
 
   return <form ref={formRef} className="w-full" />
 }
-

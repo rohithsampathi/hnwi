@@ -5,7 +5,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   Diamond,
@@ -31,12 +31,6 @@ import { CrownLoader } from '@/components/ui/crown-loader';
 import { usePageTitle } from '@/hooks/use-page-title';
 import Link from 'next/link';
 import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
-
-interface PageProps {
-  params: {
-    intakeId: string;
-  };
-}
 
 // Types for preview data
 interface OpportunityPreview {
@@ -147,10 +141,10 @@ const PRICING = {
   }
 };
 
-export default function DecisionMemoPreviewPage({ params }: PageProps) {
+export default function DecisionMemoPreviewPage() {
   const briefCount = useCastleBriefCount();
   const briefCountLabel = briefCount ? briefCount.toLocaleString() : null;
-  const { intakeId } = params;
+  const { intakeId } = useParams<{ intakeId: string }>();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

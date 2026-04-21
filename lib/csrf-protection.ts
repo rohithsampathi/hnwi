@@ -20,6 +20,8 @@ const CSRF_TOKEN_LIFETIME = 60 * 60 * 1000; // 1 hour
 const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 
+type CSRFLogContext = Record<string, unknown>;
+
 // Cookie name helper with security prefixes
 function getSecureCSRFCookieName(): string {
   if (process.env.NODE_ENV === 'production') {
@@ -63,6 +65,62 @@ function extractClientIP(request: NextRequest): string {
   return 'unknown';
 }
 
+function extractPathname(request: NextRequest): string {
+  try {
+    return new URL(request.url).pathname;
+  } catch {
+    return 'unknown';
+  }
+}
+
+function safelySanitizeLoggingContext(context: CSRFLogContext): CSRFLogContext {
+  try {
+    return sanitizeLoggingContext(context);
+  } catch {
+    return context;
+  }
+}
+
+function safeWarn(message: string, context: CSRFLogContext): void {
+  try {
+    logger.warn(message, safelySanitizeLoggingContext(context));
+  } catch {
+    // Never let audit logging change the CSRF decision path.
+  }
+}
+
+function safeInfo(message: string, context?: CSRFLogContext): void {
+  try {
+    if (context) {
+      logger.info(message, safelySanitizeLoggingContext(context));
+      return;
+    }
+    logger.info(message);
+  } catch {
+    // Never let audit logging change the CSRF decision path.
+  }
+}
+
+function safeDebug(message: string, context?: CSRFLogContext): void {
+  try {
+    if (context) {
+      logger.debug(message, safelySanitizeLoggingContext(context));
+      return;
+    }
+    logger.debug(message);
+  } catch {
+    // Never let audit logging change the CSRF decision path.
+  }
+}
+
+function safeError(message: string, context: CSRFLogContext): void {
+  try {
+    logger.error(message, safelySanitizeLoggingContext(context));
+  } catch {
+    // Never let audit logging change the CSRF decision path.
+  }
+}
+
 export class CSRFProtection {
   /**
    * Generate a cryptographically secure CSRF token
@@ -92,7 +150,7 @@ export class CSRFProtection {
     const cookieValue = btoa(JSON.stringify(tokenData));
 
     // Set the cookie with secure prefix
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const secureCookieName = getSecureCSRFCookieName();
     cookieStore.set(secureCookieName, cookieValue, {
       httpOnly: false, // Must be readable by client-side JavaScript
@@ -102,7 +160,7 @@ export class CSRFProtection {
       path: '/'
     });
 
-    logger.debug('CSRF token generated and set in cookie');
+    safeDebug('CSRF token generated and set in cookie');
 
     return { token, cookie: cookieValue };
   }
@@ -126,7 +184,7 @@ export class CSRFProtection {
 
       if (!csrfCookie) {
         try {
-          const headerCookieStore = cookies();
+          const headerCookieStore = await cookies();
           csrfCookie = headerCookieStore.get(secureCookieName)?.value || headerCookieStore.get(CSRF_COOKIE_NAME)?.value;
         } catch {
           // cookies() is unavailable in edge middleware - ignore
@@ -135,8 +193,8 @@ export class CSRFProtection {
       const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
       
       if (!csrfCookie) {
-        const context = sanitizeLoggingContext({
-          endpoint: new URL(request.url).pathname,
+        safeWarn('CSRF validation failed - no cookie found', {
+          endpoint: extractPathname(request),
           method: request.method,
           userAgent: request.headers.get('user-agent') ?? undefined,
           ip: extractClientIP(request),
@@ -144,18 +202,16 @@ export class CSRFProtection {
           legacyCookieName: CSRF_COOKIE_NAME,
           allCookieNames: requestCookies ? Array.from(requestCookies.getAll().map(c => c.name)).join(', ') : 'none'
         });
-        logger.warn('CSRF validation failed - no cookie found', context);
         return { valid: false, error: 'CSRF cookie missing' };
       }
       
       if (!csrfHeader) {
-        const context = sanitizeLoggingContext({
-          endpoint: new URL(request.url).pathname,
+        safeWarn('CSRF validation failed - no header found', {
+          endpoint: extractPathname(request),
           method: request.method,
           userAgent: request.headers.get('user-agent') ?? undefined,
           ip: extractClientIP(request)
         });
-        logger.warn('CSRF validation failed - no header found', context);
         return { valid: false, error: 'CSRF token missing in header' };
       }
 
@@ -175,7 +231,10 @@ export class CSRFProtection {
             userAgent: request.headers.get('user-agent') || ''
           };
         } catch {
-          logger.warn('CSRF validation failed - invalid cookie format');
+          safeWarn('CSRF validation failed - invalid cookie format', {
+            endpoint: extractPathname(request),
+            method: request.method,
+          });
           return { valid: false, error: 'Invalid CSRF cookie format' };
         }
       }
@@ -183,7 +242,7 @@ export class CSRFProtection {
       // Check token expiry (skip for legacy format since timestamp is synthetic)
       const now = Date.now();
       if (!isLegacyFormat && now - tokenData.timestamp > CSRF_TOKEN_LIFETIME) {
-        logger.warn('CSRF validation failed - token expired', {
+        safeWarn('CSRF validation failed - token expired', {
           tokenAge: now - tokenData.timestamp,
           maxAge: CSRF_TOKEN_LIFETIME
         });
@@ -197,19 +256,22 @@ export class CSRFProtection {
 
       // Validate the token matches
       if (tokenData.token !== csrfHeader) {
-        logger.warn('CSRF validation failed - token mismatch');
+        safeWarn('CSRF validation failed - token mismatch', {
+          endpoint: extractPathname(request),
+          method: request.method,
+        });
         return { valid: false, error: 'CSRF token mismatch' };
       }
 
       if (isLegacyFormat) {
-        logger.info('CSRF validation successful (legacy format - consider refreshing token)');
+        safeInfo('CSRF validation successful (legacy format - consider refreshing token)');
       } else {
-        logger.debug('CSRF validation successful');
+        safeDebug('CSRF validation successful');
       }
       return { valid: true };
       
     } catch (error) {
-      logger.error('CSRF validation error', {
+      safeError('CSRF validation error', {
         error: error instanceof Error ? error.message : String(error)
       });
       return { valid: false, error: 'CSRF validation error' };
@@ -228,14 +290,13 @@ export class CSRFProtection {
         const validation = await this.validateCSRFToken(request);
         
         if (!validation.valid) {
-          const context = sanitizeLoggingContext({
+          safeWarn('CSRF protection blocked request', {
             method: request.method,
-            endpoint: new URL(request.url).pathname,
+            endpoint: extractPathname(request),
             error: validation.error,
             userAgent: request.headers.get('user-agent') ?? undefined,
             ip: extractClientIP(request)
           });
-          logger.warn('CSRF protection blocked request', context);
           
           return NextResponse.json(
             { 
@@ -257,10 +318,9 @@ export class CSRFProtection {
    */
   static getCSRFTokenForClient(request: NextRequest): string | null {
     try {
-      const cookieStore = cookies();
       const secureCookieName = getSecureCSRFCookieName();
       // Try secure cookie first, fallback to legacy for compatibility
-      const csrfCookie = cookieStore.get(secureCookieName)?.value || cookieStore.get(CSRF_COOKIE_NAME)?.value;
+      const csrfCookie = request.cookies.get(secureCookieName)?.value || request.cookies.get(CSRF_COOKIE_NAME)?.value;
       
       if (!csrfCookie) {
         return null;
@@ -296,9 +356,9 @@ export class CSRFProtection {
   /**
    * Clear CSRF token (on logout)
    */
-  static clearCSRFToken(): void {
+  static async clearCSRFToken(): Promise<void> {
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const secureCookieName = getSecureCSRFCookieName();
       // Clear both secure and legacy cookies
       cookieStore.delete(secureCookieName);

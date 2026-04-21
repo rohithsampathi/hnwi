@@ -1,6 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "target": "ES2020",
     "skipLibCheck": true,
@@ -19,7 +23,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -40,15 +46,24 @@
     "types/**/*.d.ts",
     "utils/**/*.ts",
     "utils/**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next-turbo/types/**/*.ts",
+    ".next-webpack/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "legacy",
     "app/page-old.tsx",
     "components/app-content.tsx",
     "components/app-root.tsx",
     "components/app-shell.tsx",
     "components/app-wrapper.tsx",
+    "components/**/*-backup.tsx",
+    "components/**/*-legacy.tsx",
+    "components/**/*-OLD-BACKUP.tsx",
+    "components/**/*-broken.tsx",
+    "components/**/*-BROKEN.tsx",
+    "components/**/legacy/**",
     "components/debug-auth.tsx",
     "components/development-stream-broken.tsx",
     "components/decision-memo/OpportunitiesMap.tsx",

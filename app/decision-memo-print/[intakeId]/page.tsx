@@ -4,21 +4,21 @@ import DecisionMemoLinearReport from '@/components/decision-memo/memo/DecisionMe
 import { fetchDecisionMemoSurfaceData } from '@/lib/decision-memo/fetch-decision-memo-surface-data';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     intakeId: string;
-  };
+  }>;
 }
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function DecisionMemoPrintPage({ params }: PageProps) {
-  const { intakeId } = params;
+  const { intakeId } = await params;
 
   try {
     const resolvedSurfaceData = await fetchDecisionMemoSurfaceData(
       intakeId,
-      headers(),
+      await headers(),
     );
 
     if (!resolvedSurfaceData) {

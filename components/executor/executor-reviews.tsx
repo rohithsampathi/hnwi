@@ -59,7 +59,7 @@ export function ExecutorReviews({
   const [filterBy, setFilterBy] = useState<FilterOption>("all");
   const [showAllReviews, setShowAllReviews] = useState(false);
 
-  const reviews = executor.reviews || [];
+  const reviews = useMemo(() => executor.reviews || [], [executor.reviews]);
   const summary = executor.review_summary;
 
   // Get unique sources for filter

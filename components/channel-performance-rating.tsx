@@ -14,7 +14,7 @@ import { TopPerformerBadge } from "./top-performer-badge"
 import { useToast } from "@/components/ui/use-toast"
 import { StrategyAtomAnimation } from "./strategy-atom-animation"
 import { Paragraph } from "@/components/ui/typography"
-import { secureApi } from "@/lib/secure-api"
+import { getAuthenticatedUserId, secureApi } from "@/lib/secure-api"
 
 interface SubChannel {
   name: string
@@ -175,10 +175,10 @@ const RatingArc: React.FC<{
   const [isSaved, setIsSaved] = useState(true)
   const [localScore, setLocalScore] = useState(subChannel.userScore)
 
-  const calculateDelta = () => {
+  const calculateDelta = useCallback(() => {
     const delta = ((localScore - subChannel.score) / subChannel.score) * 100
     return delta.toFixed(1)
-  }
+  }, [localScore, subChannel.score])
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -232,7 +232,7 @@ const RatingArc: React.FC<{
       .style("font-weight", "bold")
       .style("fill", deltaColor)
       .text(`${delta}%`)
-  }, [localScore, theme, subChannel.score])
+  }, [calculateDelta, localScore, theme, subChannel.score])
 
   const handleTickClick = () => {
     if (isEditing) {
@@ -316,7 +316,7 @@ const ChannelPerformanceRating: React.FC = () => {
 
   const updateRating = useCallback(
     async (channel: string, score: number) => {
-      const userId = localStorage.getItem("userId")
+      const userId = getAuthenticatedUserId()
       if (!userId) {
         toast({
           title: "Error",

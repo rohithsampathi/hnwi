@@ -6,28 +6,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
+import { getSetCookieHeaders, parseSetCookieHeader } from '@/lib/security/backend-set-cookie';
+import { setReportAuthCookie } from '@/lib/security/report-auth';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     path: string[];
-  };
+  }>;
 }
 
 export async function POST(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { path } = await Promise.resolve(context.params);
+  const { path } = await context.params;
   const subPath = path.join('/');
   const backendUrl = `${API_BASE_URL}/api/decision-memo/auth/${subPath}`;
 
   try {
     const body = await request.json();
+    const intakeId = typeof body.slug === 'string' ? body.slug : '';
+    const rememberDevice = body.remember_device === true;
 
     // Forward real client IP so backend can geolocate the actual user (not the Vercel server).
     // Use platform-verified sources only (not raw client headers which can be spoofed).
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     if (clientIp) {
       headers['x-forwarded-for'] = clientIp;
       headers['x-real-ip'] = clientIp;
@@ -42,27 +46,30 @@ export async function POST(
     });
 
     const data = await response.json();
+    const backendCookies = getSetCookieHeaders(response.headers);
+    const sanitizedResponseBody = { ...data };
 
-    const nextResponse = NextResponse.json(data, { status: response.status });
+    let reportSessionToken: string | null = null;
 
-    // If the backend issued platform session cookies (skip_mfa viewer accounts),
-    // set them as httpOnly cookies so the browser can use them for subsequent
-    // platform API calls (War Room, crisis intelligence, HNWI World, etc.)
-    if (data.access_token) {
-      const isProd = process.env.NODE_ENV === 'production';
-      const cookieOpts = {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? ('none' as const) : ('lax' as const),
-        maxAge: 7 * 24 * 60 * 60, // 7 days (matches remember_me=True on backend)
-        path: '/',
-      };
-      nextResponse.cookies.set('access_token', data.access_token, cookieOpts);
-      if (data.refresh_token) {
-        nextResponse.cookies.set('refresh_token', data.refresh_token, cookieOpts);
+    if (backendCookies.length > 0) {
+      for (const cookie of backendCookies) {
+        const parsedCookie = parseSetCookieHeader(cookie);
+
+        if (parsedCookie.name === 'report_access_token' && parsedCookie.value && !reportSessionToken) {
+          const value = parsedCookie.value;
+          reportSessionToken = value;
+          sanitizedResponseBody.report_session = true;
+        }
       }
     }
 
+    const nextResponse = NextResponse.json(sanitizedResponseBody, { status: response.status });
+
+    if (reportSessionToken && intakeId) {
+      setReportAuthCookie(nextResponse, intakeId, reportSessionToken, rememberDevice);
+    }
+
+    nextResponse.headers.set('Cache-Control', 'no-store');
     return nextResponse;
   } catch (error) {
     logger.error('Report Auth proxy error', { subPath, error: error instanceof Error ? error.message : String(error) });

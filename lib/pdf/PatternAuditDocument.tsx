@@ -190,7 +190,9 @@ export const PatternAuditDocument: React.FC<PatternAuditDocumentProps> = ({ memo
       )}
 
       {/* Structure Comparison (conditional) */}
-      {v.structureOptimization && (
+      {v.structureOptimization
+        && Array.isArray((v.structureOptimization as { structures_analyzed?: unknown[] }).structures_analyzed)
+        && ((v.structureOptimization as { structures_analyzed?: unknown[] }).structures_analyzed?.length ?? 0) > 0 && (
         <Page size="A4" style={s.page}>
           <PageHeader />
           <PdfStructureComparisonPage structureOptimization={v.structureOptimization as Parameters<typeof PdfStructureComparisonPage>[0]['structureOptimization']} sourceJurisdiction={v.sourceJurisdiction} destinationJurisdiction={v.destJurisdiction} />

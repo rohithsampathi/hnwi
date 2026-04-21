@@ -1,7 +1,8 @@
 // lib/asset-image-assignment.ts
 // LLM-powered intelligent image assignment during asset creation
 
-import { ASSET_IMAGE_MAP, getAssetImageUrl } from './asset-images';
+import { ASSET_IMAGE_MAP, getAssetImageFallbackUrl, getAssetImageUrl } from './asset-images';
+import { createLabeledCoverImage } from './playbook-cover';
 
 export interface AssetImageAssignment {
   imageId: string;
@@ -49,7 +50,7 @@ export const assignImageWithLLM = async (assetName: string, assetType: string, a
     
     return {
       imageId: category,
-      imageUrl: generateImageUrl(config.unsplashId),
+      imageUrl: generateImageUrl(assetName || config.alt, category, config.alt),
       altText: config.alt,
       confidence: 0.95
     };
@@ -58,7 +59,7 @@ export const assignImageWithLLM = async (assetName: string, assetType: string, a
     const defaultConfig = ASSET_IMAGE_MAP.default;
     return {
       imageId: 'default',
-      imageUrl: generateImageUrl(defaultConfig.unsplashId),
+      imageUrl: generateImageUrl(assetName || defaultConfig.alt, 'default', defaultConfig.alt),
       altText: defaultConfig.alt,
       confidence: 0.5
     };
@@ -117,10 +118,21 @@ const getSmartImageCategory = (assetName: string, assetType: string, assetDescri
     : 'default';
 };
 
-// Generate optimized image URL
-const generateImageUrl = (unsplashId: string, width = 600, height = 400): string => {
-  return `https://images.unsplash.com/${unsplashId}?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=${width}&h=${height}&q=80`;
-};
+const generateImageUrl = (
+  assetName: string,
+  assetType: string,
+  label: string,
+  width = 600,
+  height = 400,
+): string =>
+  createLabeledCoverImage({
+    seed: `${assetName}:${assetType}:${label}`,
+    title: assetName || label,
+    label,
+    width,
+    height,
+    footer: 'HNWI CHRONICLES ASSET',
+  });
 
 // Process assets to assign images after creation
 export const enhanceAssetsWithImages = async (assets: any[]): Promise<any[]> => {
@@ -186,16 +198,23 @@ export const assignImageViaAPI = async (
 
 // Simple function to get image URL for display
 export const getAssetImageForDisplay = (asset: any): string => {
-  // If asset has assigned image, use it
-  if (asset?.asset_data?.assigned_image?.imageUrl) {
-    return asset.asset_data.assigned_image.imageUrl;
-  }
-  
-  // Use the comprehensive image mapping system
   const assetName = asset?.asset_data?.name || '';
   const assetType = asset?.asset_data?.asset_type || '';
-  
-  return getAssetImageUrl(assetName, assetType, 'md');
+  const assignedImageUrl = asset?.asset_data?.assigned_image?.imageUrl;
+
+  // Keep real assigned images, but bypass old generated SVG covers for the richer photo rail.
+  if (typeof assignedImageUrl === 'string' && assignedImageUrl.trim()) {
+    if (!assignedImageUrl.startsWith('data:image/svg+xml')) {
+      return assignedImageUrl;
+    }
+  }
+
+  const premiumImageUrl = getAssetImageUrl(assetName, assetType, 'md');
+  if (premiumImageUrl) {
+    return premiumImageUrl;
+  }
+
+  return getAssetImageFallbackUrl(assetName, assetType, 'md');
 };
 
 // Lightweight image URL generation for immediate display
@@ -204,26 +223,26 @@ const getSmartImageUrl = (assetName: string, assetType: string): string => {
   
   // Quick rules for common cases
   if (fullText.includes('plot') || fullText.includes('land plot')) {
-    return generateImageUrl('photo-1576013551627-0cc20b96c2a7');
+    return generateImageUrl(assetName || 'Land Plot', assetType || 'plot', 'Land');
   }
   if (fullText.includes('gold bar') || fullText.includes('gold bars')) {
-    return generateImageUrl('photo-1610375461246-83df859d849d');
+    return generateImageUrl(assetName || 'Gold Bars', assetType || 'gold', 'Gold');
   }
   if (fullText.includes('villa')) {
-    return generateImageUrl('photo-1613490493576-7fde63acd811');
+    return generateImageUrl(assetName || 'Villa', assetType || 'villa', 'Villa');
   }
   if (fullText.includes('complex')) {
-    return generateImageUrl('photo-1582407947304-fd86f028f716');
+    return generateImageUrl(assetName || 'Commercial Complex', assetType || 'commercial complex', 'Commercial');
   }
   if (fullText.includes('orchard') || fullText.includes('aquaculture')) {
-    return generateImageUrl('photo-1500382017468-9049fed747ef');
+    return generateImageUrl(assetName || 'Land Asset', assetType || 'land', 'Land');
   }
   if (fullText.includes('precious metal')) {
-    return generateImageUrl('photo-1610375461246-83df859d849d');
+    return generateImageUrl(assetName || 'Precious Metals', assetType || 'metals', 'Metals');
   }
   
   // Default fallback
-  return generateImageUrl('photo-1559526324-4b87b5e36e44');
+  return generateImageUrl(assetName || 'HNWI Asset', assetType || 'asset', 'Asset');
 };
 
 // LLM-powered image assignment with Claude Sonnet
@@ -238,7 +257,7 @@ export const assignImageWithActualLLM = async (assetName: string, assetType: str
       
       return {
         imageId: imageCategory,
-        imageUrl: generateImageUrl(config.unsplashId),
+        imageUrl: generateImageUrl(assetName || config.alt, imageCategory, config.alt),
         altText: config.alt,
         confidence: 0.95 // High confidence for LLM assignments
       };

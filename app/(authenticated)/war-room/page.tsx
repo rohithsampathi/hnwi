@@ -265,6 +265,55 @@ interface Audit {
   has_access: boolean;
 }
 
+interface CachedUserAuditsPayload {
+  audits: Audit[];
+  fetchedAt: number;
+}
+
+const USER_AUDITS_CACHE_TTL_MS = 600000;
+const userAuditsCache = new Map<string, CachedUserAuditsPayload>();
+const inflightUserAuditsRequests = new Map<string, Promise<Audit[]>>();
+
+function getCachedUserAudits(userId: string): Audit[] | null {
+  const cached = userAuditsCache.get(userId);
+  if (!cached) return null;
+
+  if (Date.now() - cached.fetchedAt > USER_AUDITS_CACHE_TTL_MS) {
+    userAuditsCache.delete(userId);
+    return null;
+  }
+
+  return cached.audits;
+}
+
+async function fetchUserAuditsCached(userId: string, force: boolean = false): Promise<Audit[]> {
+  if (!force) {
+    const cached = getCachedUserAudits(userId);
+    if (cached) {
+      return cached;
+    }
+
+    const inflight = inflightUserAuditsRequests.get(userId);
+    if (inflight) {
+      return inflight;
+    }
+  }
+
+  const request = fetch('/api/decision-memo/user-audits', { credentials: 'include' })
+    .then(async (res) => {
+      const data = await res.json();
+      const audits = data.success ? (data.audits || []) : [];
+      userAuditsCache.set(userId, { audits, fetchedAt: Date.now() });
+      return audits;
+    })
+    .finally(() => {
+      inflightUserAuditsRequests.delete(userId);
+    });
+
+  inflightUserAuditsRequests.set(userId, request);
+  return request;
+}
+
 function buildCorridorGroupKey(audit: Audit): string {
   const sourceRaw = (audit.source_jurisdiction || audit.source_country || '').trim().toLowerCase();
   const destinationRaw = (audit.destination_jurisdiction || audit.destination_country || '').trim().toLowerCase();
@@ -304,6 +353,7 @@ export default function WarRoomPage() {
   // Auth
   const [user, setUser] = useState<any>(null);
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
+  const userId = user?.id || user?.user_id || null;
 
   // Personal Mode state (shared across Home Dashboard and War Room)
   const { isPersonalMode, togglePersonalMode } = usePersonalMode(hasCompletedAssessment);
@@ -344,10 +394,9 @@ export default function WarRoomPage() {
   // Check assessment status
   useEffect(() => {
     const checkAssessment = async () => {
-      if (!user?.id && !user?.user_id) return;
+      if (!userId) return;
 
       try {
-        const userId = user.id || user.user_id;
         const data = await fetchAssessmentHistory(userId);
 
         if (data) {
@@ -359,26 +408,23 @@ export default function WarRoomPage() {
     };
 
     checkAssessment();
-  }, [user]);
+  }, [userId]);
 
   // Fetch audits from existing endpoint
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     const fetchAudits = async () => {
       try {
-        const res = await fetch('/api/decision-memo/user-audits', { credentials: 'include' });
-        const data = await res.json();
-        if (data.success) {
-          setAudits(data.audits || []);
-        }
+        const nextAudits = await fetchUserAuditsCached(userId);
+        setAudits(nextAudits);
       } catch {
         // Silent fail
       }
     };
 
     fetchAudits();
-  }, [user]);
+  }, [userId]);
 
   // Group audits by corridor (source-destination pair) for navigation
   const corridorGroups = useMemo(() => {

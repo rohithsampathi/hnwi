@@ -1,0 +1,111 @@
+{
+  "email": "hnwi@montaigne.co",
+  "nationality": "Singapore",
+  "nda_consent": true,
+  "privacy_consent": true,
+  "thesis": {
+    "move_description": "Acquire premium apartment in Dubai for $5.2M from a Singapore-based Single Family Office. The mandate is Gulf diversification with strong cash yield, execution speed, and optional family mobility without weakening Singapore control rails.",
+    "expected_outcome": "9% annual rental yield with 13% capital appreciation, generating 22% gross returns. Build a Gulf asset foothold while maintaining Singapore as the family operating base.",
+    "move_type": "real_estate",
+    "target_amount": "$5.2M",
+    "target_locations": [
+      "Dubai",
+      "DIFC",
+      "Palm Jumeirah",
+      "Dubai Marina"
+    ],
+    "timeline": "45 days",
+    "source_jurisdiction": "Singapore",
+    "destination_jurisdiction": "Dubai"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": [
+      "Singapore",
+      "United Arab Emirates"
+    ],
+    "prohibited_jurisdictions": [],
+    "prohibitions": [
+      "No off-plan purchases",
+      "No silent wrapper drift from family-office entities",
+      "No execution path that breaks banking rails"
+    ],
+    "deal_breakers": [
+      "Title defects",
+      "Unclear service charge load",
+      "Entity route chosen without quantified downside",
+      "Residency optics replacing investment logic"
+    ],
+    "destination_property_count": 0,
+    "purchase_vehicle": "optimize",
+    "is_relocating": false
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$1M",
+    "advisors": [
+      {
+        "type": "tax",
+        "name": "Singapore International Tax Counsel",
+        "jurisdiction": "Singapore"
+      },
+      {
+        "type": "legal",
+        "name": "Dubai Property Counsel",
+        "jurisdiction": "United Arab Emirates"
+      }
+    ],
+    "existing_entities": [
+      {
+        "type": "Family Office",
+        "jurisdiction": "Singapore",
+        "purpose": "Principal capital and family governance"
+      }
+    ],
+    "banking_rails": [
+      {
+        "bank": "DBS Private Bank",
+        "jurisdiction": "Singapore",
+        "status": "active"
+      },
+      {
+        "bank": "Emirates NBD",
+        "jurisdiction": "United Arab Emirates",
+        "status": "planned"
+      }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "Singapore remains the family operating base. Dubai is being evaluated as a Gulf asset lane and optional mobility layer, but not as a substitute for Singapore control and governance rails.",
+    "heirs": [
+      {
+        "name": "Ethan",
+        "relationship": "son",
+        "age": 19,
+        "allocation_pct": 0.5
+      },
+      {
+        "name": "Claire",
+        "relationship": "daughter",
+        "age": 16,
+        "allocation_pct": 0.5
+      }
+    ]
+  },
+  "urgency": "high",
+  "asset_details": {
+    "property_type": "residential_apartment",
+    "estimated_value": 5200000,
+    "rental_yield_pct": 9,
+    "appreciation_pct": 13,
+    "location_preference": [
+      "DIFC",
+      "Palm Jumeirah"
+    ],
+    "size_sqft": "2800",
+    "bedrooms": "4"
+  }
+}

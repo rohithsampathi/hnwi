@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "app/page-old.tsx",
+    "components/app-content.tsx",
+    "components/app-root.tsx",
+    "components/app-shell.tsx",
+    "components/app-wrapper.tsx",
+    "components/debug-auth.tsx",
+    "components/development-stream-broken.tsx",
+    "components/decision-memo/OpportunitiesMap.tsx",
+    "components/decision-memo/PreviewModal.tsx",
+    "components/opportunity-atlas.tsx",
+    "components/playbook-formatter.tsx",
+    "components/pricing-strategy.tsx",
+    "components/quick-login.tsx",
+    "components/target-audience-segmentation.tsx"
+  ]
+}

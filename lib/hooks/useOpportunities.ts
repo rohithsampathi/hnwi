@@ -6,6 +6,7 @@ import { secureApi } from '@/lib/secure-api';
 import type { City } from '@/components/interactive-world-map';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { Citation } from '@/lib/parse-dev-citations';
+import { isRecentlyAddedOpportunity } from '@/lib/opportunity-recency';
 
 interface Opportunity {
   _id?: string;
@@ -88,6 +89,41 @@ interface UseOpportunitiesResult {
   totalCount: number;
   availableCategories: string[];
   refetch: () => Promise<void>;
+}
+
+interface CachedOpportunitiesPayload {
+  cities: City[];
+  totalCount: number;
+  availableCategories: string[];
+  fetchedAt: number;
+}
+
+const OPPORTUNITIES_CACHE_TTL_MS = 600000
+const opportunitiesCache = new Map<string, CachedOpportunitiesPayload>()
+const inflightOpportunitiesRequests = new Map<string, Promise<CachedOpportunitiesPayload>>()
+
+function buildOpportunitiesCacheKey(config: {
+  isPublic: boolean
+  timeframe: string
+  shouldUsePersonalizedView: boolean
+  includeCrownVault: boolean
+  publicEndpoint: string
+  filterCrownVault: boolean
+  cleanCategories: boolean
+}): string {
+  return JSON.stringify(config)
+}
+
+function getCachedOpportunities(cacheKey: string, ttlMs: number = OPPORTUNITIES_CACHE_TTL_MS): CachedOpportunitiesPayload | null {
+  const cached = opportunitiesCache.get(cacheKey)
+  if (!cached) return null
+
+  if (Date.now() - cached.fetchedAt > ttlMs) {
+    opportunitiesCache.delete(cacheKey)
+    return null
+  }
+
+  return cached
 }
 
 // Helper function to clean category names (shared logic)
@@ -221,30 +257,66 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     cleanCategories = true
   } = config;
 
-  const [cities, setCities] = useState<City[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
-  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-
   // TEMPORARY: Always bust cache for debugging
   // TODO: Re-enable caching after verifying data is fresh
   const TEMPORARILY_DISABLE_CACHE = false; // ✅ Re-enabled caching to prevent rapid refetches
 
   // CRITICAL FIX: Check URL parameter to trigger cache busting on mount
   // This solves the timing issue where events are dispatched before component mounts
-  const initialBustCache = TEMPORARILY_DISABLE_CACHE || !isPublic || (typeof window !== 'undefined' &&
+  const initialBustCache = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
     (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
 
   const [bustCache, setBustCache] = useState(initialBustCache);
+  const shouldUsePersonalizedView = isPersonalMode && hasCompletedAssessment;
+  const cacheKey = buildOpportunitiesCacheKey({
+    isPublic,
+    timeframe,
+    shouldUsePersonalizedView,
+    includeCrownVault,
+    publicEndpoint,
+    filterCrownVault,
+    cleanCategories,
+  })
+  const initialCachedPayload = !initialBustCache ? getCachedOpportunities(cacheKey) : null
 
-  const fetchOpportunities = useCallback(async () => {
+  const [cities, setCities] = useState<City[]>(() => initialCachedPayload?.cities ?? []);
+  const [loading, setLoading] = useState(() => !initialCachedPayload);
+  const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(() => initialCachedPayload?.totalCount ?? 0);
+  const [availableCategories, setAvailableCategories] = useState<string[]>(() => initialCachedPayload?.availableCategories ?? []);
+
+  const fetchOpportunities = useCallback(async (force: boolean = false) => {
+    const cachedPayload = !force && !bustCache ? getCachedOpportunities(cacheKey) : null
+    if (cachedPayload) {
+      setCities(cachedPayload.cities)
+      setTotalCount(cachedPayload.totalCount)
+      setAvailableCategories(cachedPayload.availableCategories)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
+    if (!force && !bustCache) {
+      const inflight = inflightOpportunitiesRequests.get(cacheKey)
+      if (inflight) {
+        const payload = await inflight
+        setCities(payload.cities)
+        setTotalCount(payload.totalCount)
+        setAvailableCategories(payload.availableCategories)
+        setError(null)
+        setLoading(false)
+        return
+      }
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      const request = (async (): Promise<CachedOpportunitiesPayload> => {
       let response: any;
       let opportunities: Opportunity[] = [];
+      let responseTotal = 0
 
       if (isPublic) {
         // PUBLIC MODE (Assessment)
@@ -261,15 +333,12 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         opportunities = data?.opportunities ||
                        (Array.isArray(data) ? data : data?.data || []);
 
-        // Use total_count from response, or fall back to length
-        const responseTotal = data?.total_count || opportunities.length;
-        setTotalCount(responseTotal);
-
+        responseTotal = data?.total_count || opportunities.length
       } else {
         // AUTHENTICATED MODE (Home Dashboard)
         // Build API URL with all parameters
         const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe;
-        const viewParam = (isPersonalMode && hasCompletedAssessment) ? 'personalized' : 'all';
+        const viewParam = shouldUsePersonalizedView ? 'personalized' : 'all';
 
         // Authenticated users should still see Crown Vault rows in all-mode when requested.
         const shouldIncludeCrownVault = includeCrownVault;
@@ -291,9 +360,10 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
                          (Array.isArray(fallbackResponse) ? fallbackResponse : []);
         }
 
+        responseTotal = opportunities.length
+
         // CLIENT-SIDE FILTERING: Apply timeframe and expiry filters
         const now = new Date();
-        const beforeFilterCount = opportunities.length;
 
         opportunities = opportunities.filter(opp => {
           // 1. Filter out expired MOEv4 opportunities (180 days after DEVID brief creation)
@@ -337,8 +407,6 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
           return true;
         });
-
-        setTotalCount(opportunities.length);
       }
 
       // Transform opportunities to City format
@@ -371,27 +439,9 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         return true;
       });
 
-      // Only mark the last 5 added opportunities as "new" (based on start_date)
-      // Sort by start_date descending to find the 5 most recent
-      const sortedByDate = [...deduplicatedCities]
-        .filter(city => city.start_date && city.is_new === true)
-        .sort((a, b) => {
-          const dateA = new Date(a.start_date!).getTime();
-          const dateB = new Date(b.start_date!).getTime();
-          return dateB - dateA; // Most recent first
-        });
-
-      // Get IDs of the last 5 added opportunities
-      const last5Ids = new Set(
-        sortedByDate.slice(0, 5).map(city => city._id || city.id).filter(Boolean)
-      );
-
-      // Update is_new flag: only true for the last 5 added
+      // Normalize recency once so every map can use the same "new in the last 30 days" rule.
       deduplicatedCities.forEach(city => {
-        const cityId = city._id || city.id;
-        if (city.is_new === true && cityId && !last5Ids.has(cityId)) {
-          city.is_new = false;
-        }
+        city.is_new = isRecentlyAddedOpportunity(city);
       });
 
       // Extract available categories
@@ -408,14 +458,29 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
       });
 
       const sortedCategories = Array.from(categoriesSet).sort();
-      setAvailableCategories(sortedCategories);
+      return {
+        cities: deduplicatedCities,
+        totalCount: responseTotal,
+        availableCategories: sortedCategories,
+        fetchedAt: Date.now(),
+      }
+      })()
 
-      setCities(deduplicatedCities);
+      if (!force && !bustCache) {
+        inflightOpportunitiesRequests.set(cacheKey, request)
+      }
+
+      const payload = await request
+      opportunitiesCache.set(cacheKey, payload)
+      setAvailableCategories(payload.availableCategories);
+      setTotalCount(payload.totalCount);
+      setCities(payload.cities);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch opportunities';
       setError(errorMessage);
     } finally {
+      inflightOpportunitiesRequests.delete(cacheKey)
       setLoading(false);
       // Reset bust cache flag after fetching
       if (bustCache) {
@@ -431,13 +496,10 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
       }
     }
   }, [
+    cacheKey,
     isPublic,
     timeframe,
-    isPersonalMode,
-    // CRITICAL FIX: Don't refetch when hasCompletedAssessment changes in "all" mode
-    // hasCompletedAssessment only matters when isPersonalMode is true
-    // Removing this prevents unnecessary double-fetches on assessment status load
-    // hasCompletedAssessment,
+    shouldUsePersonalizedView,
     includeCrownVault,
     publicEndpoint,
     filterCrownVault,
@@ -471,6 +533,6 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     error,
     totalCount,
     availableCategories,
-    refetch: fetchOpportunities
+    refetch: () => fetchOpportunities(true)
   };
 }

@@ -207,7 +207,7 @@ export function PriveExchangePage({ onNavigate }: PriveExchangePageProps) {
     if (userData) {
       loadOpportunities();
     }
-  }, [userData]);
+  }, [userData, intelligenceData]);
 
   const handleCategorySelect = (category: AssetCategoryData | null) => {
     setSelectedCategory(category);

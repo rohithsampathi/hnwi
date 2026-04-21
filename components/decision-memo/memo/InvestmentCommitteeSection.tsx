@@ -23,26 +23,31 @@ interface DueDiligenceItem {
   advisor: string;
   task: string;
   category: string;
+  status?: string;
 }
 
 interface LiquidityAnalysis {
   capitalDeployed: string;
   barrierCosts: string;
+  barrierLabel?: string;
+  capitalDestroyed?: string;
   recoverableCapital: string;
   trappedPercentage: string;
   description: string;
 }
 
 interface InvestmentCommitteeSectionProps {
-  verdict?: 'PROCEED' | 'RESTRUCTURE' | 'ABORT';
+  verdict?: 'PROCEED' | 'PROCEED_MODIFIED' | 'RESTRUCTURE' | 'DEFER' | 'ABORT';
   riskLevel: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
   criticalItemsCount: number;
   opportunitiesCount: number;
   riskFactorsCount: number;
   dataQuality: string;
   intelligenceDepth: number;
+  dataQualityNote?: string;
   totalExposure: string;
   highPriorityCount: number;
+  priorityRiskCount?: number;
   mitigationTimeline: string;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
@@ -59,8 +64,10 @@ export function InvestmentCommitteeSection({
   riskFactorsCount,
   dataQuality,
   intelligenceDepth,
+  dataQualityNote,
   totalExposure,
   highPriorityCount,
+  priorityRiskCount,
   mitigationTimeline,
   sourceJurisdiction,
   destinationJurisdiction,
@@ -79,13 +86,22 @@ export function InvestmentCommitteeSection({
           color: 'text-verdict-proceed',
           bgColor: 'bg-verdict-proceed/10'
         };
+      case 'PROCEED_MODIFIED':
       case 'RESTRUCTURE':
         return {
           label: 'CONDITIONAL',
-          sublabel: 'Requires restructuring before approval.',
+          sublabel: 'Proceed only after gating corrections clear.',
           icon: AlertTriangle,
           color: 'text-verdict-restructure',
           bgColor: 'bg-verdict-restructure/10'
+        };
+      case 'DEFER':
+        return {
+          label: 'DEFER',
+          sublabel: 'Evidence or gates are not strong enough to proceed yet.',
+          icon: Clock,
+          color: 'text-amber-500',
+          bgColor: 'bg-amber-500/10'
         };
       case 'ABORT':
         return {
@@ -97,11 +113,11 @@ export function InvestmentCommitteeSection({
         };
       default:
         return {
-          label: 'APPROVED',
-          sublabel: `Address ${criticalItemsCount} critical items before proceeding.`,
-          icon: CheckCircle,
-          color: 'text-verdict-proceed',
-          bgColor: 'bg-verdict-proceed/10'
+          label: 'CONDITIONAL',
+          sublabel: 'Proceed only after gating corrections clear.',
+          icon: AlertTriangle,
+          color: 'text-verdict-restructure',
+          bgColor: 'bg-verdict-restructure/10'
         };
     }
   };
@@ -187,14 +203,14 @@ export function InvestmentCommitteeSection({
           <p className="text-xs text-muted-foreground mb-1">Data Quality</p>
           <p className="text-base font-bold text-foreground">{dataQuality}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {intelligenceDepth.toLocaleString()} KGv3 corridor signals analyzed for {sourceJurisdiction}→{destinationJurisdiction}
+            {dataQualityNote || `${intelligenceDepth.toLocaleString()} route records analyzed for ${sourceJurisdiction}→${destinationJurisdiction}`}
           </p>
         </div>
 
         <div className="p-4 rounded-lg bg-surface border border-border">
-          <p className="text-xs text-muted-foreground mb-1">Total Exposure</p>
+          <p className="text-xs text-muted-foreground mb-1">Validated Day-One Exposure</p>
           <p className="text-xl font-bold text-foreground">{totalExposure}</p>
-          <p className="text-xs text-muted-foreground mt-1">Aggregate risk value</p>
+          <p className="text-xs text-muted-foreground mt-1">Non-recoverable closing-cost leakage if the route hardens wrong</p>
         </div>
 
         <div className="p-4 rounded-lg bg-surface border border-border">
@@ -204,9 +220,9 @@ export function InvestmentCommitteeSection({
         </div>
 
         <div className="p-4 rounded-lg bg-surface border border-border">
-          <p className="text-xs text-muted-foreground mb-1">High Priority</p>
+          <p className="text-xs text-muted-foreground mb-1">High Items</p>
           <p className="text-xl font-bold text-amber-500">{highPriorityCount}</p>
-          <p className="text-xs text-muted-foreground mt-1">Priority mitigation needed</p>
+          <p className="text-xs text-muted-foreground mt-1">High-severity route risks</p>
         </div>
 
         <div className="p-4 rounded-lg bg-surface border border-border col-span-2 sm:col-span-3">
@@ -230,6 +246,8 @@ export function InvestmentCommitteeSection({
               <span className="text-sm">
                 <span className="text-amber-500 font-bold">{riskFactors.filter(r => r.severity === 'High').length} High</span>
               </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-sm text-muted-foreground">{priorityRiskCount ?? (criticalItemsCount + highPriorityCount)} Priority Total</span>
               <span className="text-muted-foreground">·</span>
               <span className="text-sm text-muted-foreground">{totalExposure} Total</span>
             </div>
@@ -268,7 +286,7 @@ export function InvestmentCommitteeSection({
               {dueDiligence.filter(d => d.priority === 'Critical').length} Critical · {dueDiligence.filter(d => d.priority === 'High').length} High
             </p>
             <div className="space-y-2">
-              {dueDiligence.slice(0, 5).map((item) => (
+              {dueDiligence.map((item) => (
                 <div key={item.id} className="p-3 rounded-lg border border-border bg-background flex items-start gap-3">
                   <div className={`px-2 py-1 rounded text-xs font-bold ${item.category === 'TAX' ? 'bg-gold/10 text-gold' : 'bg-blue-500/10 text-blue-500'}`}>
                     {item.category}
@@ -307,16 +325,18 @@ export function InvestmentCommitteeSection({
 
               {/* Barrier Zone */}
               <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                <p className="text-xs font-bold text-red-500 mb-2">Barrier Zone</p>
+                <p className="text-xs font-bold text-red-500 mb-2">Day-One Barrier</p>
                 <div className="space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-foreground">Stamp Duties</span>
+                    <span className="text-sm text-foreground">{liquidityAnalysis.barrierLabel || 'Stamp Duties'}</span>
                     <span className="text-sm font-bold text-red-500">{liquidityAnalysis.barrierCosts}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-foreground">Capital Destroyed</span>
-                    <span className="text-sm font-bold text-red-500">{liquidityAnalysis.barrierCosts}</span>
-                  </div>
+                  {(liquidityAnalysis.capitalDestroyed || liquidityAnalysis.barrierCosts) !== liquidityAnalysis.barrierCosts && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-foreground">Capital Destroyed</span>
+                      <span className="text-sm font-bold text-red-500">{liquidityAnalysis.capitalDestroyed || liquidityAnalysis.barrierCosts}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -330,7 +350,7 @@ export function InvestmentCommitteeSection({
               {/* Impact Statement */}
               <div className="pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-bold">Immediate Equity Destruction Upon Acquisition</span>
+                  <span className="font-bold">Immediate sunk cost on acquisition</span>
                 </p>
               </div>
             </div>

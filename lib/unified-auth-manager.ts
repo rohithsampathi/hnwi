@@ -2,8 +2,14 @@
 // Unified Authentication Manager - Single Source of Truth
 // Leverages secure-api for all backend communication with URL masking and secure routing
 
-import { secureApi, setAuthState, isAuthenticated as secureApiAuthenticated } from '@/lib/secure-api'
+import {
+  ensureClientCsrfToken,
+  secureApi,
+  setAuthState,
+  isAuthenticated as secureApiAuthenticated
+} from '@/lib/secure-api'
 import { authManager, loginUser, logoutUser, silentLogoutUser, getCurrentUser, type User } from '@/lib/auth-manager'
+import { fetchAuthSession } from '@/lib/client-auth-session'
 import { DeviceTrustManager } from '@/lib/device-trust'
 import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags'
 
@@ -126,6 +132,11 @@ class UnifiedAuthManager {
     this._loginInProgress = true
 
     try {
+      // Auth endpoints are CSRF-protected even before a session exists.
+      // Bootstrap a fresh token explicitly so splash login and auth popup
+      // behave the same way on first submit.
+      await ensureClientCsrfToken()
+
       // Use secure-api for masked backend communication
       // requireAuth=false: login endpoint doesn't require a pre-existing session.
       // Without this, a 403 CSRF failure triggers the auth popup instead of an error message.
@@ -135,7 +146,10 @@ class UnifiedAuthManager {
         rememberDevice
       }, false)
 
-      if (result.requires_mfa && result.mfa_token) {
+      const requiresMfa = Boolean(result?.requires_mfa || result?.requiresMFA)
+      const returnedMfaToken = result?.mfa_token || result?.mfaToken
+
+      if (requiresMfa && returnedMfaToken) {
         // MFA required - store email for MFA verification and don't update auth state yet
         this._loginInProgress = false
         this.mfaEmail = email
@@ -143,7 +157,7 @@ class UnifiedAuthManager {
         return {
           success: true,
           requiresMFA: true,
-          mfaToken: result.mfa_token,
+          mfaToken: returnedMfaToken,
           message: result.message
         }
       }
@@ -209,6 +223,10 @@ class UnifiedAuthManager {
     }
 
     try {
+      // MFA verification is also CSRF-protected and can happen before any
+      // authenticated session is fully restored client-side.
+      await ensureClientCsrfToken()
+
       // Use secure-api for masked backend communication
       // requireAuth=false: MFA verify is mid-auth flow, no session cookie exists yet.
       // Without this, a CSRF/403 failure triggers the auth popup instead of an error message.
@@ -321,10 +339,9 @@ class UnifiedAuthManager {
     }
 
     try {
-      // Use secure-api for masked backend communication
-      const result = await secureApi.get('/api/auth/session')
+      const result = await fetchAuthSession()
 
-      if (result.user) {
+      if (result?.user) {
         // Backend confirmed session — merge with any extra profile fields from localStorage
         const mergedUser = existingUser ? { ...existingUser, ...result.user } : result.user
 
@@ -396,7 +413,7 @@ class UnifiedAuthManager {
       const result = await secureApi.post('/api/auth/refresh')
 
       if (result.success) {
-        // Token refreshed, now check session
+        await fetchAuthSession({ force: true })
         return await this.checkSession().then(state => state.user)
       }
 
@@ -551,13 +568,6 @@ class UnifiedAuthManager {
     // - Saves to sessionStorage (with loginTimestamp)
     // - Syncs to pwaStorage
     // - Emits auth:login event
-
-    // 4. Emit auth events for other components (keeping for backward compatibility)
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('auth:login', {
-        detail: { user }
-      }))
-    }
 
     if (typeof console !== 'undefined') {
       console.debug('[Auth] Auth systems synced - starting validation', {

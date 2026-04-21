@@ -9,6 +9,56 @@ import type { City } from "@/components/interactive-world-map"
 import type L from "leaflet"
 import { MAP_CONFIG } from "@/lib/map-config"
 
+const POPUP_VIEWPORT_PADDING_PX = 24
+
+function calculatePopupViewportShift(map: L.Map, popup: L.Popup): [number, number] | null {
+  const popupElement = popup.getElement()
+  const mapElement = map.getContainer()
+
+  if (!popupElement || !mapElement) {
+    return null
+  }
+
+  const popupRect = popupElement.getBoundingClientRect()
+  const mapRect = mapElement.getBoundingClientRect()
+
+  const leftOverflow = Math.max(0, mapRect.left + POPUP_VIEWPORT_PADDING_PX - popupRect.left)
+  const rightOverflow = Math.max(0, popupRect.right - (mapRect.right - POPUP_VIEWPORT_PADDING_PX))
+  const topOverflow = Math.max(0, mapRect.top + POPUP_VIEWPORT_PADDING_PX - popupRect.top)
+  const bottomOverflow = Math.max(0, popupRect.bottom - (mapRect.bottom - POPUP_VIEWPORT_PADDING_PX))
+
+  const shiftX = rightOverflow - leftOverflow
+  const shiftY = bottomOverflow - topOverflow
+
+  if (Math.abs(shiftX) < 1 && Math.abs(shiftY) < 1) {
+    return null
+  }
+
+  return [shiftX, shiftY]
+}
+
+function keepPopupInViewport(map: L.Map, popup: L.Popup) {
+  const pixelShift = calculatePopupViewportShift(map, popup)
+
+  if (!pixelShift) {
+    return false
+  }
+
+  const [shiftX, shiftY] = pixelShift
+  const zoom = map.getZoom()
+  const currentCenterPoint = map.project(map.getCenter(), zoom)
+  const adjustedCenterPoint = currentCenterPoint.add([shiftX, shiftY])
+  const adjustedCenter = map.unproject(adjustedCenterPoint, zoom)
+
+  map.flyTo(adjustedCenter, zoom, {
+    duration: 0.45,
+    easeLinearity: MAP_CONFIG.animation.popupEase,
+    animate: true,
+  })
+
+  return true
+}
+
 /**
  * Component to fly to a specific city on the map
  */
@@ -186,10 +236,26 @@ export function PopupZoomHandler() {
             animate: true
           })
 
+          const fitTimeout = window.setTimeout(() => {
+            const adjusted = keepPopupInViewport(map, popup)
+
+            if (!adjusted) {
+              setIsZooming(false)
+              return
+            }
+
+            const secondPassTimeout = window.setTimeout(() => {
+              keepPopupInViewport(map, popup)
+              setIsZooming(false)
+            }, 520)
+            pendingTimeoutsRef.current.push(secondPassTimeout)
+          }, MAP_CONFIG.animation.flyToPopup * 1000 + 60)
+          pendingTimeoutsRef.current.push(fitTimeout)
+
           // Reset zooming flag after animation completes
           const resetTimeout = window.setTimeout(() => {
             setIsZooming(false)
-          }, MAP_CONFIG.animation.flyToPopup * 1000 + 50)
+          }, MAP_CONFIG.animation.flyToPopup * 1000 + 650)
           pendingTimeoutsRef.current.push(resetTimeout)
         }, 150) // Increased delay slightly for DOM to fully settle
 

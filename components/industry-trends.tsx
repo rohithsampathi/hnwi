@@ -283,7 +283,7 @@ export function IndustryTrends({
     )
   }
 
-  const renderBubbleChart = (
+  const renderBubbleChart = useCallback((
     data: any[],
     onClick: (item: any) => void,
     radiusScale: d3.ScalePower<number, number, never>,
@@ -476,7 +476,7 @@ ${(d as any).value} development${(d as any).value !== 1 ? "s" : ""}`,
     simulation.on("tick", () => {
       bubbles.each(boundingBox).attr("transform", (d) => `translate(${(d as any).x},${(d as any).y})`)
     })
-  }
+  }, [productClassifications, selectedIndustry, selectedProduct, timeRange])
 
   const renderProductLineGraph = () => {
     if (!selectedProduct || !selectedIndustry) return null
@@ -649,7 +649,7 @@ ${(d as any).value} development${(d as any).value !== 1 ? "s" : ""}`,
 
       renderBubbleChart(productData, (item) => handleProductClick(item.id), radiusScale)
     }
-  }, [industries, selectedIndustry, selectedProduct, handleIndustryClick, handleProductClick, isLoading, timeRange])
+  }, [industries, selectedIndustry, selectedProduct, handleIndustryClick, handleProductClick, isLoading, renderBubbleChart, timeRange])
 
   function wrap(text: d3.Selection<SVGTextElement, any, any, any>, width: number | ((d: any) => number)) {
     text.each(function (d) {

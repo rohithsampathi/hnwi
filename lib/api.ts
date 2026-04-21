@@ -496,10 +496,146 @@ export function normalizeAppreciationMetrics(
   };
 }
 
+const cleanImpactText = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (value == null) {
+    return '';
+  }
+  return String(value).trim();
+};
+
+const normalizeImpactRiskLevel = (value: unknown): 'HIGH' | 'MEDIUM' | 'LOW' => {
+  const normalized = cleanImpactText(value).toUpperCase();
+  if (normalized === 'HIGH' || normalized === 'MEDIUM' || normalized === 'LOW') {
+    return normalized;
+  }
+  return 'MEDIUM';
+};
+
+const normalizeImpactColor = (riskLevel: 'HIGH' | 'MEDIUM' | 'LOW'): string => {
+  if (riskLevel === 'HIGH') return 'red';
+  if (riskLevel === 'LOW') return 'green';
+  return 'orange';
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value.replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeElitePulseImpact = (impact: any) => {
+  if (!impact || typeof impact !== 'object') {
+    return null;
+  }
+
+  const riskLevel = normalizeImpactRiskLevel(impact.risk_level);
+  const analysis =
+    cleanImpactText(impact.analysis) ||
+    cleanImpactText(impact.katherine_analysis) ||
+    cleanImpactText(impact.katherine_ai_analysis?.strategic_assessment) ||
+    cleanImpactText(impact.summary) ||
+    cleanImpactText(impact.ui_display?.concern_summary);
+  const summary =
+    cleanImpactText(impact.summary) ||
+    cleanImpactText(impact.trend_summary) ||
+    cleanImpactText(impact.ui_display?.concern_summary) ||
+    analysis;
+  const recommendation =
+    cleanImpactText(impact.action_rationale) ||
+    cleanImpactText(impact.recommendation) ||
+    cleanImpactText(impact.recommended_action) ||
+    cleanImpactText(impact.ui_display?.recommendation);
+
+  return {
+    ...impact,
+    risk_level: riskLevel,
+    timestamp: impact.timestamp || impact.updated_at || impact.analyzed_at || impact.katherine_analysis_updated,
+    summary,
+    analysis,
+    katherine_analysis: cleanImpactText(impact.katherine_analysis) || analysis,
+    current_value_now: toNumber(impact.current_value_now),
+    value_currency: cleanImpactText(impact.value_currency || impact.market_context?.base_currency || impact.currency).toUpperCase(),
+    value_change_amount: toNumber(impact.value_change_amount),
+    value_change_pct: toNumber(impact.value_change_pct),
+    value_change_direction: cleanImpactText(impact.value_change_direction).toLowerCase(),
+    trend_summary: cleanImpactText(impact.trend_summary),
+    action_posture: cleanImpactText(impact.action_posture),
+    action_rationale: cleanImpactText(impact.action_rationale),
+    risk_profile: cleanImpactText(impact.risk_profile),
+    pricing_authority: cleanImpactText(impact.pricing_authority),
+    current_market_source: cleanImpactText(impact.current_market_source),
+    market_context:
+      impact.market_context && typeof impact.market_context === 'object'
+        ? impact.market_context
+        : {},
+    library_context:
+      impact.library_context && typeof impact.library_context === 'object'
+        ? impact.library_context
+        : {},
+    analysis_contract: cleanImpactText(impact.analysis_contract),
+    runtime_contract: cleanImpactText(impact.runtime_contract),
+    updated_at: impact.updated_at || impact.timestamp,
+    source: cleanImpactText(impact.source),
+    ui_display: {
+      badge_text: impact.ui_display?.badge_text || `${riskLevel} RISK`,
+      tooltip_title: impact.ui_display?.tooltip_title || 'Katherine 2.0 asset read',
+      risk_indicator: impact.ui_display?.risk_indicator || riskLevel,
+      risk_badge_color: impact.ui_display?.risk_badge_color || normalizeImpactColor(riskLevel),
+      concern_summary: cleanImpactText(impact.ui_display?.concern_summary) || summary,
+      recommendation,
+    },
+    katherine_ai_analysis: {
+      victor_reasoning: cleanImpactText(impact.katherine_ai_analysis?.victor_reasoning),
+      strategic_assessment: cleanImpactText(impact.katherine_ai_analysis?.strategic_assessment) || analysis,
+      strategic_insights: cleanImpactText(impact.katherine_ai_analysis?.strategic_insights) || recommendation,
+      risk_assessment: cleanImpactText(impact.katherine_ai_analysis?.risk_assessment) || cleanImpactText(impact.risk_profile) || summary,
+    },
+  };
+};
+
+const deriveImpactAppreciation = (
+  impact: ReturnType<typeof normalizeElitePulseImpact>,
+  createdAt?: string,
+): AppreciationMetrics | null => {
+  if (!impact) {
+    return null;
+  }
+  const percentage = toNumber(impact.value_change_pct);
+  const absolute = toNumber(impact.value_change_amount);
+  if (percentage == null && absolute == null) {
+    return null;
+  }
+  return normalizeAppreciationMetrics(
+    {
+      percentage: percentage ?? 0,
+      absolute: absolute ?? 0,
+      annualized: 0,
+    },
+    { createdAt },
+  );
+};
+
 export interface CrownVaultAsset {
   _id?: string;
   id?: string;
   asset_id: string;
+  entry_price?: number | null;
+  entry_date?: string | null;
+  current_price?: number | null;
+  current_price_date?: string | null;
+  current_price_source?: string | null;
+  current_total_value?: number | null;
+  entry_total_value?: number | null;
+  analysis_contract?: string;
+  katherine_run_id?: string;
   asset_data: {
     name: string;
     asset_type: string;
@@ -509,9 +645,12 @@ export interface CrownVaultAsset {
     notes?: string;
     decryption_error?: boolean;
     unit_count?: number;
+    unit_type?: string;
     cost_per_unit?: number;
     entry_price?: number;  // Original purchase price per unit
     current_price?: number; // Alias for cost_per_unit
+    purchase_month?: string;
+    entry_date_precision?: string;
     tags?: string[];
     access_level?: 'owner' | 'heir' | 'shared';
   };
@@ -528,6 +667,7 @@ export interface CrownVaultAsset {
     risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
     timestamp?: string;
     summary?: string;
+    analysis?: string;
     ui_display?: {
       badge_text: string;
       tooltip_title: string;
@@ -540,6 +680,22 @@ export interface CrownVaultAsset {
     recommended_action?: string;
     timeline?: string;
     katherine_analysis?: string;
+    risk_profile?: string;
+    pricing_authority?: string;
+    current_market_source?: string;
+    current_value_now?: number | null;
+    value_change_amount?: number | null;
+    value_change_pct?: number | null;
+    value_change_direction?: string;
+    trend_summary?: string;
+    action_posture?: string;
+    action_rationale?: string;
+    market_context?: Record<string, any>;
+    library_context?: Record<string, any>;
+    analysis_contract?: string;
+    runtime_contract?: string;
+    updated_at?: string;
+    source?: string;
     // Nested Katherine AI Analysis (newer structure)
     katherine_ai_analysis?: {
       victor_reasoning?: string;
@@ -600,55 +756,107 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     }
     // Call backend API directly for assets using authenticated client
     // Pass owner_id as query parameter as required by the API endpoint
-    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, true);
+    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, {
+      requireAuth: true,
+      bustCache: true,
+    });
     const assets = data.assets || data || [];
 
     // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
     return assets.filter((asset: any) =>
       asset &&
       (asset._id || asset.asset_id || asset.id) // Accept MongoDB _id or other formats
-    ).map((asset: any) => ({
-      ...asset,
-      // Normalize ID field
-      id: asset._id || asset.asset_id || asset.id,
-      asset_id: asset._id || asset.asset_id || asset.id,
-      // Create asset_data from MongoDB fields or existing asset_data
-      asset_data: asset.asset_data ? {
-        name: asset.asset_data.name || 'Unnamed Asset',
-        asset_type: asset.asset_data.asset_type || 'Unknown',
-        value: asset.asset_data.value || 0,
-        currency: asset.asset_data.currency || 'USD',
-        location: asset.asset_data.location || '',
-        notes: asset.asset_data.notes || '',
-        ...asset.asset_data
-      } : {
-        // MongoDB structure: build asset_data from direct fields
-        name: asset.decrypted_data?.name || `${asset.unit_count} ${asset.unit_type}`,
-        asset_type: asset.unit_type || 'Unknown',
-        value: (asset.unit_count || 0) * (asset.cost_per_unit || 0),
-        currency: 'USD',
-        location: asset.decrypted_data?.location || '',
-        notes: asset.decrypted_data?.notes || '',
-        unit_count: asset.unit_count,
-        unit_type: asset.unit_type,
-        cost_per_unit: asset.cost_per_unit
-      },
-      // Preserve elite_pulse_impact field from MongoDB
-      elite_pulse_impact: asset.elite_pulse_impact || null,
-      heir_ids: asset.heir_ids || [],
-      heir_names: asset.heir_names || [],
-      created_at: asset.created_at || new Date().toISOString(),
-      // Preserve price tracking fields from backend
-      price_history: asset.price_history || [],
-      appreciation: asset.appreciation || null,
-      last_price_update: asset.last_price_update || null
-    }));
+    ).map((asset: any) => {
+      const normalizedImpact = normalizeElitePulseImpact(asset.elite_pulse_impact);
+      const resolvedCurrency =
+        normalizedImpact?.value_currency ||
+        normalizedImpact?.market_context?.base_currency ||
+        asset.asset_data?.currency ||
+        asset.currency ||
+        'USD';
+      const normalizedAppreciation =
+        deriveImpactAppreciation(normalizedImpact, asset.created_at) ||
+        (asset.appreciation
+          ? normalizeAppreciationMetrics(asset.appreciation, {
+              createdAt: asset.created_at,
+              existingTimeHeldDays: asset.appreciation?.time_held_days,
+            })
+          : null);
+      const derivedCurrentValue =
+        normalizedImpact?.current_value_now ??
+        asset.current_value_now ??
+        asset.current_total_value ??
+        asset.asset_data?.value ??
+        ((asset.unit_count || asset.asset_data?.unit_count || 0) *
+          (asset.current_price || asset.asset_data?.current_price || asset.cost_per_unit || asset.asset_data?.cost_per_unit || 0));
+      const derivedEntryPrice =
+        asset.entry_price ??
+        asset.asset_data?.entry_price ??
+        asset.cost_per_unit ??
+        asset.asset_data?.cost_per_unit;
+      const derivedCurrentPrice =
+        asset.current_price ??
+        asset.asset_data?.current_price ??
+        asset.asset_data?.cost_per_unit ??
+        asset.cost_per_unit;
+
+      return {
+        ...asset,
+        id: asset._id || asset.asset_id || asset.id,
+        asset_id: asset._id || asset.asset_id || asset.id,
+        asset_data: asset.asset_data ? {
+          ...asset.asset_data,
+          name: asset.asset_data.name || 'Unnamed Asset',
+          asset_type: asset.asset_data.asset_type || 'Unknown',
+          value: derivedCurrentValue || 0,
+          currency: resolvedCurrency,
+          location: asset.asset_data.location || '',
+          notes: asset.asset_data.notes || '',
+          purchase_month: asset.asset_data.purchase_month,
+          entry_date_precision: asset.asset_data.entry_date_precision,
+          entry_price: derivedEntryPrice,
+          current_price: derivedCurrentPrice,
+          cost_per_unit: derivedCurrentPrice ?? asset.asset_data.cost_per_unit,
+        } : {
+          name: asset.decrypted_data?.name || `${asset.unit_count} ${asset.unit_type}`,
+          asset_type: asset.unit_type || 'Unknown',
+          value: derivedCurrentValue || 0,
+          currency: resolvedCurrency,
+          location: asset.decrypted_data?.location || '',
+          notes: asset.decrypted_data?.notes || '',
+          unit_count: asset.unit_count,
+          unit_type: asset.unit_type,
+          cost_per_unit: derivedCurrentPrice,
+          entry_price: derivedEntryPrice,
+          current_price: derivedCurrentPrice,
+          purchase_month: asset.purchase_month,
+          entry_date_precision: asset.entry_date_precision,
+        },
+        elite_pulse_impact: normalizedImpact,
+        currency: resolvedCurrency,
+        heir_ids: asset.heir_ids || [],
+        heir_names: asset.heir_names || [],
+        created_at: asset.created_at || new Date().toISOString(),
+        price_history: asset.price_history || [],
+        appreciation: normalizedAppreciation,
+        last_price_update:
+          asset.last_price_update ||
+          normalizedImpact?.timestamp ||
+          asset.current_price_date ||
+          null,
+      };
+    });
   } catch (error) {
     // Only log non-authentication errors to avoid console spam
     if (!isAuthError(error)) {
     }
     throw error; // Re-throw the original error for proper handling upstream
   }
+}
+
+export async function refreshLatestKatherineAnalysis(userId?: string): Promise<any> {
+  const payload = userId ? { user_id: userId } : {};
+  return secureApi.post('/api/hnwi/katherine/analysis/refresh', payload, true);
 }
 
 export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultStats> {
@@ -662,7 +870,10 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
     // The Crown Vault page already calls getCrownVaultAssets and getCrownVaultHeirs separately
     const statsData = await secureApi.get(
       `/api/crown-vault/stats?owner_id=${userId}`,
-      true
+      {
+        requireAuth: true,
+        bustCache: true,
+      }
     ).catch(() => null);
 
     if (!statsData) {
@@ -726,7 +937,10 @@ export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHe
     
     // Call backend API directly using authenticated client
     // Backend expects owner_id parameter
-    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, true);
+    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, {
+      requireAuth: true,
+      bustCache: true,
+    });
     
     // Backend returns direct array, not wrapped in {heirs: []}
     const heirs = Array.isArray(data) ? data : (data.heirs || []);

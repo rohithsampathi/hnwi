@@ -21,6 +21,8 @@ interface SecurePieChartProps {
   height?: number
   showTooltip?: boolean
   showCenter?: boolean
+  valueFormatter?: (value: number) => string
+  centerValueLabel?: string
 }
 
 const defaultColors = [
@@ -56,7 +58,9 @@ export function SecurePieChart({
   className = "",
   height = 400,
   showTooltip = true,
-  showCenter = true
+  showCenter = true,
+  valueFormatter,
+  centerValueLabel,
 }: SecurePieChartProps) {
   const { theme } = useTheme()
   const formatCurrency = (value: number) => {
@@ -69,6 +73,7 @@ export function SecurePieChart({
     }
     return `$${value.toLocaleString()}`
   }
+  const renderValue = valueFormatter || formatCurrency;
 
   if (!data || data.length === 0) {
     return (
@@ -116,7 +121,7 @@ export function SecurePieChart({
                       <div className="bg-popover border-2 border-primary rounded-2xl p-4 shadow-2xl" style={{ zIndex: 99999, position: 'relative' }}>
                         <div className="text-center">
                           <div className="font-bold text-lg text-foreground capitalize">{data.payload.displayName || data.payload.name.replace('_', ' ')}</div>
-                          <div className="text-2xl font-bold text-primary mt-1">{formatCurrency(Number(data.value))}</div>
+                          <div className="text-2xl font-bold text-primary mt-1">{renderValue(Number(data.value))}</div>
                           <div className="text-sm text-muted-foreground mt-1">
                             {data.payload.percentage}% of portfolio
                           </div>
@@ -140,7 +145,7 @@ export function SecurePieChart({
           <div className="text-center">
             <p className="text-sm sm:text-base text-foreground/70 font-bold">{centerLabel}</p>
             <p className={`text-2xl sm:text-3xl font-bold mt-1 drop-shadow-lg ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
-              {formatCurrency(totalValue)}
+              {centerValueLabel || renderValue(totalValue)}
             </p>
             <p className="text-xs sm:text-sm text-foreground/60 font-semibold mt-1">
               {data.length} {data.length === 1 ? 'Category' : 'Categories'}

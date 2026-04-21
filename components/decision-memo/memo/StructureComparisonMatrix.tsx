@@ -220,6 +220,10 @@ export function StructureComparisonMatrix({
   const sharedCGTRate = allIdenticalRates ? structures_analyzed[0]?.capital_gains_rate : undefined;
   const sharedEstateRate = allIdenticalRates ? structures_analyzed[0]?.estate_tax_rate : undefined;
 
+  if (structures_analyzed.length === 0) {
+    return null;
+  }
+
   return (
     <div ref={sectionRef} className="relative">
       <div data-print-block="keep" data-print-max-height="880">

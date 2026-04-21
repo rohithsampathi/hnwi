@@ -185,7 +185,7 @@ export default function NDAPage() {
                   '256-bit AES encryption at rest, TLS 1.3 in transit',
                   'Role-based access limited to engagement personnel',
                   'Audit logging of all data access events',
-                  'SOC 2 compliant infrastructure',
+                  'SOC 2-style controls; certification only with auditor evidence',
                   'Automatic data retention policies with scheduled purge',
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-2 px-3 py-2 bg-muted/30 rounded-lg">

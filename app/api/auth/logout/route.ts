@@ -41,7 +41,7 @@ async function handlePost(request: NextRequest) {
       nextResponse.cookies.set(name, '', {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' as const : 'lax' as const,
+        sameSite: 'lax' as const,
         path: '/',
         maxAge: 0,
         ...(isProd ? { domain: '.hnwichronicles.com' } : {}),
@@ -70,7 +70,7 @@ async function handlePost(request: NextRequest) {
       errorResponse.cookies.set(name, '', {
         httpOnly: true,
         secure: isProd,
-        sameSite: isProd ? 'none' as const : 'lax' as const,
+        sameSite: 'lax' as const,
         path: '/',
         maxAge: 0,
         ...(isProd ? { domain: '.hnwichronicles.com' } : {}),

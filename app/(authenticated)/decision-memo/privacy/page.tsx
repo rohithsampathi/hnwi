@@ -282,7 +282,7 @@ export default function PrivacyPolicyPage() {
               icon={HardDrive}
               title="Infrastructure"
               items={[
-                'SOC 2 Type II compliant cloud',
+                'SOC 2-style control framework; certification requires auditor evidence',
                 'Encrypted automated backups',
                 'Disaster recovery procedures',
               ]}

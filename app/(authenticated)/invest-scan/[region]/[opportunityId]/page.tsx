@@ -6,11 +6,11 @@ import { OpportunityPage } from "@/components/pages/opportunity-page"
 import { getOpportunityById } from "@/lib/api"
 
 interface PageProps {
-  params: { region: string; opportunityId: string }
+  params: Promise<{ region: string; opportunityId: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { opportunityId, region } = params
+  const { opportunityId, region } = await params
   
   try {
     const opportunity = await getOpportunityById(opportunityId)
@@ -106,9 +106,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-export default function Page({
-  params: { region, opportunityId },
-}: PageProps) {
+export default async function Page({ params }: PageProps) {
+  const { region, opportunityId } = await params
   return <OpportunityPage region={region} opportunityId={opportunityId} />
 }
-

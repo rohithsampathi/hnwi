@@ -2,15 +2,29 @@
 
 "use client"
 
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { HomeDashboardElite } from "@/components/home-dashboard-elite"
+import { CrownLoader } from "@/components/ui/crown-loader"
 import { getCurrentUser } from "@/lib/auth-manager"
 import { usePageTitle } from "@/hooks/use-page-title"
 import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
-import "@/lib/utils/clear-dashboard-cache" // Load cache clearing utilities
 
 const DASHBOARD_GATE_TIMEOUT_MS = 5000
+
+const HomeDashboardElite = dynamic(
+  () => import("@/components/home-dashboard-elite").then((mod) => mod.HomeDashboardElite),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-screen">
+        <div className="flex h-full items-center justify-center">
+          <CrownLoader size="lg" text="Loading dashboard..." />
+        </div>
+      </div>
+    ),
+  },
+)
 
 export default function DashboardPage() {
   const router = useRouter()

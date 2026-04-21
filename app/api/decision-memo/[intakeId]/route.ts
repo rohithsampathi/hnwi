@@ -6,20 +6,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
+import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
 
 export const maxDuration = 300; // 5 minutes
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     intakeId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { intakeId } = await Promise.resolve(context.params);
+  const { intakeId } = await context.params;
 
   try {
     logger.info('Unified endpoint fetch', { intakeId });
@@ -29,7 +30,7 @@ export async function GET(
     logger.info('Calling backend unified endpoint', { intakeId });
 
     // Forward auth headers AND session cookies to backend
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
     const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
     if (authHeader) {
@@ -47,13 +48,15 @@ export async function GET(
 
     // Pass through 401 directly so frontend can show auth popup
     if (response.status === 401) {
-      return NextResponse.json(
+      const unauthorizedResponse = NextResponse.json(
         { error: 'Authentication required' },
         {
           status: 401,
           headers: { 'Cache-Control': 'no-store' },
         }
       );
+      clearReportAuthCookie(unauthorizedResponse, intakeId);
+      return unauthorizedResponse;
     }
 
     if (!response.ok) {

@@ -39,13 +39,18 @@ const REPORT_COMPONENT_PATH = path.join(
   ROOT,
   "components/decision-memo/memo/DecisionMemoLinearReport.tsx"
 );
+const HOUSE_GRADE_COMPONENT_PATH = path.join(
+  ROOT,
+  "components/decision-memo/memo/HouseGradeMemoSection.tsx"
+);
 
 const cssContent = fs.readFileSync(CSS_PATH, "utf-8");
 const routeContent = fs.readFileSync(PDF_RENDERER_PATH, "utf-8");
 const routeEntryContent = fs.readFileSync(ROUTE_ENTRY_PATH, "utf-8");
 const printPageContent = fs.readFileSync(PRINT_PAGE_PATH, "utf-8");
 const reportComponentContent = fs.readFileSync(REPORT_COMPONENT_PATH, "utf-8");
-const combinedPrintContent = `${printPageContent}\n${reportComponentContent}`;
+const houseGradeComponentContent = fs.readFileSync(HOUSE_GRADE_COMPONENT_PATH, "utf-8");
+const combinedPrintContent = `${printPageContent}\n${reportComponentContent}\n${houseGradeComponentContent}`;
 
 // ─────────────────────────────────────────────────────────────────────
 // HELPERS: Parse CSS and Puppeteer config values from source
@@ -449,15 +454,16 @@ describe("Print page structure", () => {
     expect(reportComponentContent).toContain("print-container");
   });
 
-  test("shared report renders many print sections", () => {
+  test("shared report keeps print sections around the house-grade body", () => {
     const sectionCount = (
       reportComponentContent.match(/<ReportSection\s+mode=\{mode\}/g) || []
     ).length;
-    expect(sectionCount).toBeGreaterThanOrEqual(10);
+    expect(sectionCount).toBeGreaterThanOrEqual(3);
+    expect(reportComponentContent).toContain("HouseGradeMemoSection");
   });
 
   test("scenario tree section has print-scenario-tree class", () => {
-    expect(reportComponentContent).toContain('printClassName="print-scenario-tree"');
+    expect(houseGradeComponentContent).toContain('className="print-scenario-tree"');
   });
 
   test("sections do not inject inline print-page-header chrome", () => {

@@ -6,9 +6,9 @@ import { cookies } from 'next/headers';
 import { API_BASE_URL } from '@/config/api';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     sessionId: string;
-  };
+  }>;
 }
 
 export async function GET(
@@ -16,7 +16,7 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Get cookies from server-side (same as session endpoint)
     const cookieStore = await cookies();

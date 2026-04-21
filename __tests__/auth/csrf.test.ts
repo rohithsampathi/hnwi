@@ -11,6 +11,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+jest.mock('@/lib/secure-logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}))
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /** Build a base64-encoded CSRF cookie value the same way csrf-protection does */
@@ -68,6 +77,12 @@ beforeAll(async () => {
   const mod = await import('@/lib/csrf-protection');
   validateCSRFToken = mod.CSRFProtection.validateCSRFToken.bind(mod.CSRFProtection);
 });
+
+beforeEach(() => {
+  const { __resetCookies } = require('../__mocks__/next-headers.js')
+  __resetCookies()
+  jest.clearAllMocks()
+})
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 

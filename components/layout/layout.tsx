@@ -286,7 +286,6 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
             )}
 
             <div
-              key={pathname}
               className={isDecisionMemoRoute ? 'px-2 sm:px-6 lg:px-8' : (getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? 'px-8 sm:px-6 lg:px-8 -mt-1' : 'px-8')}
               style={{
                 paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',

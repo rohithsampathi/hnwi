@@ -6,6 +6,12 @@ import { PremiumBadge } from "@/components/ui/premium-badge";
 import { Plus, Edit, Trash2, User, Mail, Phone, FileText, ChevronRight, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CrownVaultHeir, CrownVaultAsset } from "@/lib/api";
+import {
+  countAssetsByState,
+  formatAssetCollectionValue,
+  formatCompactMoney,
+  getAssetCurrentValue,
+} from "@/lib/crown-vault-intelligence";
 
 interface HeirsSectionProps {
   heirs: CrownVaultHeir[];
@@ -30,16 +36,6 @@ export function HeirsSection({
   getHeirAssets,
   deletingHeirs
 }: HeirsSectionProps) {
-  
-  const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    } else if (value >= 1000) {
-      return `$${(value / 1000).toFixed(0)}K`;
-    }
-    return `$${value.toLocaleString()}`;
-  };
-
   return (
     <div className="mt-10 space-y-6">
       
@@ -86,7 +82,8 @@ export function HeirsSection({
         ) : (
           heirs.map((heir, index) => {
             const heirAssets = getHeirAssets(heir.id);
-            const totalValue = heirAssets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0);
+            const totalValueLabel = formatAssetCollectionValue(heirAssets, getAssetCurrentValue);
+            const stateCounts = countAssetsByState(heirAssets);
             const isDeleting = deletingHeirs.has(heir.id);
             
             return (
@@ -150,13 +147,30 @@ export function HeirsSection({
                     {/* Inheritance Value */}
                     <div className="flex justify-between items-center py-2 px-3 bg-muted/30 rounded-lg">
                       <span className="text-sm text-muted-foreground">Total Value</span>
-                      <span className="text-sm font-semibold">{formatValue(totalValue)}</span>
+                      <span className="text-sm font-semibold">{totalValueLabel}</span>
                     </div>
                     
                     {/* Assets Count */}
                     <div className="flex justify-between items-center py-2 px-3 bg-muted/30 rounded-lg">
                       <span className="text-sm text-muted-foreground">Assets</span>
                       <span className="text-sm font-semibold">{heirAssets.length}</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-lg bg-green-50 px-3 py-2 text-center dark:bg-green-950/20">
+                        <p className="text-sm font-semibold text-green-700 dark:text-green-400">{stateCounts.winning}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-green-700/80 dark:text-green-400/80">Good</p>
+                      </div>
+                      <div className="rounded-lg bg-zinc-100 px-3 py-2 text-center dark:bg-zinc-900/40">
+                        <p className="text-sm font-semibold text-foreground">{stateCounts.stable}</p>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Stable</p>
+                      </div>
+                      <div className="rounded-lg bg-red-50 px-3 py-2 text-center dark:bg-red-950/20">
+                        <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                          {stateCounts.under_pressure + stateCounts.unresolved}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-wide text-red-700/80 dark:text-red-400/80">Attention</p>
+                      </div>
                     </div>
                     
                     {/* Contact Info */}
@@ -242,7 +256,7 @@ export function HeirsSection({
                     <DollarSign className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                   </div>
                   <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                    {formatValue(assets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0))}
+                    {formatAssetCollectionValue(assets, getAssetCurrentValue)}
                   </p>
                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                     Total Value

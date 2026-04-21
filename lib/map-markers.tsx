@@ -5,6 +5,7 @@
 
 import type { City } from "@/components/interactive-world-map"
 import { getCategoryIcon } from "@/lib/map-utils"
+import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
 
 // Lazy-load Leaflet only on client-side to avoid SSR issues
 let _L: typeof import("leaflet") | null = null
@@ -398,9 +399,8 @@ export function createCustomIcon(
   // Choose icon SVG based on source priority: Crown Vault > Privé Exchange > Category
   const iconSvg = getSmallMarkerIcon(city, isCrownVault, isPriveExchange)
 
-  // Make the marker blink if opportunity is new (just added via calibration)
-  // Check both is_new and isNew properties for compatibility
-  const shouldBlink = city.is_new === true || (city as any).isNew === true;
+  // Blink for opportunities explicitly marked new or added within the last 30 days.
+  const shouldBlink = isRecentlyAddedOpportunity(city)
   const blinkAnimation = shouldBlink ? `
     <style>
       @keyframes blink-marker {
@@ -455,13 +455,27 @@ export function createCustomIcon(
 /**
  * Create a cluster icon
  */
-export function createClusterIcon(count: number, primaryType: string, theme: string) {
+export function createClusterIcon(count: number, primaryType: string, theme: string, shouldBlink: boolean = false) {
   const L = getL()
   const borderColor = theme === "dark" ? "#ddd" : "#333"
   const bgColor = theme === "dark" ? "hsl(45, 50%, 45%)" : "hsl(30, 55%, 50%)"
   const textColor = theme === "dark" ? "#fff" : "#fff"
 
   const iconHtml = `
+    ${shouldBlink ? `
+      <style>
+        @keyframes blink-cluster-marker {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.45;
+            transform: scale(0.96);
+          }
+        }
+      </style>
+    ` : ""}
     <div style="
       position: relative;
       width: 32px;
@@ -476,6 +490,7 @@ export function createClusterIcon(count: number, primaryType: string, theme: str
       font-weight: bold;
       font-size: 14px;
       color: ${textColor};
+      ${shouldBlink ? "animation: blink-cluster-marker 1s ease-in-out infinite; z-index: 10000;" : ""}
     ">
       ${count}
     </div>

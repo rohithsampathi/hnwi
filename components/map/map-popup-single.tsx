@@ -20,6 +20,7 @@ import {
   getOpportunityRoute,
   getActionButtonLabel
 } from "@/lib/map-routing"
+import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
 
 interface MapPopupSingleProps {
   city: City
@@ -47,8 +48,7 @@ export function MapPopupSingle({
   const isExpanded = expandedClusterId === clusterId
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
 
-  // is_new is already filtered to only include last 5 added opportunities in useOpportunities hook
-  const shouldShowNewBadge = city.is_new === true
+  const shouldShowNewBadge = isRecentlyAddedOpportunity(city)
 
   // Extract first paragraph from analysis text
   const getFirstParagraph = (text: string | undefined): string => {

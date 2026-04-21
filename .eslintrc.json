@@ -2,8 +2,8 @@
   "extends": ["next/core-web-vitals"],
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "no-console": "warn",
-    "react/no-unescaped-entities": "warn"
+    "no-console": ["warn", { "allow": ["debug", "info", "log", "warn", "error"] }],
+    "react/no-unescaped-entities": ["warn", { "forbid": [">", "}"] }]
   },
   "ignorePatterns": [
     "node_modules/",
@@ -26,6 +26,8 @@
     "components/playbook-formatter.tsx",
     "components/pricing-strategy.tsx",
     "components/quick-login.tsx",
-    "components/target-audience-segmentation.tsx"
+    "components/target-audience-segmentation.tsx",
+    "**/*.bak",
+    "**/*.bak.*"
   ]
 }

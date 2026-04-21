@@ -92,15 +92,16 @@ export function DigitalTwinWaiting({
       setCurrentStepIndex(targetStepIndex);
 
       // Update step statuses based on current step
-      const updatedSteps = steps.map((step, index) => {
-        if (index < targetStepIndex) {
-          return { ...step, status: 'complete' as const };
-        } else if (index === targetStepIndex) {
-          return { ...step, status: 'processing' as const };
-        }
-        return { ...step, status: 'pending' as const };
-      });
-      setSteps(updatedSteps);
+      setSteps((prevSteps) =>
+        prevSteps.map((step, index) => {
+          if (index < targetStepIndex) {
+            return { ...step, status: 'complete' as const };
+          } else if (index === targetStepIndex) {
+            return { ...step, status: 'processing' as const };
+          }
+          return { ...step, status: 'pending' as const };
+        })
+      );
     }
   }, [elapsedTime, currentStepIndex, hasCompleted, steps.length]);
 

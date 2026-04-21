@@ -4,6 +4,11 @@ import { logger } from "@/lib/secure-logger"
 import { cookies } from "next/headers"
 import { SessionEncryption } from "@/lib/session-encryption"
 import { CSRFProtection } from "@/lib/csrf-protection"
+import {
+  resolveAuthSessionMaxAge,
+  REMEMBERED_SESSION_MAX_AGE_SECONDS,
+} from "@/lib/auth-cookie-policy"
+import { applyBackendAuthCookies, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
 
 // Helper to get cookie domain for PWA cross-subdomain support
 function getCookieDomain(): string | undefined {
@@ -157,7 +162,7 @@ async function handlePost(request: NextRequest) {
         return blockedResponse;
       }
 
-      // Use secureApi to verify with backend - backend validates via email + MFA code
+      // Verify with backend using the proxied MFA session.
       try {
         const backendVerifyRequest = {
           email: email,
@@ -182,30 +187,21 @@ async function handlePost(request: NextRequest) {
         // Forward all cookies from request to backend
         const allCookies = request.cookies.getAll();
         const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+        const csrfHeader = request.headers.get('x-csrf-token');
 
         const fetchResponse = await fetch(backendUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(cookieHeader && { 'Cookie': cookieHeader }),
+            ...(csrfHeader && { 'X-CSRF-Token': csrfHeader }),
           },
           credentials: 'include',
           body: JSON.stringify(backendVerifyRequest),
         });
 
         // Get all headers including Set-Cookie
-        const setCookieHeaders: string[] = [];
-        // @ts-ignore - accessing raw headers
-        const rawHeaders = fetchResponse.headers.raw?.() || {};
-        if (rawHeaders['set-cookie']) {
-          setCookieHeaders.push(...rawHeaders['set-cookie']);
-        } else {
-          // Try alternative method for getting cookies
-          const setCookieHeader = fetchResponse.headers.get('set-cookie');
-          if (setCookieHeader) {
-            setCookieHeaders.push(setCookieHeader);
-          }
-        }
+        const setCookieHeaders = getSetCookieHeaders(fetchResponse.headers);
 
         const backendResponse = await fetchResponse.json();
 
@@ -214,8 +210,6 @@ async function handlePost(request: NextRequest) {
           status: fetchResponse.status,
           success: backendResponse.success,
           hasUser: !!backendResponse.user,
-          hasAccessToken: !!backendResponse.access_token,
-          hasRefreshToken: !!backendResponse.refresh_token,
           responseKeys: Object.keys(backendResponse),
           error: backendResponse.error,
           message: backendResponse.message
@@ -244,74 +238,17 @@ async function handlePost(request: NextRequest) {
           logger.info('Setting cookies from backend response', {
             hasSetCookieHeaders: setCookieHeaders.length > 0,
             setCookieCount: setCookieHeaders.length,
-            hasAccessTokenInBody: !!backendResponse.access_token,
-            hasRefreshTokenInBody: !!backendResponse.refresh_token
+            hasBackendCookies: setCookieHeaders.length > 0
           });
 
           // First, try to forward Set-Cookie headers from backend
-          if (setCookieHeaders.length > 0) {
-            setCookieHeaders.forEach(cookieString => {
-              // Parse the cookie to extract name and value
-              const [nameValue, ...options] = cookieString.split(';').map(s => s.trim());
-              const [name, value] = nameValue.split('=');
-
-              if (name === 'access_token' || name === 'refresh_token') {
-                const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 60 * 60; // 7 days if remember me, 1 hour otherwise
-                const maxAge = name === 'access_token' ? accessTokenAge : 7 * 24 * 60 * 60; // Refresh token always 7 days
-                successResponse.cookies.set(name, value, {
-                  httpOnly: true,
-                  secure: process.env.NODE_ENV === 'production',
-                  sameSite: 'lax', // Changed from 'strict' to 'lax' for PWA compatibility
-                  path: '/',
-                  maxAge
-                });
-                logger.info(`Cookie ${name} set from backend header with secure=false`);
-              }
-            });
-          }
-
-          // PWA-compatible cookie settings (must match login/refresh routes)
           const isProd = process.env.NODE_ENV === 'production';
           const cookieDomain = getCookieDomain();
 
-          // Fallback: If no cookies in headers but tokens in body, set them manually
-          if (backendResponse.access_token) {
-            const accessTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60; // Match remember me preference
-            const accessTokenOptions: any = {
-              httpOnly: true,
-              secure: isProd,
-              sameSite: isProd ? 'none' as const : 'lax' as const,
-              path: '/',
-              maxAge: accessTokenAge
-            };
-            if (cookieDomain) accessTokenOptions.domain = cookieDomain;
-            // Note: partitioned:true is intentionally omitted — it conflicts with domain
-            // attribute per CHIPS spec and causes Safari to silently drop the cookie.
-
-            successResponse.cookies.set('access_token', backendResponse.access_token, accessTokenOptions);
-            logger.info('access_token cookie set from response body', {
-              tokenLength: backendResponse.access_token.length,
-              secure: isProd
-            });
-          }
-
-          if (backendResponse.refresh_token) {
-            const refreshTokenAge = rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60;
-            const refreshTokenOptions: any = {
-              httpOnly: true,
-              secure: isProd,
-              sameSite: isProd ? 'none' as const : 'lax' as const,
-              path: '/',
-              maxAge: refreshTokenAge
-            };
-            if (cookieDomain) refreshTokenOptions.domain = cookieDomain;
-
-            successResponse.cookies.set('refresh_token', backendResponse.refresh_token, refreshTokenOptions);
-            logger.info('refresh_token cookie set from response body', {
-              tokenLength: backendResponse.refresh_token.length,
-              secure: isProd
-            });
-          }
+          applyBackendAuthCookies(successResponse, setCookieHeaders, rememberMe, {
+            cookieDomain,
+            secureDefault: isProd,
+          });
 
           // CRITICAL FIX: Set session_user cookie for immediate session recovery
           // This ensures /api/auth/session can validate the user before backend cookies propagate
@@ -331,9 +268,9 @@ async function handlePost(request: NextRequest) {
           const sessionUserOptions: any = {
             httpOnly: true,
             secure: isProd,
-            sameSite: isProd ? 'none' as const : 'lax' as const,
+            sameSite: 'lax' as const,
             path: '/',
-            maxAge: 7 * 24 * 60 * 60 // 7 days
+            maxAge: resolveAuthSessionMaxAge(rememberMe)
           };
           if (cookieDomain) sessionUserOptions.domain = cookieDomain;
 
@@ -349,9 +286,9 @@ async function handlePost(request: NextRequest) {
             const rememberOptions: any = {
               httpOnly: true,
               secure: isProd,
-              sameSite: isProd ? 'none' as const : 'lax' as const,
+              sameSite: 'lax' as const,
               path: '/',
-              maxAge: 7 * 24 * 60 * 60 // 7 days - same as refresh token
+              maxAge: REMEMBERED_SESSION_MAX_AGE_SECONDS
             };
             if (cookieDomain) rememberOptions.domain = cookieDomain;
 
@@ -368,8 +305,7 @@ async function handlePost(request: NextRequest) {
           logger.info('MFA verification successful via backend', {
             email,
             userId: normalizedUser.id,
-            hasAccessToken: !!backendResponse.access_token,
-            hasRefreshToken: !!backendResponse.refresh_token
+            hasBackendCookies: setCookieHeaders.length > 0
           })
 
           return successResponse;
@@ -388,15 +324,12 @@ async function handlePost(request: NextRequest) {
             { status: 401 }
           );
 
-          // Use same cookie options as the original mfa_session set in login/route.ts
-          // sameSite must stay consistent — mixing 'lax' and 'none' across requests
-          // breaks cookie updates in Safari and Chromium-based browsers.
           const isProdFail = process.env.NODE_ENV === 'production';
           const failCookieDomain = getCookieDomain();
           const mfaFailOptions: any = {
             httpOnly: true,
             secure: isProdFail,
-            sameSite: isProdFail ? 'none' as const : 'lax' as const,
+            sameSite: 'lax' as const,
             maxAge: 5 * 60,
             path: '/',
           };
@@ -428,13 +361,12 @@ async function handlePost(request: NextRequest) {
           { status: 500 }
         );
 
-        // Use same cookie options as the original mfa_session (consistent sameSite)
         const isProdErr = process.env.NODE_ENV === 'production';
         const errCookieDomain = getCookieDomain();
         const mfaErrOptions: any = {
           httpOnly: true,
           secure: isProdErr,
-          sameSite: isProdErr ? 'none' as const : 'lax' as const,
+          sameSite: 'lax' as const,
           maxAge: 5 * 60,
           path: '/',
         };

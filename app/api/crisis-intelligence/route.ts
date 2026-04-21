@@ -27,11 +27,6 @@ export async function GET(request: NextRequest) {
     if (accessToken) {
       // Platform session: use access_token cookie as Bearer
       headers['Authorization'] = `Bearer ${accessToken}`;
-    } else {
-      // Viewer accounts pass their report Bearer token directly from the client
-      // (report_access JWTs use the same JWT_SECRET_KEY so the backend accepts them)
-      const incomingAuth = request.headers.get('authorization');
-      if (incomingAuth) headers['Authorization'] = incomingAuth;
     }
 
     const response = await fetch(`${API_BASE_URL}/api/crisis-intelligence`, {

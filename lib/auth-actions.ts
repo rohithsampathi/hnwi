@@ -187,8 +187,8 @@ export async function handleLogin(loginData: LoginData): Promise<AuthResponse> {
 
 export async function handleSignUp(userData: Partial<User>): Promise<AuthResponse> {
   try {
-    if (!userData.email || !userData.firstName) {
-      return { success: false, error: "Email and first name are required" }
+    if (!userData.email || !userData.firstName || !userData.password) {
+      return { success: false, error: "Email, first name, and password are required" }
     }
 
     try {
@@ -199,7 +199,7 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
       const data = await secureApi.post('/api/users/profile', {
         email: userData.email,
         name: fullName,
-        password: userData.password || 'DefaultPassword1', // This should be provided in a real scenario
+        password: userData.password,
         // Include other required UserCreate fields with default values
         net_worth: userData.net_worth || 0,
         city: userData.city || "",
@@ -250,7 +250,8 @@ export async function handleSignUp(userData: Partial<User>): Promise<AuthRespons
 
         const token = data.token || await createToken(user)
         const sessionCookieName = getSecureCookieName("session");
-        cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
+        const cookieStore = await cookies();
+        cookieStore.set(sessionCookieName, token, COOKIE_OPTIONS)
 
         return { success: true, user, token }
     } catch (backendError) {
@@ -287,7 +288,8 @@ export async function handleOnboardingComplete(newUser: any): Promise<AuthRespon
 
     const token = await createToken(user)
     const sessionCookieName = getSecureCookieName("session");
-    cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
+    const cookieStore = await cookies();
+    cookieStore.set(sessionCookieName, token, COOKIE_OPTIONS)
     
     logger.info("Onboarding completed successfully", { 
       userId: user.id, 
@@ -328,14 +330,6 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
         return { success: false, error: "Invalid user session. Please login again." };
       }
       
-      // Only use stored userId as fallback if no ID in current user object
-      if (typeof window !== "undefined" && !userId) {
-        const storedUserId = localStorage.getItem("userId");
-        if (storedUserId) {
-          userId = storedUserId;
-        }
-      }
-
       // Format the data for FastAPI user update endpoint
       const fullName = updatedUserData.firstName 
         ? `${updatedUserData.firstName} ${updatedUserData.lastName || ''}`.trim()
@@ -396,7 +390,8 @@ export async function handleUpdateUser(updatedUserData: Partial<User>): Promise<
 
         const token = await createToken(updatedUser)
         const sessionCookieName = getSecureCookieName("session");
-        cookies().set(sessionCookieName, token, COOKIE_OPTIONS)
+        const cookieStore = await cookies();
+        cookieStore.set(sessionCookieName, token, COOKIE_OPTIONS)
 
         return { success: true, user: updatedUser, token }
     } catch (backendError) {
@@ -442,7 +437,7 @@ export async function handleSessionRequest(): Promise<SessionResponse> {
     }
     
     // If no session in cookies, check if we have a token in cookies from the session/route.ts
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const legacySessionToken = cookieStore.get('session_token')?.value;
     const secureSessionToken = cookieStore.get(getSecureCookieName('session_token'))?.value;
     const sessionToken = secureSessionToken || legacySessionToken;

@@ -7,6 +7,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import type { Opportunity as MemoOpportunity } from '@/lib/decision-memo/memo-types';
 import type { Opportunity as PdfOpportunity } from '@/lib/pdf/pdf-types';
 import type { CitationMap, Citation } from '@/lib/parse-dev-citations';
@@ -14,6 +15,7 @@ import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { City } from '@/components/interactive-world-map';
 import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
 import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
+import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
 import {
   useAnimatedMetric,
   useDecisionMemoRenderContext,
@@ -51,6 +53,15 @@ interface PeerCohortStats {
     avg_deal_value?: string;
     avg_deal_value_subtitle?: string;
   };
+  metric_cards?: Array<{
+    label: string;
+    value?: number;
+    description?: string;
+    prefix?: string;
+    suffix?: string;
+    decimals?: number;
+    highlight?: boolean;
+  }>;
   total_peers?: number;
   last_6_months?: number;  // Changed from last_90_days
   avg_deal_value_m?: number;
@@ -59,6 +70,10 @@ interface PeerCohortStats {
     asset_protection: number;
     lifestyle: number;
   } | string[];
+  native_driver_bullets?: string[];
+  driver_analysis_title?: string;
+  driver_analysis_subtitle?: string;
+  driver_analysis_note?: string;
 }
 
 // Backend-provided capital flow data
@@ -168,6 +183,7 @@ export function Page3PeerIntelligence({
   isRelocating = false,  // Fix #16: Default to false (cross-border acquisition)
   renderMode = 'screen',
 }: Page3Props) {
+  const router = useRouter();
   const { motionEnabled } = useDecisionMemoRenderContext();
   const [isVisible, setIsVisible] = useState(!motionEnabled);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -184,6 +200,11 @@ export function Page3PeerIntelligence({
   const [showCrownAssets, setShowCrownAssets] = useState(true);
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true);
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true);
+
+  const handleNavigate = (route: string) => {
+    if (!route) return;
+    router.push(route.startsWith('/') ? route : `/${route}`);
+  };
 
   // Crisis intelligence — rendered below map when in geographic-only mode
   const { showCrisisAlert, crisisData, crisisCounts, crisisColors } = useCrisisIntelligence();
@@ -204,10 +225,54 @@ export function Page3PeerIntelligence({
     last6Months: peerCohortStats?.last_6_months,
     averageValue: peerCohortStats?.avg_deal_value_m
   };
+  const customMetricCards = Array.isArray(peerCohortStats?.metric_cards) ? peerCohortStats.metric_cards : [];
+  const statCards = customMetricCards.length > 0
+    ? customMetricCards.map(card => ({
+        label: card.label,
+        value: card.value,
+        suffix: card.suffix || '',
+        prefix: card.prefix || '',
+        description: card.description || '',
+        highlight: Boolean(card.highlight),
+        decimals: card.decimals || 0,
+        hasData: card.value !== undefined && card.value !== null,
+      }))
+    : [
+        {
+          label: peerCohortStats?.metric_labels?.total_peers || 'Total Acquisitions',
+          value: peerData.total,
+          suffix: '',
+          description: peerCohortStats?.metric_labels?.total_peers_subtitle || 'Similar corridor transactions',
+          highlight: false,
+          hasData: peerData.total !== undefined && peerData.total > 0
+        },
+        {
+          label: peerCohortStats?.metric_labels?.last_6_months || 'Recent Activity',
+          value: peerData.last6Months,
+          suffix: '',
+          description: peerCohortStats?.metric_labels?.last_6_months_subtitle || 'Last 6 months',
+          highlight: false,
+          hasData: peerData.last6Months !== undefined
+        },
+        {
+          label: peerCohortStats?.metric_labels?.avg_deal_value || 'Average Transaction',
+          value: peerData.averageValue,
+          suffix: 'M',
+          prefix: '$',
+          description: peerCohortStats?.metric_labels?.avg_deal_value_subtitle || 'Median deal size',
+          highlight: true,
+          decimals: 1,
+          hasData: peerData.averageValue !== undefined
+        }
+      ];
 
   // Driver percentages from backend ONLY - no fallbacks
   const drivers = Array.isArray(peerCohortStats?.drivers) ? undefined : peerCohortStats?.drivers;
   const hasDriverData = drivers !== undefined;
+  const nativeDriverBullets = Array.isArray(peerCohortStats?.native_driver_bullets)
+    ? peerCohortStats.native_driver_bullets.filter((item): item is string => Boolean(item && item.trim()))
+    : [];
+  const hasNativeDriverBullets = nativeDriverBullets.length > 0;
 
   // Capital flow data - ONLY from backend, no fake data generation
   // For HNWIs paying premium, we show real data or nothing
@@ -419,34 +484,7 @@ export function Page3PeerIntelligence({
           data-print-block="keep"
           data-print-max-gap="200"
         >
-          {[
-            {
-              label: peerCohortStats?.metric_labels?.total_peers || 'Total Acquisitions',
-              value: peerData.total,
-              suffix: '',
-              description: peerCohortStats?.metric_labels?.total_peers_subtitle || 'Similar corridor transactions',
-              highlight: false,
-              hasData: peerData.total !== undefined && peerData.total > 0
-            },
-            {
-              label: peerCohortStats?.metric_labels?.last_6_months || 'Recent Activity',
-              value: peerData.last6Months,
-              suffix: '',
-              description: peerCohortStats?.metric_labels?.last_6_months_subtitle || 'Last 6 months',
-              highlight: false,
-              hasData: peerData.last6Months !== undefined
-            },
-            {
-              label: peerCohortStats?.metric_labels?.avg_deal_value || 'Average Transaction',
-              value: peerData.averageValue,
-              suffix: 'M',
-              prefix: '$',
-              description: peerCohortStats?.metric_labels?.avg_deal_value_subtitle || 'Median deal size',
-              highlight: true,
-              decimals: 1,
-              hasData: peerData.averageValue !== undefined
-            }
-          ].map((stat, i) => (
+          {statCards.map((stat, i) => (
             <motion.div
               key={stat.label}
               className="relative rounded-2xl border border-border/20 bg-card/50 overflow-hidden p-4 sm:p-6 lg:p-8 transition-all"
@@ -461,9 +499,7 @@ export function Page3PeerIntelligence({
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">
                   {stat.label}
                 </p>
-                <p className={`text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight mb-2 ${
-                  stat.highlight ? 'text-primary' : 'text-foreground'
-                }`}>
+                <p className={`${memoNumberClass('hero', 'default')} mb-2`}>
                   {stat.hasData ? (
                     <AnimatedStat
                       value={stat.value as number}
@@ -576,12 +612,12 @@ export function Page3PeerIntelligence({
       >
         <div data-print-block="keep" data-print-max-height="760">
           <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-            WEALTH MIGRATION CORRIDOR
+            {isRelocating ? 'WEALTH MIGRATION CORRIDOR' : 'CORRIDOR MOMENTUM OVERLAY'}
           </p>
           <p className="text-sm text-muted-foreground/60 mb-8">
             {corridorSource && corridorDestination
-              ? `${corridorSource} → ${corridorDestination} capital flow analysis`
-              : 'Jurisdiction-specific capital flow patterns'
+              ? `${corridorSource} → ${corridorDestination} ${isRelocating ? 'capital flow' : 'macro flow'} analysis`
+              : isRelocating ? 'Jurisdiction-specific capital flow patterns' : 'Jurisdiction-specific macro flow patterns'
             }
           </p>
 
@@ -689,7 +725,7 @@ export function Page3PeerIntelligence({
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Flow Intensity</p>
                       {flowIntensityIndex != null ? (
                         <div className="flex items-center justify-center sm:justify-start gap-3">
-                          <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
+                          <span className={memoNumberClass('inline', 'default')}>
                             {flowIntensityIndex.toFixed(2)}
                           </span>
                           <span className={`text-xs tracking-[0.15em] uppercase font-medium rounded-full px-3 py-1 border ${
@@ -701,7 +737,7 @@ export function Page3PeerIntelligence({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
+                        <span className={memoNumberClass('inline', 'muted')}>—</span>
                       )}
                     </div>
 
@@ -718,17 +754,17 @@ export function Page3PeerIntelligence({
                           ? 'text-emerald-500'
                           : 'text-primary';
                         return (
-                          <span className={`text-xl md:text-2xl font-medium tabular-nums tracking-tight ${velocityColor}`}>{velocityChange}</span>
+                          <span className={memoNumberClass('inline', signal === 'caution' ? 'danger' : signal === 'monitor' ? 'warning' : 'default')}>{velocityChange}</span>
                         );
                       })() : (
-                        <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-muted-foreground/60">—</span>
+                        <span className={memoNumberClass('inline', 'muted')}>—</span>
                       )}
                     </div>
 
                     {/* Peer Count */}
                     <div className="text-center sm:text-left col-span-2 sm:col-span-1">
                       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Peers in Corridor</p>
-                      <span className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">
+                      <span className={memoNumberClass('inline', 'default')}>
                         {peerData.total > 0 ? peerData.total.toLocaleString() : '—'}
                       </span>
                     </div>
@@ -844,6 +880,7 @@ export function Page3PeerIntelligence({
                     useAbsolutePositioning={true}
                     showCrisisOverlay={true}
                     crisisAlertExternal={true}
+                    onNavigate={handleNavigate}
                   />
                 </div>
 
@@ -864,6 +901,8 @@ export function Page3PeerIntelligence({
                       alert={crisisData.alert}
                       counts={crisisCounts}
                       colors={crisisColors}
+                      defaultExpanded={true}
+                      variant="embedded"
                     />
                   </div>
                 )}
@@ -884,14 +923,14 @@ export function Page3PeerIntelligence({
         transition={{ duration: 0.8, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
       >
         <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-          MARKET SIGNAL CLASSIFICATION
+          {hasNativeDriverBullets ? (peerCohortStats?.driver_analysis_title || 'ROUTE SIGNAL CLASSIFICATION') : 'MARKET SIGNAL CLASSIFICATION'}
         </p>
         <p className="text-sm text-muted-foreground/60 mb-8">
-          Primary driver analysis
+          {hasNativeDriverBullets ? (peerCohortStats?.driver_analysis_subtitle || 'What the corridor witnesses actually say') : 'Primary driver analysis'}
         </p>
 
         <div className="max-w-xl">
-          {/* Primary Drivers */}
+          {/* Native driver bullets */}
           <motion.div
             className="relative rounded-2xl border border-border/30 overflow-hidden px-4 sm:px-10 py-8"
             initial={{ opacity: 0, x: -20 }}
@@ -902,15 +941,30 @@ export function Page3PeerIntelligence({
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-6">
-              Primary Drivers
+              {hasNativeDriverBullets ? 'Native Route Drivers' : 'Primary Drivers'}
             </p>
 
             <div className="space-y-5">
-              {hasDriverData ? (
+              {hasNativeDriverBullets ? (
+                nativeDriverBullets.map((bullet, i) => (
+                  <motion.div
+                    key={bullet}
+                    className="rounded-xl border border-border/20 bg-card/60 px-4 py-4"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={isVisible ? { opacity: 1, x: 0 } : {}}
+                    transition={{ duration: 0.7, delay: 1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                        {i + 1}
+                      </span>
+                      <p className="text-sm text-foreground leading-relaxed">{bullet}</p>
+                    </div>
+                  </motion.div>
+                ))
+              ) : hasDriverData ? (
                 [
                   {
-                    // Fix #16: "Tax optimization" only valid for relocating
-                    // Non-relocating = cross-border acquisition (tax awareness, not optimization)
                     label: isRelocating ? 'Tax optimization' : 'Geographic diversification',
                     value: drivers!.tax_optimization,
                     color: 'primary'
@@ -963,8 +1017,29 @@ export function Page3PeerIntelligence({
           </motion.div>
         </div>
 
-        {/* Key Catalyst Note - Fix #11: Dynamic based on velocity signal, Fix #16: Relocation-aware labels */}
+        {/* Note block */}
         {(() => {
+          if (hasNativeDriverBullets) {
+            return (
+              <motion.div
+                className="mt-6 sm:mt-8 relative rounded-2xl border border-primary/20 bg-card/50 overflow-hidden px-4 sm:px-10 py-6"
+                initial={{ opacity: 0, y: 12 }}
+                animate={isVisible ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.8, delay: 1.3, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+                <div>
+                  <p className="text-xs font-medium text-foreground mb-1.5">
+                    Route Read
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
+                    {peerCohortStats?.driver_analysis_note || 'Macro corridor momentum matters, but the route still turns on underwriting reset, title sequencing, banking rails, and succession eligibility.'}
+                  </p>
+                </div>
+              </motion.div>
+            );
+          }
+
           const signal = capitalFlowData?.velocity_interpretation?.signal || 'neutral';
           const isCaution = signal === 'caution' || signal === 'monitor';
 

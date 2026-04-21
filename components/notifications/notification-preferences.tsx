@@ -57,7 +57,7 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
     } else if (!preferences && !preferencesLoading && !localPreferences) {
       setLocalPreferences(DEFAULT_NOTIFICATION_PREFERENCES);
     }
-  }, [preferences, preferencesLoading]);
+  }, [localPreferences, preferences, preferencesLoading]);
 
   // Check push notification support and status
   useEffect(() => {
@@ -85,7 +85,7 @@ export function NotificationPreferences({ className = "" }: NotificationPreferen
   // Fetch preferences on mount
   useEffect(() => {
     fetchPreferences();
-  }, []); // Remove fetchPreferences from dependencies to avoid infinite loop
+  }, [fetchPreferences]);
 
   if (preferencesLoading || !localPreferences) {
     return (

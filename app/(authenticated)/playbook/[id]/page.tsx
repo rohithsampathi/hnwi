@@ -2,17 +2,12 @@
 
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { PlaybookPage } from "@/components/pages/playbook-page"
 
-interface PlaybookPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function PlaybookRoute({ params }: PlaybookPageProps) {
+export default function PlaybookRoute() {
   const router = useRouter()
+  const { id } = useParams<{ id: string }>()
 
   const handleNavigation = (route: string) => {
     if (route === "back" || route === "dashboard") {
@@ -43,5 +38,5 @@ export default function PlaybookRoute({ params }: PlaybookPageProps) {
     }
   }
 
-  return <PlaybookPage playbookId={params.id} onNavigate={handleNavigation} />
+  return <PlaybookPage playbookId={id} onNavigate={handleNavigation} />
 }

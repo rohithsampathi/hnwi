@@ -4,10 +4,12 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { fadeInUp } from '@/lib/animations/motion-variants';
+import { resolveCorridorNodeName } from '@/lib/corridor-display';
 import { useOpportunities } from '@/lib/hooks/useOpportunities';
 import { useCrisisIntelligence } from '@/contexts/crisis-intelligence-context';
 import { CrisisAlertBox } from '@/components/map/crisis-alert-box';
@@ -24,6 +26,7 @@ interface AuditOverviewSectionProps {
   // Intelligence metadata
   developmentsCount?: number;
   precedentCount: number;
+  intelligenceBasisNote?: string;
   sourceJurisdiction?: string;
   destinationJurisdiction?: string;
   sourceCity?: string;
@@ -45,6 +48,8 @@ interface AuditOverviewSectionProps {
 
   // Optional full thesis from intake
   fullThesis?: string;
+  thesisArtifact?: any;
+  inputSnapshot?: any;
 
   // New intake fields (rails, constraints)
   rails?: any;
@@ -52,6 +57,8 @@ interface AuditOverviewSectionProps {
 
   // Display variant
   showMap?: boolean; // true for Personal mode, false for Report mode
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number> | Record<string, any>;
 }
 
 // Geo coordinates for map (replicated from War Room)
@@ -184,6 +191,7 @@ function findCoords(name: string | undefined): { lat: number; lng: number } | un
 export function AuditOverviewSection({
   developmentsCount,
   precedentCount,
+  intelligenceBasisNote,
   sourceJurisdiction,
   destinationJurisdiction,
   sourceCity,
@@ -194,15 +202,25 @@ export function AuditOverviewSection({
   optimalStructure,
   verdict,
   fullThesis,
+  thesisArtifact,
+  inputSnapshot,
   rails,
   constraints,
-  showMap = true // Default to showing map (Personal mode)
+  showMap = true, // Default to showing map (Personal mode)
+  onCitationClick,
+  citationMap,
 }: AuditOverviewSectionProps) {
+  const router = useRouter();
 
   // Crisis intel from centralised context
 
   // Detect mobile vs desktop for map interaction settings
   const [isMobile, setIsMobile] = useState(false);
+
+  const handleNavigate = (route: string) => {
+    if (!route) return;
+    router.push(route.startsWith('/') ? route : `/${route}`);
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -238,15 +256,49 @@ export function AuditOverviewSection({
   };
 
   // Extract text from thesis object if backend sends object instead of string
-  const getThesisText = (thesis: any): string | undefined => {
+  const getThesisText = useCallback((thesis: any): string | undefined => {
     if (!thesis) return undefined;
-    if (typeof thesis === 'string') return thesis;
-    // If it's an object, try to extract the move_description field
-    if (typeof thesis === 'object' && thesis.move_description) {
-      return thesis.move_description;
+    if (typeof thesis === 'string') {
+      const trimmed = thesis.trim();
+      return trimmed || undefined;
+    }
+
+    if (typeof thesis === 'object') {
+      const candidateFields = [
+        'move_description',
+        'summary',
+        'thesis_summary',
+        'investment_thesis',
+        'decision_thesis',
+        'thesis',
+        'description',
+        'content',
+        'text',
+        'rationale',
+      ];
+
+      for (const field of candidateFields) {
+        const value = (thesis as Record<string, unknown>)[field];
+        if (typeof value === 'string' && value.trim()) {
+          return value.trim();
+        }
+      }
+
+      const nestedCandidates = [
+        (thesis as Record<string, unknown>).decision,
+        (thesis as Record<string, unknown>).decision_context,
+        (thesis as Record<string, unknown>).executive_summary,
+      ];
+
+      for (const candidate of nestedCandidates) {
+        const resolved = getThesisText(candidate);
+        if (resolved) {
+          return resolved;
+        }
+      }
     }
     return undefined;
-  };
+  }, []);
 
   const getVerdictColor = (v?: string) => {
     if (!v) return '#67E8F9'; // Default cyan like War Room
@@ -260,6 +312,116 @@ export function AuditOverviewSection({
 
   const hasDevelopmentCount = typeof developmentsCount === 'number' && developmentsCount > 0;
   const hasPrecedentCount = precedentCount > 0;
+  const evidenceBasisNote = typeof intelligenceBasisNote === 'string' ? intelligenceBasisNote.trim() : '';
+
+  const structuredThesis = useMemo(() => {
+    if (!showMap || !thesisArtifact || typeof thesisArtifact !== 'object') {
+      return null;
+    }
+
+    const mandate =
+      getThesisText(thesisArtifact.thesis_summary) ||
+      getThesisText(thesisSummary);
+    const verdictSentence =
+      getThesisText(thesisArtifact.verdict?.single_sentence) ||
+      getThesisText(thesisArtifact.verdict);
+    const verdictLabel =
+      typeof thesisArtifact.verdict?.verdict === 'string'
+        ? thesisArtifact.verdict.verdict.replace(/_/g, ' ')
+        : verdict?.replace(/_/g, ' ');
+    const sequence =
+      Array.isArray(thesisArtifact.sequence)
+        ? thesisArtifact.sequence.slice(0, 4).map((step: any) => ({
+            order: step.order,
+            action: getThesisText(step.action),
+            owner: typeof step.owner === 'string' ? step.owner.replace(/_/g, ' ') : undefined,
+            timeline: getThesisText(step.timeline),
+          })).filter((step: any) => step.action)
+        : [];
+
+    if (!mandate && !verdictSentence && sequence.length === 0) {
+      return null;
+    }
+
+    return {
+      mandate,
+      verdictSentence,
+      verdictLabel,
+      sequence,
+    };
+  }, [getThesisText, showMap, thesisArtifact, thesisSummary, verdict]);
+
+  const structuredInputFrame = useMemo(() => {
+    if (!showMap || !inputSnapshot || typeof inputSnapshot !== 'object') {
+      return null;
+    }
+
+    const mandate = typeof inputSnapshot.mandate === 'object' ? inputSnapshot.mandate : {};
+    const inputConstraints = typeof inputSnapshot.constraints === 'object' ? inputSnapshot.constraints : {};
+    const decisionRails = typeof inputSnapshot.decision_rails === 'object' ? inputSnapshot.decision_rails : {};
+
+    const mandateRows = [
+      ['Corridor', [mandate.source_jurisdiction, mandate.destination_jurisdiction].filter(Boolean).join(' → ')],
+      ['Asset Class', mandate.asset_class],
+      ['Target Amount', mandate.target_amount],
+      ['Timeline', mandate.timeline_days ? `${mandate.timeline_days} days` : inputConstraints.timeline],
+      ['Purchase Vehicle', mandate.purchase_vehicle || inputConstraints.purchase_vehicle],
+      ['Target Locations', Array.isArray(mandate.target_locations) ? mandate.target_locations.join(', ') : undefined],
+      ['Current Jurisdictions', Array.isArray(mandate.current_jurisdictions) ? mandate.current_jurisdictions.join(', ') : undefined],
+    ].filter(([, value]) => value);
+
+    const constraintRows = [
+      ['Web Validation', inputConstraints.web_validation_required ? 'Required' : undefined],
+      [
+        'Required Fields',
+        Array.isArray(inputConstraints.required_web_validation_fields)
+          ? inputConstraints.required_web_validation_fields.join(', ')
+          : undefined,
+      ],
+      [
+        'Provided Fields',
+        Array.isArray(inputConstraints.provided_web_validation_fields)
+          ? inputConstraints.provided_web_validation_fields.join(', ')
+          : undefined,
+      ],
+    ].filter(([, value]) => value);
+
+    const railRows = [
+      [
+        'Advisors',
+        Array.isArray(decisionRails.advisors)
+          ? decisionRails.advisors
+              .map((item: any) => [item?.name, item?.role].filter(Boolean).join(' — '))
+              .filter(Boolean)
+              .join(', ')
+          : undefined,
+      ],
+      [
+        'Heirs',
+        Array.isArray(decisionRails.heirs)
+          ? decisionRails.heirs
+              .map((item: any) => [item?.name, item?.relationship].filter(Boolean).join(' — '))
+              .filter(Boolean)
+              .join(', ')
+          : undefined,
+      ],
+      ['Coordination Risk', decisionRails.coordination_risk],
+    ].filter(([, value]) => value);
+
+    const mandateText = getThesisText(mandate.move_description) || getThesisText(thesisSummary);
+
+    if (!mandateText && mandateRows.length === 0 && constraintRows.length === 0 && railRows.length === 0) {
+      return null;
+    }
+
+    return {
+      mandateText,
+      expectedOutcome: getThesisText(mandate.expected_outcome),
+      mandateRows,
+      constraintRows,
+      railRows,
+    };
+  }, [getThesisText, showMap, inputSnapshot, thesisSummary]);
 
   // Format field labels: remove underscores, convert to Capital Case
   const formatLabel = (key: string): string => {
@@ -287,14 +449,13 @@ export function AuditOverviewSection({
 
   if (showMap) {
     // City-first lookup: jurisdiction (city) > fallback (replicated from War Room)
-    const srcCoords = findCoords(sourceCity || sourceJurisdiction);
-    const dstCoords = findCoords(destinationCity || destinationJurisdiction);
+    const srcName = resolveCorridorNodeName(sourceCity, sourceJurisdiction);
+    const dstName = resolveCorridorNodeName(destinationCity, destinationJurisdiction);
+    const srcCoords = findCoords(srcName);
+    const dstCoords = findCoords(dstName);
 
     // Skip map if no coords found, but still show analysis box
     if (srcCoords && dstCoords) {
-      const srcName = sourceCity || sourceJurisdiction || '—';
-      const dstName = destinationCity || destinationJurisdiction || '—';
-
       // Build City objects with correct field names (latitude/longitude, NOT lat/lng)
       const sourceCity_obj: City = {
         name: cleanJurisdiction(srcName),
@@ -311,7 +472,7 @@ export function AuditOverviewSection({
       };
 
       // Build label from available fields (War Room pattern)
-      const label = `${cleanJurisdiction(sourceJurisdiction)} → ${cleanJurisdiction(destinationJurisdiction)}`;
+      const label = `${cleanJurisdiction(srcName)} → ${cleanJurisdiction(dstName)}`;
 
       auditFlow = {
         source: sourceCity_obj,
@@ -324,8 +485,8 @@ export function AuditOverviewSection({
       };
     } else {
       console.warn('[AuditOverview] No coordinates found for:', {
-        src: sourceCity || sourceJurisdiction,
-        dst: destinationCity || destinationJurisdiction,
+        src: resolveCorridorNodeName(sourceCity, sourceJurisdiction),
+        dst: resolveCorridorNodeName(destinationCity, destinationJurisdiction),
       });
     }
   }
@@ -357,6 +518,9 @@ export function AuditOverviewSection({
               showCrisisOverlay={true}
               crisisAlertExternal={true}
               useAbsolutePositioning={true}
+              onCitationClick={onCitationClick}
+              citationMap={citationMap}
+              onNavigate={handleNavigate}
             />
           </div>
 
@@ -369,6 +533,8 @@ export function AuditOverviewSection({
                 alert={crisisData.alert}
                 counts={crisisCounts}
                 colors={crisisColors}
+                defaultExpanded={true}
+                variant="embedded"
               />
             </div>
           )}
@@ -381,9 +547,147 @@ export function AuditOverviewSection({
         {/* Report mode (linear scroll): Show descriptive fullThesis */}
         {/* Personal mode (sidebar): Show structured thesisSummary, fallback to fullThesis */}
         {(() => {
+          if (structuredInputFrame) {
+            const renderKeyValueRows = (rows: Array<[string, any]>) => (
+              <div className="space-y-2">
+                {rows.map(([label, value]) => (
+                  <div key={label} className="grid gap-1 sm:grid-cols-[140px_1fr] items-start">
+                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">{label}</div>
+                    <div className="text-sm text-foreground/90 leading-relaxed">{String(value)}</div>
+                  </div>
+                ))}
+              </div>
+            );
+
+            return (
+              <div className="p-6 sm:p-8 rounded-xl border-2 border-gold/20 bg-gradient-to-br from-gold/5 via-surface to-surface">
+                <div className="flex items-start gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xs uppercase tracking-wide text-gold font-bold mb-1">Decision Thesis</h3>
+                    <p className="text-xs text-muted-foreground">Original structured input frame</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {structuredInputFrame.mandateText && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-2">Mandate</div>
+                      <p className="text-sm sm:text-base text-foreground font-medium leading-relaxed">
+                        {structuredInputFrame.mandateText}
+                      </p>
+                    </div>
+                  )}
+
+                  {structuredInputFrame.expectedOutcome && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-2">Expected Outcome</div>
+                      <p className="text-sm text-foreground/90 leading-relaxed">{structuredInputFrame.expectedOutcome}</p>
+                    </div>
+                  )}
+
+                  {structuredInputFrame.mandateRows.length > 0 && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-3">Input Summary</div>
+                      {renderKeyValueRows(structuredInputFrame.mandateRows as Array<[string, any]>)}
+                    </div>
+                  )}
+
+                  {structuredInputFrame.constraintRows.length > 0 && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-3">Constraints</div>
+                      {renderKeyValueRows(structuredInputFrame.constraintRows as Array<[string, any]>)}
+                    </div>
+                  )}
+
+                  {structuredInputFrame.railRows.length > 0 && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-3">Decision Rails</div>
+                      {renderKeyValueRows(structuredInputFrame.railRows as Array<[string, any]>)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          if (structuredThesis) {
+            return (
+              <div className="p-6 sm:p-8 rounded-xl border-2 border-gold/20 bg-gradient-to-br from-gold/5 via-surface to-surface">
+                <div className="flex items-start gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xs uppercase tracking-wide text-gold font-bold mb-1">Decision Thesis</h3>
+                    <p className="text-xs text-muted-foreground">Strategic mandate for this evaluation</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {structuredThesis.mandate && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-2">Mandate</div>
+                      <p className="text-sm sm:text-base text-foreground font-medium leading-relaxed">
+                        {structuredThesis.mandate}
+                      </p>
+                    </div>
+                  )}
+
+                  {structuredThesis.verdictSentence && (
+                    <div className="grid gap-3 sm:grid-cols-[160px_1fr] items-start">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold">
+                        {structuredThesis.verdictLabel ? 'Decision Read' : 'Committee Read'}
+                      </div>
+                      <div>
+                        {structuredThesis.verdictLabel && (
+                          <div className="inline-flex mb-2 px-2.5 py-1 rounded-full border border-gold/30 bg-gold/10 text-[11px] font-bold uppercase tracking-wide text-gold">
+                            {structuredThesis.verdictLabel}
+                          </div>
+                        )}
+                        <p className="text-sm text-foreground/90 leading-relaxed">
+                          {structuredThesis.verdictSentence}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {structuredThesis.sequence.length > 0 && (
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-bold mb-3">Validated Route Sequence</div>
+                      <div className="space-y-3">
+                        {structuredThesis.sequence.map((step: any) => (
+                          <div key={`${step.order}-${step.action}`} className="grid gap-2 sm:grid-cols-[60px_1fr] items-start">
+                            <div className="text-xs font-bold text-gold">
+                              {typeof step.order === 'number' ? `Step ${step.order}` : 'Step'}
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm text-foreground font-medium">{step.action}</p>
+                              {(step.timeline || step.owner) && (
+                                <p className="text-xs text-muted-foreground">
+                                  {[step.timeline, step.owner].filter(Boolean).join(' • ')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
           const displayText = showMap
             ? (getThesisText(thesisSummary) || getThesisText(fullThesis))
-            : getThesisText(fullThesis);
+            : (getThesisText(fullThesis) || getThesisText(thesisSummary));
 
           return displayText && (
             <div className="p-6 sm:p-8 rounded-xl border-2 border-gold/20 bg-gradient-to-br from-gold/5 via-surface to-surface">
@@ -511,21 +815,35 @@ export function AuditOverviewSection({
                 ) : (
                   <>validated HNWI developments from 3 years of wealth pattern tracking</>
                 )}
-                {hasPrecedentCount ? (
+                {evidenceBasisNote ? (
+                  <>
+                    . For this memo, the governing route view is based on{' '}
+                    <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
+                      {evidenceBasisNote}
+                    </span>
+                    . All findings are citation-backed.
+                  </>
+                ) : hasPrecedentCount ? (
                   <>
                     , cross-referenced against{' '}
                     <span className="font-semibold text-gold bg-gold/10 px-2 py-0.5 rounded">
                       {precedentCount.toLocaleString()}
                     </span>{' '}
-                    corridor signals specific to the{' '}
+                    route precedents specific to the{' '}
+                    <span className="font-medium text-foreground">
+                      {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
+                    </span>{' '}
+                    corridor. All findings are citation-backed.
                   </>
                 ) : (
-                  <> specific to the{' '}</>
+                  <>
+                    {' '}for the{' '}
+                    <span className="font-medium text-foreground">
+                      {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
+                    </span>{' '}
+                    corridor. All findings are citation-backed.
+                  </>
                 )}
-                <span className="font-medium text-foreground">
-                  {cleanJurisdiction(sourceJurisdiction)}→{cleanJurisdiction(destinationJurisdiction)}
-                </span>{' '}
-                corridor. All findings are citation-backed.
               </p>
             </div>
           </div>

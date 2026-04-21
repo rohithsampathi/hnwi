@@ -250,8 +250,8 @@ export default function WarRoomMap({
       <Globe
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+        globeImageUrl="/assets/globe/earth-night.jpg"
+        backgroundImageUrl="/assets/globe/night-sky.png"
 
         // Arcs (routes)
         arcsData={arcsData}

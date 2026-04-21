@@ -31,6 +31,8 @@ import { useTheme } from "@/contexts/theme-context";
 import { getMetallicCardStyle } from "@/lib/colors";
 import { GoldenScroll } from "@/components/ui/golden-scroll";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/components/auth-provider";
+import { getCurrentUserId } from "@/lib/auth-manager";
 import {
   Dialog,
   DialogContent,
@@ -1088,6 +1090,7 @@ export function OpportunityAtlasNew({
   targetOpportunityId
 }: OpportunityAtlasProps) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
   const [showStickyCategories, setShowStickyCategories] = useState(false);
@@ -1251,7 +1254,7 @@ export function OpportunityAtlasNew({
         });
       }
     }
-  }, [targetOpportunityId, categories, onCategorySelect]);
+  }, [targetOpportunityId, categories, onCategorySelect, toast]);
 
   const maxDealCount = Math.max(...categories.map(c => c.liveDealCount), 1);
   const totalDealCount = categories.reduce((sum, category) => sum + category.liveDealCount, 0);
@@ -1338,7 +1341,7 @@ export function OpportunityAtlasNew({
         },
         body: JSON.stringify({
           opportunityId: opportunity.id,
-          userId: localStorage.getItem('userId') || 'anonymous',
+          userId: getCurrentUserId() || 'anonymous',
           opportunityData: cleanOpportunity
         })
       });
@@ -1455,9 +1458,8 @@ export function OpportunityAtlasNew({
     setConciergeState(prev => ({ ...(prev || {}), [opportunity.id]: true }));
     
     try {
-      const user = null as { id?: string; email?: string; firstName?: string; lastName?: string } | null // Get user from auth context if needed
-      const userId = user?.id || localStorage.getItem("userId") || "";
-      const userEmail = user?.email || localStorage.getItem("userEmail") || "";
+      const userId = user?.id || user?.user_id || getCurrentUserId() || "";
+      const userEmail = user?.email || "";
       const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User";
       
       // Create AbortController for timeout handling

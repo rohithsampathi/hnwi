@@ -13,9 +13,9 @@ export const revalidate = 0;
 export async function generateMetadata({
   params
 }: {
-  params: { sessionId: string }
+  params: Promise<{ sessionId: string }>
 }): Promise<Metadata> {
-  const { sessionId } = params;
+  const { sessionId } = await params;
 
   // Use default values - client will update title dynamically via usePageTitle
   // This prevents server-side fetch from interfering with SSE completion
@@ -87,7 +87,7 @@ export async function generateMetadata({
 export default function AssessmentResultsPage({
   params
 }: {
-  params: { sessionId: string }
+  params: Promise<{ sessionId: string }>
 }) {
   // Pass through to client component
   // The client component handles all the data fetching and display

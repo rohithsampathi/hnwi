@@ -4,7 +4,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { CrisisAlert, CrisisColorConfig, CrisisStatus, CrisisCounts } from "@/lib/crisis-overlay";
 
 interface CrisisAlertBoxProps {
@@ -13,6 +13,8 @@ interface CrisisAlertBoxProps {
   alert: CrisisAlert;
   counts: CrisisCounts;
   colors: Record<CrisisStatus, CrisisColorConfig>;
+  defaultExpanded?: boolean;
+  variant?: "overlay" | "embedded";
 }
 
 const DOWN_WORDS = /down|drop|fall|crash|collaps|declin|plung|slump|sink|loss|weak|sell.?off|bear/i;
@@ -31,12 +33,52 @@ function movementDirection(movement: string): "up" | "down" | "flat" {
   return "flat";
 }
 
-export function CrisisAlertBox({ visible, theme, alert, counts, colors }: CrisisAlertBoxProps) {
-  const [expanded, setExpanded] = useState(false);
+function impactDirection(impact: CrisisAlert["impacts"][number]): "up" | "down" | "flat" {
+  if (impact.direction) return impact.direction;
+  return movementDirection(impact.delta || impact.movement || impact.value || "");
+}
+
+export function CrisisAlertBox({
+  visible,
+  theme,
+  alert,
+  counts,
+  colors,
+  defaultExpanded = false,
+  variant = "overlay",
+}: CrisisAlertBoxProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const isEmbedded = variant === "embedded";
+
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded, alert.timestamp]);
 
   if (!visible) return null;
 
   const isDark = theme === "dark";
+  const background = isEmbedded
+    ? isDark
+      ? "rgba(18, 18, 18, 0.82)"
+      : "rgba(250, 248, 244, 0.98)"
+    : isDark
+      ? "rgba(10, 10, 10, 0.92)"
+      : "rgba(255, 255, 255, 0.95)";
+  const border = isEmbedded
+    ? isDark
+      ? "rgba(212, 168, 67, 0.24)"
+      : "rgba(140, 106, 38, 0.2)"
+    : isDark
+      ? "rgba(239, 68, 68, 0.3)"
+      : "rgba(239, 68, 68, 0.4)";
+  const shadow = isEmbedded
+    ? isDark
+      ? "0 10px 28px rgba(0,0,0,0.24)"
+      : "0 10px 24px rgba(15, 23, 42, 0.08)"
+    : isDark
+      ? "0 0 20px rgba(239, 68, 68, 0.1), 0 4px 16px rgba(0,0,0,0.4)"
+      : "0 4px 16px rgba(0,0,0,0.1)";
+  const accentColor = isEmbedded ? "#D4A843" : "#EF4444";
 
   return (
     <div
@@ -45,13 +87,11 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
     >
       <div
         style={{
-          background: isDark ? "rgba(10, 10, 10, 0.92)" : "rgba(255, 255, 255, 0.95)",
-          border: `1px solid ${isDark ? "rgba(239, 68, 68, 0.3)" : "rgba(239, 68, 68, 0.4)"}`,
+          background,
+          border: `1px solid ${border}`,
           borderRadius: 10,
           backdropFilter: "blur(12px)",
-          boxShadow: isDark
-            ? "0 0 20px rgba(239, 68, 68, 0.1), 0 4px 16px rgba(0,0,0,0.4)"
-            : "0 4px 16px rgba(0,0,0,0.1)",
+          boxShadow: shadow,
         }}
       >
         {/* Header — always visible */}
@@ -63,16 +103,18 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Pulsing red dot */}
             <span style={{ position: "relative", display: "inline-flex", width: 10, height: 10 }}>
-              <span
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "50%",
-                  backgroundColor: "#EF4444",
-                  animation: "crisis-dot-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
-                  opacity: 0.6,
-                }}
-              />
+              {!isEmbedded && (
+                <span
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    borderRadius: "50%",
+                    backgroundColor: accentColor,
+                    animation: "crisis-dot-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite",
+                    opacity: 0.6,
+                  }}
+                />
+              )}
               <span
                 style={{
                   position: "relative",
@@ -80,13 +122,15 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
                   width: 10,
                   height: 10,
                   borderRadius: "50%",
-                  backgroundColor: "#EF4444",
-                  boxShadow: "0 0 8px rgba(239, 68, 68, 0.6)",
+                  backgroundColor: accentColor,
+                  boxShadow: isEmbedded
+                    ? "none"
+                    : "0 0 8px rgba(239, 68, 68, 0.6)",
                 }}
               />
             </span>
 
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#EF4444", letterSpacing: "0.02em" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: accentColor, letterSpacing: "0.02em" }}>
               {alert.title}
             </span>
 
@@ -109,60 +153,113 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
         {/* Expanded: summary + details together */}
         {expanded && (
           <div
-            style={{ padding: "10px 14px 14px", maxHeight: "40vh", overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}
+            style={{
+              padding: "10px 14px 14px",
+              maxHeight: isEmbedded ? "none" : "40vh",
+              overflowY: isEmbedded ? "visible" : "auto",
+              WebkitOverflowScrolling: "touch" as any,
+            }}
             onTouchMove={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
           >
             {/* Summary */}
             <p style={{
               fontSize: 11,
-              color: isDark ? "#A3A3A3" : "#666",
+              color: isDark ? "#D4D4D4" : "#444",
               margin: "0 0 10px 0",
-              lineHeight: 1.4,
+              lineHeight: 1.5,
             }}>
               {alert.body}
             </p>
             {/* Zone counts */}
             <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-              <ZoneChip color={colors.red.text} count={counts.red} label="Active Conflict" />
-              <ZoneChip color={colors.amber.text} count={counts.amber} label="Under Strike" />
-              <ZoneChip color={colors.yellow.text} count={counts.yellow} label="High Stress" />
+              <ZoneChip color={colors.red.text} count={counts.red} label="Conflict" />
+              <ZoneChip color={colors.amber.text} count={counts.amber} label="Strike Pressure" />
+              <ZoneChip color={colors.yellow.text} count={counts.yellow} label="System Stress" />
             </div>
 
             {/* Market impacts */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: isDark ? "#A3A3A3" : "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                Market Impact
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px" }}>
+            {alert.impacts.length > 0 && (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: isDark ? "#A3A3A3" : "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                  Route-Sensitive Markets
+                </div>
+                <div style={{ display: "grid", gap: 6 }}>
                 {alert.impacts.map((impact) => {
-                  const dir = movementDirection(impact.movement);
+                  const dir = impactDirection(impact);
+                  const currentValue = impact.current_value || impact.value || impact.movement;
+                  const previousValue = impact.previous_value;
+                  const deltaValue = impact.delta_value;
                   return (
-                    <div key={impact.asset} style={{ fontSize: 11 }}>
-                      <span style={{ color: isDark ? "#A3A3A3" : "#888" }}>{impact.asset}: </span>
-                      <span style={{
-                        fontWeight: 600,
-                        color: dir === "down" ? "#EF4444" : dir === "up" ? "#22C55E" : "#F59E0B",
-                      }}>
-                        {dir === "down" ? "▼ " : dir === "up" ? "▲ " : "● "}{impact.movement}
-                      </span>
+                    <div
+                      key={impact.asset}
+                      style={{
+                        fontSize: 11,
+                        padding: "7px 8px",
+                        borderRadius: 8,
+                        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ color: isDark ? "#F5F5F5" : "#222", fontWeight: 600 }}>{impact.asset}</span>
+                        <span style={{ color: isDark ? "#E5E5E5" : "#333", fontWeight: 700, textAlign: "right" }}>
+                          {currentValue}
+                        </span>
+                      </div>
+                      {(previousValue || deltaValue) && (
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
+                          <span style={{ fontSize: 10, color: isDark ? "#A3A3A3" : "#666" }}>
+                            {previousValue ? `Last update ${previousValue}` : ""}
+                          </span>
+                          {deltaValue && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: dir === "down" ? "#EF4444" : dir === "up" ? "#22C55E" : "#F59E0B",
+                                letterSpacing: "0.01em",
+                              }}
+                            >
+                              Δ {deltaValue}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {impact.detail && (
+                        <div style={{ marginTop: 3, color: isDark ? "#A3A3A3" : "#666", lineHeight: 1.45 }}>
+                          {impact.detail}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {alert.impacts.length === 0 && (
+              <div style={{ marginBottom: 10, fontSize: 11, color: isDark ? "#A3A3A3" : "#666" }}>
+                No route-sensitive market dislocations are currently attached to this crisis snapshot.
+              </div>
+            )}
 
             {/* Trade chokepoints */}
             {alert.chokepoints.length > 0 && (
               <div style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 10, fontWeight: 600, color: isDark ? "#A3A3A3" : "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                  Trade Chokepoints
+                  Execution Watchpoints
                 </div>
                 {alert.chokepoints.map((cp, i) => (
                   <div key={i} style={{ fontSize: 11, color: isDark ? "#D4D4D4" : "#333", lineHeight: 1.5, paddingLeft: 8, borderLeft: "2px solid rgba(239, 68, 68, 0.3)" }}>
                     {cp}
                   </div>
                 ))}
+              </div>
+            )}
+            {alert.chokepoints.length === 0 && (
+              <div style={{ marginBottom: 10, fontSize: 11, color: isDark ? "#A3A3A3" : "#666" }}>
+                No execution chokepoints are currently attached to this snapshot.
               </div>
             )}
 
@@ -177,6 +274,9 @@ export function CrisisAlertBox({ visible, theme, alert, counts, colors }: Crisis
               borderRadius: 6,
               borderLeft: "3px solid #D4A843",
             }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                Decision Consequence
+              </div>
               {alert.cta}
             </div>
           </div>

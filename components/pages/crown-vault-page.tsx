@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -30,6 +30,7 @@ import { AssetsSection } from "@/components/crown-vault/assets-section";
 import { HeirsSection } from "@/components/crown-vault/heirs-section";
 import { ActivitySection } from "@/components/crown-vault/activity-section";
 import { AddAssetsModal } from "@/components/crown-vault/add-assets-modal";
+import { AssetDetailsPanel } from "@/components/crown-vault/asset-details-panel";
 import { CrownLoader } from "@/components/ui/crown-loader";
 
 // API imports
@@ -45,6 +46,17 @@ import {
   type CrownVaultHeir,
   type CrownVaultStats
 } from "@/lib/api";
+import {
+  countAssetsByState,
+  formatAssetCollectionValue,
+  formatCompactMoney,
+  formatPercent,
+  getAssetActionPosture,
+  getAssetChangePct,
+  getAssetDisplayType,
+  getAssetCurrentValue,
+  getAssetCurrency,
+} from "@/lib/crown-vault-intelligence";
 
 interface CrownVaultPageProps {
   onNavigate?: (page: string) => void;
@@ -75,18 +87,14 @@ const SkeletonCard = () => (
 export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const { theme } = useTheme();
   const { showAuthPopup } = useAuthPopup();
-  const { getCachedData, setCachedData, isCacheValid } = usePageDataCache();
+  const { setCachedData, clearCachedData } = usePageDataCache();
   const searchParams = useSearchParams();
 
-  // Check for cached data before initializing state
-  const cachedData = getCachedData('crown-vault');
-  const hasValidCache = isCacheValid('crown-vault');
-
   // Core state - Initialize with cached data if available
-  const [loading, setLoading] = useState(!hasValidCache);
-  const [assets, setAssets] = useState<CrownVaultAsset[]>(cachedData?.assets || []);
-  const [heirs, setHeirs] = useState<CrownVaultHeir[]>(cachedData?.heirs || []);
-  const [stats, setStats] = useState<CrownVaultStats | null>(cachedData?.stats || null);
+  const [loading, setLoading] = useState(true);
+  const [assets, setAssets] = useState<CrownVaultAsset[]>([]);
+  const [heirs, setHeirs] = useState<CrownVaultHeir[]>([]);
+  const [stats, setStats] = useState<CrownVaultStats | null>(null);
   const [activeTab, setActiveTab] = useState<"summary" | "assets" | "heirs" | "activity">("summary");
 
   // Modal states
@@ -176,26 +184,13 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   }, [searchParams, assets]);
 
   // Load initial data function - defined outside useEffect so it can be called from auth callback
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     // Prevent concurrent loads
     if (isLoadingData.current) return;
     isLoadingData.current = true;
 
-    // Check if we have valid cached data
-    const cached = getCachedData('crown-vault');
-    const isCacheValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 600000));
-
-    // If cache is valid, skip API calls entirely
-    if (isCacheValid && cached.assets) {
-      setAssets(cached.assets);
-      setHeirs(cached.heirs || []);
-      setStats(cached.stats || null);
-      setLoading(false);
-      isLoadingData.current = false;
-      return;
-    }
-
-    // No valid cache - show loading and fetch data
+    // Crown Vault is a live decision surface. Never trust warm page cache here.
+    clearCachedData('crown-vault');
     setLoading(true);
 
       try {
@@ -237,9 +232,9 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         }
         
         // Handle successful data loading
-        let newAssets = assets;
-        let newHeirs = heirs;
-        let newStats = stats;
+        let newAssets: CrownVaultAsset[] = [];
+        let newHeirs: CrownVaultHeir[] = [];
+        let newStats: CrownVaultStats | null = null;
 
         if (assetsData.status === 'fulfilled') {
           newAssets = assetsData.value;
@@ -312,12 +307,12 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
       setLoading(false);
       isLoadingData.current = false;
     }
-  };
+  }, [clearCachedData, setCachedData, showAuthPopup, toast]);
 
   // Load initial data on mount
   useEffect(() => {
     loadInitialData();
-  }, []); // Empty dependency array - only run once on mount
+  }, [loadInitialData]);
 
   // Asset processing handler
   const handleAddAssets = async () => {
@@ -353,7 +348,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
         setStats(prev => prev ? {
           ...prev,
           total_assets: prev.total_assets + result.assets.length,
-          total_value: prev.total_value + newTotalValue,
+          last_updated: new Date().toISOString(),
         } : prev);
       }
 
@@ -577,47 +572,93 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
     return null;
   };
 
+  const tabOptions: Array<{
+    id: "summary" | "assets" | "heirs" | "activity";
+    label: string;
+    title: string;
+    description: string;
+  }> = [
+    {
+      id: "summary",
+      label: "Summary",
+      title: "Vault Summary",
+      description: "Portfolio value, Katherine posture, heir coverage, and current allocation in one view.",
+    },
+    {
+      id: "assets",
+      label: "Assets",
+      title: "Asset Registry",
+      description: "Review each asset, its current valuation rail, and Katherine-backed market context.",
+    },
+    {
+      id: "heirs",
+      label: "Heirs",
+      title: "Heir Exposure",
+      description: "Track beneficiary assignments and identify assets that still need succession mapping.",
+    },
+    {
+      id: "activity",
+      label: "Activity",
+      title: "Vault Activity",
+      description: "Audit the most recent changes, sync events, and Crown Vault state updates.",
+    },
+  ];
+
+  const activeTabMeta = tabOptions.find((tab) => tab.id === activeTab) ?? tabOptions[0];
+
 
   return (
-      <div className="w-full h-screen flex flex-col overflow-hidden">
+    <PageWrapper>
+      <div className="space-y-6 px-4 pb-24 sm:px-6 lg:px-8 lg:pb-10">
+        <PageHeaderWithBack
+          title="Crown Vault"
+          description="Track current value, heir exposure, and Katherine-backed asset intelligence from one secured surface."
+          onNavigate={onNavigate}
+          icon={Crown}
+        />
+
         {loading ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex min-h-[60vh] items-center justify-center">
             <CrownLoader size="lg" text="Encrypting generational assets..." />
           </div>
         ) : (
           <>
-            {/* Tabs Navigation - Fixed */}
-            <div className="flex-shrink-0 w-full mb-3 md:mb-6 bg-background py-1 md:py-2">
-              <div className="flex flex-wrap justify-center gap-1 sm:gap-2 p-1 bg-muted/30 rounded-full max-w-fit mx-auto">
-                {[
-                  { id: 'summary' as const, label: 'Summary' },
-                  { id: 'assets' as const, label: 'Assets' },
-                  { id: 'heirs' as const, label: 'Heirs' },
-                  { id: 'activity' as const, label: 'Activity' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                    }}
-                    className={`flex-1 sm:flex-initial px-2 sm:px-4 md:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-full transition-all duration-300 whitespace-nowrap ${
-                      activeTab === tab.id
-                        ? 'bg-primary text-white shadow-lg'
-                        : 'bg-background text-foreground/70 hover:text-foreground hover:bg-background/80'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <Card className="border-border/60 bg-card/70 shadow-sm">
+              <CardContent className="flex flex-col gap-4 p-4 md:p-5">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Vault Navigation
+                  </p>
+                  <Heading2 className="text-2xl font-bold text-foreground">
+                    {activeTabMeta.title}
+                  </Heading2>
+                  <p className="max-w-3xl text-sm text-muted-foreground">
+                    {activeTabMeta.description}
+                  </p>
+                </div>
 
-            {/* Tab Content - Scrolling Container */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-16">
+                <div className="flex flex-wrap gap-2 rounded-2xl border border-border/60 bg-background/70 p-2">
+                  {tabOptions.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 sm:px-4 ${
+                        activeTab === tab.id
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="min-h-[50vh]">
               {renderTabContent()}
             </div>
 
-            {/* Modals */}
             <AddAssetsModal
           isAddModalOpen={isAddModalOpen}
           setIsAddModalOpen={setIsAddModalOpen}
@@ -660,7 +701,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                   <Card className="p-4">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-primary mb-1">
-                        ${successData.totalValue.toLocaleString()}
+                        {formatAssetCollectionValue(successData.assets, getAssetCurrentValue)}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Total Value Secured
@@ -678,7 +719,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg">
-                              {asset.asset_data.asset_type?.toLowerCase() === 'real estate' ? (
+                              {getAssetDisplayType(asset).toLowerCase().includes('property') || getAssetDisplayType(asset).toLowerCase().includes('land') || getAssetDisplayType(asset).toLowerCase().includes('apartment') || getAssetDisplayType(asset).toLowerCase().includes('house') ? (
                                 <Building className="h-4 w-4 text-primary" />
                               ) : (
                                 <DollarSign className="h-4 w-4 text-primary" />
@@ -689,16 +730,16 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                                 {asset.asset_data.name}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {asset.asset_data.asset_type} • {asset.asset_data.location || 'Location TBD'}
+                                {getAssetDisplayType(asset)} • {asset.asset_data.location || 'Location TBD'}
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="font-bold text-foreground">
-                              ${asset.asset_data.value?.toLocaleString() || '0'}
+                              {formatCompactMoney(getAssetCurrentValue(asset), getAssetCurrency(asset))}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {asset.asset_data.currency || 'USD'}
+                              {getAssetCurrency(asset)}
                             </div>
                           </div>
                         </div>
@@ -745,6 +786,106 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
             )}
           </DialogContent>
         </Dialog>
+
+            <Dialog
+              open={isAssetDetailOpen}
+              onOpenChange={(open) => {
+                setIsAssetDetailOpen(open);
+                if (!open) {
+                  setSelectedAsset(null);
+                }
+              }}
+            >
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <DialogTitle className="text-xl font-semibold">
+                      {selectedAsset?.asset_data?.name || "Asset Detail"}
+                    </DialogTitle>
+                    {selectedAsset && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {[getAssetDisplayType(selectedAsset), selectedAsset.asset_data.location].filter(Boolean).join(" • ")}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsAssetDetailOpen(false);
+                      setSelectedAsset(null);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </DialogHeader>
+
+                {selectedAsset && (
+                  <div className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <Card className="border-border/60 bg-card/70">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            Current Value
+                          </p>
+                          <p className="mt-2 text-xl font-bold text-foreground">
+                            {formatCompactMoney(getAssetCurrentValue(selectedAsset), getAssetCurrency(selectedAsset))}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-border/60 bg-card/70">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            Since Entry
+                          </p>
+                          <p className="mt-2 text-xl font-bold text-foreground">
+                            {typeof getAssetChangePct(selectedAsset) === "number"
+                              ? formatPercent(getAssetChangePct(selectedAsset))
+                              : "Not established"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-border/60 bg-card/70">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            Posture
+                          </p>
+                          <p className="mt-2 text-xl font-bold text-foreground">
+                            {getAssetActionPosture(selectedAsset) || "Still resolving"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border-border/60 bg-card/70">
+                        <CardContent className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            Heirs
+                          </p>
+                          <p className="mt-2 text-base font-semibold text-foreground">
+                            {selectedAsset.heir_names?.length ? selectedAsset.heir_names.join(", ") : "Not assigned"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <AssetDetailsPanel
+                      asset={selectedAsset}
+                      isExpanded
+                      showToggle={false}
+                      onToggleExpanded={() => setIsAssetDetailOpen(false)}
+                      onAssetUpdated={(updatedAsset) => {
+                        setAssets((previousAssets) =>
+                          previousAssets.map((asset) =>
+                            asset.asset_id === updatedAsset.asset_id ? updatedAsset : asset,
+                          ),
+                        );
+                        setSelectedAsset(updatedAsset);
+                      }}
+                    />
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
 
             {/* Heir Detail Modal */}
             <Dialog open={isHeirDetailOpen} onOpenChange={setIsHeirDetailOpen}>
@@ -834,12 +975,8 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                   <CardContent>
                     {(() => {
                       const heirAssets = getHeirAssets(selectedHeir.id);
-                      const totalValue = heirAssets.reduce((sum, asset) => sum + (asset.asset_data?.value || 0), 0);
-                      const formatValue = (value: number) => {
-                        if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-                        if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-                        return `$${value.toLocaleString()}`;
-                      };
+                      const totalValueLabel = formatAssetCollectionValue(heirAssets, getAssetCurrentValue);
+                      const stateCounts = countAssetsByState(heirAssets);
                       
                       return (
                         <>
@@ -849,8 +986,23 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                               <p className="text-sm text-muted-foreground">Assets</p>
                             </div>
                             <div className="text-center">
-                              <p className={`text-2xl font-bold ${getVisibleTextColor(theme, 'accent')}`}>{formatValue(totalValue)}</p>
-                              <p className="text-sm text-muted-foreground">Total Value</p>
+                              <p className={`text-2xl font-bold ${getVisibleTextColor(theme, 'accent')}`}>{totalValueLabel}</p>
+                              <p className="text-sm text-muted-foreground">Current Value</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="rounded-lg bg-green-50 p-3 text-center dark:bg-green-950/20">
+                              <p className="text-lg font-semibold text-green-700 dark:text-green-400">{stateCounts.winning}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-green-700/80 dark:text-green-400/80">Good</p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-100 p-3 text-center dark:bg-zinc-900/40">
+                              <p className="text-lg font-semibold text-foreground">{stateCounts.stable}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Stable</p>
+                            </div>
+                            <div className="rounded-lg bg-red-50 p-3 text-center dark:bg-red-950/20">
+                              <p className="text-lg font-semibold text-red-700 dark:text-red-400">{stateCounts.under_pressure + stateCounts.unresolved}</p>
+                              <p className="text-[11px] uppercase tracking-wide text-red-700/80 dark:text-red-400/80">Attention</p>
                             </div>
                           </div>
 
@@ -861,10 +1013,19 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                                 <div key={asset.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                   <div>
                                     <p className="font-medium text-foreground">{asset.asset_data.name}</p>
-                                    <p className="text-sm text-muted-foreground">{asset.asset_data.asset_type}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {getAssetDisplayType(asset)}
+                                      {asset.asset_data.location ? ` • ${asset.asset_data.location}` : ""}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {getAssetActionPosture(asset) || "Still resolving"}
+                                      {typeof getAssetChangePct(asset) === "number" ? ` • ${formatPercent(getAssetChangePct(asset))}` : ""}
+                                    </p>
                                   </div>
                                   <div className="text-right">
-                                    <p className="font-semibold text-foreground">{formatValue(asset.asset_data.value || 0)}</p>
+                                    <p className="font-semibold text-foreground">
+                                      {formatCompactMoney(getAssetCurrentValue(asset), getAssetCurrency(asset))}
+                                    </p>
                                   </div>
                                 </div>
                               ))}
@@ -1019,6 +1180,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           </>
         )}
       </div>
+    </PageWrapper>
   );
 }
 

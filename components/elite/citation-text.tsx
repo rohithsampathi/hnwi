@@ -4,7 +4,8 @@
 "use client"
 
 import React from "react"
-import { parseDevCitations } from "@/lib/parse-dev-citations"
+import { normalizeCitationReferences, parseDevCitations } from "@/lib/parse-dev-citations"
+import { sanitizeRichHtml } from "@/lib/security/sanitization"
 
 interface CitationTextProps {
   text: string | undefined | null
@@ -41,7 +42,7 @@ const convertLineBreaks = (value: string): string => {
   return value
     .replace(/\r\n/g, "\n")
     // CRITICAL FIX: Remove ALL whitespace/newlines before citations BEFORE splitting
-    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
     .split("\n")
     .map((line) => line.trim())
     .join("\n")
@@ -83,8 +84,8 @@ const convertLists = (value: string): string => {
 const convertParagraphs = (value: string): string => {
   // CRITICAL FIX: Remove ALL whitespace/newlines/br tags before citations BEFORE splitting into paragraphs
   const cleanedValue = value
-    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
-    .replace(/(<br\s*\/?>\s*)+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
+    .replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+    .replace(/(<br\s*\/?>\s*)+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
 
   const chunks = cleanedValue
     .split(/(?:\n{2,}|<br\/><br\/>)/)
@@ -118,9 +119,10 @@ export function CitationText({
   } = options || {}
 
   let processedText = trim ? text.trim() : text
+  processedText = normalizeCitationReferences(processedText)
 
   // Initial cleanup: Remove ALL whitespace/newlines before citations (not just 2+)
-  processedText = processedText.replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
+  processedText = processedText.replace(/[\s\n\r]+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $1')
 
   if (stripMarkdownBold) {
     processedText = processedText.replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -144,9 +146,9 @@ export function CitationText({
 
   // Final cleanup: remove any remaining formatting artifacts before citations
   processedText = processedText
-    .replace(/(<br\s*\/?>)+(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
-    .replace(/<p>[\s]*(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, '<p>$1')
-    .replace(/(<\/p>)[\s]*(<p>)?[\s]*(\[(?:Dev\s*ID|DEVID)\s*[:\-–—]\s*[^\]]+\])/gi, '$1 $3')
+    .replace(/(<br\s*\/?>)+(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, ' $2')
+    .replace(/<p>[\s]*(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, '<p>$1')
+    .replace(/(<\/p>)[\s]*(<p>)?[\s]*(\[(?:Dev\s*ID|DEVID|Article\s*ID)\s*[:\-–—]\s*[^\]]+\])/gi, '$1 $3')
 
   // Parse citations and get formatted text
   // Pass the global citation map so sub-citations use correct numbers
@@ -165,13 +167,18 @@ export function CitationText({
     // Clean up multiple spaces before citations
     .replace(/\s{2,}(<citation)/gi, ' $1')
 
-  // If no citations or no handler, return text as HTML to preserve formatting
-  if (citations.length === 0 || !onCitationClick) {
-    return <span className={className} dangerouslySetInnerHTML={{ __html: processedText }} />
+  const sanitizedFormattedText = sanitizeRichHtml(cleanedFormattedText, {
+    allowCitations: true,
+    allowLinks: true,
+  })
+
+  // If no citations, return plain formatted text
+  if (citations.length === 0) {
+    return <span className={className} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(processedText, { allowLinks: true }) }} />
   }
 
   // Convert the formatted text with citation tags to React elements
-  const parts = cleanedFormattedText.split(/(<citation[^>]*>.*?<\/citation>)/g)
+  const parts = sanitizedFormattedText.split(/(<citation[^>]*>.*?<\/citation>)/g)
 
   return (
     <span className={className}>
@@ -180,9 +187,18 @@ export function CitationText({
         const citationMatch = part.match(/<citation data-id="([^"]+)" data-number="(\d+)">\[(\d+)\]<\/citation>/)
 
         if (citationMatch) {
-        const [, citationId, citationNumber] = citationMatch
-        // Use parsed number (citationMap is metadata, not number mapping)
-        const displayNumber = citationNumber
+          const [, citationId, citationNumber] = citationMatch
+          const displayNumber = citationNumber
+          if (!onCitationClick) {
+            return (
+              <span
+                key={index}
+                className="inline-flex items-center justify-center text-xs font-medium text-primary/90 px-1 rounded mx-0.5 align-baseline"
+              >
+                [{displayNumber}]
+              </span>
+            )
+          }
           return (
             <button
               key={index}

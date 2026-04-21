@@ -41,6 +41,7 @@ interface StampDutyData {
   fta_applied?: boolean;
   fta_name?: string;
   absd_schedule_rate_pct?: number;  // Generic rate (e.g., 60%)
+  transfer_tax_schedule_rate_pct?: number; // DLD or equivalent transfer-tax style schedule
   absd_applied_rate_pct?: number;   // After FTA (e.g., 0%)
   absd_savings_usd?: number;
   absd_display_note?: string;
@@ -132,6 +133,19 @@ interface RealAssetAuditSectionProps {
   transactionValue?: number;
 }
 
+interface RouteNativeAssetSummary {
+  destinationLabel: string;
+  primaryFeeLabel: string;
+  primaryFeeRatePct: number;
+  primaryFeeAmount: number;
+  additionalChargesAmount: number;
+  totalAcquisitionCost: number;
+  foreignBuyerTaxLabel: string;
+  foreignBuyerTaxValue: string;
+  buyerProfile: string;
+  routeModeLabel: string;
+}
+
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const;
 
 export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
@@ -156,6 +170,48 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
     Object.keys(data).filter(key => !key.startsWith('_')),
     [data]
   );
+
+  const routeNativeSummary = useMemo<RouteNativeAssetSummary | null>(() => {
+    const destinationLower = (destinationJurisdiction || '').toLowerCase();
+    const destinationKey = jurisdictionKeys.find((key) => {
+      const keyLower = key.toLowerCase();
+      return destinationLower && (keyLower.includes(destinationLower) || destinationLower.includes(keyLower));
+    });
+
+    const destinationAudit = destinationKey ? data[destinationKey] : undefined;
+    const stampDuty = destinationAudit?.stamp_duty;
+    const rateEntry = Array.isArray(stampDuty?.residential_rates) ? stampDuty?.residential_rates?.[0] : undefined;
+    const feeDescription = String(rateEntry?.description || stampDuty?.tax_name || '').trim();
+    const isDubaiRoute =
+      destinationLower.includes('dubai') ||
+      destinationLower.includes('united arab emirates') ||
+      feeDescription.toLowerCase().includes('dubai land department');
+
+    if (!destinationAudit || !stampDuty?.found || !isDubaiRoute || !transactionValue) {
+      return null;
+    }
+
+    const feeRatePct = typeof rateEntry?.rate_pct === 'number'
+      ? rateEntry.rate_pct
+      : typeof stampDuty?.transfer_tax_schedule_rate_pct === 'number'
+        ? stampDuty.transfer_tax_schedule_rate_pct
+        : 0;
+    const primaryFeeAmount = Math.round(transactionValue * (feeRatePct / 100));
+    const totalAcquisitionCost = transactionValue + primaryFeeAmount;
+
+    return {
+      destinationLabel: destinationAudit.stamp_duty?.jurisdiction || destinationJurisdiction || 'Dubai, UAE',
+      primaryFeeLabel: feeDescription || 'DLD Registration Fee (4.0%)',
+      primaryFeeRatePct: feeRatePct,
+      primaryFeeAmount,
+      additionalChargesAmount: 0,
+      totalAcquisitionCost,
+      foreignBuyerTaxLabel: 'Foreign Buyer Tax',
+      foreignBuyerTaxValue: stampDuty?.has_foreign_buyer_tax ? 'Present' : 'None',
+      buyerProfile: sourceJurisdiction ? `${sourceJurisdiction} resident` : 'Foreign buyer',
+      routeModeLabel: 'Direct Individual Purchase (Freehold Zone)',
+    };
+  }, [data, destinationJurisdiction, jurisdictionKeys, sourceJurisdiction, transactionValue]);
 
   // Calculate summary metrics - prioritize DESTINATION jurisdiction
   const summaryMetrics = useMemo(() => {
@@ -260,6 +316,149 @@ export const RealAssetAuditSection: React.FC<RealAssetAuditSectionProps> = ({
       source
     });
   };
+
+  if (routeNativeSummary) {
+    return (
+      <div ref={sectionRef}>
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+        >
+          <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-3">
+            Real Asset Audit Intelligence
+          </h2>
+          <div className="h-px bg-border" />
+        </motion.div>
+
+        <motion.div
+          className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.1, ease: EASE_OUT_EXPO }}
+        >
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
+
+          <div className="relative px-5 sm:px-8 md:px-12 py-10 md:py-12">
+            <div className="flex items-center gap-2 mb-6 sm:mb-8">
+              <div className="w-2 h-2 rounded-full bg-primary/40" />
+              <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
+                Direct Acquisition Surface
+              </span>
+            </div>
+
+            <p className="text-sm text-muted-foreground/70 leading-loose sm:leading-relaxed mb-8">
+              {routeNativeSummary.buyerProfile} acquiring {routeNativeSummary.destinationLabel} residential property via {routeNativeSummary.routeModeLabel}. The acquisition is governed by the DLD registration fee and the closing-sheet allocation, not by a Dubai foreign-buyer surcharge or a commercial loophole framework.
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4 sm:p-5 rounded-xl border border-border/20 bg-card/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Transfer / Registration Fee</p>
+                <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-foreground">
+                  {routeNativeSummary.primaryFeeRatePct.toFixed(2)}%
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{routeNativeSummary.primaryFeeLabel}</p>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-xl border border-border/20 bg-card/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{routeNativeSummary.foreignBuyerTaxLabel}</p>
+                <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-foreground">
+                  {routeNativeSummary.foreignBuyerTaxValue}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">No separate Dubai foreign-buyer surcharge</p>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-xl border border-primary/20 bg-card/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Day-One Cost</p>
+                <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-primary/80">
+                  {formatCurrency(routeNativeSummary.primaryFeeAmount)}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Non-recoverable DLD registration fee</p>
+              </div>
+
+              <div className="p-4 sm:p-5 rounded-xl border border-border/20 bg-card/50">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Total Acquisition</p>
+                <p className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight text-foreground">
+                  {formatCurrency(routeNativeSummary.totalAcquisitionCost)}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Property value plus day-one registration fee</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.2, ease: EASE_OUT_EXPO }}
+        >
+          <div className="px-6 sm:px-10 py-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
+              Acquisition Cost Breakdown
+            </p>
+          </div>
+          <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+
+          {[
+            ['Property Value', formatCurrency(transactionValue)],
+            [routeNativeSummary.primaryFeeLabel, formatCurrency(routeNativeSummary.primaryFeeAmount)],
+            ['Additional Transfer Charges', routeNativeSummary.additionalChargesAmount > 0 ? formatCurrency(routeNativeSummary.additionalChargesAmount) : '—'],
+            ['Total Acquisition', formatCurrency(routeNativeSummary.totalAcquisitionCost)],
+          ].map(([label, value], idx, rows) => (
+            <div key={label}>
+              <div className="grid grid-cols-12 items-center px-6 sm:px-10 py-4">
+                <div className="col-span-8">
+                  <p className="text-sm font-normal text-foreground">{label}</p>
+                </div>
+                <div className="col-span-4 text-right">
+                  <p className="text-xl md:text-2xl font-medium tabular-nums tracking-tight text-foreground">{value}</p>
+                </div>
+              </div>
+              {idx < rows.length - 1 && (
+                <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+              )}
+            </div>
+          ))}
+
+          <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+          <div className="px-6 sm:px-10 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-1.5">
+              Day-One Transaction Loss
+            </p>
+            <p className="text-sm text-muted-foreground/70 leading-relaxed">
+              Immediate cost equals {routeNativeSummary.primaryFeeRatePct.toFixed(2)}% of the property value and remains sunk once the acquisition closes.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          className="rounded-xl border border-border/20 bg-card/50 p-5 sm:p-6"
+          initial={{ opacity: 0, y: 12 }}
+          animate={isVisible ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.3, ease: EASE_OUT_EXPO }}
+        >
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-4">
+            Route Read
+          </p>
+          <div className="space-y-3">
+            {[
+              'The governing acquisition cost is the DLD registration fee, not a Dubai foreign-buyer surcharge.',
+              'Closing-sheet allocation and ancillary charges must match the DLD / trustee documents before capital moves.',
+              'UK stamp duty and non-resident surcharge logic do not govern the Dubai acquisition itself.',
+              'Succession structures are assessed separately; this section stays disciplined to the live acquisition path.',
+            ].map((line) => (
+              <div key={line} className="flex items-start gap-3">
+                <span className="text-primary/50 mt-0.5">→</span>
+                <p className="text-sm text-muted-foreground/70 leading-relaxed">{line}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div ref={sectionRef}>

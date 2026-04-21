@@ -93,7 +93,7 @@ export class SessionManager {
         .sign(getJWTSecret());
 
       // Set secure session cookie with security prefix
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const sessionCookieName = getSecureCookieName('session');
       cookieStore.set(sessionCookieName, token, SESSION_CONFIG);
 
@@ -130,7 +130,7 @@ export class SessionManager {
   // Validate and refresh session
   static async validateSession(): Promise<SessionData | null> {
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       
       // Debug: Log all available cookies
       const cookieNames = cookieStore.getAll().map(cookie => cookie.name);
@@ -271,7 +271,7 @@ export class SessionManager {
         .sign(getJWTSecret());
 
       // Update session cookie
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const sessionCookieName = getSecureCookieName('session');
       cookieStore.set(sessionCookieName, newToken, SESSION_CONFIG);
 
@@ -295,7 +295,7 @@ export class SessionManager {
   // Destroy session (logout)
   static async destroySession(): Promise<void> {
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       
       // Clear all session-related cookies with secure prefixes
       const sessionCookieName = getSecureCookieName('session');

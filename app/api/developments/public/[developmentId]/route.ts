@@ -6,10 +6,10 @@ import { API_BASE_URL } from '@/config/api'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { developmentId: string } }
+  { params }: { params: Promise<{ developmentId: string }> }
 ) {
   try {
-    const { developmentId } = params
+    const { developmentId } = await params
 
     if (!developmentId) {
       return NextResponse.json(

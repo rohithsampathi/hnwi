@@ -74,7 +74,7 @@ export function SidebarNavigation({
       // Decision Memo login users: mute Simulation (they only need War Room access)
       setIsDecisionMemoSession(sessionStorage.getItem('decision_memo_session') === 'true')
     }
-  }, [])
+  }, [isDecisionMemoSession])
 
   // Check if Decision Memo or Simulation flow is active
   useEffect(() => {
@@ -102,7 +102,7 @@ export function SidebarNavigation({
     // Check periodically in case it changes
     const interval = setInterval(checkFlowStatus, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isDecisionMemoSession])
 
   // Check if user has completed assessment - controls whether Assessment menu item is shown
   useEffect(() => {

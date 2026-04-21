@@ -24,6 +24,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOT_DIR = path.join(__dirname, "screenshots");
 const PDF_OUTPUT = path.join(__dirname, "screenshots", "test-output.pdf");
 const DATA_FIXTURE = path.join(__dirname, "screenshots", "real-data.json");
+const REPORT_AUTH_EMAIL = process.env.REPORT_AUTH_EMAIL;
+const REPORT_AUTH_PASSWORD = process.env.REPORT_AUTH_PASSWORD;
+
+if (!REPORT_AUTH_EMAIL || !REPORT_AUTH_PASSWORD) {
+  console.error("REPORT_AUTH_EMAIL and REPORT_AUTH_PASSWORD are required for this live PDF auth test.");
+  process.exit(1);
+}
 
 // Ensure screenshot dir exists
 fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -74,8 +81,8 @@ async function runVisualTest() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slug: intakeId,
-          email: "audit.viewer@hnwichronicles.com",
-          password: "unTocx5CkdjbccYa",
+          email: REPORT_AUTH_EMAIL,
+          password: REPORT_AUTH_PASSWORD,
         }),
       });
       const data = await res.json();

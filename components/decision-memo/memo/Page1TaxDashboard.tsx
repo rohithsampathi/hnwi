@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
+import { memoNumberClass } from '@/lib/decision-memo/memo-design-tokens';
 import {
   useAnimatedMetric,
   useDecisionMemoRenderContext,
@@ -43,7 +44,7 @@ interface TaxDifferential {
   cumulative_tax_differential_pct?: number; // Total combined tax differential (for display)
   // SOTA Feb 2026: US Worldwide Taxation Support
   cumulative_tax_capturable_pct?: number;   // What's actually capturable (0 if not relocating)
-  cumulative_impact?: 'saved' | 'more' | 'none_without_relocation';
+  cumulative_impact?: 'saved' | 'cost' | 'more' | 'none_without_relocation';
   cumulative_impact_label?: string | null;  // "US Worldwide Taxation Applies..." when not relocating
   is_relocating?: boolean;
   tax_savings_note?: string;
@@ -234,6 +235,8 @@ export function Page1TaxDashboard({
   const hasExecutionSequence = timelinePhases.length > 0;
 
   const totalDays = 365;
+  const sourceBreakdownLabel = noRelocationTaxCredit ? 'Source Tax Baseline' : 'Current Structure';
+  const destinationBreakdownLabel = noRelocationTaxCredit ? 'Destination Tax Baseline' : 'Optimized Structure';
 
   return (
     <div ref={sectionRef}>
@@ -297,15 +300,7 @@ export function Page1TaxDashboard({
                           : 'border-border/20 bg-card/50'
                   }`}>
                     <div className="flex items-center gap-4">
-                      <span className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tabular-nums tracking-tight ${
-                        noRelocationTaxCredit
-                          ? 'text-amber-500'
-                          : capturableDiff > 0
-                            ? 'text-emerald-500'
-                            : capturableDiff < 0
-                              ? 'text-red-500'
-                              : 'text-muted-foreground'
-                      }`}>
+                      <span className={memoNumberClass('hero', noRelocationTaxCredit || capturableDiff === 0 ? 'muted' : 'default')}>
                         {/* Show actual differential for comparison, but highlight capturable amount */}
                         {noRelocationTaxCredit ? (
                           <>N/A</>
@@ -402,12 +397,14 @@ export function Page1TaxDashboard({
                             </div>
                             <div className="text-center">
                               <span className={`inline-flex items-center gap-1 text-sm sm:text-base font-medium ${
-                                row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
+                                noRelocationTaxCredit
+                                  ? 'text-amber-500/80'
+                                  : row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
                               }`}>
                                 {row.diff > 0 ? '+' : ''}{row.diff.toFixed(0)}%
                                 {row.diff !== 0 && (
                                   <span className="text-xs font-medium opacity-60">
-                                    {row.diff > 0 ? 'saved' : 'more'}
+                                    {noRelocationTaxCredit ? 'not captured' : row.diff > 0 ? 'saved' : 'more'}
                                   </span>
                                 )}
                               </span>
@@ -455,12 +452,14 @@ export function Page1TaxDashboard({
                           <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/10">
                             <span className="text-sm font-medium text-foreground">{row.label}</span>
                             <span className={`inline-flex items-center gap-1 text-base font-medium ${
-                              row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
+                              noRelocationTaxCredit
+                                ? 'text-amber-500/80'
+                                : row.diff > 0 ? 'text-emerald-500/80' : row.diff < 0 ? 'text-red-500/80' : 'text-muted-foreground/60'
                             }`}>
                               {row.diff > 0 ? '+' : ''}{row.diff.toFixed(0)}%
                               {row.diff !== 0 && (
                                 <span className="text-xs font-medium opacity-60">
-                                  {row.diff > 0 ? 'saved' : 'more'}
+                                  {noRelocationTaxCredit ? 'not captured' : row.diff > 0 ? 'saved' : 'more'}
                                 </span>
                               )}
                             </span>
@@ -490,7 +489,7 @@ export function Page1TaxDashboard({
                     <div className="flex items-center gap-3 mb-4 sm:mb-6">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-500/60" />
                       <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
-                        Current Structure
+                        {sourceBreakdownLabel}
                       </span>
                     </div>
                     {[
@@ -527,7 +526,7 @@ export function Page1TaxDashboard({
                     <div className="flex items-center gap-3 mb-4 sm:mb-6">
                       <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
                       <span className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
-                        Optimized Structure
+                        {destinationBreakdownLabel}
                       </span>
                     </div>
                     {[

@@ -13,8 +13,9 @@ export const revalidate = 0;
 export async function generateMetadata({
   params
 }: {
-  params: { sessionId: string }
+  params: Promise<{ sessionId: string }>
 }): Promise<Metadata> {
+  const { sessionId } = await params;
   // Try to get some basic info about the assessment from the API
   let tierName = "Strategic";
 
@@ -26,7 +27,7 @@ export async function generateMetadata({
       : 'http://localhost:3001'; // Use the running dev server port
 
     // Try to fetch assessment results to get tier for metadata
-    const response = await fetch(`${apiBaseUrl}/api/assessment/results/${params.sessionId}`, {
+    const response = await fetch(`${apiBaseUrl}/api/assessment/results/${sessionId}`, {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json'
@@ -69,7 +70,7 @@ export async function generateMetadata({
       title: `${tierName} Wealth DNA | HNWI Strategic Profile`,
       description: `This ${tierName} profile reveals how ultra-wealthy individuals with this DNA pattern identify opportunities worth $100K-$10M+. View their command centre intelligence map.`,
       type: "article",
-      url: `${siteUrl}/shared-results/${params.sessionId}`,
+      url: `${siteUrl}/shared-results/${sessionId}`,
       siteName: "HNWI Chronicles",
       locale: "en_US",
       images: [
@@ -98,7 +99,7 @@ export async function generateMetadata({
       }
     },
     alternates: {
-      canonical: `https://app.hnwichronicles.com/shared-results/${params.sessionId}`,
+      canonical: `https://app.hnwichronicles.com/shared-results/${sessionId}`,
     },
     category: "Finance",
     classification: "Wealth Intelligence",
@@ -116,7 +117,7 @@ export async function generateMetadata({
 export default function SharedResultsPage({
   params
 }: {
-  params: { sessionId: string }
+  params: Promise<{ sessionId: string }>
 }) {
   // Pass through to client component
   // The client component handles all the data fetching and display

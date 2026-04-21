@@ -337,8 +337,8 @@ export function OpportunitiesMap({ opportunities, onOpportunityClick }: Opportun
       <div className={`w-full h-full ${isDarkMode ? 'bg-black' : 'bg-slate-100'}`}>
         <Globe
           forwardRef={globeRef}
-          globeImageUrl="https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-          backgroundImageUrl={isDarkMode ? "https://unpkg.com/three-globe/example/img/night-sky.png" : undefined}
+          globeImageUrl="/assets/globe/earth-blue-marble.jpg"
+          backgroundImageUrl={isDarkMode ? "/assets/globe/night-sky.png" : undefined}
           backgroundColor={isDarkMode ? 'rgba(0,0,0,1)' : 'rgba(226,232,240,1)'}
           pointsData={mapPoints}
           pointLat="lat"

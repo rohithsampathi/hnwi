@@ -8,6 +8,11 @@ export interface CategoryConfig {
   icon?: string;
 }
 
+interface ProcessAssetCategoriesOptions {
+  mode?: 'value' | 'count';
+  valueResolver?: (asset: any) => number | null | undefined;
+}
+
 // Dynamic category configuration - easily extensible
 export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   'real_estate': {
@@ -140,25 +145,37 @@ export function getCategoryDisplayName(categoryKey: string): string {
  * @param assets - Array of assets with asset_data.asset_type
  * @returns Grouped and formatted category data
  */
-export function processAssetCategories(assets: any[]): Array<{
+export function processAssetCategories(
+  assets: any[],
+  options?: ProcessAssetCategoriesOptions,
+): Array<{
   name: string;
   displayName: string;
   value: number;
   count: number;
   percentage: string;
 }> {
+  const { mode = 'value', valueResolver } = options || {};
   const categoryMap: Record<string, { count: number, value: number }> = {};
   
   // Group assets by category
   assets.forEach(asset => {
-    if (asset?.asset_data?.asset_type && asset?.asset_data?.value) {
+    if (asset?.asset_data?.asset_type) {
       const categoryGroup = getCategoryGroup(asset.asset_data.asset_type);
+      const resolvedValue =
+        mode === 'count'
+          ? 1
+          : Number(valueResolver?.(asset) ?? asset.asset_data.value ?? 0);
+
+      if (!Number.isFinite(resolvedValue) || resolvedValue <= 0) {
+        return;
+      }
       
       if (!categoryMap[categoryGroup]) {
         categoryMap[categoryGroup] = { count: 0, value: 0 };
       }
       categoryMap[categoryGroup].count += 1;
-      categoryMap[categoryGroup].value += asset.asset_data.value;
+      categoryMap[categoryGroup].value += resolvedValue;
     }
   });
   
@@ -174,10 +191,12 @@ export function processAssetCategories(assets: any[]): Array<{
 }
 
 // Export for use in components
-export default {
+const categoryUtils = {
   getCategoryGroup,
   getCategoryDisplayName,
   processAssetCategories,
   CATEGORY_CONFIG,
   FALLBACK_PATTERNS
 };
+
+export default categoryUtils;

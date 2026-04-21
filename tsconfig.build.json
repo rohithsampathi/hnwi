@@ -1,0 +1,59 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "incremental": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "middleware.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "config/**/*.ts",
+    "config/**/*.tsx",
+    "contexts/**/*.ts",
+    "contexts/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "types/**/*.ts",
+    "types/**/*.tsx",
+    "types/**/*.d.ts",
+    "utils/**/*.ts",
+    "utils/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next-webpack",
+    ".next-turbo",
+    "__tests__",
+    "legacy",
+    "test-scenarios",
+    "app/page-old.tsx",
+    "components/**/*-backup.tsx",
+    "components/**/*-legacy.tsx",
+    "components/**/*-OLD-BACKUP.tsx",
+    "components/**/*-broken.tsx",
+    "components/**/*-BROKEN.tsx",
+    "components/**/legacy/**",
+    "components/app-content.tsx",
+    "components/app-root.tsx",
+    "components/app-shell.tsx",
+    "components/app-wrapper.tsx",
+    "components/debug-auth.tsx",
+    "components/development-stream-broken.tsx",
+    "components/decision-memo/OpportunitiesMap.tsx",
+    "components/decision-memo/PreviewModal.tsx",
+    "components/opportunity-atlas.tsx",
+    "components/playbook-formatter.tsx",
+    "components/pricing-strategy.tsx",
+    "components/quick-login.tsx",
+    "components/target-audience-segmentation.tsx"
+  ]
+}

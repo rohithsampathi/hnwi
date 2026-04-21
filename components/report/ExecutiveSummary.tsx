@@ -21,37 +21,35 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
     peer_group_size,
     optimization_potential,
     mental_models_applied,
-    sophistication_score
+    sophistication_score,
   } = data;
 
   return (
     <section className="relative">
-      {/* Tier Badge with Real Intelligence */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
+        className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div className="inline-flex items-center gap-4 px-8 py-4 bg-primary/10 rounded-full border border-primary/20">
-          <Award className="w-8 h-8 text-primary" />
-          <span className="text-foreground font-bold text-3xl tracking-wide">
+        <div className="inline-flex items-center gap-4 rounded-full border border-primary/20 bg-primary/10 px-8 py-4">
+          <Award className="h-8 w-8 text-primary" />
+          <span className="text-3xl font-bold tracking-wide text-foreground">
             {tier.toUpperCase()} TIER
           </span>
         </div>
 
-        {/* Real Intelligence Metrics */}
         {(mental_models_applied || sophistication_score) && (
           <div className="flex flex-wrap items-center gap-4 text-sm">
             {mental_models_applied && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg border border-border">
-                <Target className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2">
+                <Target className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground">{mental_models_applied}</span>
               </div>
             )}
             {sophistication_score && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg border border-border">
-                <TrendingUp className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-muted-foreground">Sophistication: {sophistication_score}</span>
               </div>
             )}
@@ -59,38 +57,33 @@ export function ExecutiveSummary({ data }: ExecutiveSummaryProps) {
         )}
       </motion.div>
 
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Percentile - Opportunity Qualification */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          icon={<TrendingUp className="w-8 h-8 text-primary" />}
+          icon={<TrendingUp className="h-8 w-8 text-primary" />}
           label="Opportunity Access"
           value={`${percentile}th`}
           subtitle={`Qualified for top ${100 - percentile}% most sophisticated opportunities`}
           delay={0.1}
         />
 
-        {/* Opportunities */}
         <MetricCard
-          icon={<Target className="w-8 h-8 text-primary" />}
+          icon={<Target className="h-8 w-8 text-primary" />}
           label="Validated Signals"
           value={opportunities_accessible.toString()}
           subtitle={`${opportunities_missed} peer signals identified`}
           delay={0.2}
         />
 
-        {/* Intelligence Sources */}
         <MetricCard
-          icon={<Users className="w-8 h-8 text-primary" />}
+          icon={<Users className="h-8 w-8 text-primary" />}
           label="Intelligence Sources"
           value={peer_group_size.toLocaleString()}
           subtitle="HNWI World developments analyzed"
           delay={0.3}
         />
 
-        {/* Optimization */}
         <MetricCard
-          icon={<TrendingUp className="w-8 h-8 text-primary" />}
+          icon={<TrendingUp className="h-8 w-8 text-primary" />}
           label="Gap Analysis"
           value={`+${(optimization_potential * 100).toFixed(0)}%`}
           subtitle="Performance gap vs peer benchmark"
@@ -115,17 +108,16 @@ function MetricCard({ icon, label, value, subtitle, delay }: MetricCardProps) {
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, delay }}
-      className="bg-muted/30 backdrop-blur-sm rounded-lg p-6 border border-border hover:border-primary/30 transition-all duration-300 cursor-pointer hover:transform hover:scale-105"
+      className="cursor-pointer rounded-lg border border-border bg-muted/30 p-6 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-3 bg-primary/10 rounded-lg">
-          {icon}
-        </div>
+      <div className="mb-4 flex items-start justify-between">
+        <div className="rounded-lg bg-primary/10 p-3">{icon}</div>
       </div>
-      <div className="space-y-1">
-        <p className="text-muted-foreground text-sm font-medium">{label}</p>
-        <p className="text-3xl font-bold text-primary">{value}</p>
-        <p className="text-muted-foreground text-xs">{subtitle}</p>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-3xl font-bold text-foreground">{value}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
       </div>
     </motion.div>
   );

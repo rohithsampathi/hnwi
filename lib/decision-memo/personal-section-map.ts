@@ -21,6 +21,7 @@ import ScenarioTreeSection from '@/components/decision-memo/memo/ScenarioTreeSec
 import ReferencesSection from '@/components/decision-memo/memo/ReferencesSection';
 import RegulatorySourcesSection from '@/components/decision-memo/memo/RegulatorySourcesSection';
 import { AuditOverviewSection } from '@/components/decision-memo/memo/AuditOverviewSection';
+import HouseGradeMemoSection from '@/components/decision-memo/memo/HouseGradeMemoSection';
 
 export type CategoryId =
   | 'executive-summary'
@@ -48,6 +49,27 @@ export interface SectionDefinition {
   aidaNext?: string[];
   description?: string;
 }
+
+const HOUSE_GRADE_WAR_VIEW_SECTION_IDS = [
+  'house-signal',
+  'house-governing-correction',
+  'house-read',
+  'house-validated-route',
+  'cross-border-audit',
+  'transparency-regime',
+  'real-asset-audit',
+  'house-live-market-crisis',
+  'peer-cohort',
+  'capital-corridors',
+  'geographic-distribution',
+  'hnwi-trends',
+  'crisis-resilience',
+  'house-continuity-office-carry',
+  'wealth-projection',
+  'scenario-tree',
+  'heir-management',
+  'house-evidence-ledger',
+] as const;
 
 export const CATEGORIES: Category[] = [
   {
@@ -88,6 +110,84 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const SECTIONS: SectionDefinition[] = [
+  {
+    id: 'house-signal',
+    title: 'Decision Signal',
+    category: 'executive-summary',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'hero', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 4,
+    aidaNext: ['house-governing-correction'],
+    description: 'The governing answer, stop conditions, and immediate proceed requirements',
+  },
+  {
+    id: 'house-governing-correction',
+    title: 'The Governing Correction',
+    category: 'executive-summary',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'governing-correction', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 5,
+    aidaNext: ['house-read'],
+    description: 'What the room believed, what is actually true, and the original input frame',
+  },
+  {
+    id: 'house-read',
+    title: 'The House Read',
+    category: 'risk-analysis',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'house-read', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 5,
+    aidaNext: ['house-validated-route'],
+    description: 'Authority map, fragmentation, named roles, and the real burden under the move',
+  },
+  {
+    id: 'house-validated-route',
+    title: 'The Validated Route',
+    category: 'tax-intelligence',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'validated-route', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 8,
+    aidaNext: ['house-live-market-crisis'],
+    description: 'Route architecture, gates, tax, compliance, and route failure logic',
+  },
+  {
+    id: 'house-live-market-crisis',
+    title: 'Live Market And Crisis Read',
+    category: 'peer-intelligence',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'live-market-crisis', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 6,
+    aidaNext: ['house-continuity-office-carry'],
+    description: 'Market witnesses, corridor patterns, and live crisis pressure',
+  },
+  {
+    id: 'house-continuity-office-carry',
+    title: 'Continuity And Office Carry',
+    category: 'wealth-structuring',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'continuity-office-carry', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 7,
+    aidaNext: ['house-evidence-ledger'],
+    description: 'G1-G2-G3 consequence, office carry path, succession, and decision follow-through',
+  },
+  {
+    id: 'house-evidence-ledger',
+    title: 'Evidence, Unknowns, And Memory',
+    category: 'implementation',
+    component: HouseGradeMemoSection,
+    componentProps: { chapterId: 'evidence', embedDetailedSchedules: false },
+    shouldRender: (data) => !!data.preview_data.house_grade_memo,
+    estimatedReadTime: 4,
+    aidaNext: [],
+    description: 'Evidence status, unknowns, disclosure needs, and authority ledger',
+  },
+
   // CATEGORY 0: DECISION THESIS (First Section)
   {
     id: 'audit-overview',
@@ -338,7 +438,11 @@ export const SECTIONS: SectionDefinition[] = [
     title: 'Structure Optimization',
     category: 'wealth-structuring',
     component: StructureComparisonMatrix,
-    shouldRender: (data) => !!data.preview_data.structure_optimization,
+    shouldRender: (data) => !!(
+      data.preview_data.structure_optimization
+      && Array.isArray(data.preview_data.structure_optimization.structures_analyzed)
+      && data.preview_data.structure_optimization.structures_analyzed.length > 0
+    ),
     estimatedReadTime: 4,
     aidaNext: ['heir-management', 'scenario-tree'],
     description: 'Ownership structure analysis and comparison matrix'
@@ -415,16 +519,31 @@ export const SECTIONS: SectionDefinition[] = [
 
 // Helper functions
 export function getSectionsByCategory(categoryId: CategoryId, memoData: PdfMemoData): SectionDefinition[] {
+  if (memoData.preview_data.house_grade_memo) {
+    return HOUSE_GRADE_WAR_VIEW_SECTION_IDS
+      .map((id) => SECTIONS.find((section) => section.id === id))
+      .filter((section): section is SectionDefinition => section !== undefined)
+      .filter((section) => section.category === categoryId && section.shouldRender(memoData));
+  }
   return SECTIONS.filter(
     section => section.category === categoryId && section.shouldRender(memoData)
   );
 }
 
 export function getSectionById(sectionId: string): SectionDefinition | undefined {
+  if (sectionId === 'house-governed-memo') {
+    return SECTIONS.find(section => section.id === 'house-signal');
+  }
   return SECTIONS.find(section => section.id === sectionId);
 }
 
 export function getAllVisibleSections(memoData: PdfMemoData): SectionDefinition[] {
+  if (memoData.preview_data.house_grade_memo) {
+    return HOUSE_GRADE_WAR_VIEW_SECTION_IDS
+      .map((id) => SECTIONS.find((section) => section.id === id))
+      .filter((section): section is SectionDefinition => section !== undefined)
+      .filter((section) => section.shouldRender(memoData));
+  }
   return SECTIONS.filter(section => section.shouldRender(memoData));
 }
 

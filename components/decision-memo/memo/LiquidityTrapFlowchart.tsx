@@ -51,8 +51,10 @@ export function LiquidityTrapFlowchart({
   assetLabel = 'Singapore Residential Property',
 }: LiquidityTrapProps) {
   const totalLoss = capitalIn - capitalOut;
-  // Use API-provided BSD % of property value (IRAS tiered), not stamp/total-acq
   const lossPct = dayOneLossPct > 0 ? dayOneLossPct : ((totalLoss / capitalIn) * 100);
+  const showDestroyedTotal =
+    (!!secondaryBarrier && !!secondaryBarrierCost && secondaryBarrierCost > 0)
+    || Math.abs(totalLoss - primaryBarrierCost) > 0.5;
 
   return (
     <div className="space-y-8 sm:space-y-12">
@@ -135,7 +137,7 @@ export function LiquidityTrapFlowchart({
 
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-xs tracking-[0.25em] uppercase font-medium text-destructive/80">
-                  Barrier Zone
+                  Day-One Barrier
                 </span>
               </div>
 
@@ -157,16 +159,18 @@ export function LiquidityTrapFlowchart({
                 </div>
               )}
 
-              {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
+              {showDestroyedTotal && (
+                <>
+                  <div className="h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
 
-              {/* Total Destroyed */}
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/25 bg-destructive/[0.05]">
-                <span className="text-xs tracking-[0.15em] uppercase font-medium text-destructive/80">Capital Destroyed</span>
-                <span className="text-xl md:text-2xl font-medium text-destructive">
-                  -{formatCurrency(totalLoss)}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-destructive/25 bg-destructive/[0.05]">
+                    <span className="text-xs tracking-[0.15em] uppercase font-medium text-destructive/80">Capital Destroyed</span>
+                    <span className="text-xl md:text-2xl font-medium text-destructive">
+                      -{formatCurrency(totalLoss)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -208,7 +212,7 @@ export function LiquidityTrapFlowchart({
           transition={{ delay: 1.5, duration: 0.7, ease: EASE_OUT_EXPO }}
         >
           <p className="text-xs uppercase tracking-[0.25em] text-destructive/60 font-medium">
-            Immediate Equity Destruction Upon Acquisition
+            Immediate sunk cost on acquisition
           </p>
         </motion.div>
       </motion.div>

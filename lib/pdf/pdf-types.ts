@@ -24,6 +24,28 @@ export interface PdfMemoData {
 }
 
 export interface PdfPreviewData {
+  house_grade_memo?: Record<string, any>;
+  executive_summary?: {
+    headline_metric?: {
+      label?: string;
+      value?: string | number;
+      description?: string;
+      detail?: string;
+      note?: string;
+    };
+    strategy_label?: string;
+    evidence_basis_note?: string;
+    underwriting_snapshot?: Array<{
+      label: string;
+      value: string;
+      note?: string;
+    }>;
+    [key: string]: any;
+  };
+  assumption_ledger?: {
+    fix_date?: string;
+    [key: string]: any;
+  };
   // Header info
   source_jurisdiction?: string;
   destination_jurisdiction?: string;
@@ -35,6 +57,11 @@ export interface PdfPreviewData {
   total_savings?: string;
   precedent_count?: number;
   data_quality?: string;
+  data_quality_note?: string;
+  transaction_value?: number | string;
+  programmatic_dd_checklist?: Array<Record<string, unknown>>;
+  investment_thesis?: string | Record<string, unknown>;
+  input_snapshot?: Record<string, unknown>;
 
   // Legacy compatibility aliases still emitted by older memo routes
   rental_income?: string;
@@ -58,6 +85,9 @@ export interface PdfPreviewData {
     source?: TaxRates;
     destination?: TaxRates;
     savings?: string;
+    cumulative_tax_differential_pct?: number;
+    cumulative_impact?: "saved" | "cost" | "none_without_relocation";
+    is_relocating?: boolean;
   };
   source_tax_rates?: TaxRates;
   destination_tax_rates?: TaxRates;
@@ -256,6 +286,7 @@ export interface RiskAssessment {
   critical_items?: number;
   high_priority?: number;
   verdict?: string;
+  structure_verdict?: string;
   recommendation?: string;
   is_mcp?: boolean;
   mitigation_timeline?: string;
@@ -544,8 +575,20 @@ export interface PeerCohortStats {
     avg_deal_value?: string;
     avg_deal_value_subtitle?: string;
   };
+  metric_cards?: Array<{
+    label: string;
+    value?: number;
+    description?: string;
+    prefix?: string;
+    suffix?: string;
+    decimals?: number;
+    highlight?: boolean;
+  }>;
   // Core metrics
   total_peers?: number;
+  direct_route_precedent_count?: number;
+  governing_object_count?: number;
+  route_pattern_count?: number;
   last_6_months?: number;
   avg_deal_value_m?: number;
   // Driver analysis
@@ -563,10 +606,16 @@ export interface PeerCohortStats {
   data_quality?: string;
   data_quality_note?: string;
   is_relocating?: boolean;
+  native_driver_bullets?: string[];
+  driver_analysis_title?: string;
+  driver_analysis_subtitle?: string;
+  driver_analysis_note?: string;
+  value_creation?: string;
 
   // Legacy fields (for backward compatibility with old audits)
   recent_movements?: number;
   average_value?: number | string;
+  [key: string]: any;
 }
 
 export interface CapitalFlowData {
@@ -670,6 +719,12 @@ export interface ScenarioTreeData {
   recommended?: string;
   decision_gates?: DecisionGate[];
   decision_matrix?: DecisionMatrixRow[];
+  value_basis_label?: string;
+  value_basis_note?: string;
+  decision_ev_label?: string;
+  decision_ev_usd?: number;
+  expected_value_usd?: number;
+  decision_ev_note?: string;
   expected_vs_reality?: ExpectedVsReality;
   validity_period?: string;
   reassess_conditions?: string[];
@@ -728,6 +783,17 @@ export interface HeirManagementData {
     g3?: GenerationData;
   };
   heir_allocations?: HeirAllocation[];
+  heir_specific_read?: {
+    name: string;
+    status?: string;
+    headline: string;
+    detail: string;
+  }[];
+  beneficiary_map_authority?: string;
+  beneficiary_map_note?: string;
+  succession_lock_items?: string[];
+  governance_uplift_claimed?: boolean;
+  governance_uplift_note?: string;
   estate_tax_by_heir?: {
     spouse?: string;
     children?: string;
@@ -748,13 +814,111 @@ export interface HeirManagementData {
     mitigation_timeline?: string;
     mitigation_timeline_days?: number;
   };
+  heirs?: HeirAllocation[];
+  governance_framework?: {
+    family_council_frequency?: string;
+    decision_threshold?: string;
+    veto_power?: string;
+    succession_triggers?: string[];
+  };
+  heir_education_plan?: {
+    gen_2_actions: string[];
+    gen_3_actions: string[];
+  };
+  human_capital_provisions?: {
+    name: string;
+    description: string;
+    trigger: string;
+    structure_type?: string;
+  }[];
+  governance_insurance?: {
+    type?: string;
+    name: string;
+    description: string;
+    rationale: string;
+  }[];
+  structure_specific_provisions?: {
+    structure_name: string;
+    jurisdiction: string;
+    human_capital?: {
+      name: string;
+      description: string;
+      trigger: string;
+      structure_type?: string;
+    }[];
+    governance_insurance?: {
+      type?: string;
+      name: string;
+      description: string;
+      rationale: string;
+    }[];
+  }[];
+  continuity_provisions?: {
+    headline?: string;
+    pre_close_locks?: string[];
+    beneficiary_discipline?: string;
+    human_capital?: {
+      name: string;
+      description: string;
+      trigger: string;
+      structure_type?: string;
+    }[];
+    governance_insurance?: {
+      type?: string;
+      name: string;
+      description: string;
+      rationale: string;
+    }[];
+    structure_specific?: {
+      structure_name: string;
+      jurisdiction: string;
+      human_capital?: {
+        name: string;
+        description: string;
+        trigger: string;
+        structure_type?: string;
+      }[];
+      governance_insurance?: {
+        type?: string;
+        name: string;
+        description: string;
+        rationale: string;
+      }[];
+    }[];
+    next_action?: string;
+  };
   with_structure?: {
     recommended_structure?: string;
     preservation_percentage?: number;
+    wealth_preserved?: number;
+    net_to_g3_with_structure?: number;
+    retention_score?: number;
+    preservation_rating?: string;
+    preservation_context?: string;
   };
   g1_position?: {
     current_net_worth?: number;
     projected_estate_value?: number;
+    asset_value?: number;
+    estate_tax_rate?: number;
+    unplanned_loss?: number;
+    retention_score?: number;
+    route_control_score?: number;
+  };
+  g1_to_g2_transfer?: {
+    years_out?: number;
+    projected_value?: number;
+    estate_tax_hit?: number;
+    net_to_g2?: number;
+    retention_score?: number;
+  };
+  g2_to_g3_transfer?: {
+    years_out?: number;
+    projected_value?: number;
+    estate_tax_hit?: number;
+    forced_sale_haircut_pct?: number;
+    net_to_g3_without_structure?: number;
+    retention_score_without_structure?: number;
   };
   next_action?: string;
   /** Backend sometimes provides this at top level (same shape as hughes_framework.third_generation_problem) */
@@ -772,10 +936,32 @@ export interface HeirManagementData {
 // Hughes Family Wealth Framework - Third-generation protection
 export interface HughesFramework {
   third_generation_problem?: {
+    loss_without_structure_pct?: number;
+    loss_with_structure_pct?: number;
+    preservation_without_structure_pct?: number;
+    preservation_with_structure_pct?: number;
+    improvement_pts?: number;
+    display_loss_arrow?: string;
+    display_preservation_arrow?: string;
     loss_rate_without_structure?: number;
     headline?: string;
+    statistic?: string;
     causes?: string[];
+    risk_factors?: string[];
+    citation?: string;
   };
+  human_capital_provisions?: {
+    name: string;
+    description: string;
+    trigger: string;
+    structure_type?: string;
+  }[];
+  governance_insurance_provisions?: {
+    type?: string;
+    name: string;
+    description: string;
+    rationale: string;
+  }[];
   human_capital_protection?: {
     score?: 'WEAK' | 'MODERATE' | 'STRONG' | 'EXCELLENT';
     provisions?: string[];
@@ -903,7 +1089,7 @@ export interface HNWITrendsCitation {
 }
 
 export interface HNWITrendsDataQuality {
-  scientific_grounding?: 'kgv3_primary' | 'kgv3_fallback' | 'no_data' | 'error';
+  scientific_grounding?: 'kgv3_primary' | 'kgv3_fallback' | 'no_data' | 'error' | 'native_library_route_compiler';
   collections_queried?: number;
   data_sources?: string[];
   trend_count?: number;
@@ -1391,6 +1577,9 @@ export interface CitationEntry {
   title?: string;
   reference?: string;
   url?: string;
+  effective_date?: string;
+  data_year?: number;
+  sections_used?: string[];
 }
 
 export interface RegulatoryCitation {

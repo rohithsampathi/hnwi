@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation"
 import { InteractiveWorldMap, City } from "@/components/interactive-world-map"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { useToast } from "@/components/ui/use-toast"
-import { secureApi } from "@/lib/secure-api"
 import { getCommandCentreOpportunities } from "@/lib/api"
 import { usePageDataCache } from "@/contexts/page-data-cache-context"
 
@@ -24,7 +23,7 @@ export function MapPage() {
 
   // State
   const [cities, setCities] = useState<City[]>(cachedData?.cities || [])
-  const [isLoading, setIsLoading] = useState(!hasValidCache)
+  const [isLoading, setIsLoading] = useState(true)
   const [showCrownAssets, setShowCrownAssets] = useState(true)
   const [showPriveOpportunities, setShowPriveOpportunities] = useState(true)
   const [showHNWIPatterns, setShowHNWIPatterns] = useState(true)
@@ -32,57 +31,25 @@ export function MapPage() {
   // Fetch map data (Crown Vault + Privé + HNWI patterns)
   const fetchMapData = useCallback(async (forceRefresh = false) => {
     try {
-      // Check cache first
+      // Show cached data immediately if present, but always refresh the LIVE map in the background.
       if (!forceRefresh && hasValidCache && cachedData?.cities?.length > 0) {
         setCities(cachedData.cities)
-        setIsLoading(false)
-        return
       }
 
       setIsLoading(true)
 
-      // Fetch all data sources in parallel with proper authentication
-      const [crownVaultData, commandCentreData] = await Promise.allSettled([
-        // Crown Vault assets with detailed information
-        secureApi.get('/api/crown-vault/assets/detailed', true, {
-          enableCache: true,
-          cacheDuration: 600000 // 10 minutes
-        }),
-        getCommandCentreOpportunities({
-          includeCrownVault: false,
-          view: 'all',
-          timeframe: 'LIVE'
-        })
-      ])
+      const commandCentreData = await getCommandCentreOpportunities({
+        includeCrownVault: true,
+        view: 'all',
+        timeframe: 'LIVE',
+        bustCache: true
+      })
 
       const allCities: City[] = []
 
-      // Process Crown Vault assets
-      if (crownVaultData.status === 'fulfilled' && crownVaultData.value?.assets) {
-        const crownCities = crownVaultData.value.assets
-          .filter((asset: any) => asset.location?.latitude && asset.location?.longitude)
-          .map((asset: any) => ({
-            _id: asset.id,
-            name: asset.location?.city || asset.name,
-            country: asset.location?.country || 'Unknown',
-            latitude: asset.location.latitude,
-            longitude: asset.location.longitude,
-            type: 'crown',
-            title: asset.name,
-            value: asset.current_value?.toString() || asset.entry_price?.toString() || '0',
-            category: asset.category,
-            current_price: asset.current_value,
-            entry_price: asset.entry_price,
-            appreciation: asset.appreciation,
-            katherine_analysis: asset.katherine_analysis,
-            risk: asset.risk_level || 'medium'
-          }))
-        allCities.push(...crownCities)
-      }
-
       // Process unified Command Centre opportunities
-      if (commandCentreData.status === 'fulfilled' && Array.isArray(commandCentreData.value)) {
-        const opportunityCities = commandCentreData.value
+      if (Array.isArray(commandCentreData)) {
+        const opportunityCities = commandCentreData
           .filter((opp: any) => opp.latitude && opp.longitude)
           .map((opp: any) => ({
             _id: opp._id || opp.id || opp.opportunity_id,
@@ -91,7 +58,12 @@ export function MapPage() {
             country: opp.country || opp.product || 'Unknown',
             latitude: Number(opp.latitude),
             longitude: Number(opp.longitude),
-            type: opp.source === 'Privé Exchange' ? 'prive' : 'hnwi',
+            type:
+              opp.source === 'User Crown Vault'
+                ? 'crown'
+                : opp.source === 'Privé Exchange'
+                  ? 'prive'
+                  : 'hnwi',
             title: opp.title,
             tier: opp.tier,
             value: opp.value || opp.minimum_investment_display || opp.minimum_investment_usd?.toString() || '0',
@@ -113,12 +85,12 @@ export function MapPage() {
 
       setCities(allCities)
 
-      // Cache the combined data (10-minute TTL)
+      // Cache the combined data briefly as a fallback, but never trust it as the source of truth.
       setCachedData(cacheKey, {
         cities: allCities,
         timestamp: Date.now(),
-        ttl: 600000
-      }, 600000)
+        ttl: 30000
+      }, 30000)
 
     } catch (error) {
       toast({

@@ -130,8 +130,6 @@ const RATE_LIMITS = {
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const real = request.headers.get('x-real-ip');
-  const remoteAddr = request.ip;
-  
   if (forwarded) {
     return forwarded.split(',')[0].trim();
   }
@@ -140,7 +138,7 @@ function getClientIP(request: NextRequest): string {
     return real.trim();
   }
   
-  return remoteAddr || 'unknown';
+  return 'unknown';
 }
 
 // Clean up expired entries periodically

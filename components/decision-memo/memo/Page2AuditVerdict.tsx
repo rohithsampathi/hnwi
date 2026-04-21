@@ -19,6 +19,13 @@ interface DDChecklistItem {
   item: string;
   status: string;
   priority: string;
+  timeline?: string;
+  advisor?: string;
+  owner_label?: string;
+  responsible_label?: string;
+  owner?: string;
+  responsible?: string;
+  deadline_days?: number;
 }
 
 interface Page2Props {
@@ -41,6 +48,9 @@ interface Page2Props {
     total_exposure_formatted?: string;  // e.g., "$2.5M"
     critical_items?: number;
     high_priority?: number;    // SOTA: High priority items count
+    high_items?: number;
+    priority_risks_total?: number;
+    risk_factors_count?: number;
     verdict?: string;          // e.g., "APPROVED", "CONDITIONAL", "REVIEW REQUIRED"
     recommendation?: string;
     verdict_note?: string;     // SOTA: Additional context for verdict
@@ -426,6 +436,15 @@ export function Page2AuditVerdict({
     }).sort((a, b) => b.urgencyValue - a.urgencyValue);
   }, [mistakes]);
 
+  const highItemsCount =
+    riskAssessment?.high_items ??
+    riskAssessment?.high_priority ??
+    riskItems.filter((risk) => risk.urgency.toLowerCase().includes('high')).length;
+
+  const priorityRiskCount =
+    riskAssessment?.priority_risks_total ??
+    ((riskAssessment?.critical_items ?? 0) + highItemsCount);
+
   return (
     <div ref={sectionRef}>
       {/* Section Header */}
@@ -620,7 +639,9 @@ export function Page2AuditVerdict({
             {/* Risk Factors */}
             <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Risk Factors</p>
-              <p className="text-xl sm:text-2xl font-bold text-foreground">{mistakes.length}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">
+                {riskAssessment?.risk_factors_count ?? mistakes.length}
+              </p>
               <p className="text-xs text-muted-foreground/60 mt-1">Items flagged</p>
             </div>
             {/* Data Quality */}
@@ -650,9 +671,9 @@ export function Page2AuditVerdict({
           >
             {/* Total Exposure */}
             <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Total Exposure</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Validated Day-One Exposure</p>
               <p className="text-xl sm:text-2xl font-bold text-foreground">{riskAssessment?.total_exposure_formatted || '—'}</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Aggregate risk value</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Non-recoverable closing-cost leakage if the route hardens wrong</p>
             </div>
             {/* Critical Items */}
             <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
@@ -664,11 +685,11 @@ export function Page2AuditVerdict({
             </div>
             {/* High Priority */}
             <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">High Priority</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">High Items</p>
               <p className={`text-xl sm:text-2xl font-bold ${
-                (riskAssessment?.high_priority ?? 0) > 2 ? 'text-amber-500' : 'text-foreground'
-              }`}>{riskAssessment?.high_priority ?? '—'}</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Priority mitigation needed</p>
+                highItemsCount > 2 ? 'text-amber-500' : 'text-foreground'
+              }`}>{highItemsCount ?? '—'}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">High-severity route risks</p>
             </div>
             {/* Mitigation Timeline */}
             <div className="bg-background px-4 sm:px-8 py-6 sm:py-8">
@@ -699,8 +720,9 @@ export function Page2AuditVerdict({
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground/60 tracking-wide">
               <span>{riskAssessment?.critical_items ?? '—'} Critical</span>
-              <span>{riskAssessment?.high_priority ?? '—'} High</span>
-              <span className="font-medium text-foreground/60">{riskAssessment?.total_exposure_formatted || '—'} Total</span>
+              <span>{highItemsCount ?? '—'} High</span>
+              <span>{priorityRiskCount} Priority Total</span>
+              <span className="font-medium text-foreground/60">{riskAssessment?.total_exposure_formatted || '—'} Exposure</span>
             </div>
           </div>
 
@@ -835,15 +857,20 @@ export function Page2AuditVerdict({
                 const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
                 return (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
               })
-              .slice(0, 5)
               .map((item, i) => {
                 const isCritical = item.priority === 'critical';
-                const responsible = item.category.includes('TAX') ? 'Tax Advisor' :
-                                   item.category.includes('LEGAL') ? 'Legal Counsel' :
-                                   item.category.includes('COMPLIANCE') ? 'Compliance Officer' :
-                                   item.category.includes('BANKING') ? 'Private Banking RM' :
-                                   'Advisory Team';
-                const timeline = isCritical ? '14 days' : item.priority === 'high' ? '30 days' : '60 days';
+                const responsible =
+                  item.advisor ||
+                  item.owner_label ||
+                  item.responsible_label ||
+                  item.owner ||
+                  item.responsible ||
+                  'Assigned Lead';
+                const timeline =
+                  item.timeline ||
+                  (typeof item.deadline_days === 'number' ? `${item.deadline_days} days` : undefined) ||
+                  (typeof item.status === 'string' ? item.status.replace(/_/g, ' ') : undefined) ||
+                  'Required before close';
 
                 return (
                   <motion.div

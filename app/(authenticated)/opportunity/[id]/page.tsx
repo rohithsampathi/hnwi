@@ -2,17 +2,12 @@
 
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { OpportunityPage } from "@/components/pages/opportunity-page"
 
-interface OpportunityPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function OpportunityRoute({ params }: OpportunityPageProps) {
+export default function OpportunityRoute() {
   const router = useRouter()
+  const { id } = useParams<{ id: string }>()
 
   const handleNavigation = (route: string) => {
     if (route === "back") {
@@ -46,5 +41,5 @@ export default function OpportunityRoute({ params }: OpportunityPageProps) {
     }
   }
 
-  return <OpportunityPage opportunityId={params.id} onNavigate={handleNavigation} />
+  return <OpportunityPage opportunityId={id} onNavigate={handleNavigation} />
 }

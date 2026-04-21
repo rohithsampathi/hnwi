@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReferencesSection - Legal Authorities & Data Sources
+ * ReferencesSection - Intelligence Authorities Ledger
  *
  * MFO AUDIT REQUIREMENT (Feb 2026):
  * "Every regulatory/tax claim must be backed by a citation."
@@ -12,7 +12,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { Scale, Building, Globe, FileText, Database, Handshake, BookOpen, ExternalLink } from 'lucide-react';
+import { Building, Globe, FileText, Database, Handshake, ExternalLink, ShieldCheck } from 'lucide-react';
 import type { LegalReferences, CitationEntry } from '@/lib/pdf/pdf-types';
 import { EASE_OUT_EXPO } from '@/lib/animations/motion-variants';
 
@@ -24,12 +24,13 @@ interface ReferencesSectionProps {
 
 interface CitationCategoryProps {
   title: string;
+  description?: string;
   icon: React.ReactNode;
   citations?: CitationEntry[];
   delay: number;
 }
 
-function CitationCategory({ title, icon, citations, delay }: CitationCategoryProps) {
+function CitationCategory({ title, description, icon, citations, delay }: CitationCategoryProps) {
   if (!citations || citations.length === 0) return null;
 
   return (
@@ -37,46 +38,73 @@ function CitationCategory({ title, icon, citations, delay }: CitationCategoryPro
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay, ease: EASE_OUT_EXPO }}
-      className="mb-8"
+      className="mb-10"
     >
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-3">
         {icon}
-        <h4 className="text-xs uppercase tracking-[0.25em] text-muted-foreground/60 font-medium">
+        <h4 className="text-sm uppercase tracking-[0.18em] text-foreground/70 font-semibold">
           {title}
         </h4>
         <span className="text-xs text-muted-foreground/60">({citations.length})</span>
         <div className="flex-1 h-px bg-gradient-to-r from-border/30 via-border/10 to-transparent" />
       </div>
 
-      <div className="space-y-2 pl-7">
+      {description && (
+        <p className="text-sm text-muted-foreground/70 leading-relaxed pl-7 mb-4">
+          {description}
+        </p>
+      )}
+
+      <div className="space-y-3 pl-7">
         {citations.map((citation, index) => (
           <div
             key={citation.id || index}
-            className="text-xs py-1.5"
+            className="rounded-2xl border border-border/25 bg-card/50 px-4 py-4"
           >
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <span className="font-medium text-gold/70 shrink-0">
+            <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
+              <span className="font-medium text-gold/90 shrink-0 text-xs uppercase tracking-[0.12em]">
                 {citation.short_cite}
               </span>
-              <span className="text-foreground/60 font-normal flex-1 min-w-[120px] break-words">
+              <span className="text-foreground font-medium flex-1 min-w-[120px] break-words text-sm leading-relaxed">
                 {citation.title}
               </span>
             </div>
             {citation.reference && (
-              <div className="text-muted-foreground/60 text-xs font-medium mt-0.5">
+              <div className="text-muted-foreground/80 text-sm mt-2 leading-relaxed">
                 {citation.reference}
               </div>
             )}
-            {citation.url && (
-              <a
-                href={citation.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gold/70 hover:text-gold/80 inline-flex items-center gap-0.5 transition-colors"
-              >
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {citation.effective_date && (
+                <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/70 border border-border/20 rounded-full px-2.5 py-1">
+                  {citation.effective_date}
+                </span>
+              )}
+              {typeof citation.data_year === 'number' && (
+                <span className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground/70 border border-border/20 rounded-full px-2.5 py-1">
+                  {citation.data_year}
+                </span>
+              )}
+              {citation.sections_used?.map((section) => (
+                <span
+                  key={`${citation.id}-${section}`}
+                  className="text-[11px] uppercase tracking-[0.12em] text-primary/80 border border-primary/20 rounded-full px-2.5 py-1"
+                >
+                  {section}
+                </span>
+              ))}
+              {citation.url && (
+                <a
+                  href={citation.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gold/80 hover:text-gold/90 inline-flex items-center gap-1 transition-colors text-xs uppercase tracking-[0.15em]"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Source
+                </a>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -101,14 +129,14 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
 
       {/* Section Header */}
       <div className="mb-6">
-        <p className="text-xs uppercase tracking-[0.25em] text-gold/70 font-medium mb-2">
-          Legal Framework
+        <p className="text-xs uppercase tracking-[0.22em] text-gold/70 font-medium mb-2">
+          HC Intelligence Ledger
         </p>
         <h3 className="text-2xl md:text-3xl font-semibold text-foreground tracking-tight">
-          Legal Authorities & Data Sources
+          Route References
         </h3>
         <p className="text-sm text-muted-foreground/60 mt-1">
-          {references.total_count} citations referenced in this analysis
+          {references.total_count} authorities, briefs, patterns, and intelligence packets used in this analysis
         </p>
       </div>
 
@@ -120,78 +148,46 @@ export function ReferencesSection({ references, developmentsCount = 0, precedent
         transition={{ duration: 0.7, delay: 0.1, ease: EASE_OUT_EXPO }}
       >
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-gold/[0.03] to-transparent pointer-events-none" />
-        <p className="relative text-sm text-foreground/50 leading-relaxed font-normal">
-          <strong className="text-foreground/70 font-medium">Intelligence Basis:</strong> This analysis is grounded in HNWI Chronicles&apos; 3-year proprietary knowledge base
+        <p className="relative text-sm text-foreground/60 leading-relaxed font-normal">
+          <strong className="text-foreground/80 font-medium">Decision Basis:</strong> This memo is backed by HC Tax &amp; Legal Intelligence, HC Compliance Intelligence, HC Market Intelligence, HC Wealth Intelligence, HC Pattern Intelligence Division, and HC Crisis Intelligence
           {developmentsCount > 0 && <> spanning <strong className="text-foreground/70 font-medium">{developmentsCount.toLocaleString()}</strong> HNWI developments</>}
-          {precedentCount > 0 && <> and <strong className="text-foreground/70 font-medium">{precedentCount.toLocaleString()}</strong> cross-jurisdictional corridor signals</>}.
-          {' '}All statutes, treaty provisions, and tax rates cited below were verified against primary sources as of the generation date.
-          Engage qualified counsel in each cited jurisdiction before executing any transaction.
+          {precedentCount > 0 && <> and <strong className="text-foreground/70 font-medium">{precedentCount.toLocaleString()}</strong> direct route precedents</>}.
+          {' '}Legal and tax claims are anchored to primary guidance. Route judgment is anchored to the exact market briefs, pattern objects, and intelligence packets used in the memo.
         </p>
       </motion.div>
 
-      {/* Citation Categories - Two Column Layout on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
-        {/* Left Column - Tax & Legal */}
-        <div>
-          <CitationCategory
-            title="US Tax Code"
-            icon={<Building className="w-3.5 h-3.5 text-gold/70" />}
-            citations={references.tax_statutes}
-            delay={0.1}
-          />
+      <div>
+        <CitationCategory
+          title="HC Tax & Legal Intelligence"
+          description="Primary tax, property, and succession authorities used in the memo."
+          icon={<Building className="w-3.5 h-3.5 text-gold/70" />}
+          citations={[...(references.tax_statutes || []), ...(references.state_tax_laws || []), ...(references.foreign_tax_laws || []), ...(references.treaties || [])]}
+          delay={0.1}
+        />
 
-          <CitationCategory
-            title="State Tax Laws"
-            icon={<Building className="w-3.5 h-3.5 text-amber-500/50" />}
-            citations={references.state_tax_laws}
-            delay={0.15}
-          />
+        <CitationCategory
+          title="HC Compliance Intelligence"
+          description="Reporting, onboarding, and regulatory triggers that become active if the route proceeds."
+          icon={<FileText className="w-3.5 h-3.5 text-gold/70" />}
+          citations={[...(references.regulations || []), ...(references.compliance_forms || [])]}
+          delay={0.2}
+        />
 
-          <CitationCategory
-            title="Foreign Tax Authorities"
-            icon={<Globe className="w-3.5 h-3.5 text-gold/70" />}
-            citations={references.foreign_tax_laws}
-            delay={0.2}
-          />
+        <CitationCategory
+          title="HC Market Intelligence"
+          description="Market authorities and public-safe brief references used in the Dubai witness read."
+          icon={<Database className="w-3.5 h-3.5 text-muted-foreground/60" />}
+          citations={references.market_data_sources}
+          delay={0.3}
+        />
 
-          <CitationCategory
-            title="Treaties & FTAs"
-            icon={<Handshake className="w-3.5 h-3.5 text-emerald-500/50" />}
-            citations={references.treaties}
-            delay={0.25}
-          />
-        </div>
-
-        {/* Right Column - Regulations & Data */}
-        <div>
-          <CitationCategory
-            title="Regulations"
-            icon={<FileText className="w-3.5 h-3.5 text-gold/70" />}
-            citations={references.regulations}
-            delay={0.3}
-          />
-
-          <CitationCategory
-            title="Compliance Forms"
-            icon={<FileText className="w-3.5 h-3.5 text-destructive/50" />}
-            citations={references.compliance_forms}
-            delay={0.35}
-          />
-
-          <CitationCategory
-            title="Market Data Sources"
-            icon={<Database className="w-3.5 h-3.5 text-muted-foreground/60" />}
-            citations={references.market_data_sources}
-            delay={0.4}
-          />
-
-          <CitationCategory
-            title="IRS Guidance"
-            icon={<BookOpen className="w-3.5 h-3.5 text-gold/70" />}
-            citations={references.guidance}
-            delay={0.45}
-          />
-        </div>
+        <CitationCategory
+          title="HC Pattern Intelligence Division"
+          description="Pattern IDs and intelligence packets that directly shaped underwriting, sequence, wealth, and crisis judgment."
+          icon={<ShieldCheck className="w-3.5 h-3.5 text-gold/70" />}
+          citations={references.guidance}
+          delay={0.4}
+        />
       </div>
 
       {/* Footer */}

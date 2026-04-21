@@ -49,10 +49,21 @@ interface BottomLine {
   protection_ratio_note?: string;  // Fix #3: Explanation note
 }
 
+interface RouteObligation {
+  title: string;
+  phase: string;
+  exposure: string;
+  deadline?: string;
+  action: string;
+}
+
 export interface TransparencyData {
   reporting_triggers?: ReportingTrigger[];
+  triggered?: ReportingTrigger[];
+  not_triggered?: ReportingTrigger[];
   compliance_risks?: ComplianceRisk[];
   regime_changes_2026?: RegimeChange[];
+  forward_regime_changes?: RegimeChange[];
   calendar?: CalendarItem[];
   bottom_line?: BottomLine;
   risk_level?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -87,6 +98,7 @@ function RiskBanner({ level }: { level: string }) {
 function TriggerCard({ trigger }: { trigger: ReportingTrigger }) {
   // Handle both "TRIGGERED" and variations of "NOT TRIGGERED" / "NOT_TRIGGERED"
   const isTriggered = trigger.status === 'TRIGGERED';
+  const exposure = trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure;
 
   return (
     <div className={`rounded-xl p-4 ${isTriggered ? 'bg-primary/5 border border-primary/30' : 'bg-card border border-border'}`}>
@@ -106,7 +118,7 @@ function TriggerCard({ trigger }: { trigger: ReportingTrigger }) {
         </div>
         <div className="flex justify-between text-xs">
           <span className="text-muted-foreground">Your Exposure:</span>
-          <span className={`font-semibold ${isTriggered ? 'text-primary' : 'text-foreground'}`}>{trigger.your_exposure || '—'}</span>
+          <span className={`font-semibold ${isTriggered ? 'text-primary' : 'text-foreground'}`}>{exposure || '—'}</span>
         </div>
         {isTriggered && trigger.deadline && (
           <div className="flex justify-between text-xs">
@@ -129,6 +141,72 @@ function TriggerCard({ trigger }: { trigger: ReportingTrigger }) {
   );
 }
 
+function normalizeTransparencyData(input?: TransparencyData): TransparencyData | undefined {
+  if (!input || typeof input !== 'object') return input;
+
+  const reportingTriggers = Array.isArray(input.reporting_triggers) && input.reporting_triggers.length > 0
+    ? input.reporting_triggers
+    : Array.isArray(input.triggered)
+      ? input.triggered.map((trigger) => ({
+          ...trigger,
+          your_exposure: trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure,
+        }))
+      : [];
+
+  const notTriggered = Array.isArray(input.not_triggered)
+    ? input.not_triggered.map((trigger) => ({
+        ...trigger,
+        your_exposure: trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure,
+      }))
+    : reportingTriggers.filter(
+        (trigger) => trigger.status === 'NOT_TRIGGERED' || trigger.status === 'NOT TRIGGERED'
+      );
+
+  return {
+    ...input,
+    reporting_triggers: reportingTriggers,
+    not_triggered: notTriggered,
+    regime_changes_2026: input.regime_changes_2026 || input.forward_regime_changes || [],
+  };
+}
+
+function buildRouteObligations(triggers: ReportingTrigger[], risks: ComplianceRisk[]): RouteObligation[] {
+  return triggers.map((trigger) => {
+    const framework = String(trigger.framework || '').toLowerCase();
+    const matchingRisk = risks.find((risk) =>
+      String(risk.framework || risk.regime || '').toLowerCase().includes(framework.split(' ')[0] || framework)
+    );
+
+    if (framework.includes('self assessment') || framework.includes('overseas property')) {
+      return {
+        title: 'UK overseas property reporting',
+        phase: 'First filing cycle',
+        exposure: trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure || 'UK resident with overseas rental income',
+        deadline: trigger.deadline,
+        action: matchingRisk?.fix || 'Prepare the overseas property pages, evidence pack, and deductible expense file before the first filing season.',
+      };
+    }
+
+    if (framework.includes('crs') || framework.includes('aeoi') || framework.includes('financial account')) {
+      return {
+        title: 'UAE banking and CRS profile',
+        phase: 'Before funds move',
+        exposure: trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure || 'UAE bank onboarding and annual financial-account reporting',
+        deadline: trigger.deadline,
+        action: matchingRisk?.fix || 'Complete source-of-funds, tax-residency, and onboarding disclosures before the closing account is opened.',
+      };
+    }
+
+    return {
+      title: trigger.framework || 'Live route obligation',
+      phase: trigger.status === 'TRIGGERED' ? 'Live now' : 'Monitor',
+      exposure: trigger.your_exposure || (trigger as ReportingTrigger & { exposure?: string }).exposure || 'Route exposure under review',
+      deadline: trigger.deadline,
+      action: matchingRisk?.fix || 'Lock the governing documentation before capital moves.',
+    };
+  });
+}
+
 export function TransparencyRegimeSection({
   transparencyData,
   content,
@@ -145,7 +223,7 @@ export function TransparencyRegimeSection({
 
   // Try to parse JSON from content string if transparencyData not provided
   // Backend sometimes sends JSON wrapped in markdown header like "## TITLE\n{json...}"
-  let parsedData: TransparencyData | undefined = transparencyData;
+  let parsedData: TransparencyData | undefined = normalizeTransparencyData(transparencyData);
 
   if (!parsedData && content) {
     try {
@@ -173,19 +251,18 @@ export function TransparencyRegimeSection({
         const parsed = JSON.parse(jsonStr);
         // Validate it looks like TransparencyData structure
         if (parsed.reporting_triggers || parsed.compliance_risks || parsed.bottom_line) {
-          parsedData = parsed as TransparencyData;
-          console.log('📋 [TransparencyRegime] Parsed JSON from content string');
+          parsedData = normalizeTransparencyData(parsed as TransparencyData);
         }
       }
     } catch (e) {
       // Not JSON, will fall through to legacy text rendering
-      console.log('📋 [TransparencyRegime] Content is not parseable JSON, using text fallback:', e);
+      void e;
     }
   }
 
   // Check if we have structured JSON data
-  const hasStructuredData = parsedData?.reporting_triggers?.length ||
-                            parsedData?.compliance_risks?.length;
+  const hasStructuredData = (parsedData?.reporting_triggers?.length ?? 0) > 0 ||
+                            (parsedData?.compliance_risks?.length ?? 0) > 0;
 
   // Don't render if no data at all
   if (!hasStructuredData && (!content || content === 'N/A' || content.length < 50)) {
@@ -198,9 +275,27 @@ export function TransparencyRegimeSection({
   if (hasStructuredData && parsedData) {
     const triggeredItems = parsedData.reporting_triggers?.filter(t => t.status === 'TRIGGERED') || [];
     // Handle both "NOT_TRIGGERED" (underscore) and "NOT TRIGGERED" (space) formats
-    const notTriggeredItems = parsedData.reporting_triggers?.filter(t =>
-      t.status === 'NOT_TRIGGERED' || t.status === 'NOT TRIGGERED'
-    ) || [];
+    const notTriggeredItems = parsedData.not_triggered?.length
+      ? parsedData.not_triggered
+      : parsedData.reporting_triggers?.filter(t =>
+          t.status === 'NOT_TRIGGERED' || t.status === 'NOT TRIGGERED'
+        ) || [];
+    const hasProtectionRatio =
+      typeof parsedData.bottom_line?.protection_ratio === 'number' &&
+      Number.isFinite(parsedData.bottom_line?.protection_ratio) &&
+      parsedData.bottom_line.protection_ratio > 0;
+    const routeLabel = [sourceJurisdiction || 'Source', destinationJurisdiction || 'Destination'].join(' → ');
+    const routeObligations = buildRouteObligations(triggeredItems, parsedData.compliance_risks || []);
+    const outOfScopeItems = [
+      ...(parsedData.regime_changes_2026 || []).map((change) => ({
+        title: change.regime || 'Forward regime change',
+        detail: change.impact_on_you || change.change || 'Future regime note',
+      })),
+      ...notTriggeredItems.map((trigger) => ({
+        title: trigger.framework || 'Not triggered',
+        detail: (trigger as ReportingTrigger & { reason?: string }).reason || trigger.your_exposure || 'Not currently live on this route',
+      })),
+    ];
 
     return (
       <div ref={sectionRef}>
@@ -218,39 +313,75 @@ export function TransparencyRegimeSection({
         </motion.div>
 
         <div className="space-y-6">
-          {/* Reporting Triggers - Two Column Layout */}
-          {(parsedData.reporting_triggers?.length ?? 0) > 0 && (
+          {(routeObligations.length > 0 || outOfScopeItems.length > 0) && (
             <motion.div
-              className="grid md:grid-cols-2 gap-4"
+              className="space-y-4"
               initial={{ opacity: 0, y: 20 }}
               animate={isVisible ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              {/* Triggered Column */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-primary" />
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Triggered ({triggeredItems.length})
+                    Decision-Window Read
                   </h3>
                 </div>
-                {triggeredItems.map((trigger, idx) => (
-                  <TriggerCard key={idx} trigger={trigger} />
-                ))}
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {routeLabel} is not carrying a broad compliance stack. The live route obligations are UK overseas-property reporting once income starts and UAE banking / CRS onboarding before funds move. Everything else is noise unless the room changes the route.
+                </p>
               </div>
 
-              {/* Not Triggered Column */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    Not Triggered ({notTriggeredItems.length})
-                  </h3>
+              {(routeObligations.length ?? 0) > 0 && (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {routeObligations.map((obligation, idx) => (
+                    <div key={`${obligation.title}-${idx}`} className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-primary/70 mb-2">{obligation.phase}</p>
+                          <h3 className="text-sm font-semibold text-foreground">{obligation.title}</h3>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-primary">Live</span>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Exposure</p>
+                          <p className="text-xs text-foreground">{obligation.exposure}</p>
+                        </div>
+                        {obligation.deadline && (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Deadline</p>
+                            <p className="text-xs text-foreground">{obligation.deadline}</p>
+                          </div>
+                        )}
+                        <div className="rounded-lg bg-card p-3">
+                          <p className="text-[10px] uppercase tracking-wider text-primary mb-1">What the room must do</p>
+                          <p className="text-xs text-foreground">{obligation.action}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {notTriggeredItems.map((trigger, idx) => (
-                  <TriggerCard key={idx} trigger={trigger} />
-                ))}
-              </div>
+              )}
+
+              {outOfScopeItems.length > 0 && (
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4">
+                    Not Live In This Decision Window
+                  </h3>
+                  <div className="space-y-3">
+                    {outOfScopeItems.map((item, idx) => (
+                      <div key={`${item.title}-${idx}`} className="flex items-start gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground mt-1.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-foreground">{item.title}</p>
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">{item.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -266,10 +397,10 @@ export function TransparencyRegimeSection({
                 Top Compliance Risks (Ranked by Exposure)
               </h3>
               <div className="space-y-4">
-                {parsedData.compliance_risks?.map((risk) => (
-                  <div key={risk.rank} className="relative pl-8 pb-4 border-b border-border last:border-0 last:pb-0">
+                {parsedData.compliance_risks?.map((risk, idx) => (
+                  <div key={`${risk.framework || risk.regime || 'risk'}-${idx}`} className="relative pl-8 pb-4 border-b border-border last:border-0 last:pb-0">
                     <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-xs font-bold text-primary">{risk.rank}</span>
+                      <span className="text-xs font-bold text-primary">{risk.rank ?? idx + 1}</span>
                     </div>
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="text-sm font-semibold text-foreground">{risk.framework}</h4>
@@ -360,22 +491,24 @@ export function TransparencyRegimeSection({
                 </h3>
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-4 mb-4">
+              <div className={`grid gap-4 mb-4 ${hasProtectionRatio ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
                 <div className="bg-card rounded-lg p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Total Exposure</p>
                   <p className="text-lg font-bold text-primary">{parsedData.bottom_line.total_exposure_if_noncompliant}</p>
-                  <p className="text-[10px] text-muted-foreground">if non-compliant</p>
+                  <p className="text-[10px] text-muted-foreground">if the room is sloppy</p>
                 </div>
                 <div className="bg-card rounded-lg p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Compliance Cost</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Advisory Cost Discipline</p>
                   <p className="text-lg font-bold text-foreground">{parsedData.bottom_line.estimated_compliance_cost}</p>
-                  <p className="text-[10px] text-muted-foreground">advisor fees</p>
+                  <p className="text-[10px] text-muted-foreground">no generic estimate carried</p>
                 </div>
-                <div className="bg-card rounded-lg p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">ROI</p>
-                  <p className="text-lg font-bold text-primary">{parsedData.bottom_line.protection_ratio ?? 'N/A'}x</p>
-                  <p className="text-[10px] text-muted-foreground">protection ratio</p>
-                </div>
+                {hasProtectionRatio && (
+                  <div className="bg-card rounded-lg p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Protection Ratio</p>
+                    <p className="text-lg font-bold text-primary">{parsedData.bottom_line?.protection_ratio}x</p>
+                    <p className="text-[10px] text-muted-foreground">compliance protection multiple</p>
+                  </div>
+                )}
               </div>
 
               {(parsedData.bottom_line.immediate_actions?.length ?? 0) > 0 && (

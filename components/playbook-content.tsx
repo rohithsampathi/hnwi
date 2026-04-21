@@ -26,6 +26,7 @@ import MarketData from "./market-data"
 import { Heading2, Paragraph } from "@/components/ui/typography"
 import { HNWIThinkingSection } from "./hnwi-thinking-section"
 import { CompetitiveIntelligence } from "./competitive-intelligence"
+import { sanitizeRichHtml } from "@/lib/security/sanitization"
 
 interface PlaybookElement {
   type: string
@@ -39,6 +40,8 @@ interface PlaybookSection {
   content: string
   elements: PlaybookElement[]
 }
+
+const sanitizePlaybookHtml = (value: string) => sanitizeRichHtml(value, { allowLinks: true })
 
 interface PlaybookContentProps {
   section: PlaybookSection
@@ -90,12 +93,12 @@ const ExpandableSection: React.FC<{ element: PlaybookElement; theme: string; lev
         {level === 1 ? (
           <h2
             className="text-xl font-bold font-heading text-left line-clamp-2"
-            dangerouslySetInnerHTML={{ __html: element.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizePlaybookHtml(element.content) }}
           />
         ) : (
           <h3
             className={`${headingClass} font-bold font-heading text-left line-clamp-2`}
-            dangerouslySetInnerHTML={{ __html: element.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizePlaybookHtml(element.content) }}
           />
         )}
         <div className="clickable-arrow">
@@ -143,9 +146,9 @@ const renderBulletList = (elements: PlaybookElement[], isSubBullet = false) => {
             ) : (
               <Paragraph
                 dangerouslySetInnerHTML={{
-                  __html: item.content
+                  __html: sanitizePlaybookHtml(item.content
                     .replace(/^Example:/g, "<strong>Example:</strong>")
-                    .replace(/^- /g, "<strong>- </strong>"),
+                    .replace(/^- /g, "<strong>- </strong>")),
                 }}
               />
             )}
@@ -186,10 +189,10 @@ const renderElement = (element: PlaybookElement, theme: string, level = 0, indus
         <p
           className="mb-4"
           dangerouslySetInnerHTML={{
-            __html: element.content
+            __html: sanitizePlaybookHtml(element.content
               .replace(/^Goal:\s*/, "<strong>Goal:</strong> ")
               .replace(/^Example:/g, "<strong>Example:</strong>")
-              .replace(/^- /g, "<strong>- </strong>"),
+              .replace(/^- /g, "<strong>- </strong>")),
           }}
         />
       )

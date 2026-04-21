@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { X, Maximize2, Network } from 'lucide-react';
 
@@ -44,8 +44,8 @@ export default function CascadeGraphViz({
   onExpand,
   interactive = true
 }: CascadeGraphVizProps) {
-  const nodes = data?.nodes || [];
-  const edges = data?.edges || [];
+  const nodes = useMemo(() => data?.nodes ?? [], [data?.nodes]);
+  const edges = useMemo(() => data?.edges ?? [], [data?.edges]);
 
   const triggers = useMemo(() => nodes.filter(n => n.type === 'trigger'), [nodes]);
   const effects = useMemo(() => nodes.filter(n => n.type === 'effect'), [nodes]);
@@ -56,17 +56,17 @@ export default function CascadeGraphViz({
   const LEFT_X = 100;
   const RIGHT_X = 340;
 
-  const getNodeY = (index: number, total: number) => {
+  const getNodeY = useCallback((index: number, total: number) => {
     const spacing = (SVG_H - 40) / Math.max(total, 1);
     return 20 + spacing * index + spacing / 2;
-  };
+  }, [SVG_H]);
 
   const nodePositions = useMemo(() => {
     const positions: Record<string, { x: number; y: number }> = {};
     triggers.forEach((n, i) => { positions[n.id] = { x: LEFT_X, y: getNodeY(i, triggers.length) }; });
     effects.forEach((n, i) => { positions[n.id] = { x: RIGHT_X, y: getNodeY(i, effects.length) }; });
     return positions;
-  }, [triggers, effects, SVG_H]);
+  }, [triggers, effects, getNodeY]);
 
   return (
     <div className="relative bg-surface/95 backdrop-blur-sm border border-border rounded-lg overflow-hidden">

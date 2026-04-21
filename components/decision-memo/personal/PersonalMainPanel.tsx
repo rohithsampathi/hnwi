@@ -17,6 +17,8 @@ interface PersonalMainPanelProps {
   activeSection: string;
   onSectionChange: (sectionId: string) => void;
   riskLevel: RiskLevel;
+  onCitationClick?: (citationId: string) => void;
+  citationMap?: Map<string, number> | Record<string, any>;
 }
 
 export default function PersonalMainPanel({
@@ -25,6 +27,9 @@ export default function PersonalMainPanel({
   intakeId,
   activeSection,
   riskLevel
+  ,
+  onCitationClick,
+  citationMap
 }: PersonalMainPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,8 +41,19 @@ export default function PersonalMainPanel({
 
   // Memoize component props to avoid recalculation on every render
   const componentProps = useMemo(
-    () => sectionDef ? getComponentProps(activeSection, memoData, backendData, intakeId, computedProps) : {},
-    [activeSection, memoData, backendData, intakeId, computedProps, sectionDef]
+    () =>
+      sectionDef
+        ? getComponentProps(
+            activeSection,
+            memoData,
+            backendData,
+            intakeId,
+            computedProps,
+            onCitationClick,
+            citationMap
+          )
+        : {},
+    [activeSection, memoData, backendData, intakeId, computedProps, sectionDef, onCitationClick, citationMap]
   );
 
   // Simulate loading on section change

@@ -9,10 +9,10 @@ import { safeError } from '@/lib/security/api-response';
 
 async function handlePost(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
     const body = await request.json();
 
     // Get cookies from server-side for authentication

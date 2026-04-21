@@ -3,7 +3,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,7 @@ export function EliteCitationPanel({
   preloadedSources
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
+  const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
   const [developments, setDevelopments] = useState<Map<string, Development>>(new Map())
   const [allCitations, setAllCitations] = useState<Citation[]>(citations)
   const [localCitationMap, setLocalCitationMap] = useState<Map<string, number>>(citationMap || new Map())
@@ -63,9 +64,11 @@ export function EliteCitationPanel({
   }, [citations, citationMap])
 
   // Handle citation click - fetch development lazily when clicked
-  const handleCitationClick = async (citationId: string) => {
+  const handleCitationClick = useCallback(async (citationId: string) => {
+    const normalizedCitationId = citationId.trim()
+
     // Check if citation already exists
-    const existingCitation = allCitations.find(c => c.id === citationId)
+    const existingCitation = allCitations.find(c => c.id === normalizedCitationId)
 
     if (!existingCitation) {
       // Get next citation number
@@ -73,32 +76,39 @@ export function EliteCitationPanel({
 
       // Add to local citations list
       const newCitation: Citation = {
-        id: citationId,
+        id: normalizedCitationId,
         number: nextNumber,
-        originalText: `[Dev ID: ${citationId}]`
+        originalText: `[Dev ID: ${normalizedCitationId}]`
       }
 
       setAllCitations(prev => [...prev, newCitation])
-      setLocalCitationMap(prev => new Map(prev).set(citationId, nextNumber))
+      setLocalCitationMap(prev => new Map(prev).set(normalizedCitationId, nextNumber))
     }
 
     // LAZY LOAD: Fetch development only when clicked (if not already fetched or marked as not found)
-    if (!developments.has(citationId)) {
+    if (!developments.has(normalizedCitationId)) {
       // Check preloaded sources first (e.g. KG intelligence converted to Development format)
-      if (preloadedSources?.has(citationId)) {
-        setDevelopments(prev => new Map(prev).set(citationId, preloadedSources.get(citationId)!))
-        onCitationSelect(citationId)
+      if (preloadedSources?.has(normalizedCitationId)) {
+        setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSources.get(normalizedCitationId)!))
+        onCitationSelect(normalizedCitationId)
         return
       }
 
       setLoading(true)
+      setLoadingCitationId(normalizedCitationId)
 
       try {
-        const response = await fetch(`/api/developments/public/${citationId}`)
+        const controller = new AbortController()
+        const timeoutId = window.setTimeout(() => controller.abort(), 12000)
+        const response = await fetch(`/api/developments/public/${encodeURIComponent(normalizedCitationId)}`, {
+          signal: controller.signal,
+        })
+        window.clearTimeout(timeoutId)
 
         if (response.ok) {
-          const dev = await response.json()
-          const developmentId = dev._id || dev.id || citationId
+          const payload = await response.json()
+          const dev = payload?.development || payload?.data || payload
+          const developmentId = dev?._id || dev?.id || normalizedCitationId
           const summary = dev.summary || dev.analysis || ""
 
           const newDev: Development = {
@@ -113,7 +123,7 @@ export function EliteCitationPanel({
             numerical_data: dev.numerical_data || []
           }
 
-          setDevelopments(prev => new Map(prev).set(citationId, newDev))
+          setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
 
           // Extract DEV IDs from this development but don't fetch them
           const devIdsInSummary = extractDevIds(summary)
@@ -141,20 +151,23 @@ export function EliteCitationPanel({
         } else if (response.status === 404) {
           // 404 is expected - not all Dev IDs have corresponding records
           // Mark as "not found" in developments map to avoid re-fetching
-          setDevelopments(prev => new Map(prev).set(citationId, null as any))
+          setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+        } else {
+          setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         }
       } catch (err) {
         // Network errors or other unexpected errors
         // Mark as "not found" to avoid re-fetching
-        setDevelopments(prev => new Map(prev).set(citationId, null as any))
+        setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
       } finally {
         setLoading(false)
+        setLoadingCitationId(null)
       }
     }
 
     // Select the citation
-    onCitationSelect(citationId)
-  }
+    onCitationSelect(normalizedCitationId)
+  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {
@@ -165,7 +178,7 @@ export function EliteCitationPanel({
       handleCitationClick(selectedCitationId)
     }
     // Otherwise, user must click a citation to load it (lazy loading)
-  }, [selectedCitationId, citations.length]) // Run when selectedCitationId changes or citations are loaded
+  }, [selectedCitationId, citations.length, developments, handleCitationClick]) // Run when selectedCitationId changes or citations are loaded
 
   // Auto-scroll to selected citation tab when panel opens or citation changes
   useEffect(() => {
@@ -250,7 +263,7 @@ export function EliteCitationPanel({
                   key={citation.id}
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => onCitationSelect(citation.id)}
+                  onClick={() => handleCitationClick(citation.id)}
                   data-citation-id={citation.id}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
@@ -269,7 +282,7 @@ export function EliteCitationPanel({
         {/* Desktop Content */}
         <ScrollArea className="flex-1 px-4">
           <div className="py-4">
-            {loading ? (
+            {loading && loadingCitationId === selectedCitationId ? (
               <div className="flex items-center justify-center py-8">
                 <CrownLoader size="sm" text="Loading source..." />
               </div>
@@ -295,11 +308,11 @@ export function EliteCitationPanel({
                       }
 
                       return (
-                        <CitationDevelopmentCard
+                          <CitationDevelopmentCard
                           development={dev}
                           citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
-                          onCitationClick={onCitationSelect}
-                          citationMap={citationMap}
+                          onCitationClick={handleCitationClick}
+                          citationMap={localCitationMap}
                         />
                       )
                     })()}
@@ -349,7 +362,7 @@ export function EliteCitationPanel({
                   key={citation.id}
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => onCitationSelect(citation.id)}
+                  onClick={() => handleCitationClick(citation.id)}
                   data-citation-id={citation.id}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
@@ -368,7 +381,7 @@ export function EliteCitationPanel({
         {/* Mobile Content */}
         <ScrollArea className="flex-1">
           <div className="p-4">
-            {loading ? (
+            {loading && loadingCitationId === selectedCitationId ? (
               <div className="flex items-center justify-center py-8">
                 <CrownLoader size="sm" text="Loading source..." />
               </div>

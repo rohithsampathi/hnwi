@@ -5,7 +5,7 @@
 import { useState } from "react"
 import { ComposableMap, Geographies, Geography } from "react-simple-maps"
 
-const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
+const geoUrl = "/assets/maps/world-countries-110m.json"
 type SimpleMapGeography = {
   rsmKey: string
   properties: {

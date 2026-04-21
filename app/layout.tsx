@@ -1,7 +1,6 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next"
 import type React from "react"
-import { headers } from "next/headers"
 import Script from "next/script"
 import localFont from "next/font/local"
 import './globals.css'
@@ -132,15 +131,21 @@ export const viewport: Viewport = {
   viewportFit: "cover", // Enable safe area support for iOS notches
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const nonce =
-    process.env.NODE_ENV === "production"
-      ? headers().get("X-CSP-Nonce") || undefined
-      : undefined
+  let nonce: string | undefined
+
+  if (process.env.NODE_ENV === "production") {
+    try {
+      const { headers } = require("next/headers") as typeof import("next/headers")
+      nonce = (await headers()).get("X-CSP-Nonce") || undefined
+    } catch {
+      nonce = undefined
+    }
+  }
   
   return (
     <html lang="en" className={`dark ${inter.variable}`}>

@@ -8,16 +8,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     sessionId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const { sessionId } = params;
+  const { sessionId } = await params;
 
 
   // Create a ReadableStream for SSE

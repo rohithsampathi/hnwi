@@ -7,10 +7,10 @@ import { API_BASE_URL } from '@/config/api';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Get cookies from server-side for authentication
     const cookieStore = await cookies();

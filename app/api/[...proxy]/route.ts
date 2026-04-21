@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { API_BASE_URL } from '@/config/api'
+import { appendSetCookieHeaders, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
 
 // Configure route to allow longer execution for large datasets
 export const maxDuration = 120 // 120 seconds for development endpoints
@@ -32,10 +33,8 @@ async function getForwardedHeaders(request: NextRequest): Promise<HeadersInit> {
     if (value) headers[header] = value
   })
 
-  // Forward the real client IP to the backend for geolocation.
-  // Use platform-verified sources only (not raw client headers which can be spoofed).
-  // Priority: Vercel's request.ip (trusted) → platform-set x-forwarded-for (first hop)
-  const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  // Forward the platform-set client IP to the backend for geolocation.
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   if (clientIp) {
     headers['x-forwarded-for'] = clientIp
     headers['x-real-ip'] = clientIp
@@ -169,26 +168,9 @@ async function handler(request: NextRequest) {
     })
 
     // Forward Set-Cookie headers
-    const setCookieHeaders = backendResponse.headers.get('set-cookie')
-    if (setCookieHeaders) {
-      // Parse and set cookies properly
-      const cookies = setCookieHeaders.split(',').map(c => c.trim())
-      cookies.forEach(cookie => {
-        const [nameValue, ...attributes] = cookie.split(';').map(s => s.trim())
-        const [name, value] = nameValue.split('=')
-
-        // Set cookie with proper attributes
-        response.cookies.set({
-          name,
-          value,
-          httpOnly: cookie.includes('HttpOnly'),
-          secure: cookie.includes('Secure'),
-          sameSite: cookie.includes('SameSite=Strict') ? 'strict' :
-                    cookie.includes('SameSite=Lax') ? 'lax' :
-                    cookie.includes('SameSite=None') ? 'none' : 'lax',
-          path: '/',
-        })
-      })
+    const setCookieHeaders = getSetCookieHeaders(backendResponse.headers)
+    if (setCookieHeaders.length > 0) {
+      appendSetCookieHeaders(response, setCookieHeaders)
     }
 
     return response

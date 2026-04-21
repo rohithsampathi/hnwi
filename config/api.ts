@@ -12,14 +12,6 @@ if (typeof window !== 'undefined') {
 
 export const API_BASE_URL = process.env.API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
 
-// Validate API base URL is accessible (development only)
-if (process.env.NODE_ENV === 'development' && typeof window === 'undefined') {
-  // Quick connectivity check for development
-  fetch(API_BASE_URL + '/health', { method: 'HEAD' }).catch(() => {
-    // Backend connectivity warning removed for security
-  })
-}
-
 
 // Helper to create safe error messages without URL exposure
 export const createSafeApiError = (message: string, endpoint?: string): Error => {
@@ -65,4 +57,3 @@ export const getApiBaseUrl = (): string => {
   }
   return API_BASE_URL;
 }
-

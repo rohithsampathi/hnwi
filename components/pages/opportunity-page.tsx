@@ -25,6 +25,7 @@ import {
 import { CrownLoader } from "@/components/ui/crown-loader"
 import { getCommandCentreOpportunities, Opportunity } from "@/lib/api"
 import { useAuth } from "@/components/auth-provider"
+import { getCurrentUserId } from "@/lib/auth-manager"
 import {
   Dialog,
   DialogContent,
@@ -192,8 +193,8 @@ export function OpportunityPage({
     e.preventDefault()
     setIsProcessing(true)
     
-    const userId = user?.id || localStorage.getItem("userId") || ""
-    const userEmail = user?.email || localStorage.getItem("userEmail") || ""
+    const userId = user?.id || user?.user_id || getCurrentUserId() || ""
+    const userEmail = user?.email || ""
     const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || "Unknown User"
     
     try {

@@ -5,6 +5,7 @@
 // SOTA Caching: Service Worker handles ALL caching via HTTP headers
 
 import { authManager } from './auth-manager'
+import { fetchAuthSession } from './client-auth-session'
 import { pwaStorage } from './storage/pwa-storage'
 
 export interface StepUpDeliveryInfo {
@@ -907,8 +908,28 @@ export const secureApi: SecureApiClient = {
         const responseData = await response.json();
 
         // Update auth state based on response
-        if (response.ok && (endpoint.includes('login') || endpoint.includes('verify'))) {
-          setAuthState(true);
+        if (response.ok && endpoint.includes('login')) {
+          const isMfaChallenge =
+            Boolean(responseData?.requires_mfa) ||
+            Boolean(responseData?.requiresMFA) ||
+            Boolean(responseData?.mfa_token) ||
+            Boolean(responseData?.mfaToken);
+
+          const hasAuthenticatedUser =
+            Boolean(responseData?.user) ||
+            responseData?.success === true;
+
+          if (!isMfaChallenge && hasAuthenticatedUser) {
+            setAuthState(true);
+          }
+        } else if (response.ok && endpoint.includes('verify')) {
+          const hasAuthenticatedUser =
+            Boolean(responseData?.user) ||
+            responseData?.success === true;
+
+          if (hasAuthenticatedUser) {
+            setAuthState(true);
+          }
         } else if (endpoint.includes('logout')) {
           setAuthState(false);
         }
@@ -1034,8 +1055,8 @@ export const refreshToken = async (): Promise<boolean> => {
 // Session management functions (no tokens!)
 export const checkSession = async (): Promise<any> => {
   try {
-    const response = await secureApi.get('/api/auth/session', true);
-    setAuthState(true);
+    const response = await fetchAuthSession({ force: true })
+    setAuthState(!!response?.user)
     return response;
   } catch (error) {
     setAuthState(false);
@@ -1044,21 +1065,8 @@ export const checkSession = async (): Promise<any> => {
 };
 
 export const loginUser = (userData: any): void => {
-  // CRITICAL: Call authManager.login() to properly store in localStorage
-  // This ensures data persists across hard refresh
+  // authManager.login persists only minimal recovery markers.
   authManager.login(userData);
-
-  // Also store in PWA-compatible storage for service worker access
-  if (typeof window !== 'undefined') {
-    pwaStorage.setItemSync('userEmail', userData.email || '');
-    pwaStorage.setItemSync('userId', userData.id || userData.user_id || '');
-    pwaStorage.setItemSync('userObject', JSON.stringify(userData));
-
-    // Emit login event (authManager.login already emits, but keep for backward compatibility)
-    window.dispatchEvent(new CustomEvent('auth:login', {
-      detail: { user: userData }
-    }));
-  }
 
   // Mark as authenticated
   setAuthState(true);
@@ -1090,61 +1098,18 @@ export const logoutUser = async (): Promise<void> => {
 
 export const getCurrentUser = (): any | null => {
   if (typeof window === 'undefined') return null;
-
-  // Try pwaStorage first
-  const userObject = pwaStorage.getItemSync('userObject');
-  if (userObject) {
-    try {
-      return JSON.parse(userObject);
-    } catch (error) {
-      // Fall through to authManager fallback
-    }
-  }
-
-  // CRITICAL FIX: Fallback to authManager if pwaStorage is empty
-  // This handles cases where authManager.login() hasn't synced to pwaStorage yet
-  const authManagerUser = authManager.getCurrentUser();
-  if (authManagerUser) {
-    // Sync to pwaStorage for future calls
-    try {
-      pwaStorage.setItemSync('userObject', JSON.stringify(authManagerUser));
-      pwaStorage.setItemSync('userId', authManagerUser.id || authManagerUser.user_id || '');
-      pwaStorage.setItemSync('userEmail', authManagerUser.email || '');
-    } catch (error) {
-      // Sync failed but we still have the user
-    }
-    return authManagerUser;
-  }
-
-  return null;
+  return authManager.getCurrentUser();
 };
 
 export const getCurrentUserId = (): string | null => {
   if (typeof window === 'undefined') return null;
 
-  // Try pwaStorage first
-  const userId = pwaStorage.getItemSync('userId');
-  if (userId) return userId;
-
-  // CRITICAL FIX: Fallback to authManager if pwaStorage is empty
-  // This handles cases where authManager.login() hasn't synced to pwaStorage yet
   const authManagerUserId = authManager.getUserId();
   if (authManagerUserId) {
-    // Sync to pwaStorage for future calls
-    try {
-      pwaStorage.setItemSync('userId', authManagerUserId);
-      const authManagerUser = authManager.getCurrentUser();
-      if (authManagerUser) {
-        pwaStorage.setItemSync('userObject', JSON.stringify(authManagerUser));
-        pwaStorage.setItemSync('userEmail', authManagerUser.email || '');
-      }
-    } catch (error) {
-      // Sync failed but we still have the userId
-    }
     return authManagerUserId;
   }
 
-  return null;
+  return pwaStorage.getItemSync('userId');
 };
 
 // Refresh token function

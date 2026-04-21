@@ -16,8 +16,19 @@ export function parseValueToNumber(value: string | undefined): number {
   // Strip bracketed text (anything within parentheses)
   let cleanValue = valueStr.replace(/\s*\([^)]*\)/g, '').trim()
 
-  // Remove $ and commas
-  cleanValue = cleanValue.replace(/[$,]/g, '')
+  const wordMatch = cleanValue.match(/([\d,.]+)\s*(billion|million|thousand|crore|lakh)\b/i)
+  if (wordMatch) {
+    const num = parseFloat(wordMatch[1].replace(/,/g, ''))
+    const scale = wordMatch[2].toLowerCase()
+    if (scale === 'billion') return num * 1000000000
+    if (scale === 'million') return num * 1000000
+    if (scale === 'thousand') return num * 1000
+    if (scale === 'crore') return num * 10000000
+    if (scale === 'lakh') return num * 100000
+  }
+
+  // Remove currency symbols and commas
+  cleanValue = cleanValue.replace(/[^\d.KMB]/gi, '').replace(/,/g, '')
 
   // Extract number and suffix
   const match = cleanValue.match(/([\d.]+)([KMB])?/)
@@ -71,21 +82,33 @@ export function formatValue(value: string | undefined): string | undefined {
   // If already has K, M, B suffix, return as is
   if (/[KMB]$/i.test(cleanValue)) return cleanValue
 
-  // Extract number from string like "$420" or "420" or "$1,000,000"
-  const match = cleanValue.match(/\$?([\d,]+)/)
+  // Preserve spelled-out large-number values like "$14 million" or "S$19.18 million"
+  const wordScaleMatch = cleanValue.match(/^([^0-9]*)([\d,.]+)\s*(billion|million|thousand|crore|lakh)\b/i)
+  if (wordScaleMatch) {
+    const prefix = wordScaleMatch[1] || ''
+    const num = wordScaleMatch[2].replace(/,/g, '')
+    const scale = wordScaleMatch[3].toLowerCase()
+    const compactSuffix =
+      scale === 'billion' ? 'B' :
+      scale === 'million' ? 'M' :
+      scale === 'thousand' ? 'K' :
+      scale === 'crore' ? 'Cr' :
+      'L'
+    return `${prefix}${parseFloat(num).toString()}${compactSuffix}`
+  }
+
+  // Extract number from strings like "$420", "420", "AED 1,000,000"
+  const match = cleanValue.match(/^([^0-9]*)([\d,]+(?:\.\d+)?)/)
   if (!match) return cleanValue
 
-  const num = parseFloat(match[1].replace(/,/g, ''))
-  const prefix = cleanValue.startsWith('$') ? '$' : ''
+  const prefix = match[1] || ''
+  const num = parseFloat(match[2].replace(/,/g, ''))
 
   // Always format based on the actual numeric value
   if (num >= 1000000) {
-    return `${prefix}${(num / 1000000).toFixed(0)}M`
+    return `${prefix}${(num / 1000000).toFixed(num >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`
   } else if (num >= 1000) {
-    return `${prefix}${(num / 1000).toFixed(0)}K`
-  } else if (num >= 1) {
-    // For values < 1000, assume they represent thousands in the data model
-    return `${prefix}${num}K`
+    return `${prefix}${(num / 1000).toFixed(num >= 100000 ? 0 : 1).replace(/\.0$/, '')}K`
   }
 
   return cleanValue

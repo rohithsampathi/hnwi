@@ -290,15 +290,16 @@ export function DigitalTwinWaitingInteractive({
     if (targetStepIndex !== currentStepIndex) {
       setCurrentStepIndex(targetStepIndex);
 
-      const updatedSteps = steps.map((step, index) => {
-        if (index < targetStepIndex) {
-          return { ...step, status: 'complete' as const };
-        } else if (index === targetStepIndex) {
-          return { ...step, status: 'processing' as const };
-        }
-        return { ...step, status: 'pending' as const };
-      });
-      setSteps(updatedSteps);
+      setSteps((prevSteps) =>
+        prevSteps.map((step, index) => {
+          if (index < targetStepIndex) {
+            return { ...step, status: 'complete' as const };
+          } else if (index === targetStepIndex) {
+            return { ...step, status: 'processing' as const };
+          }
+          return { ...step, status: 'pending' as const };
+        })
+      );
     }
   }, [elapsedTime, currentStepIndex, hasCompleted, steps]);
 
@@ -360,7 +361,7 @@ export function DigitalTwinWaitingInteractive({
 
       return newMetrics;
     });
-  }, [currentStepIndex, briefCount, peerCount, actualOpportunitiesCount]);
+  }, [currentStepIndex, briefCount, peerCount, actualOpportunitiesCount, steps]);
 
   // Animate metrics smoothly towards their targets - stop when completed
   useEffect(() => {

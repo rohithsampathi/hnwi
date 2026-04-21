@@ -35,13 +35,18 @@ import type { CrossBorderAuditSummary as PdfCrossBorderAuditSummary } from '@/li
 // Types for the cross-border audit data
 interface AcquisitionAudit {
   property_value: number;
-  bsd_stamp_duty: number;
-  absd_additional_stamp_duty: number;
+  bsd_stamp_duty?: number;
+  absd_additional_stamp_duty?: number;
+  dld_transfer_fee?: number;
+  additional_transfer_tax?: number;
   total_stamp_duties: number;
   total_acquisition_cost: number;
   day_one_loss_pct: number;
   fta_benefit_applied?: boolean;
   buyer_category?: string;
+  transfer_tax_schedule_rate_pct?: number;
+  primary_fee_label?: string;
+  secondary_fee_label?: string;
 }
 
 interface TaxAuditItem {
@@ -105,22 +110,42 @@ interface CrossBorderTaxAuditProps {
   viaNegativa?: ViaNegativaContext;
 }
 
+function toFiniteNumber(value: number | null | undefined, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
 // Format currency for display
-function formatCurrency(amount: number): string {
-  if (amount >= 1_000_000) {
-    return `$${(amount / 1_000_000).toFixed(2)}M`;
-  } else if (amount >= 1_000) {
-    return `$${(amount / 1_000).toFixed(0)}K`;
+function formatCurrency(amount: number | null | undefined, fallback = '—'): string {
+  if (amount === null || amount === undefined || !Number.isFinite(amount)) {
+    return fallback;
   }
-  return `$${amount.toLocaleString()}`;
+
+  const sign = amount < 0 ? '-' : '';
+  const absoluteAmount = Math.abs(amount);
+
+  if (absoluteAmount >= 1_000_000) {
+    return `${sign}$${(absoluteAmount / 1_000_000).toFixed(2)}M`;
+  } else if (absoluteAmount >= 1_000) {
+    return `${sign}$${(absoluteAmount / 1_000).toFixed(0)}K`;
+  }
+  return `${sign}$${absoluteAmount.toLocaleString()}`;
+}
+
+function formatOptionalCharge(amount: number | null | undefined, fallback = '—'): string {
+  if (amount === null || amount === undefined || !Number.isFinite(amount) || Math.abs(amount) < 0.005) {
+    return fallback;
+  }
+
+  return formatCurrency(amount, fallback);
 }
 
 // Animated number counter
-function AnimatedNumber({ value, suffix = '%', decimals = 1 }: { value: number; suffix?: string; decimals?: number }) {
+function AnimatedNumber({ value, suffix = '%', decimals = 1 }: { value: number | null | undefined; suffix?: string; decimals?: number }) {
   const { motionEnabled } = useDecisionMemoRenderContext();
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useReportInView(ref, { once: true });
-  const display = useAnimatedMetric(value, {
+  const safeValue = toFiniteNumber(value, 0);
+  const display = useAnimatedMetric(safeValue, {
     duration: 1200,
     enabled: motionEnabled && isInView,
   });
@@ -155,14 +180,18 @@ function TaxComparison({
 }: {
   label: string;
   icon: React.ReactNode;
-  sourceRate: number;
-  destRate: number;
-  netRate: number;
-  savingsPct: number;
+  sourceRate: number | null | undefined;
+  destRate: number | null | undefined;
+  netRate: number | null | undefined;
+  savingsPct: number | null | undefined;
   ftcAvailable: boolean;
   explanation: string;
 }) {
-  const maxRate = Math.max(sourceRate, destRate, netRate, 50);
+  const safeSourceRate = toFiniteNumber(sourceRate, 0);
+  const safeDestRate = toFiniteNumber(destRate, 0);
+  const safeNetRate = toFiniteNumber(netRate, 0);
+  const safeSavingsPct = toFiniteNumber(savingsPct, 0);
+  const maxRate = Math.max(safeSourceRate, safeDestRate, safeNetRate, 50);
 
   return (
     <motion.div
@@ -186,11 +215,11 @@ function TaxComparison({
               <motion.div
                 className="h-full bg-muted-foreground/30 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${(destRate / maxRate) * 100}%` }}
+                animate={{ width: `${(safeDestRate / maxRate) * 100}%` }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               />
             </div>
-            <span className="text-xs font-medium tabular-nums text-muted-foreground/60 w-14 text-right">{destRate.toFixed(1)}%</span>
+            <span className="text-xs font-medium tabular-nums text-muted-foreground/60 w-14 text-right">{safeDestRate.toFixed(1)}%</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60 w-24 flex-shrink-0">Source</span>
@@ -198,11 +227,11 @@ function TaxComparison({
               <motion.div
                 className="h-full bg-gold/30 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${(sourceRate / maxRate) * 100}%` }}
+                animate={{ width: `${(safeSourceRate / maxRate) * 100}%` }}
                 transition={{ duration: 0.8, delay: 0.3 }}
               />
             </div>
-            <span className="text-xs font-medium tabular-nums text-muted-foreground/60 w-14 text-right">{sourceRate.toFixed(1)}%</span>
+            <span className="text-xs font-medium tabular-nums text-muted-foreground/60 w-14 text-right">{safeSourceRate.toFixed(1)}%</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-[0.15em] text-gold/70 w-24 flex-shrink-0">NET RATE</span>
@@ -210,11 +239,11 @@ function TaxComparison({
               <motion.div
                 className="h-full bg-gradient-to-r from-gold/60 to-gold/40 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${(netRate / maxRate) * 100}%` }}
+                animate={{ width: `${(safeNetRate / maxRate) * 100}%` }}
                 transition={{ duration: 0.8, delay: 0.4 }}
               />
             </div>
-            <span className="text-xs font-medium tabular-nums text-gold/80 w-14 text-right">{netRate.toFixed(1)}%</span>
+            <span className="text-xs font-medium tabular-nums text-gold/80 w-14 text-right">{safeNetRate.toFixed(1)}%</span>
           </div>
         </div>
 
@@ -222,11 +251,11 @@ function TaxComparison({
         <div className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-border/20 bg-card/50">
           <span className="text-xs uppercase tracking-[0.15em] text-muted-foreground/60">Tax Savings</span>
           <span className={`text-base font-medium ${
-            savingsPct > 0 ? 'text-gold/80' :
-            savingsPct < 0 ? 'text-red-500/80' :
+            safeSavingsPct > 0 ? 'text-gold/80' :
+            safeSavingsPct < 0 ? 'text-red-500/80' :
             'text-muted-foreground/60'
           }`}>
-            {savingsPct > 0 ? '+' : ''}{savingsPct.toFixed(0)}%
+            {safeSavingsPct > 0 ? '+' : ''}{safeSavingsPct.toFixed(0)}%
           </span>
         </div>
 
@@ -266,6 +295,32 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
     dayOneLossPct,
   } = resolveCrossBorderDisplayMetrics(audit);
   const isZeroSavings = displayTaxSavingsPct === 0;
+  const acquisitionAudit = audit.acquisition_audit;
+  const hasAnyFtc =
+    !!audit.rental_income_audit?.ftc_available
+    || !!audit.capital_gains_audit?.ftc_available
+    || !!(audit.estate_tax_audit && !audit.estate_tax_audit.worldwide_applies);
+  const footerLabel = hasAnyFtc ? 'Cross-Border Tax Audit · FTC Analysis' : 'Cross-Border Tax Audit · Route Tax Analysis';
+  const isDubaiResidentialRoute =
+    !!acquisitionAudit
+    && (
+      acquisitionAudit.dld_transfer_fee !== undefined
+      || /dubai|uae/i.test(destinationJurisdiction)
+    );
+  const primaryFeeLabel = acquisitionAudit?.primary_fee_label
+    || (isDubaiResidentialRoute
+      ? acquisitionAudit?.transfer_tax_schedule_rate_pct
+        ? `DLD Registration Fee (${toFiniteNumber(acquisitionAudit.transfer_tax_schedule_rate_pct, 0).toFixed(1)}%)`
+        : 'DLD Registration Fee'
+      : 'BSD Stamp Duty');
+  const secondaryFeeLabel = acquisitionAudit?.secondary_fee_label
+    || (isDubaiResidentialRoute ? 'Additional Transfer Charges' : 'ABSD (Foreign)');
+  const primaryFeeValue = isDubaiResidentialRoute
+    ? acquisitionAudit?.dld_transfer_fee
+    : acquisitionAudit?.bsd_stamp_duty;
+  const secondaryFeeValue = isDubaiResidentialRoute
+    ? acquisitionAudit?.additional_transfer_tax
+    : acquisitionAudit?.absd_additional_stamp_duty;
 
   return (
     <div ref={sectionRef} className="print-cross-border-audit relative">
@@ -416,7 +471,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
       )}
 
       {/* ACQUISITION COST BREAKDOWN */}
-      {audit.acquisition_audit && (
+      {acquisitionAudit && (
         <motion.div
           className="relative rounded-2xl border border-border/30 overflow-hidden mb-8 sm:mb-12"
           data-print-block="keep"
@@ -435,19 +490,19 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
               <div className="text-center">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">Property Value</p>
-                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatCurrency(audit.acquisition_audit.property_value)}</p>
+                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatCurrency(acquisitionAudit.property_value)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">BSD Stamp Duty</p>
-                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-amber-500/80">{formatCurrency(audit.acquisition_audit.bsd_stamp_duty)}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{primaryFeeLabel}</p>
+                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-amber-500/80">{formatOptionalCharge(primaryFeeValue)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">ABSD (Foreign)</p>
-                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-red-500/80">{formatCurrency(audit.acquisition_audit.absd_additional_stamp_duty)}</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-3">{secondaryFeeLabel}</p>
+                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-red-500/80">{formatOptionalCharge(secondaryFeeValue)}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-3">Total Acquisition</p>
-                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{formatCurrency(audit.acquisition_audit.total_acquisition_cost)}</p>
+                <p className="text-xl md:text-2xl font-bold tabular-nums tracking-tight text-gold/80">{formatCurrency(acquisitionAudit.total_acquisition_cost)}</p>
               </div>
             </div>
 
@@ -464,11 +519,12 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
               </p>
             </div>
 
-            {audit.acquisition_audit.fta_benefit_applied && (
+            {acquisitionAudit.fta_benefit_applied && (
               <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03]">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-500/60" />
                 <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-normal">
-                  US-Singapore FTA benefit applied ({audit.acquisition_audit.buyer_category})
+                  FTA acquisition relief applied
+                  {acquisitionAudit.buyer_category ? ` (${acquisitionAudit.buyer_category})` : ''}
                 </p>
               </div>
             )}
@@ -549,15 +605,15 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
                   <div className="text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Gross</p>
-                    <p className="text-xl font-bold tabular-nums text-foreground">{Number(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%</p>
+                    <p className="text-xl font-bold tabular-nums text-foreground">{toFiniteNumber(audit.net_yield_audit.gross_yield_pct).toFixed(2)}%</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">Tax Rate</p>
-                    <p className="text-xl font-bold tabular-nums text-foreground/80">{Number(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
+                    <p className="text-xl font-bold tabular-nums text-foreground/80">{toFiniteNumber(audit.net_yield_audit.tax_rate_applied_pct).toFixed(2)}%</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-gold/70 mb-2">Net Yield</p>
-                    <p className="text-xl font-bold tabular-nums text-gold/80">{audit.net_yield_audit.net_yield_pct.toFixed(2)}%</p>
+                    <p className="text-xl font-bold tabular-nums text-gold/80">{toFiniteNumber(audit.net_yield_audit.net_yield_pct).toFixed(2)}%</p>
                   </div>
                 </div>
 
@@ -596,7 +652,7 @@ export const CrossBorderTaxAudit: React.FC<CrossBorderTaxAuditProps> = ({
       >
         <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border/30" />
         <p className="text-xs text-muted-foreground/60 leading-relaxed">
-          Cross-Border Tax Audit &middot; FTC Analysis
+          {footerLabel}
         </p>
         <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border/30" />
       </motion.div>

@@ -191,3 +191,91 @@ export function sanitizeLoggingContext(context: LoggingContext): LoggingContext 
 
   return sanitized;
 }
+
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const escapeHtml = (value: string): string =>
+  value.replace(/[&<>"']/g, (char) => HTML_ESCAPE_MAP[char]);
+
+const restoreSimpleTag = (value: string, tagName: string): string => {
+  const openTag = new RegExp(`&lt;${tagName}&gt;`, 'gi');
+  const closeTag = new RegExp(`&lt;\\/${tagName}&gt;`, 'gi');
+  return value.replace(openTag, `<${tagName}>`).replace(closeTag, `</${tagName}>`);
+};
+
+const restoreSelfClosingTag = (value: string, tagName: string): string =>
+  value
+    .replace(new RegExp(`&lt;${tagName}\\s*\\/?&gt;`, 'gi'), `<${tagName} />`)
+    .replace(new RegExp(`&lt;\\/${tagName}&gt;`, 'gi'), '');
+
+const sanitizeHref = (href: string): string | null => {
+  const trimmed = href.trim();
+  if (!trimmed) return null;
+
+  const isSafe =
+    /^(https?:|mailto:|tel:|\/|#)/i.test(trimmed) &&
+    !/^\s*javascript:/i.test(trimmed) &&
+    !/^\s*data:/i.test(trimmed);
+
+  return isSafe ? escapeHtml(trimmed) : null;
+};
+
+export interface RichHtmlSanitizationOptions {
+  allowCitations?: boolean;
+  allowLinks?: boolean;
+}
+
+/**
+ * Strict allow-list sanitizer for rich text rendered on the client.
+ *
+ * The function escapes the entire payload first, then selectively restores only
+ * the small subset of tags and attributes that the UI actually needs.
+ */
+export function sanitizeRichHtml(
+  value: string | null | undefined,
+  options: RichHtmlSanitizationOptions = {},
+): string {
+  if (!value) return '';
+
+  const { allowCitations = false, allowLinks = false } = options;
+
+  let sanitized = escapeHtml(value);
+
+  // Restore the handful of formatting tags the app intentionally supports.
+  ['strong', 'em', 'b', 'i', 'u', 'p', 'ul', 'ol', 'li', 'blockquote'].forEach((tagName) => {
+    sanitized = restoreSimpleTag(sanitized, tagName);
+  });
+  ['br', 'hr'].forEach((tagName) => {
+    sanitized = restoreSelfClosingTag(sanitized, tagName);
+  });
+
+  if (allowLinks) {
+    sanitized = sanitized.replace(
+      /&lt;a\s+href=&quot;([^"]+)&quot;(?:\s+target=&quot;[^"]*&quot;)?(?:\s+rel=&quot;[^"]*&quot;)?\s*&gt;([\s\S]*?)&lt;\/a&gt;/gi,
+      (_match, href, innerHtml) => {
+        const safeHref = sanitizeHref(href);
+        if (!safeHref) {
+          return innerHtml;
+        }
+
+        return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${innerHtml}</a>`;
+      },
+    );
+  }
+
+  if (allowCitations) {
+    sanitized = sanitized.replace(
+      /&lt;citation\s+data-id=&quot;([A-Za-z0-9:_-]{1,128})&quot;\s+data-number=&quot;(\d{1,4})&quot;\s*&gt;\[(\d{1,4})\]&lt;\/citation&gt;/gi,
+      (_match, citationId, citationNumber, displayNumber) =>
+        `<citation data-id="${citationId}" data-number="${citationNumber}">[${displayNumber}]</citation>`,
+    );
+  }
+
+  return sanitized;
+}

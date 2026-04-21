@@ -42,6 +42,7 @@ jest.mock('@/lib/auth-manager', () => ({
 const postCallLog: Array<{ endpoint: string; data: any; requireAuth: boolean }> = [];
 
 jest.mock('@/lib/secure-api', () => ({
+  ensureClientCsrfToken: jest.fn(() => Promise.resolve('csrf-token')),
   secureApi: {
     post: jest.fn((endpoint: string, data: any, requireAuth = true) => {
       postCallLog.push({ endpoint, data, requireAuth });
@@ -120,6 +121,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   // Re-apply the default mock implementations after clearAllMocks
   const { secureApi } = require('@/lib/secure-api');
+  const { ensureClientCsrfToken } = require('@/lib/secure-api');
+  (ensureClientCsrfToken as jest.Mock).mockResolvedValue('csrf-token');
   (secureApi.post as jest.Mock).mockImplementation(
     (endpoint: string, data: any, requireAuth = true) => {
       postCallLog.push({ endpoint, data, requireAuth });

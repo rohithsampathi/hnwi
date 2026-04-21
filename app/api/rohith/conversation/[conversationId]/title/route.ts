@@ -8,10 +8,10 @@ import { CSRFProtection } from '@/lib/csrf-protection'
 
 async function handlePost(
   request: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
-    const { conversationId } = params
+    const { conversationId } = await params
     const { title } = await request.json()
 
     if (!title || !conversationId) {
@@ -22,7 +22,7 @@ async function handlePost(
     }
 
     // Get the access token from cookies
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const accessToken = cookieStore.get('access_token')?.value
 
     if (!accessToken) {

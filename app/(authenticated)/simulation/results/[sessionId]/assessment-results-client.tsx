@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Share2, Check, ArrowRight, Download } from 'lucide-react';
 import { useAssessmentAPI } from '@/lib/hooks/useAssessmentAPI';
 import { AssessmentResults } from '@/lib/hooks/useAssessmentState';
-import { exportInstitutionalPDF } from '@/lib/hooks/usePremiumPDFExport';
 import type { PdfMemoData } from '@/lib/pdf/pdf-types';
 import type { Citation } from '@/lib/parse-dev-citations';
 import dynamic from 'next/dynamic';
@@ -56,7 +55,7 @@ export default function AssessmentResultsClient() {
   const [results, setResults] = useState<AssessmentResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0); // Use state instead of ref to reset on mount
+  const retryCountRef = useRef(0);
   const hasLoadedRef = useRef(false);
   const isFetchingRef = useRef(false); // CRITICAL: Prevent parallel fetches
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
@@ -275,6 +274,7 @@ export default function AssessmentResultsClient() {
   }, []);
 
   useEffect(() => {
+    retryCountRef.current = 0;
     // CRITICAL: Prevent multiple parallel fetches
     if (hasLoadedRef.current || isFetchingRef.current) return;
 
@@ -315,8 +315,8 @@ export default function AssessmentResultsClient() {
           isFetchingRef.current = false;
         }
       } catch (err: any) {
-        const nextRetryCount = retryCount + 1;
-        setRetryCount(nextRetryCount);
+        const nextRetryCount = retryCountRef.current + 1;
+        retryCountRef.current = nextRetryCount;
 
         if (nextRetryCount >= 10) {
           isFetchingRef.current = false;
@@ -336,7 +336,7 @@ export default function AssessmentResultsClient() {
     return () => {
       isFetchingRef.current = false;
     };
-  }, [sessionId]); // CRITICAL: Removed getResults to prevent infinite re-triggers
+  }, [sessionId, getResults]);
 
   // Enhanced report polling - poll until enhanced report is available
   // Start after Digital Twin loader crosses 80% (after ~60s delay)
@@ -509,6 +509,7 @@ export default function AssessmentResultsClient() {
         },
       };
 
+      const { exportInstitutionalPDF } = await import('@/lib/hooks/usePremiumPDFExport');
       await exportInstitutionalPDF(memoData, appTheme);
     } catch (err) {
       alert('Failed to generate PDF. Please try again.');

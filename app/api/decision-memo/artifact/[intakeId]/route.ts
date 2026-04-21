@@ -4,22 +4,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
+import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
 export const maxDuration = 300; // 5 minutes
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     intakeId: string;
-  };
+  }>;
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteParams
 ) {
-  const { intakeId } = await Promise.resolve(context.params);
+  const { intakeId } = await context.params;
 
   try {
     logger.info('Fetching full artifact', { intakeId });
@@ -32,14 +33,19 @@ export async function GET(
       `${API_BASE_URL}/api/decision-memo/preview/${intakeId}`,
     ];
 
-    // Forward Authorization header from client to backend (report auth tokens)
-    const authHeader = request.headers.get('Authorization');
+    // Forward report-access tokens and platform session cookies so artifact fetches
+    // stay aligned with the main audit session path.
+    const authHeader = getReportAuthTokenFromRequest(request, intakeId);
+    const cookieHeader = request.headers.get('cookie');
     const backendHeaders: Record<string, string> = { 'Accept': 'application/json' };
     if (authHeader) {
       backendHeaders['Authorization'] = authHeader;
     }
+    if (cookieHeader) {
+      backendHeaders['Cookie'] = cookieHeader;
+    }
     // Platform-verified client IP for backend geolocation (not the Vercel server IP)
-    const clientIp = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
     if (clientIp) {
       backendHeaders['x-forwarded-for'] = clientIp;
       backendHeaders['x-real-ip'] = clientIp;
@@ -57,13 +63,15 @@ export async function GET(
 
         // Pass through 401 directly so frontend can show auth popup
         if (response.status === 401) {
-          return NextResponse.json(
+          const unauthorizedResponse = NextResponse.json(
             { error: 'Authentication required' },
             {
               status: 401,
               headers: { 'Cache-Control': 'no-store' },
             }
           );
+          clearReportAuthCookie(unauthorizedResponse, intakeId);
+          return unauthorizedResponse;
         }
 
         if (response.ok) {

@@ -17,6 +17,25 @@ export interface FormattedAnalysis {
   potentialMoves?: AnalysisSection
 }
 
+const SUMMARY_HEADING_TITLES = new Set([
+  "executive summary",
+  "hbyte summary",
+  "summary",
+])
+
+const cleanHeadingTitle = (line: string) =>
+  line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^\*{0,2}/, "")
+    .replace(/\*{0,2}\s*:?$/, "")
+    .trim()
+
+const stripSummaryPrefix = (line: string) =>
+  line
+    .replace(/^\s*#{1,6}\s+/, "")
+    .replace(/^\s*(?:Executive Summary|HByte Summary|Summary)\s*:?\s*/i, "")
+    .trim()
+
 const toTitleCase = (str: string) => {
   // Remove ** formatting
   const cleanStr = str.replace(/\*\*/g, '');
@@ -47,10 +66,13 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
     // Check for special sub-section markers (Winners:, Losers:, Potential Moves:)
     // Allow optional markdown bold markers (**) and whitespace before colon
     const isSpecialSubSection = /^\*{0,2}(Winners?|Losers?|Potential Moves?)\*{0,2}\s*:?$/i.test(trimmedLine)
+    const markdownHeadingMatch = trimmedLine.match(/^#{1,6}\s+(.+)/)
+    const headingCandidate = cleanHeadingTitle(trimmedLine)
+    const isSummaryHeading = SUMMARY_HEADING_TITLES.has(headingCandidate.toLowerCase())
 
     // Check for markdown style ## headings and handle all uppercase headings
-    if ((trimmedLine.startsWith("##") || trimmedLine.toUpperCase() === trimmedLine || isSpecialSubSection) && trimmedLine !== "") {
-      if (currentSection.title) {
+    if ((!!markdownHeadingMatch || trimmedLine.toUpperCase() === trimmedLine || isSpecialSubSection) && trimmedLine !== "") {
+      if (currentSection.title && currentSection.content.length > 0) {
         const lowerTitle = currentSection.title.toLowerCase()
 
         // Check if this is a special section to extract separately
@@ -66,13 +88,15 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
 
         currentSection = { title: "", content: [] }
       }
-      // Remove ## prefix if present, and remove trailing colon for special sub-sections
-      let titleText = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
+      // Remove markdown prefixes and trailing colon for special sub-sections
+      let titleText = headingCandidate
       if (isSpecialSubSection) {
         // Remove markdown bold markers, trailing colon, and whitespace
         titleText = titleText.replace(/^\*{0,2}/, '').replace(/\*{0,2}\s*:?$/, '')
       }
-      currentSection.title = toTitleCase(titleText)
+      if (!isSummaryHeading) {
+        currentSection.title = toTitleCase(titleText)
+      }
     } else if (currentSection.title) {
       const explicitBulletPoint = trimmedLine.startsWith("-") || trimmedLine.startsWith("•") || /^\d+\.\s/.test(trimmedLine)
 
@@ -155,13 +179,14 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
         })
       }
     } else {
-      // Remove ## prefix from summary content as well, if present
-      const formattedLine = trimmedLine.startsWith("##") ? trimmedLine.substring(2).trim() : trimmedLine
-      summaryContent.push(formattedLine)
+      const formattedLine = stripSummaryPrefix(trimmedLine)
+      if (formattedLine) {
+        summaryContent.push(formattedLine)
+      }
     }
   })
 
-  if (currentSection.title) {
+  if (currentSection.title && currentSection.content.length > 0) {
     const lowerTitle = currentSection.title.toLowerCase()
 
     // Check if this is a special section to extract separately

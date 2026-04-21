@@ -1,0 +1,112 @@
+{
+  "email": "hnwi@montaigne.co",
+  "nationality": "India",
+  "nda_consent": true,
+  "privacy_consent": true,
+  "thesis": {
+    "move_description": "Acquire Grade-A commercial office asset in Bengaluru for $4.8M from a California-based Single Family Office with India family roots. Looking for durable income, India operating exposure, and long-term family capital presence.",
+    "expected_outcome": "8% annual rental yield with 12% capital appreciation, generating 20% gross returns. Re-enter India through institutional commercial real estate while preserving optionality on repatriation and family succession.",
+    "move_type": "real_estate",
+    "target_amount": "$4.8M",
+    "target_locations": [
+      "India",
+      "Bengaluru",
+      "Hyderabad"
+    ],
+    "timeline": "90 days",
+    "source_jurisdiction": "United States",
+    "source_state": "California",
+    "destination_jurisdiction": "India"
+  },
+  "constraints": {
+    "liquidity_horizon": "24+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": [
+      "United States",
+      "California",
+      "India"
+    ],
+    "prohibited_jurisdictions": [],
+    "prohibitions": [
+      "No agricultural land",
+      "No unresolved land-use approvals",
+      "No single-tenant concentration above 50%"
+    ],
+    "deal_breakers": [
+      "Defective title chain",
+      "Land conversion issues",
+      "Tenant concentration risk",
+      "Cash-flow leakage through local structure inefficiency"
+    ],
+    "destination_property_count": 0,
+    "purchase_vehicle": "optimize",
+    "is_relocating": false
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$1M",
+    "advisors": [
+      {
+        "type": "tax",
+        "name": "California International Tax Counsel",
+        "jurisdiction": "United States"
+      },
+      {
+        "type": "legal",
+        "name": "India Real Estate Counsel",
+        "jurisdiction": "India"
+      }
+    ],
+    "existing_entities": [
+      {
+        "type": "Delaware LLC",
+        "jurisdiction": "United States",
+        "purpose": "Family Office holding entity"
+      }
+    ],
+    "banking_rails": [
+      {
+        "bank": "JP Morgan Private Bank",
+        "jurisdiction": "United States",
+        "status": "active"
+      },
+      {
+        "bank": "HDFC Bank",
+        "jurisdiction": "India",
+        "status": "planned"
+      }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "The office wants an India foothold through income-generating real estate, but the move must stay institution-grade on title, tax, repatriation, and ownership eligibility. This is not a sentimental return-home purchase.",
+    "heirs": [
+      {
+        "name": "Neel",
+        "relationship": "son",
+        "age": 31,
+        "allocation_pct": 0.4
+      },
+      {
+        "name": "Anika",
+        "relationship": "daughter",
+        "age": 28,
+        "allocation_pct": 0.6
+      }
+    ]
+  },
+  "urgency": "standard",
+  "asset_details": {
+    "property_type": "grade_a_office",
+    "estimated_value": 4800000,
+    "rental_yield_pct": 8,
+    "appreciation_pct": 12,
+    "location_preference": [
+      "Bengaluru",
+      "Hyderabad"
+    ],
+    "size_sqft": "12000",
+    "bedrooms": ""
+  }
+}

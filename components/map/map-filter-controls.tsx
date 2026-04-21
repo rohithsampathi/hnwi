@@ -3,7 +3,7 @@
 
 "use client"
 
-import React, { useState, useEffect, useRef, useMemo } from "react"
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Crown, Gem, TrendingUp, ZoomOut, AlertTriangle } from "lucide-react"
 import Slider from "rc-slider"
 import "rc-slider/assets/index.css"
@@ -78,18 +78,21 @@ function DualRangeSlider({ min, max, step, value, onChange, theme }: {
   theme: string;
 }) {
   // Convert value to percentage
-  const getPercent = (val: number) => Math.round(((val - min) / (max - min)) * 100);
+  const getPercent = useCallback(
+    (val: number) => Math.round(((val - min) / (max - min)) * 100),
+    [max, min]
+  );
+  const minValue = value[0];
+  const maxValue = value[1];
+  const minPercent = useMemo(() => getPercent(minValue), [getPercent, minValue]);
+  const maxPercent = useMemo(() => getPercent(maxValue), [getPercent, maxValue]);
 
   // Get colors for thumbs based on position
-  const minThumbColor = useMemo(() => getGradientColorFromPercent(getPercent(value[0])), [value[0]]);
-  const maxThumbColor = useMemo(() => getGradientColorFromPercent(getPercent(value[1])), [value[1]]);
+  const minThumbColor = useMemo(() => getGradientColorFromPercent(minPercent), [minPercent]);
+  const maxThumbColor = useMemo(() => getGradientColorFromPercent(maxPercent), [maxPercent]);
 
   // Get gradient for the active range
-  const rangeGradient = useMemo(() => {
-    const minPercent = getPercent(value[0]);
-    const maxPercent = getPercent(value[1]);
-    return getGradientForRange(minPercent, maxPercent);
-  }, [value[0], value[1]]);
+  const rangeGradient = useMemo(() => getGradientForRange(minPercent, maxPercent), [maxPercent, minPercent]);
 
   const borderColor = theme === 'dark' ? '#fff' : '#000';
 

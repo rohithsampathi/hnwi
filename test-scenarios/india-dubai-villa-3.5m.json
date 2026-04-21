@@ -1,0 +1,118 @@
+{
+  "email": "hnwi@montaigne.co",
+  "nationality": "India",
+  "nda_consent": true,
+  "privacy_consent": true,
+  "thesis": {
+    "move_description": "Acquire completed villa in Dubai Hills Estate for $3.5M from a Hyderabad-based Single Family Office. First direct Gulf residential acquisition targeting high rental carry, capital preservation, and optional family mobility.",
+    "expected_outcome": "10% annual rental yield with 14% capital appreciation, generating 24% gross returns. Preserve wealth in Dubai while reducing India-specific tax drag and gaining strategic Gulf optionality.",
+    "move_type": "real_estate",
+    "target_amount": "$3.5M",
+    "target_locations": [
+      "Dubai",
+      "Dubai Hills Estate",
+      "Palm Jumeirah",
+      "Jumeirah Bay"
+    ],
+    "timeline": "60 days",
+    "source_jurisdiction": "India",
+    "source_state": "Telangana",
+    "destination_jurisdiction": "Dubai"
+  },
+  "constraints": {
+    "liquidity_horizon": "12+ months",
+    "liquidity_amount_needed": "",
+    "liquidity_events": [],
+    "current_jurisdictions": [
+      "India",
+      "Telangana",
+      "United Arab Emirates"
+    ],
+    "prohibited_jurisdictions": [],
+    "prohibitions": [
+      "No off-plan purchases",
+      "No leverage above 50%",
+      "No unresolved title chains"
+    ],
+    "deal_breakers": [
+      "RBI LRS non-compliance",
+      "Title disputes",
+      "Developer or seller litigation",
+      "Service-charge economics that destroy usable yield"
+    ],
+    "destination_property_count": 0,
+    "purchase_vehicle": "optimize",
+    "is_relocating": false
+  },
+  "control_and_rails": {
+    "final_decision_maker": "principal",
+    "decision_makers_count": 1,
+    "veto_holders": [],
+    "approval_required_above": "$500K",
+    "advisors": [
+      {
+        "type": "tax",
+        "name": "Hyderabad Tax Counsel",
+        "jurisdiction": "India"
+      },
+      {
+        "type": "legal",
+        "name": "Dubai Property Counsel",
+        "jurisdiction": "United Arab Emirates"
+      }
+    ],
+    "existing_entities": [
+      {
+        "type": "Family Office",
+        "jurisdiction": "India",
+        "purpose": "Principal capital and family governance"
+      },
+      {
+        "type": "Trust",
+        "jurisdiction": "India",
+        "purpose": "Succession and family holding structure"
+      }
+    ],
+    "banking_rails": [
+      {
+        "bank": "HDFC Private Banking",
+        "jurisdiction": "India",
+        "status": "active"
+      },
+      {
+        "bank": "Emirates NBD",
+        "jurisdiction": "United Arab Emirates",
+        "status": "planned"
+      }
+    ],
+    "has_formal_ips": true,
+    "ips_notes": "Family office can allocate up to 20% of investable assets to international real estate. Dubai is being assessed as the first Gulf residential lane, but the purchase must remain clean on remittance, title, and holding structure.",
+    "heirs": [
+      {
+        "name": "Aarav",
+        "relationship": "son",
+        "age": 26,
+        "allocation_pct": 0.5
+      },
+      {
+        "name": "Mira",
+        "relationship": "daughter",
+        "age": 23,
+        "allocation_pct": 0.5
+      }
+    ]
+  },
+  "urgency": "high",
+  "asset_details": {
+    "property_type": "villa",
+    "estimated_value": 3500000,
+    "rental_yield_pct": 10,
+    "appreciation_pct": 14,
+    "location_preference": [
+      "Dubai Hills Estate",
+      "Palm Jumeirah"
+    ],
+    "size_sqft": "5000",
+    "bedrooms": "5"
+  }
+}

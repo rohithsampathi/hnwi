@@ -14,6 +14,13 @@ const OUTPUT_PDF = path.join(__dirname, 'screenshots', 'native-test-output.pdf')
 
 const SERVER_URL = 'http://localhost:3000';
 const INTAKE_ID = process.argv[2] || 'fo_audit_UWHQSOUtohM9';
+const REPORT_AUTH_EMAIL = process.env.REPORT_AUTH_EMAIL;
+const REPORT_AUTH_PASSWORD = process.env.REPORT_AUTH_PASSWORD;
+
+if (!REPORT_AUTH_EMAIL || !REPORT_AUTH_PASSWORD) {
+  console.error('REPORT_AUTH_EMAIL and REPORT_AUTH_PASSWORD are required for this live PDF auth test.');
+  process.exit(1);
+}
 
 async function main() {
   console.log('=== NATIVE PDF GENERATION TEST ===\n');
@@ -27,8 +34,8 @@ async function main() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       slug: INTAKE_ID,
-      email: 'audit.viewer@hnwichronicles.com',
-      password: 'unTocx5CkdjbccYa',
+      email: REPORT_AUTH_EMAIL,
+      password: REPORT_AUTH_PASSWORD,
     }),
   });
 

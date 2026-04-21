@@ -140,6 +140,23 @@ export interface EvidenceAnchor {
 }
 
 export interface PreviewData {
+  house_grade_memo?: Record<string, any>;
+  executive_summary?: {
+    headline_metric?: {
+      label?: string;
+      value?: string | number;
+      detail?: string;
+      note?: string;
+    };
+    evidence_basis_note?: string;
+    underwriting_snapshot?: Array<{
+      label: string;
+      value: string;
+      note?: string;
+    }>;
+    [key: string]: any;
+  };
+  [key: string]: any;
   opportunities_count: number;
   mistakes_count: number;
   intelligence_count: number;
@@ -282,12 +299,30 @@ export interface PreviewData {
   // Expert 14: Wealth Projection (Structured Data)
   wealth_projection_data?: {
     starting_position: {
-      current_net_worth: number;
-      transaction_amount: number;
-      remaining_liquid: number;
-      annual_income: number;
-      current_tax_rate: number;
-      target_tax_rate: number;
+      current_net_worth?: number;
+      transaction_amount?: number;
+      remaining_liquid?: number;
+      annual_income?: number;
+      current_tax_rate?: number;
+      target_tax_rate?: number;
+      transaction_value?: number;
+      total_acquisition_cost?: number;
+      annual_rental?: number;
+      rental_yield_pct?: number;
+      net_rental_yield_pct?: number;
+      appreciation_rate_pct?: number;
+      source_tax_rate_pct?: number;
+      destination_tax_rate_pct?: number;
+      stamp_duties_paid?: number;
+      selected_structure?: string;
+      structure_based_projection?: string;
+      rental_yield_source?: string;
+      appreciation_rate_source?: string;
+      buyer_nationality?: string;
+      is_cross_border?: boolean;
+      is_relocating?: boolean;
+      cross_border_audit_summary?: Record<string, any>;
+      [key: string]: any;
     };
     scenarios: Array<{
       name: "BASE_CASE" | "STRESS_CASE" | "OPPORTUNITY_CASE";
@@ -488,23 +523,76 @@ export interface TransparencyData {
 }
 
 export interface CrisisData {
+  snapshot_id?: string;
+  as_of_date?: string;
+  alert_summary?: string;
+  event_count?: number;
+  market_regime_count?: number;
+  source_count?: number;
+  source_families?: string[];
   scenarios: Array<{
-    name: string;
-    probability: string;
-    impact_on_thesis: string;
-    portfolio_drawdown: string;
-    mitigation: string;
+    id?: string;
+    event_id?: string;
+    name?: string;
+    title?: string;
+    label?: string;
+    position?: string;
+    probability?: string;
+    impact?: string;
+    impact_on_thesis?: string;
+    portfolio_drawdown?: string;
+    recovery?: string;
+    risk_level?: string;
+    stress_factor?: string;
+    verdict?: string;
+    mitigation?: string;
+    historical_precedent?: string;
+    teci_amplifier?: string;
+    impact_channels?: string[];
+    decision_window_days?: number;
+    sources?: string[];
   }>;
   overall_resilience?: {
-    score: number;
-    rating: string;
-    key_vulnerabilities: string[];
+    score?: number;
+    rating?: string;
+    summary?: string;
+    key_vulnerabilities?: string[];
+    worst_case_loss?: string;
+    recovery_time?: string;
+    buffer_required?: string;
   };
-  recommendations?: any[];
+  commander_brief?: {
+    route_read?: string;
+    operating_window?: string;
+    execution_focus?: string;
+    macro_regime?: string;
+    crisis_verdict?: string;
+    source_families?: string[];
+  };
+  priority_events?: Array<string | Record<string, unknown>>;
+  market_regimes?: Array<string | Record<string, unknown>>;
+  decision_flags?: string[];
+  route_risks?: string[];
+  recommendations?: Array<{
+    priority?: string;
+    action?: string;
+    rationale?: string;
+    context?: string;
+  }>;
   key_metrics?: {
-    max_drawdown: string;
-    recovery_time: string;
-    cash_buffer_needed: string;
+    max_drawdown?: string;
+    recovery_time?: string;
+    cash_buffer_needed?: string;
+    worst_case_loss?: string;
+    required_buffer?: string;
+    decision_window?: string;
+  };
+  stress_drawdown_floor_pct?: number;
+  decision_window_days?: number;
+  bottom_line?: {
+    survive_verdict?: string;
+    thrive_verdict?: string;
+    one_sentence?: string;
   };
 }
 
@@ -757,12 +845,39 @@ export interface DueDiligenceDataStructured {
 }
 
 export interface PeerCohortStats {
+  section_title?: string;
+  section_subtitle?: string;
+  metric_labels?: {
+    total_peers?: string;
+    total_peers_subtitle?: string;
+    last_6_months?: string;
+    last_6_months_subtitle?: string;
+    avg_deal_value?: string;
+    avg_deal_value_subtitle?: string;
+  };
+  metric_cards?: Array<{
+    label: string;
+    value?: number;
+    description?: string;
+    prefix?: string;
+    suffix?: string;
+    decimals?: number;
+    highlight?: boolean;
+  }>;
+  native_driver_bullets?: string[];
+  driver_analysis_title?: string;
+  driver_analysis_subtitle?: string;
+  driver_analysis_note?: string;
   total_peers?: number;
+  direct_route_precedent_count?: number;
+  governing_object_count?: number;
+  route_pattern_count?: number;
   data_quality?: string;
   data_quality_note?: string;
   is_relocating?: boolean;
   last_6_months?: number;
   avg_deal_value_m?: number;
+  value_creation?: string;
   drivers?: string[];
   regime_intelligence?: {
     has_special_regime: boolean;
@@ -782,6 +897,7 @@ export interface PeerCohortStats {
       duration?: string;
     };
   };
+  [key: string]: any;
 }
 
 export interface TaxRates {
@@ -798,11 +914,16 @@ export interface RiskAssessment {
   total_exposure?: string;  // Alias for total_exposure_formatted (backend sometimes uses this)
   critical_items?: number;
   high_priority?: number;
+  high_items?: number;
+  priority_risks_total?: number;
+  risk_factors_count?: number;
   verdict?: string;
   recommendation?: string;
   verdict_note?: string;
   mitigation_timeline?: string;
+  structure_verdict?: string;
   is_mcp?: boolean;
+  [key: string]: any;
 }
 
 export interface Opportunity {

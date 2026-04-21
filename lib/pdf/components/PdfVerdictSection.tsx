@@ -174,7 +174,7 @@ export const PdfVerdictSection: React.FC<PdfVerdictSectionProps> = ({
       {/* 4-Metric Grid */}
       <View style={{ flexDirection: 'row', borderTopWidth: 2, borderTopColor: darkTheme.textPrimary, marginBottom: 24 }} wrap={false}>
         {[
-          { label: 'Total Exposure', value: totalExposureFormatted || '—', sub: 'Aggregate risk at stake', color: colors.red[700], border: theme.primary, bg: theme.tint },
+          { label: 'Validated Day-One Exposure', value: totalExposureFormatted || '—', sub: 'Non-recoverable closing-cost leakage if the route hardens wrong', color: colors.red[700], border: theme.primary, bg: theme.tint },
           { label: 'Risk Factors', value: String(riskFactorCount), sub: `${criticalCount}C · ${highCount}H identified`, color: criticalCount > 0 ? colors.red[700] : darkTheme.textPrimary, border: criticalCount > 0 ? colors.red[700] : darkTheme.border },
           { label: 'Mitigation Window', value: mitigationTimeline || '—', sub: 'Est. resolution timeline', color: colors.amber[500], border: colors.amber[500] },
           { label: 'Opportunities', value: String(opportunityCount), sub: 'Identified in corridor', color: colors.amber[500], border: colors.amber[500], last: true },

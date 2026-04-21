@@ -2,6 +2,8 @@
 
 "use client"
 
+import "./authenticated-app-globals.css"
+
 import { useState, useEffect, useLayoutEffect, useCallback, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
@@ -16,16 +18,19 @@ import { NotificationProvider } from "@/contexts/notification-context"
 import { PageDataCacheProvider } from "@/contexts/page-data-cache-context"
 import { CitationPanelProvider } from "@/contexts/elite-citation-panel-context"
 import { CrisisIntelligenceProvider } from "@/contexts/crisis-intelligence-context"
+import { ElitePulseProvider } from "@/contexts/elite-pulse-context"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { ElitePulseErrorBoundary } from "@/components/ui/intelligence-error-boundary"
 import { EliteLoadingState } from "@/components/elite/elite-loading-state"
 import { Layout } from "@/components/layout/layout"
 import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib/auth-manager"
+import { fetchAuthSession } from "@/lib/client-auth-session"
 import { secureApi } from "@/lib/secure-api"
 import { isLoginAttemptInProgress } from "@/lib/unified-auth-manager"
 import logger from "@/lib/secure-logger"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import { PUBLIC_HOME_ROUTE } from "@/lib/auth-navigation"
+import { AUTH_LOGIN_TIMESTAMP_KEY, AUTH_SESSION_ACTIVE_KEY, AUTH_USER_ID_KEY } from "@/lib/auth-storage"
 
 // Helper to check if this is a public route
 const isPublicRoute = (pathname: string): boolean => {
@@ -133,18 +138,13 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     router.replace(PUBLIC_HOME_ROUTE)
   }, [router])
 
-  const fetchSessionUser = useCallback(async () => {
-    const sessionResponse = await fetchWithTimeout('/api/auth/session', {
-      credentials: 'include',
-      headers: AUTH_JSON_HEADERS
+  const fetchSessionUser = useCallback(async (force = false) => {
+    const data = await fetchAuthSession({
+      force,
+      timeoutMs: AUTH_REQUEST_TIMEOUT_MS,
     })
 
-    if (!sessionResponse.ok) {
-      return null
-    }
-
-    const data = await sessionResponse.json()
-    return data.user ?? null
+    return data?.user ?? null
   }, [])
 
   const refreshSessionUser = useCallback(async () => {
@@ -158,7 +158,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       return null
     }
 
-    return fetchSessionUser()
+    return fetchSessionUser(true)
   }, [fetchSessionUser])
 
   const resolveSessionUser = useCallback(async () => {
@@ -171,7 +171,16 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [fetchSessionUser, refreshSessionUser])
 
   const applyValidatedUser = useCallback((nextUser: any, markSessionValidated = false) => {
-    authManager.login(nextUser)
+    const currentAuthUser = getCurrentUser()
+    const currentUserId = currentAuthUser?.user_id || currentAuthUser?.id
+    const nextUserId = nextUser?.user_id || nextUser?.id
+
+    if (currentUserId && nextUserId && currentUserId === nextUserId) {
+      updateAuthUser(nextUser)
+    } else {
+      authManager.login(nextUser)
+    }
+
     setIsAuthenticated(true)
 
     if (markSessionValidated) {
@@ -240,8 +249,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   // Track if we've validated the session with backend (for PWA)
   const [sessionValidated, setSessionValidated] = useState(false)
 
-  // CRITICAL: Synchronous check BEFORE first paint to prevent loading flash
-  // Only trust sessionStorage (same-tab, active session). localStorage alone = stale.
+  // CRITICAL: Synchronous check BEFORE first paint to prevent loading flash.
+  // Only trust the same-tab session marker. Cross-tab/local persistence always revalidates first.
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || !pathname) return
     if (isAuthenticated !== null) return // Already checked
@@ -255,12 +264,9 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       return
     }
 
-    // AUTHENTICATED ROUTES: Only render immediately if sessionStorage has full user
-    // sessionStorage = active session in this tab (dies with tab close)
-    // localStorage alone = potentially stale from a previous session — must validate first
-    const hasFullSession = !!sessionStorage.getItem('userObject')
+    const hasActiveTabSession = sessionStorage.getItem(AUTH_SESSION_ACTIVE_KEY) === 'true'
 
-    if (hasFullSession) {
+    if (hasActiveTabSession) {
       // Same tab, active session — trust it and render immediately
       const cachedUser = getCurrentUser()
       if (cachedUser && (cachedUser.id || cachedUser.user_id)) {
@@ -291,7 +297,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         // CRITICAL FIX: Check if user JUST logged in (within last 30 seconds)
         // If so, trust localStorage and skip aggressive backend validation
         // This prevents the race condition where cookies haven't fully propagated yet
-        const loginTimestamp = localStorage.getItem('loginTimestamp')
+        const loginTimestamp = localStorage.getItem(AUTH_LOGIN_TIMESTAMP_KEY)
         const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000 // 30 seconds
 
         const resolvedUser = await resolveSessionUser()
@@ -312,7 +318,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         // MOBILE FIX: If session + refresh both failed but localStorage has a userId,
         // cookies may not have synced from the mobile OS cookie store yet.
         // Wait and retry once before giving up.
-        const hasLocalUser = !!localStorage.getItem('userId')
+        const hasLocalUser = !!localStorage.getItem(AUTH_USER_ID_KEY)
         if (hasLocalUser && !isRecentLogin) {
           logger.debug('[Auth] Session validation failed but localStorage has userId — retrying after delay')
           await new Promise(resolve => setTimeout(resolve, 500))
@@ -339,7 +345,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         setUser(null)
 
         // Clear loginTimestamp so auth popup can show
-        localStorage.removeItem('loginTimestamp')
+        localStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY)
 
         // Redirect to login
         redirectToPublicHome()
@@ -355,10 +361,10 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // Recent login: 2s delay (cookies still propagating)
     // Minimal user (localStorage only, no sessionStorage): immediate (session data is stale)
     // Normal: 500ms
-    const loginTimestamp = localStorage.getItem('loginTimestamp')
+    const loginTimestamp = localStorage.getItem(AUTH_LOGIN_TIMESTAMP_KEY)
     const isRecentLogin = loginTimestamp && (Date.now() - parseInt(loginTimestamp)) < 30000
-    const hasSessionStorage = !!sessionStorage.getItem('userObject')
-    const validationDelay = isRecentLogin ? 2000 : (hasSessionStorage ? 500 : 100)
+    const hasSameTabSession = sessionStorage.getItem(AUTH_SESSION_ACTIVE_KEY) === 'true'
+    const validationDelay = isRecentLogin ? 2000 : (hasSameTabSession ? 500 : 100)
     const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
   }, [applyValidatedUser, isAuthenticated, pathname, redirectToPublicHome, resolveSessionUser, sessionValidated])
@@ -378,7 +384,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           const authUser = getCurrentUser()
           setUser(authUser)
           setIsAuthenticated(true)
-          setIsInitialLoad(false)
           return
         }
 
@@ -393,7 +398,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         // cookies may not have synced from the mobile OS cookie store yet.
         // Retry once after a delay to give cookies time to propagate.
         if (!validatedUser && typeof window !== 'undefined') {
-          const hasLocalUser = !!localStorage.getItem('userId')
+          const hasLocalUser = !!localStorage.getItem(AUTH_USER_ID_KEY)
           if (hasLocalUser) {
             logger.debug('[Auth] Session check failed but localStorage has userId — retrying after delay (mobile cookie sync)')
             await new Promise(resolve => setTimeout(resolve, 500))
@@ -402,7 +407,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         }
 
         if (validatedUser) {
-          applyValidatedUser(validatedUser)
+          applyValidatedUser(validatedUser, true)
           return
         }
 
@@ -415,8 +420,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       } catch (error) {
         // Network error — only allow if sessionStorage has full user (active session)
         // Don't trust localStorage alone — it's stale from a previous session
-        const hasFullSession = !!sessionStorage.getItem('userObject')
-        if (hasFullSession) {
+        const hasActiveTabSession = sessionStorage.getItem(AUTH_SESSION_ACTIVE_KEY) === 'true'
+        if (hasActiveTabSession) {
           const fallbackUser = getCurrentUser()
           if (fallbackUser && (fallbackUser.id || fallbackUser.user_id)) {
             setUser(fallbackUser)
@@ -530,19 +535,21 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       <OnboardingProvider>
         <AuthProvider>
           <AuthSyncProvider>
-            <BusinessModeProvider>
-              <AuthPopupProvider>
-                <StepUpMfaProvider>
-                  <ElitePulseErrorBoundary>
-                    {needsCrisisIntelligence ? (
-                      <CrisisIntelligenceProvider>{citationScopedShell}</CrisisIntelligenceProvider>
-                    ) : (
-                      citationScopedShell
-                    )}
-                  </ElitePulseErrorBoundary>
-                </StepUpMfaProvider>
-              </AuthPopupProvider>
-            </BusinessModeProvider>
+            <ElitePulseProvider>
+              <BusinessModeProvider>
+                <AuthPopupProvider>
+                  <StepUpMfaProvider>
+                    <ElitePulseErrorBoundary>
+                      {needsCrisisIntelligence ? (
+                        <CrisisIntelligenceProvider>{citationScopedShell}</CrisisIntelligenceProvider>
+                      ) : (
+                        citationScopedShell
+                      )}
+                    </ElitePulseErrorBoundary>
+                  </StepUpMfaProvider>
+                </AuthPopupProvider>
+              </BusinessModeProvider>
+            </ElitePulseProvider>
           </AuthSyncProvider>
         </AuthProvider>
       </OnboardingProvider>

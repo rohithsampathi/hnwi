@@ -21,10 +21,7 @@ export async function middleware(request: NextRequest) {
 
   const scriptSources = [
     "'self'",
-    "https://cdn.jsdelivr.net",
-    "https://unpkg.com",
     "https://checkout.razorpay.com",
-    "https://api-js.mixpanel.com",
   ];
 
   if (isDev) {
@@ -36,7 +33,7 @@ export async function middleware(request: NextRequest) {
     scriptSources.push(`'nonce-${nonce}'`, "'strict-dynamic'", "'wasm-unsafe-eval'");
   }
 
-  const styleSources = ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"];
+  const styleSources = ["'self'", "'unsafe-inline'"];
 
   const connectSources = [
     "'self'",
@@ -44,7 +41,6 @@ export async function middleware(request: NextRequest) {
     "https://lumberjack.razorpay.com",
     "https://*.vercel.app",
     "wss://*.vercel.app",
-    "https://api-js.mixpanel.com",
     "https://hnwi-uwind-p8oqb.ondigitalocean.app", // Backend API URL
     "blob:",  // PDF export blob URLs
     "data:",  // @react-pdf/renderer WASM binary loading
@@ -62,7 +58,7 @@ export async function middleware(request: NextRequest) {
     "default-src 'self'",
     `script-src ${scriptSources.join(" ")}`,
     `style-src ${styleSources.join(" ")}`,
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self'",
     "img-src 'self' data: https: blob:",
     `connect-src ${connectSources.join(" ")}`,
     "frame-src 'self' https://api.razorpay.com",
@@ -81,8 +77,10 @@ export async function middleware(request: NextRequest) {
   const securityHeaders: Record<string, string> = {
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
-    "X-XSS-Protection": "1; mode=block",
+    "X-XSS-Protection": "0",
+    "X-Permitted-Cross-Domain-Policies": "none",
     "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Origin-Agent-Cluster": "?1",
     "Permissions-Policy": "microphone=(), geolocation=(), interest-cohort=()",
     "Content-Security-Policy": cspDirectives.join("; "),
     "X-Request-ID": requestId,
@@ -226,11 +224,14 @@ function getClientIP(request: NextRequest): string {
     return real.trim();
   }
 
-  return request.ip || "unknown";
+  return "unknown";
 }
 
 export const config = {
   matcher: [
+    "/manifest.json",
+    "/sw.js",
+    "/sw-auth-handler.js",
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|css|js|map|txt|xml)$).*)",
   ],
 };

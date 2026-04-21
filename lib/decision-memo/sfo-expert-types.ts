@@ -11,6 +11,7 @@ export interface HeirManagementData {
   // Legacy fields (for backwards compatibility)
   third_generation_risk?: ThirdGenerationRisk;
   heirs?: Heir[];
+  heir_specific_read?: HeirSpecificRead[];
   recommended_structure?: RecommendedStructure;
   governance_framework?: GovernanceFramework;
   heir_education_plan?: HeirEducationPlan;
@@ -23,6 +24,11 @@ export interface HeirManagementData {
   top_succession_trigger?: TopSuccessionTrigger;
   next_action?: string;
   heir_allocations?: HeirAllocation[];
+  beneficiary_map_authority?: string;
+  beneficiary_map_note?: string;
+  succession_lock_items?: string[];
+  governance_uplift_claimed?: boolean;
+  governance_uplift_note?: string;
 
   // Hughes Framework (NEW nested structure from backend)
   // Backend sends: heir_management_data.hughes_framework.third_generation_problem
@@ -32,7 +38,8 @@ export interface HeirManagementData {
   third_generation_problem?: ThirdGenerationProblem;
   human_capital_provisions?: HumanCapitalProvision[];
   governance_insurance?: GovernanceInsuranceProvision[];
-  structure_specific_provisions?: StructureSpecificProvisions;
+  structure_specific_provisions?: StructureSpecificProvisions | StructureSpecificProvisions[];
+  continuity_provisions?: ContinuityProvisions;
 
   // NEW: Granular Estate Tax by Heir Type (from HNWI Chronicles KG)
   estate_tax_by_heir_type?: EstateTaxByHeirType;
@@ -56,6 +63,31 @@ export interface HughesFramework {
   third_generation_problem?: ThirdGenerationProblem;
   human_capital_provisions?: HumanCapitalProvision[];
   governance_insurance?: GovernanceInsuranceProvision[];
+  components?: {
+    g1?: {
+      status?: string;
+      [key: string]: any;
+    };
+    g2?: {
+      status?: string;
+      [key: string]: any;
+    };
+    g3?: {
+      status?: string;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+}
+
+export interface ContinuityProvisions {
+  headline?: string;
+  pre_close_locks?: string[];
+  beneficiary_discipline?: string;
+  human_capital?: HumanCapitalProvision[];
+  governance_insurance?: GovernanceInsuranceProvision[];
+  structure_specific?: StructureSpecificProvisions[];
+  next_action?: string;
 }
 
 /** Granular estate tax rates by heir relationship type */
@@ -82,6 +114,10 @@ export interface EstateTaxByHeirType {
 export interface G1Position {
   /** Transaction value (e.g., $500,000) */
   asset_value: number;
+  /** Retained-value score at G1 */
+  retention_score?: number;
+  /** Route-control score for the whole succession path */
+  route_control_score?: number;
   /** Estate tax rate (0.0 = 0%, 0.40 = 40%) */
   estate_tax_rate: number;
   /** $ lost if G1 dies today without structure */
@@ -98,6 +134,8 @@ export interface G1ToG2Transfer {
   estate_tax_hit: number;
   /** What G2 actually receives */
   net_to_g2: number;
+  /** Retained-value score at G2 */
+  retention_score?: number;
 }
 
 // NEW: G2→G3 Transfer (40 years out)
@@ -108,8 +146,12 @@ export interface G2ToG3Transfer {
   projected_value: number;
   /** $ lost to estate tax */
   estate_tax_hit: number;
+  /** Forced-sale haircut under stressed or fragmented succession */
+  forced_sale_haircut_pct?: number;
   /** What G3 receives WITHOUT structure */
   net_to_g3_without_structure: number;
+  /** Retained-value score at G3 without governance lock */
+  retention_score_without_structure?: number;
 }
 
 // NEW: Simplified Generational Transfer (unified G1→G2 and G2→G3)
@@ -154,6 +196,12 @@ export interface WithStructure {
   wealth_preserved: number;
   /** % wealth preserved (target: 70%+ vs 30% typical) */
   preservation_percentage: number;
+  /** Retained-value score at G3 with governance lock */
+  retention_score?: number;
+  /** Durability label derived from retained value */
+  preservation_rating?: string;
+  /** Context note for the preservation reading */
+  preservation_context?: string;
 }
 
 // NEW: Top Succession Risk
@@ -303,6 +351,17 @@ export interface Heir {
   recommended_actions: string[];
 }
 
+export interface HeirSpecificRead {
+  /** Heir name */
+  name: string;
+  /** Short relationship / status label */
+  status?: string;
+  /** The one-line house consequence for this heir */
+  headline: string;
+  /** Legal, tax, governance, and education read for this heir */
+  detail: string;
+}
+
 export type InvolvementLevel = "HIGH" | "MODERATE" | "LOW" | "MINIMAL";
 export type ReadinessLevel = "HIGH" | "MODERATE" | "LOW";
 export type RiskLevel = "HIGH" | "MEDIUM" | "LOW";
@@ -360,6 +419,10 @@ export interface StartingPosition {
   transaction_amount: number;
   /** Transaction value in USD (alias for transaction_amount) */
   transaction_value?: number;
+  /** Total all-in deployed capital including duties and fees */
+  total_acquisition_cost?: number;
+  /** Stamp duties paid at acquisition */
+  stamp_duties_paid?: number;
   /** Remaining liquid assets after transaction */
   remaining_liquid: number;
   /** Annual income in USD */
@@ -612,8 +675,14 @@ export interface ProbabilityWeightedOutcome {
   expected_value_creation: number;
   /** Expected value if staying (not proceeding) */
   vs_stay_expected: number;
+  /** Alternate backend alias for stay/cash benchmark */
+  vs_cash_at_4pct?: number;
   /** Net benefit of proceeding vs staying */
   net_benefit_of_move: number;
+  /** Alternate backend alias used by legacy memo views */
+  percentage_return?: number;
+  /** Alternate backend alias used by some weighted cards */
+  true_roi_pct?: number;
 }
 
 // =============================================================================
@@ -633,6 +702,16 @@ export interface ScenarioTreeData {
   expiry: TreeExpiry;
   /** Summary matrix for quick reference */
   decision_matrix: DecisionMatrixEntry[];
+  /** Label for the common branch-value basis */
+  value_basis_label?: string;
+  /** Explanatory note for the common branch-value basis */
+  value_basis_note?: string;
+  /** Separate decision-EV label shown alongside the branch basis */
+  decision_ev_label?: string;
+  /** Weighted decision EV across base/stress/opportunity mix */
+  decision_ev_usd?: number;
+  /** Explanatory note for the weighted decision EV */
+  decision_ev_note?: string;
   /** Market validation - Expected vs Reality (legacy) */
   market_validation?: MarketValidation;
   /** Kahneman Delusion Buster: Expected vs Base Rate Reality */
@@ -700,7 +779,7 @@ export type ConditionStatus = "MET" | "PENDING" | "BLOCKED" | "CONDITIONAL" | "C
 
 export interface BranchOutcome {
   /** Which scenario this outcome is for */
-  scenario: ScenarioName | "CAPITAL_PRESERVED" | "COST_OF_VULNERABILITY";
+  scenario: ScenarioName | "CAPITAL_PRESERVED" | "COST_OF_VULNERABILITY" | string;
   /** 6-Book Doctrine label for this outcome */
   doctrine_label?: string;
   /** Probability of this scenario */
@@ -718,7 +797,7 @@ export interface BranchOutcome {
     survives_2008_scenario: boolean;
     survives_regulatory_shock: boolean;
     zero_ruin_probability: boolean;
-    key_advantage: string;
+    key_advantage?: string;
   };
   /** Unmitigated exposure (Via Negativa: cost of NOT acting) */
   unmitigated_exposure?: {

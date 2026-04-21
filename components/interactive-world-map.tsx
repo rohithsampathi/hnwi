@@ -32,6 +32,7 @@ import {
   createPriceRangeMatcher
 } from "@/lib/map-color-utils"
 import { createCustomIcon, createClusterIcon } from "@/lib/map-markers"
+import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
 
 export interface City {
   name: string
@@ -297,9 +298,16 @@ export function InteractiveWorldMap({
   const [clusterScrollPositions, setClusterScrollPositions] = useState<Map<string, number>>(new Map())
 
   const navigateToRoute = useCallback((route: string) => {
-    if (!onNavigate) return
-
     const normalizedRoute = route.startsWith("/") ? route : `/${route}`
+
+    // Leaflet popup button clicks are more reliable with a direct location change
+    // than a deferred router push traveling through multiple event layers.
+    if (typeof window !== 'undefined') {
+      window.location.assign(normalizedRoute)
+      return
+    }
+
+    if (!onNavigate) return
     onNavigate(normalizedRoute)
   }, [onNavigate])
 
@@ -489,7 +497,12 @@ export function InteractiveWorldMap({
         maxBoundsViscosity={1.0}  // Makes bounds completely rigid - no elastic scrolling
         bounceAtZoomLimits={false}  // Prevents bounce effect at zoom limits
       >
-        <TileLayer url={tileUrl} noWrap={false} />
+        <TileLayer
+          url={tileUrl}
+          noWrap={false}
+          referrerPolicy="no-referrer"
+          crossOrigin={true}
+        />
 
         {/* Clustered City Markers */}
         {clusterCities.map((cluster, clusterIndex) => {
@@ -511,16 +524,17 @@ export function InteractiveWorldMap({
 
           const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
           const isOpen = openClusterId === clusterId
+          const hasRecentOpportunity = cluster.cities.some((city) => isRecentlyAddedOpportunity(city))
 
-          // Check if this marker should blink (new opportunity) and give it higher z-index
-          const isBlinking = !isCluster && (center.is_new === true || (center as any).isNew === true)
+          // Give recent opportunities higher z-index and blink shared clusters containing them.
+          const isBlinking = hasRecentOpportunity
 
           return (
             <Marker
               key={`marker-${center._id || center.id || ''}-${center.latitude.toFixed(6)}-${center.longitude.toFixed(6)}-${center.title || ''}`}
               position={[center.latitude, center.longitude]}
               icon={isCluster
-                ? createClusterIcon(cluster.cities.length, primaryType, theme)
+                ? createClusterIcon(cluster.cities.length, primaryType, theme, hasRecentOpportunity)
                 : createCustomIcon(center, clusterIndex, theme, getColor, isOpen ? clusterIndex : null)
               }
               zIndexOffset={isBlinking ? 10000 : isCluster ? 100 : 0}
@@ -814,7 +828,7 @@ export function InteractiveWorldMap({
                         )}
 
                         {/* Action button — access-aware */}
-                        {flow.midpoint.exploreUrl && onNavigate && (
+                        {flow.midpoint.exploreUrl && (
                           <div className={`${flow.midpoint.totalAudits && flow.midpoint.totalAudits > 1 ? 'pt-2 mt-2' : 'pt-3 mt-3 border-t border-border'}`}>
                             <button
                               onClick={(e) => {
@@ -1051,7 +1065,7 @@ export function InteractiveWorldMap({
                         )}
 
                         {/* Action button — access-aware */}
-                        {flow.midpoint.exploreUrl && onNavigate && (
+                        {flow.midpoint.exploreUrl && (
                           <div className={`${flow.midpoint.totalAudits && flow.midpoint.totalAudits > 1 ? 'pt-2 mt-2' : 'pt-3 mt-3 border-t border-border'}`}>
                             <button
                               onClick={(e) => {

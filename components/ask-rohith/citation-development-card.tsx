@@ -114,23 +114,25 @@ export function CitationDevelopmentCard({ development, citationNumber, onCitatio
         <div className="space-y-6 px-2">
           <div className="w-full">
             {/* HByte Summary */}
-            <div className="mb-6 pb-2">
-              <div className="flex items-center mb-4">
-                <div className="p-2 mr-3">
-                  <Brain className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+            {analysis.summary.trim() && (
+              <div className="mb-6 pb-2">
+                <div className="flex items-center mb-4">
+                  <div className="p-2 mr-3">
+                    <Brain className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
+                  </div>
+                  <h4 className="text-xl font-bold">HByte Summary</h4>
                 </div>
-                <h4 className="text-xl font-bold">HByte Summary</h4>
+                <div className="text-sm leading-relaxed pl-2">
+                  <p className="font-medium">
+                    <CitationText
+                      text={analysis.summary}
+                      onCitationClick={onCitationClick}
+                      citationMap={citationMap}
+                    />
+                  </p>
+                </div>
               </div>
-              <div className="text-sm leading-relaxed pl-2">
-                <p className="font-medium">
-                  <CitationText
-                    text={analysis.summary}
-                    onCitationClick={onCitationClick}
-                    citationMap={citationMap}
-                  />
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* Other Sections - "Why This Matters" will appear first due to sorting */}
             {analysis.sections.map((section, index) => {

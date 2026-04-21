@@ -7,6 +7,7 @@ import React from "react"
 import { Crown } from "lucide-react"
 import type { City } from "@/components/interactive-world-map"
 import { formatValue, cleanTitle } from "@/lib/map-utils"
+import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
 
 interface MapPopupClusterProps {
   cities: City[]
@@ -57,7 +58,7 @@ export function MapPopupCluster({
               )}
               {cleanTitle(city.title, city.source) || city.name}
               {/* NEW Badge with Blinking Dot */}
-              {city.is_new && (
+              {isRecentlyAddedOpportunity(city) && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold bg-primary/10 text-primary rounded border border-primary/30 flex-shrink-0 ml-1">
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>

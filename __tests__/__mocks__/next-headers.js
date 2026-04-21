@@ -9,4 +9,5 @@ module.exports = {
     getAll: () => Array.from(cookieStore.entries()).map(([name, value]) => ({ name, value })),
   })),
   __cookieStore: cookieStore, // expose for test setup
+  __resetCookies: () => cookieStore.clear(),
 };

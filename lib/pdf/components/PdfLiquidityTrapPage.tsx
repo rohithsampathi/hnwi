@@ -64,6 +64,9 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
 }) => {
   const totalLoss = capitalIn - capitalOut;
   const lossPct = dayOneLossPct > 0 ? dayOneLossPct : (totalLoss / capitalIn) * 100;
+  const showDestroyedTotal =
+    (!!secondaryBarrier && !!secondaryBarrierCost && secondaryBarrierCost > 0)
+    || Math.abs(totalLoss - primaryBarrierCost) > 0.5;
 
   return (
     <View>
@@ -160,7 +163,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
                 letterSpacing: 2.5,
               }}
             >
-              BARRIER ZONE
+              DAY-ONE BARRIER
             </Text>
           </View>
 
@@ -236,49 +239,51 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
             </View>
           )}
 
-          {/* Divider */}
-          <View
-            style={{
-              height: 1,
-              backgroundColor: darkTheme.border,
-              marginVertical: spacing.sm,
-            }}
-          />
+          {showDestroyedTotal && (
+            <>
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: darkTheme.border,
+                  marginVertical: spacing.sm,
+                }}
+              />
 
-          {/* Capital Destroyed total */}
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.sm,
-              borderWidth: 1,
-              borderColor: darkTheme.border,
-              borderRadius: 0.01,
-              backgroundColor: colors.tints.redDeepSubtle,
-            }}
-          >
-            <Text
-              style={{
-                ...typography.micro,
-                color: colors.red[700],
-                letterSpacing: 1.5,
-              }}
-            >
-              CAPITAL DESTROYED
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Inter',
-                fontWeight: 500,
-                color: colors.red[700],
-              }}
-            >
-              -{fmtCurrency(totalLoss)}
-            </Text>
-          </View>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderWidth: 1,
+                  borderColor: darkTheme.border,
+                  borderRadius: 0.01,
+                  backgroundColor: colors.tints.redDeepSubtle,
+                }}
+              >
+                <Text
+                  style={{
+                    ...typography.micro,
+                    color: colors.red[700],
+                    letterSpacing: 1.5,
+                  }}
+                >
+                  CAPITAL DESTROYED
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontFamily: 'Inter',
+                    fontWeight: 500,
+                    color: colors.red[700],
+                  }}
+                >
+                  -{fmtCurrency(totalLoss)}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Arrow */}
@@ -336,7 +341,7 @@ export const PdfLiquidityTrapPage: React.FC<PdfLiquidityTrapPageProps> = ({
               letterSpacing: 2.5,
             }}
           >
-            IMMEDIATE EQUITY DESTRUCTION UPON ACQUISITION
+            IMMEDIATE SUNK COST ON ACQUISITION
           </Text>
         </View>
       </PdfCard>

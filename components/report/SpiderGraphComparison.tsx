@@ -283,7 +283,7 @@ export function SpiderGraphComparison({ data, gapsData, gapAnalysis, onCitationC
         .attr('filter', 'url(#glow)');
     });
 
-  }, [dimensions, user_scores, top_performers, themeKey]);
+  }, [dimensions, peer_average, user_scores, top_performers, themeKey]);
 
   return (
     <motion.section
