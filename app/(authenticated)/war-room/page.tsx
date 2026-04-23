@@ -17,6 +17,7 @@ import { Shield, ArrowLeft } from "lucide-react";
 import { getAuditMarkerIcon } from "@/lib/map-markers";
 import type { City, MigrationFlow } from "@/components/interactive-world-map";
 import type { Citation } from "@/lib/parse-dev-citations";
+import { resolveCorridorNodeName } from "@/lib/corridor-display";
 
 // City + country coordinates for audit route arcs (city-level precision)
 const GEO_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -25,6 +26,7 @@ const GEO_COORDS: Record<string, { lat: number; lng: number }> = {
   'Mumbai': { lat: 19.0760, lng: 72.8777 },
   'Delhi': { lat: 28.6139, lng: 77.2090 },
   'New Delhi': { lat: 28.6139, lng: 77.2090 },
+  'Sunder Nagar': { lat: 28.6010, lng: 77.2405 },
   'Bangalore': { lat: 12.9716, lng: 77.5946 },
   'Chennai': { lat: 13.0827, lng: 80.2707 },
   'Kolkata': { lat: 22.5726, lng: 88.3639 },
@@ -231,6 +233,15 @@ const COUNTRY_TO_CITY: Record<string, string> = {
 // Normalize jurisdiction name: resolve country→city, then canonical GEO_COORDS key
 function normalizeName(name: string): string {
   if (!name) return name;
+  const resolvedNode = resolveCorridorNodeName(name);
+  if (resolvedNode && resolvedNode !== '—') {
+    if (GEO_COORDS[resolvedNode]) return resolvedNode;
+    const resolvedLower = resolvedNode.toLowerCase();
+    const resolvedMatch = GEO_KEYS.find(k => k.toLowerCase() === resolvedLower);
+    if (resolvedMatch) return resolvedMatch;
+    return resolvedNode;
+  }
+
   // Resolve country to primary city first
   const cityResolved = COUNTRY_TO_CITY[name] || name;
   if (GEO_COORDS[cityResolved]) return cityResolved; // exact match

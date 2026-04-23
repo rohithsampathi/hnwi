@@ -51,7 +51,12 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isDev) {
-    connectSources.push("http://localhost:*", "ws://localhost:*");
+    connectSources.push(
+      "http://localhost:*",
+      "http://127.0.0.1:*",
+      "ws://localhost:*",
+      "ws://127.0.0.1:*",
+    );
   }
 
   const cspDirectives = [

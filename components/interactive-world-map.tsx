@@ -33,6 +33,7 @@ import {
 } from "@/lib/map-color-utils"
 import { createCustomIcon, createClusterIcon } from "@/lib/map-markers"
 import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
+import { formatCorridorRouteTag } from "@/lib/corridor-display"
 
 export interface City {
   name: string
@@ -117,46 +118,6 @@ export interface MigrationFlow {
     currentIndex?: number // Current audit index being shown
     totalAudits?: number  // Total audits in this corridor
   }
-}
-
-// IATA-style 3-letter codes for route labels on arcs
-const CITY_CODES: Record<string, string> = {
-  // India
-  'Hyderabad': 'HYD', 'Mumbai': 'BOM', 'Delhi': 'DEL', 'New Delhi': 'DEL',
-  'Bangalore': 'BLR', 'Chennai': 'MAA', 'Kolkata': 'CCU', 'Pune': 'PNQ', 'Ahmedabad': 'AMD',
-  'Yavatmal': 'YML',
-  // Europe
-  'Lisbon': 'LIS', 'Porto': 'OPO', 'London': 'LON', 'Zurich': 'ZRH', 'Geneva': 'GVA',
-  'Paris': 'PAR', 'Berlin': 'BER', 'Frankfurt': 'FRA', 'Munich': 'MUC',
-  'Milan': 'MIL', 'Rome': 'ROM', 'Amsterdam': 'AMS', 'Madrid': 'MAD',
-  'Barcelona': 'BCN', 'Dublin': 'DUB', 'Athens': 'ATH', 'Vienna': 'VIE',
-  'Monaco': 'MCM', 'Luxembourg': 'LUX', 'Valletta': 'MLA', 'Nicosia': 'NIC',
-  // Middle East
-  'Dubai': 'DXB', 'Abu Dhabi': 'AUH', 'Riyadh': 'RUH', 'Doha': 'DOH', 'Bahrain': 'BAH',
-  // Asia-Pacific
-  'Singapore': 'SG', 'Hong Kong': 'HKG', 'Tokyo': 'TYO', 'Sydney': 'SYD',
-  'Melbourne': 'MEL', 'Auckland': 'AKL', 'Bangkok': 'BKK', 'Kuala Lumpur': 'KUL',
-  'Shanghai': 'SHA', 'Beijing': 'PEK', 'Seoul': 'SEL', 'Taipei': 'TPE',
-  // Americas
-  'New York': 'NYC', 'Miami': 'MIA', 'San Francisco': 'SFO', 'Los Angeles': 'LAX',
-  'Toronto': 'YYZ', 'Vancouver': 'YVR', 'Panama City': 'PTY', 'Nassau': 'NAS',
-  'George Town': 'GCM', 'Sao Paulo': 'GRU',
-  // Africa
-  'Port Louis': 'MRU', 'Cape Town': 'CPT', 'Johannesburg': 'JNB',
-  // Countries (fallback)
-  'India': 'IND', 'Portugal': 'PRT', 'United Arab Emirates': 'UAE', 'UAE': 'UAE',
-  'United States': 'USA', 'USA': 'USA', 'United Kingdom': 'GBR', 'UK': 'GBR',
-  'Switzerland': 'CHE', 'Spain': 'ESP', 'France': 'FRA', 'Germany': 'DEU',
-  'Italy': 'ITA', 'Netherlands': 'NLD', 'Japan': 'JPN', 'Australia': 'AUS',
-  'Canada': 'CAN', 'Mexico': 'MEX', 'Thailand': 'THA', 'Malaysia': 'MYS',
-  'Greece': 'GRC', 'Malta': 'MLT', 'Cyprus': 'CYP', 'Mauritius': 'MUS',
-  'New Zealand': 'NZL', 'Ireland': 'IRL', 'Bahamas': 'BHS', 'Cayman Islands': 'CYM',
-  'Panama': 'PAN', 'South Korea': 'KOR', 'China': 'CHN', 'Brazil': 'BRA',
-  'South Africa': 'ZAF',
-}
-
-function getCityCode(name: string): string {
-  return CITY_CODES[name] || name.slice(0, 3).toUpperCase()
 }
 
 // Compute curved airline-route arc using quadratic bezier (visually dramatic on Mercator)
@@ -651,7 +612,7 @@ export function InteractiveWorldMap({
 
           // Airline-style route label — pill badge at the arc midpoint
           const arcMid = arcPositions[Math.floor(arcPositions.length / 2)]
-          const routeTag = `${getCityCode(flow.source.name)} → ${getCityCode(flow.destination.name)}`
+          const routeTag = formatCorridorRouteTag(flow.source.name, flow.destination.name)
           const labelTextColor = hasAccess ? color : '#F2F2F2' // Slightly off-white (95% white) for inaccessible corridors
           const badgeTextColor = hasAccess ? '#0A0A0A' : '#F2F2F2' // Match label color for inaccessible corridors
           const countBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50%;background:${color};color:${badgeTextColor};font-size:11px;font-weight:900;flex-shrink:0;line-height:1;">${auditCount}</span>`
