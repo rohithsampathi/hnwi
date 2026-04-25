@@ -23,12 +23,27 @@ const SUMMARY_HEADING_TITLES = new Set([
   "summary",
 ])
 
+const ANALYSIS_HEADING_TITLES = new Set([
+  "why this matters",
+  "key moves & market shifts",
+  "key moves and market shifts",
+  "market shifts",
+  "long term wealth impact",
+  "long-term wealth impact",
+  "wealth impact",
+  "sentiment tracker",
+  "hnwi sentiment",
+])
+
 const cleanHeadingTitle = (line: string) =>
   line
     .replace(/^#{1,6}\s+/, "")
     .replace(/^\*{0,2}/, "")
     .replace(/\*{0,2}\s*:?$/, "")
     .trim()
+
+const isKnownAnalysisHeading = (line: string) =>
+  ANALYSIS_HEADING_TITLES.has(cleanHeadingTitle(line).toLowerCase())
 
 const stripSummaryPrefix = (line: string) =>
   line
@@ -71,7 +86,7 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
     const isSummaryHeading = SUMMARY_HEADING_TITLES.has(headingCandidate.toLowerCase())
 
     // Check for markdown style ## headings and handle all uppercase headings
-    if ((!!markdownHeadingMatch || trimmedLine.toUpperCase() === trimmedLine || isSpecialSubSection) && trimmedLine !== "") {
+    if ((!!markdownHeadingMatch || trimmedLine.toUpperCase() === trimmedLine || isSpecialSubSection || isKnownAnalysisHeading(trimmedLine)) && trimmedLine !== "") {
       if (currentSection.title && currentSection.content.length > 0) {
         const lowerTitle = currentSection.title.toLowerCase()
 
@@ -86,6 +101,13 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
           sections.push(currentSection)
         }
 
+        currentSection = { title: "", content: [] }
+      } else if (
+        currentSection.title.toLowerCase().includes('why') &&
+        currentSection.title.toLowerCase().includes('matter') &&
+        isSpecialSubSection
+      ) {
+        sections.push(currentSection)
         currentSection = { title: "", content: [] }
       }
       // Remove markdown prefixes and trailing colon for special sub-sections
@@ -220,6 +242,13 @@ export function formatAnalysis(summary: string): FormattedAnalysis {
     } else {
       sections.push(currentSection)
     }
+  }
+
+  if (
+    (winners || losers || potentialMoves) &&
+    !sections.some(section => section.title.toLowerCase().includes('why') && section.title.toLowerCase().includes('matter'))
+  ) {
+    sections.unshift({ title: "Why This Matters", content: [] })
   }
 
   // Ensure "Why This Matters" section appears FIRST (before Winners/Losers/Potential Moves nested rendering)
