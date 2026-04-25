@@ -29,8 +29,8 @@ import MessageBubble from "./message-bubble"
 import TypingIndicator from "./typing-indicator"
 import CitationPanel from "./citation-panel"
 import { cn } from "@/lib/utils"
-import type { RohithChatProps } from "@/types/rohith"
-import type { Citation } from "@/lib/parse-dev-citations"
+import type { RohithChatProps, SourceDocument } from "@/types/rohith"
+import { parseDevCitations, type Citation } from "@/lib/parse-dev-citations"
 import { shareConversation } from "@/lib/rohith-api"
 import { secureApi } from "@/lib/secure-api"
 
@@ -247,48 +247,51 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
     return `Hello ${personalDetails.name}! I'm Rohith, your private intelligence ally. I'm aware of your ${portfolio.totalValue} portfolio with ${portfolio.totalAssets} assets and have access to ${portfolio.marketIntelligenceReports} market intelligence analyses. What can I help you with today?`
   }
 
-  // Create stable dependency for citation processing - only assistant messages with content
+  // Create stable dependency for citation processing - only assistant messages with content/source docs
   const assistantMessages = useMemo(() => {
     return currentMessages
       .filter(msg => msg.role === "assistant" && msg.content && !msg.content.startsWith("..."))
-      .map(msg => msg.content)
+      .map(msg => ({
+        content: msg.content,
+        sourceDocuments: msg.context?.sourceDocuments || []
+      }))
   }, [currentMessages])
 
   // Parse all citations globally whenever assistant message content changes (memoized to prevent unnecessary updates)
   const globalCitations = useMemo(() => {
     const allCitations = new Map<string, Citation>()
     let citationNumber = 1
+    const addCitation = (devId: string, originalText?: string) => {
+      const id = devId.trim()
+      if (!id || allCitations.has(id)) return
+
+      allCitations.set(id, {
+        id,
+        number: citationNumber++,
+        originalText: originalText || `[DEVID - ${id}]`
+      })
+    }
+
+    const addSourceDocumentCitation = (doc: SourceDocument) => {
+      const rawDoc = doc as any
+      if (rawDoc?.type === "kg_intelligence") return
+
+      const devId =
+        rawDoc?.dev_id ||
+        rawDoc?.development_id ||
+        rawDoc?.source_development_id ||
+        rawDoc?.id
+
+      if (devId) {
+        addCitation(String(devId), `[DEVID - ${String(devId).trim()}]`)
+      }
+    }
 
     // Go through all assistant messages to build global citation map
-    assistantMessages.forEach(content => {
-      // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
-      const hasCitations = content.includes("[Dev ID:") || content.includes("[DEVID -")
-
-      if (hasCitations) {
-        // Support both citation formats
-        const devIdPatterns = [
-          /\[Dev ID:\s*([^\]]+)\]/g,  // Original format: [Dev ID: xyz]
-          /\[DEVID\s*-\s*([^\]]+)\]/g  // New format: [DEVID - xyz]
-        ]
-
-        devIdPatterns.forEach(pattern => {
-          pattern.lastIndex = 0 // Reset pattern
-          let match
-
-          while ((match = pattern.exec(content)) !== null) {
-            const devId = match[1].trim()
-
-            // Only add if we haven't seen this Dev ID before
-            if (!allCitations.has(devId)) {
-              allCitations.set(devId, {
-                id: devId,
-                number: citationNumber++,
-                originalText: match[0]
-              })
-            }
-          }
-        })
-      }
+    assistantMessages.forEach(({ content, sourceDocuments }) => {
+      const { citations } = parseDevCitations(content)
+      citations.forEach((citation) => addCitation(citation.id, citation.originalText))
+      sourceDocuments.forEach(addSourceDocumentCitation)
     })
 
     return allCitations

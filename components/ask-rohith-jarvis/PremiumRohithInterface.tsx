@@ -20,6 +20,7 @@ import IntelligenceCard from './IntelligenceCard';
 import { CitationText } from '@/components/elite/citation-text';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { extractDevIds } from '@/lib/parse-dev-citations';
+import { parseMessageContent } from '@/lib/utils';
 import type { Citation } from '@/lib/parse-dev-citations';
 import type { KGIntelligenceSource, SourceDocument } from '@/types/rohith';
 
@@ -45,6 +46,26 @@ interface PremiumRohithInterfaceProps {
 
 function isKgIntelligenceSource(source: SourceDocument): source is KGIntelligenceSource {
   return source.type === 'kg_intelligence';
+}
+
+function getDevelopmentCitationId(source: SourceDocument | Record<string, any>): string {
+  if (!source || source.type === 'kg_intelligence') return '';
+  const rawSource = source as Record<string, any>;
+  return String(
+    rawSource.dev_id ||
+    rawSource.development_id ||
+    rawSource.source_development_id ||
+    rawSource.id ||
+    ''
+  ).trim();
+}
+
+function getKgCitationId(source: KGIntelligenceSource): string {
+  return `kg_${[source.category, source.jurisdiction, source.label]
+    .join('_')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')}`;
 }
 
 /**
@@ -112,7 +133,8 @@ export default function PremiumRohithInterface({
     currentMessages.forEach((message) => {
       if (message.role === 'assistant') {
         // Extract DEVIDs from message content
-        const devIds = extractDevIds(message.content);
+        const messageText = parseMessageContent(message.content);
+        const devIds = extractDevIds(messageText);
 
         devIds.forEach((devId) => {
           if (!seenDevIds.has(devId)) {
@@ -120,7 +142,7 @@ export default function PremiumRohithInterface({
             citations.push({
               id: devId,
               number: citationNumber,
-              originalText: `[DEVID ${devId}]`
+              originalText: `[DEVID - ${devId}]`
             });
             citationNumber++;
           }
@@ -129,16 +151,19 @@ export default function PremiumRohithInterface({
         // Priority 1: Use new sourceDocuments field (Feb 2026+)
         if (message.context?.sourceDocuments && Array.isArray(message.context.sourceDocuments)) {
           message.context.sourceDocuments.forEach((source) => {
-            if (source.type === 'development' && source.dev_id && !seenDevIds.has(source.dev_id)) {
-              seenDevIds.add(source.dev_id);
+            const developmentId = getDevelopmentCitationId(source);
+            if (developmentId && !seenDevIds.has(developmentId)) {
+              seenDevIds.add(developmentId);
               citations.push({
-                id: source.dev_id,
+                id: developmentId,
                 number: citationNumber,
-                originalText: `[DEVID ${source.dev_id}]`
+                originalText: `[DEVID - ${developmentId}]`
               });
               citationNumber++;
             } else if (source.type === 'kg_intelligence') {
-              const kgId = `kg_${citationNumber}`;
+              const kgId = getKgCitationId(source);
+              if (kgSourcesMap.has(kgId)) return;
+
               citations.push({
                 id: kgId,
                 number: citationNumber,
@@ -175,7 +200,7 @@ export default function PremiumRohithInterface({
               citations.push({
                 id: source.dev_id,
                 number: citationNumber,
-                originalText: `[DEVID ${source.dev_id}]`
+                originalText: `[DEVID - ${source.dev_id}]`
               });
               citationNumber++;
             }
@@ -242,7 +267,7 @@ export default function PremiumRohithInterface({
   const cleanMessageContent = (content: string): string => {
     if (!content || typeof content !== 'string') return '';
 
-    let cleaned = content.replace(/\[object Object\]/gi, '');
+    let cleaned = parseMessageContent(content).replace(/\[object Object\]/gi, '');
     cleaned = cleaned.replace(/,\s*,/g, ',').replace(/\s+,/g, ',').replace(/,\s+/g, ', ');
     cleaned = cleaned.replace(/^[,\s]+|[,\s]+$/g, '');
 
@@ -653,13 +678,20 @@ export default function PremiumRohithInterface({
                               {message.context?.sourceDocuments && message.context.sourceDocuments.map((source, idx) => {
                                 let citationId: string;
                                 let citationNum: number;
+                                let sourceLabel: string;
 
-                                if (source.type === 'development') {
-                                  citationId = source.dev_id;
-                                  citationNum = citationMap.get(source.dev_id) || idx + 1;
-                                } else {
-                                  citationId = `kg_${idx + 1}`;
+                                const developmentId = getDevelopmentCitationId(source);
+                                if (developmentId) {
+                                  const developmentSource = source as Record<string, any>;
+                                  citationId = developmentId;
+                                  citationNum = citationMap.get(developmentId) || idx + 1;
+                                  sourceLabel = `${developmentSource.jurisdiction || 'Global'} • ${developmentSource.title || 'Development'}`;
+                                } else if (isKgIntelligenceSource(source)) {
+                                  citationId = getKgCitationId(source);
                                   citationNum = citationMap.get(citationId) || idx + 1;
+                                  sourceLabel = source.label;
+                                } else {
+                                  return null;
                                 }
 
                                 return (
@@ -671,9 +703,7 @@ export default function PremiumRohithInterface({
                                   >
                                     <span className="font-mono text-gold mr-2">[{citationNum}]</span>
                                     <span className="group-hover:underline">
-                                      {source.type === 'development'
-                                        ? `${source.jurisdiction} • ${source.title}`
-                                        : source.label}
+                                      {sourceLabel}
                                     </span>
                                   </button>
                                 );

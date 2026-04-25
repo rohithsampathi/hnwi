@@ -244,7 +244,14 @@ function fallbackDisplayCode(raw: string): string {
   return cleaned.slice(0, 3).toUpperCase();
 }
 
-function codeForCandidate(candidate?: string | null): string | undefined {
+function sameNormalizedToken(left: string, right: string): boolean {
+  return left.localeCompare(right, undefined, { sensitivity: "accent" }) === 0;
+}
+
+function codeForCandidate(
+  candidate?: string | null,
+  visited = new Set<string>(),
+): string | undefined {
   const normalized = normalizeToken(candidate);
   if (!normalized) return undefined;
 
@@ -253,17 +260,28 @@ function codeForCandidate(candidate?: string | null): string | undefined {
     return upper;
   }
 
+  const directCode = lookupCaseInsensitive(CORRIDOR_DISPLAY_CODES, normalized);
+  if (directCode) {
+    return directCode;
+  }
+
+  const visitKey = normalized.toLowerCase();
+  if (visited.has(visitKey)) {
+    return undefined;
+  }
+  visited.add(visitKey);
+
   const nodeAlias = lookupCaseInsensitive(CORRIDOR_NODE_ALIASES, normalized);
-  if (nodeAlias) {
-    return codeForCandidate(nodeAlias);
+  if (nodeAlias && !sameNormalizedToken(nodeAlias, normalized)) {
+    return codeForCandidate(nodeAlias, visited);
   }
 
   const countryCity = lookupCaseInsensitive(PRIMARY_FINANCIAL_CITY_BY_COUNTRY, normalized);
-  if (countryCity) {
-    return codeForCandidate(countryCity);
+  if (countryCity && !sameNormalizedToken(countryCity, normalized)) {
+    return codeForCandidate(countryCity, visited);
   }
 
-  return lookupCaseInsensitive(CORRIDOR_DISPLAY_CODES, normalized);
+  return undefined;
 }
 
 export function getCorridorDisplayCode(raw?: string | null): string {

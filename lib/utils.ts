@@ -39,6 +39,11 @@ export function parseMessageContent(content: string): string {
 
       // If it's an object with a message property, extract that
       if (typeof parsed === 'object' && parsed !== null) {
+        if (parsed.response?.narration?.text) return parsed.response.narration.text
+        if (parsed.response?.content) return parsed.response.content
+        if (parsed.response?.text) return parsed.response.text
+        if (parsed.narration?.text) return parsed.narration.text
+        if (parsed.answer) return parsed.answer
         if (parsed.message) return parsed.message
         if (parsed.content) return parsed.content
         if (parsed.text) return parsed.text
@@ -82,4 +87,3 @@ export function createConversationTitle(message: string): string {
 
   return title || "New Conversation"
 }
-

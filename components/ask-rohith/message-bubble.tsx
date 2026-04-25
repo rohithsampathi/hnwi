@@ -57,47 +57,39 @@ export function MessageBubble({
   useEffect(() => {
     // First, parse the message content to handle JSON
     const parsedContent = parseMessageContent(message.content)
+    const sourceDocumentCitations: Citation[] = []
+    const sourceDocumentIds = new Set<string>()
 
-    // Check for both citation formats: [Dev ID: ...] and [DEVID - ...]
-    const hasCitations = parsedContent.includes("[Dev ID:") || parsedContent.includes("[DEVID -")
+    ;(message.context?.sourceDocuments || []).forEach((doc) => {
+      const rawDoc = doc as any
+      const devId = rawDoc?.dev_id || rawDoc?.development_id || rawDoc?.source_development_id || rawDoc?.id
+      if (!devId || rawDoc?.type === "kg_intelligence") return
 
-    if (isAssistant && globalCitations && hasCitations) {
-      let formatted = parsedContent
-      const citationsInMessage: Citation[] = []
+      const id = String(devId).trim()
+      const citation = globalCitations?.get(id)
+      if (!citation || sourceDocumentIds.has(id)) return
 
-      // Replace each Dev ID with its global citation number
-      // Support both formats: [Dev ID: ...] and [DEVID - ...]
-      const devIdPatterns = [
-        /\[Dev ID:\s*([^\]]+)\]/g,  // Original format: [Dev ID: xyz]
-        /\[DEVID\s*-\s*([^\]]+)\]/g  // New format: [DEVID - xyz]
-      ]
+      sourceDocumentIds.add(id)
+      sourceDocumentCitations.push(citation)
+    })
 
-      devIdPatterns.forEach(pattern => {
-        let match
-        // Reset pattern for each iteration
-        pattern.lastIndex = 0
+    if (isAssistant && globalCitations) {
+      const citationNumberMap = new Map<string, number>()
+      globalCitations.forEach((citation, id) => {
+        citationNumberMap.set(id, citation.number)
+      })
 
-        while ((match = pattern.exec(parsedContent)) !== null) {
-          const devId = match[1].trim()
-          const citation = globalCitations.get(devId)
+      const { formattedText, citations } = parseDevCitations(parsedContent, citationNumberMap)
+      const citationsInMessage = [...citations]
 
-          if (citation) {
-            // Add to this message's citations list
-            if (!citationsInMessage.find(c => c.id === devId)) {
-              citationsInMessage.push(citation)
-            }
-
-            // Replace with citation number
-            formatted = formatted.replace(
-              match[0],
-              `<citation data-id="${devId}" data-number="${citation.number}">[${citation.number}]</citation>`
-            )
-          }
+      sourceDocumentCitations.forEach((citation) => {
+        if (!citationsInMessage.some((existing) => existing.id === citation.id)) {
+          citationsInMessage.push(citation)
         }
       })
 
       // Apply bullet point parsing
-      const bulletParsed = parseBulletPoints(formatted)
+      const bulletParsed = parseBulletPoints(formattedText)
       setFormattedContent(bulletParsed)
       setMessageCitations(citationsInMessage)
     } else {
@@ -106,7 +98,7 @@ export function MessageBubble({
       setFormattedContent(bulletParsed)
       setMessageCitations([])
     }
-  }, [message.content, isAssistant, globalCitations])
+  }, [message.content, message.context?.sourceDocuments, isAssistant, globalCitations])
 
   const sanitizedFormattedContent = sanitizeRichHtml(formattedContent, {
     allowCitations: true,
@@ -248,7 +240,19 @@ export function MessageBubble({
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/30">
                       <FileText className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">
-                        Contains citations: {messageCitations.map(c => `[${c.number}]`).join(', ')}
+                        Source documents:
+                      </span>
+                      <span className="flex flex-wrap gap-1">
+                        {messageCitations.map((citation) => (
+                          <button
+                            key={citation.id}
+                            type="button"
+                            className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            onClick={() => onCitationClick?.(citation.id)}
+                          >
+                            [{citation.number}]
+                          </button>
+                        ))}
                       </span>
                     </div>
                   </div>

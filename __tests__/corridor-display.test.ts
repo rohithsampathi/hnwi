@@ -11,6 +11,7 @@ describe("corridor display terminology", () => {
     expect(getCorridorDisplayCode("Dubai")).toBe("DXB");
     expect(getCorridorDisplayCode("Dubai, UAE")).toBe("DXB");
     expect(getCorridorDisplayCode("United Arab Emirates")).toBe("DXB");
+    expect(getCorridorDisplayCode("Singapore")).toBe("SG");
     expect(getCorridorDisplayCode("Sadashivpet")).toBe("SDP");
     expect(getCorridorDisplayCode("Sadashivpet, Hyderabad, Telangana")).toBe("SDP");
     expect(getCorridorDisplayCode("Sunder Nagar")).toBe("DEL");
