@@ -14,6 +14,7 @@ import { X, FileText } from "lucide-react"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import { cn } from "@/lib/utils"
+import { pickCitationAnalysisText, pickCitationDescription } from "@/lib/development-citation"
 
 interface Development {
   id: string
@@ -109,12 +110,12 @@ export function EliteCitationPanel({
           const payload = await response.json()
           const dev = payload?.development || payload?.data || payload
           const developmentId = dev?._id || dev?.id || normalizedCitationId
-          const summary = dev.summary || dev.analysis || ""
+          const summary = pickCitationAnalysisText(dev)
 
           const newDev: Development = {
             id: developmentId,
             title: dev.title || dev.name || `Development ${developmentId}`,
-            description: dev.description || summary?.substring(0, 200) || "Development details",
+            description: pickCitationDescription(dev, summary),
             industry: dev.industry || "Market Intelligence",
             product: dev.product,
             date: dev.date || dev.created_at,
