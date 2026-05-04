@@ -120,9 +120,12 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
           eventVenue: event.venue,
           eventDate: event.start_date,
           eventEndDate: event.end_date,
+          citizenFit: event.metadata?.citizen_fit,
+          attendanceObjective: event.metadata?.attendance_objective,
+          attendanceTrigger: event.metadata?.attendance_trigger,
           timestamp: new Date().toISOString(),
           _subject: `Talk to Concierge: ${event.name}`,
-          message: `User ${userName} (${userEmail}) wants to talk to concierge about event: ${event.name}. Details: Category: ${event.category}, Location: ${event.location}, Venue: ${event.venue}, Date: ${event.start_date}`
+          message: `User ${userName} (${userEmail}) wants to talk to concierge about event: ${event.name}. Details: Category: ${event.category}, Location: ${event.location}, Venue: ${event.venue}, Date: ${event.start_date}. Attendance objective: ${event.metadata?.attendance_objective || event.summary}`
         }),
       })
       
@@ -165,7 +168,7 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <CrownLoader size="lg" text="Loading elite events..." />
+        <CrownLoader size="lg" text="Loading citizen attendance map..." />
       </div>
     )
   }
@@ -209,6 +212,14 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
             const colorClass = theme === 'dark'
               ? getCategoryDarkColorClass(event.category)
               : getCategoryColorClass(event.category);
+            const citizenSegments = Array.isArray(event.metadata?.citizen_segments)
+              ? event.metadata?.citizen_segments.join(", ")
+              : "";
+            const attendanceThesis = event.metadata?.kingdom_attendance_thesis || event.metadata?.attendance_objective;
+            const attendanceMove = event.metadata?.attendance_objective || event.metadata?.why_it_matters;
+            const attendanceTrigger = event.metadata?.attendance_trigger;
+            const preparationMove = event.metadata?.preparation_move || event.metadata?.concierge_angle;
+            const citizenFit = event.metadata?.citizen_fit === "core" ? "Core Attend" : "Selective Attend";
             
             return (
               <motion.div
@@ -282,6 +293,12 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
                               
                               {/* Tags displayed below the title */}
                               <div className="flex flex-wrap gap-1 md:gap-2 mb-3 max-w-full">
+                                {event.metadata?.citizen_fit && (
+                                  <PremiumBadge className="flex items-center gap-1 text-xs">
+                                    <Check className="w-2 h-2 md:w-3 md:h-3" />
+                                    {citizenFit}
+                                  </PremiumBadge>
+                                )}
                                 {event.tags?.map((tag, tagIndex) => {
                                   return (
                                     <PremiumBadge
@@ -332,6 +349,35 @@ export function SocialHub({ onNavigate }: SocialHubProps = {}) {
                                 <Paragraph className="text-sm mb-4 text-muted-foreground">
                                   {event.summary}
                                 </Paragraph>
+
+                                {(citizenSegments || attendanceThesis || attendanceTrigger || preparationMove) && (
+                                  <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3 text-sm">
+                                    {citizenSegments && (
+                                      <div>
+                                        <span className="font-semibold">For: </span>
+                                        <span className="text-muted-foreground">{citizenSegments}</span>
+                                      </div>
+                                    )}
+                                    {attendanceTrigger && (
+                                      <div>
+                                        <span className="font-semibold">Trigger: </span>
+                                        <span className="text-muted-foreground">{attendanceTrigger}</span>
+                                      </div>
+                                    )}
+                                    {attendanceMove && (
+                                      <div>
+                                        <span className="font-semibold">Move: </span>
+                                        <span className="text-muted-foreground">{attendanceMove}</span>
+                                      </div>
+                                    )}
+                                    {preparationMove && (
+                                      <div>
+                                        <span className="font-semibold">Prep: </span>
+                                        <span className="text-muted-foreground">{preparationMove}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 {/* Capacity: if valid, show number; otherwise "Capacity: Talk to Concierge" */}
                                 {event.metadata?.capacity && !isNaN(event.metadata.capacity) ? (

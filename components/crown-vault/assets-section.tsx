@@ -769,7 +769,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
   });
 
   return (
-    <div className="mt-10 space-y-6">
+    <div className="space-y-4">
       {/* Assets Toolbar */}
       <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         {/* Left side: Add Assets Button and Search */}
@@ -829,7 +829,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
       {sortedAssets.length === 0 ? (
         <Card className="p-12 text-center">
           <Vault className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Your Crown Vault Awaits</h3>
+          <h3 className="text-lg font-semibold mb-2">Your Crown Vault Awaits</h3>
           <p className="text-muted-foreground mb-4">Start securing your legacy with military-grade encryption</p>
           <Button onClick={onAddAssets}>
             <Plus className="h-4 w-4 mr-2" />
@@ -837,7 +837,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
           </Button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {sortedAssets.map((asset) => {
             // Safety checks for asset rendering and decryption errors
             if (!asset || !asset.asset_data || !asset.asset_id) {

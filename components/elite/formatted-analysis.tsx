@@ -106,7 +106,7 @@ function parseAnalysis(text: string): ParsedSection[] {
       })
     } else {
       // Accumulate regular content
-      const cleanedLine = trimmedLine.replace(/^(?:Executive Summary|HByte Summary|Summary)\s*:?\s*/i, '').trim()
+      const cleanedLine = trimmedLine.replace(/^(?:Executive Summary|HByte(?: Summary)?|Summary)\s*:?\s*/i, '').trim()
       if (!cleanedLine) continue
       currentContent += (currentContent ? ' ' : '') + cleanedLine
     }

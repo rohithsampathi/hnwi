@@ -7,6 +7,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SimulationResult } from '@/lib/hooks/useAssessmentSSE';
 import { Globe, Brain, Shield, TrendingUp, AlertTriangle, Sparkles, Activity, Zap, Lightbulb, CheckCircle } from 'lucide-react';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface DigitalTwinWaitingProps {
   sessionId: string;
@@ -38,7 +39,7 @@ export function DigitalTwinWaitingInteractive({
   resultData: sseResultData
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [briefCount, setBriefCount] = useState<number>(1900);
+  const briefCount = useCastleBriefCount();
   const [peerCount, setPeerCount] = useState<number>(87); // Dynamic peer comparison count from backend
   const [pollCount, setPollCount] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
@@ -61,9 +62,16 @@ export function DigitalTwinWaitingInteractive({
   const MINIMUM_DISPLAY_TIME_MS = 0; // No minimum - instant navigation
 
   // Rotating facts about HNWI World (dynamic based on peerCount and briefCount)
+  const briefCountFact =
+    briefCount === null
+      ? "Processing the live HNWI World corpus"
+      : `Processing ${briefCount.toLocaleString()}+ HNWI World developments since February 2023`;
+  const briefCountMetric =
+    briefCount === null ? 'Live corpus' : `${briefCount.toLocaleString()}+ developments`;
+
   const HNWI_FACTS = [
     { icon: Globe, text: "Analyzing patterns across 67 jurisdictions for wealth migration signals" },
-    { icon: Brain, text: `Processing ${briefCount.toLocaleString()}+ HNWI World developments since February 2023` },
+    { icon: Brain, text: briefCountFact },
     { icon: Shield, text: "Simulating your portfolio through 10 crisis scenarios" },
     { icon: TrendingUp, text: "Identifying opportunities worth $10M+ in cumulative value" },
     { icon: AlertTriangle, text: "Testing resilience against the April 2026 Transparency Cliff" },
@@ -95,7 +103,7 @@ export function DigitalTwinWaitingInteractive({
       icon: <Globe className="w-5 h-5" />,
       estimatedSeconds: 20,
       status: 'processing',
-      metrics: [`${briefCount.toLocaleString()}+ developments`, '67 jurisdictions', '3 years of patterns']
+      metrics: [briefCountMetric, '67 jurisdictions', '3 years of patterns']
     },
     {
       id: 'simulation',
@@ -141,7 +149,7 @@ export function DigitalTwinWaitingInteractive({
       if (step.id === 'briefs') {
         return {
           ...step,
-          metrics: [`${briefCount.toLocaleString()}+ developments`, '67 jurisdictions', '3 years of patterns']
+          metrics: [briefCountMetric, '67 jurisdictions', '3 years of patterns']
         };
       } else if (step.id === 'simulation') {
         return {
@@ -161,32 +169,7 @@ export function DigitalTwinWaitingInteractive({
       }
       return step;
     }));
-  }, [briefCount, peerCount]);
-
-  // Fetch dynamic brief count
-  useEffect(() => {
-    async function fetchBriefCount() {
-      try {
-        const response = await fetch('/api/castle-briefs/counts', {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs;
-          if (count && typeof count === 'number') {
-            setBriefCount(count);
-          }
-        }
-      } catch (error) {
-        // Use fallback value
-      }
-    }
-    fetchBriefCount();
-  }, []);
+  }, [briefCountMetric, peerCount]);
 
   // Fetch actual opportunities count AND peer count from session results
   // ONLY when SSE says results are ready - ONCE
@@ -320,7 +303,7 @@ export function DigitalTwinWaitingInteractive({
       switch (currentStep.id) {
         case 'briefs':
           // Retrieving HNWI World briefs - developments should be counting up
-          newMetrics[0].target = briefCount; // Developments Analyzed
+          if (briefCount !== null) newMetrics[0].target = briefCount; // Developments Analyzed
           newMetrics[1].target = 0; // Scenarios not started
           newMetrics[2].target = 0; // Peer comparisons not started
           newMetrics[3].target = 0; // Opportunities not found yet
@@ -328,7 +311,7 @@ export function DigitalTwinWaitingInteractive({
 
         case 'simulation':
           // Running Digital Twin simulation - scenarios and peers should be counting
-          newMetrics[0].target = briefCount; // Developments complete
+          if (briefCount !== null) newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios being tested
           newMetrics[2].target = peerCount; // Peer comparisons running (DYNAMIC from backend)
           newMetrics[3].target = oppEarly; // Some opportunities found
@@ -336,7 +319,7 @@ export function DigitalTwinWaitingInteractive({
 
         case 'gap':
           // Generating Extended Report - opportunities should be counting up
-          newMetrics[0].target = briefCount; // Developments complete
+          if (briefCount !== null) newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios complete
           newMetrics[2].target = peerCount; // Peer comparisons complete (DYNAMIC from backend)
           newMetrics[3].target = oppMidway; // Finding more opportunities
@@ -344,7 +327,7 @@ export function DigitalTwinWaitingInteractive({
 
         case 'forensic':
           // Response validation - all metrics should be near final
-          newMetrics[0].target = briefCount; // Developments complete
+          if (briefCount !== null) newMetrics[0].target = briefCount; // Developments complete
           newMetrics[1].target = 10; // Scenarios complete
           newMetrics[2].target = peerCount; // Peer comparisons complete (DYNAMIC from backend)
           newMetrics[3].target = Math.floor(finalOppCount * 0.9); // Near final opportunities count
@@ -352,7 +335,7 @@ export function DigitalTwinWaitingInteractive({
 
         case 'pdf':
           // Finalizing - all metrics at maximum
-          newMetrics[0].target = briefCount; // All developments
+          if (briefCount !== null) newMetrics[0].target = briefCount; // All developments
           newMetrics[1].target = 10; // All scenarios
           newMetrics[2].target = peerCount; // All peers (DYNAMIC from backend)
           newMetrics[3].target = finalOppCount; // All opportunities
@@ -674,7 +657,9 @@ export function DigitalTwinWaitingInteractive({
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {metric.current.toLocaleString()}{metric.suffix}
+                  {index === 0 && briefCount === null
+                    ? 'Live'
+                    : `${metric.current.toLocaleString()}${metric.suffix}`}
                 </motion.div>
                 <div className="text-[10px] sm:text-xs text-muted-foreground leading-tight mt-1">{metric.label}</div>
                 {/* Show progress bar if metric is actively counting */}
@@ -914,7 +899,9 @@ export function DigitalTwinWaitingInteractive({
                     const currentStep = steps[currentStepIndex];
                     switch (currentStep?.id) {
                       case 'briefs':
-                        return `Analyzing ${dynamicMetrics[0].current.toLocaleString()} HNWI World developments`;
+                        return briefCount === null
+                          ? 'Analyzing the live HNWI World corpus'
+                          : `Analyzing ${dynamicMetrics[0].current.toLocaleString()} HNWI World developments`;
                       case 'simulation':
                         return `Testing scenario ${dynamicMetrics[1].current} of 10`;
                       case 'gap':

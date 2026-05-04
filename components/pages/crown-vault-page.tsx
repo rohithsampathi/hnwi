@@ -10,16 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuthPopup } from "@/contexts/auth-popup-context";
 import { usePageDataCache } from "@/contexts/page-data-cache-context";
-import { Heading2 } from "@/components/ui/typography";
-import { PageHeaderWithBack } from "@/components/ui/back-button";
-import { PageWrapper } from "@/components/ui/page-wrapper";
 import {
-  Crown, Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText,
+  Shield, Plus, Lock, Brain, Database, User, Mail, Phone, FileText,
   Edit, X, Save, Building, DollarSign
 } from "lucide-react";
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor } from "@/lib/colors";
@@ -62,6 +60,8 @@ interface CrownVaultPageProps {
   onNavigate?: (page: string) => void;
 }
 
+type CrownVaultTab = "summary" | "assets" | "heirs" | "activity";
+
 // Skeleton component for loading states
 const SkeletonCard = () => (
   <Card className="h-full">
@@ -95,7 +95,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   const [assets, setAssets] = useState<CrownVaultAsset[]>([]);
   const [heirs, setHeirs] = useState<CrownVaultHeir[]>([]);
   const [stats, setStats] = useState<CrownVaultStats | null>(null);
-  const [activeTab, setActiveTab] = useState<"summary" | "assets" | "heirs" | "activity">("summary");
+  const [activeTab, setActiveTab] = useState<CrownVaultTab>("summary");
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -531,7 +531,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           stats={stats}
           assets={assets}
           onAddAssets={() => setIsAddModalOpen(true)}
-          onNavigateToTab={(tab: string) => setActiveTab(tab as "summary" | "assets" | "heirs" | "activity")}
+          onNavigateToTab={(tab: string) => setActiveTab(tab as CrownVaultTab)}
         />
       );
     }
@@ -573,89 +573,39 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
   };
 
   const tabOptions: Array<{
-    id: "summary" | "assets" | "heirs" | "activity";
+    id: CrownVaultTab;
     label: string;
-    title: string;
-    description: string;
   }> = [
-    {
-      id: "summary",
-      label: "Summary",
-      title: "Vault Summary",
-      description: "Portfolio value, Katherine posture, heir coverage, and current allocation in one view.",
-    },
-    {
-      id: "assets",
-      label: "Assets",
-      title: "Asset Registry",
-      description: "Review each asset, its current valuation rail, and Katherine-backed market context.",
-    },
-    {
-      id: "heirs",
-      label: "Heirs",
-      title: "Heir Exposure",
-      description: "Track beneficiary assignments and identify assets that still need succession mapping.",
-    },
-    {
-      id: "activity",
-      label: "Activity",
-      title: "Vault Activity",
-      description: "Audit the most recent changes, sync events, and Crown Vault state updates.",
-    },
+    { id: "summary", label: "Summary" },
+    { id: "assets", label: "Assets" },
+    { id: "heirs", label: "Heirs" },
+    { id: "activity", label: "Activity" },
   ];
 
-  const activeTabMeta = tabOptions.find((tab) => tab.id === activeTab) ?? tabOptions[0];
-
-
   return (
-    <PageWrapper>
-      <div className="space-y-6 px-4 pb-24 sm:px-6 lg:px-8 lg:pb-10">
-        <PageHeaderWithBack
-          title="Crown Vault"
-          description="Track current value, heir exposure, and Katherine-backed asset intelligence from one secured surface."
-          onNavigate={onNavigate}
-          icon={Crown}
-        />
-
+    <>
+      <div className="space-y-4 pb-10">
         {loading ? (
           <div className="flex min-h-[60vh] items-center justify-center">
             <CrownLoader size="lg" text="Encrypting generational assets..." />
           </div>
         ) : (
           <>
-            <Card className="border-border/60 bg-card/70 shadow-sm">
-              <CardContent className="flex flex-col gap-4 p-4 md:p-5">
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Vault Navigation
-                  </p>
-                  <Heading2 className="text-2xl font-bold text-foreground">
-                    {activeTabMeta.title}
-                  </Heading2>
-                  <p className="max-w-3xl text-sm text-muted-foreground">
-                    {activeTabMeta.description}
-                  </p>
-                </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => setActiveTab(value as CrownVaultTab)}
+              className="w-full"
+            >
+              <TabsList className="max-w-full justify-start overflow-x-auto">
+                {tabOptions.map((tab) => (
+                  <TabsTrigger key={tab.id} value={tab.id} className="min-w-20">
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
 
-                <div className="flex flex-wrap gap-2 rounded-2xl border border-border/60 bg-background/70 p-2">
-                  {tabOptions.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 sm:px-4 ${
-                        activeTab === tab.id
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="min-h-[50vh]">
+            <div className="min-w-0">
               {renderTabContent()}
             </div>
 
@@ -1180,7 +1130,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
           </>
         )}
       </div>
-    </PageWrapper>
+    </>
   );
 }
 

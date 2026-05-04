@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { resolveCastleBriefCount } from '@/lib/castle-briefs/resolve-castle-brief-count';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
@@ -40,52 +41,24 @@ const KINGDOM_CONTRACT = {
   ],
 };
 
-function buildFallbackPayload() {
-  const count = 2016;
-
+function buildUnavailablePayload(reason: string) {
   return {
-    total_count: count,
-    count,
-    total: count,
+    total_count: null,
+    count: null,
+    total: null,
     castle_briefs: {
-      total_count: count,
-      source: 'fallback',
+      total_count: null,
+      source: 'unavailable',
     },
     developments: {
-      total_count: count,
-      source: 'fallback',
+      total_count: null,
+      source: 'unavailable',
     },
-    opportunities: {
-      total_count: 0,
-      active_count: 0,
-      source: 'fallback',
-    },
-    library_stats: {
-      available: false,
-      developments: {
-        total_count: count,
-        snapshot_total_count: 0,
-      },
-      castle: {
-        total_extractions: 0,
-        quality_score_gte_7: 0,
-        quality_score_10: 0,
-        context_exempt_count: 0,
-        dead_letter_count: 0,
-      },
-      patterns: {
-        deep_patterns_total: 0,
-      },
-      kgv3: {
-        unified_total: 0,
-      },
-      opportunities: {
-        command_centre_total: 0,
-        prive_total: 0,
-        prive_active_count: 0,
-      },
-    },
+    opportunities: null,
+    library_stats: null,
     kingdom_contract: KINGDOM_CONTRACT,
+    degraded: true,
+    reason,
   };
 }
 
@@ -100,18 +73,25 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json(buildFallbackPayload());
+      return NextResponse.json(buildUnavailablePayload('backend_unavailable'), {
+        status: 502,
+      });
     }
 
     const data = await response.json();
+    const count = resolveCastleBriefCount(data);
 
-    const count =
-      data.castle_briefs?.total_count ||
-      data.developments?.total_count ||
-      data.count ||
-      data.total_count ||
-      data.total ||
-      2016;
+    if (count === null) {
+      return NextResponse.json(
+        {
+          ...buildUnavailablePayload('count_unavailable'),
+          upstream: {
+            library_stats_available: Boolean(data.library_stats?.available),
+          },
+        },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({
       ...data,
@@ -126,14 +106,13 @@ export async function GET() {
         ...(data.developments || {}),
         total_count: count,
       },
-      opportunities: data.opportunities || {
-        total_count: 0,
-        active_count: 0,
-      },
+      opportunities: data.opportunities ?? null,
       library_stats: data.library_stats || null,
       kingdom_contract: data.kingdom_contract || KINGDOM_CONTRACT,
     });
   } catch {
-    return NextResponse.json(buildFallbackPayload());
+    return NextResponse.json(buildUnavailablePayload('proxy_exception'), {
+      status: 503,
+    });
   }
 }

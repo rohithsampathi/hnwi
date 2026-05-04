@@ -69,14 +69,14 @@ const SummaryMetricCard = ({
 
   return (
     <Card className={toneClasses}>
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
+            <p className="text-xl font-semibold text-foreground">{value}</p>
             <p className="text-xs text-muted-foreground">{subtext}</p>
           </div>
-          <div className="rounded-full bg-background/70 p-3 shadow-sm">
+          <div className="rounded-full bg-background/70 p-2 shadow-sm">
             <Icon className="h-5 w-5 text-primary" />
           </div>
         </div>
@@ -170,18 +170,18 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
   const currencyCount = Object.keys(currentCurrencyTotals).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <Card className="border-border/60 bg-card/70 shadow-sm">
-        <CardHeader className="gap-6 pb-4">
+        <CardHeader className="gap-4 pb-3">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="space-y-2">
               <div className="inline-flex items-center gap-3">
-                <div className="rounded-full bg-primary/10 p-3">
-                  <Crown className="h-6 w-6 text-primary" />
+                <div className="rounded-full bg-primary/10 p-2">
+                  <Crown className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Vault Summary</p>
-                  <CardTitle className="text-2xl sm:text-3xl">Crown Vault Overview</CardTitle>
+                  <CardTitle className="text-xl font-semibold">Overview</CardTitle>
                 </div>
               </div>
               <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
@@ -190,7 +190,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/60 bg-background/80 p-4 xl:max-w-sm">
+            <div className="rounded-lg border border-border/60 bg-background/80 p-4 xl:max-w-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Latest Katherine sync</p>
               <p className="mt-1 text-sm font-semibold text-foreground">
                 {latestSync ? new Date(latestSync).toLocaleString() : "Not yet established"}
@@ -202,7 +202,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-8">
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <SummaryMetricCard
               title="Current Portfolio Value"
@@ -302,7 +302,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
       {assets.length > 0 && (
         <div className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Allocation and Exposure</h2>
+            <h2 className="text-xl font-semibold text-foreground">Allocation and Exposure</h2>
             <p className="text-sm text-muted-foreground">
               {hasMixedCurrencies
                 ? "Current vault composition across asset categories by asset count. Mixed currencies are shown separately above so the UI does not fabricate a single false total."

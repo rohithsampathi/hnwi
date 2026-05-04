@@ -25,6 +25,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   const { theme } = useTheme()
   const pathname = usePathname()
+  const hasOuterDivider = !pathname.includes('/dashboard')
   
   // Map routes to their specific icons
   const getPageIcon = () => {
@@ -56,7 +57,13 @@ export function PageHeader({
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 lg:pt-14 pb-0">
+    <div
+      className={cn(
+        "px-4 sm:px-6 lg:px-8 pt-10 sm:pt-12 lg:pt-14",
+        hasOuterDivider ? "pb-1" : "pb-0",
+        className,
+      )}
+    >
       {config.showBackButton && (
         <div className="mb-6">
           <Button
@@ -84,7 +91,7 @@ export function PageHeader({
           </p>
         )}
       </div>
-      <div className="border-b border-border/30 mt-2 mb-4" />
+      {!hasOuterDivider && <div className="border-b border-border/30 mt-2 mb-4" />}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Shield, Target, Layers, Zap, FileText, TrendingUp } from 'lucide-react';
 import { VaultEntrySequence } from './VaultEntrySequence';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface AssessmentLandingProps {
   onContinue: () => void;
@@ -16,8 +17,7 @@ interface AssessmentLandingProps {
 let vaultShownInThisAppSession = false;
 
 export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue }) => {
-  const [briefCount, setBriefCount] = useState<number | null>(null);
-  const [loadingCount, setLoadingCount] = useState(true);
+  const briefCount = useCastleBriefCount();
   const [isStarting, setIsStarting] = useState(false);
   const [opportunities, setOpportunities] = useState<any[]>([]);
 
@@ -41,31 +41,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
-
-  useEffect(() => {
-    async function fetchBriefCount() {
-      try {
-        const response = await fetch('/api/castle-briefs/counts');
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs;
-          if (count && typeof count === 'number') {
-            setBriefCount(count);
-          } else {
-            setBriefCount(1900);
-          }
-        } else {
-          setBriefCount(1900);
-        }
-      } catch (error) {
-        setBriefCount(1900);
-      } finally {
-        setLoadingCount(false);
-      }
-    }
-
-    fetchBriefCount();
-  }, []);
+  const briefCountLabel = briefCount === null ? 'Live' : formatNumber(briefCount);
 
   useEffect(() => {
     async function fetchOpportunities() {
@@ -102,7 +78,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
             setShowVaultEntry(false);
             setVaultUnlocked(true);
           }}
-          briefCount={briefCount || 1900}
+          briefCount={briefCount}
           opportunities={opportunities}
         />
       )}
@@ -257,7 +233,7 @@ export const AssessmentLanding: React.FC<AssessmentLandingProps> = ({ onContinue
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
                 <div className="text-center">
                   <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary mb-4 bg-gradient-to-b from-primary to-primary/60 bg-clip-text text-transparent">
-                    {loadingCount ? '...' : formatNumber(briefCount || 1900)}
+                    {briefCountLabel}
                   </div>
                   <div className="text-xs sm:text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wider">
                     HNWI Developments

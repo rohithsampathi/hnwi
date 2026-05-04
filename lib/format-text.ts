@@ -48,7 +48,7 @@ const isKnownAnalysisHeading = (line: string) =>
 const stripSummaryPrefix = (line: string) =>
   line
     .replace(/^\s*#{1,6}\s+/, "")
-    .replace(/^\s*(?:Executive Summary|HByte Summary|Summary)\s*:?\s*/i, "")
+    .replace(/^\s*(?:Executive Summary|HByte(?: Summary)?|Summary)\s*:?\s*/i, "")
     .trim()
 
 const toTitleCase = (str: string) => {

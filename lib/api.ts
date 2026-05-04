@@ -81,6 +81,16 @@ export interface SocialEvent {
     capacity?: number
     ticketing_url?: string
     contact_email?: string
+    citizen_fit?: "core" | "selective" | string
+    citizen_segments?: string[]
+    attendance_trigger?: string
+    attendance_objective?: string
+    preparation_move?: string
+    avoid_if?: string
+    kingdom_attendance_thesis?: string
+    access_type?: string
+    concierge_angle?: string
+    why_it_matters?: string
   }
   tags?: string[]
 }

@@ -6,6 +6,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { SimulationResult } from '@/lib/hooks/useAssessmentSSE';
+import { useCastleBriefCount } from '@/lib/hooks/useCastleBriefCount';
 
 interface DigitalTwinWaitingProps {
   sessionId: string;
@@ -31,7 +32,7 @@ export function DigitalTwinWaiting({
   resultData: sseResultData // Renamed to avoid conflict
 }: DigitalTwinWaitingProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [briefCount, setBriefCount] = useState<number>(1900); // Default fallback
+  const briefCount = useCastleBriefCount();
   const [pollCount, setPollCount] = useState(0);
   const [isPolling, setIsPolling] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
@@ -45,25 +46,6 @@ export function DigitalTwinWaiting({
     { id: 'forensic', label: 'Response validation check', estimatedSeconds: 10, status: 'pending' },
     { id: 'pdf', label: 'Creating cryptographically signed PDF', estimatedSeconds: 10, status: 'pending' },
   ]);
-
-  // Fetch dynamic brief count
-  useEffect(() => {
-    async function fetchBriefCount() {
-      try {
-        const response = await fetch('/api/castle-briefs/counts');
-        if (response.ok) {
-          const data = await response.json();
-          const count = data.developments?.total_count || data.total || data.count || data.total_count || data.briefs;
-          if (count && typeof count === 'number') {
-            setBriefCount(count);
-          }
-        }
-      } catch (error) {
-        // Use fallback value
-      }
-    }
-    fetchBriefCount();
-  }, []);
 
   // Timer
   useEffect(() => {
@@ -363,7 +345,9 @@ export function DigitalTwinWaiting({
         <div className="p-4 bg-muted/50 border-t border-border">
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
-              This analysis requires deep pattern matching across {briefCount.toLocaleString()}+ HNWI World developments.
+              {briefCount === null
+                ? 'This analysis requires deep pattern matching across the live HNWI World corpus.'
+                : `This analysis requires deep pattern matching across ${briefCount.toLocaleString()}+ HNWI World developments.`}
             </p>
             <p className="text-xs text-muted-foreground">
               Digital Twin simulation models your behavioral responses in crisis scenarios.

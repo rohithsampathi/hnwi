@@ -35,6 +35,7 @@ export function resolveCastleBriefCount(payload: unknown): number | null {
     numericOrNull(developments?.total_count) ??
     numericOrNull(record.count) ??
     numericOrNull(record.total_count) ??
-    numericOrNull(record.total)
+    numericOrNull(record.total) ??
+    numericOrNull(record.briefs)
   );
 }

@@ -263,7 +263,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
           marginLeft: isDesktop
             ? (hideSidebar ? '64px' : (sidebarState ? '64px' : '256px'))
             : '0',
-          paddingTop: `${headerHeight}px`,
+          paddingTop: getPageHeader(pathname, user) && !isPersonalMode ? '0px' : `${headerHeight}px`,
           ['--app-shell-offset-top' as string]: `${headerHeight}px`,
           height: isPersonalMode ? 'var(--app-viewport-height, 100dvh)' : undefined,
           filter: isDesktop && !sidebarState && !isPersonalMode ? 'blur(2px)' : 'none',
@@ -290,7 +290,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
               style={{
                 paddingLeft: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
                 paddingRight: getPageHeader(pathname, user) && !pathname.includes('/dashboard') ? '' : '',
-                paddingTop: getPageHeader(pathname, user) ? '8px' : '16px',
+                paddingTop: getPageHeader(pathname, user) ? '16px' : '16px',
                 marginTop: getPageHeader(pathname, user) ? '' : '0px'
               }}
             >

@@ -113,14 +113,14 @@ export function CitationDevelopmentCard({ development, citationNumber, onCitatio
       <div className="border border-border rounded-lg p-4 bg-transparent">
         <div className="space-y-6 px-2">
           <div className="w-full">
-            {/* HByte Summary */}
+            {/* HByte */}
             {analysis.summary.trim() && (
               <div className="mb-6 pb-2">
                 <div className="flex items-center mb-4">
                   <div className="p-2 mr-3">
                     <Brain className={`h-5 w-5 ${theme === "dark" ? "text-primary" : "text-black"}`} />
                   </div>
-                  <h4 className="text-xl font-bold">HByte Summary</h4>
+                  <h4 className="text-xl font-bold">HByte</h4>
                 </div>
                 <div className="text-sm leading-relaxed pl-2">
                   <p className="font-medium">

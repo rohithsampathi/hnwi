@@ -68,12 +68,12 @@ export function ActivitySection({ stats }: ActivitySectionProps) {
   };
 
   return (
-    <div className="mt-10 space-y-6">
+    <div className="space-y-4">
       
       {/* Clean Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <h2 className="text-2xl font-semibold text-foreground">Activity</h2>
+          <h2 className="text-xl font-semibold text-foreground">Activity</h2>
         </div>
         <p className="text-sm text-muted-foreground">Track all changes and updates to your vault</p>
       </div>

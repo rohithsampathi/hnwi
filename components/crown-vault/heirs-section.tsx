@@ -37,12 +37,12 @@ export function HeirsSection({
   deletingHeirs
 }: HeirsSectionProps) {
   return (
-    <div className="mt-10 space-y-6">
+    <div className="space-y-4">
       
       {/* Clean Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Heirs</h2>
+          <h2 className="text-xl font-semibold text-foreground">Heirs</h2>
           <p className="text-sm text-muted-foreground mt-1">Manage your beneficiaries and their inheritance</p>
         </div>
         <Button 

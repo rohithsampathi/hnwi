@@ -23,6 +23,7 @@ interface Development {
   id: string
   title: string
   description: string
+  short_summary?: string
   industry: string
   product?: string
   date?: string
@@ -96,7 +97,7 @@ export function CitationPanel({
               allDevs.set(currentId, {
                 id: developmentId,
                 title: dev.title || dev.name || `Development ${developmentId}`,
-                description: dev.description || dev.summary?.substring(0, 200) || "Development details",
+                description: dev.description || dev.short_summary || "",
                 industry: dev.industry || "Market Intelligence",
                 product: dev.product,
                 date: dev.date || dev.created_at,
