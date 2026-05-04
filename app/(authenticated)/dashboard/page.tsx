@@ -2,44 +2,19 @@
 
 "use client"
 
-import dynamic from "next/dynamic"
-import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { CrownLoader } from "@/components/ui/crown-loader"
+import { WeeklySurvivalDashboard } from "@/components/katya/weekly-survival-dashboard"
 import { getCurrentUser } from "@/lib/auth-manager"
 import { usePageTitle } from "@/hooks/use-page-title"
-import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
-
-const DASHBOARD_GATE_TIMEOUT_MS = 5000
-
-const HomeDashboardElite = dynamic(
-  () => import("@/components/home-dashboard-elite").then((mod) => mod.HomeDashboardElite),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-screen">
-        <div className="flex h-full items-center justify-center">
-          <CrownLoader size="lg" text="Loading dashboard..." />
-        </div>
-      </div>
-    ),
-  },
-)
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [isCheckingAccess, setIsCheckingAccess] = useState(true)
-  const [hasAssessment, setHasAssessment] = useState(false)
-  const [hasCheckedAccess, setHasCheckedAccess] = useState(false) // Prevent multiple checks
+  const [, setUser] = useState<any>(null)
 
-  // Set page title and meta description
   usePageTitle(
     "Home",
-    "Real-time wealth intelligence dashboard. Elite pulse insights, AI-scored opportunities, and market intelligence for ultra-high-net-worth individuals."
+    "Weekly survival proof for Katya. Money movement, room quality, funnel leaks, and next operating moves."
   )
 
-  // Load user data from centralized auth and listen for updates
   useEffect(() => {
     const authUser = getCurrentUser()
     if (authUser) {
@@ -65,105 +40,5 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // Check if user has completed assessment - REQUIRED for dashboard access
-  useEffect(() => {
-    // CRITICAL: Prevent multiple rapid API calls that cause 429 errors
-    if (hasCheckedAccess) {
-      return // Already checked, skip
-    }
-
-    const checkAssessmentStatus = async () => {
-      if (!user?.id && !user?.user_id) {
-        setIsCheckingAccess(false)
-        return
-      }
-
-      // Mark as checked IMMEDIATELY to prevent duplicate calls
-      setHasCheckedAccess(true)
-
-      try {
-        const userId = user.id || user.user_id
-
-        // SOTA AUTHENTICATION: Backend API calls use httpOnly cookies
-        // No need to check auth state - fetch will send cookies automatically
-        const data = await fetchAssessmentHistory(userId, {
-          timeoutMs: DASHBOARD_GATE_TIMEOUT_MS,
-        }).catch(() => null)
-
-        if (data) {
-          const assessments = data?.assessments || data || []
-
-          if (assessments.length > 0 && hasRecentAssessmentResult(data)) {
-            setHasAssessment(true)
-          } else {
-            // Show dashboard anyway - the P toggle will prompt them to take assessment
-            setHasAssessment(false)
-          }
-        } else {
-          // On other API error (including 404), allow access (fail open to prevent blocking)
-          setHasAssessment(false)
-        }
-      } catch (error) {
-        // On error, allow access (fail open)
-        setHasAssessment(false)
-      } finally {
-        setIsCheckingAccess(false)
-      }
-    }
-
-    checkAssessmentStatus()
-  }, [user, hasCheckedAccess, router])
-
-  const handleNavigation = (route: string) => {
-    const normalizedRoute = route.startsWith("/") ? route : `/${route}`
-
-    // Map internal routes to Next.js routes
-    if (route === "strategy-vault") {
-      router.push("/prive-exchange")
-    } else if (route === "strategy-engine") {
-      router.push("/ask-rohith")
-    } else if (route === "social-hub") {
-      router.push("/social-hub")
-    } else if (route === "prive-exchange") {
-      router.push("/prive-exchange")
-    } else if (route === "invest-scan") {
-      router.push("/invest-scan")
-    } else if (route === "crown-vault") {
-      router.push("/crown-vault")
-    } else if (route === "calendar-page") {
-      router.push("/calendar")
-    } else if (route === "profile") {
-      router.push("/profile")
-    } else if (route.startsWith("opportunity/")) {
-      const opportunityId = route.split("/")[1]
-      router.push(`/opportunity/${opportunityId}`)
-    } else {
-      // For other routes, try direct navigation
-      router.push(normalizedRoute)
-    }
-  }
-
-  // Show loading while checking access
-  if (isCheckingAccess) {
-    return (
-      <div className="w-full h-screen">
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Always render dashboard - P toggle will handle assessment prompting
-  return (
-    <HomeDashboardElite
-      user={user}
-      userData={user}
-      onNavigate={handleNavigation}
-      hasCompletedAssessmentProp={hasAssessment}
-    />
-  )
+  return <WeeklySurvivalDashboard />
 }
