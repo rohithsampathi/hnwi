@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
 import { withRateLimit } from '@/lib/security/api-auth'
+import { API_BASE_URL } from '@/config/api'
 
 // Helper to get cookie domain for PWA cross-subdomain support
 function getCookieDomain(): string | undefined {
@@ -86,8 +87,7 @@ export async function GET() {
     // Strategy: validate with backend first, verified JWT as fallback
     // 1. Try backend validation (authoritative)
     try {
-      const backendUrl = process.env.API_BASE_URL || 'http://localhost:8000';
-      const userResponse = await fetch(`${backendUrl}/api/auth/session`, {
+      const userResponse = await fetch(`${API_BASE_URL}/api/auth/session`, {
         headers: {
           'Cookie': `access_token=${accessToken}`,
           'Content-Type': 'application/json'

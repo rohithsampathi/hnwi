@@ -10,7 +10,14 @@ if (typeof window !== 'undefined') {
   throw new Error('API_BASE_URL cannot be imported in client-side code. Use secureApi instead.')
 }
 
-export const API_BASE_URL = process.env.API_BASE_URL || "https://hnwi-uwind-p8oqb.ondigitalocean.app"
+const KINGDOM_API_BASE_URL = "https://kingdom-core.montaigne.co";
+const LEGACY_DIGITALOCEAN_API_BASE_URL = "https://hnwi-uwind-p8oqb.ondigitalocean.app";
+const configuredApiBaseUrl = process.env.API_BASE_URL?.trim().replace(/\/$/, "");
+
+export const API_BASE_URL =
+  !configuredApiBaseUrl || configuredApiBaseUrl === LEGACY_DIGITALOCEAN_API_BASE_URL
+    ? KINGDOM_API_BASE_URL
+    : configuredApiBaseUrl;
 
 
 // Helper to create safe error messages without URL exposure
