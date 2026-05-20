@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { API_BASE_URL } from "@/config/api";
 
 const PUBLIC_API_ENDPOINTS = ["/api/auth/csrf-token", "/api/og", "/api/auth/refresh"];
 
@@ -10,13 +11,10 @@ export async function middleware(request: NextRequest) {
   const isDev = process.env.NODE_ENV !== "production";
 
   let backendOrigin = "";
-  const apiBaseUrl = process.env.API_BASE_URL;
-  if (apiBaseUrl) {
-    try {
-      backendOrigin = new URL(apiBaseUrl).origin;
-    } catch {
-      backendOrigin = "";
-    }
+  try {
+    backendOrigin = new URL(API_BASE_URL).origin;
+  } catch {
+    backendOrigin = "";
   }
 
   const scriptSources = [
@@ -42,6 +40,7 @@ export async function middleware(request: NextRequest) {
     "https://*.vercel.app",
     "wss://*.vercel.app",
     "https://hnwi-uwind-p8oqb.ondigitalocean.app", // Backend API URL
+    "https://kingdom-core.montaigne.co", // Kingdom backend API URL
     "blob:",  // PDF export blob URLs
     "data:",  // @react-pdf/renderer WASM binary loading
   ];

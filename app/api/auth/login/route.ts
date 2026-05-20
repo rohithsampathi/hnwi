@@ -63,6 +63,42 @@ function forwardBackendCookies(
   });
 }
 
+function getBackendMfaToken(response: Record<string, any>): string | null {
+  const token =
+    response.mfa_token ||
+    response.mfaToken ||
+    response.sessionToken ||
+    response.session_token ||
+    response.challenge?.mfa_token ||
+    response.challenge?.mfaToken ||
+    response.challenge?.token;
+
+  return typeof token === 'string' && token.trim() ? token.trim() : null;
+}
+
+function backendRequiresMfa(response: Record<string, any>): boolean {
+  return Boolean(
+    response.requires_mfa ||
+    response.requiresMFA ||
+    response.mfa_required ||
+    response.mfaRequired ||
+    response.two_factor_required ||
+    response.twoFactorRequired ||
+    getBackendMfaToken(response)
+  );
+}
+
+function isUnsafeKingdomDirectLogin(response: Record<string, any>): boolean {
+  return Boolean(
+    response.kingdom_native === true &&
+    !backendRequiresMfa(response) &&
+    !response.mfa_verified &&
+    !response.mfaVerified &&
+    !response.trusted_device &&
+    !response.trustedDevice
+  );
+}
+
 async function handlePost(request: NextRequest) {
   try {
     logger.debug("Login API endpoint called");
@@ -201,8 +237,8 @@ async function handlePost(request: NextRequest) {
 
       logger.info("Backend login response received", {
         success: !!backendResponse.success,
-        requiresMfa: !!backendResponse.requires_mfa,
-        hasBackendToken: !!backendResponse.mfa_token,
+        requiresMfa: backendRequiresMfa(backendResponse),
+        hasBackendToken: !!getBackendMfaToken(backendResponse),
         hasMessage: !!backendResponse.message,
         message: backendResponse.message,
         email: validation.data!.email,
@@ -210,7 +246,7 @@ async function handlePost(request: NextRequest) {
       });
 
       // Check if backend call was successful
-      if (!backendFetchResponse.ok && !backendResponse.requires_mfa) {
+      if (!backendFetchResponse.ok && !backendRequiresMfa(backendResponse)) {
         logger.warn("Backend login failed", {
           status: backendFetchResponse.status,
           error: backendResponse.error || backendResponse.message
@@ -233,66 +269,29 @@ async function handlePost(request: NextRequest) {
       // PRODUCTION FIX: Check for MFA token FIRST before checking errors
       // Backend may send both error message AND MFA token for security
       // MFA flow - proceed if backend sends MFA token OR explicitly requires MFA
-      if ((backendResponse.requires_mfa || backendResponse.mfa_token) && backendResponse.mfa_token) {
+      const backendMfaToken = getBackendMfaToken(backendResponse);
+      if (backendRequiresMfa(backendResponse) && backendMfaToken) {
       logger.info("Processing MFA flow from backend", {
         email: validation.data!.email,
-        challengeAvailable: !!backendResponse.mfa_token,
+        challengeAvailable: true,
         message: backendResponse.message
       });
-        
-        // Basic JWT format validation only
-        try {
-          const tokenParts = backendResponse.mfa_token.split('.');
-          if (tokenParts.length !== 3) {
-            logger.warn("Invalid MFA token format from backend", {
-              email: validation.data!.email
-            });
-            
-            const response = NextResponse.json(
-              createSafeErrorResponse('Authentication failed'),
-              { status: 401 }
-            );
 
-            return ApiAuth.addSecurityHeaders(response);
-          }
-          
-          // Basic token structure validation (no payload logging in production)
-          if (process.env.NODE_ENV !== 'production') {
-            try {
-              const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64url').toString());
-              logger.debug("MFA token structure validated", {
-                email: validation.data!.email,
-                hasSubject: !!payload.sub,
-                hasExpiry: !!payload.exp,
-                tokenType: payload.type ? 'mfa' : 'unknown'
-              });
-            } catch (payloadError) {
-              logger.debug("Token payload validation skipped", {
-                email: validation.data!.email
-              });
-            }
-          }
-          
-        } catch (tokenError) {
-          logger.warn("MFA token basic validation failed", {
+        if (process.env.NODE_ENV !== 'production') {
+          const tokenParts = backendMfaToken.split('.');
+          logger.debug("MFA token accepted from backend", {
             email: validation.data!.email,
-            error: tokenError instanceof Error ? tokenError.message : String(tokenError)
+            tokenFormat: tokenParts.length === 3 ? 'jwt' : 'opaque'
           });
-          
-          const response = NextResponse.json(
-            createSafeErrorResponse('Authentication failed'),
-            { status: 401 }
-          );
-
-          return ApiAuth.addSecurityHeaders(response);
         }
+
         // SECURITY: Generate secure frontend session token
         const frontendToken = SessionEncryption.generateSecureToken();
 
         const proxySession = {
           email: validation.data!.email,
           frontendToken,
-          backendMfaToken: backendResponse.mfa_token, // Store backend's MFA token
+          backendMfaToken, // Store backend's MFA token
           backendSessionData: backendResponse, // Store full backend response
           expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
           attempts: 0
@@ -338,7 +337,7 @@ async function handlePost(request: NextRequest) {
       }
 
       // Check for errors AFTER MFA check - only reject if no MFA token was provided
-      if (backendResponse.error && !backendResponse.mfa_token) {
+      if (backendResponse.error && !getBackendMfaToken(backendResponse)) {
         logger.warn("Backend login failed with no MFA token", {
           email: validation.data!.email,
           error: backendResponse.error || backendResponse.detail
@@ -352,8 +351,24 @@ async function handlePost(request: NextRequest) {
         return ApiAuth.addSecurityHeaders(response);
       }
 
+      if (isUnsafeKingdomDirectLogin(backendResponse)) {
+        logger.warn("Kingdom login response missing MFA proof", {
+          email: validation.data!.email,
+          success: !!backendResponse.success,
+          hasUser: !!backendResponse.user,
+          hasCookies: backendCookies.length > 0,
+        });
+
+        const response = NextResponse.json(
+          createSafeErrorResponse('MFA challenge unavailable from authentication service'),
+          { status: 502 }
+        );
+
+        return ApiAuth.addSecurityHeaders(response);
+      }
+
       // Direct login success (no MFA) - rely on backend-set cookies, not tokens in JSON.
-      if (!backendResponse.requires_mfa && (backendResponse.success || backendResponse.user || backendCookies.length > 0)) {
+      if (!backendRequiresMfa(backendResponse) && (backendResponse.success || backendResponse.user || backendCookies.length > 0)) {
         const response = NextResponse.json(backendResponse);
 
         // Forward backend cookies
@@ -420,8 +435,8 @@ async function handlePost(request: NextRequest) {
         // Backend provided neither MFA flow nor direct login success
         logger.warn("Backend response missing both MFA and direct login indicators", {
           email: validation.data!.email,
-          requiresMfa: !!backendResponse.requires_mfa,
-          hasMfaToken: !!backendResponse.mfa_token,
+          requiresMfa: backendRequiresMfa(backendResponse),
+          hasMfaToken: !!getBackendMfaToken(backendResponse),
           hasError: !!backendResponse.error
         });
         
