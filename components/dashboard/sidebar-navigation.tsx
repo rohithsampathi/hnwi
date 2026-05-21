@@ -373,8 +373,7 @@ export function SidebarNavigation({
             alt="HNWI Chronicles Globe"
             width={32}
             height={32}
-            className="w-8 h-8"
-            priority
+            style={{ width: 32, height: 32 }}
           />
         </div>
       </aside>
@@ -437,8 +436,7 @@ export function SidebarNavigation({
               alt="HNWI Chronicles Globe"
               width={32}
               height={32}
-              className="w-8 h-8"
-              priority
+              style={{ width: 32, height: 32 }}
             />
           </motion.div>
           {!isCollapsed && (

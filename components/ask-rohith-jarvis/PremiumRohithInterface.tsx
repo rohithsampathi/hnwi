@@ -409,9 +409,17 @@ export default function PremiumRohithInterface({
                 ) : (
                   <div className="p-2 space-y-1">
                     {conversations.map((conv) => (
-                      <button
+                      <div
                         key={conv.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleSelectConversation(conv.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleSelectConversation(conv.id);
+                          }
+                        }}
                         className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group relative ${
                           activeConversationId === conv.id
                             ? 'bg-gold/10 border border-gold/30'
@@ -458,7 +466,7 @@ export default function PremiumRohithInterface({
                             </button>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

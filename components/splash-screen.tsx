@@ -428,9 +428,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                     alt="HNWI Chronicles"
                     width={80}
                     height={80}
-                    className="mb-4 w-auto h-auto"
+                    className="mb-4"
                     style={{ width: '80px', height: '80px' }}
-                    priority
                   />
                   <Heading2 className="text-3xl font-bold font-heading text-center">
                     <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Welcome Back</span>
@@ -527,9 +526,8 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                     alt="HNWI Chronicles"
                     width={80}
                     height={80}
-                    className="mb-4 w-auto h-auto"
+                    className="mb-4"
                     style={{ width: '80px', height: '80px' }}
-                    priority
                   />
                   <Heading2 className="text-3xl font-bold font-heading text-center">
                     <span className={`${theme === "dark" ? "text-primary" : "text-black"}`}>Security Verification</span>
