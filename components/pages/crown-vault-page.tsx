@@ -62,6 +62,30 @@ interface CrownVaultPageProps {
 
 type CrownVaultTab = "summary" | "assets" | "heirs" | "activity";
 
+const normalizeHeirValue = (value: unknown): string => {
+  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+};
+
+const getAssetHeirIds = (asset: CrownVaultAsset): string[] => {
+  return Array.from(new Set((asset.heir_ids || []).map(normalizeHeirValue).filter(Boolean)));
+};
+
+const getResolvedHeirNames = (asset: CrownVaultAsset, heirs: CrownVaultHeir[]): string[] => {
+  const explicitNames = (asset.heir_names || []).map(normalizeHeirValue).filter(Boolean);
+  if (explicitNames.length > 0) {
+    return Array.from(new Set(explicitNames));
+  }
+
+  return Array.from(
+    new Set(
+      getAssetHeirIds(asset)
+        .map((heirId) => heirs.find((heir) => normalizeHeirValue(heir.id) === heirId)?.name)
+        .map(normalizeHeirValue)
+        .filter(Boolean),
+    ),
+  );
+};
+
 // Skeleton component for loading states
 const SkeletonCard = () => (
   <Card className="h-full">
@@ -131,8 +155,8 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
   // Helper function to detect authentication errors
   const isAuthenticationError = (error: any): boolean => {
-    const errorMessage = error?.message || error?.toString() || '';
-    return errorMessage.includes('Authentication required') || 
+    const errorMessage = (error?.message || error?.toString() || '').toLowerCase();
+    return errorMessage.includes('authentication required') ||
            errorMessage.includes('please log in') || 
            error?.status === 401;
   };
@@ -481,7 +505,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
 
   // Utility functions
   const getHeirAssets = (heirId: string) => {
-    return assets.filter(asset => asset.heir_ids && asset.heir_ids.includes(heirId));
+    return assets.filter(asset => getAssetHeirIds(asset).includes(heirId));
   };
 
   const startHeirEditing = (heir: CrownVaultHeir) => {
@@ -812,7 +836,9 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                             Heirs
                           </p>
                           <p className="mt-2 text-base font-semibold text-foreground">
-                            {selectedAsset.heir_names?.length ? selectedAsset.heir_names.join(", ") : "Not assigned"}
+                            {getResolvedHeirNames(selectedAsset, heirs).length
+                              ? getResolvedHeirNames(selectedAsset, heirs).join(", ")
+                              : "Not assigned"}
                           </p>
                         </CardContent>
                       </Card>

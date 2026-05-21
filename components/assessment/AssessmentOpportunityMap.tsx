@@ -5,6 +5,11 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MAP_PRICE_COLOR_RUBY_START,
+  MAP_PRICE_COLOR_TOPAZ_START,
+} from '@/lib/map-color-utils';
+import { parseValueToNumber } from '@/lib/map-utils';
 
 interface Opportunity {
   id: string;
@@ -58,7 +63,7 @@ const fetchCommandCentreOpportunities = async (): Promise<Opportunity[]> => {
         longitude: opp.longitude || 0,
         title: opp.title || 'Untitled Opportunity',
         category: opp.category || opp.asset_category || 'Unknown',
-        dealSize: parseFloat(opp.value?.replace(/[^0-9.]/g, '') || '0') || opp.minimum_investment_usd || 0,
+        dealSize: parseValueToNumber(opp.value || opp.minimum_investment_display) || opp.minimum_investment_usd || 0,
         location: opp.location || opp.country || 'Unknown Location',
         removed: false,
       }));
@@ -177,16 +182,16 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
         {/* Legend */}
         <div className="mt-4 flex items-center justify-center gap-6 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-amber-500" />
-            <span className="text-white dark:text-gray-400">$1M+ deals</span>
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <span className="text-white dark:text-gray-400">$10M+ deals</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-white dark:text-gray-400">$500K+ deals</span>
+            <div className="w-3 h-3 rounded-full bg-amber-500" />
+            <span className="text-white dark:text-gray-400">$5M+ deals</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-white dark:text-gray-400">Under $500K</span>
+            <span className="text-white dark:text-gray-400">Under $5M</span>
           </div>
         </div>
       </div>
@@ -243,9 +248,12 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
               const { x, y } = projectToMap(opp.latitude, opp.longitude, 1000, 500);
 
               // Color based on deal size
-              const dotColor = opp.dealSize >= 1000000 ? '#f59e0b' : // Gold for $1M+
-                              opp.dealSize >= 500000 ? '#3b82f6' :  // Blue for $500K+
-                              '#10b981'; // Green for smaller
+              const dotColor = opp.dealSize >= MAP_PRICE_COLOR_RUBY_START ? '#e63946' :
+                              opp.dealSize >= MAP_PRICE_COLOR_TOPAZ_START ? '#ffd700' :
+                              '#10b981';
+              const markerRadius = opp.dealSize >= MAP_PRICE_COLOR_RUBY_START ? 5 :
+                                  opp.dealSize >= MAP_PRICE_COLOR_TOPAZ_START ? 4.5 :
+                                  4;
 
               return (
                 <motion.g key={opp.id}>
@@ -255,7 +263,7 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
                       <motion.circle
                         cx={x}
                         cy={y}
-                        r={opp.dealSize >= 1000000 ? 5 : 4}
+                        r={markerRadius}
                         fill={dotColor}
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{
@@ -290,7 +298,7 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
                       <motion.circle
                         cx={x}
                         cy={y}
-                        r={opp.dealSize >= 1000000 ? 5 : 4}
+                        r={markerRadius}
                         fill="#ef4444"
                         initial={{ scale: 1 }}
                         animate={{ scale: 0, opacity: 0 }}
@@ -299,7 +307,7 @@ export function AssessmentOpportunityMap({ calibrationEvents, isCalibrating }: A
                       <motion.circle
                         cx={x}
                         cy={y}
-                        r={opp.dealSize >= 1000000 ? 5 : 4}
+                        r={markerRadius}
                         fill="none"
                         stroke="#ef4444"
                         strokeWidth="2"

@@ -13,7 +13,10 @@ import {
   resolveAuthSessionMaxAge,
   REMEMBERED_SESSION_MAX_AGE_SECONDS,
 } from '@/lib/auth-cookie-policy'
+import { appendCookie, clearAuthCookies } from '@/lib/auth-cookie-cleanup'
+import { resolveAuthCookieDomain, shouldUseSecureAuthCookies } from '@/lib/auth-cookie-security'
 import { applyBackendAuthCookies, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
+import { normalizeAuthUser } from '@/lib/auth-user-normalization'
 
 const DEFAULT_AUTH_LOGIN_TIMEOUT_MS = 120_000
 
@@ -27,39 +30,19 @@ function resolveAuthLoginTimeoutMs(): number {
     : DEFAULT_AUTH_LOGIN_TIMEOUT_MS
 }
 
-// Helper to get cookie domain for PWA cross-subdomain support
-function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== 'production') return undefined;
-
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
-  if (!productionUrl) return undefined;
-
-  try {
-    const url = new URL(productionUrl);
-    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
-    const hostParts = url.hostname.split('.');
-    if (hostParts.length >= 2) {
-      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
-    }
-  } catch (e) {
-    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
-  }
-
-  return undefined;
-}
-
 // Helper to forward backend cookies to client with PWA-compatible settings
 function forwardBackendCookies(
   response: NextResponse,
   backendCookieHeaders: string[],
   rememberDevice: boolean,
+  secureDefault: boolean,
+  cookieDomain?: string,
 ) {
   if (backendCookieHeaders.length === 0) return;
 
-  const cookieDomain = getCookieDomain();
   applyBackendAuthCookies(response, backendCookieHeaders, rememberDevice, {
     cookieDomain,
-    secureDefault: process.env.NODE_ENV === 'production',
+    secureDefault,
   });
 }
 
@@ -169,6 +152,8 @@ async function handlePost(request: NextRequest) {
     }
 
     const rememberDevice = validation.data?.rememberDevice === true;
+    const secureAuthCookies = shouldUseSecureAuthCookies(request);
+    const authCookieDomain = resolveAuthCookieDomain(request);
 
     logger.debug("Login request received", {
       email: validation.data!.email,
@@ -292,7 +277,6 @@ async function handlePost(request: NextRequest) {
           email: validation.data!.email,
           frontendToken,
           backendMfaToken, // Store backend's MFA token
-          backendSessionData: backendResponse, // Store full backend response
           expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
           attempts: 0
         };
@@ -302,7 +286,8 @@ async function handlePost(request: NextRequest) {
         
         logger.info("Created proxy MFA session", {
           email: validation.data!.email,
-          challengeStored: true
+          challengeStored: true,
+          encryptedSessionBytes: Buffer.byteLength(encryptedSession, 'utf8')
         });
 
         // Return frontend-friendly response with frontend token
@@ -312,25 +297,31 @@ async function handlePost(request: NextRequest) {
           message: backendResponse.message || "MFA code sent"
         });
 
+        // A validated-password MFA challenge supersedes stale auth and prior MFA cookies.
+        // Keep the CSRF cookie because the next request is MFA verify.
+        clearAuthCookies(response, request, {
+          includeCsrf: false,
+          includeMfa: true,
+          mfaToken: frontendToken,
+        });
+
         // Forward backend cookies
-        forwardBackendCookies(response, backendCookies, rememberDevice);
+        forwardBackendCookies(response, backendCookies, rememberDevice, secureAuthCookies, authCookieDomain);
 
         // Store encrypted MFA session in same-site HTTP-only cookies.
-        const isProd = process.env.NODE_ENV === 'production';
-        const cookieDomain = getCookieDomain();
         const mfaCookieOptions = {
           httpOnly: true,
-          secure: isProd,
+          secure: secureAuthCookies,
           sameSite: 'lax' as const,
           maxAge: 5 * 60, // 5 minutes
           path: '/',
-          ...(cookieDomain ? { domain: cookieDomain } : {})
+          ...(authCookieDomain ? { domain: authCookieDomain } : {})
         };
 
-        response.cookies.set('mfa_session', encryptedSession, mfaCookieOptions);
+        appendCookie(response, 'mfa_session', encryptedSession, mfaCookieOptions);
 
         // Also store the token mapping in cookie
-        response.cookies.set(`mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, mfaCookieOptions);
+        appendCookie(response, `mfa_token_${frontendToken.substring(0, 8)}`, encryptedSession, mfaCookieOptions);
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());
         return ApiAuth.addSecurityHeaders(response);
@@ -369,63 +360,62 @@ async function handlePost(request: NextRequest) {
 
       // Direct login success (no MFA) - rely on backend-set cookies, not tokens in JSON.
       if (!backendRequiresMfa(backendResponse) && (backendResponse.success || backendResponse.user || backendCookies.length > 0)) {
-        const response = NextResponse.json(backendResponse);
+        const normalizedUser = backendResponse.user
+          ? normalizeAuthUser(backendResponse.user)
+          : null;
+        const response = NextResponse.json(
+          normalizedUser ? { ...backendResponse, user: normalizedUser } : backendResponse
+        );
+
+        clearAuthCookies(response, request, { includeMfa: true });
 
         // Forward backend cookies
-        forwardBackendCookies(response, backendCookies, rememberDevice);
+        forwardBackendCookies(response, backendCookies, rememberDevice, secureAuthCookies, authCookieDomain);
 
         // CRITICAL FIX: Set session_user cookie for immediate session recovery
         // This ensures /api/auth/session can validate the user before backend cookies propagate
-        if (backendResponse.user) {
-          const userFirstName = backendResponse.user.firstName || backendResponse.user.first_name || '';
-          const userLastName = backendResponse.user.lastName || backendResponse.user.last_name || '';
+        if (normalizedUser) {
+          const userFirstName = normalizedUser.firstName || normalizedUser.first_name || '';
+          const userLastName = normalizedUser.lastName || normalizedUser.last_name || '';
           const sessionUserData = JSON.stringify({
-            id: backendResponse.user.id || backendResponse.user.user_id,
-            user_id: backendResponse.user.id || backendResponse.user.user_id,
-            email: backendResponse.user.email,
-            name: backendResponse.user.name || `${userFirstName} ${userLastName}`.trim() || undefined,
+            id: normalizedUser.id,
+            user_id: normalizedUser.user_id,
+            email: normalizedUser.email,
+            name: normalizedUser.name || `${userFirstName} ${userLastName}`.trim() || undefined,
             firstName: userFirstName,
             lastName: userLastName,
-            role: backendResponse.user.role || 'user',
+            role: normalizedUser.role || 'user',
             timestamp: Date.now()
           });
 
-          const isProd = process.env.NODE_ENV === 'production';
-          const cookieDomain = getCookieDomain();
-
           const sessionUserOptions: any = {
             httpOnly: true,
-            secure: isProd,
+            secure: secureAuthCookies,
             sameSite: 'lax' as const,
             maxAge: resolveAuthSessionMaxAge(rememberDevice),
             path: '/'
           };
-          if (cookieDomain) sessionUserOptions.domain = cookieDomain;
+          if (authCookieDomain) sessionUserOptions.domain = authCookieDomain;
 
-          response.cookies.set('session_user', sessionUserData, sessionUserOptions);
+          appendCookie(response, 'session_user', sessionUserData, sessionUserOptions);
 
           logger.info('Set session_user cookie for immediate recovery', {
-            userId: backendResponse.user.id || backendResponse.user.user_id,
-            email: backendResponse.user.email
+            userId: normalizedUser.user_id || normalizedUser.id,
+            email: normalizedUser.email
           });
         }
-
-        const isProd = process.env.NODE_ENV === 'production';
-        const cookieDomain = getCookieDomain();
 
         if (rememberDevice) {
           const rememberOptions: any = {
             httpOnly: true,
-            secure: isProd,
+            secure: secureAuthCookies,
             sameSite: 'lax' as const,
             maxAge: REMEMBERED_SESSION_MAX_AGE_SECONDS,
             path: '/'
           };
-          if (cookieDomain) rememberOptions.domain = cookieDomain;
+          if (authCookieDomain) rememberOptions.domain = authCookieDomain;
 
-          response.cookies.set('remember_me', 'true', rememberOptions);
-        } else {
-          response.cookies.delete('remember_me');
+          appendCookie(response, 'remember_me', 'true', rememberOptions);
         }
 
         response.headers.set('X-RateLimit-Remaining', rateLimitResult.remainingRequests.toString());

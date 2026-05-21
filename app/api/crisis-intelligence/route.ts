@@ -4,11 +4,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 
 export const dynamic = 'force-dynamic';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {
   try {

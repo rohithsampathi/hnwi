@@ -4,6 +4,11 @@
 "use client"
 
 import React, { useMemo } from "react"
+import {
+  GRADIENT_COLORS,
+  MAP_PRICE_COLOR_RUBY_START,
+  MAP_PRICE_COLOR_TOPAZ_START,
+} from "@/lib/map-color-utils"
 
 interface MapLegendProps {
   minValue?: string | number
@@ -12,6 +17,10 @@ interface MapLegendProps {
 }
 
 export function MapLegend({ minValue, maxValue, className = "" }: MapLegendProps) {
+  const gradient = `linear-gradient(to right, ${GRADIENT_COLORS
+    .map((stop) => `${stop.hex} ${stop.pos}%`)
+    .join(', ')})`
+
   // Format value for display
   const formatValue = useMemo(() => {
     return (value: string | number | undefined): string => {
@@ -40,7 +49,10 @@ export function MapLegend({ minValue, maxValue, className = "" }: MapLegendProps
       // Format the number
       if (isNaN(num)) return "N/A"
       if (num >= 1000000000) return `$${(num / 1000000000).toFixed(1)}B`
-      if (num >= 1000000) return `$${(num / 1000000).toFixed(1)}M`
+      if (num >= 1000000) {
+        const millions = num / 1000000
+        return `$${Number.isInteger(millions) ? millions.toFixed(0) : millions.toFixed(1)}M`
+      }
       if (num >= 1000) return `$${(num / 1000).toFixed(0)}K`
       return `$${num.toFixed(0)}`
     }
@@ -53,7 +65,7 @@ export function MapLegend({ minValue, maxValue, className = "" }: MapLegendProps
 
         {/* Color Gradient Bar */}
         <div className="relative h-3 rounded-full overflow-hidden" style={{
-          background: 'linear-gradient(to right, #0d5c3a 0%, #17a561 5%, #2dd17f 10%, #50e991 20%, #ffd700 30%, #ffb000 40%, #ff8c00 50%, #e63946 65%, #c1121f 80%, #800020 100%)'
+          background: gradient
         }}>
           {/* Optional: Add tick marks */}
         </div>
@@ -64,10 +76,10 @@ export function MapLegend({ minValue, maxValue, className = "" }: MapLegendProps
             {minValue !== undefined ? formatValue(minValue) : 'Lower'}
           </span>
           <span className="text-amber-600 dark:text-amber-400 font-medium">
-            Mid-range
+            {formatValue(MAP_PRICE_COLOR_TOPAZ_START)}
           </span>
           <span className="text-red-600 dark:text-red-400 font-medium">
-            {maxValue !== undefined ? formatValue(maxValue) : 'Higher'}
+            {maxValue !== undefined ? formatValue(maxValue) : `${formatValue(MAP_PRICE_COLOR_RUBY_START)}+`}
           </span>
         </div>
       </div>

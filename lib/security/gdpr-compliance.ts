@@ -1,6 +1,12 @@
 import { AES256Encryption } from "./encryption";
 import { AuditLogger, SecurityEventType, SeverityLevel } from "./audit-logger";
 
+const KINGDOM_API_BASE_URL = "https://kingdom-core.montaigne.co";
+
+function getApiBaseUrl(): string {
+  return (process.env.API_BASE_URL || KINGDOM_API_BASE_URL).trim().replace(/\/$/, "");
+}
+
 export interface ConsentRecord {
   userId: string;
   timestamp: number;
@@ -259,7 +265,7 @@ export class GDPRCompliance {
   }
 
   private static async collectUserData(userId: string): Promise<any> {
-    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+    const API_BASE_URL = getApiBaseUrl();
     try {
       const response = await fetch(`${API_BASE_URL}/api/gdpr/export/${userId}`, {
         method: 'GET',
@@ -294,7 +300,7 @@ export class GDPRCompliance {
   }
 
   private static async eraseUserData(userId: string): Promise<void> {
-    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+    const API_BASE_URL = getApiBaseUrl();
     try {
       await fetch(`${API_BASE_URL}/api/gdpr/erase/${userId}`, {
         method: 'DELETE',

@@ -524,6 +524,35 @@ const getUniqueAssetTypes = (assets: CrownVaultAsset[]) => {
   return Array.from(types);
 };
 
+const normalizeHeirValue = (value: unknown): string => {
+  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+};
+
+const getAssetHeirIds = (asset: CrownVaultAsset): string[] => {
+  return Array.from(new Set((asset.heir_ids || []).map(normalizeHeirValue).filter(Boolean)));
+};
+
+const getResolvedHeirNames = (asset: CrownVaultAsset, heirs: CrownVaultHeir[]): string[] => {
+  const explicitNames = (asset.heir_names || []).map(normalizeHeirValue).filter(Boolean);
+  if (explicitNames.length > 0) {
+    return Array.from(new Set(explicitNames));
+  }
+
+  const heirIds = getAssetHeirIds(asset);
+  if (heirIds.length === 0) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      heirIds
+        .map((heirId) => heirs.find((heir) => normalizeHeirValue(heir.id) === heirId)?.name)
+        .map(normalizeHeirValue)
+        .filter(Boolean),
+    ),
+  );
+};
+
 export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAssets }: AssetsSectionProps) {
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -708,7 +737,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
 
   const filteredAssets = assets.filter(asset => {
     // Safety check for asset data structure
-    if (!asset || !asset.asset_data || !asset.heir_names) {
+    if (!asset || !asset.asset_data) {
       return false;
     }
     const displayType = getAssetDisplayType(asset).toLowerCase();
@@ -719,7 +748,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
     if (filterBy === "all") return matchesSearch;
     if (filterBy.startsWith("heir-")) {
       const heirName = filterBy.replace("heir-", "");
-      return matchesSearch && asset.heir_names.some(name => 
+      return matchesSearch && getResolvedHeirNames(asset, heirs).some(name =>
         (name || '').toLowerCase().includes(heirName.toLowerCase())
       );
     }
@@ -865,6 +894,9 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
             const IconComponent = getAssetIcon(displayType);
             const isUpdating = heirUpdateLoading.has(asset.asset_id);
             const isDeleting = deletingAssets.has(asset.asset_id);
+            const resolvedHeirIds = getAssetHeirIds(asset);
+            const resolvedHeirNames = getResolvedHeirNames(asset, heirs);
+            const primaryHeirName = resolvedHeirNames[0];
             
             return (
               <motion.div
@@ -1136,9 +1168,9 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                       <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
                         Heir Assignment
                       </p>
-                      {asset.heir_names && asset.heir_names.length > 0 ? (
+                      {primaryHeirName ? (
                         <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-primary' : 'text-gray-800'}`}>
-                          {asset.heir_names[0]}
+                          {primaryHeirName}
                         </p>
                       ) : (
                         <p className={`text-sm ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
@@ -1149,18 +1181,18 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                     
                     <div onClick={(e) => e.stopPropagation()}>
                       <Select
-                        value={(asset.heir_ids && asset.heir_ids[0]) || ""}
+                        value={resolvedHeirIds[0] || ""}
                         onValueChange={(heirId) => handleHeirReassignment(asset.asset_id, [heirId])}
                         disabled={isUpdating}
                       >
                         <SelectTrigger className="w-auto h-auto border-0 bg-transparent p-0">
                           <div>
-                            {asset.heir_names && asset.heir_names.length > 0 ? (
+                            {primaryHeirName ? (
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${theme === 'dark' ? 'bg-white/20 text-white' : 'bg-black/80 text-white'}`}>
                                 {isUpdating ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  asset.heir_names[0].charAt(0).toUpperCase()
+                                  primaryHeirName.charAt(0).toUpperCase()
                                 )}
                               </div>
                             ) : (

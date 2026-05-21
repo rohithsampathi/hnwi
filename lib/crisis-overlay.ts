@@ -4,6 +4,7 @@
 
 
 const CRISIS_CACHE_TTL_MS = 5000
+export const CRISIS_STALE_AFTER_MS = 14 * 24 * 60 * 60 * 1000
 let cachedCrisisIntelligence: CrisisIntelligenceResponse | null = null
 let cachedCrisisIntelligenceAt = 0
 let inflightCrisisIntelligence: Promise<CrisisIntelligenceResponse> | null = null
@@ -18,6 +19,7 @@ export interface CrisisZone {
   status: CrisisStatus;
   label: string;
   detail: string;
+  eventDate?: string;
   /** Domain determines polygon color: war=red/amber/yellow, everything else=fuchsia */
   crisisDomain?: CrisisDomain;
 }
@@ -119,6 +121,7 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
     status: z.status,
     label: z.label,
     detail: z.detail,
+    eventDate: z.event_date || z.eventDate,
     crisisDomain: normalizeCrisisDomain(z.crisis_domain || z.crisisDomain),
   }));
 
@@ -188,6 +191,36 @@ function transformBackendResponse(data: any): CrisisIntelligenceResponse {
     locations,
     updatedAt: data.updated_at || data.updatedAt || "",
   };
+}
+
+function parseCrisisTimestamp(value?: string): number | null {
+  if (!value || !value.trim()) return null;
+
+  const normalized = value.includes("T") ? value : `${value}T00:00:00Z`;
+  const timestamp = Date.parse(normalized);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function getCrisisSnapshotTimestamp(data: CrisisIntelligenceResponse): number | null {
+  const timestamps = [
+    parseCrisisTimestamp(data.updatedAt),
+    parseCrisisTimestamp(data.alert?.timestamp),
+    ...(data.zones || []).map((zone) => parseCrisisTimestamp(zone.eventDate)),
+    ...(data.locations || []).map((location) => parseCrisisTimestamp(location.event_date)),
+  ].filter((timestamp): timestamp is number => typeof timestamp === "number");
+
+  if (timestamps.length === 0) return null;
+  return Math.max(...timestamps);
+}
+
+export function isCrisisIntelligenceFresh(
+  data: CrisisIntelligenceResponse,
+  now: number = Date.now(),
+  maxAgeMs: number = CRISIS_STALE_AFTER_MS
+): boolean {
+  const snapshotTimestamp = getCrisisSnapshotTimestamp(data);
+  if (!snapshotTimestamp) return true;
+  return now - snapshotTimestamp <= maxAgeMs;
 }
 
 export async function fetchCrisisIntelligence(): Promise<CrisisIntelligenceResponse> {

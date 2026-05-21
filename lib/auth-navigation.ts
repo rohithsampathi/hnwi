@@ -1,6 +1,11 @@
 "use client"
 
-import { AUTH_SESSION_ACTIVE_KEY, AUTH_USER_ID_KEY } from "@/lib/auth-storage"
+import {
+  AUTH_LOGIN_TIMESTAMP_KEY,
+  AUTH_SESSION_ACTIVE_KEY,
+  AUTH_USER_ID_KEY,
+} from "@/lib/auth-storage"
+import { hasAuthRecoveryFailure } from "@/lib/auth-recovery-state"
 
 export const PUBLIC_HOME_ROUTE = "/"
 export const LOGIN_ROUTE = "/auth/login"
@@ -34,9 +39,25 @@ export function hasRecoverableAuthState(): boolean {
     return false
   }
 
-  return Boolean(
-    window.sessionStorage.getItem(AUTH_SESSION_ACTIVE_KEY) === "true" ||
-      window.sessionStorage.getItem(AUTH_USER_ID_KEY) ||
-      window.localStorage.getItem(AUTH_USER_ID_KEY)
-  )
+  if (hasAuthRecoveryFailure()) {
+    return false
+  }
+
+  const sessionUserId = window.sessionStorage.getItem(AUTH_USER_ID_KEY)
+  const hasSameTabSession =
+    window.sessionStorage.getItem(AUTH_SESSION_ACTIVE_KEY) === "true" &&
+    Boolean(sessionUserId)
+
+  if (hasSameTabSession) {
+    return true
+  }
+
+  const localUserId = window.localStorage.getItem(AUTH_USER_ID_KEY)
+  const loginTimestamp = Number(window.localStorage.getItem(AUTH_LOGIN_TIMESTAMP_KEY) || "0")
+  const hasRecentLocalLogin =
+    Boolean(localUserId) &&
+    Boolean(loginTimestamp) &&
+    Date.now() - loginTimestamp < 2 * 60 * 1000
+
+  return hasRecentLocalLogin
 }

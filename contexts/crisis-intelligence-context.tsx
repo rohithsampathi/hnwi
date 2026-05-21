@@ -5,6 +5,7 @@ import {
   fetchCrisisIntelligence,
   buildZoneMap,
   computeCrisisCounts,
+  isCrisisIntelligenceFresh,
   type CrisisIntelligenceResponse,
   type CrisisLocation,
   type CrisisZone,
@@ -89,7 +90,10 @@ async function fetchCrisisIntelligenceCached(force: boolean = false): Promise<Cr
 
 export function CrisisIntelligenceProvider({ children }: { children: React.ReactNode }) {
   const [showCrisisAlert, setShowCrisisAlert] = useState(false)
-  const [crisisData, setCrisisData] = useState<CrisisIntelligenceResponse | null>(() => getValidCachedCrisisData())
+  const [crisisData, setCrisisData] = useState<CrisisIntelligenceResponse | null>(() => {
+    const cached = getValidCachedCrisisData()
+    return cached && isCrisisIntelligenceFresh(cached) ? cached : null
+  })
 
   const toggleCrisisAlert = useCallback(() => {
     setShowCrisisAlert(prev => !prev)
@@ -101,19 +105,19 @@ export function CrisisIntelligenceProvider({ children }: { children: React.React
 
     const doFetch = (force: boolean = false) =>
       fetchCrisisIntelligenceCached(force)
-        .then((data) => { if (!cancelled) setCrisisData(data) })
+        .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
         .catch(() => {})
 
     let initTimeout: ReturnType<typeof setTimeout> | null = null
 
     initTimeout = setTimeout(() => {
       fetchCrisisIntelligenceCached()
-        .then((data) => { if (!cancelled) setCrisisData(data) })
+        .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
         .catch(() => {
           if (!cancelled) {
             setTimeout(() => {
               fetchCrisisIntelligenceCached(true)
-                .then((data) => { if (!cancelled) setCrisisData(data) })
+                .then((data) => { if (!cancelled) setCrisisData(isCrisisIntelligenceFresh(data) ? data : null) })
                 .catch(() => {})
             }, 5000)
           }

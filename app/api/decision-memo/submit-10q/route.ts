@@ -2,6 +2,7 @@
 // API route to submit 10Q stress test and generate preview
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { withAuth, withValidation } from '@/lib/security/api-auth';
 import { decisionMemo10qSchema } from '@/lib/security/validation-schemas';
 import { safeError } from '@/lib/security/api-response';
@@ -22,7 +23,7 @@ async function handlePost(request: NextRequest) {
 
     // Try to call Python backend, fallback to mock if unavailable
     try {
-      const pythonResponse = await fetch(`${process.env.API_BASE_URL || 'http://localhost:8000'}/api/decision-memo/submit-10q`, {
+      const pythonResponse = await fetch(`${API_BASE_URL}/api/decision-memo/submit-10q`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id, responses }),

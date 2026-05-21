@@ -31,6 +31,7 @@ import { useOnboarding } from "@/contexts/onboarding-context"
 import { useTheme } from "@/contexts/theme-context"
 import { UserCircle2 } from "lucide-react"
 import { Heading2 } from "@/components/ui/typography"
+import { normalizeAuthUser, resolveStoredUserId } from "@/lib/auth-user-normalization"
 
 interface User {
   id: string
@@ -101,10 +102,9 @@ export function AppShell() {
         }
       }
       
+      const normalizedLoginUser = normalizeAuthUser({ ...userData, profile })
       if (!userId) {
-        userId = userData.userId || userData.user_id || userData.id || 
-                profile.user_id || profile.userId || profile.id ||
-                userData._id || profile._id
+        userId = resolveStoredUserId(normalizedLoginUser)
       }
                     
       if (!userId) {

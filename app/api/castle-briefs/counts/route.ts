@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { resolveCastleBriefCount } from '@/lib/castle-briefs/resolve-castle-brief-count';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 const KINGDOM_CONTRACT = {
   source_of_truth: 'kingdom_central_library',

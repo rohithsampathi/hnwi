@@ -18,6 +18,7 @@ import { PersonalModeToggle } from "@/components/personal-mode-toggle"
 import { useOpportunities } from "@/lib/hooks/useOpportunities"
 import { usePersonalMode } from "@/lib/hooks/usePersonalMode"
 import { fetchAssessmentHistory, hasRecentAssessmentResult } from "@/lib/client-assessment-history"
+import { resolveCanonicalUserId, resolveStoredUserId } from "@/lib/auth-user-normalization"
 
 // Dynamically import the map component with SSR disabled
 const InteractiveWorldMap = dynamic(
@@ -43,7 +44,7 @@ export function HomeDashboardElite({
   userData,
   hasCompletedAssessmentProp
 }: HomeDashboardEliteProps) {
-  const userId = user?.id || user?.user_id || null
+  const userId = resolveCanonicalUserId(user) || resolveStoredUserId(user) || null
   const [timeframe, setTimeframe] = useState<string>('live') // Default: live data
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [showGreeting, setShowGreeting] = useState(true)

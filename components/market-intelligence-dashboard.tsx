@@ -51,6 +51,10 @@ import { EliteCitationPanel } from "@/components/elite/elite-citation-panel"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import type { Citation } from "@/lib/parse-dev-citations"
 import type { HNWIWorldDevelopment } from "@/types/hnwi-world"
+import {
+  buildHnwiWorldCategoryTrends,
+  resolveHnwiWorldCategory,
+} from "@/lib/hnwi-world-category"
 
 interface IndustryTrend {
   industry: string
@@ -258,7 +262,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
   const [allDevelopments, setAllDevelopments] = useState<HNWIWorldDevelopment[]>(cachedData?.developments || []) // ALL developments (no industry filter)
-  const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(cachedData?.industryTrends || [])
+  const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(
+    cachedData?.developments
+      ? buildHnwiWorldCategoryTrends(cachedData.developments)
+      : cachedData?.industryTrends || []
+  )
   const [isLoading, setIsLoading] = useState(!hasValidCache)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(cachedData?.lastUpdated || null)
@@ -301,7 +309,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
     if (selectedIndustry === 'All') {
       return allDevelopments
     }
-    return allDevelopments.filter(dev => dev.industry === selectedIndustry)
+    return allDevelopments.filter(dev => resolveHnwiWorldCategory(dev) === selectedIndustry)
   }, [allDevelopments, selectedIndustry])
 
   // Handle development expansion and extract citations
@@ -411,7 +419,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         // If cache is valid, skip API calls entirely
         if (cacheIsValid && cached.developments?.length >= 0) {
           setAllDevelopments(cached.developments)
-          setIndustryTrends(cached.industryTrends || [])
+          setIndustryTrends(buildHnwiWorldCategoryTrends(cached.developments || []))
           setTotalDevelopments(cached.totalDevelopments || 0)
           setLastUpdated(cached.lastUpdated || null)
           setIsLoading(false)
@@ -474,38 +482,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         setAllDevelopments(data.developments);
         setTotalDevelopments(data.total_count || data.developments.length);
 
-        // Use the rich category data from the new endpoint
-        let processedTrends: IndustryTrend[] = []
-        if (data.categories && data.categories.industries_with_counts) {
-          // Convert to the format expected by the UI
-          processedTrends = data.categories.industries_with_counts.map((item: any) => ({
-            industry: item.name,
-            total_count: item.count
-          }));
-
-          setIndustryTrends(processedTrends);
-        } else {
-          // Fallback to manual processing if categories not available
-          const industriesMap = new Map<string, number>();
-
-          data.developments.forEach((dev: any) => {
-            if (dev && dev.industry) {
-              const industry = dev.industry.trim();
-              const count = industriesMap.get(industry) || 0;
-              industriesMap.set(industry, count + 1);
-            }
-          });
-
-          processedTrends = Array.from(industriesMap.entries())
-            .map(([industry, total_count]) => ({
-              industry: industry.trim(),
-              total_count
-            }))
-            .filter(item => item.total_count > 0)
-            .sort((a, b) => b.total_count - a.total_count);
-
-          setIndustryTrends(processedTrends);
-        }
+        const processedTrends = buildHnwiWorldCategoryTrends(data.developments);
+        setIndustryTrends(processedTrends);
 
         const updatedDate = new Date()
         setLastUpdated(updatedDate);

@@ -8,31 +8,27 @@ import {
   resolveAuthSessionMaxAge,
   REMEMBERED_SESSION_MAX_AGE_SECONDS,
 } from "@/lib/auth-cookie-policy"
+import { appendCookie, clearAuthCookies, clearMfaCookies } from "@/lib/auth-cookie-cleanup"
+import { resolveAuthCookieDomain, shouldUseSecureAuthCookies } from "@/lib/auth-cookie-security"
 import { applyBackendAuthCookies, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
+import { normalizeAuthUser } from "@/lib/auth-user-normalization"
 
-// Helper to get cookie domain for PWA cross-subdomain support
-function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== 'production') return undefined;
-
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
-  if (!productionUrl) return undefined;
-
-  try {
-    const url = new URL(productionUrl);
-    const hostParts = url.hostname.split('.');
-    if (hostParts.length >= 2) {
-      return `.${hostParts.slice(-2).join('.')}`;
-    }
-  } catch (e) {
-    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
-  }
-
-  return undefined;
+function isTerminalMfaBackendFailure(errorMessage: string): boolean {
+  const normalized = errorMessage.toLowerCase()
+  return (
+    (normalized.includes('expired') && !normalized.includes('code')) ||
+    normalized.includes('session') ||
+    normalized.includes('token') ||
+    normalized.includes('challenge') ||
+    normalized.includes('try logging in')
+  )
 }
 
 async function handlePost(request: NextRequest) {
   try {
     const { email, mfa_code, mfa_token, rememberMe = false } = await request.json()
+    const secureAuthCookies = shouldUseSecureAuthCookies(request)
+    const authCookieDomain = resolveAuthCookieDomain(request)
 
     if (!email || !mfa_code || !mfa_token) {
       return NextResponse.json(
@@ -88,8 +84,7 @@ async function handlePost(request: NextRequest) {
           { success: false, error: "Invalid or expired session. Please try logging in again." },
           { status: 401 }
         );
-        errorResponse.cookies.delete('mfa_session');
-        errorResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
+        clearMfaCookies(errorResponse, request, mfa_token);
         
         return errorResponse;
       }
@@ -107,10 +102,12 @@ async function handlePost(request: NextRequest) {
           email,
         })
         
-        return NextResponse.json(
+        const invalidTokenResponse = NextResponse.json(
           { success: false, error: "Invalid or expired session. Please try logging in again." },
           { status: 401 }
         )
+        clearMfaCookies(invalidTokenResponse, request, mfa_token)
+        return invalidTokenResponse
       }
 
       // Verify email matches
@@ -120,10 +117,12 @@ async function handlePost(request: NextRequest) {
           sessionEmail: proxySession.email
         })
         
-        return NextResponse.json(
+        const mismatchResponse = NextResponse.json(
           { success: false, error: "Invalid session. Please try logging in again." },
           { status: 401 }
         )
+        clearMfaCookies(mismatchResponse, request, mfa_token)
+        return mismatchResponse
       }
 
       // Check if session is expired
@@ -133,8 +132,7 @@ async function handlePost(request: NextRequest) {
           { success: false, error: "Session expired. Please try logging in again." },
           { status: 401 }
         );
-        expiredResponse.cookies.delete('mfa_session');
-        expiredResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
+        clearMfaCookies(expiredResponse, request, mfa_token);
         
         logger.warn('MFA verification failed - session expired', {
           email: proxySession.email
@@ -152,8 +150,7 @@ async function handlePost(request: NextRequest) {
           { success: false, error: "Too many failed attempts. Please try logging in again." },
           { status: 429 }
         );
-        blockedResponse.cookies.delete('mfa_session');
-        blockedResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
+        clearMfaCookies(blockedResponse, request, mfa_token);
         
         logger.warn('MFA verification failed - too many attempts', {
           email: proxySession.email
@@ -217,14 +214,7 @@ async function handlePost(request: NextRequest) {
 
         // Handle different response statuses
         if (fetchResponse.status === 200 && backendResponse.success) {
-          // Normalize user object to ensure consistent id presence
-          const backendUser = backendResponse.user || {}
-          const normalizedUserId = backendUser.user_id || backendUser.id || backendUser._id
-          const normalizedUser = {
-            ...backendUser,
-            id: normalizedUserId || backendUser.id,
-            user_id: normalizedUserId || backendUser.user_id
-          }
+          const normalizedUser = normalizeAuthUser(backendResponse.user || {})
 
           // DON'T create our own session cookie - backend already set cookies!
           // Just pass through the backend response
@@ -232,6 +222,11 @@ async function handlePost(request: NextRequest) {
             success: true,
             user: normalizedUser,
             message: backendResponse.message || "Login successful"
+          });
+
+          clearAuthCookies(successResponse, request, {
+            includeMfa: true,
+            mfaToken: mfa_token,
           });
 
           // Forward backend cookies to the browser
@@ -242,12 +237,9 @@ async function handlePost(request: NextRequest) {
           });
 
           // First, try to forward Set-Cookie headers from backend
-          const isProd = process.env.NODE_ENV === 'production';
-          const cookieDomain = getCookieDomain();
-
           applyBackendAuthCookies(successResponse, setCookieHeaders, rememberMe, {
-            cookieDomain,
-            secureDefault: isProd,
+            cookieDomain: authCookieDomain,
+            secureDefault: secureAuthCookies,
           });
 
           // CRITICAL FIX: Set session_user cookie for immediate session recovery
@@ -267,14 +259,14 @@ async function handlePost(request: NextRequest) {
 
           const sessionUserOptions: any = {
             httpOnly: true,
-            secure: isProd,
+            secure: secureAuthCookies,
             sameSite: 'lax' as const,
             path: '/',
             maxAge: resolveAuthSessionMaxAge(rememberMe)
           };
-          if (cookieDomain) sessionUserOptions.domain = cookieDomain;
+          if (authCookieDomain) sessionUserOptions.domain = authCookieDomain;
 
-          successResponse.cookies.set('session_user', sessionUserData, sessionUserOptions);
+          appendCookie(successResponse, 'session_user', sessionUserData, sessionUserOptions);
 
           logger.info('session_user cookie set for immediate session recovery', {
             userId: normalizedUser.id,
@@ -285,22 +277,15 @@ async function handlePost(request: NextRequest) {
           if (rememberMe) {
             const rememberOptions: any = {
               httpOnly: true,
-              secure: isProd,
+              secure: secureAuthCookies,
               sameSite: 'lax' as const,
               path: '/',
               maxAge: REMEMBERED_SESSION_MAX_AGE_SECONDS
             };
-            if (cookieDomain) rememberOptions.domain = cookieDomain;
+            if (authCookieDomain) rememberOptions.domain = authCookieDomain;
 
-            successResponse.cookies.set('remember_me', 'true', rememberOptions);
-          } else {
-            // Ensure the cookie is cleared if not remembering
-            successResponse.cookies.delete('remember_me');
+            appendCookie(successResponse, 'remember_me', 'true', rememberOptions);
           }
-
-          // Clean up the frontend MFA session cookies
-          successResponse.cookies.delete('mfa_session');
-          successResponse.cookies.delete(`mfa_token_${mfa_token.substring(0, 8)}`);
 
           logger.info('MFA verification successful via backend', {
             email,
@@ -316,24 +301,33 @@ async function handlePost(request: NextRequest) {
           // Update the session in cookie with incremented attempts
           const updatedEncryptedSession = SessionEncryption.encrypt(proxySession);
 
+          const backendErrorMessage =
+            backendResponse.error ||
+            backendResponse.detail ||
+            backendResponse.message ||
+            "Invalid verification code";
+
           const failResponse = NextResponse.json(
             {
               success: false,
-              error: backendResponse.error || backendResponse.detail || backendResponse.message || "Invalid verification code"
+              error: backendErrorMessage
             },
             { status: 401 }
           );
 
-          const isProdFail = process.env.NODE_ENV === 'production';
-          const failCookieDomain = getCookieDomain();
+          if (isTerminalMfaBackendFailure(String(backendErrorMessage))) {
+            clearMfaCookies(failResponse, request, mfa_token);
+            return failResponse;
+          }
+
           const mfaFailOptions: any = {
             httpOnly: true,
-            secure: isProdFail,
+            secure: secureAuthCookies,
             sameSite: 'lax' as const,
             maxAge: 5 * 60,
             path: '/',
           };
-          if (failCookieDomain) mfaFailOptions.domain = failCookieDomain;
+          if (authCookieDomain) mfaFailOptions.domain = authCookieDomain;
 
           // Update cookies with new attempt count
           failResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaFailOptions);
@@ -361,16 +355,14 @@ async function handlePost(request: NextRequest) {
           { status: 500 }
         );
 
-        const isProdErr = process.env.NODE_ENV === 'production';
-        const errCookieDomain = getCookieDomain();
         const mfaErrOptions: any = {
           httpOnly: true,
-          secure: isProdErr,
+          secure: secureAuthCookies,
           sameSite: 'lax' as const,
           maxAge: 5 * 60,
           path: '/',
         };
-        if (errCookieDomain) mfaErrOptions.domain = errCookieDomain;
+        if (authCookieDomain) mfaErrOptions.domain = authCookieDomain;
 
         // Update cookies with new attempt count
         errorResponse.cookies.set('mfa_session', updatedEncryptedSession, mfaErrOptions);

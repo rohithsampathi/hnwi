@@ -3,11 +3,15 @@
 // Works with httpOnly cookies set by backend
 
 import {
+  AUTH_RECOVERY_FAILED_KEY,
+  AUTH_REFRESH_FAILED_AT_KEY,
   AUTH_LOGIN_TIMESTAMP_KEY,
   AUTH_SESSION_ACTIVE_KEY,
   AUTH_USER_ID_KEY,
 } from './auth-storage'
+import { clearAuthRecoveryFailure, markAuthRecoveryFailed } from './auth-recovery-state'
 import { fetchAuthSession } from './client-auth-session'
+import { normalizeAuthUser, resolveStoredUserId } from './auth-user-normalization'
 
 export interface User {
   id: string;
@@ -91,23 +95,28 @@ export class AuthenticationManager {
   }
 
   public login(userData: User): User {
-    if (typeof window === 'undefined') return userData;
+    const previousUser = this.user;
+    const normalizedUser = normalizeAuthUser(userData, previousUser) as User;
+
+    if (typeof window === 'undefined') return normalizedUser;
 
     this.ensureInitialized();
 
     // Ensure `name` is always present (synthesize from firstName/lastName if missing)
-    if (!userData.name && (userData.firstName || userData.first_name)) {
-      const first = userData.firstName || userData.first_name || '';
-      const last = userData.lastName || userData.last_name || '';
-      userData.name = `${first} ${last}`.trim();
+    if (!normalizedUser.name && (normalizedUser.firstName || normalizedUser.first_name)) {
+      const first = normalizedUser.firstName || normalizedUser.first_name || '';
+      const last = normalizedUser.lastName || normalizedUser.last_name || '';
+      normalizedUser.name = `${first} ${last}`.trim();
     }
 
     // Store user data in memory
-    this.user = userData;
+    this.user = normalizedUser;
     this.authenticated = true;
 
-    const userId = userData.id || userData.user_id || '';
+    const userId = resolveStoredUserId(normalizedUser);
     const timestamp = Date.now().toString();
+
+    clearAuthRecoveryFailure();
 
     // Persist only non-PII recovery markers. Profile/email stay in memory.
     localStorage.setItem(AUTH_USER_ID_KEY, userId);
@@ -130,10 +139,10 @@ export class AuthenticationManager {
 
     // Emit login event
     window.dispatchEvent(new CustomEvent('auth:login', {
-      detail: { user: userData }
+      detail: { user: normalizedUser }
     }));
 
-    return userData;
+    return normalizedUser;
   }
 
   public logout(): void {
@@ -148,6 +157,8 @@ export class AuthenticationManager {
     // Clear localStorage (only stores userId + loginTimestamp)
     localStorage.removeItem(AUTH_USER_ID_KEY);
     localStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY);
+    localStorage.removeItem(AUTH_RECOVERY_FAILED_KEY);
+    localStorage.removeItem(AUTH_REFRESH_FAILED_AT_KEY);
     // Also remove legacy keys that may exist from before hardening
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userObject');
@@ -156,6 +167,8 @@ export class AuthenticationManager {
     sessionStorage.removeItem(AUTH_SESSION_ACTIVE_KEY);
     sessionStorage.removeItem(AUTH_USER_ID_KEY);
     sessionStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY);
+    sessionStorage.removeItem(AUTH_RECOVERY_FAILED_KEY);
+    sessionStorage.removeItem(AUTH_REFRESH_FAILED_AT_KEY);
     sessionStorage.removeItem('userEmail');
     sessionStorage.removeItem('userObject');
 
@@ -188,12 +201,16 @@ export class AuthenticationManager {
 
     localStorage.removeItem(AUTH_USER_ID_KEY);
     localStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY);
+    localStorage.removeItem(AUTH_RECOVERY_FAILED_KEY);
+    localStorage.removeItem(AUTH_REFRESH_FAILED_AT_KEY);
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userObject');
 
     sessionStorage.removeItem(AUTH_SESSION_ACTIVE_KEY);
     sessionStorage.removeItem(AUTH_USER_ID_KEY);
     sessionStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY);
+    sessionStorage.removeItem(AUTH_RECOVERY_FAILED_KEY);
+    sessionStorage.removeItem(AUTH_REFRESH_FAILED_AT_KEY);
     sessionStorage.removeItem('userEmail');
     sessionStorage.removeItem('userObject');
 
@@ -260,7 +277,7 @@ export class AuthenticationManager {
     this.getCurrentUser();
 
     if (this.user) {
-      return this.user.id || this.user.user_id;
+      return resolveStoredUserId(this.user);
     }
 
     if (typeof window !== 'undefined') {
@@ -299,7 +316,7 @@ export class AuthenticationManager {
     this.ensureInitialized();
     if (!this.user) return null;
 
-    this.user = { ...this.user, ...updates };
+    this.user = normalizeAuthUser({ ...this.user, ...updates }, this.user) as User;
 
     // Ensure `name` is always present (synthesize from firstName/lastName if missing)
     if (!this.user.name && (this.user.firstName || this.user.first_name)) {
@@ -332,7 +349,14 @@ export class AuthenticationManager {
         }
       });
 
-      if (refreshResponse.ok) {
+      let refreshData: any = null;
+      try {
+        refreshData = await refreshResponse.clone().json();
+      } catch {
+        refreshData = null;
+      }
+
+      if (refreshResponse.ok && refreshData?.success) {
         // Token refreshed successfully, now get current session
         const data = await fetchAuthSession({ force: true })
 
@@ -356,6 +380,9 @@ export class AuthenticationManager {
       // Clear localStorage cache to stay in sync with backend
       // Don't auto-logout here - let calling code decide
       // This prevents clearing cache during temporary network issues
+      if (!refreshResponse.ok || refreshData?.success === false) {
+        markAuthRecoveryFailed();
+      }
     } catch (error) {
       // Network error - don't modify localStorage
       // Let calling code handle fallback behavior

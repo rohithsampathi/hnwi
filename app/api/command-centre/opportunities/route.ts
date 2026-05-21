@@ -4,12 +4,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
+import { resolveCanonicalUserId } from '@/lib/auth-user-normalization';
 
 // Force dynamic rendering - this route uses request.nextUrl.searchParams
 export const dynamic = 'force-dynamic';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 // Helper to extract user ID from session_user cookie or JWT
 function extractUserId(cookieStore: Awaited<ReturnType<typeof cookies>>): string | null {
@@ -18,7 +18,7 @@ function extractUserId(cookieStore: Awaited<ReturnType<typeof cookies>>): string
   if (sessionUser) {
     try {
       const userData = JSON.parse(sessionUser);
-      return userData.id || userData.user_id || null;
+      return resolveCanonicalUserId(userData) || null;
     } catch {
       // Invalid JSON
     }
@@ -31,7 +31,7 @@ function extractUserId(cookieStore: Awaited<ReturnType<typeof cookies>>): string
       const parts = accessToken.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-        return payload.user_id || payload.userId || payload.id || payload.sub || null;
+        return resolveCanonicalUserId(payload) || null;
       }
     } catch {
       // Invalid JWT

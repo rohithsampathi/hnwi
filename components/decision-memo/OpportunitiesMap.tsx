@@ -10,6 +10,8 @@ import { Crown, TrendingUp, Gem } from 'lucide-react';
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 import { useTheme } from '@/contexts/theme-context';
+import { MAP_PRICE_FILTER_MAX } from '@/lib/map-color-utils';
+import { parseValueToNumber } from '@/lib/map-utils';
 
 // Dynamically import globe to avoid SSR issues
 // Using forwardRef prop pattern for react-globe.gl with Next.js dynamic imports
@@ -31,10 +33,15 @@ interface OpportunitiesMapProps {
 }
 
 const MIN_PRICE = 0;
-const MAX_PRICE = 2000000; // $2M+ max to match dashboard
+const MAX_PRICE = MAP_PRICE_FILTER_MAX;
 
 function formatCurrency(value: number): string {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M${value === MAX_PRICE ? '+' : ''}`;
+  if (value >= 1000000) {
+    const formatted = Number.isInteger(value / 1000000)
+      ? (value / 1000000).toFixed(0)
+      : (value / 1000000).toFixed(1);
+    return `$${formatted}M${value === MAX_PRICE ? '+' : ''}`;
+  }
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
   return `$${value}`;
 }
@@ -114,11 +121,11 @@ export function OpportunitiesMap({ opportunities, onOpportunityClick }: Opportun
 
     // Price filter - only apply if we can extract a price
     const returnStr = opp.expected_return || opp.minimum_investment || '';
-    const priceMatch = returnStr.match(/[\d,]+/);
-    if (priceMatch) {
-      const price = parseInt(priceMatch[0].replace(/,/g, ''));
+    const price = parseValueToNumber(returnStr);
+    if (price) {
       // Only filter out if price is outside range
-      if (price < priceRange[0] || price > priceRange[1]) return false;
+      if (price < priceRange[0]) return false;
+      if (priceRange[1] !== MAX_PRICE && price > priceRange[1]) return false;
     }
     // If no price found, include the opportunity (don't filter it out)
 
@@ -372,7 +379,7 @@ export function OpportunitiesMap({ opportunities, onOpportunityClick }: Opportun
                 range
                 min={MIN_PRICE}
                 max={MAX_PRICE}
-                step={50000}
+                step={250000}
                 value={priceRange}
                 onChange={(val) => {
                   if (Array.isArray(val) && val.length === 2) {

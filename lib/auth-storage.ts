@@ -1,3 +1,5 @@
 export const AUTH_SESSION_ACTIVE_KEY = "auth_session_active"
 export const AUTH_USER_ID_KEY = "userId"
 export const AUTH_LOGIN_TIMESTAMP_KEY = "loginTimestamp"
+export const AUTH_RECOVERY_FAILED_KEY = "auth_recovery_failed"
+export const AUTH_REFRESH_FAILED_AT_KEY = "auth_refresh_failed_at"

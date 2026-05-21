@@ -29,7 +29,10 @@ import {
   calculateValueRanking,
   getColorFromValue,
   clusterCities as clusterCitiesFn,
-  createPriceRangeMatcher
+  createPriceRangeMatcher,
+  MAP_PRICE_COLOR_MIN,
+  MAP_PRICE_COLOR_MAX,
+  MAP_PRICE_FILTER_MAX
 } from "@/lib/map-color-utils"
 import { createCustomIcon, createClusterIcon } from "@/lib/map-markers"
 import { isRecentlyAddedOpportunity } from "@/lib/opportunity-recency"
@@ -155,6 +158,49 @@ function computeAirRouteArc(
   return points
 }
 
+const DECISION_VERDICT_LABELS: Record<string, string> = {
+  ABORT: "Abort",
+  APPROVE: "Approved",
+  APPROVED: "Approved",
+  APPROVED_WITH_CONTROLS: "Approved",
+  APPROVED_WITH_EXECUTION_CONTROLS: "Approved",
+  CONDITIONAL_APPROVAL: "Conditional",
+  DO_NOT_PROCEED: "Abort",
+  GO: "Go",
+  GO_WITH_MODIFICATIONS: "Go",
+  PIVOT: "Pivot",
+  PROCEED: "Proceed",
+  PROCEED_MODIFIED: "Proceed",
+  PROCEED_WITH_MODIFICATIONS: "Proceed",
+  RESTRUCTURE: "Restructure",
+  STOP: "Stop",
+  VETOED: "Vetoed",
+}
+
+function normalizeDecisionVerdictKey(value: string): string {
+  return value.trim().replace(/[\s-]+/g, "_").toUpperCase()
+}
+
+function formatDecisionVerdict(value: string): string {
+  const key = normalizeDecisionVerdictKey(value)
+  const mapped = DECISION_VERDICT_LABELS[key]
+  if (mapped) return mapped
+
+  return key
+    .split("_")
+    .filter((word) => word && !["AND", "THE", "WITH"].includes(word))
+    .slice(0, 2)
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
+function getDecisionVerdictClass(value: string): string {
+  const key = normalizeDecisionVerdictKey(value)
+  if (["GO", "APPROVE", "APPROVED", "PROCEED"].includes(key)) return "verdict-proceed"
+  if (["ABORT", "DO_NOT_PROCEED", "STOP", "VETOED"].includes(key)) return "verdict-abort"
+  return "verdict-restructure"
+}
+
 interface InteractiveWorldMapProps {
   width?: number | string
   height?: number | string
@@ -216,7 +262,10 @@ export function InteractiveWorldMap({
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null)
   const [cityToExpand, setCityToExpand] = useState<City | null>(null)
   const [openClusterId, setOpenClusterId] = useState<string | null>(null)
-  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 2000000 })
+  const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number }>({
+    min: MAP_PRICE_COLOR_MIN,
+    max: MAP_PRICE_FILTER_MAX
+  })
   const [hoveredCorridorKey, setHoveredCorridorKey] = useState<string | null>(null)
   const [selectedCorridorKey, setSelectedCorridorKey] = useState<string | null>(null) // Persist highlight when popup is open
   const [hoveredDestination, setHoveredDestination] = useState<string | null>(null)
@@ -308,9 +357,9 @@ export function InteractiveWorldMap({
   )
 
   // Get color from value (memoized callback)
-  // Use fixed range (0-2000000) for consistent coloring, not dataset min/max
+  // Use fixed range for consistent coloring across every map surface.
   const getColor = useCallback(
-    (value: string | undefined) => getColorFromValue(value, 0, 2000000),
+    (value: string | undefined) => getColorFromValue(value, MAP_PRICE_COLOR_MIN, MAP_PRICE_COLOR_MAX),
     []
   )
 
@@ -726,11 +775,8 @@ export function InteractiveWorldMap({
                               const isVerdict = key === 'Verdict';
                               const isSummary = key === 'Summary';
                               const isHighlight = key === 'Value' || key === 'Transaction' || key === 'Tax Savings' || key === 'Annual Savings';
-                              const verdictClass = isVerdict
-                                ? (val as string).toUpperCase() === 'PROCEED' ? 'verdict-proceed'
-                                  : (val as string).toUpperCase() === 'ABORT' ? 'verdict-abort'
-                                  : 'verdict-restructure'
-                                : '';
+                              const verdictClass = isVerdict ? getDecisionVerdictClass(val as string) : '';
+                              const verdictLabel = isVerdict ? formatDecisionVerdict(val as string) : '';
 
                               // Summary gets its own section below, skip it here
                               if (isSummary) return null;
@@ -740,7 +786,7 @@ export function InteractiveWorldMap({
                                   <div className="text-muted-foreground text-[10px] uppercase tracking-wider mb-0.5">{key}</div>
                                   {isVerdict ? (
                                     <div className={`font-bold ${verdictClass}`}>
-                                      {(val as string).toUpperCase()}
+                                      {verdictLabel}
                                     </div>
                                   ) : (
                                     <div className={isHighlight ? 'font-bold text-primary' : 'font-medium'}>
@@ -963,11 +1009,8 @@ export function InteractiveWorldMap({
                               const isVerdict = key === 'Verdict';
                               const isSummary = key === 'Summary';
                               const isHighlight = key === 'Value' || key === 'Transaction' || key === 'Tax Savings' || key === 'Annual Savings';
-                              const verdictClass = isVerdict
-                                ? (val as string).toUpperCase() === 'PROCEED' ? 'verdict-proceed'
-                                  : (val as string).toUpperCase() === 'ABORT' ? 'verdict-abort'
-                                  : 'verdict-restructure'
-                                : '';
+                              const verdictClass = isVerdict ? getDecisionVerdictClass(val as string) : '';
+                              const verdictLabel = isVerdict ? formatDecisionVerdict(val as string) : '';
 
                               // Summary gets its own section below, skip it here
                               if (isSummary) return null;
@@ -977,7 +1020,7 @@ export function InteractiveWorldMap({
                                   <div className="text-muted-foreground text-[10px] uppercase tracking-wider mb-0.5">{key}</div>
                                   {isVerdict ? (
                                     <div className={`font-bold ${verdictClass}`}>
-                                      {(val as string).toUpperCase()}
+                                      {verdictLabel}
                                     </div>
                                   ) : (
                                     <div className={isHighlight ? 'font-bold text-primary' : 'font-medium'}>

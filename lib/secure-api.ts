@@ -7,6 +7,7 @@
 import { authManager } from './auth-manager'
 import { fetchAuthSession } from './client-auth-session'
 import { pwaStorage } from './storage/pwa-storage'
+import { markAuthRecoveryFailed, shouldSkipRefreshAfterFailure } from './auth-recovery-state'
 
 export interface StepUpDeliveryInfo {
   method?: string;
@@ -413,6 +414,10 @@ const tryRefreshToken = async (): Promise<boolean> => {
       return false;
     }
 
+    if (shouldSkipRefreshAfterFailure()) {
+      return false;
+    }
+
     // Get CSRF token for refresh request (if available)
     const csrfToken = readCsrfToken();
     const headers: Record<string, string> = {
@@ -429,9 +434,10 @@ const tryRefreshToken = async (): Promise<boolean> => {
       headers
     });
 
+    const data = await parseJsonSafely(response);
+
     if (response.ok) {
-      const data = await response.json();
-      if (data.success) {
+      if (data?.success) {
         setAuthState(true);
         // Small delay to allow cookies to propagate
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -441,8 +447,19 @@ const tryRefreshToken = async (): Promise<boolean> => {
 
     // If refresh failed with 401/403, the refresh token itself is expired
     // Clear old auth state to prepare for fresh login
-    if (response.status === 401 || response.status === 403) {
+    if (
+      !response.ok ||
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status === 429 ||
+      data?.reason === 'missing_refresh_token' ||
+      data?.reason === 'backend_refresh_rejected' ||
+      data?.reason === 'missing_backend_cookies'
+    ) {
       setAuthState(false);
+      authManager.silentLogout();
+      pwaStorage.clear();
+      markAuthRecoveryFailed();
     }
 
     return false;
@@ -476,6 +493,7 @@ const handleAuthError = async (): Promise<boolean> => {
   }
 
   // Token refresh failed, now show auth popup
+  markAuthRecoveryFailed();
   authManager.setAuthenticated(false);
 
   // CRITICAL: Clear ALL client-side auth state to prevent ghost sessions
@@ -1126,13 +1144,17 @@ export const refreshAuthToken = async (): Promise<any> => {
 
     if (response.ok) {
       const data = await response.json();
-      setAuthState(true);
-      return data;
+      if (data?.success) {
+        setAuthState(true);
+        return data;
+      }
     }
 
+    markAuthRecoveryFailed();
     setAuthState(false);
     return null;
   } catch (error) {
+    markAuthRecoveryFailed();
     setAuthState(false);
     // Failed to refresh token;
     return null;

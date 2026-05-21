@@ -39,7 +39,6 @@ export async function middleware(request: NextRequest) {
     "https://lumberjack.razorpay.com",
     "https://*.vercel.app",
     "wss://*.vercel.app",
-    "https://hnwi-uwind-p8oqb.ondigitalocean.app", // Backend API URL
     "https://kingdom-core.montaigne.co", // Kingdom backend API URL
     "blob:",  // PDF export blob URLs
     "data:",  // @react-pdf/renderer WASM binary loading

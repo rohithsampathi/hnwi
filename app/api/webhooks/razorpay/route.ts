@@ -3,11 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
 
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 interface RazorpayWebhookPayload {
   event: string;

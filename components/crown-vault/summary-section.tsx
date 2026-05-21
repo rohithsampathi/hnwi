@@ -142,7 +142,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
   const stateCounts = countAssetsByState(assets);
   const postureCounts = countActionPostures(assets);
   const latestSync = latestAnalysisTimestamp(assets);
-  const assetsWithHeirs = assets.filter((asset) => (asset.heir_names || []).length > 0).length;
+  const assetsWithHeirs = assets.filter((asset) => (asset.heir_names || []).length > 0 || (asset.heir_ids || []).length > 0).length;
   const unassignedAssets = Math.max(assets.length - assetsWithHeirs, 0);
   const libraryBackedAssets = assets.filter((asset) => getAssetPrecedentCount(asset) > 0).length;
   const topWinners = sortAssetsByChange(assets).filter((asset) => getAssetStatusLabel(asset) === "Doing well").slice(0, 3);

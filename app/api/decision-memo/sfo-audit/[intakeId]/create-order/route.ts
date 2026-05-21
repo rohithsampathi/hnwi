@@ -2,11 +2,10 @@
 // Create Razorpay order for SFO Pattern Audit payment
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
 import { safeError } from '@/lib/security/api-response';
 import { logger } from '@/lib/secure-logger';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
 async function handlePost(
   request: NextRequest,

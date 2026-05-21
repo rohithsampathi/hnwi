@@ -24,6 +24,7 @@ import type {
   HNWIWorldLibraryContract,
   HNWIWorldPatternMetadata,
 } from "@/types/hnwi-world"
+import { resolveHnwiWorldCategory } from "@/lib/hnwi-world-category"
 
 interface ElitePulseImpactMeta {
   impact_level?: "HIGH" | "MEDIUM" | "LOW"
@@ -189,7 +190,7 @@ export function DevelopmentStream({
   // Filter developments based on Elite Pulse criteria
   const getFilteredDevelopments = () => {
     let filteredDevs = developments
-      .filter(dev => selectedIndustry === 'All' || dev.industry === selectedIndustry);
+      .filter(dev => selectedIndustry === 'All' || resolveHnwiWorldCategory(dev) === selectedIndustry);
     
     // Apply Elite Pulse only filter
     if (showElitePulseOnly) {
@@ -280,6 +281,11 @@ export function DevelopmentStream({
         <div className="w-full space-y-4">
           {getFilteredDevelopments().map((dev) => {
             const elitePulseImpact = getElitePulseImpact(dev);
+            const categoryLabel = resolveHnwiWorldCategory(dev);
+            const industryLabel = dev.industry
+              ? resolveHnwiWorldCategory({ ...dev, category: dev.industry })
+              : categoryLabel;
+            const showIndustryBadge = industryLabel && industryLabel !== categoryLabel;
             return (
             <div key={dev.id} id={`development-card-${dev.id}`} className={`relative ${expandedCards[dev.id] ? '' : 'min-h-[179px]'}`}>
               {/* Unified frame wrapper for both main card and expanded content */}
@@ -301,18 +307,16 @@ export function DevelopmentStream({
                   onClick={() => toggleCardExpansion(dev.id)}
                 >
                 <div className="h-full flex flex-col justify-between py-1">
-                  {/* Header with Product badge, title and toggle */}
+                  {/* Header with category badge, title and toggle */}
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col flex-1 mr-3">
                       <div className="flex items-center space-x-2 mb-1">
-                        {dev.product && (
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs font-normal px-2 py-1 rounded-md text-muted-foreground border-muted-foreground/30 whitespace-nowrap w-fit"
-                          >
-                            {dev.product}
-                          </Badge>
-                        )}
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs font-normal px-2 py-1 rounded-md text-muted-foreground border-muted-foreground/30 whitespace-nowrap w-fit"
+                        >
+                          {categoryLabel}
+                        </Badge>
                         {(elitePulseBriefIds.includes(dev.id) || elitePulseImpact) && (
                           <div className="flex items-center gap-2">
                             <Badge className="text-xs font-semibold px-2 py-1 rounded-md bg-gradient-to-r from-primary to-primary/80 text-white whitespace-nowrap w-fit">
@@ -376,9 +380,11 @@ export function DevelopmentStream({
                         }) : "Date not available"}
                       </div>
                       
-                      <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
-                        {dev.industry || "Unknown Industry"}
-                      </PremiumBadge>
+                      {showIndustryBadge && (
+                        <PremiumBadge className="font-bold px-3 py-1.5 rounded-full w-fit">
+                          {industryLabel}
+                        </PremiumBadge>
+                      )}
                     </div>
                   </div>
                 </div>

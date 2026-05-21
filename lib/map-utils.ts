@@ -223,11 +223,11 @@ export function generateTier(value: string | undefined, source: string | undefin
     num = num * 1000
   }
 
-  // Classify into tiers
-  if (num >= 1000000) {
-    return '$1M+ Tier'
-  } else if (num >= 500000) {
-    return '$500K Tier'
+  // Classify into map price tiers. Keep in sync with lib/map-color-utils.ts.
+  if (num >= 10000000) {
+    return '$10M+ Tier'
+  } else if (num >= 5000000) {
+    return '$5M Tier'
   } else if (num >= 100000) {
     return '$100K Tier'
   }

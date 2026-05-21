@@ -115,15 +115,6 @@ export function BillingManagementModal({ isOpen, onClose, user }: BillingManagem
   // Check all possible tier field locations (matching subscription-card logic)
   const rawTier = user.tier || user.subscription_tier || user.subscription?.tier || 'family_office'
 
-  // Debug logging
-  console.log('[BillingModal] User tier data:', {
-    'user.tier': user.tier,
-    'user.subscription_tier': user.subscription_tier,
-    'user.subscription?.tier': user.subscription?.tier,
-    'rawTier': rawTier,
-    'normalized': getNormalizedTier(rawTier)
-  })
-
   const currentTier = getNormalizedTier(rawTier)
 
   // Fetch payment methods from backend

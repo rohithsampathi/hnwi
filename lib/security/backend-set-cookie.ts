@@ -1,5 +1,6 @@
 import type { NextResponse } from 'next/server'
 
+import { appendCookie } from '@/lib/auth-cookie-cleanup'
 import { resolveAuthCookieSameSite, resolveCookieMaxAge } from '@/lib/auth-cookie-policy'
 
 type ParsedSameSite = 'lax' | 'strict' | 'none' | null
@@ -84,10 +85,8 @@ export function applyBackendAuthCookies(
     const sameSite = parseSameSite(cookie.attributes.get('samesite'))
 
     const cookieOptions: any = {
-      name: cookie.name,
-      value: cookie.value,
       httpOnly: cookie.flags.has('httponly'),
-      secure: options.secureDefault || cookie.flags.has('secure'),
+      secure: options.secureDefault,
       sameSite: resolveAuthCookieSameSite(sameSite),
       path: cookie.attributes.get('path') ?? '/',
     }
@@ -101,7 +100,7 @@ export function applyBackendAuthCookies(
       cookieOptions.domain = options.cookieDomain
     }
 
-    response.cookies.set(cookieOptions)
+    appendCookie(response, cookie.name, cookie.value, cookieOptions)
   }
 }
 

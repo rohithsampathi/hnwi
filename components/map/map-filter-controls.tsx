@@ -7,7 +7,12 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Crown, Gem, TrendingUp, ZoomOut, AlertTriangle } from "lucide-react"
 import Slider from "rc-slider"
 import "rc-slider/assets/index.css"
-import { GRADIENT_COLORS, getGradientColorFromPercent } from "@/lib/map-color-utils"
+import {
+  GRADIENT_COLORS,
+  MAP_PRICE_COLOR_MIN,
+  MAP_PRICE_FILTER_MAX,
+  getGradientColorFromPercent,
+} from "@/lib/map-color-utils"
 
 interface MapFilterControlsProps {
   selectedPriceRange: { min: number; max: number }
@@ -28,11 +33,16 @@ interface MapFilterControlsProps {
   onToggleCrisisAlert?: () => void
 }
 
-const MIN = 0
-const MAX = 2000000 // $2M+ maximum for slider
+const MIN = MAP_PRICE_COLOR_MIN
+const MAX = MAP_PRICE_FILTER_MAX
 
 function formatCurrency(value: number): string {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M${value === MAX ? '+' : ''}`
+  if (value >= 1000000) {
+    const formatted = Number.isInteger(value / 1000000)
+      ? (value / 1000000).toFixed(0)
+      : (value / 1000000).toFixed(1)
+    return `$${formatted}M${value === MAX ? '+' : ''}`
+  }
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`
   return `$${value}`
 }
@@ -68,6 +78,10 @@ function getGradientForRange(minPercent: number, maxPercent: number): string {
   return `linear-gradient(to right, ${gradientStops})`
 }
 
+const FULL_GRADIENT = `linear-gradient(to right, ${GRADIENT_COLORS
+  .map((stop) => `${stop.hex} ${stop.pos}%`)
+  .join(', ')})`
+
 // Dual Range Slider Component using rc-slider
 function DualRangeSlider({ min, max, step, value, onChange, theme }: {
   min: number;
@@ -102,7 +116,7 @@ function DualRangeSlider({ min, max, step, value, onChange, theme }: {
       <div
         className="absolute w-full h-[3px] rounded-full opacity-30 top-1/2 -translate-y-1/2"
         style={{
-          background: 'linear-gradient(to right, #0d5c3a 0%, #0f6941 1%, #127d4b 2%, #148c55 3%, #179b5c 4%, #19a562 5%, #1baf69 6%, #1eb96e 7%, #ffd700 7%, #ffd200 9%, #ffcd00 11%, #ffc800 13%, #ffc300 15%, #ffbe00 17%, #ffbb00 18%, #ffb900 20%, #e63946 20%, #dc3241 28%, #d22d3c 36%, #cd2a39 44%, #c82837 52%, #c1121f 60%, #b9101d 68%, #af0e1b 76%, #a50c19 84%, #960816 92%, #800020 100%)'
+          background: FULL_GRADIENT
         }}
       />
 
@@ -202,7 +216,7 @@ export function MapFilterControlsMobile(props: MapFilterControlsProps) {
             <DualRangeSlider
               min={MIN}
               max={MAX}
-              step={50000}
+              step={250000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
               onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
               theme={props.theme}
@@ -307,7 +321,7 @@ export function MapFilterControlsDesktop(props: MapFilterControlsProps) {
             <DualRangeSlider
               min={MIN}
               max={MAX}
-              step={50000}
+              step={250000}
               value={[props.selectedPriceRange.min, props.selectedPriceRange.max]}
               onChange={([min, max]) => props.onPriceRangeChange({ min, max })}
               theme={props.theme}

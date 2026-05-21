@@ -7,27 +7,8 @@ import { logger } from '@/lib/secure-logger'
 import { CSRFProtection } from '@/lib/csrf-protection'
 import { withRateLimit } from '@/lib/security/api-auth'
 import { API_BASE_URL } from '@/config/api'
-
-// Helper to get cookie domain for PWA cross-subdomain support
-function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== 'production') return undefined;
-
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
-  if (!productionUrl) return undefined;
-
-  try {
-    const url = new URL(productionUrl);
-    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
-    const hostParts = url.hostname.split('.');
-    if (hostParts.length >= 2) {
-      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
-    }
-  } catch (e) {
-    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
-  }
-
-  return undefined;
-}
+import { resolveAuthCookieDomain, shouldUseSecureAuthCookies } from '@/lib/auth-cookie-security'
+import { normalizeAuthUser } from '@/lib/auth-user-normalization'
 
 // Verify JWT signature if secret is available, returns payload or null
 async function verifyJWT(token: string): Promise<Record<string, any> | null> {
@@ -51,7 +32,7 @@ async function verifyJWT(token: string): Promise<Record<string, any> | null> {
 function extractUserFromPayload(payload: Record<string, any>) {
   const firstName = payload.firstName || payload.first_name || payload.name?.split(' ')[0] || '';
   const lastName = payload.lastName || payload.last_name || payload.name?.split(' ').slice(1).join(' ') || '';
-  return {
+  return normalizeAuthUser({
     id: payload.user_id || payload.userId || payload.id || payload.sub,
     user_id: payload.user_id || payload.userId || payload.id || payload.sub,
     email: payload.email,
@@ -59,37 +40,46 @@ function extractUserFromPayload(payload: Record<string, any>) {
     firstName,
     lastName,
     role: payload.role || 'user',
-  };
+  });
 }
 
 // GET handler for retrieving the session
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Note: In Next.js 15+, cookies() returns a Promise
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
+    const sessionToken = cookieStore.get('session_token')?.value;
     const refreshToken = cookieStore.get('refresh_token')?.value;
+    const candidateAuthToken = accessToken || sessionToken;
 
     logger.info('Session check', {
       hasAccessToken: !!accessToken,
+      hasSessionToken: !!sessionToken,
       hasRefreshToken: !!refreshToken,
       accessTokenLength: accessToken?.length || 0
     });
 
-    if (!accessToken) {
-      // No access_token — session is invalid
-      // NOTE: session_user cookie is NOT trusted as a standalone auth source
-      // because it's unsigned JSON. Only access_token (JWT signed by backend) is authoritative.
-      logger.info('No access_token found - session invalid');
+    if (!candidateAuthToken) {
+      // No signed auth token — session is invalid.
+      // NOTE: session_user cookie is not trusted as a standalone auth source
+      // because it is unsigned JSON. Backend cookies or verified JWT are authoritative.
+      logger.info('No signed auth token found - session invalid');
       return NextResponse.json({ user: null }, { status: 200 });
     }
 
     // Strategy: validate with backend first, verified JWT as fallback
-    // 1. Try backend validation (authoritative)
+    // 1. Try backend validation (authoritative). Forward the whole browser cookie
+    // header, because backend cookie path/name choices are part of its auth contract.
     try {
+      const cookieHeader =
+        request.headers.get('cookie') ||
+        cookieStore.getAll().map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+
       const userResponse = await fetch(`${API_BASE_URL}/api/auth/session`, {
+        cache: 'no-store',
         headers: {
-          'Cookie': `access_token=${accessToken}`,
+          'Cookie': cookieHeader,
           'Content-Type': 'application/json'
         }
       });
@@ -97,7 +87,7 @@ export async function GET() {
       if (userResponse.ok) {
         const userData = await userResponse.json();
         if (userData && (userData.user || userData.id || userData.user_id)) {
-          const user = userData.user || userData;
+          const user = normalizeAuthUser(userData.user || userData);
           return NextResponse.json({ user });
         }
       }
@@ -108,8 +98,8 @@ export async function GET() {
     }
 
     // 2. Fallback: verify JWT signature locally (only if we have the secret)
-    if (accessToken.includes('.') && accessToken.split('.').length === 3) {
-      const verifiedPayload = await verifyJWT(accessToken);
+    if (candidateAuthToken.includes('.') && candidateAuthToken.split('.').length === 3) {
+      const verifiedPayload = await verifyJWT(candidateAuthToken);
       if (verifiedPayload) {
         const user = extractUserFromPayload(verifiedPayload);
         if (user.id) {
@@ -148,19 +138,19 @@ async function handlePost(request: NextRequest) {
     // Set the session cookies on the response. Frontend remains cookie-backed.
     const responseData = {
       success: result.success,
-      user: result.user ?? null,
+      user: result.user ? normalizeAuthUser(result.user) : null,
       message: result.message
     };
     const response = NextResponse.json(responseData);
 
     // Store token in cookie for session management with PWA-compatible configuration
-    const isProd = process.env.NODE_ENV === 'production';
-    const cookieDomain = getCookieDomain();
+    const secureAuthCookies = shouldUseSecureAuthCookies(request);
+    const cookieDomain = resolveAuthCookieDomain(request);
 
     if (result.token) {
       const sessionTokenOptions: any = {
         httpOnly: true,
-        secure: isProd,
+        secure: secureAuthCookies,
         sameSite: 'lax' as const,
         maxAge: 7 * 24 * 60 * 60, // 7 days (before iOS Safari auto-clear)
         path: '/'
@@ -171,17 +161,18 @@ async function handlePost(request: NextRequest) {
 
       // Encrypt user data before storing in cookie
       const encryptedUserData = JSON.stringify({
-        id: result.user?.id || result.user?.user_id,
-        email: result.user?.email,
-        firstName: result.user?.firstName,
-        lastName: result.user?.lastName,
-        role: result.user?.role || 'user',
+        id: responseData.user?.id || responseData.user?.user_id,
+        user_id: responseData.user?.user_id || responseData.user?.id,
+        email: responseData.user?.email,
+        firstName: responseData.user?.firstName,
+        lastName: responseData.user?.lastName,
+        role: responseData.user?.role || 'user',
         timestamp: Date.now() // Add timestamp for validation
       });
 
       const sessionUserOptions: any = {
         httpOnly: true,
-        secure: isProd,
+        secure: secureAuthCookies,
         sameSite: 'lax' as const,
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: '/'

@@ -2,11 +2,10 @@
 // Fetch full IC artifact for SFO Pattern Audit
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { logger } from '@/lib/secure-logger';
 import { safeError } from '@/lib/security/api-response';
 import { clearReportAuthCookie, getReportAuthTokenFromRequest } from '@/lib/security/report-auth';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'https://hnwi-uwind-p8oqb.ondigitalocean.app';
 
 export const maxDuration = 300; // 5 minutes
 

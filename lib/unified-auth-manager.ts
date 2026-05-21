@@ -12,6 +12,7 @@ import { authManager, loginUser, logoutUser, silentLogoutUser, getCurrentUser, t
 import { fetchAuthSession } from '@/lib/client-auth-session'
 import { DeviceTrustManager } from '@/lib/device-trust'
 import { canUseServiceWorkerRuntime } from '@/lib/platform/runtime-flags'
+import { normalizeAuthUser, resolveStoredUserId } from '@/lib/auth-user-normalization'
 
 export interface AuthState {
   isAuthenticated: boolean
@@ -150,8 +151,9 @@ class UnifiedAuthManager {
       const returnedMfaToken = result?.mfa_token || result?.mfaToken
 
       if (requiresMfa && returnedMfaToken) {
-        // MFA required - store email for MFA verification and don't update auth state yet
-        this._loginInProgress = false
+        // MFA required - keep the login flow active until verification or cancellation.
+        // This prevents authenticated shells from treating the mid-MFA state as
+        // an expired session and repeatedly attempting token refresh.
         this.mfaEmail = email
         this.updateAuthState({ isLoading: false })
         return {
@@ -163,21 +165,22 @@ class UnifiedAuthManager {
       }
 
       if (result.success && result.user) {
+        const normalizedUser = normalizeAuthUser(result.user)
         // Direct login success - sync all auth systems
         // syncAuthSystems calls loginUser which automatically sets loginTimestamp
         this._loginInProgress = false
-        await this.syncAuthSystems(result.user)
+        await this.syncAuthSystems(normalizedUser)
 
         this.updateAuthState({
           isAuthenticated: true,
-          user: result.user,
+          user: normalizedUser,
           isLoading: false,
           error: null
         })
 
         return {
           success: true,
-          user: result.user,
+          user: normalizedUser,
           message: result.message
         }
       }
@@ -211,6 +214,7 @@ class UnifiedAuthManager {
 
   // Verify MFA using secure-api
   public async verifyMFA(code: string, mfaToken: string, rememberDevice = false): Promise<LoginResult> {
+    this._loginInProgress = true
     this.updateAuthState({ isLoading: true, error: null })
 
     if (typeof console !== 'undefined') {
@@ -238,17 +242,19 @@ class UnifiedAuthManager {
       }, false)
 
       if (result.success && result.user) {
+        const normalizedUser = normalizeAuthUser(result.user)
         if (typeof console !== 'undefined') {
           console.debug('[Auth] MFA verification successful - syncing auth systems', {
-            userId: result.user.id || result.user.user_id,
-            email: result.user.email,
+            userId: resolveStoredUserId(normalizedUser),
+            email: normalizedUser.email,
             timestamp: new Date().toISOString()
           })
         }
 
         // MFA success - sync all auth systems FIRST and clear stored email
-        await this.syncAuthSystems(result.user)
+        await this.syncAuthSystems(normalizedUser)
         this.mfaEmail = null
+        this._loginInProgress = false
 
         // Note: loginTimestamp is automatically set by authManager.login() called in syncAuthSystems
 
@@ -258,7 +264,7 @@ class UnifiedAuthManager {
         // Removed redundant session check that caused race condition with cookie propagation
         this.updateAuthState({
           isAuthenticated: true,
-          user: result.user,
+          user: normalizedUser,
           isLoading: false,
           error: null
         })
@@ -266,14 +272,14 @@ class UnifiedAuthManager {
         if (typeof console !== 'undefined') {
           console.debug('[Auth] Auth state updated successfully', {
             isAuthenticated: true,
-            userId: result.user.id || result.user.user_id,
+            userId: resolveStoredUserId(normalizedUser),
             timestamp: new Date().toISOString()
           })
         }
 
         return {
           success: true,
-          user: result.user,
+          user: normalizedUser,
           message: result.message
         }
       }
@@ -321,6 +327,12 @@ class UnifiedAuthManager {
     }
   }
 
+  public cancelLoginFlow(): void {
+    this._loginInProgress = false
+    this.mfaEmail = null
+    this.updateAuthState({ isLoading: false })
+  }
+
   // Check session using secure-api
   public async checkSession(): Promise<AuthState> {
     // Optimistic render: if localStorage has a user, show them immediately
@@ -343,7 +355,10 @@ class UnifiedAuthManager {
 
       if (result?.user) {
         // Backend confirmed session — merge with any extra profile fields from localStorage
-        const mergedUser = existingUser ? { ...existingUser, ...result.user } : result.user
+        const mergedUser = normalizeAuthUser(
+          existingUser ? { ...existingUser, ...result.user } : result.user,
+          existingUser,
+        )
 
         // Session valid - sync all auth systems with merged user data
         await this.syncAuthSystems(mergedUser)
@@ -493,7 +508,7 @@ class UnifiedAuthManager {
 
     if (typeof console !== 'undefined') {
       console.debug('[Auth] Validating auth state with retry', {
-        userId: user.id || user.user_id,
+        userId: resolveStoredUserId(user),
         maxAttempts
       })
     }
@@ -502,12 +517,14 @@ class UnifiedAuthManager {
       // Check if auth state is properly synced
       const storedUser = getCurrentUser()
       const isAuthSynced = secureApiAuthenticated()
+      const storedUserId = resolveStoredUserId(storedUser)
+      const expectedUserId = resolveStoredUserId(user)
 
-      if (storedUser?.id === user.id && isAuthSynced) {
+      if (storedUserId && expectedUserId && storedUserId === expectedUserId && isAuthSynced) {
         if (typeof console !== 'undefined') {
           console.debug('[Auth] Auth state validated successfully', {
             attempt: attempt + 1,
-            userId: user.id || user.user_id
+            userId: expectedUserId
           })
         }
         return true // Auth state validated
@@ -517,8 +534,8 @@ class UnifiedAuthManager {
         console.debug('[Auth] Auth state validation attempt failed', {
           attempt: attempt + 1,
           hasStoredUser: !!storedUser,
-          storedUserId: storedUser?.id,
-          expectedUserId: user.id || user.user_id,
+          storedUserId,
+          expectedUserId,
           isAuthSynced
         })
       }
@@ -533,7 +550,7 @@ class UnifiedAuthManager {
     if (typeof console !== 'undefined') {
       console.warn('[Auth] Auth state validation failed after all retries', {
         maxAttempts,
-        userId: user.id || user.user_id
+        userId: resolveStoredUserId(user)
       })
     }
 
@@ -542,10 +559,11 @@ class UnifiedAuthManager {
 
   // Sync all authentication systems after successful login
   private async syncAuthSystems(user: User): Promise<void> {
+    const normalizedUser = normalizeAuthUser(user)
     if (typeof console !== 'undefined') {
       console.debug('[Auth] Starting auth systems sync', {
-        userId: user.id || user.user_id,
-        email: user.email,
+        userId: resolveStoredUserId(normalizedUser),
+        email: normalizedUser.email,
         timestamp: new Date().toISOString()
       })
     }
@@ -557,7 +575,7 @@ class UnifiedAuthManager {
 
     // 1. Store user in auth-manager (handles DUAL storage: localStorage + sessionStorage)
     // This also sets loginTimestamp automatically
-    loginUser(user)
+    loginUser(normalizedUser)
 
     // 2. Mark secure-api as authenticated
     setAuthState(true)
@@ -571,19 +589,19 @@ class UnifiedAuthManager {
 
     if (typeof console !== 'undefined') {
       console.debug('[Auth] Auth systems synced - starting validation', {
-        userId: user.id || user.user_id,
+        userId: resolveStoredUserId(normalizedUser),
         timestamp: new Date().toISOString()
       })
     }
 
     // 5. SOTA: Defensive validation with retry logic
     // Ensures all auth systems are properly synced before continuing
-    const isValid = await this.validateAuthStateWithRetry(user)
+    const isValid = await this.validateAuthStateWithRetry(normalizedUser)
     if (!isValid && typeof console !== 'undefined') {
       console.warn('[Auth] Auth state validation failed - some systems may not be synced')
     } else if (typeof console !== 'undefined') {
       console.debug('[Auth] Auth systems sync completed successfully', {
-        userId: user.id || user.user_id,
+        userId: resolveStoredUserId(normalizedUser),
         timestamp: new Date().toISOString()
       })
     }
@@ -761,6 +779,7 @@ export const useUnifiedAuth = () => {
     refreshSession: () => manager.refreshSession(),
     checkSession: () => manager.checkSession(),
     clearError: () => manager.clearError(),
+    cancelLoginFlow: () => manager.cancelLoginFlow(),
 
     // Subscription
     subscribe: (listener: (state: AuthState) => void) => manager.subscribe(listener)

@@ -5,38 +5,37 @@ import chroma from "chroma-js"
 import type { City } from "@/components/interactive-world-map"
 import { parseValueToNumber } from "@/lib/map-utils"
 
+export const MAP_PRICE_COLOR_MIN = 0
+export const MAP_PRICE_COLOR_TOPAZ_START = 5_000_000
+export const MAP_PRICE_COLOR_RUBY_START = 10_000_000
+export const MAP_PRICE_COLOR_MAX = 20_000_000
+export const MAP_PRICE_FILTER_MAX = MAP_PRICE_COLOR_MAX
+
 // Gradient color stops - SINGLE SOURCE OF TRUTH for all map colors
-// Green: $0-$350K (0-17.5%), Yellow/Gold: $350K-$900K (17.5-45%), Red: $900K-$2M+ (45-100%)
+// Green: under $5M, Yellow/Topaz: $5M-$10M, Red/Ruby: $10M+
 // EXPORTED for use in both map markers AND price range slider
 export const GRADIENT_COLORS = [
-  // 🟢 GREEN (Emerald) - $0 to $350K (0-17.5%)
-  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // $0 - Deep dark emerald
-  { pos: 3, color: [15, 105, 65], hex: '#0f6941' },     // $50K - Rich emerald
-  { pos: 5, color: [18, 125, 75], hex: '#127d4b' },     // $100K - Deep emerald
-  { pos: 8, color: [20, 140, 85], hex: '#148c55' },     // $150K - Vibrant emerald
-  { pos: 10, color: [23, 155, 92], hex: '#179b5c' },    // $200K - Bright emerald
-  { pos: 12.5, color: [25, 165, 98], hex: '#19a562' },  // $250K - Medium emerald
-  { pos: 15, color: [27, 175, 105], hex: '#1baf69' },   // $300K - Light emerald
-  { pos: 17.5, color: [30, 185, 110], hex: '#1eb96e' }, // $350K - Lighter emerald (GREEN ENDS)
+  // Green/Emerald - $0 to under $5M
+  { pos: 0, color: [13, 92, 58], hex: '#0d5c3a' },      // $0
+  { pos: 5, color: [15, 105, 65], hex: '#0f6941' },     // $1M
+  { pos: 10, color: [18, 125, 75], hex: '#127d4b' },    // $2M
+  { pos: 15, color: [23, 155, 92], hex: '#179b5c' },    // $3M
+  { pos: 20, color: [27, 175, 105], hex: '#1baf69' },   // $4M
 
-  // 🟡 YELLOW/GOLD (Topaz) - $350K to $900K (17.5-45%)
-  { pos: 17.5, color: [255, 215, 0], hex: '#ffd700' },  // $350K - Pure golden topaz (YELLOW STARTS)
-  { pos: 22, color: [255, 210, 0], hex: '#ffd200' },    // $450K - Rich gold
-  { pos: 27, color: [255, 205, 0], hex: '#ffcd00' },    // $550K - Bright gold
-  { pos: 32, color: [255, 200, 0], hex: '#ffc800' },    // $650K - Deep gold
-  { pos: 38, color: [255, 195, 0], hex: '#ffc300' },    // $750K - Rich golden amber
-  { pos: 42, color: [255, 190, 0], hex: '#ffbe00' },    // $850K - Golden amber
-  { pos: 45, color: [255, 185, 0], hex: '#ffb900' },    // $900K - Rich amber (GOLD ENDS)
+  // Yellow/Topaz - $5M to under $10M
+  { pos: 25, color: [255, 215, 0], hex: '#ffd700' },    // $5M
+  { pos: 30, color: [255, 210, 0], hex: '#ffd200' },    // $6M
+  { pos: 35, color: [255, 205, 0], hex: '#ffcd00' },    // $7M
+  { pos: 40, color: [255, 200, 0], hex: '#ffc800' },    // $8M
+  { pos: 45, color: [255, 185, 0], hex: '#ffb900' },    // $9M
 
-  // 🔴 RED (Ruby) - $900K to $2M+ (45-100%)
-  { pos: 45, color: [230, 57, 70], hex: '#e63946' },    // $900K - Bright ruby red (RED STARTS)
-  { pos: 52, color: [220, 50, 65], hex: '#dc3241' },    // $1.05M - Rich ruby
-  { pos: 60, color: [210, 45, 60], hex: '#d22d3c' },    // $1.2M - Deep ruby
-  { pos: 68, color: [205, 42, 57], hex: '#cd2a39' },    // $1.36M - Deeper ruby
-  { pos: 76, color: [200, 40, 55], hex: '#c82837' },    // $1.52M - Deep red ruby
-  { pos: 84, color: [193, 18, 31], hex: '#c1121f' },    // $1.68M - Dark ruby
-  { pos: 92, color: [185, 16, 29], hex: '#b9101d' },    // $1.84M - Darker ruby
-  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // $2M+ - Deep dark burgundy ruby
+  // Red/Ruby - $10M+
+  { pos: 50, color: [230, 57, 70], hex: '#e63946' },    // $10M
+  { pos: 60, color: [220, 50, 65], hex: '#dc3241' },    // $12M
+  { pos: 70, color: [210, 45, 60], hex: '#d22d3c' },    // $14M
+  { pos: 80, color: [200, 40, 55], hex: '#c82837' },    // $16M
+  { pos: 90, color: [193, 18, 31], hex: '#c1121f' },    // $18M
+  { pos: 100, color: [128, 0, 32], hex: '#800020' }     // $20M+
 ] as const
 
 type GradientColorStop = (typeof GRADIENT_COLORS)[number]
@@ -73,35 +72,12 @@ export function getGradientColorFromPercent(percent: number): string {
 /**
  * Create a color scale with 1000 smooth shades
  * Emerald → Topaz → Ruby gradient
- * Green: $0-$350K (0-17.5%), Yellow/Gold: $350K-$900K (17.5-45%), Red: $900K-$2M+ (45-100%)
+ * Green: under $5M, Yellow/Topaz: $5M-$10M, Red/Ruby: $10M+
  */
 export function createColorScale(): string[] {
-  const scale = chroma.scale([
-    '#0d5c3a', // $0 - Deep dark emerald
-    '#0f6941', // $50K - Rich emerald
-    '#127d4b', // $100K - Deep emerald
-    '#148c55', // $150K - Vibrant emerald
-    '#179b5c', // $200K - Bright emerald
-    '#19a562', // $250K - Medium emerald
-    '#1baf69', // $300K - Light emerald
-    '#1eb96e', // $350K - Lighter emerald (GREEN ENDS)
-    '#ffd700', // $350K - Pure golden topaz (YELLOW STARTS)
-    '#ffd200', // $450K - Rich gold
-    '#ffcd00', // $550K - Bright gold
-    '#ffc800', // $650K - Deep gold
-    '#ffc300', // $750K - Rich golden amber
-    '#ffbe00', // $850K - Golden amber
-    '#ffb900', // $900K - Rich amber (GOLD ENDS)
-    '#e63946', // $900K - Bright ruby red (RED STARTS)
-    '#dc3241', // $1.05M - Rich ruby
-    '#d22d3c', // $1.2M - Deep ruby
-    '#cd2a39', // $1.36M - Deeper ruby
-    '#c82837', // $1.52M - Deep red ruby
-    '#c1121f', // $1.68M - Dark ruby
-    '#b9101d', // $1.84M - Darker ruby
-    '#800020'  // $2M+ - Deep dark burgundy ruby
-  ])
-  .mode('lch') // LCH color space for vibrant, perceptually uniform gradients
+  const scale = chroma.scale(GRADIENT_COLORS.map((stop) => stop.hex))
+    .domain(GRADIENT_COLORS.map((stop) => stop.pos / 100))
+    .mode('lch') // LCH color space for vibrant, perceptually uniform gradients
 
   return scale.colors(1000)
 }
@@ -119,7 +95,7 @@ export function calculateValueRanking(cities: City[]): {
     .filter(val => val > 0)
 
   if (values.length === 0) {
-    return { minValue: 0, maxValue: 1000000, valueRankMap: new Map() }
+    return { minValue: MAP_PRICE_COLOR_MIN, maxValue: MAP_PRICE_COLOR_MAX, valueRankMap: new Map() }
   }
 
   const min = Math.min(...values)
@@ -242,15 +218,13 @@ export function clusterCities(
 
 /**
  * Check if a city matches the selected price range
- * CRITICAL: When max is at 2M (slider at maximum), include ALL values >= 2M
+ * CRITICAL: When max is at the slider maximum, include ALL values above it.
  */
 export function createPriceRangeMatcher(selectedPriceRange: { min: number; max: number }) {
   return (city: City): boolean => {
     const value = parseValueToNumber(city.value || city.population)
 
-    // When slider is at max (2M+), include all values >= 2M
-    const MAX_VALUE = 2000000
-    if (selectedPriceRange.max === MAX_VALUE) {
+    if (selectedPriceRange.max === MAP_PRICE_FILTER_MAX) {
       return value >= selectedPriceRange.min
     }
 

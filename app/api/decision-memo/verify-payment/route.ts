@@ -2,6 +2,7 @@
 // Verify Razorpay payment and queue memo generation
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { withAuth, withCSRF, withRateLimit } from '@/lib/security/api-auth';
 import { safeError } from '@/lib/security/api-response';
 import { logger } from '@/lib/secure-logger';
@@ -25,7 +26,7 @@ async function handlePost(request: NextRequest) {
     }
 
     // Call backend to verify payment
-    const backendResponse = await fetch(`${process.env.API_BASE_URL || 'http://localhost:8000'}/api/decision-memo/verify-payment`, {
+    const backendResponse = await fetch(`${API_BASE_URL}/api/decision-memo/verify-payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

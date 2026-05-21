@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { API_BASE_URL } from '@/config/api';
 import { sendPaymentConfirmation } from '@/lib/email/email-service';
 import { withAuth, withCSRF, withRateLimit, withValidation } from '@/lib/security/api-auth';
 import { paymentVerifySchema } from '@/lib/security/validation-schemas';
@@ -11,7 +12,6 @@ import { logger } from '@/lib/secure-logger';
 
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 // Tier pricing for email confirmation (monthly)
 const TIER_AMOUNTS = {

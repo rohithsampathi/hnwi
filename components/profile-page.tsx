@@ -54,6 +54,8 @@ import { processAssetCategories } from "@/lib/category-utils"
 import { secureApi } from "@/lib/secure-api"
 import { getVisibleIconColor, getVisibleHeadingColor, getVisibleTextColor, getVisibleSubtextColor, getMatteCardStyle, getMetallicCardStyle, getSubtleCardStyle } from "@/lib/colors"
 import { getCurrentUser, getCurrentUserId, updateUser as updateAuthUser } from "@/lib/auth-manager"
+import { isPlaceholderDisplayName, normalizeAuthUser, resolveCanonicalUserId, resolveStoredUserId } from "@/lib/auth-user-normalization"
+import { getAssetCurrentValue, sumCurrentValue } from "@/lib/crown-vault-intelligence"
 import { NotificationPreferences } from "@/components/notifications/notification-preferences"
 import { GDPRComplianceToggle } from "@/components/gdpr-compliance-toggle"
 import { SubscriptionCard } from "@/components/subscription/subscription-card"
@@ -101,8 +103,45 @@ const normalizeSubscriptionTier = (tier?: string): SubscriptionTier => {
   }
 }
 
+const cleanProfileText = (value: unknown): string => {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+const resolveProfileDisplayName = (...sources: Array<Record<string, any> | null | undefined>): string => {
+  for (const source of sources) {
+    if (!source || typeof source !== "object") {
+      continue
+    }
+
+    const directCandidates = [
+      source.name,
+      source.full_name,
+      source.fullName,
+      source.profile?.name,
+      source.profile?.full_name,
+      source.profile?.fullName,
+    ]
+      .map(cleanProfileText)
+      .filter((value) => value && !isPlaceholderDisplayName(value))
+
+    if (directCandidates[0]) {
+      return directCandidates[0]
+    }
+
+    const firstName = cleanProfileText(source.firstName || source.first_name || source.profile?.firstName || source.profile?.first_name)
+    const lastName = cleanProfileText(source.lastName || source.last_name || source.profile?.lastName || source.profile?.last_name)
+    const composedName = `${firstName} ${lastName}`.trim()
+    if (composedName && !isPlaceholderDisplayName(composedName)) {
+      return composedName
+    }
+  }
+
+  return ""
+}
+
 const buildEnhancedUser = (user: User | null | undefined): EditableUser => {
-  const baseUser = (user ?? {}) as EditableUser
+  const baseUser = normalizeAuthUser((user ?? {}) as EditableUser)
+  const displayName = resolveProfileDisplayName(baseUser)
   const initialCompanyName = baseUser.company ||
     baseUser.company_info?.name ||
     baseUser.profile?.company_info?.name ||
@@ -110,9 +149,9 @@ const buildEnhancedUser = (user: User | null | undefined): EditableUser => {
 
   return {
     ...baseUser,
-    user_id: baseUser.user_id || baseUser._id || baseUser.id || "",
+    user_id: resolveStoredUserId(baseUser),
     email: baseUser.email || "",
-    name: baseUser.name || "",
+    name: displayName,
     net_worth: baseUser.net_worth || 0,
     city: baseUser.city || "",
     country: baseUser.country || "",
@@ -275,14 +314,16 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
     try {
       // Get the user ID from parameter or state
       const authUser = getCurrentUser()
-      const userIdToUse = userIdParam || userId || authUser?.userId || authUser?.user_id || authUser?.id || getCurrentUserId()
+      const userIdToUse =
+        resolveCanonicalUserId({ user_id: userIdParam }, { user_id: userId }, authUser) ||
+        resolveCanonicalUserId({ user_id: getCurrentUserId() })
 
       if (!userIdToUse) {
         return
       }
 
       // Create cache key based on userId
-      const cacheKey = `profile-vault-${userIdToUse}`
+      const cacheKey = `profile-vault-v2-${userIdToUse}`
 
       // Check if we have valid cached data (skip API call entirely)
       const cached = getCachedData(cacheKey)
@@ -337,13 +378,12 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
 
   // Data processing functions like Crown Vault page
   const getTotalValue = () => {
-    return vaultStats?.total_value || vaultAssets.reduce((total, asset) => {
-      return total + (asset?.asset_data?.value || 0);
-    }, 0);
+    const assetDerivedTotal = sumCurrentValue(vaultAssets);
+    return vaultAssets.length > 0 ? assetDerivedTotal : (vaultStats?.total_value || 0);
   };
 
   const getAssetsByCategory = () => {
-    return processAssetCategories(vaultAssets);
+    return processAssetCategories(vaultAssets, { valueResolver: getAssetCurrentValue });
   };
 
   const fetchUserData = useCallback(
@@ -370,16 +410,17 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                           userData.profile?.company_info?.name || 
                           "";
         
-        const enhancedUserData = {
+        const enhancedUserData = buildEnhancedUser(normalizeAuthUser({
           ...userData,
           company: companyName,
           company_info: {
             ...(userData.company_info || userData.profile?.company_info || {}),
             name: companyName
           }
-        };
+        }, getCurrentUser()) as EditableUser);
         
         setEditedUser(enhancedUserData);
+        updateAuthUser(enhancedUserData);
         onUpdateUser(enhancedUserData);
         lastFetchTimeRef.current = now;
         // User data fetch complete and state updated;
@@ -400,11 +441,11 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
   // Resolve userId once from user prop — don't re-run on callback changes
   useEffect(() => {
     const sourceUser = user as (User & { _id?: string; id?: string }) | null | undefined
-    const userApiId = sourceUser?.user_id || sourceUser?._id || sourceUser?.id || null
+    const userApiId = resolveCanonicalUserId(sourceUser) || resolveCanonicalUserId(getCurrentUser())
     if (userApiId) {
       setUserId(userApiId)
     } else {
-      const storedUserId = getCurrentUserId()
+      const storedUserId = resolveCanonicalUserId({ user_id: getCurrentUserId() })
       if (storedUserId) {
         setUserId(storedUserId)
       } else {
@@ -593,6 +634,8 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
     return `${value.toLocaleString()}`
   }
 
+  const profileDisplayName = resolveProfileDisplayName(editedUser, effectiveUser)
+
   if (isLoading || (!user && !editedUser.user_id && !editedUser.email)) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -628,7 +671,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                 <Avatar className="w-32 h-32 border-4 border-background shadow-xl">
                   <AvatarImage src="" />
                   <AvatarFallback className="text-2xl font-bold bg-primary text-white">
-                    {getInitials(editedUser.name || "User")}
+                    {getInitials(profileDisplayName || "User")}
                   </AvatarFallback>
                 </Avatar>
                 {getTotalValue() > 10000000 && (
@@ -641,25 +684,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
               {/* User Info Section */}
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-4xl font-bold text-foreground mb-2">
-                  {(() => {
-                    // Try name field first (most reliable for full name)
-                    if (editedUser.name?.trim()) {
-                      return editedUser.name.trim();
-                    }
-
-                    // Then try firstName + lastName combination
-                    const firstName = editedUser.firstName || editedUser.first_name;
-                    const lastName = editedUser.lastName || editedUser.last_name;
-
-                    if (firstName && lastName) {
-                      return `${firstName} ${lastName}`;
-                    } else if (firstName) {
-                      return firstName;
-                    }
-
-                    // Fallback to email username
-                    return editedUser.email?.split('@')[0] || effectiveUser.email?.split('@')[0] || 'Welcome';
-                  })()}
+                  {profileDisplayName || editedUser.email?.split('@')[0] || effectiveUser.email?.split('@')[0] || 'Welcome'}
                 </h1>
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-muted-foreground mb-4">
                   {(editedUser.company || editedUser.company_info?.name || editedUser.profile?.company_info?.name) && (
@@ -1122,7 +1147,7 @@ export function ProfilePage({ user, onUpdateUser, onLogout, loadVaultData = fals
                       <div className="space-y-4">
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Full Name</p>
-                          <p className="font-medium">{editedUser.name || "Not specified"}</p>
+                          <p className="font-medium">{profileDisplayName || "Not specified"}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Location</p>

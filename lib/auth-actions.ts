@@ -10,6 +10,7 @@ import { SessionManager } from "./session-manager"
 import { secureApi } from "@/lib/secure-api"
 import { RateLimiter } from "./rate-limiter"
 import { headers } from "next/headers"
+import { normalizeAuthUser, resolveStoredUserId } from "./auth-user-normalization"
 
 // User interface to match what LoginPage.tsx expects
 interface User {
@@ -111,14 +112,14 @@ function normalizeVerifiedUser(payload: unknown): User | null {
   }
 
   const candidate = payload as Partial<User> & { sub?: string }
-  const id = candidate.id || candidate.user_id || candidate.sub
+  const id = resolveStoredUserId(candidate)
   const email = candidate.email
 
   if (!id || !email) {
     return null
   }
 
-  return {
+  return normalizeAuthUser({
     id,
     user_id: candidate.user_id || id,
     email,
@@ -140,7 +141,7 @@ function normalizeVerifiedUser(payload: unknown): User | null {
     land_investor: candidate.land_investor,
     company: candidate.company,
     company_info: candidate.company_info
-  }
+  })
 }
 
 export async function verifyToken(token: string): Promise<User | null> {

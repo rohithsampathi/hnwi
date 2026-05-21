@@ -1,16 +1,16 @@
 // API route for logout
 import { NextRequest, NextResponse } from 'next/server'
+import { API_BASE_URL } from '@/config/api'
 import { CSRFProtection } from '@/lib/csrf-protection'
 import { withRateLimit } from '@/lib/security/api-auth'
+import { clearAuthCookies } from '@/lib/auth-cookie-cleanup'
 
 export const dynamic = 'force-dynamic'
 
 async function handlePost(request: NextRequest) {
   try {
-    const backendApiUrl = process.env.API_BASE_URL || 'http://localhost:8000'
-
     // Forward logout request to backend
-    const response = await fetch(`${backendApiUrl}/api/auth/logout`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -21,42 +21,16 @@ async function handlePost(request: NextRequest) {
 
     const result = await response.json().catch(() => ({ success: true }))
 
-    // Create response
-    const nextResponse = NextResponse.json(result, {
-      status: response.status
-    })
+    // Local logout is terminal even if the backend rejects an already-expired session.
+    // Propagating backend 401 here re-enters the auth recovery loop while cookies are
+    // being cleared.
+    const nextResponse = NextResponse.json(
+      response.ok ? result : { success: true, backend_status: response.status },
+      { status: 200 }
+    )
 
-    // Clear ALL auth cookies — leaving any behind creates ghost sessions
-    const cookiesToClear = [
-      'access_token',
-      'refresh_token',
-      'csrf_token',
-      'session_user',
-      'session_token',
-      'remember_me',
-      'mfa_session',
-    ]
-    const isProd = process.env.NODE_ENV === 'production'
-    for (const name of cookiesToClear) {
-      nextResponse.cookies.set(name, '', {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: 'lax' as const,
-        path: '/',
-        maxAge: 0,
-        ...(isProd ? { domain: '.hnwichronicles.com' } : {}),
-      })
-    }
-    // Also clear __Host- prefixed CSRF cookie used in production
-    if (isProd) {
-      nextResponse.cookies.set('__Host-csrf_token', '', {
-        httpOnly: false,
-        secure: true,
-        sameSite: 'lax' as const,
-        path: '/',
-        maxAge: 0,
-      })
-    }
+    // Clear ALL auth cookies across the paths used by the backend bridge.
+    clearAuthCookies(nextResponse, request, { includeMfa: true })
 
     return nextResponse
   } catch (error) {
@@ -65,17 +39,7 @@ async function handlePost(request: NextRequest) {
       { success: false, error: 'Logout failed' },
       { status: 500 }
     )
-    const isProd = process.env.NODE_ENV === 'production'
-    for (const name of ['access_token', 'refresh_token', 'csrf_token', 'session_user', 'session_token', 'remember_me']) {
-      errorResponse.cookies.set(name, '', {
-        httpOnly: true,
-        secure: isProd,
-        sameSite: 'lax' as const,
-        path: '/',
-        maxAge: 0,
-        ...(isProd ? { domain: '.hnwichronicles.com' } : {}),
-      })
-    }
+    clearAuthCookies(errorResponse, request, { includeMfa: true })
     return errorResponse
   }
 }

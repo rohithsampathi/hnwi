@@ -19,37 +19,33 @@ function AskRohithContent() {
   }
 
   return (
-    <>
-      {/* Action Buttons - Positioned in header area */}
-      <div className="px-4 sm:px-6 lg:px-8 -mt-8 mb-6">
-        <div className="flex items-center justify-end gap-3">
-          {!sidebarOpen && (
-            <Button onClick={handleNewChat} variant="default" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              New Chat
-            </Button>
-          )}
-          <Button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            variant="outline"
-            size="sm"
-            className="hover:text-white dark:hover:text-accent-foreground"
-          >
-            <History className="w-4 h-4 mr-2" />
-            History
+    <div className="flex min-h-[calc(var(--app-viewport-height,100dvh)-190px)] flex-col gap-4">
+      <div className="flex shrink-0 items-center justify-end gap-3">
+        {!sidebarOpen && (
+          <Button onClick={handleNewChat} variant="default" size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            New Chat
           </Button>
-        </div>
+        )}
+        <Button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          variant="outline"
+          size="sm"
+          className="hover:text-white dark:hover:text-accent-foreground"
+        >
+          <History className="w-4 h-4 mr-2" />
+          History
+        </Button>
       </div>
 
-      {/* Chat Interface */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <PremiumRohithInterface
           sidebarOpen={sidebarOpen}
           onSidebarToggle={setSidebarOpen}
           onNewChat={handleNewChat}
         />
       </div>
-    </>
+    </div>
   )
 }
 

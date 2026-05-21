@@ -2,6 +2,7 @@
 // Diagnostic endpoint to check environment configuration
 
 import { NextResponse } from 'next/server'
+import { API_BASE_URL } from '@/config/api'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -18,7 +19,7 @@ export async function GET() {
       has_jwt_secret: !!process.env.JWT_SECRET,
       has_api_secret: !!process.env.API_SECRET_KEY,
       // Try to ping the backend
-      backend_url_configured: process.env.API_BASE_URL || 'http://localhost:8000',
+      backend_url_configured: API_BASE_URL,
     }
 
     return NextResponse.json({

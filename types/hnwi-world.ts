@@ -59,9 +59,11 @@ export interface HNWIWorldDevelopment {
   title: string
   description: string
   industry: string
+  category?: string
   date?: string
   summary: string
   product?: string
+  tags?: string[]
   url?: string
   source?: string
   score?: number | null

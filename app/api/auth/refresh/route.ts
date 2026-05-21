@@ -4,28 +4,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { logger } from '@/lib/secure-logger'
 import { withRateLimit } from '@/lib/security/api-auth'
+import { resolveAuthCookieDomain, shouldUseSecureAuthCookies } from '@/lib/auth-cookie-security'
+import { clearAuthCookies } from '@/lib/auth-cookie-cleanup'
 import { applyBackendAuthCookies, getSetCookieHeaders } from '@/lib/security/backend-set-cookie'
-
-// Helper to get cookie domain for PWA cross-subdomain support
-function getCookieDomain(): string | undefined {
-  if (process.env.NODE_ENV !== 'production') return undefined;
-
-  const productionUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || '';
-  if (!productionUrl) return undefined;
-
-  try {
-    const url = new URL(productionUrl);
-    // Extract root domain (e.g., 'hnwichronicles.com' from 'app.hnwichronicles.com')
-    const hostParts = url.hostname.split('.');
-    if (hostParts.length >= 2) {
-      return `.${hostParts.slice(-2).join('.')}`; // '.hnwichronicles.com'
-    }
-  } catch (e) {
-    logger.warn('Failed to parse production URL for cookie domain', { url: productionUrl });
-  }
-
-  return undefined;
-}
 
 // POST handler for token refresh
 async function handlePost(request: NextRequest) {
@@ -43,10 +24,13 @@ async function handlePost(request: NextRequest) {
 
     if (!refreshToken) {
       logger.info('No refresh token found');
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
-        error: 'No refresh token available'
-      }, { status: 401 });
+        error: 'No refresh token available',
+        reason: 'missing_refresh_token'
+      }, { status: 200 });
+      clearAuthCookies(response, request, { includeMfa: true });
+      return response;
     }
 
     try {
@@ -71,10 +55,13 @@ async function handlePost(request: NextRequest) {
           status: backendResponse.status,
           statusText: backendResponse.statusText
         });
-        return NextResponse.json({
+        const response = NextResponse.json({
           success: false,
-          error: 'Token refresh failed'
-        }, { status: 401 });
+          error: 'Token refresh failed',
+          reason: 'backend_refresh_rejected'
+        }, { status: 200 });
+        clearAuthCookies(response, request, { includeMfa: true });
+        return response;
       }
 
       await backendResponse.json();
@@ -83,10 +70,13 @@ async function handlePost(request: NextRequest) {
       const backendCookies = getSetCookieHeaders(backendResponse.headers);
       if (backendCookies.length === 0) {
         logger.warn('No auth cookies in refresh response');
-        return NextResponse.json({
+        const response = NextResponse.json({
           success: false,
-          error: 'Invalid refresh response'
-        }, { status: 401 });
+          error: 'Invalid refresh response',
+          reason: 'missing_backend_cookies'
+        }, { status: 200 });
+        clearAuthCookies(response, request, { includeMfa: true });
+        return response;
       }
 
       // Create response with new tokens
@@ -95,10 +85,12 @@ async function handlePost(request: NextRequest) {
         message: 'Token refreshed successfully'
       });
 
+      clearAuthCookies(response, request, { includeMfa: true });
+
       // Forward backend cookies with PWA-compatible settings
       applyBackendAuthCookies(response, backendCookies, rememberMe, {
-        cookieDomain: getCookieDomain(),
-        secureDefault: process.env.NODE_ENV === 'production',
+        cookieDomain: resolveAuthCookieDomain(request),
+        secureDefault: shouldUseSecureAuthCookies(request),
       });
 
       logger.info('Token refresh successful', {
@@ -129,6 +121,15 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-// Refresh endpoint uses httpOnly cookies (SameSite protected) so CSRF is optional,
-// but we add rate limiting to prevent brute-force token rotation attacks.
-export const POST = withRateLimit('api', handlePost);
+const rateLimitedPost = withRateLimit('api', handlePost);
+
+// Refresh endpoint uses httpOnly cookies (SameSite protected) so CSRF is optional.
+// Do not count anonymous "no refresh cookie" probes against the API limiter; stale
+// client auth markers can otherwise rate-limit the page before it can clear itself.
+export async function POST(request: NextRequest) {
+  if (!request.cookies.get('refresh_token')?.value) {
+    return handlePost(request);
+  }
+
+  return rateLimitedPost(request);
+}

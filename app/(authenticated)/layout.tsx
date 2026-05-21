@@ -4,7 +4,7 @@
 
 import "./authenticated-app-globals.css"
 
-import { useState, useEffect, useLayoutEffect, useCallback, ReactNode } from "react"
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, ReactNode } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/components/auth-provider"
@@ -27,10 +27,12 @@ import { getCurrentUser, authManager, updateUser as updateAuthUser } from "@/lib
 import { fetchAuthSession } from "@/lib/client-auth-session"
 import { secureApi } from "@/lib/secure-api"
 import { isLoginAttemptInProgress } from "@/lib/unified-auth-manager"
+import { markAuthRecoveryFailed, shouldSkipRefreshAfterFailure } from "@/lib/auth-recovery-state"
 import logger from "@/lib/secure-logger"
 import TokenRefreshManager from "@/components/token-refresh-manager"
 import { PUBLIC_HOME_ROUTE } from "@/lib/auth-navigation"
 import { AUTH_LOGIN_TIMESTAMP_KEY, AUTH_SESSION_ACTIVE_KEY, AUTH_USER_ID_KEY } from "@/lib/auth-storage"
+import { normalizeAuthUser, resolveCanonicalUserId, resolveStoredUserId } from "@/lib/auth-user-normalization"
 
 // Helper to check if this is a public route
 const isPublicRoute = (pathname: string): boolean => {
@@ -64,6 +66,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   // CRITICAL: Start with null to match SSR, check localStorage in useEffect
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [user, setUser] = useState<any>(null)
+  const refreshUnavailableRef = useRef(false)
 
   // Dynamic page configuration based on route
   const getPageConfig = (pathname: string) => {
@@ -138,6 +141,14 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     router.replace(PUBLIC_HOME_ROUTE)
   }, [router])
 
+  const clearStaleSessionAndRedirect = useCallback(() => {
+    authManager.silentLogout()
+    markAuthRecoveryFailed()
+    setIsAuthenticated(false)
+    setUser(null)
+    redirectToPublicHome()
+  }, [redirectToPublicHome])
+
   const fetchSessionUser = useCallback(async (force = false) => {
     const data = await fetchAuthSession({
       force,
@@ -148,13 +159,36 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   }, [])
 
   const refreshSessionUser = useCallback(async () => {
+    if (
+      refreshUnavailableRef.current ||
+      shouldSkipRefreshAfterFailure() ||
+      isLoginAttemptInProgress()
+    ) {
+      return null
+    }
+
     const refreshResponse = await fetchWithTimeout('/api/auth/refresh', {
       method: 'POST',
       credentials: 'include',
       headers: AUTH_JSON_HEADERS
     })
 
+    let refreshPayload: any = null
+    try {
+      refreshPayload = await refreshResponse.clone().json()
+    } catch {
+      refreshPayload = null
+    }
+
     if (!refreshResponse.ok) {
+      refreshUnavailableRef.current = true
+      markAuthRecoveryFailed()
+      return null
+    }
+
+    if (refreshPayload?.success === false) {
+      refreshUnavailableRef.current = true
+      markAuthRecoveryFailed()
       return null
     }
 
@@ -167,18 +201,23 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       return directUser
     }
 
+    if (isLoginAttemptInProgress()) {
+      return null
+    }
+
     return refreshSessionUser()
   }, [fetchSessionUser, refreshSessionUser])
 
   const applyValidatedUser = useCallback((nextUser: any, markSessionValidated = false) => {
     const currentAuthUser = getCurrentUser()
-    const currentUserId = currentAuthUser?.user_id || currentAuthUser?.id
-    const nextUserId = nextUser?.user_id || nextUser?.id
+    const normalizedNextUser = normalizeAuthUser(nextUser, currentAuthUser)
+    const currentUserId = resolveStoredUserId(currentAuthUser)
+    const nextUserId = resolveStoredUserId(normalizedNextUser)
 
     if (currentUserId && nextUserId && currentUserId === nextUserId) {
-      updateAuthUser(nextUser)
+      updateAuthUser(normalizedNextUser)
     } else {
-      authManager.login(nextUser)
+      authManager.login(normalizedNextUser)
     }
 
     setIsAuthenticated(true)
@@ -187,23 +226,25 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       setSessionValidated(true)
     }
 
-    const userId = nextUser?.user_id || nextUser?.id
-    if (userId && !nextUser?.name) {
+    refreshUnavailableRef.current = false
+
+    const userId = resolveCanonicalUserId(normalizedNextUser)
+    if (userId && !normalizedNextUser?.name) {
       secureApi.get(`/api/users/${userId}`, true)
         .then((fullUser: any) => {
           if (fullUser?.name) {
-            const mergedUser = { ...nextUser, ...fullUser }
+            const mergedUser = normalizeAuthUser({ ...normalizedNextUser, ...fullUser }, normalizedNextUser)
             updateAuthUser(mergedUser)
             setUser(mergedUser)
           } else {
-            setUser(nextUser)
+            setUser(normalizedNextUser)
           }
         })
-        .catch(() => setUser(nextUser))
+        .catch(() => setUser(normalizedNextUser))
       return
     }
 
-    setUser(nextUser)
+    setUser(normalizedNextUser)
   }, [])
 
   // Handle mounting
@@ -340,15 +381,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
         // Do NOT trust localStorage here — it's stale. Redirect immediately.
         logger.debug('[Auth] Session validation failed - clearing stale state and redirecting')
-        authManager.logout()
-        setIsAuthenticated(false)
-        setUser(null)
-
-        // Clear loginTimestamp so auth popup can show
-        localStorage.removeItem(AUTH_LOGIN_TIMESTAMP_KEY)
-
-        // Redirect to login
-        redirectToPublicHome()
+        clearStaleSessionAndRedirect()
       } catch (error) {
         // Network error - don't logout, let user continue with cached data
         // secure-api will handle 401/403 on actual API calls
@@ -367,7 +400,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     const validationDelay = isRecentLogin ? 2000 : (hasSameTabSession ? 500 : 100)
     const validationTimeout = setTimeout(validateSession, validationDelay)
     return () => clearTimeout(validationTimeout)
-  }, [applyValidatedUser, isAuthenticated, pathname, redirectToPublicHome, resolveSessionUser, sessionValidated])
+  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, pathname, resolveSessionUser, sessionValidated])
 
   // SINGLE AUTH CHECK - Only runs if useLayoutEffect didn't find cached user
   useEffect(() => {
@@ -415,8 +448,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         if (isLoginAttemptInProgress()) {
           return
         }
-        setIsAuthenticated(false)
-        redirectToPublicHome()
+        clearStaleSessionAndRedirect()
       } catch (error) {
         // Network error — only allow if sessionStorage has full user (active session)
         // Don't trust localStorage alone — it's stale from a previous session
@@ -433,13 +465,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         if (isLoginAttemptInProgress()) {
           return
         }
-        setIsAuthenticated(false)
-        redirectToPublicHome()
+        clearStaleSessionAndRedirect()
       }
     }
 
     checkAuthStatus()
-  }, [applyValidatedUser, isAuthenticated, mounted, pathname, redirectToPublicHome, resolveSessionUser])
+  }, [applyValidatedUser, clearStaleSessionAndRedirect, isAuthenticated, mounted, pathname, resolveSessionUser])
 
   // Listen for logout events (but ignore on public routes)
   useEffect(() => {

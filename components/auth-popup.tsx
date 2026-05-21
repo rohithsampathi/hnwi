@@ -378,6 +378,7 @@ export function AuthPopup({
   }
 
   const handleClose = () => {
+    unifiedAuthManager.cancelLoginFlow()
     setEmail("")
     setPassword("")
     setError(null)
@@ -612,6 +613,7 @@ export function AuthPopup({
                   type="button"
                   variant="ghost"
                   onClick={() => {
+                    unifiedAuthManager.cancelLoginFlow()
                     setShowMfa(false)
                     setMfaToken(null)
                     setError(null)

@@ -7,6 +7,7 @@ import secureApi, {
   isUserAuthenticated,
   CacheControl 
 } from "@/lib/secure-api"
+import { isSyntheticKingdomUserId, resolveCanonicalUserId } from "@/lib/auth-user-normalization"
 
 // Use centralized auth check from secure-api
 // Import auth manager to ensure initialization
@@ -15,6 +16,21 @@ const getCurrentUserId = () => {
 };
 const getCurrentUser = () => {
   return getAuthenticatedUser();
+};
+
+const crownVaultOwnerQuery = (ownerId?: string): string => {
+  const user = getCurrentUser();
+  const safeOwnerId = resolveCanonicalUserId(
+    { user_id: ownerId },
+    user,
+    { user_id: getCurrentUserId() },
+  );
+
+  if (!safeOwnerId || isSyntheticKingdomUserId(safeOwnerId)) {
+    throw new Error('User not authenticated. Please log in to access Crown Vault.');
+  }
+
+  return `?owner_id=${encodeURIComponent(safeOwnerId)}`;
 };
 
 // Helper function to check if error is authentication-related
@@ -755,18 +771,284 @@ export interface BatchAssetResponse {
   }[];
 }
 
+const cleanAssetText = (value: unknown): string => {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return "";
+  }
+  const text = String(value).replace(/\s+/g, " ").trim();
+  const normalized = text.toLowerCase();
+  if (!text || ["unknown", "unnamed asset", "asset", "n/a", "na", "none", "null", "undefined"].includes(normalized)) {
+    return "";
+  }
+  return text;
+};
+
+const humanizeAssetLabel = (value: unknown): string => {
+  const text = cleanAssetText(value);
+  if (!text) {
+    return "";
+  }
+  return text
+    .replace(/[_-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const normalizeNumberText = (value: unknown): string => {
+  const numeric = typeof value === "number" ? value : Number(String(value ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(numeric)) {
+    return "";
+  }
+  return Number.isInteger(numeric) ? String(numeric) : String(numeric);
+};
+
+const uniqueCleanStrings = (values: unknown[]): string[] => {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" || typeof value === "number" ? String(value).trim() : ""))
+        .filter(Boolean),
+    ),
+  );
+};
+
+const extractStringArray = (
+  value: unknown,
+  objectKeys: string[] = [],
+  includePrimitive = true,
+): string[] => {
+  if (Array.isArray(value)) {
+    return uniqueCleanStrings(
+      value.flatMap((item) => {
+        if (typeof item === "string" || typeof item === "number") {
+          return includePrimitive ? [item] : [];
+        }
+        if (item && typeof item === "object") {
+          return objectKeys.map((key) => (item as any)[key]);
+        }
+        return [];
+      }),
+    );
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return includePrimitive ? uniqueCleanStrings([value]) : [];
+  }
+
+  if (value && typeof value === "object") {
+    return uniqueCleanStrings(objectKeys.map((key) => (value as any)[key]));
+  }
+
+  return [];
+};
+
+const normalizeCrownVaultHeirIds = (asset: any): string[] => {
+  const idKeys = ["id", "_id", "heir_id", "heirId", "user_id", "userId", "value"];
+  return uniqueCleanStrings(
+    [
+      asset.heir_ids,
+      asset.heirIds,
+      asset.assigned_heir_ids,
+      asset.assignedHeirIds,
+      asset.beneficiary_ids,
+      asset.asset_data?.heir_ids,
+      asset.asset_data?.heirIds,
+      asset.asset_data?.assigned_heir_ids,
+      asset.decrypted_data?.heir_ids,
+      asset.decrypted_data?.heirIds,
+      asset.heirs,
+      asset.assigned_heirs,
+      asset.assignedHeirs,
+      asset.heir_assignments,
+      asset.heirAssignments,
+      asset.beneficiaries,
+      asset.asset_data?.heirs,
+      asset.asset_data?.assigned_heirs,
+      asset.decrypted_data?.heirs,
+      asset.decrypted_data?.assigned_heirs,
+    ].flatMap((value) => extractStringArray(value, idKeys)),
+  );
+};
+
+const normalizeCrownVaultHeirNames = (asset: any): string[] => {
+  const nameKeys = ["name", "heir_name", "heirName", "full_name", "fullName", "display_name", "displayName", "label"];
+  return uniqueCleanStrings(
+    [
+      asset.heir_names,
+      asset.heirNames,
+      asset.assigned_heir_names,
+      asset.assignedHeirNames,
+      asset.beneficiary_names,
+      asset.asset_data?.heir_names,
+      asset.asset_data?.heirNames,
+      asset.asset_data?.assigned_heir_names,
+      asset.decrypted_data?.heir_names,
+      asset.decrypted_data?.heirNames,
+    ].flatMap((value) => extractStringArray(value, nameKeys)).concat(
+      [
+      asset.heirs,
+      asset.assigned_heirs,
+      asset.assignedHeirs,
+      asset.heir_assignments,
+      asset.heirAssignments,
+      asset.beneficiaries,
+      asset.asset_data?.heirs,
+      asset.asset_data?.assigned_heirs,
+      asset.decrypted_data?.heirs,
+      asset.decrypted_data?.assigned_heirs,
+      ].flatMap((value) => extractStringArray(value, nameKeys, false)),
+    ),
+  );
+};
+
+const isQuantityOnlyAssetTitle = (title: string, asset: any): boolean => {
+  const normalizedTitle = title.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!normalizedTitle) {
+    return false;
+  }
+
+  const quantityUnitPattern = /^\d+(?:\.\d+)?\s+[a-z][a-z0-9./-]*$/i;
+  if (!quantityUnitPattern.test(normalizedTitle)) {
+    return false;
+  }
+
+  const unitCounts = [
+    asset.asset_data?.unit_count,
+    asset.decrypted_data?.unit_count,
+    asset.unit_count,
+  ]
+    .map(normalizeNumberText)
+    .filter(Boolean);
+  const unitTypes = [
+    asset.asset_data?.unit_type,
+    asset.decrypted_data?.unit_type,
+    asset.unit_type,
+  ]
+    .map((value) => cleanAssetText(value).toLowerCase())
+    .filter(Boolean);
+
+  if (unitCounts.length === 0 || unitTypes.length === 0) {
+    return true;
+  }
+
+  return unitCounts.some((count) =>
+    unitTypes.some((unit) => normalizedTitle === `${count} ${unit}`),
+  );
+};
+
+const deriveCrownVaultAssetTypeLabel = (asset: any): string => {
+  const impact = asset.elite_pulse_impact || {};
+  const marketContext = impact.market_context || {};
+  const rawText = [
+    asset.asset_data?.name,
+    asset.asset_data?.notes,
+    asset.asset_data?.asset_type,
+    asset.asset_data?.unit_type,
+    asset.decrypted_data?.name,
+    asset.decrypted_data?.notes,
+    asset.decrypted_data?.asset_type,
+    asset.decrypted_data?.unit_type,
+    asset.asset_type,
+    asset.type,
+    asset.unit_type,
+    impact.asset_type_label,
+    impact.property_type,
+    marketContext.property_type,
+  ]
+    .map((value) => cleanAssetText(value).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+
+  if (rawText.includes("hostel")) return "Income Property";
+  if (rawText.includes("aquaculture")) return "Aquaculture Land";
+  if (rawText.includes("agricultural") || rawText.includes("farmland")) return "Agricultural Land";
+  if (rawText.includes("living space") || rawText.includes("plot") || rawText.includes("sqyd")) return "Land Plot";
+  if (rawText.includes("apartment") || rawText.includes("flat") || rawText.includes("3bhk")) return "Apartment";
+  if (rawText.includes("house") || rawText.includes("residence")) return "House";
+  if (rawText.includes("watch")) return "Luxury Watch";
+  if (rawText.includes("gold") || rawText.includes("silver") || rawText.includes("bullion") || /\bkg\b/.test(rawText)) return "Bullion";
+  if (rawText.includes("jewellery") || rawText.includes("jewelry") || rawText.includes("diamond")) return "Jewellery";
+  if (rawText.includes("harrier") || rawText.includes("vehicle") || rawText.includes("car")) return "Vehicle";
+
+  const candidates = [
+    impact.asset_type_label,
+    impact.property_type,
+    impact.asset_category,
+    marketContext.property_type,
+    asset.asset_data?.asset_type,
+    asset.decrypted_data?.asset_type,
+    asset.asset_type,
+    asset.type,
+    asset.asset_data?.unit_type,
+    asset.decrypted_data?.unit_type,
+    asset.unit_type,
+  ]
+    .map(humanizeAssetLabel)
+    .filter(Boolean);
+
+  const firstSpecific = candidates.find((candidate) => {
+    const normalized = candidate.toLowerCase();
+    return !["property", "real estate", "asset", "alternative asset", "unknown"].includes(normalized);
+  });
+
+  return firstSpecific || "Asset";
+};
+
+const deriveCrownVaultAssetTitle = (asset: any): string => {
+  const candidates = [
+    asset.asset_data?.name,
+    asset.asset_data?.title,
+    asset.asset_data?.asset_name,
+    asset.asset_data?.display_name,
+    asset.decrypted_data?.name,
+    asset.decrypted_data?.title,
+    asset.decrypted_data?.asset_name,
+    asset.decrypted_data?.display_name,
+    asset.name,
+    asset.title,
+    asset.asset_name,
+    asset.display_name,
+    asset.metadata?.name,
+    asset.metadata?.title,
+    asset.elite_pulse_impact?.asset_name,
+    asset.elite_pulse_impact?.market_context?.asset_name,
+  ]
+    .map(cleanAssetText)
+    .filter(Boolean);
+
+  const explicitTitle = candidates.find((candidate) => !isQuantityOnlyAssetTitle(candidate, asset));
+  if (explicitTitle) {
+    return explicitTitle;
+  }
+
+  const typeLabel = deriveCrownVaultAssetTypeLabel(asset);
+  const location = cleanAssetText(
+    asset.asset_data?.location ||
+      asset.decrypted_data?.location ||
+      asset.location ||
+      asset.location_metadata?.display_location,
+  );
+
+  if (location && location.toLowerCase() !== "global" && typeLabel !== "Asset") {
+    return `${location} ${typeLabel}`;
+  }
+  if (typeLabel && typeLabel !== "Asset") {
+    return `${typeLabel} Asset`;
+  }
+  return "Unnamed Asset";
+};
+
 // getCurrentUserId is now imported from secure-api at the top
 
 // Crown Vault Assets API
 export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultAsset[]> {
   try {
-    const userId = ownerId || getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated. Please log in to access Crown Vault.');
-    }
+    const ownerQuery = crownVaultOwnerQuery(ownerId);
     // Call backend API directly for assets using authenticated client
-    // Pass owner_id as query parameter as required by the API endpoint
-    const data = await secureApi.get(`/api/crown-vault/assets/detailed?owner_id=${userId}`, {
+    // Backend derives the owner from auth cookies; owner_id is included only when canonical.
+    const data = await secureApi.get(`/api/crown-vault/assets/detailed${ownerQuery}`, {
       requireAuth: true,
       bustCache: true,
     });
@@ -809,6 +1091,10 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         asset.asset_data?.current_price ??
         asset.asset_data?.cost_per_unit ??
         asset.cost_per_unit;
+      const derivedAssetTitle = deriveCrownVaultAssetTitle(asset);
+      const derivedAssetType = deriveCrownVaultAssetTypeLabel(asset);
+      const normalizedHeirIds = normalizeCrownVaultHeirIds(asset);
+      const normalizedHeirNames = normalizeCrownVaultHeirNames(asset);
 
       return {
         ...asset,
@@ -816,8 +1102,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         asset_id: asset._id || asset.asset_id || asset.id,
         asset_data: asset.asset_data ? {
           ...asset.asset_data,
-          name: asset.asset_data.name || 'Unnamed Asset',
-          asset_type: asset.asset_data.asset_type || 'Unknown',
+          name: derivedAssetTitle,
+          asset_type: asset.asset_data.asset_type || derivedAssetType,
           value: derivedCurrentValue || 0,
           currency: resolvedCurrency,
           location: asset.asset_data.location || '',
@@ -828,8 +1114,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
           current_price: derivedCurrentPrice,
           cost_per_unit: derivedCurrentPrice ?? asset.asset_data.cost_per_unit,
         } : {
-          name: asset.decrypted_data?.name || `${asset.unit_count} ${asset.unit_type}`,
-          asset_type: asset.unit_type || 'Unknown',
+          name: derivedAssetTitle,
+          asset_type: asset.decrypted_data?.asset_type || asset.asset_type || derivedAssetType,
           value: derivedCurrentValue || 0,
           currency: resolvedCurrency,
           location: asset.decrypted_data?.location || '',
@@ -844,8 +1130,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         },
         elite_pulse_impact: normalizedImpact,
         currency: resolvedCurrency,
-        heir_ids: asset.heir_ids || [],
-        heir_names: asset.heir_names || [],
+        heir_ids: normalizedHeirIds,
+        heir_names: normalizedHeirNames,
         created_at: asset.created_at || new Date().toISOString(),
         price_history: asset.price_history || [],
         appreciation: normalizedAppreciation,
@@ -871,15 +1157,12 @@ export async function refreshLatestKatherineAnalysis(userId?: string): Promise<a
 
 export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultStats> {
   try {
-    const userId = ownerId || getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated. Please log in to access Crown Vault.');
-    }
+    const ownerQuery = crownVaultOwnerQuery(ownerId);
     
     // ONLY fetch stats endpoint - do NOT fetch heirs and assets here
     // The Crown Vault page already calls getCrownVaultAssets and getCrownVaultHeirs separately
     const statsData = await secureApi.get(
-      `/api/crown-vault/stats?owner_id=${userId}`,
+      `/api/crown-vault/stats${ownerQuery}`,
       {
         requireAuth: true,
         bustCache: true,
@@ -940,14 +1223,10 @@ export async function getCrownVaultStats(ownerId?: string): Promise<CrownVaultSt
 
 export async function getCrownVaultHeirs(ownerId?: string): Promise<CrownVaultHeir[]> {
   try {
-    const userId = ownerId || getCurrentUserId();
-    if (!userId) {
-      throw new Error('User not authenticated. Please log in to access Crown Vault.');
-    }
+    const ownerQuery = crownVaultOwnerQuery(ownerId);
     
     // Call backend API directly using authenticated client
-    // Backend expects owner_id parameter
-    const data = await secureApi.get(`/api/crown-vault/heirs?owner_id=${userId}`, {
+    const data = await secureApi.get(`/api/crown-vault/heirs${ownerQuery}`, {
       requireAuth: true,
       bustCache: true,
     });

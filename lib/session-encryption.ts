@@ -33,9 +33,13 @@ const getEncryptionKey = (): Buffer => {
       'MFA sessions will break across serverless invocations without a stable key.'
     )
   }
-  // Dev only: generate ephemeral key (acceptable for local development)
-  console.warn('[SessionEncryption] No encryption key set — using ephemeral key (dev only)')
-  return crypto.randomBytes(32)
+  // Dev only: use a stable local key so separate Next.js route bundles can
+  // decrypt the same short-lived MFA cookie during local production testing.
+  console.warn('[SessionEncryption] No encryption key set — using deterministic dev key')
+  return crypto
+    .createHash('sha256')
+    .update('hnwi-chronicles-local-mfa-session-key')
+    .digest()
 }
 
 const ENCRYPTION_KEY = getEncryptionKey()
@@ -49,13 +53,16 @@ export class SessionEncryption {
       const iv = crypto.randomBytes(16)
       const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
       
-      let encrypted = cipher.update(text, 'utf8', 'hex')
-      encrypted += cipher.final('hex')
+      const encrypted = Buffer.concat([
+        cipher.update(text, 'utf8'),
+        cipher.final(),
+      ])
       
       const authTag = cipher.getAuthTag()
       
-      // Combine iv, authTag, and encrypted data
-      return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`
+      // Combine iv, authTag, and encrypted data. v2 uses base64url to keep the
+      // MFA cookie well under browser size limits even with opaque backend tokens.
+      return `v2:${iv.toString('base64url')}:${authTag.toString('base64url')}:${encrypted.toString('base64url')}`
     } catch (error) {
       throw new Error('Failed to encrypt session data')
     }
@@ -63,7 +70,30 @@ export class SessionEncryption {
 
   static decrypt(encryptedData: string): any {
     try {
-      const [ivHex, authTagHex, encrypted] = encryptedData.split(':')
+      const parts = encryptedData.split(':')
+      if (parts[0] === 'v2') {
+        const [, ivBase64, authTagBase64, encryptedBase64] = parts
+
+        if (!ivBase64 || !authTagBase64 || !encryptedBase64) {
+          throw new Error('Invalid encrypted data format')
+        }
+
+        const iv = Buffer.from(ivBase64, 'base64url')
+        const authTag = Buffer.from(authTagBase64, 'base64url')
+        const encrypted = Buffer.from(encryptedBase64, 'base64url')
+
+        const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv)
+        decipher.setAuthTag(authTag)
+
+        const decrypted = Buffer.concat([
+          decipher.update(encrypted),
+          decipher.final(),
+        ]).toString('utf8')
+
+        return JSON.parse(decrypted)
+      }
+
+      const [ivHex, authTagHex, encrypted] = parts
       
       if (!ivHex || !authTagHex || !encrypted) {
         throw new Error('Invalid encrypted data format')

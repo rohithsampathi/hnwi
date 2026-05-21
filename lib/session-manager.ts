@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { logger } from './secure-logger';
+import { resolveStoredUserId } from './auth-user-normalization';
 
 interface SessionData extends JWTPayload {
   userId: string;
@@ -167,16 +168,20 @@ export class SessionManager {
         if (sessionUserCookie) {
           try {
             const userData = JSON.parse(sessionUserCookie);
-            logger.debug('Successfully parsed session_user data:', { userId: userData.id, email: userData.email });
+            const userId = resolveStoredUserId(userData);
+            if (!userId) {
+              return null;
+            }
+            logger.debug('Successfully parsed session_user data:', { userId, email: userData.email });
             
             // Convert to SessionData format
             return {
-              userId: userData.id,
+              userId,
               email: userData.email,
               role: userData.role || 'user',
               iat: Math.floor((userData.timestamp || Date.now()) / 1000),
               exp: Math.floor((userData.timestamp || Date.now()) / 1000) + SESSION_CONFIG.maxAge,
-              sessionId: `user-${userData.id}`
+              sessionId: `user-${userId}`
             };
           } catch (error) {
             logger.debug('Failed to parse session_user cookie', { error });

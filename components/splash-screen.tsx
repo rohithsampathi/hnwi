@@ -126,6 +126,12 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
     return mod.unifiedAuthManager
   }, [])
 
+  const cancelPendingLoginFlow = useCallback(() => {
+    void getAuthManager()
+      .then((authManager) => authManager.cancelLoginFlow())
+      .catch(() => {})
+  }, [getAuthManager])
+
   const handleCreateAccount = () => {
     setShowOnboarding(true)
   }
@@ -139,6 +145,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   }
 
   const handleBack = () => {
+    cancelPendingLoginFlow()
     setShowOnboarding(false)
     setShowLoginForm(false)
     setShowForgotPassword(false)
@@ -158,6 +165,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
   }
 
   const handleClose = () => {
+    cancelPendingLoginFlow()
     setEmail("")
     setPassword("")
     setError("")
@@ -545,6 +553,7 @@ export function SplashScreen({ onLogin, onLoginSuccess, showLogin = false }: Spl
                       type="button"
                       variant="ghost"
                       onClick={() => {
+                        cancelPendingLoginFlow()
                         setShowMfa(false)
                         setMfaToken(null)
                         setError("")

@@ -3,11 +3,10 @@
 // Protected by withAuth + withCSRF
 
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/api';
 import { withAuth, withCSRF, withValidation } from '@/lib/security/api-auth';
 import { gdprRequestSchema } from '@/lib/security/validation-schemas';
 import { safeError } from '@/lib/security/api-response';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 const VALID_REQUEST_TYPES = ['ACCESS', 'PORTABILITY', 'ERASURE', 'RECTIFICATION', 'RESTRICTION'] as const;
 
