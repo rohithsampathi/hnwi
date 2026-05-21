@@ -28,6 +28,40 @@ export class RohithAPI {
 
   private constructor() {}
 
+  private normalizeJarvisMode(mode: any): "jarvis" | "classic" {
+    const rawMode = String(mode || "").toLowerCase()
+    return rawMode.includes("classic") ? "classic" : "jarvis"
+  }
+
+  private async postJarvisEndpoint(endpoint: string, data: any): Promise<any> {
+    let lastError: any
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await secureApi.post(
+          endpoint,
+          data,
+          true,
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+      } catch (error: any) {
+        lastError = error
+        const status = error?.status || error?.response?.status
+        const isTransient = status === 502 || status === 503 || status === 504
+        if (!isTransient || attempt === 1) {
+          throw error
+        }
+        await new Promise(resolve => setTimeout(resolve, 700))
+      }
+    }
+
+    throw lastError
+  }
+
   public static getInstance(): RohithAPI {
     if (!RohithAPI.instance) {
       RohithAPI.instance = new RohithAPI()
@@ -434,17 +468,13 @@ export class RohithAPI {
       const startTime = Date.now()
 
       // Call V5 endpoint - JARVIS mode is now the default (no need to specify)
-      const response = await secureApi.post(
+      const response = await this.postJarvisEndpoint(
         `/api/v5/rohith/message/${conversationId}`,
         {
-          message: message
+          message: message,
+          user_id: targetUserId,
+          userId: targetUserId
           // jarvis_mode removed - backend defaults to true as of Feb 2026
-        },
-        true,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
         }
       )
 
@@ -471,7 +501,8 @@ export class RohithAPI {
       }
 
       return {
-        mode: response.mode || "jarvis", // Backend should return mode field
+        mode: this.normalizeJarvisMode(response.mode),
+        rawMode: response.mode || "jarvis",
         narration: response.response?.narration || {
           text: response.response?.content || "I'm sorry, I couldn't process that request.",
           delivery: "word_by_word"
@@ -511,17 +542,13 @@ export class RohithAPI {
       const startTime = Date.now()
 
       // Call V5 start endpoint - JARVIS mode is now the default
-      const response = await secureApi.post(
+      const response = await this.postJarvisEndpoint(
         `/api/v5/rohith/start`,
         {
-          message: firstMessage
+          message: firstMessage,
+          user_id: targetUserId,
+          userId: targetUserId
           // jarvis_mode removed - backend defaults to true as of Feb 2026
-        },
-        true,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
         }
       )
 
@@ -534,7 +561,8 @@ export class RohithAPI {
 
       return {
         conversationId: response.conversation_id,
-        mode: response.mode || "jarvis", // Backend should return mode field
+        mode: this.normalizeJarvisMode(response.mode),
+        rawMode: response.mode || "jarvis",
         narration: response.response?.narration || {
           text: response.response?.content || "Hello! I'm Rohith, your AI intelligence ally.",
           delivery: "word_by_word"

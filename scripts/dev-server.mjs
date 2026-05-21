@@ -6,7 +6,12 @@ import { setTimeout as delay } from "node:timers/promises";
 import { spawn } from "node:child_process";
 
 const repoRoot = realpathSync(process.cwd());
-const nextBin = path.join(repoRoot, "node_modules", ".bin", "next");
+const nextBin = path.join(
+  repoRoot,
+  "node_modules",
+  ".bin",
+  process.platform === "win32" ? "next.cmd" : "next",
+);
 const turbo = process.argv.includes("--turbo");
 const distDir = turbo ? ".next-turbo" : ".next-webpack";
 
@@ -118,6 +123,7 @@ const child = spawn(
   {
     cwd: repoRoot,
     stdio: "inherit",
+    shell: process.platform === "win32",
     env: {
       ...process.env,
       NEXT_DIST_DIR: distDir,

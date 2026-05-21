@@ -417,7 +417,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         const cacheIsValid = cached && (Date.now() - cached.timestamp < (cached.ttl || 300000))
 
         // If cache is valid, skip API calls entirely
-        if (cacheIsValid && cached.developments?.length >= 0) {
+        if (cacheIsValid && cached.developments?.length > 0) {
           setAllDevelopments(cached.developments)
           setIndustryTrends(buildHnwiWorldCategoryTrends(cached.developments || []))
           setTotalDevelopments(cached.totalDevelopments || 0)
