@@ -484,7 +484,12 @@ export function DevelopmentStream({
                             }
 
                             const IconComponent = getSectionIcon(section.title)
-                            const isWhyThisMatters = section.title.toLowerCase().includes('why this matters')
+                            const lowerSectionTitle = section.title.toLowerCase()
+                            const shouldRenderSectionAsBullets =
+                              lowerSectionTitle.includes('why this matters') ||
+                              lowerSectionTitle.includes('long term wealth impact') ||
+                              lowerSectionTitle.includes('long-term wealth impact') ||
+                              lowerSectionTitle.includes('wealth impact')
 
                             return (
                               <div key={`section-${index}`} className="pb-2">
@@ -498,7 +503,7 @@ export function DevelopmentStream({
                                 <div className="space-y-0 pl-2">
                                   {section.content.map((item, pIndex) => (
                                     <div key={`item-${pIndex}`} className="text-sm">
-                                      {item.isBullet || isWhyThisMatters ? (
+                                      {item.isBullet || shouldRenderSectionAsBullets ? (
                                         <div className="flex items-start py-0.5">
                                           <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
                                           {onCitationClick ? (
@@ -539,7 +544,7 @@ export function DevelopmentStream({
                                 </div>
 
                                 {/* Nested sub-sections under "Why This Matters" */}
-                                {isWhyThisMatters && (
+                                {lowerSectionTitle.includes('why this matters') && (
                                   <div className="mt-6 pl-4 space-y-6">
                                     {/* Winners sub-section */}
                                     {analysis.winners && (
