@@ -204,6 +204,7 @@ export function DevelopmentStream({
     () => dedupeHnwiWorldDevelopments(developments),
     [developments]
   )
+  const isSingleDevelopmentView = canonicalDevelopments.length === 1 && Boolean(expandedDevelopmentId)
 
   useEffect(() => {
     if (!expandedDevelopmentId) return
@@ -384,7 +385,9 @@ export function DevelopmentStream({
                           </div>
                         )}
                       </div>
-                      <h3 className={`text-lg font-black mb-3 line-clamp-2 ${
+                      <h3 className={`text-lg font-black mb-3 break-words ${
+                        isSingleDevelopmentView ? "" : "line-clamp-2"
+                      } ${
                         theme === "dark" ? "text-primary" : "text-black"
                       }`}>
                         {dev.title}
@@ -442,7 +445,10 @@ export function DevelopmentStream({
                 }`}
               >
                 <div>
-                  <div className="border border-border rounded-lg p-4 max-h-[500px] overflow-y-auto bg-transparent">
+                  <div className={cn(
+                    "border border-border rounded-lg p-4 bg-transparent",
+                    isSingleDevelopmentView ? "max-h-none overflow-visible" : "max-h-[500px] overflow-y-auto"
+                  )}>
                       <div className="space-y-6 px-2">
                       {(() => {
                         const analysis = formatAnalysis(dev.summary);
