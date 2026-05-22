@@ -57,7 +57,7 @@ export default function SharedDevelopmentClient({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <div className="sticky top-0 z-50">
         <Header
           showBackButton={false}
@@ -97,8 +97,8 @@ export default function SharedDevelopmentClient({
         </Header>
       </div>
 
-      <div className="w-full px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-8 mt-4">
+      <main className="flex-1 w-full px-4 pt-4 pb-4 md:pt-5 md:pb-5">
+        <div className="flex flex-col lg:flex-row gap-6">
           <div className={`w-full ${isCitationRailOpen ? "lg:w-[70%]" : "lg:w-full"} transition-all duration-300`}>
             <DevelopmentStream
               selectedIndustry="All"
@@ -125,7 +125,18 @@ export default function SharedDevelopmentClient({
             />
           )}
         </div>
-      </div>
+      </main>
+
+      <footer className="border-t border-border/30 px-4 py-4 md:py-5 flex-shrink-0 bg-background">
+        <div className="mx-auto max-w-7xl text-center space-y-1">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A product of <span className="font-semibold text-primary">Montaigne</span>
+          </p>
+          <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
+            © 2026 All Rights Reserved. HNWI Chronicles.
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
