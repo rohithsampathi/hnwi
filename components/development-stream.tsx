@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, ExternalLink, Lightbulb, ArrowRight, TrendingUp, Target, Brain, AlertCircle, BarChart3, PieChart, ChevronDown, ChevronUp, Share2 } from "lucide-react"
 import { CrownLoader } from "@/components/ui/crown-loader"
@@ -25,6 +25,7 @@ import type {
   HNWIWorldPatternMetadata,
 } from "@/types/hnwi-world"
 import { resolveHnwiWorldCategory } from "@/lib/hnwi-world-category"
+import { dedupeHnwiWorldDevelopments } from "@/lib/hnwi-world-dedupe"
 
 interface ElitePulseImpactMeta {
   impact_level?: "HIGH" | "MEDIUM" | "LOW"
@@ -164,11 +165,26 @@ export function DevelopmentStream({
   onDevelopmentExpanded,
   citationMap,
 }: DevelopmentStreamProps) {
-  
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>(() =>
+    expandedDevelopmentId ? { [expandedDevelopmentId]: true } : {}
+  )
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
   const { theme } = useTheme()
+  const canonicalDevelopments = useMemo(
+    () => dedupeHnwiWorldDevelopments(developments),
+    [developments]
+  )
+
+  useEffect(() => {
+    if (!expandedDevelopmentId) return
+    setExpandedCards((prev) => {
+      if (prev[expandedDevelopmentId]) {
+        return prev
+      }
+      return { ...prev, [expandedDevelopmentId]: true }
+    })
+  }, [expandedDevelopmentId])
 
   // Component now receives developments as props, no need to fetch
 
@@ -189,7 +205,7 @@ export function DevelopmentStream({
 
   // Filter developments based on Elite Pulse criteria
   const getFilteredDevelopments = () => {
-    let filteredDevs = developments
+    let filteredDevs = canonicalDevelopments
       .filter(dev => selectedIndustry === 'All' || resolveHnwiWorldCategory(dev) === selectedIndustry);
     
     // Apply Elite Pulse only filter
