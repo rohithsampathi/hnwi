@@ -66,6 +66,35 @@ interface DevelopmentStreamProps {
 
 const queenBullet = "list-none";
 
+const normalizeSurfaceText = (value?: string | null) =>
+  (value || "").replace(/\s+/g, " ").trim()
+
+const removeLeadingSurfaceText = (text: string, leadingText?: string | null) => {
+  const normalizedLeading = normalizeSurfaceText(leadingText)
+  if (!normalizedLeading) return text.trim()
+
+  const trimmed = text.trim()
+  const normalizedText = normalizeSurfaceText(trimmed)
+  if (!normalizedText.toLowerCase().startsWith(normalizedLeading.toLowerCase())) {
+    return trimmed
+  }
+
+  const leadingPattern = normalizedLeading
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+")
+  return trimmed.replace(new RegExp(`^${leadingPattern}\\s*`, "i"), "").trim()
+}
+
+const getHByteText = (dev: DevelopmentRecord, analysis: FormattedAnalysis) => {
+  const explicitHByte = normalizeSurfaceText(dev.hbyte_summary)
+  if (explicitHByte) return explicitHByte
+
+  let fallback = analysis.summary.trim()
+  fallback = removeLeadingSurfaceText(fallback, dev.card_summary)
+  fallback = removeLeadingSurfaceText(fallback, dev.description)
+  return fallback || analysis.summary.trim()
+}
+
 const OUTWARD_TERM_LABEL_MAP: Record<string, string> = {
   "Castle Pattern Footprint": "Pattern Intelligence",
   "Kingdom Library Contract": "Library Intelligence",
@@ -417,6 +446,7 @@ export function DevelopmentStream({
                       <div className="space-y-6 px-2">
                       {(() => {
                         const analysis = formatAnalysis(dev.summary);
+                        const hbyteText = getHByteText(dev, analysis);
                         return (
                           <div className="w-full">
                         {/* HByte */}
@@ -430,13 +460,13 @@ export function DevelopmentStream({
                           <div className="text-sm leading-relaxed pl-2">
                             {onCitationClick ? (
                               <CitationText
-                                text={analysis.summary}
+                                text={hbyteText}
                                 onCitationClick={onCitationClick}
                                 className="font-medium"
                                 citationMap={citationMap}
                               />
                             ) : (
-                              <p className="font-medium">{analysis.summary}</p>
+                              <p className="font-medium">{hbyteText}</p>
                             )}
                           </div>
                         </div>
@@ -468,7 +498,7 @@ export function DevelopmentStream({
                                 <div className="space-y-0 pl-2">
                                   {section.content.map((item, pIndex) => (
                                     <div key={`item-${pIndex}`} className="text-sm">
-                                      {item.isBullet ? (
+                                      {item.isBullet || isWhyThisMatters ? (
                                         <div className="flex items-start py-0.5">
                                           <div className={`w-2 h-2 rounded-full mt-2 mr-3 flex-shrink-0 ${theme === "dark" ? "bg-primary/60" : "bg-black/60"}`}></div>
                                           {onCitationClick ? (

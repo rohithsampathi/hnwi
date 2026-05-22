@@ -62,6 +62,11 @@ export interface HNWIWorldDevelopment {
   category?: string
   date?: string
   summary: string
+  full_text?: string
+  castle_brief?: string
+  castle_brief_enriched?: string
+  hbyte_summary?: string
+  card_summary?: string
   product?: string
   tags?: string[]
   url?: string
