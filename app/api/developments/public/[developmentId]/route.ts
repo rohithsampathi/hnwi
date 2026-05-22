@@ -40,6 +40,7 @@ export async function GET(
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: forwardedHeaders,
+      cache: 'no-store',
     })
 
     // Backend response received
@@ -62,7 +63,7 @@ export async function GET(
     return NextResponse.json(data, {
       status: 200,
       headers: {
-        'Cache-Control': 'public, max-age=300', // Cache for 5 minutes
+        'Cache-Control': 'no-store, no-cache, max-age=0, must-revalidate',
       },
     })
 
