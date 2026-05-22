@@ -205,6 +205,7 @@ export function DevelopmentStream({
     [developments]
   )
   const isSingleDevelopmentView = canonicalDevelopments.length === 1 && Boolean(expandedDevelopmentId)
+  const [scrolledCards, setScrolledCards] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!expandedDevelopmentId) return
@@ -278,6 +279,16 @@ export function DevelopmentStream({
     }, 100);
   };
 
+  const handleExpandedContentScroll = (id: string, event: React.UIEvent<HTMLDivElement>) => {
+    if (!isSingleDevelopmentView) return
+
+    const shouldCollapse = event.currentTarget.scrollTop > 16
+    setScrolledCards((prev) => {
+      if (prev[id] === shouldCollapse) return prev
+      return { ...prev, [id]: shouldCollapse }
+    })
+  }
+
   // Handle share - copy link to clipboard
   const handleShare = async (devId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -310,7 +321,7 @@ export function DevelopmentStream({
 
 
   return (
-    <div>
+    <div className={isSingleDevelopmentView ? "h-full min-h-0" : undefined}>
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <CrownLoader size="lg" text="Loading development updates..." />
@@ -324,7 +335,7 @@ export function DevelopmentStream({
           </p>
         </div>
       ) : (
-        <div className="w-full space-y-4">
+        <div className={cn("w-full space-y-4", isSingleDevelopmentView && "h-full min-h-0")}>
           {getFilteredDevelopments().map((dev) => {
             const elitePulseImpact = getElitePulseImpact(dev);
             const categoryLabel = resolveHnwiWorldCategory(dev);
@@ -332,6 +343,9 @@ export function DevelopmentStream({
               ? resolveHnwiWorldCategory({ ...dev, category: dev.industry })
               : categoryLabel;
             const showIndustryBadge = industryLabel && industryLabel !== categoryLabel;
+            const isCardCollapsedIntoHeading = Boolean(
+              isSingleDevelopmentView && expandedCards[dev.id] && scrolledCards[dev.id]
+            )
             return (
             <div key={dev.id} id={`development-card-${dev.id}`} className={`relative ${expandedCards[dev.id] ? '' : 'min-h-[179px]'}`}>
               {/* Unified frame wrapper for both main card and expanded content */}
@@ -348,7 +362,10 @@ export function DevelopmentStream({
                 }}
               >
                 <div 
-                  className="px-3 md:px-4 py-2 md:py-3 cursor-pointer transition-all duration-300 min-h-full relative overflow-hidden rounded-lg border border-border"
+                  className={cn(
+                    "px-3 md:px-4 cursor-pointer transition-all duration-300 min-h-full relative overflow-hidden rounded-lg border border-border",
+                    isCardCollapsedIntoHeading ? "py-2" : "py-2 md:py-3"
+                  )}
                   style={getMetallicCardStyle(theme).style}
                   onClick={() => toggleCardExpansion(dev.id)}
                 >
@@ -385,7 +402,9 @@ export function DevelopmentStream({
                           </div>
                         )}
                       </div>
-                      <h3 className={`text-lg font-black mb-3 break-words ${
+                      <h3 className={`text-lg font-black break-words ${
+                        isCardCollapsedIntoHeading ? "mb-0" : "mb-3"
+                      } ${
                         isSingleDevelopmentView ? "" : "line-clamp-2"
                       } ${
                         theme === "dark" ? "text-primary" : "text-black"
@@ -408,13 +427,15 @@ export function DevelopmentStream({
                   
                   {/* Body */}
                   <p className={`text-sm font-medium leading-relaxed flex-grow ${
+                    isCardCollapsedIntoHeading ? "hidden" : ""
+                  } ${
                     theme === "dark" ? "text-gray-200" : "text-gray-700"
                   }`}>
                     {dev.description}
                   </p>
                   
                   {/* Bottom row with Date and Category Badge */}
-                  <div className="flex justify-end items-center mt-4">
+                  <div className={cn("justify-end items-center mt-4", isCardCollapsedIntoHeading ? "hidden" : "flex")}>
                     <div className="flex items-center gap-3">
                       <div className={`text-xs font-medium ${
                         theme === "dark" 
@@ -447,8 +468,17 @@ export function DevelopmentStream({
                 <div>
                   <div className={cn(
                     "border border-border rounded-lg p-4 bg-transparent",
-                    isSingleDevelopmentView ? "max-h-none overflow-visible" : "max-h-[500px] overflow-y-auto"
-                  )}>
+                    isSingleDevelopmentView
+                      ? cn(
+                          "overflow-y-auto overscroll-contain transition-[max-height] duration-300",
+                          isCardCollapsedIntoHeading
+                            ? "max-h-[calc(100dvh-15rem)] md:max-h-[calc(100dvh-13rem)]"
+                            : "max-h-[calc(100dvh-22rem)] md:max-h-[calc(100dvh-18rem)]"
+                        )
+                      : "max-h-[500px] overflow-y-auto"
+                  )}
+                    onScroll={(event) => handleExpandedContentScroll(dev.id, event)}
+                  >
                       <div className="space-y-6 px-2">
                       {(() => {
                         const analysis = formatAnalysis(dev.summary);

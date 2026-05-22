@@ -97,9 +97,9 @@ export default function SharedDevelopmentClient({
         </Header>
       </div>
 
-      <main className="flex-1 w-full px-4 pt-4 pb-4 md:pt-5 md:pb-5">
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className={`w-full ${isCitationRailOpen ? "lg:w-[70%]" : "lg:w-full"} transition-all duration-300`}>
+      <main className="flex-1 min-h-0 w-full overflow-hidden px-4 pt-4 pb-4 md:pt-5 md:pb-5">
+        <div className="flex h-full min-h-0 flex-col lg:flex-row gap-6">
+          <div className={`min-h-0 w-full ${isCitationRailOpen ? "lg:w-[70%]" : "lg:w-full"} transition-all duration-300`}>
             <DevelopmentStream
               selectedIndustry="All"
               duration="7d"
