@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get('view') || 'all';
     const timeframe = searchParams.get('timeframe') || 'LIVE';
-    const includeCrownVault = searchParams.get('include_crown_vault') || 'false';
+    const requestedIncludeCrownVault = searchParams.get('include_crown_vault') === 'true';
 
     // Get authentication cookies - SOTA: Use proper cookie names
     const cookieStore = await cookies();
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
 
     // Extract user ID from session_user or JWT
     const userId = extractUserId(cookieStore);
+    const includeCrownVault = requestedIncludeCrownVault && !!userId;
 
     // Build backend URL with query parameters
     let backendUrl = `${API_BASE_URL}/api/command-centre/opportunities?view=${view}&timeframe=${timeframe}&include_crown_vault=${includeCrownVault}`;
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Log backend request for debugging
-    logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId });
+    logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId, includeCrownVault });
 
     // SOTA: Forward ALL cookies to backend for proper session handling
     const allCookies = cookieStore.getAll();
@@ -103,9 +104,27 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
+    const filteredOpportunities = opportunities.filter((opportunity: any) => {
+      if (opportunity?.source !== 'User Crown Vault' && !opportunity?.isCrownVault) {
+        return true;
+      }
+      return !!userId && opportunity?.user_id === userId;
+    });
+
+    if (filteredOpportunities.length !== opportunities.length) {
+      data.opportunities = filteredOpportunities;
+      data.count = filteredOpportunities.length;
+      data.total_count = filteredOpportunities.length;
+      data.metadata = {
+        ...(data.metadata || {}),
+        include_crown_vault: includeCrownVault,
+        crown_vault_count: filteredOpportunities.filter((opportunity: any) => opportunity?.source === 'User Crown Vault' || opportunity?.isCrownVault).length,
+      };
+    }
 
     // Log successful response
-    logger.info('Command Centre API success', { count: data.opportunities?.length || 0, view });
+    logger.info('Command Centre API success', { count: data.opportunities?.length || 0, view, includeCrownVault });
 
     // Return backend data
     return NextResponse.json(data);
