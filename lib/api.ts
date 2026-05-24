@@ -1090,16 +1090,19 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       const currentValueNative =
         toNumber(asset.current_value_native) ??
         toNumber(canonicalTruth.current_total_value_native) ??
+        toNumber(canonicalTruth.current_total_value) ??
         toNumber(impactUsdConversion.current_total_value_native);
       const entryValueNative =
         toNumber(asset.entry_value_native) ??
         toNumber(canonicalTruth.entry_total_value_native) ??
+        toNumber(canonicalTruth.entry_total_value) ??
         toNumber(impactUsdConversion.entry_total_value_native);
       const nativeCurrency =
-        cleanImpactText(asset.native_currency || canonicalTruth.native_currency || impactUsdConversion.native_currency).toUpperCase();
+        cleanImpactText(asset.native_currency || canonicalTruth.native_currency || canonicalTruth.currency || impactUsdConversion.native_currency).toUpperCase();
       const fxRate =
         toNumber(asset.usd_fx_rate) ??
         toNumber(canonicalTruth.fx_rate_usd_inr) ??
+        toNumber(canonicalTruth.current_fx_inr_per_usd) ??
         toNumber(impactUsdConversion.fx_rate_usd_inr);
       const enrichedImpact = normalizedImpact
         ? {

@@ -18,8 +18,7 @@ import { PriceHistoryTimeline } from "./price-history-timeline";
 import { PriceRefreshButton } from "./price-refresh-button";
 import { CitationText } from "@/components/elite/citation-text";
 import {
-  formatCompactMoney,
-  formatMoney,
+  formatAssetValueWithLocal,
   formatPercent,
   getAssetActionPosture,
   getAssetActionRationale,
@@ -187,13 +186,13 @@ export function AssetDetailsPanel({
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                     <DetailMetric
                       label="Value Now"
-                      value={formatMoney(currentValue, displayCurrency)}
+                      value={formatAssetValueWithLocal(asset, currentValue, "current")}
                     />
                     <DetailMetric
                       label="Change Since Entry"
                       value={
                         typeof changeAmount === "number"
-                          ? `${formatMoney(changeAmount, displayCurrency)} • ${formatPercent(changePct)}`
+                          ? `${formatAssetValueWithLocal(asset, changeAmount, "current")} • ${formatPercent(changePct)}`
                           : "Not established"
                       }
                     />

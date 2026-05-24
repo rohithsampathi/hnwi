@@ -36,7 +36,7 @@ import {
   countActionPostures,
   countAssetsByState,
   formatAssetCollectionValue,
-  formatCompactMoney,
+  formatAssetValueWithLocal,
   formatPercent,
   getAssetActionPosture,
   getAssetActionRationale,
@@ -212,7 +212,7 @@ const KatherinePortfolioAnalysis = ({ assets }: { assets: CrownVaultAsset[] }) =
                           <div>
                             <h5 className="font-medium text-foreground">{asset.asset_data.name}</h5>
                             <p className="text-sm text-muted-foreground">
-                              {getAssetDisplayType(asset)} • {formatCompactMoney(getAssetCurrentValue(asset), getAssetCurrency(asset))}
+                              {getAssetDisplayType(asset)} • {formatAssetValueWithLocal(asset, getAssetCurrentValue(asset), "current")}
                             </p>
                           </div>
                           <Badge variant="outline" className="border-green-500/40 text-green-700 dark:text-green-300">
@@ -241,7 +241,7 @@ const KatherinePortfolioAnalysis = ({ assets }: { assets: CrownVaultAsset[] }) =
                           <div>
                             <h5 className="font-medium text-foreground">{asset.asset_data.name}</h5>
                             <p className="text-sm text-muted-foreground">
-                              {getAssetDisplayType(asset)} • {formatCompactMoney(getAssetCurrentValue(asset), getAssetCurrency(asset))}
+                              {getAssetDisplayType(asset)} • {formatAssetValueWithLocal(asset, getAssetCurrentValue(asset), "current")}
                             </p>
                           </div>
                           <Badge variant="outline" className="border-red-500/40 text-red-700 dark:text-red-300">
@@ -999,7 +999,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                         <div className="mt-2">
                           <div className="flex items-baseline gap-2">
                             <p className={`text-2xl font-black leading-none ${theme === 'dark' ? 'text-primary' : 'text-black'}`}>
-                              {formatCompactMoney(getAssetCurrentValue(asset), getAssetCurrency(asset))}
+                              {formatAssetValueWithLocal(asset, getAssetCurrentValue(asset), "current")}
                             </p>
                             {typeof getAssetChangePct(asset) === "number" && (
                               <span className={`text-xs font-bold px-2 py-0.5 rounded ${
@@ -1015,7 +1015,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                             {asset.asset_data.unit_count && (asset.asset_data.entry_price || asset.asset_data.cost_per_unit) ? (
                               <>
                                 <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
-                                  {asset.asset_data.unit_count} units • entry basis {formatCompactMoney(getAssetEntryValue(asset), getAssetCurrency(asset))}
+                                  {asset.asset_data.unit_count} units • entry basis {formatAssetValueWithLocal(asset, getAssetEntryValue(asset), "entry")}
                                 </p>
                               </>
                             ) : (

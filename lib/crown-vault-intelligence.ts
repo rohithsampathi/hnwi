@@ -1,7 +1,7 @@
 import type { CrownVaultAsset } from "@/lib/api";
 
 type GenericRecord = Record<string, any>;
-const DEFAULT_USD_INR_RATE = 95.633;
+const DEFAULT_USD_INR_RATE = 96;
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -31,18 +31,22 @@ export const getAssetUsdConversion = (asset: CrownVaultAsset): GenericRecord =>
     current_total_value_native:
       toNumber((asset as GenericRecord).current_value_native) ??
       toNumber((asset as GenericRecord).katherine_canonical_truth?.current_total_value_native) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.current_total_value) ??
       toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.current_total_value_native),
     entry_total_value_native:
       toNumber((asset as GenericRecord).entry_value_native) ??
       toNumber((asset as GenericRecord).katherine_canonical_truth?.entry_total_value_native) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.entry_total_value) ??
       toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.entry_total_value_native),
     native_currency:
       (asset as GenericRecord).native_currency ||
       (asset as GenericRecord).katherine_canonical_truth?.native_currency ||
+      (asset as GenericRecord).katherine_canonical_truth?.currency ||
       (getAssetImpact(asset).usd_conversion as GenericRecord)?.native_currency,
     fx_rate_usd_inr:
       toNumber((asset as GenericRecord).usd_fx_rate) ??
       toNumber((asset as GenericRecord).katherine_canonical_truth?.fx_rate_usd_inr) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.current_fx_inr_per_usd) ??
       toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.fx_rate_usd_inr),
   });
 
@@ -169,6 +173,10 @@ export const getAssetLocalCurrency = (asset: CrownVaultAsset): string => {
 };
 
 export const getAssetFxRate = (asset: CrownVaultAsset): number | null => {
+  const nativeCurrency = getAssetNativeCurrency(asset);
+  if (nativeCurrency === "INR" || nativeCurrency === "USD") {
+    return DEFAULT_USD_INR_RATE;
+  }
   const usdConversion = getAssetUsdConversion(asset);
   const direct =
     toNumber(usdConversion.fx_rate_usd_inr) ??
@@ -202,6 +210,10 @@ const getAssetLocalValue = (
 ): number | null => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return null;
+  }
+  if (getAssetCurrency(asset) === "USD") {
+    const fxRate = getAssetFxRate(asset) || DEFAULT_USD_INR_RATE;
+    return value * fxRate;
   }
   const nativeValue = rail ? getAssetNativeValue(asset, rail) : null;
   if (getAssetNativeCurrency(asset) !== "USD" && nativeValue != null) {
