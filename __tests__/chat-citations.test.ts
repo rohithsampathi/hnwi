@@ -1,7 +1,7 @@
 import { parseDevCitations } from "@/lib/parse-dev-citations";
 import { parseMessageContent } from "@/lib/utils";
 
-describe("Ask Rohith citation handling", () => {
+describe("Ask Audelle citation handling", () => {
   it("normalizes raw DEVID references into clickable citation tags", () => {
     const { formattedText, citations } = parseDevCitations(
       "Mumbai buyer evidence DEVID: 69140374d4bca89602553549 and [DEVID - 687715d2897f634a3d251b01].",

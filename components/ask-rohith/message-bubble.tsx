@@ -183,7 +183,7 @@ export function MessageBubble({
             </>
           ) : (
             <>
-              <AvatarImage src="/Rohith.ico" alt="Rohith" />
+              <AvatarImage src="/Rohith.ico" alt="Audelle" />
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                 <Bot className="h-4 w-4" />
               </AvatarFallback>
@@ -368,7 +368,7 @@ export function MessageBubble({
           )}>
             {formatTime(message.timestamp)}
             {isAssistant && (
-              <span className="ml-2 font-medium text-primary">Rohith</span>
+              <span className="ml-2 font-medium text-primary">Audelle</span>
             )}
           </div>
         </div>

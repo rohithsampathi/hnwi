@@ -396,7 +396,7 @@ export function TierPricingComparison({
       {/* Bottom note - Purpose-driven mission */}
       <div className="text-center mt-8 px-4 sm:px-6 lg:px-8">
         <p className="text-sm text-muted-foreground max-w-2xl mx-auto mb-3">
-          All tiers include access to HNWI World intelligence, Ask Rohith AI advisor, and Crown Vault digital asset management.
+          All tiers include access to HNWI World intelligence, Ask Audelle AI advisor, and Crown Vault digital asset management.
           Higher tiers unlock exclusive opportunities and personalized strategic support.
         </p>
         <p className="text-xs text-muted-foreground/70 max-w-xl mx-auto italic">

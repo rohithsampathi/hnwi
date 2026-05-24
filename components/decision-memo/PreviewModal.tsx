@@ -41,7 +41,7 @@ const PRICING = {
       'Architect Tier Access ($1,499/mo value)',
       'HNWI World Intelligence',
       'Privé Exchange Access',
-      'Ask Rohith AI Advisor',
+      'Ask Audelle AI Advisor',
       'Crown Vault Asset Management',
       'Priority support',
       'Quarterly strategy calls'

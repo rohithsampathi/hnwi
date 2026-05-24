@@ -137,7 +137,7 @@ function generateWelcomeEmailHTML(data: WelcomeEmailData): string {
                 <tr><td style="height: 10px;"></td></tr>
                 <tr>
                   <td style="padding: 15px; background-color: #f9fafb; border-radius: 6px;">
-                    <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 600;">🤖 Ask Rohith</p>
+                    <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 600;">🤖 Ask Audelle</p>
                     <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">AI advisor for strategic wealth guidance</p>
                   </td>
                 </tr>

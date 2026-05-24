@@ -172,7 +172,7 @@ export const GamifiedUpgrade: React.FC<GamifiedUpgradeProps> = ({
             </div>
 
             <div className="bg-black/40 rounded-lg p-4">
-              <div className="text-yellow-500 font-bold mb-2">Ask Rohith Intelligence</div>
+              <div className="text-yellow-500 font-bold mb-2">Ask Audelle Intelligence</div>
               <div className="text-sm text-gray-400">
                 24/7 AI ally trained on 50+ years of HNWI patterns. On-demand analysis.
               </div>
@@ -245,7 +245,7 @@ export const GamifiedUpgrade: React.FC<GamifiedUpgradeProps> = ({
                 <li>• Everything in Observer</li>
                 <li>• Privé Exchange access</li>
                 <li>• Crown Vault (10 assets)</li>
-                <li>• Ask Rohith unlimited</li>
+                <li>• Ask Audelle unlimited</li>
               </ul>
             </button>
 

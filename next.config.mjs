@@ -45,7 +45,7 @@ const nextConfig = {
       {
         // Authenticated app pages — private, never cache
         // These are user-specific; caching them causes stale data and cross-user leaks
-        source: '/(dashboard|hnwi-world|ask-rohith|prive-exchange|crown-vault|social-hub|war-room|simulation|profile|calendar|playbooks|invest-scan|trusted-network|tactics-lab|opportunity|playbook)/:path*',
+        source: '/(dashboard|hnwi-world|ask-audelle|ask-rohith|prive-exchange|crown-vault|social-hub|war-room|simulation|profile|calendar|playbooks|invest-scan|trusted-network|tactics-lab|opportunity|playbook)/:path*',
         headers: [
           {
             key: 'Cache-Control',
@@ -59,7 +59,7 @@ const nextConfig = {
       },
       {
         // Authenticated app pages (top-level, no sub-path)
-        source: '/(dashboard|hnwi-world|ask-rohith|prive-exchange|crown-vault|social-hub|war-room|simulation|profile|calendar|playbooks|invest-scan|trusted-network|tactics-lab)',
+        source: '/(dashboard|hnwi-world|ask-audelle|ask-rohith|prive-exchange|crown-vault|social-hub|war-room|simulation|profile|calendar|playbooks|invest-scan|trusted-network|tactics-lab)',
         headers: [
           {
             key: 'Cache-Control',

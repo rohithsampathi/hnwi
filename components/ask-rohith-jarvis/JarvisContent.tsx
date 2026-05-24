@@ -1,5 +1,5 @@
 // components/ask-rohith-jarvis/JarvisContent.tsx
-// JARVIS-style content area for Ask Rohith (fits within app layout)
+// JARVIS-style content area for Audelle (fits within app layout)
 
 'use client';
 
@@ -17,7 +17,7 @@ import {
  * - Does NOT replace HC header
  * - Does NOT replace main app sidebar
  * - Does NOT replace breadcrumbs
- * - ONLY transforms the Ask Rohith content area
+ * - ONLY transforms the Audelle content area
  */
 export default function JarvisContent() {
   const router = useRouter();

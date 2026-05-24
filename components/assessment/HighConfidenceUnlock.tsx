@@ -191,7 +191,7 @@ export const HighConfidenceUnlock: React.FC<HighConfidenceUnlockProps> = ({
                     </div>
                     <div className="flex items-center gap-2 text-gray-300">
                       <div className={`w-1.5 h-1.5 rounded-full bg-${config.color}`} />
-                      Ask Rohith 24/7 intelligence
+                      Ask Audelle 24/7 intelligence
                     </div>
                     <div className="flex items-center gap-2 text-gray-300">
                       <div className={`w-1.5 h-1.5 rounded-full bg-${config.color}`} />

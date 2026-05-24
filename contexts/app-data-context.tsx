@@ -61,7 +61,8 @@ const ROUTE_DATA_CONFIG = {
   '/social-hub': ['notifications'],
   '/calendar': ['notifications'],
   '/hnwi-world': [], // Doesn't need any of these
-  '/ask-rohith': [], // Doesn't need any of these
+  '/ask-audelle': [], // Doesn't need any of these
+  '/ask-rohith': [], // Legacy Audelle route
   '/prive-exchange': [],
   '/invest-scan': [],
   '/tactics-lab': [],

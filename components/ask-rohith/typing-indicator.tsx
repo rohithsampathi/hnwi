@@ -1,5 +1,5 @@
 // components/ask-rohith/typing-indicator.tsx
-// Typing indicator for Rohith responses with progressive status messages
+// Typing indicator for Audelle responses with progressive status messages
 
 "use client"
 
@@ -16,12 +16,12 @@ interface TypingIndicatorProps {
 
 // Status messages with their durations - loop between thinking and contemplating
 const statusMessages = [
-  { text: "Rohith is Thinking...", duration: 3000 },
+  { text: "Audelle is thinking...", duration: 3000 },
   { text: "And now contemplating...", duration: 3000 }
 ]
 
 export function TypingIndicator({
-  message = "Rohith is thinking...",
+  message = "Audelle is thinking...",
   showPortfolioContext = false
 }: TypingIndicatorProps) {
   const { theme } = useTheme()
@@ -110,9 +110,9 @@ export function TypingIndicator({
       exit="exit"
       className="flex items-start space-x-3 mb-4"
     >
-      {/* Rohith Avatar */}
+      {/* Audelle Avatar */}
       <Avatar className="w-8 h-8 border border-primary/20">
-        <AvatarImage src="/Rohith.ico" alt="Rohith" />
+        <AvatarImage src="/Rohith.ico" alt="Audelle" />
         <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
           <Bot className="h-4 w-4" />
         </AvatarFallback>

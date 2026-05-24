@@ -22,8 +22,8 @@ export default function TrustedNetworkRoute() {
       router.push("/prive-exchange")
     } else if (route === "hnwi-world" || route === "strategy-vault") {
       router.push("/hnwi-world")
-    } else if (route === "ask-rohith" || route === "strategy-engine") {
-      router.push("/ask-rohith")
+    } else if (route === "ask-audelle" || route === "ask-rohith" || route === "strategy-engine") {
+      router.push("/ask-audelle")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "invest-scan") {

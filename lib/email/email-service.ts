@@ -322,7 +322,7 @@ function generatePaymentConfirmationHTML(data: {
               <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
                 <li>Access exclusive intelligence reports and market insights</li>
                 <li>View personalized opportunities mapped to your strategic profile</li>
-                <li>Connect with our AI advisor, Ask Rohith, for strategic guidance</li>
+                <li>Connect with our AI advisor, Ask Audelle, for strategic guidance</li>
                 <li>Explore the Crown Vault for secure asset management</li>
               </ul>
             </td>

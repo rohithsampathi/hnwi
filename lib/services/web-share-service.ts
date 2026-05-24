@@ -69,7 +69,7 @@ export class WebShareService {
     return this.share(shareData)
   }
 
-  // Share Rohith conversation
+  // Share Audelle conversation
   static async shareConversation(
     shareId: string,
     title: string,
@@ -77,8 +77,8 @@ export class WebShareService {
   ): Promise<boolean> {
     const shareData: ShareData = {
       title: `HNWI Chronicles: ${title}`,
-      text: 'Insights from Rohith, your intelligence ally',
-      url: `${baseUrl}/share/rohith/${shareId}`
+      text: 'Insights from Audelle, your private decision ally',
+      url: `${baseUrl}/share/audelle/${shareId}`
     }
 
     return this.share(shareData)

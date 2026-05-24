@@ -40,6 +40,7 @@ interface PremiumRohithInterfaceProps {
   sidebarOpen?: boolean;
   onSidebarToggle?: (open: boolean) => void;
   onNewChat?: () => void;
+  onConversationChange?: (conversationId: string | null) => void;
   showNewChatDialog?: boolean;
   onCloseNewChatDialog?: () => void;
 }
@@ -81,6 +82,7 @@ export default function PremiumRohithInterface({
   sidebarOpen = false,
   onSidebarToggle,
   onNewChat,
+  onConversationChange,
   showNewChatDialog = false,
   onCloseNewChatDialog
 }: PremiumRohithInterfaceProps) {
@@ -102,6 +104,7 @@ export default function PremiumRohithInterface({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendInFlightRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
   const [linkCopied, setLinkCopied] = useState<string | null>(null);
   const { toast } = useToast();
@@ -228,18 +231,22 @@ export default function PremiumRohithInterface({
   // Handle send
   const handleSend = async () => {
     const message = inputValue.trim();
-    if (!message || isLoading) return;
+    if (!message || isLoading || isTyping || sendInFlightRef.current) return;
 
+    sendInFlightRef.current = true;
     setInputValue('');
 
     try {
       if (activeConversationId) {
         await sendMessage(message);
       } else {
-        await createNewConversation(message);
+        const conversationId = await createNewConversation(message);
+        onConversationChange?.(conversationId);
       }
     } catch (error) {
       console.error('Send error:', error);
+    } finally {
+      sendInFlightRef.current = false;
     }
   };
 
@@ -282,12 +289,14 @@ export default function PremiumRohithInterface({
       clearCurrentConversation();
     }
     setInputValue('');
+    onConversationChange?.(null);
     onSidebarToggle?.(false);
   };
 
   // Handle conversation select
   const handleSelectConversation = async (conversationId: string) => {
     await selectConversation(conversationId);
+    onConversationChange?.(conversationId);
     onSidebarToggle?.(false);
   };
 
@@ -541,7 +550,7 @@ export default function PremiumRohithInterface({
                         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/20">
                           <div className="w-1.5 h-1.5 bg-gold rounded-full" />
                           <div className="text-[10px] uppercase tracking-wider text-gold/80 font-mono">
-                            Rohith
+                            Audelle
                           </div>
                           {message.context?.responseTime && (
                             <div className="ml-auto text-[10px] text-muted-foreground/40 font-mono">
@@ -791,7 +800,7 @@ export default function PremiumRohithInterface({
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1.5 h-1.5 bg-gold rounded-full" />
                     <div className="text-[10px] uppercase tracking-wider text-gold/80 font-mono">
-                      Rohith
+                      Audelle
                     </div>
                   </div>
                   <PremiumLoader />

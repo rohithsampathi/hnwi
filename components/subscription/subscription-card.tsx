@@ -39,7 +39,7 @@ const PLAN_FEATURES = {
     "Everything in Observer",
     "Privé Exchange - off-market opportunities",
     "Crown Vault - succession planning (10 assets)",
-    "Ask Rohith - 24/7 AI intelligence ally",
+    "Ask Audelle - 24/7 AI intelligence ally",
     "90-day archive access",
     "Monthly strategy call",
     "WhatsApp updates for urgent intelligence"

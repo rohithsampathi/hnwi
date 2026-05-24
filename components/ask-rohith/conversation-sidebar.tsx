@@ -224,7 +224,7 @@ export function ConversationSidebar({
                       )}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Start chatting with Rohith
+                      Start chatting with Audelle
                     </Button>
                   )}
                 </motion.div>

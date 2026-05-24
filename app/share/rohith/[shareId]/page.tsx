@@ -1,5 +1,5 @@
 // app/share/rohith/[shareId]/page.tsx
-// Server component for shared Rohith conversations
+// Server component for shared Audelle conversations
 
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
@@ -48,8 +48,8 @@ export async function generateMetadata({
     }
   }
 
-  const title = `${conversation.title || "Conversation"} | Ask Rohith`
-  const description = `Shared intelligence conversation with ${conversation.messageCount || conversation.messages?.length || 0} messages.`
+  const title = `${conversation.title || "Audelle Conversation"} | Audelle by HNWI Chronicles`
+  const description = `Shared Audelle intelligence conversation with ${conversation.messageCount || conversation.messages?.length || 0} messages.`
   const siteUrl = "https://app.hnwichronicles.com"
   const ogImage = `${siteUrl}/logo.png?v=20241220e`
 
@@ -60,7 +60,7 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
-      url: `${siteUrl}/share/rohith/${shareId}`,
+      url: `${siteUrl}/share/audelle/${shareId}`,
       siteName: "HNWI Chronicles",
       images: [{ url: ogImage, width: 650, height: 650, alt: title }]
     },

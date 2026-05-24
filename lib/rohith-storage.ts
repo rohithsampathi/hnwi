@@ -1,5 +1,5 @@
 // lib/rohith-storage.ts
-// Shared conversation storage for Rohith API endpoints
+// Shared conversation storage for Audelle API endpoints
 
 export interface StoredMessage {
   id: string

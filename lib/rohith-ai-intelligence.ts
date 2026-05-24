@@ -25,7 +25,7 @@ export interface RohithRecommendation {
 }
 
 /**
- * JARVIS-style AI intelligence for Ask Rohith
+ * JARVIS-style AI intelligence for Audelle
  * Analyzes conversation patterns and provides contextual recommendations
  */
 export class RohithAI {

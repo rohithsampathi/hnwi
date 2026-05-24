@@ -1,5 +1,5 @@
 // components/ask-rohith/rohith-chat.tsx
-// Main chat interface for Ask Rohith
+// Main chat interface for Ask Audelle
 
 "use client"
 
@@ -241,10 +241,10 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
   }
 
   const getWelcomeMessage = () => {
-    if (!userContext) return "Hello! I'm Rohith, your private intelligence ally."
+    if (!userContext) return "Hello. I'm Audelle, your private decision ally."
 
     const { portfolio, personalDetails } = userContext
-    return `Hello ${personalDetails.name}! I'm Rohith, your private intelligence ally. I'm aware of your ${portfolio.totalValue} portfolio with ${portfolio.totalAssets} assets and have access to ${portfolio.marketIntelligenceReports} market intelligence analyses. What can I help you with today?`
+    return `Hello ${personalDetails.name}! I'm Audelle, your private decision ally. I'm aware of your ${portfolio.totalValue} portfolio with ${portfolio.totalAssets} assets and have access to ${portfolio.marketIntelligenceReports} market intelligence analyses. What can I help you with today?`
   }
 
   // Create stable dependency for citation processing - only assistant messages with content/source docs
@@ -517,7 +517,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                           ref={inputRef}
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Ask Rohith about your investment strategy, market insights, or portfolio analysis..."
+                          placeholder="Ask Audelle about your investment strategy, market insights, or portfolio analysis..."
                           className={cn(
                             "h-14 pl-6 pr-14 text-base rounded-2xl border-2 transition-all duration-200",
                             "focus:ring-2 focus:ring-primary/20 focus:border-primary",
@@ -568,8 +568,8 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                         <TypingIndicator
                           message={
                             currentMessages.length === 0
-                              ? "Rohith is browsing HNWI knowledge base..."
-                              : "Rohith is analyzing specific information..."
+                              ? "Audelle is browsing HNWI knowledge base..."
+                              : "Audelle is analyzing specific information..."
                           }
                           showPortfolioContext={isContextLoaded}
                         />
@@ -600,7 +600,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                     ref={inputRef}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Continue your intelligence discussion with Rohith..."
+                    placeholder="Continue your intelligence discussion with Audelle..."
                     className={cn(
                       "h-12 pl-6 pr-14 text-base rounded-xl border-2 transition-all duration-200",
                       "focus:ring-2 focus:ring-primary/20 focus:border-primary",
@@ -633,7 +633,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
             <div className="border-t border-border/30 bg-background">
               <div className="max-w-4xl mx-auto px-6 py-3">
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-                  <span className="font-medium">Ask Rohith is a personalised learning engine. It gets better with feedback.</span>
+                  <span className="font-medium">Ask Audelle is a personalised learning engine. It gets better with feedback.</span>
                 </div>
               </div>
             </div>
@@ -645,7 +645,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
           <div className="fixed bottom-0 left-0 right-0 border-t border-border/30 bg-background z-20" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="max-w-4xl mx-auto px-6 py-3">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-                <span className="font-medium">Ask Rohith is a personalised learning engine. It gets better with feedback.</span>
+                <span className="font-medium">Ask Audelle is a personalised learning engine. It gets better with feedback.</span>
               </div>
             </div>
           </div>

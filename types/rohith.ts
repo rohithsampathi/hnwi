@@ -1,5 +1,5 @@
 // types/rohith.ts
-// TypeScript interfaces for Ask Rohith feature
+// TypeScript interfaces for the Audelle conversation feature
 
 // Source document types from backend
 export interface DevelopmentSource {

@@ -22,8 +22,8 @@ export default function PriveExchangeRoute() {
       router.push("/prive-exchange")
     } else if (route === "hnwi-world") {
       router.push("/hnwi-world")
-    } else if (route === "strategy-engine") {
-      router.push("/ask-rohith")
+    } else if (route === "strategy-engine" || route === "ask-audelle" || route === "ask-rohith") {
+      router.push("/ask-audelle")
     } else if (route === "social-hub") {
       router.push("/social-hub")
     } else if (route === "invest-scan") {

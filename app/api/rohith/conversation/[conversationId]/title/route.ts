@@ -33,7 +33,7 @@ async function handlePost(
     }
 
     // Forward the request to backend with proper headers
-    const backendUrl = `${API_BASE_URL}/api/rohith/conversation/${conversationId}/title`
+    const backendUrl = `${API_BASE_URL}/api/v6/audelle/conversation/${conversationId}/title`
 
     const response = await fetch(backendUrl, {
       method: 'POST',

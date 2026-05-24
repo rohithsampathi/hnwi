@@ -35,7 +35,7 @@ export function PageHeader({
     if (pathname.includes('/hnwi-world') || pathname.includes('/strategy-vault')) return Globe
     if (pathname.includes('/crown-vault')) return Crown
     if (pathname.includes('/social-hub')) return Users
-    if (pathname.includes('/ask-rohith')) return Bot
+    if (pathname.includes('/ask-audelle') || pathname.includes('/ask-rohith')) return Bot
     if (pathname.includes('/tactics-lab') || pathname.includes('/strategy-engine')) return Beaker
     if (pathname.includes('/profile')) return UserCircle2
     if (pathname.includes('/playbooks')) return BookOpen

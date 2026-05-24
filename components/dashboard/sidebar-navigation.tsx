@@ -206,10 +206,10 @@ export function SidebarNavigation({
     // PRIMARY NAVIGATION (Always visible)
     { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
     {
-      name: "Ask Rohith",
+      name: "Ask Audelle",
       icon: Bot,
-      route: "ask-rohith",
-      description: "Your private intelligence ally with full portfolio awareness and memory. Rohith listens, understands, and provides strategic insights.",
+      route: "ask-audelle",
+      description: "Audelle is the private decision ally for families carrying wealth across borders, generations, and pressure.",
       isNew: true,
       businessOnly: false
     },
@@ -285,7 +285,7 @@ export function SidebarNavigation({
   // Mobile items are always shown but disabled based on auth status
   const mobileNavItems = [
     { name: "Home", icon: Brain, route: "dashboard" },
-    { name: "Ask Rohith", icon: Bot, route: "ask-rohith", isNew: true },
+    { name: "Ask Audelle", icon: Bot, route: "ask-audelle", isNew: true },
     { name: "War Room", icon: Shield, route: "war-room", isNew: true },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
   ]
@@ -314,8 +314,8 @@ export function SidebarNavigation({
       router.push("/dashboard")
     } else if (route === "strategy-vault") {
       router.push("/hnwi-world") // HNWI World maps to hnwi-world
-    } else if (route === "ask-rohith") {
-      router.push("/ask-rohith")
+    } else if (route === "ask-audelle" || route === "ask-rohith") {
+      router.push("/ask-audelle")
     } else if (route === "war-room") {
       router.push("/war-room")
     } else if (route === "assessment") {
@@ -789,7 +789,7 @@ export function SidebarNavigation({
                   isActive && 'text-primary',
                   theme === 'dark' && !isActive && "group-hover:text-white"
                 )}>
-                  {item.name === "Ask Rohith" ? "Rohith" :
+                  {item.name === "Ask Audelle" ? "Audelle" :
                     item.name === "War Room" ? "War" :
                       item.name === "Crown Vault" ? "Vault" :
                         item.name}

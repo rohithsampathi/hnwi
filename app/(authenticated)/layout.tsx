@@ -72,7 +72,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const getPageConfig = (pathname: string) => {
     if (pathname.includes('/dashboard')) return { title: '', currentPage: 'dashboard', showBackButton: false }
     if (pathname.includes('/war-room')) return { title: '', currentPage: 'war-room', showBackButton: false }
-    if (pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-rohith', showBackButton: true }
+    if (pathname.includes('/ask-audelle') || pathname.includes('/ask-rohith')) return { title: '', currentPage: 'ask-audelle', showBackButton: true }
     if (pathname.includes('/simulation')) return { title: '', currentPage: 'simulation', showBackButton: true }
     if (pathname.includes('/hnwi-world')) return { title: '', currentPage: 'hnwi-world', showBackButton: true }
     if (pathname.includes('/prive-exchange')) return { title: '', currentPage: 'prive-exchange', showBackButton: true }
@@ -101,8 +101,8 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     // Map internal routes to Next.js routes
     if (route === "dashboard") {
       router.push("/dashboard")
-    } else if (route === "ask-rohith") {
-      router.push("/ask-rohith")
+    } else if (route === "ask-audelle" || route === "ask-rohith") {
+      router.push("/ask-audelle")
     } else if (route === "assessment" || route === "simulation") {
       router.push("/simulation")
     } else if (route === "strategy-vault") {

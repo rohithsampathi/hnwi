@@ -1,5 +1,5 @@
 // contexts/rohith-context.tsx
-// Context provider for Ask Rohith state management
+// Context provider for Audelle conversation state management
 
 "use client"
 
@@ -196,6 +196,16 @@ interface RohithProviderProps {
   children: ReactNode
 }
 
+function toConversationHistory(messages: Message[]): Array<{ role: "user" | "assistant"; content: string }> {
+  return messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      role: message.role,
+      content: String(message.content || "")
+    }))
+    .filter((message) => message.content.trim().length > 0)
+}
+
 export function RohithProvider({ children }: RohithProviderProps) {
   const [state, dispatch] = useReducer(rohithReducer, {
     ...initialState,
@@ -337,7 +347,8 @@ export function RohithProvider({ children }: RohithProviderProps) {
           userId: state.userContext?.userId || "",
           createdAt: new Date(),
           updatedAt: new Date(),
-          messageCount: 1,
+          lastMessage: jarvisResponse.narration?.text || "",
+          messageCount: 2,
           isActive: true
         }
 
@@ -358,7 +369,7 @@ export function RohithProvider({ children }: RohithProviderProps) {
           }
         }
 
-        // Add Rohith's narration as assistant message (with visualizations attached)
+        // Add Audelle's narration as assistant message (with visualizations attached)
         const vizData = responseMode === "jarvis" ? jarvisResponse.visualizations : undefined
         const assistantMessage = createMessage("assistant", jarvisResponse.narration?.text || "", {
           hnwiKnowledgeSources: jarvisResponse.citations || ["jarvis_v5"], // Legacy field
@@ -398,7 +409,8 @@ export function RohithProvider({ children }: RohithProviderProps) {
         const jarvisResponse = await rohithAPI.sendMessageJarvis(
           message,
           state.activeConversationId,
-          state.userContext?.userId
+          state.userContext?.userId,
+          toConversationHistory(state.currentMessages)
         )
 
         // Set response mode from backend
@@ -418,7 +430,7 @@ export function RohithProvider({ children }: RohithProviderProps) {
           }
         }
 
-        // Add Rohith's narration as assistant message (with visualizations attached)
+        // Add Audelle's narration as assistant message (with visualizations attached)
         const vizData = responseMode === "jarvis" ? jarvisResponse.visualizations : undefined
         const assistantMessage = createMessage("assistant", jarvisResponse.narration?.text || "", {
           hnwiKnowledgeSources: jarvisResponse.citations || ["jarvis_v5"], // Legacy field
@@ -461,7 +473,7 @@ export function RohithProvider({ children }: RohithProviderProps) {
           // This prevents IndexedDB errors from breaking the main flow
           if (typeof window !== 'undefined' && window.indexedDB && BackgroundSyncService.isSupported()) {
             await BackgroundSyncService.queueMessageSend(
-              `/api/rohith/message/${state.activeConversationId}`,
+              `/api/v6/audelle/message/${state.activeConversationId}`,
               { message, conversationId: state.activeConversationId }
             )
             backgroundSyncWorked = true
@@ -529,6 +541,7 @@ export function RohithProvider({ children }: RohithProviderProps) {
     clearCurrentConversation: () => {
       dispatch({ type: "SET_ACTIVE_CONVERSATION", payload: null })
       dispatch({ type: "SET_CURRENT_MESSAGES", payload: [] })
+      dispatch({ type: "CLEAR_JARVIS_STATE" })
     },
 
     setTyping: (isTyping: boolean) => {

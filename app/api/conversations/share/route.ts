@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const v6 = await serverApi.get(`/api/v6/rohith/share/${shareId}`)
+      const v6 = await serverApi.get(`/api/v6/audelle/share/${shareId}`)
       if (v6.success && v6.conversation) {
         return NextResponse.json({
           success: true,
@@ -113,7 +113,7 @@ async function handlePost(request: NextRequest) {
 
     try {
       const v6 = await serverApi.post(
-        `/api/v6/rohith/share/${conversationId}`,
+        `/api/v6/audelle/share/${conversationId}`,
         {},
         request.headers
       )
@@ -131,7 +131,7 @@ async function handlePost(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          shareUrl: `${baseUrl}/share/rohith/${v6.shareId}`,
+          shareUrl: `${baseUrl}/share/audelle/${v6.shareId}`,
           shareId: v6.shareId
         })
       }
@@ -170,7 +170,7 @@ async function handlePost(request: NextRequest) {
       )
     }
 
-    const shareUrl = `${baseUrl}/share/rohith/${shareId}`
+    const shareUrl = `${baseUrl}/share/audelle/${shareId}`
 
     return NextResponse.json({
       success: true,

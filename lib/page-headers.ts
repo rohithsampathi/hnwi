@@ -72,8 +72,13 @@ export const PAGE_HEADERS: Record<string, PageHeaderConfig> = {
     showBackButton: true,
   },
   'ask-rohith': {
-    title: 'Ask Rohith',
-    description: 'Your private intelligence ally with full portfolio awareness and memory.',
+    title: 'Ask Audelle',
+    description: 'Private decision ally for families carrying wealth across borders, generations, and pressure.',
+    showBackButton: true,
+  },
+  'ask-audelle': {
+    title: 'Ask Audelle',
+    description: 'Private decision ally for families carrying wealth across borders, generations, and pressure.',
     showBackButton: true,
   },
   'profile': {

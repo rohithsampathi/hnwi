@@ -2,19 +2,44 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { usePageTitle } from "@/hooks/use-page-title"
 import { RohithProvider, useRohith } from "@/contexts/rohith-context"
 import PremiumRohithInterface from "@/components/ask-rohith-jarvis/PremiumRohithInterface"
 import { Button } from "@/components/ui/button"
 import { History, Plus } from "lucide-react"
 
-function AskRohithContent() {
+function AskAudelleContent() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { clearCurrentConversation } = useRohith()
+  const restoringConversationRef = useRef<string | null>(null)
+  const { activeConversationId, clearCurrentConversation, selectConversation } = useRohith()
+
+  const syncConversationRoute = (conversationId: string | null) => {
+    const nextUrl = conversationId
+      ? `${pathname}?conversation=${encodeURIComponent(conversationId)}`
+      : pathname
+    router.replace(nextUrl, { scroll: false })
+  }
+
+  useEffect(() => {
+    const conversationId = searchParams.get("conversation")
+    if (!conversationId || conversationId === activeConversationId || restoringConversationRef.current === conversationId) {
+      return
+    }
+
+    restoringConversationRef.current = conversationId
+    selectConversation(conversationId).finally(() => {
+      restoringConversationRef.current = null
+    })
+  }, [activeConversationId, searchParams, selectConversation])
 
   const handleNewChat = () => {
     clearCurrentConversation()
+    syncConversationRoute(null)
     setSidebarOpen(false)
   }
 
@@ -43,22 +68,23 @@ function AskRohithContent() {
           sidebarOpen={sidebarOpen}
           onSidebarToggle={setSidebarOpen}
           onNewChat={handleNewChat}
+          onConversationChange={syncConversationRoute}
         />
       </div>
     </div>
   )
 }
 
-export default function AskRohithRoute() {
+export default function AskAudelleRoute() {
   // Set page title and meta description
   usePageTitle(
-    "Ask Rohith",
-    "Your 24/7 AI intelligence ally with complete conversation memory and portfolio awareness. Strategic analysis, market research, and wealth preservation strategies from 50+ years HNWI patterns."
+    "Ask Audelle",
+    "Audelle by HNWI Chronicles is the private decision ally for families carrying wealth across borders, generations, and pressure."
   )
 
   return (
     <RohithProvider>
-      <AskRohithContent />
+      <AskAudelleContent />
     </RohithProvider>
   )
 }

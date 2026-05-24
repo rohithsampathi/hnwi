@@ -59,7 +59,7 @@ export default function RohithNarrator({
       >
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-gold" />
-          <span className="text-sm font-semibold text-foreground">Rohith</span>
+          <span className="text-sm font-semibold text-foreground">Audelle</span>
           <span className="text-xs text-muted-foreground">
             ({currentMessages.length} messages)
           </span>

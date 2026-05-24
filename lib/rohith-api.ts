@@ -1,8 +1,8 @@
 // lib/rohith-api.ts
-// API service layer for Ask Rohith feature with SOTA Graph integration
+// API service layer for Audelle with SOTA Graph integration
 
 import { secureApi, getCurrentUserId } from "@/lib/secure-api"
-// Removed Crown Vault imports - not needed for Ask Rohith
+// Removed Crown Vault imports - not needed for Audelle
 import type {
   UserPortfolioContext,
   UserContextResponse,
@@ -17,7 +17,7 @@ import type {
 } from "@/types/rohith"
 
 /**
- * API service for Rohith - Private intelligence ally with conversation management
+ * API service for Audelle - private decision ally with conversation management
  * Integrates with SOTA Graph backend and HNWI Knowledge Base for personalized context and memory
  */
 export class RohithAPI {
@@ -31,7 +31,7 @@ export class RohithAPI {
   private rohithBase(): string {
     return process.env.NEXT_PUBLIC_ROHITH_API_VERSION === "v5"
       ? "/api/v5/rohith"
-      : "/api/v6/rohith"
+      : "/api/v6/audelle"
   }
 
   private legacyRohithBase(): string {
@@ -41,6 +41,70 @@ export class RohithAPI {
   private normalizeJarvisMode(mode: any): "jarvis" | "classic" {
     const rawMode = String(mode || "").toLowerCase()
     return rawMode.includes("classic") ? "classic" : "jarvis"
+  }
+
+  private extractConversationId(response: any): string {
+    return String(
+      response?.conversation_id ||
+      response?.conversationId ||
+      response?.id ||
+      ''
+    ).trim()
+  }
+
+  private extractResponseContent(response: any, fallback: string): string {
+    const payload = response?.response
+
+    if (typeof payload === 'string') {
+      return payload
+    }
+
+    return String(
+      payload?.content ||
+      payload?.text ||
+      response?.content ||
+      response?.message ||
+      fallback
+    )
+  }
+
+  private extractNarration(response: any, fallback: string): { text: string; delivery: string } {
+    const payload = response?.response
+    const narration = payload?.narration || response?.narration
+    const text = typeof narration?.text === 'string'
+      ? narration.text
+      : this.extractResponseContent(response, fallback)
+
+    return {
+      text,
+      delivery: narration?.delivery || "word_by_word"
+    }
+  }
+
+  private extractSourceDocuments(response: any): any[] {
+    const payload = response?.response
+    return (
+      payload?.citations ||
+      payload?.source_documents ||
+      response?.citations ||
+      response?.source_documents ||
+      []
+    )
+  }
+
+  private extractMessageId(response: any): string | undefined {
+    return response?.message_id || response?.messageId || response?.response?.message_id
+  }
+
+  private extractProcessingTime(response: any, responseTime: number): number {
+    const payload = response?.response
+    return (
+      payload?.processing_time_ms ||
+      payload?.metadata?.processing_time_ms ||
+      response?.processing_time_ms ||
+      response?.metadata?.processing_time_ms ||
+      responseTime
+    )
   }
 
   private async postJarvisEndpoint(endpoint: string, data: any): Promise<any> {
@@ -95,13 +159,13 @@ export class RohithAPI {
         return cached.data
       }
 
-      // Only load user profile, skip Crown Vault data for Ask Rohith
+      // Only load user profile, skip Crown Vault data for Audelle
       const userProfile = await secureApi.get(`/api/users/${targetUserId}`, true, {
         enableCache: true,
         cacheDuration: 600000
       }).catch(() => null)
 
-      // Use placeholder data for portfolio metrics on Ask Rohith page
+      // Use placeholder data for portfolio metrics on Audelle page
       // This avoids loading Crown Vault data unnecessarily
       const assets: any[] = []
       const stats: Record<string, any> = {}
@@ -263,8 +327,9 @@ export class RohithAPI {
           content: content,
           timestamp: timestamp,
           messageId: msg.message_id, // Include backend message ID for feedback
+          visualizations: Array.isArray(msg.visualizations) ? msg.visualizations : [],
           context: msg.role === "assistant" ? {
-            hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["rohith_api"],
+            hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["audelle_api"],
             responseTime: msg.context?.response_time || 3000
           } : msg.context
         }
@@ -347,7 +412,7 @@ export class RohithAPI {
 
       // Creating new conversation
 
-      // Use the Rohith start endpoint with the first message
+      // Use the Audelle start endpoint with the first message
       const response = await secureApi.post(
         `${this.rohithBase()}/start`,
         {
@@ -371,7 +436,7 @@ export class RohithAPI {
   }
 
   /**
-   * Send a message to Rohith and get response
+   * Send a message to Audelle and get response
    */
   async sendMessage(
     message: string,
@@ -391,7 +456,7 @@ export class RohithAPI {
 
       const startTime = Date.now()
 
-      // Send message to the Rohith message endpoint
+      // Send message to the Audelle message endpoint
       const response = await secureApi.post(
         `${this.rohithBase()}/message/${conversationId}`,
         {
@@ -440,7 +505,7 @@ export class RohithAPI {
         authenticity_guarantee: response.authenticity_guarantee || true,
         response_time: response.response?.processing_time_ms || responseTime,
         provenance: {
-          source_nodes: response.context?.relevant_entities?.map((e: any) => e.name) || ["rohith_api"],
+          source_nodes: response.context?.relevant_entities?.map((e: any) => e.name) || ["audelle_api"],
           knowledge_sources: response.context?.metadata?.entities_found || 0
         },
         context_used: {
@@ -464,12 +529,16 @@ export class RohithAPI {
   async sendMessageJarvis(
     message: string,
     conversationId: string,
-    userId?: string
+    userId?: string,
+    conversationHistory: Array<{ role: "user" | "assistant"; content: string }> = []
   ): Promise<any> {
     try {
       const targetUserId = userId || getCurrentUserId()
       if (!targetUserId) {
         throw new Error("User ID not found")
+      }
+      if (!conversationId) {
+        throw new Error("Conversation ID not found")
       }
 
       // Clear conversation cache
@@ -477,13 +546,16 @@ export class RohithAPI {
 
       const startTime = Date.now()
 
-      // Call the configured Rohith conversation lane. V6 preserves the JARVIS response envelope.
+      // Call the configured Audelle conversation lane. V6 preserves the JARVIS response envelope.
       const response = await this.postJarvisEndpoint(
         `${this.rohithBase()}/message/${conversationId}`,
         {
           message: message,
+          conversation_id: conversationId,
+          conversationId,
           user_id: targetUserId,
-          userId: targetUserId
+          userId: targetUserId,
+          conversation_history: conversationHistory
           // jarvis_mode removed - backend defaults to true as of Feb 2026
         }
       )
@@ -507,25 +579,24 @@ export class RohithAPI {
 
       // Log the mode for debugging
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Rohith API] Response mode: ${response.mode || 'jarvis (default)'}`)
+        console.log(`[Audelle API] Response mode: ${response.mode || 'jarvis (default)'}`)
       }
+
+      const narration = this.extractNarration(response, "I'm sorry, I couldn't process that request.")
 
       return {
         mode: this.normalizeJarvisMode(response.mode),
         rawMode: response.mode || "jarvis",
-        narration: response.response?.narration || {
-          text: response.response?.content || "I'm sorry, I couldn't process that request.",
-          delivery: "word_by_word"
-        },
-        visualizations: response.response?.visualizations || [],
-        predictive_prompts: response.response?.predictive_prompts || [],
+        narration,
+        visualizations: response.response?.visualizations || response.visualizations || [],
+        predictive_prompts: response.response?.predictive_prompts || response.predictive_prompts || [],
         // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
-        source_documents: response.response?.citations || response.response?.source_documents || [],
+        source_documents: this.extractSourceDocuments(response),
         conversationId,
-        message_id: response.message_id,
+        message_id: this.extractMessageId(response),
         // Check both top-level and metadata locations for these fields
         tier: response.response?.tier || response.response?.metadata?.tier || "fast",
-        processing_time_ms: response.response?.processing_time_ms || response.response?.metadata?.processing_time_ms || responseTime,
+        processing_time_ms: this.extractProcessingTime(response, responseTime),
         confidence_score: response.response?.confidence_score || response.response?.metadata?.confidence_score || 0.85,
         intelligence_sources: response.response?.intelligence_sources || response.response?.metadata?.intelligence_sources || []
       }
@@ -551,13 +622,14 @@ export class RohithAPI {
 
       const startTime = Date.now()
 
-      // Call the configured Rohith conversation lane. V6 preserves the JARVIS response envelope.
+      // Call the configured Audelle conversation lane. V6 preserves the JARVIS response envelope.
       const response = await this.postJarvisEndpoint(
         `${this.rohithBase()}/start`,
         {
           message: firstMessage,
           user_id: targetUserId,
-          userId: targetUserId
+          userId: targetUserId,
+          conversation_history: []
           // jarvis_mode removed - backend defaults to true as of Feb 2026
         }
       )
@@ -566,25 +638,29 @@ export class RohithAPI {
 
       // Log the mode for debugging
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[Rohith API] Conversation start mode: ${response.mode || 'jarvis (default)'}`)
+        console.log(`[Audelle API] Conversation start mode: ${response.mode || 'jarvis (default)'}`)
       }
 
+      const conversationId = this.extractConversationId(response)
+      if (!conversationId) {
+        throw new Error("Audelle start response did not include a conversation ID")
+      }
+
+      const narration = this.extractNarration(response, "Hello. I'm Audelle, your private decision ally.")
+
       return {
-        conversationId: response.conversation_id,
+        conversationId,
         mode: this.normalizeJarvisMode(response.mode),
         rawMode: response.mode || "jarvis",
-        narration: response.response?.narration || {
-          text: response.response?.content || "Hello! I'm Rohith, your AI intelligence ally.",
-          delivery: "word_by_word"
-        },
-        visualizations: response.response?.visualizations || [],
-        predictive_prompts: response.response?.predictive_prompts || [],
+        narration,
+        visualizations: response.response?.visualizations || response.visualizations || [],
+        predictive_prompts: response.response?.predictive_prompts || response.predictive_prompts || [],
         // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
-        source_documents: response.response?.citations || response.response?.source_documents || [],
-        message_id: response.message_id,
+        source_documents: this.extractSourceDocuments(response),
+        message_id: this.extractMessageId(response),
         // Check both top-level and metadata locations for these fields
         tier: response.response?.tier || response.response?.metadata?.tier || "instant",
-        processing_time_ms: response.response?.processing_time_ms || response.response?.metadata?.processing_time_ms || responseTime,
+        processing_time_ms: this.extractProcessingTime(response, responseTime),
         confidence_score: response.response?.confidence_score || response.response?.metadata?.confidence_score || 0.85
       }
     } catch (error) {
@@ -598,10 +674,18 @@ export class RohithAPI {
    */
   async deleteConversation(conversationId: string): Promise<boolean> {
     try {
-      const response = await secureApi.delete(
-        `${this.legacyRohithBase()}/conversation/${conversationId}`,
-        true
-      )
+      let response
+      try {
+        response = await secureApi.delete(
+          `${this.rohithBase()}/conversation/${conversationId}`,
+          true
+        )
+      } catch {
+        response = await secureApi.delete(
+          `${this.legacyRohithBase()}/conversation/${conversationId}`,
+          true
+        )
+      }
 
       // Clear cache
       this.clearConversationCache(conversationId)
@@ -620,12 +704,20 @@ export class RohithAPI {
       // Clean the title before sending
       const cleanedTitle = this.cleanConversationTitle(newTitle)
 
-      // Use a specific endpoint for title updates
-      const response = await secureApi.post(
-        `${this.legacyRohithBase()}/conversation/${conversationId}/title`,
-        { title: cleanedTitle },
-        true
-      )
+      let response
+      try {
+        response = await secureApi.post(
+          `${this.rohithBase()}/conversation/${conversationId}/title`,
+          { title: cleanedTitle },
+          true
+        )
+      } catch {
+        response = await secureApi.post(
+          `${this.legacyRohithBase()}/conversation/${conversationId}/title`,
+          { title: cleanedTitle },
+          true
+        )
+      }
 
       // Clear cache to refresh data - clear both conversation cache and list cache
       this.clearConversationCache(conversationId)
@@ -654,21 +746,33 @@ export class RohithAPI {
     try {
       const targetUserId = userId || getCurrentUserId()
 
-      const data = await secureApi.post(
-        `${this.legacyRohithBase()}/feedback/${conversationId}`,
-        {
-          conversation_id: conversationId,
-          message_id: messageId,
-          feedback_score: isPositive ? 1 : 0,
-          user_id: targetUserId
-        },
-        true,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+      const payload = {
+        conversation_id: conversationId,
+        message_id: messageId,
+        feedback_score: isPositive ? 1 : 0,
+        user_id: targetUserId
+      }
+      const options = {
+        headers: {
+          'Content-Type': 'application/json'
         }
-      )
+      }
+      let data
+      try {
+        data = await secureApi.post(
+          `${this.rohithBase()}/feedback/${conversationId}`,
+          payload,
+          true,
+          options
+        )
+      } catch {
+        data = await secureApi.post(
+          `${this.legacyRohithBase()}/feedback/${conversationId}`,
+          payload,
+          true,
+          options
+        )
+      }
 
       return data
     } catch (error) {

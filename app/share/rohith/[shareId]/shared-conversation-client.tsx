@@ -1,5 +1,5 @@
 // app/share/rohith/[shareId]/shared-conversation-client.tsx
-// Client component for displaying a shared Rohith conversation
+// Client component for displaying a shared Audelle conversation
 
 'use client'
 
@@ -7,12 +7,14 @@ import { useState } from 'react'
 import { MessageSquare, Share2, Check, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
+import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
 
 interface SharedMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string | Date
+  visualizations?: VisualizationCommand[]
 }
 
 interface SharedConversationData {
@@ -65,7 +67,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                 {conversation.title || 'Shared Conversation'}
               </h1>
               <p className="text-xs text-muted-foreground">
-                {messages.length} messages &middot; Ask Rohith
+                {messages.length} messages &middot; Audelle Conversation
               </p>
             </div>
           </div>
@@ -120,7 +122,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                   <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/20">
                     <div className="w-1.5 h-1.5 bg-gold rounded-full" />
                     <div className="text-[10px] uppercase tracking-wider text-gold/80 font-mono">
-                      Rohith
+                      Audelle
                     </div>
                   </div>
                   <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:text-gold prose-code:bg-gold/10 prose-code:px-1 prose-code:rounded">
@@ -170,6 +172,11 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                       {message.content}
                     </ReactMarkdown>
                   </div>
+                  {message.visualizations && message.visualizations.length > 0 && (
+                    <div className="mt-4">
+                      <VisualizationEngine commands={message.visualizations} inline />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -179,7 +186,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-border/20 text-center">
           <p className="text-xs text-muted-foreground/60">
-            Shared from HNWI Chronicles &middot; Ask Rohith Intelligence System
+            Shared from HNWI Chronicles &middot; Audelle by HNWI Chronicles
           </p>
         </div>
       </main>
