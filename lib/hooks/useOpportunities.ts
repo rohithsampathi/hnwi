@@ -27,6 +27,12 @@ interface Opportunity {
   industry?: string;
   product?: string;
   start_date?: string;
+  end_date?: string;
+  source_article_date?: string;
+  created_at?: string;
+  generated_at?: string;
+  projection_status?: string;
+  quarantine_status?: string;
   is_new?: boolean;
   executors?: Array<{
     name: string;
@@ -98,7 +104,7 @@ interface CachedOpportunitiesPayload {
   fetchedAt: number;
 }
 
-const OPPORTUNITIES_CACHE_TTL_MS = 600000
+const OPPORTUNITIES_CACHE_TTL_MS = 60000
 const opportunitiesCache = new Map<string, CachedOpportunitiesPayload>()
 const inflightOpportunitiesRequests = new Map<string, Promise<CachedOpportunitiesPayload>>()
 
@@ -140,13 +146,25 @@ const cleanCategoryName = (category: string): string => {
   return cleanedCategory;
 };
 
+const getOpportunityDate = (opp: Opportunity): string | undefined =>
+  opp.start_date || opp.source_article_date || opp.generated_at || opp.created_at;
+
+const isStaleProjection = (opp: Opportunity): boolean => {
+  const projectionStatus = (opp.projection_status || '').toLowerCase();
+  const quarantineStatus = (opp.quarantine_status || '').toLowerCase();
+
+  return projectionStatus.includes('stale') ||
+    projectionStatus.includes('quarantine') ||
+    quarantineStatus.length > 0;
+};
+
 // Transform opportunity to City format (shared logic)
 const transformOpportunityToCity = (
   opp: Opportunity,
   cleanCategories: boolean = false
 ): City | null => {
-  const lat = opp.latitude;
-  const lng = opp.longitude;
+  const lat = Number(opp.latitude);
+  const lng = Number(opp.longitude);
   const displayName = opp.location || opp.country || opp.title || 'Opportunity';
   const sourceLower = (opp.source || '').toLowerCase();
   const opportunityType =
@@ -337,7 +355,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
       } else {
         // AUTHENTICATED MODE (Home Dashboard)
         // Build API URL with all parameters
-        const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe;
+        const timeframeParam = timeframe === 'live' ? 'LIVE' : timeframe === 'all' ? 'ALL' : timeframe;
         const viewParam = shouldUsePersonalizedView ? 'personalized' : 'all';
 
         // Authenticated users should still see Crown Vault rows in all-mode when requested.
@@ -366,14 +384,26 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         const now = new Date();
 
         opportunities = opportunities.filter(opp => {
-          // 1. Filter out expired MOEv4 opportunities (180 days after DEVID brief creation)
-          if (opp.source === 'MOEv4' && opp.start_date) {
+          if (isStaleProjection(opp)) {
+            return false;
+          }
+
+          if (timeframeParam === 'ALL') {
+            return true;
+          }
+
+          const opportunityDate = getOpportunityDate(opp);
+          const sourceLower = (opp.source || '').toLowerCase();
+
+          // 1. Filter out expired HNWI Pattern/MOEv4 opportunities.
+          if ((sourceLower === 'moev4' || sourceLower === 'hnwi pattern') && opportunityDate) {
             try {
-              const startDate = new Date(opp.start_date);
+              const endDate = opp.end_date ? new Date(opp.end_date) : null;
+              const startDate = new Date(opportunityDate);
               const expiryDate = new Date(startDate.getTime() + (180 * 24 * 60 * 60 * 1000)); // +180 days
 
               // Filter out expired opportunities
-              if (expiryDate < now) {
+              if ((endDate && endDate < now) || expiryDate < now) {
                 return false;
               }
             } catch {
@@ -382,9 +412,9 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
           }
 
           // 2. Apply timeframe filter based on start_date
-          if (timeframeParam !== 'LIVE' && opp.start_date) {
+          if (timeframeParam !== 'LIVE' && opportunityDate) {
             try {
-              const startDate = new Date(opp.start_date);
+              const startDate = new Date(opportunityDate);
 
               // Calculate cutoff date based on timeframe
               let daysBack = 180; // Default for LIVE
@@ -407,6 +437,8 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
           return true;
         });
+
+        responseTotal = opportunities.length
       }
 
       // Transform opportunities to City format
@@ -471,7 +503,11 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
       }
 
       const payload = await request
-      opportunitiesCache.set(cacheKey, payload)
+      if (payload.cities.length > 0 || isPublic) {
+        opportunitiesCache.set(cacheKey, payload)
+      } else {
+        opportunitiesCache.delete(cacheKey)
+      }
       setAvailableCategories(payload.availableCategories);
       setTotalCount(payload.totalCount);
       setCities(payload.cities);

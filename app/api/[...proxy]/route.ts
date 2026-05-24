@@ -98,7 +98,7 @@ async function handler(request: NextRequest) {
     // Make the request to the backend with timeout and error handling
     // Use longer timeout for development endpoints that might process large datasets
     const timeframe = url.searchParams.get('timeframe')
-    const isDevelopments = pathSegments.includes('developments')
+    const isDevelopments = pathSegments.includes('developments') || pathSegments.includes('castle-briefs')
 
     // Determine timeout based on timeframe - larger timeframes need more time
     let timeoutDuration = 120000 // Default: 120 seconds for general endpoints

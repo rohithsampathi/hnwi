@@ -55,6 +55,7 @@ import {
   buildHnwiWorldCategoryTrends,
   resolveHnwiWorldCategory,
 } from "@/lib/hnwi-world-category"
+import { dedupeHnwiWorldDevelopments } from "@/lib/hnwi-world-dedupe"
 
 interface IndustryTrend {
   industry: string
@@ -254,23 +255,26 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
 
   // Check for cached data with default timeframe (no industry filter in cache key)
-  const cacheKey = 'hnwi-world-7d' // Default cache key
+  const cacheKey = 'hnwi-world-castle-v1-7d' // Default Castle brief cache key
   const cachedData = getCachedData(cacheKey)
   const hasValidCache = isCacheValid(cacheKey)
+  const cachedDevelopments = cachedData?.developments
+    ? dedupeHnwiWorldDevelopments(cachedData.developments)
+    : []
 
   // State management - Unified data approach - Initialize with cached data if available
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d') // Default to 7 days
   const [selectedIndustry, setSelectedIndustry] = useState('All')
-  const [allDevelopments, setAllDevelopments] = useState<HNWIWorldDevelopment[]>(cachedData?.developments || []) // ALL developments (no industry filter)
+  const [allDevelopments, setAllDevelopments] = useState<HNWIWorldDevelopment[]>(cachedDevelopments) // ALL canonical developments (no industry filter)
   const [industryTrends, setIndustryTrends] = useState<IndustryTrend[]>(
-    cachedData?.developments
-      ? buildHnwiWorldCategoryTrends(cachedData.developments)
+    cachedDevelopments.length > 0
+      ? buildHnwiWorldCategoryTrends(cachedDevelopments)
       : cachedData?.industryTrends || []
   )
   const [isLoading, setIsLoading] = useState(!hasValidCache)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(cachedData?.lastUpdated || null)
-  const [totalDevelopments, setTotalDevelopments] = useState(cachedData?.totalDevelopments || 0)
+  const [totalDevelopments, setTotalDevelopments] = useState(cachedDevelopments.length || cachedData?.totalDevelopments || 0)
 
   // Citation state managed via shared hook
   const {
@@ -293,6 +297,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
   const sectorsRef = useRef<HTMLDivElement>(null)
   const insiderBriefsRef = useRef<HTMLDivElement>(null)
+  const developmentsRequestInFlightRef = useRef(false)
 
   // Handle citation click from development cards
   const handleCitationClick = useCallback((citationId: string) => {
@@ -406,10 +411,13 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   // Unified data fetching - single API call for both components - Mobile Safe
   // IMPORTANT: Only fetches when timeRange changes, NOT when industry changes (client-side filter)
   const fetchDevelopments = useCallback(async (forceRefresh = false) => {
+    if (developmentsRequestInFlightRef.current && !forceRefresh) {
+      return
+    }
 
     try {
       // Create cache key based ONLY on timeRange (not industry - we filter client-side)
-      const dynamicCacheKey = `hnwi-world-${selectedTimeRange}`
+      const dynamicCacheKey = `hnwi-world-castle-v1-${selectedTimeRange}`
 
       // Check if we have valid cached data (skip API call entirely)
       if (!forceRefresh) {
@@ -418,20 +426,17 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
         // If cache is valid, skip API calls entirely
         if (cacheIsValid && cached.developments?.length > 0) {
-          setAllDevelopments(cached.developments)
-          setIndustryTrends(buildHnwiWorldCategoryTrends(cached.developments || []))
-          setTotalDevelopments(cached.totalDevelopments || 0)
+          const canonicalDevelopments = dedupeHnwiWorldDevelopments(cached.developments)
+          setAllDevelopments(canonicalDevelopments)
+          setIndustryTrends(buildHnwiWorldCategoryTrends(canonicalDevelopments))
+          setTotalDevelopments(canonicalDevelopments.length)
           setLastUpdated(cached.lastUpdated || null)
           setIsLoading(false)
           return
         }
       }
 
-      // Prevent multiple simultaneous requests - but allow initial load
-      if (isLoading && !forceRefresh && allDevelopments.length > 0) {
-        return;
-      }
-
+      developmentsRequestInFlightRef.current = true
       setIsLoading(true);
       setIsRefreshing(forceRefresh);
 
@@ -464,11 +469,8 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         timeframe: timeframe.toUpperCase()
       });
 
-      // Create stable cache key (no industry in key)
-      const cacheKey = `developments:${selectedTimeRange}:all:page-1:size-100`;
-
-      // Use direct backend API call like Crown Vault and Home Dashboard
-      const endpoint = `/api/developments?${params.toString()}`;
+      // HNWI World should read the public Castle brief surface, not the generic KG-enriched developments feed.
+      const endpoint = `/api/castle-briefs?${params.toString()}`;
 
       // Use secureApi.get with authentication - direct backend call (mobile optimized)
       const data = await secureApi.get(endpoint, true, {
@@ -477,23 +479,24 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       });
 
       if (data.developments && Array.isArray(data.developments)) {
+        const canonicalDevelopments = dedupeHnwiWorldDevelopments(data.developments)
 
         // Store ALL developments (no industry filter)
-        setAllDevelopments(data.developments);
-        setTotalDevelopments(data.total_count || data.developments.length);
+        setAllDevelopments(canonicalDevelopments);
+        setTotalDevelopments(canonicalDevelopments.length);
 
-        const processedTrends = buildHnwiWorldCategoryTrends(data.developments);
+        const processedTrends = buildHnwiWorldCategoryTrends(canonicalDevelopments);
         setIndustryTrends(processedTrends);
 
         const updatedDate = new Date()
         setLastUpdated(updatedDate);
 
         // Cache the data (5-minute TTL) with timestamp (no industry in cache key)
-        const dynamicCacheKey = `hnwi-world-${selectedTimeRange}`
+        const dynamicCacheKey = `hnwi-world-castle-v1-${selectedTimeRange}`
         setCachedData(dynamicCacheKey, {
-          developments: data.developments,
+          developments: canonicalDevelopments,
           industryTrends: processedTrends,
-          totalDevelopments: data.total_count || data.developments.length,
+          totalDevelopments: canonicalDevelopments.length,
           lastUpdated: updatedDate,
           timestamp: Date.now(),
           ttl: 300000
@@ -521,10 +524,11 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
       // setIndustryTrends([])
       // setTotalDevelopments(0)
     } finally {
+      developmentsRequestInFlightRef.current = false
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }, [allDevelopments.length, getCachedData, isLoading, selectedTimeRange, setCachedData, toast])
+  }, [getCachedData, selectedTimeRange, setCachedData, toast])
 
   // Initial load and when duration changes ONLY - NOT when industry changes
   useEffect(() => {

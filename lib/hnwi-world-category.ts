@@ -36,13 +36,15 @@ const INTERNAL_CATEGORY_VALUES = new Set([
 ])
 
 const CATEGORY_LABEL_OVERRIDES: Record<string, string> = {
-  au_specific: "Australia Specific",
-  market_intelligence: "Market Intelligence",
-  family_enterprise: "Family Enterprise",
-  family_office: "Family Office",
+  au_specific: "Financial Services",
+  luxury_goods: "Collectibles",
+  market_intelligence: "Financial Services",
+  family_enterprise: "Financial Services",
+  family_office: "Financial Services",
   real_estate: "Real Estate",
-  private_equity: "Private Equity",
+  private_equity: "Financial Services",
   wealth_management: "Wealth Management",
+  precious_metals: "Precious Metal",
 }
 
 function toCandidateList(value: unknown): string[] {
@@ -115,7 +117,7 @@ export function resolveHnwiWorldCategory(development: HNWIWorldDevelopment): str
     }
   }
 
-  return "Market Intelligence"
+  return "Financial Services"
 }
 
 export function buildHnwiWorldCategoryTrends(developments: HNWIWorldDevelopment[]): HNWIWorldCategoryTrend[] {

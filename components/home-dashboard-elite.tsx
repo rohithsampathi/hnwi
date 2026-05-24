@@ -75,6 +75,7 @@ export function HomeDashboardElite({
 
   // Theme context for checkbox styling
   const { theme } = useTheme()
+  const timeframeLabel = timeframe === 'live' ? 'Live Data' : timeframe === 'all' ? 'All Time' : timeframe
 
   // Personal Mode state (shared across Home Dashboard and War Room)
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(hasCompletedAssessmentProp || false)
@@ -447,7 +448,7 @@ export function HomeDashboardElite({
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
                   </span>
                 )}
-                <span>{timeframe === 'live' ? 'Live Data' : timeframe}</span>
+                <span>{timeframeLabel}</span>
                 <span className="absolute right-2 top-1/2 transform -translate-y-1/2">▼</span>
               </button>
 
@@ -456,6 +457,7 @@ export function HomeDashboardElite({
                 <div className="absolute left-0 top-full mt-1 bg-background border border-border rounded shadow-lg z-[501] min-w-[120px]">
                   {[
                     { value: 'live', label: 'Live Data', bold: true },
+                    { value: 'all', label: 'All Time' },
                     { value: '7D', label: '7D' },
                     { value: '14D', label: '14D' },
                     { value: '21D', label: '21D' },
