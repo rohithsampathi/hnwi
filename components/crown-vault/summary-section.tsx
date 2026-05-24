@@ -18,15 +18,13 @@ import { CrownVaultAsset, CrownVaultStats } from "@/lib/api";
 import { processAssetCategories } from "@/lib/category-utils";
 import { LUXURY_COLOR_PALETTE } from "@/lib/chart-colors";
 import {
-  buildCurrencyTotals,
   countActionPostures,
   countAssetsByState,
   formatAssetCollectionValue,
-  formatCompactMoney,
+  formatAssetValueWithLocal,
   formatPercent,
   getAssetActionPosture,
   getAssetChangePct,
-  getAssetCurrency,
   getAssetCurrentValue,
   getAssetDisplayType,
   getAssetEntryValue,
@@ -95,7 +93,6 @@ const AssetSignalRow = ({
   const currentValue = getAssetCurrentValue(asset);
   const posture = getAssetActionPosture(asset) || getAssetStatusLabel(asset);
   const patternTitle = getAssetPatternTitles(asset)[0];
-  const currentCurrency = getAssetCurrency(asset);
   const changePct = getAssetChangePct(asset);
 
   return (
@@ -109,7 +106,7 @@ const AssetSignalRow = ({
           </p>
         </div>
         <div className="text-right">
-          <p className="font-semibold text-foreground">{formatCompactMoney(currentValue, currentCurrency)}</p>
+          <p className="font-semibold text-foreground">{formatAssetValueWithLocal(asset, currentValue, "current")}</p>
           <p className="text-xs text-muted-foreground">{posture}</p>
         </div>
       </div>
@@ -128,7 +125,6 @@ const AssetSignalRow = ({
 };
 
 export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: SummarySectionProps) {
-  const currentCurrencyTotals = buildCurrencyTotals(assets, getAssetCurrentValue);
   const hasMixedCurrencies = hasMixedAssetCurrencies(assets, getAssetCurrentValue);
   const assetCategories = processAssetCategories(
     assets,
@@ -167,8 +163,6 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
       return currentValue - entryValue;
     },
   );
-  const currencyCount = Object.keys(currentCurrencyTotals).length;
-
   return (
     <div className="space-y-6">
       <Card className="border-border/60 bg-card/70 shadow-sm">
@@ -209,7 +203,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
               value={currentValueLabel}
               subtext={
                 hasMixedCurrencies
-                  ? `${assets.length} assets across ${currencyCount} currencies`
+                  ? `${assets.length} assets with USD-first local context`
                   : `${assets.length} assets under Katherine tracking`
               }
               icon={DollarSign}
@@ -217,20 +211,14 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
             <SummaryMetricCard
               title="Since Entry"
               value={
-                hasMixedCurrencies
-                  ? changeValueLabel
-                  : totalChangeAmount == null
-                    ? "Not established"
-                    : `${formatCompactMoney(totalChangeAmount)} • ${formatPercent(totalChangePct)}`
+                totalChangeAmount == null
+                  ? "Not established"
+                  : `${changeValueLabel} • ${formatPercent(totalChangePct)}`
               }
               subtext={
-                hasMixedCurrencies
-                  ? entryValueLabel === "Not established"
-                    ? "Entry basis still incomplete on some assets"
-                    : `Entry basis ${entryValueLabel} • Mixed currencies shown separately`
-                  : totalEntryValue > 0
-                    ? `Entry basis ${formatCompactMoney(totalEntryValue)}`
-                    : "Entry basis still incomplete on some assets"
+                entryValueLabel === "Not established"
+                  ? "Entry basis still incomplete on some assets"
+                  : `Entry basis ${entryValueLabel}`
               }
               icon={TrendingUp}
               tone={
@@ -305,7 +293,7 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
             <h2 className="text-xl font-semibold text-foreground">Allocation and Exposure</h2>
             <p className="text-sm text-muted-foreground">
               {hasMixedCurrencies
-                ? "Current vault composition across asset categories by asset count. Mixed currencies are shown separately above so the UI does not fabricate a single false total."
+                ? "Current vault composition across asset categories by asset count. Values use USD first with local currency context."
                 : "Current vault composition across asset categories. This uses the current value rail, not the older static upload-only view."}
             </p>
           </div>

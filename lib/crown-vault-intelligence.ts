@@ -1,6 +1,7 @@
 import type { CrownVaultAsset } from "@/lib/api";
 
 type GenericRecord = Record<string, any>;
+const DEFAULT_USD_INR_RATE = 95.633;
 
 const toNumber = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -17,11 +18,40 @@ export const getAssetImpact = (asset: CrownVaultAsset): GenericRecord =>
   (asset.elite_pulse_impact as GenericRecord) || {};
 
 export const getAssetUsdConversion = (asset: CrownVaultAsset): GenericRecord =>
-  (getAssetImpact(asset).usd_conversion as GenericRecord) || {};
+  ({
+    ...((getAssetImpact(asset).usd_conversion as GenericRecord) || {}),
+    current_total_value_usd:
+      toNumber((asset as GenericRecord).current_value_usd) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.current_total_value_usd) ??
+      toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.current_total_value_usd),
+    entry_total_value_usd:
+      toNumber((asset as GenericRecord).entry_value_usd) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.entry_total_value_usd) ??
+      toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.entry_total_value_usd),
+    current_total_value_native:
+      toNumber((asset as GenericRecord).current_value_native) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.current_total_value_native) ??
+      toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.current_total_value_native),
+    entry_total_value_native:
+      toNumber((asset as GenericRecord).entry_value_native) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.entry_total_value_native) ??
+      toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.entry_total_value_native),
+    native_currency:
+      (asset as GenericRecord).native_currency ||
+      (asset as GenericRecord).katherine_canonical_truth?.native_currency ||
+      (getAssetImpact(asset).usd_conversion as GenericRecord)?.native_currency,
+    fx_rate_usd_inr:
+      toNumber((asset as GenericRecord).usd_fx_rate) ??
+      toNumber((asset as GenericRecord).katherine_canonical_truth?.fx_rate_usd_inr) ??
+      toNumber((getAssetImpact(asset).usd_conversion as GenericRecord)?.fx_rate_usd_inr),
+  });
 
 export const getAssetNativeCurrency = (asset: CrownVaultAsset): string =>
   String(
-    getAssetImpact(asset).value_currency ||
+    getAssetUsdConversion(asset).native_currency ||
+      (asset as GenericRecord).native_currency ||
+      (asset as GenericRecord).katherine_canonical_truth?.native_currency ||
+      getAssetImpact(asset).value_currency ||
       getAssetImpact(asset).market_context?.base_currency ||
       asset.asset_data?.currency ||
       "USD",
@@ -31,7 +61,12 @@ export const getAssetNativeCurrency = (asset: CrownVaultAsset): string =>
 
 export const getAssetCurrency = (asset: CrownVaultAsset): string => {
   const usdConversion = getAssetUsdConversion(asset);
-  if (toNumber(usdConversion.current_total_value_usd) != null || toNumber(usdConversion.entry_total_value_usd) != null) {
+  if (
+    toNumber(usdConversion.current_total_value_usd) != null ||
+    toNumber(usdConversion.entry_total_value_usd) != null ||
+    toNumber((asset as GenericRecord).current_value_usd) != null ||
+    toNumber((asset as GenericRecord).entry_value_usd) != null
+  ) {
     return "USD";
   }
   return getAssetNativeCurrency(asset);
@@ -126,6 +161,54 @@ export const getAssetEntryValue = (asset: CrownVaultAsset): number | null => {
   }
 
   return toNumber(topLevel.entry_total_value);
+};
+
+export const getAssetLocalCurrency = (asset: CrownVaultAsset): string => {
+  const nativeCurrency = getAssetNativeCurrency(asset);
+  return nativeCurrency === "USD" ? "INR" : nativeCurrency;
+};
+
+export const getAssetFxRate = (asset: CrownVaultAsset): number | null => {
+  const usdConversion = getAssetUsdConversion(asset);
+  const direct =
+    toNumber(usdConversion.fx_rate_usd_inr) ??
+    toNumber((asset as GenericRecord).usd_fx_rate) ??
+    toNumber((asset as GenericRecord).katherine_canonical_truth?.fx_rate_usd_inr);
+  if (direct != null) {
+    return direct;
+  }
+  const nativeCurrent = toNumber(usdConversion.current_total_value_native);
+  const usdCurrent = toNumber(usdConversion.current_total_value_usd);
+  if (nativeCurrent != null && usdCurrent && usdCurrent !== 0) {
+    return nativeCurrent / usdCurrent;
+  }
+  return DEFAULT_USD_INR_RATE;
+};
+
+const getAssetNativeValue = (
+  asset: CrownVaultAsset,
+  rail: "current" | "entry",
+): number | null => {
+  const usdConversion = getAssetUsdConversion(asset);
+  return rail === "current"
+    ? toNumber(usdConversion.current_total_value_native)
+    : toNumber(usdConversion.entry_total_value_native);
+};
+
+const getAssetLocalValue = (
+  asset: CrownVaultAsset,
+  value: number | null,
+  rail?: "current" | "entry",
+): number | null => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const nativeValue = rail ? getAssetNativeValue(asset, rail) : null;
+  if (nativeValue != null) {
+    return nativeValue;
+  }
+  const fxRate = getAssetFxRate(asset);
+  return fxRate ? value * fxRate : null;
 };
 
 export const getAssetChangeAmount = (asset: CrownVaultAsset): number | null => {
@@ -426,9 +509,9 @@ export type CurrencyTotals = Record<string, number>;
 
 const currencySortWeight = (currency: string): number => {
   switch (currency.toUpperCase()) {
-    case "INR":
-      return 0;
     case "USD":
+      return 0;
+    case "INR":
       return 1;
     case "AED":
       return 2;
@@ -485,11 +568,56 @@ export const formatCurrencyTotals = (totals: CurrencyTotals): string => {
 export const formatAssetCollectionValue = (
   assets: CrownVaultAsset[],
   valueSelector: (asset: CrownVaultAsset) => number | null = getAssetCurrentValue,
-): string => formatCurrencyTotals(buildCurrencyTotals(assets, valueSelector));
+): string => {
+  const usdTotal = assets.reduce((sum, asset) => {
+    const value = valueSelector(asset);
+    return sum + (typeof value === "number" && Number.isFinite(value) ? value : 0);
+  }, 0);
+  if (!usdTotal) {
+    return "Not established";
+  }
+
+  const localCurrency = assets.map(getAssetLocalCurrency).find((currency) => currency !== "USD") || "INR";
+  const localTotal = assets.reduce((sum, asset) => {
+    const value = valueSelector(asset);
+    const rail = valueSelector === getAssetCurrentValue ? "current" : valueSelector === getAssetEntryValue ? "entry" : undefined;
+    const localValue = getAssetLocalValue(asset, value, rail);
+    return sum + (typeof localValue === "number" && Number.isFinite(localValue) ? localValue : 0);
+  }, 0);
+
+  const usdLabel = formatCompactMoney(usdTotal, "USD");
+  if (!localTotal || localCurrency === "USD") {
+    return usdLabel;
+  }
+  return `${usdLabel} (${formatCompactMoney(localTotal, localCurrency)} local)`;
+};
+
+export const formatAssetValueWithLocal = (
+  asset: CrownVaultAsset,
+  value: number | null | undefined,
+  rail: "current" | "entry" = "current",
+): string => {
+  const usdLabel = formatCompactMoney(value, "USD");
+  const localCurrency = getAssetLocalCurrency(asset);
+  const localValue = getAssetLocalValue(asset, typeof value === "number" ? value : null, rail);
+  if (usdLabel === "Not established" || !localValue || localCurrency === "USD") {
+    return usdLabel;
+  }
+  return `${usdLabel} (${formatCompactMoney(localValue, localCurrency)} local)`;
+};
 
 export const latestAnalysisTimestamp = (assets: CrownVaultAsset[]): string | null => {
   const timestamps = assets
-    .map((asset) => String(getAssetImpact(asset).timestamp || getAssetImpact(asset).updated_at || "").trim())
+    .map((asset) =>
+      String(
+        getAssetImpact(asset).timestamp ||
+          getAssetImpact(asset).updated_at ||
+          getAssetImpact(asset).analysis_timestamp ||
+          (asset as GenericRecord).katherine_last_synced_at ||
+          (asset as GenericRecord).katherine_updated_at ||
+          "",
+      ).trim(),
+    )
     .filter(Boolean)
     .map((value) => new Date(value).getTime())
     .filter((value) => Number.isFinite(value));

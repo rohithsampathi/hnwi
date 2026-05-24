@@ -586,7 +586,7 @@ const normalizeElitePulseImpact = (impact: any) => {
   return {
     ...impact,
     risk_level: riskLevel,
-    timestamp: impact.timestamp || impact.updated_at || impact.analyzed_at || impact.katherine_analysis_updated,
+    timestamp: impact.timestamp || impact.updated_at || impact.analysis_timestamp || impact.analyzed_at || impact.katherine_analysis_updated,
     summary,
     analysis,
     katherine_analysis: cleanImpactText(impact.katherine_analysis) || analysis,
@@ -663,6 +663,16 @@ export interface CrownVaultAsset {
   current_price_source?: string | null;
   current_total_value?: number | null;
   entry_total_value?: number | null;
+  current_value_usd?: number | null;
+  current_value_native?: number | null;
+  entry_value_usd?: number | null;
+  entry_value_native?: number | null;
+  native_currency?: string | null;
+  usd_fx_rate?: number | null;
+  katherine_canonical_truth?: Record<string, any> | null;
+  katherine_updated_at?: string | null;
+  katherine_last_synced_at?: string | null;
+  operator_mark_contract?: string | null;
   analysis_contract?: string;
   katherine_run_id?: string;
   asset_data: {
@@ -1063,14 +1073,69 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
       (asset._id || asset.asset_id || asset.id) // Accept MongoDB _id or other formats
     ).map((asset: any) => {
       const normalizedImpact = normalizeElitePulseImpact(asset.elite_pulse_impact);
+      const canonicalTruth = asset.katherine_canonical_truth && typeof asset.katherine_canonical_truth === 'object'
+        ? asset.katherine_canonical_truth
+        : {};
+      const impactUsdConversion = normalizedImpact?.usd_conversion && typeof normalizedImpact.usd_conversion === 'object'
+        ? normalizedImpact.usd_conversion
+        : {};
+      const currentValueUsd =
+        toNumber(asset.current_value_usd) ??
+        toNumber(canonicalTruth.current_total_value_usd) ??
+        toNumber(impactUsdConversion.current_total_value_usd);
+      const entryValueUsd =
+        toNumber(asset.entry_value_usd) ??
+        toNumber(canonicalTruth.entry_total_value_usd) ??
+        toNumber(impactUsdConversion.entry_total_value_usd);
+      const currentValueNative =
+        toNumber(asset.current_value_native) ??
+        toNumber(canonicalTruth.current_total_value_native) ??
+        toNumber(impactUsdConversion.current_total_value_native);
+      const entryValueNative =
+        toNumber(asset.entry_value_native) ??
+        toNumber(canonicalTruth.entry_total_value_native) ??
+        toNumber(impactUsdConversion.entry_total_value_native);
+      const nativeCurrency =
+        cleanImpactText(asset.native_currency || canonicalTruth.native_currency || impactUsdConversion.native_currency).toUpperCase();
+      const fxRate =
+        toNumber(asset.usd_fx_rate) ??
+        toNumber(canonicalTruth.fx_rate_usd_inr) ??
+        toNumber(impactUsdConversion.fx_rate_usd_inr);
+      const enrichedImpact = normalizedImpact
+        ? {
+            ...normalizedImpact,
+            timestamp:
+              normalizedImpact.timestamp ||
+              asset.katherine_last_synced_at ||
+              asset.katherine_updated_at ||
+              canonicalTruth.current_as_of,
+            current_value_now: currentValueUsd ?? normalizedImpact.current_value_now,
+            value_currency: currentValueUsd != null ? 'USD' : normalizedImpact.value_currency,
+            usd_conversion: {
+              ...impactUsdConversion,
+              current_total_value_usd: currentValueUsd ?? impactUsdConversion.current_total_value_usd,
+              entry_total_value_usd: entryValueUsd ?? impactUsdConversion.entry_total_value_usd,
+              current_total_value_native: currentValueNative ?? impactUsdConversion.current_total_value_native,
+              entry_total_value_native: entryValueNative ?? impactUsdConversion.entry_total_value_native,
+              native_currency: nativeCurrency || impactUsdConversion.native_currency,
+              fx_rate_usd_inr: fxRate ?? impactUsdConversion.fx_rate_usd_inr,
+            },
+            market_context: {
+              ...(normalizedImpact.market_context || {}),
+              base_currency: currentValueUsd != null ? 'USD' : normalizedImpact.market_context?.base_currency,
+              native_currency: nativeCurrency || normalizedImpact.market_context?.native_currency,
+              fx_rate_usd_inr: fxRate ?? normalizedImpact.market_context?.fx_rate_usd_inr,
+            },
+          }
+        : normalizedImpact;
       const resolvedCurrency =
-        normalizedImpact?.value_currency ||
-        normalizedImpact?.market_context?.base_currency ||
+        enrichedImpact?.value_currency ||
+        enrichedImpact?.market_context?.base_currency ||
         asset.asset_data?.currency ||
         asset.currency ||
         'USD';
       const normalizedAppreciation =
-        deriveImpactAppreciation(normalizedImpact, asset.created_at) ||
+        deriveImpactAppreciation(enrichedImpact, asset.created_at) ||
         (asset.appreciation
           ? normalizeAppreciationMetrics(asset.appreciation, {
               createdAt: asset.created_at,
@@ -1078,7 +1143,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
             })
           : null);
       const derivedCurrentValue =
-        normalizedImpact?.current_value_now ??
+        currentValueUsd ??
+        enrichedImpact?.current_value_now ??
         asset.current_value_now ??
         asset.current_total_value ??
         asset.asset_data?.value ??
@@ -1131,7 +1197,16 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
           purchase_month: asset.purchase_month,
           entry_date_precision: asset.entry_date_precision,
         },
-        elite_pulse_impact: normalizedImpact,
+        elite_pulse_impact: enrichedImpact,
+        current_value_usd: currentValueUsd,
+        current_value_native: currentValueNative,
+        entry_value_usd: entryValueUsd,
+        entry_value_native: entryValueNative,
+        native_currency: nativeCurrency || asset.native_currency,
+        usd_fx_rate: fxRate,
+        katherine_canonical_truth: canonicalTruth,
+        katherine_updated_at: asset.katherine_updated_at,
+        katherine_last_synced_at: asset.katherine_last_synced_at,
         currency: resolvedCurrency,
         heir_ids: normalizedHeirIds,
         heir_names: normalizedHeirNames,
@@ -1140,7 +1215,7 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         appreciation: normalizedAppreciation,
         last_price_update:
           asset.last_price_update ||
-          normalizedImpact?.timestamp ||
+          enrichedImpact?.timestamp ||
           asset.current_price_date ||
           null,
       };
