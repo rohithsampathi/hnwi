@@ -4,30 +4,57 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import SharedConversationClient from "./shared-conversation-client"
+import { serverApi } from "@/lib/server-api"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Server-side fetch for shared conversation
+function sharedConversationHasMessages(conversation: any) {
+  return Array.isArray(conversation?.messages) && conversation.messages.length > 0
+}
+
+function normalizeSharedConversation(conversation: any, shareId: string) {
+  const rawMessages = Array.isArray(conversation?.messages) ? conversation.messages : []
+  const messages = rawMessages.map((message: any, index: number) => ({
+    ...message,
+    id: String(message?.id || message?.message_id || message?._id || `${shareId}-${index}`),
+    role: message?.role === 'user' ? 'user' : 'assistant',
+    content: String(message?.content || message?.message || ''),
+    timestamp: message?.timestamp || message?.createdAt || message?.created_at || conversation?.createdAt || conversation?.created_at || ''
+  }))
+
+  return {
+    ...conversation,
+    id: conversation?.id || conversation?.conversationId || conversation?.conversation_id || shareId,
+    conversationId: conversation?.conversationId || conversation?.conversation_id || conversation?.id || shareId,
+    title: conversation?.title || 'Shared Conversation',
+    messages,
+    messageCount: conversation?.messageCount || conversation?.total_messages || messages.length,
+    createdAt: conversation?.createdAt || conversation?.created_at || conversation?.created_at_iso || ''
+  }
+}
+
+// Server-side fetch for shared conversation. Read backend contracts directly;
+// self-fetching the frontend host can resolve to the wrong deployment/runtime.
 async function getSharedConversation(shareId: string) {
   try {
-    const isProduction = process.env.NODE_ENV === 'production'
-    const apiBaseUrl = isProduction
-      ? (process.env.NEXT_PUBLIC_PRODUCTION_URL || 'https://app.hnwichronicles.com')
-      : 'http://localhost:3000'
-
-    const response = await fetch(`${apiBaseUrl}/api/conversations/share?shareId=${shareId}`, {
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success && data.conversation) {
-        return data.conversation
-      }
+    const v6 = await serverApi.get(`/api/v6/audelle/share/${shareId}`)
+    const conversation = v6.success && v6.conversation
+      ? normalizeSharedConversation(v6.conversation, shareId)
+      : null
+    if (sharedConversationHasMessages(conversation)) {
+      return conversation
     }
-    return null
+  } catch {
+    // Fall through to the existing shared_conversations registry for old links.
+  }
+
+  try {
+    const data = await serverApi.get(`/api/sharing/conversations/${shareId}`)
+    const conversation = data.success && data.conversation
+      ? normalizeSharedConversation(data.conversation, shareId)
+      : null
+    return sharedConversationHasMessages(conversation) ? conversation : null
   } catch {
     return null
   }

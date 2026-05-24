@@ -11,6 +11,10 @@ import crypto from 'crypto'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+function sharedConversationHasMessages(conversation: any) {
+  return Array.isArray(conversation?.messages) && conversation.messages.length > 0
+}
+
 function normalizeSharedConversation(conversation: any, shareId: string) {
   const rawMessages = Array.isArray(conversation?.messages) ? conversation.messages : []
   const messages = rawMessages.map((message: any, index: number) => ({
@@ -47,10 +51,14 @@ export async function GET(request: NextRequest) {
 
     try {
       const v6 = await serverApi.get(`/api/v6/audelle/share/${shareId}`)
-      if (v6.success && v6.conversation) {
+      const conversation = v6.success && v6.conversation
+        ? normalizeSharedConversation(v6.conversation, shareId)
+        : null
+
+      if (sharedConversationHasMessages(conversation)) {
         return NextResponse.json({
           success: true,
-          conversation: normalizeSharedConversation(v6.conversation, shareId)
+          conversation
         })
       }
     } catch {
@@ -59,7 +67,11 @@ export async function GET(request: NextRequest) {
 
     const data = await serverApi.get(`/api/sharing/conversations/${shareId}`)
 
-    if (!data.success) {
+    const legacyConversation = data.success && data.conversation
+      ? normalizeSharedConversation(data.conversation, shareId)
+      : null
+
+    if (!sharedConversationHasMessages(legacyConversation)) {
       return NextResponse.json(
         { success: false, error: 'Conversation not found or has expired' },
         { status: 404 }
@@ -68,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      conversation: normalizeSharedConversation(data.conversation, shareId)
+      conversation: legacyConversation
     })
 
   } catch (error) {

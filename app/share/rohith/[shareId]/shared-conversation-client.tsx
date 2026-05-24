@@ -4,7 +4,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, Share2, Check, ArrowLeft } from 'lucide-react'
+import { MessageSquare, Share2, Check, ArrowLeft, Database, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
 import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
@@ -23,6 +23,11 @@ interface SharedConversationData {
   messages: SharedMessage[]
   messageCount?: number
   createdAt?: string | Date
+  sourceBasis?: string[]
+  whatAudelleUsed?: string[]
+  whatAskRohithUsed?: string[]
+  caveats?: string[]
+  positioningLine?: string
 }
 
 interface SharedConversationClientProps {
@@ -52,6 +57,11 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
   }
 
   const messages = conversation.messages || []
+  const sourceBasis = (conversation.sourceBasis || []).filter(Boolean)
+  const shelvesUsed = (conversation.whatAudelleUsed || conversation.whatAskRohithUsed || []).filter(Boolean)
+  const caveats = (conversation.caveats || []).filter(Boolean)
+  const displaySources = sourceBasis.slice(0, 6)
+  const remainingSourceCount = Math.max(0, sourceBasis.length - displaySources.length)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -105,6 +115,84 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
 
       {/* Messages */}
       <main className="max-w-4xl mx-auto px-6 py-8">
+        {(shelvesUsed.length > 0 || sourceBasis.length > 0 || caveats.length > 0) && (
+          <section className="mb-10 border-b border-border/20 pb-6">
+            {conversation.positioningLine && (
+              <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                {conversation.positioningLine}
+              </p>
+            )}
+            <div className="grid gap-5 md:grid-cols-3">
+              {shelvesUsed.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gold/80 font-mono mb-2">
+                    <Database className="h-3.5 w-3.5" />
+                    Used
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {shelvesUsed.slice(0, 8).map((item) => (
+                      <span key={item} className="text-xs text-foreground/80 border border-border/40 px-2 py-1 rounded">
+                        {item.replaceAll('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {displaySources.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gold/80 font-mono mb-2">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Source basis
+                  </div>
+                  <div className="space-y-1.5">
+                    {displaySources.map((source) => {
+                      let label = source
+                      try {
+                        label = new URL(source).hostname.replace(/^www\./, '')
+                      } catch {
+                        label = source
+                      }
+                      return (
+                        <a
+                          key={source}
+                          href={source}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block text-xs text-foreground/80 hover:text-gold truncate"
+                        >
+                          {label}
+                        </a>
+                      )
+                    })}
+                    {remainingSourceCount > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        +{remainingSourceCount} more sources in the packet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {caveats.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gold/80 font-mono mb-2">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Caveats
+                  </div>
+                  <ul className="space-y-1.5">
+                    {caveats.slice(0, 4).map((item) => (
+                      <li key={item} className="text-xs text-foreground/75 leading-relaxed">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         <div className="space-y-6">
           {messages.map((message) => (
             <div key={message.id}>
