@@ -403,11 +403,13 @@ export async function getCommandCentreOpportunities(
   {
     bustCache = false,
     includeCrownVault = false,
+    includeStaleMap = false,
     view = "all",
     timeframe = "LIVE",
   }: {
     bustCache?: boolean
     includeCrownVault?: boolean
+    includeStaleMap?: boolean
     view?: string
     timeframe?: string
   } = {}
@@ -417,6 +419,7 @@ export async function getCommandCentreOpportunities(
       view,
       timeframe,
       include_crown_vault: includeCrownVault ? "true" : "false",
+      include_stale_map: includeStaleMap ? "true" : "false",
     })
 
     if (bustCache) {

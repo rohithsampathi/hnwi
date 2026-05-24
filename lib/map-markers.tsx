@@ -354,7 +354,14 @@ export function createCustomIcon(
   openPopupIndex: number | null
 ) {
   const L = getL()
-  const color = getColorFromValue(city.value || city.population)
+  const isStaleProjection = Boolean(
+    city.is_stale_projection ||
+    city.map_visibility === 'stale_historical' ||
+    city.projection_status?.toLowerCase().includes('stale')
+  )
+  const color = isStaleProjection
+    ? (theme === "dark" ? "#8a8a8a" : "#737373")
+    : getColorFromValue(city.value || city.population)
 
   // Show icon ONLY when popup is open for this specific marker
   const shouldShowIcon = openPopupIndex === clusterIndex
@@ -428,7 +435,7 @@ export function createCustomIcon(
         width: 16px;
         height: 16px;
         background: ${color};
-        opacity: 1;
+        opacity: ${isStaleProjection ? 0.72 : 1};
         border: 1px solid ${color};
         border-radius: 50%;
         box-shadow: 0 0 8px ${color};

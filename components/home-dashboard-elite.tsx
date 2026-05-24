@@ -95,6 +95,7 @@ export function HomeDashboardElite({
     isPersonalMode,
     hasCompletedAssessment,
     includeCrownVault: true,
+    includeStaleMap: timeframe === 'all',
     cleanCategories: true // Clean category names for better UI
   })
 

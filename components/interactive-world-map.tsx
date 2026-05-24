@@ -60,6 +60,9 @@ export interface City {
   industry?: string
   product?: string
   start_date?: string
+  projection_status?: string
+  is_stale_projection?: boolean
+  map_visibility?: string
   is_new?: boolean
   isNew?: boolean
   // Citation data

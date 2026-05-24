@@ -31,7 +31,7 @@ export function MapPage() {
   // Fetch map data (Crown Vault + Privé + HNWI patterns)
   const fetchMapData = useCallback(async (forceRefresh = false) => {
     try {
-      // Show cached data immediately if present, but always refresh the LIVE map in the background.
+      // Show cached data immediately if present, but always refresh the map in the background.
       if (!forceRefresh && hasValidCache && cachedData?.cities?.length > 0) {
         setCities(cachedData.cities)
       }
@@ -40,8 +40,9 @@ export function MapPage() {
 
       const commandCentreData = await getCommandCentreOpportunities({
         includeCrownVault: true,
+        includeStaleMap: true,
         view: 'all',
-        timeframe: 'LIVE',
+        timeframe: 'ALL',
         bustCache: true
       })
 
@@ -76,6 +77,9 @@ export function MapPage() {
             risk: opp.risk_level || opp.risk || 'medium',
             source: opp.source,
             start_date: opp.start_date || opp.date,
+            projection_status: opp.projection_status,
+            is_stale_projection: opp.is_stale_projection || opp.map_visibility === 'stale_historical',
+            map_visibility: opp.map_visibility,
             devIds: opp.devIds || opp.dev_ids || (opp.devid ? [opp.devid] : undefined),
             hasCitations: Array.isArray(opp.devIds || opp.dev_ids) ? true : !!opp.devid,
             is_new: opp.is_new || false

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const view = searchParams.get('view') || 'all';
     const timeframe = searchParams.get('timeframe') || 'LIVE';
     const requestedIncludeCrownVault = searchParams.get('include_crown_vault') === 'true';
+    const includeStaleMap = searchParams.get('include_stale_map') === 'true';
 
     // Get authentication cookies - SOTA: Use proper cookie names
     const cookieStore = await cookies();
@@ -58,13 +59,13 @@ export async function GET(request: NextRequest) {
     const includeCrownVault = requestedIncludeCrownVault && !!userId;
 
     // Build backend URL with query parameters
-    let backendUrl = `${API_BASE_URL}/api/command-centre/opportunities?view=${view}&timeframe=${timeframe}&include_crown_vault=${includeCrownVault}`;
+    let backendUrl = `${API_BASE_URL}/api/command-centre/opportunities?view=${view}&timeframe=${timeframe}&include_crown_vault=${includeCrownVault}&include_stale_map=${includeStaleMap}`;
     if (userId) {
       backendUrl += `&user_id=${userId}`;
     }
 
     // Log backend request for debugging
-    logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId, includeCrownVault });
+    logger.info('Command Centre API request', { view, timeframe, hasUserId: !!userId, includeCrownVault, includeStaleMap });
 
     // SOTA: Forward ALL cookies to backend for proper session handling
     const allCookies = cookieStore.getAll();

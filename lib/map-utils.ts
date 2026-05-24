@@ -76,6 +76,12 @@ export function formatValue(value: string | undefined): string | undefined {
   // Ensure value is a string (handle numbers and other types)
   const valueStr = String(value)
 
+  // Crown Vault values are intentionally USD-first with local currency context,
+  // e.g. "$41.83K (INR 40L)". Preserve that contract exactly.
+  if (/^\$\s*[\d,.]+[KMB]?\s*\([A-Z]{3}\s+[^)]+\)$/i.test(valueStr.trim())) {
+    return valueStr.trim()
+  }
+
   // Strip bracketed text (anything within parentheses)
   const cleanValue = valueStr.replace(/\s*\([^)]*\)/g, '').trim()
 

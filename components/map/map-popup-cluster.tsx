@@ -17,12 +17,16 @@ interface MapPopupClusterProps {
   clusterIndex: number
 }
 
+const isStaleProjectionCity = (city: City) => Boolean(
+  city.is_stale_projection ||
+  city.map_visibility === 'stale_historical' ||
+  city.projection_status?.toLowerCase().includes('stale')
+)
+
 export function MapPopupCluster({
   cities,
   theme,
-  onCityClick,
-  clusterCities,
-  clusterIndex
+  onCityClick
 }: MapPopupClusterProps) {
   return (
     <div className={`p-3 ${theme === "dark" ? "bg-[#1a1a1a] text-white" : "bg-white text-black"}`}>
@@ -36,10 +40,6 @@ export function MapPopupCluster({
             className="p-2 rounded border border-border hover:bg-muted cursor-pointer transition-colors"
             onClick={(e) => {
               e.stopPropagation()
-              // Find the cluster index for this city after zoom
-              const targetClusterIndex = clusterCities.findIndex(c =>
-                c.cities.some(ct => ct.title === city.title)
-              )
               onCityClick(city, true)
             }}
           >
@@ -65,6 +65,11 @@ export function MapPopupCluster({
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
                   </span>
                   NEW
+                </span>
+              )}
+              {isStaleProjectionCity(city) && (
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold bg-muted text-muted-foreground rounded border border-border flex-shrink-0 ml-1">
+                  STALE
                 </span>
               )}
             </p>

@@ -33,6 +33,8 @@ interface Opportunity {
   generated_at?: string;
   projection_status?: string;
   quarantine_status?: string;
+  is_stale_projection?: boolean;
+  map_visibility?: string;
   is_new?: boolean;
   executors?: Array<{
     name: string;
@@ -79,6 +81,7 @@ interface UseOpportunitiesConfig {
   isPersonalMode?: boolean;
   hasCompletedAssessment?: boolean;
   includeCrownVault?: boolean;
+  includeStaleMap?: boolean;
 
   // Public mode specific options
   publicEndpoint?: string; // Allow custom public endpoint
@@ -113,6 +116,7 @@ function buildOpportunitiesCacheKey(config: {
   timeframe: string
   shouldUsePersonalizedView: boolean
   includeCrownVault: boolean
+  includeStaleMap: boolean
   publicEndpoint: string
   filterCrownVault: boolean
   cleanCategories: boolean
@@ -244,6 +248,9 @@ const transformOpportunityToCity = (
     industry: opp.industry,
     product: opp.product,
     start_date: opp.start_date,
+    projection_status: opp.projection_status,
+    is_stale_projection: opp.is_stale_projection || opp.map_visibility === 'stale_historical',
+    map_visibility: opp.map_visibility,
     is_new: opp.is_new,
     devIds: devIds,
     hasCitations: devIds.length > 0,
@@ -270,6 +277,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     isPersonalMode = false,
     hasCompletedAssessment = false,
     includeCrownVault = false,
+    includeStaleMap = false,
     publicEndpoint = '/api/public/assessment/preview-opportunities',
     filterCrownVault = false,
     cleanCategories = true
@@ -291,6 +299,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     timeframe,
     shouldUsePersonalizedView,
     includeCrownVault,
+    includeStaleMap,
     publicEndpoint,
     filterCrownVault,
     cleanCategories,
@@ -361,7 +370,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         // Authenticated users should still see Crown Vault rows in all-mode when requested.
         const shouldIncludeCrownVault = includeCrownVault;
 
-        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
+        const apiUrl = `/api/command-centre/opportunities?view=${viewParam}&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}`;
 
         // Use secureApi for authenticated requests with cache busting when needed
         response = await secureApi.get(apiUrl, true, bustCache);
@@ -372,7 +381,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
 
         // Fallback: if personalized returned empty, retry with view=all
         if (opportunities.length === 0 && viewParam === 'personalized') {
-          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}`;
+          const fallbackUrl = `/api/command-centre/opportunities?view=all&timeframe=${timeframeParam}&include_crown_vault=${shouldIncludeCrownVault}&include_stale_map=${includeStaleMap}`;
           const fallbackResponse = await secureApi.get(fallbackUrl, true, bustCache);
           opportunities = fallbackResponse?.opportunities ||
                          (Array.isArray(fallbackResponse) ? fallbackResponse : []);
@@ -384,7 +393,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
         const now = new Date();
 
         opportunities = opportunities.filter(opp => {
-          if (isStaleProjection(opp)) {
+          if (!includeStaleMap && isStaleProjection(opp)) {
             return false;
           }
 
@@ -537,6 +546,7 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     timeframe,
     shouldUsePersonalizedView,
     includeCrownVault,
+    includeStaleMap,
     publicEndpoint,
     filterCrownVault,
     cleanCategories,

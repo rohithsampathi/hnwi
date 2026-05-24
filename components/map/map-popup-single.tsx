@@ -49,6 +49,11 @@ export function MapPopupSingle({
   const scrollAreaRef = React.useRef<HTMLDivElement>(null)
 
   const shouldShowNewBadge = isRecentlyAddedOpportunity(city)
+  const isStaleProjection = Boolean(
+    city.is_stale_projection ||
+    city.map_visibility === 'stale_historical' ||
+    city.projection_status?.toLowerCase().includes('stale')
+  )
 
   // Extract first paragraph from analysis text
   const getFirstParagraph = (text: string | undefined): string => {
@@ -93,6 +98,11 @@ export function MapPopupSingle({
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
                 </span>
                 NEW
+              </span>
+            )}
+            {isStaleProjection && (
+              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground rounded border border-border">
+                STALE
               </span>
             )}
           </h3>
