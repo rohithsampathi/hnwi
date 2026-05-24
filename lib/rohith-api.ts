@@ -28,6 +28,16 @@ export class RohithAPI {
 
   private constructor() {}
 
+  private rohithBase(): string {
+    return process.env.NEXT_PUBLIC_ROHITH_API_VERSION === "v5"
+      ? "/api/v5/rohith"
+      : "/api/v6/rohith"
+  }
+
+  private legacyRohithBase(): string {
+    return "/api/rohith"
+  }
+
   private normalizeJarvisMode(mode: any): "jarvis" | "classic" {
     const rawMode = String(mode || "").toLowerCase()
     return rawMode.includes("classic") ? "classic" : "jarvis"
@@ -160,7 +170,7 @@ export class RohithAPI {
 
       // Use the backend endpoint for fetching conversations
       const response = await secureApi.get(
-        `/api/rohith/conversations?limit=${limit}`,
+        `${this.rohithBase()}/conversations?limit=${limit}`,
         true,
         { enableCache: false } // Disable cache to always get fresh data
       )
@@ -202,7 +212,7 @@ export class RohithAPI {
   async getConversationHistory(conversationId: string): Promise<ConversationWithMessages | null> {
     try {
       const response = await secureApi.get(
-        `/api/rohith/history/${conversationId}`,
+        `${this.rohithBase()}/history/${conversationId}`,
         true,
         { enableCache: true, cacheDuration: 60000 } // 1 minute cache for active conversations
       )
@@ -339,7 +349,7 @@ export class RohithAPI {
 
       // Use the Rohith start endpoint with the first message
       const response = await secureApi.post(
-        "/api/rohith/start",
+        `${this.rohithBase()}/start`,
         {
           initial_message: firstMessage,
           user_id: targetUserId
@@ -383,7 +393,7 @@ export class RohithAPI {
 
       // Send message to the Rohith message endpoint
       const response = await secureApi.post(
-        `/api/rohith/message/${conversationId}`,
+        `${this.rohithBase()}/message/${conversationId}`,
         {
           message: message,
           user_id: targetUserId
@@ -467,9 +477,9 @@ export class RohithAPI {
 
       const startTime = Date.now()
 
-      // Call V5 endpoint - JARVIS mode is now the default (no need to specify)
+      // Call the configured Rohith conversation lane. V6 preserves the JARVIS response envelope.
       const response = await this.postJarvisEndpoint(
-        `/api/v5/rohith/message/${conversationId}`,
+        `${this.rohithBase()}/message/${conversationId}`,
         {
           message: message,
           user_id: targetUserId,
@@ -541,9 +551,9 @@ export class RohithAPI {
 
       const startTime = Date.now()
 
-      // Call V5 start endpoint - JARVIS mode is now the default
+      // Call the configured Rohith conversation lane. V6 preserves the JARVIS response envelope.
       const response = await this.postJarvisEndpoint(
-        `/api/v5/rohith/start`,
+        `${this.rohithBase()}/start`,
         {
           message: firstMessage,
           user_id: targetUserId,
@@ -589,7 +599,7 @@ export class RohithAPI {
   async deleteConversation(conversationId: string): Promise<boolean> {
     try {
       const response = await secureApi.delete(
-        `/api/rohith/conversation/${conversationId}`,
+        `${this.legacyRohithBase()}/conversation/${conversationId}`,
         true
       )
 
@@ -612,7 +622,7 @@ export class RohithAPI {
 
       // Use a specific endpoint for title updates
       const response = await secureApi.post(
-        `/api/rohith/conversation/${conversationId}/title`,
+        `${this.legacyRohithBase()}/conversation/${conversationId}/title`,
         { title: cleanedTitle },
         true
       )
@@ -622,7 +632,8 @@ export class RohithAPI {
 
       // Also clear the conversations list cache to ensure it gets fresh data
       import("@/lib/secure-api").then(({ CacheControl }) => {
-        CacheControl.delete('/api/rohith/conversations')
+        CacheControl.delete(`${this.rohithBase()}/conversations`)
+        CacheControl.delete(`${this.legacyRohithBase()}/conversations`)
       })
 
       return response.success === true || response.status === 'success'
@@ -644,7 +655,7 @@ export class RohithAPI {
       const targetUserId = userId || getCurrentUserId()
 
       const data = await secureApi.post(
-        `/api/rohith/feedback/${conversationId}`,
+        `${this.legacyRohithBase()}/feedback/${conversationId}`,
         {
           conversation_id: conversationId,
           message_id: messageId,
@@ -748,7 +759,7 @@ export class RohithAPI {
 
       // Fallback to the original endpoint if the new one fails
       const fallbackResponse = await secureApi.get(
-        `/api/rohith/share?shareId=${shareId}`,
+        `${this.legacyRohithBase()}/share?shareId=${encodeURIComponent(shareId)}`,
         false // No auth required for public shares
       )
 
@@ -806,6 +817,8 @@ export class RohithAPI {
 
     // Clear from secure API cache
     const cacheKeys = [
+      `${this.rohithBase()}/history/${conversationId}`,
+      `${this.rohithBase()}/conversations`,
       `/api/rohith/history/${conversationId}`,
       `/api/rohith/conversations` // Will clear user's conversation list cache
     ]

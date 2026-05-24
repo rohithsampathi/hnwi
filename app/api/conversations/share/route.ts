@@ -11,6 +11,27 @@ import crypto from 'crypto'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+function normalizeSharedConversation(conversation: any, shareId: string) {
+  const rawMessages = Array.isArray(conversation?.messages) ? conversation.messages : []
+  const messages = rawMessages.map((message: any, index: number) => ({
+    ...message,
+    id: String(message?.id || message?.message_id || message?._id || `${shareId}-${index}`),
+    role: message?.role === 'user' ? 'user' : 'assistant',
+    content: String(message?.content || message?.message || ''),
+    timestamp: message?.timestamp || message?.createdAt || message?.created_at || conversation?.createdAt || conversation?.created_at || ''
+  }))
+
+  return {
+    ...conversation,
+    id: conversation?.id || conversation?.conversationId || conversation?.conversation_id || shareId,
+    conversationId: conversation?.conversationId || conversation?.conversation_id || conversation?.id || shareId,
+    title: conversation?.title || 'Shared Conversation',
+    messages,
+    messageCount: conversation?.messageCount || conversation?.total_messages || messages.length,
+    createdAt: conversation?.createdAt || conversation?.created_at || conversation?.created_at_iso || ''
+  }
+}
+
 // GET - Retrieve a shared conversation (public, no auth)
 export async function GET(request: NextRequest) {
   try {
@@ -24,6 +45,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    try {
+      const v6 = await serverApi.get(`/api/v6/rohith/share/${shareId}`)
+      if (v6.success && v6.conversation) {
+        return NextResponse.json({
+          success: true,
+          conversation: normalizeSharedConversation(v6.conversation, shareId)
+        })
+      }
+    } catch {
+      // Fall through to legacy shared_conversations for old links.
+    }
+
     const data = await serverApi.get(`/api/sharing/conversations/${shareId}`)
 
     if (!data.success) {
@@ -35,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      conversation: data.conversation
+      conversation: normalizeSharedConversation(data.conversation, shareId)
     })
 
   } catch (error) {
@@ -60,9 +93,9 @@ async function handlePost(request: NextRequest) {
     const body = await request.json()
     const { conversationId, userId, conversationData } = body
 
-    if (!conversationId || !conversationData) {
+    if (!conversationId) {
       return NextResponse.json(
-        { error: 'Conversation ID and data are required' },
+        { error: 'Conversation ID is required' },
         { status: 400 }
       )
     }
@@ -75,6 +108,41 @@ async function handlePost(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    try {
+      const v6 = await serverApi.post(
+        `/api/v6/rohith/share/${conversationId}`,
+        {},
+        request.headers
+      )
+      if (v6.success && v6.shareId) {
+        const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+        const protocol = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https')
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_PRODUCTION_URL || (host ? `${protocol}://${host}` : '')
+
+        if (!baseUrl) {
+          return NextResponse.json(
+            { error: 'Unable to generate share URL. Please configure NEXT_PUBLIC_BASE_URL.' },
+            { status: 500 }
+          )
+        }
+
+        return NextResponse.json({
+          success: true,
+          shareUrl: `${baseUrl}/share/rohith/${v6.shareId}`,
+          shareId: v6.shareId
+        })
+      }
+    } catch {
+      // Fall through to legacy client-supplied snapshot for older conversations.
+    }
+
+    if (!conversationData) {
+      return NextResponse.json(
+        { error: 'Conversation data is required for legacy sharing' },
+        { status: 400 }
       )
     }
 
