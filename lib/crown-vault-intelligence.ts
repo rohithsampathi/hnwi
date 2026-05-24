@@ -204,7 +204,7 @@ const getAssetLocalValue = (
     return null;
   }
   const nativeValue = rail ? getAssetNativeValue(asset, rail) : null;
-  if (nativeValue != null) {
+  if (getAssetNativeCurrency(asset) !== "USD" && nativeValue != null) {
     return nativeValue;
   }
   const fxRate = getAssetFxRate(asset);
