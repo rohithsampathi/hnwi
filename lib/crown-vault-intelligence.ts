@@ -278,7 +278,11 @@ const humanizeAssetLabel = (value: string): string =>
 export const getAssetDisplayType = (asset: CrownVaultAsset): string => {
   const impact = getAssetImpact(asset);
   const marketContext = getAssetMarketContext(asset);
+  const truth = (asset as GenericRecord).katherine_canonical_truth || {};
   const rawText = [
+    String(truth.name || ""),
+    String(truth.property_type || ""),
+    String(truth.asset_category || ""),
     String(asset.asset_data?.name || ""),
     String(asset.asset_data?.notes || ""),
     String(asset.asset_data?.asset_type || ""),
@@ -311,11 +315,17 @@ export const getAssetDisplayType = (asset: CrownVaultAsset): string => {
   if (rawText.includes("watch")) {
     return "Luxury Watch";
   }
-  if (rawText.includes("gold") || rawText.includes("silver") || rawText.includes("bullion")) {
-    return "Bullion";
-  }
   if (rawText.includes("jewellery") || rawText.includes("jewelry") || rawText.includes("diamond")) {
     return "Jewellery";
+  }
+  if (rawText.includes("silver")) {
+    return "Silver";
+  }
+  if (rawText.includes("gold")) {
+    return "Gold";
+  }
+  if (rawText.includes("bullion")) {
+    return "Precious Metals";
   }
   if (rawText.includes("harrier") || rawText.includes("vehicle") || rawText.includes("car")) {
     return "Vehicle";

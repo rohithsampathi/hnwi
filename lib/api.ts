@@ -954,7 +954,11 @@ const isQuantityOnlyAssetTitle = (title: string, asset: any): boolean => {
 const deriveCrownVaultAssetTypeLabel = (asset: any): string => {
   const impact = asset.elite_pulse_impact || {};
   const marketContext = impact.market_context || {};
+  const truth = asset.katherine_canonical_truth || {};
   const rawText = [
+    truth.name,
+    truth.property_type,
+    truth.asset_category,
     asset.asset_data?.name,
     asset.asset_data?.notes,
     asset.asset_data?.asset_type,
@@ -981,8 +985,10 @@ const deriveCrownVaultAssetTypeLabel = (asset: any): string => {
   if (rawText.includes("apartment") || rawText.includes("flat") || rawText.includes("3bhk")) return "Apartment";
   if (rawText.includes("house") || rawText.includes("residence")) return "House";
   if (rawText.includes("watch")) return "Luxury Watch";
-  if (rawText.includes("gold") || rawText.includes("silver") || rawText.includes("bullion") || /\bkg\b/.test(rawText)) return "Bullion";
   if (rawText.includes("jewellery") || rawText.includes("jewelry") || rawText.includes("diamond")) return "Jewellery";
+  if (rawText.includes("silver")) return "Silver";
+  if (rawText.includes("gold")) return "Gold";
+  if (rawText.includes("bullion") || /\bkg\b/.test(rawText)) return "Precious Metals";
   if (rawText.includes("harrier") || rawText.includes("vehicle") || rawText.includes("car")) return "Vehicle";
 
   const candidates = [
@@ -1011,14 +1017,7 @@ const deriveCrownVaultAssetTypeLabel = (asset: any): string => {
 
 const deriveCrownVaultAssetTitle = (asset: any): string => {
   const candidates = [
-    asset.asset_data?.name,
-    asset.asset_data?.title,
-    asset.asset_data?.asset_name,
-    asset.asset_data?.display_name,
-    asset.decrypted_data?.name,
-    asset.decrypted_data?.title,
-    asset.decrypted_data?.asset_name,
-    asset.decrypted_data?.display_name,
+    asset.katherine_canonical_truth?.name,
     asset.name,
     asset.title,
     asset.asset_name,
@@ -1027,6 +1026,14 @@ const deriveCrownVaultAssetTitle = (asset: any): string => {
     asset.metadata?.title,
     asset.elite_pulse_impact?.asset_name,
     asset.elite_pulse_impact?.market_context?.asset_name,
+    asset.asset_data?.name,
+    asset.asset_data?.title,
+    asset.asset_data?.asset_name,
+    asset.asset_data?.display_name,
+    asset.decrypted_data?.name,
+    asset.decrypted_data?.title,
+    asset.decrypted_data?.asset_name,
+    asset.decrypted_data?.display_name,
   ]
     .map(cleanAssetText)
     .filter(Boolean);
