@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const v6 = await serverApi.get(`/api/v6/audelle/share/${shareId}`)
-      const conversation = v6.success && v6.conversation
-        ? normalizeSharedConversation(v6.conversation, shareId)
+      const audelle = await serverApi.get(`/api/audelle/share/${shareId}`)
+      const conversation = audelle.success && audelle.conversation
+        ? normalizeSharedConversation(audelle.conversation, shareId)
         : null
 
       if (sharedConversationHasMessages(conversation)) {
@@ -124,12 +124,12 @@ async function handlePost(request: NextRequest) {
     }
 
     try {
-      const v6 = await serverApi.post(
-        `/api/v6/audelle/share/${conversationId}`,
+      const audelle = await serverApi.post(
+        `/api/audelle/share/${conversationId}`,
         {},
         request.headers
       )
-      if (v6.success && v6.shareId) {
+      if (audelle.success && audelle.shareId) {
         const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
         const protocol = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https')
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_PRODUCTION_URL || (host ? `${protocol}://${host}` : '')
@@ -143,8 +143,8 @@ async function handlePost(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          shareUrl: `${baseUrl}/share/audelle/${v6.shareId}`,
-          shareId: v6.shareId
+          shareUrl: `${baseUrl}/share/audelle/${audelle.shareId}`,
+          shareId: audelle.shareId
         })
       }
     } catch {

@@ -38,9 +38,9 @@ function normalizeSharedConversation(conversation: any, shareId: string) {
 // self-fetching the frontend host can resolve to the wrong deployment/runtime.
 async function getSharedConversation(shareId: string) {
   try {
-    const v6 = await serverApi.get(`/api/v6/audelle/share/${shareId}`)
-    const conversation = v6.success && v6.conversation
-      ? normalizeSharedConversation(v6.conversation, shareId)
+    const audelle = await serverApi.get(`/api/audelle/share/${shareId}`)
+    const conversation = audelle.success && audelle.conversation
+      ? normalizeSharedConversation(audelle.conversation, shareId)
       : null
     if (sharedConversationHasMessages(conversation)) {
       return conversation

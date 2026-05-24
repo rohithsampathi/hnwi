@@ -31,7 +31,7 @@ export class RohithAPI {
   private rohithBase(): string {
     return process.env.NEXT_PUBLIC_ROHITH_API_VERSION === "v5"
       ? "/api/v5/rohith"
-      : "/api/v6/audelle"
+      : "/api/audelle"
   }
 
   private legacyRohithBase(): string {
