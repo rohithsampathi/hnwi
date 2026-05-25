@@ -144,6 +144,130 @@ function visualizationSignature(command: VisualizationCommand): string {
   return JSON.stringify({ type: command.type, title: data.title || '', sections })
 }
 
+function normalizeNumericValue(value: number, unit: string): number {
+  const normalizedUnit = unit.toLowerCase()
+  if (normalizedUnit.includes('billion')) return value * 1000
+  if (normalizedUnit.includes('crore')) return value * 10
+  return value
+}
+
+function numericDisplay(value: string, unit: string, currency: string): string {
+  return `${currency ? `${currency} ` : ''}${value}${unit ? ` ${unit}` : ''}`.trim()
+}
+
+function numericLabel(sentence: string, matchStart: number, matchEnd: number): string {
+  const before = sentence.slice(0, matchStart).replace(/[([].*?[\])]/g, ' ').trim()
+  const after = sentence.slice(matchEnd).replace(/[([].*?[\])]/g, ' ').trim()
+  const beforeWords = before.split(/\s+/).filter(Boolean)
+  const afterWords = after.split(/\s+/).filter(Boolean)
+  const labelWords = beforeWords.slice(-7)
+
+  if (/^up$/i.test(labelWords[labelWords.length - 1] || '') || /^down$/i.test(labelWords[labelWords.length - 1] || '')) {
+    return `${labelWords.slice(0, -1).join(' ')} ${labelWords[labelWords.length - 1]}`.trim() || 'Change'
+  }
+
+  const raw = labelWords.length ? labelWords.join(' ') : afterWords.slice(0, 5).join(' ')
+  return raw
+    .replace(/\b(reached|reports?|posted|shows?|with|while|and|the|a|an|of|in|to|from|above|below)$/gi, '')
+    .replace(/^[,.;:\s]+|[,.;:\s]+$/g, '')
+    .trim() || 'Reported figure'
+}
+
+function inferNumericFactUnit(currency: string, unit: string): string {
+  const normalized = unit.toLowerCase()
+  if (normalized === '%') return 'percent'
+  if (normalized.includes('percent')) return 'percent'
+  if (currency && normalized.includes('billion')) return `${currency} million`
+  if (currency && normalized.includes('million')) return `${currency} million`
+  if (currency && normalized.includes('crore')) return `${currency} million`
+  if (currency) return currency
+  return normalized || 'value'
+}
+
+function syntheticDataExplainer(message: SharedMessage): VisualizationCommand | null {
+  if (message.role !== 'assistant') return null
+
+  const text = cleanSharedMessageContent(message.content)
+  if (!text || text.length < 120) return null
+
+  const facts: Array<{ label: string; value: number; display: string; unit: string }> = []
+  const sentences = text
+    .replace(/\[[0-9]+\]/g, '')
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+  const factPattern = /\b(?:(AED|USD|INR|GBP|EUR)\s*)?([0-9][0-9,]*(?:\.[0-9]+)?)\s*(billion|million|crore|percent|%|entities|licen[cs]es|firms|funds|journeys|transactions|assets|quarters|homes|families)?\b/gi
+
+  sentences.forEach((sentence) => {
+    let match: RegExpExecArray | null
+    factPattern.lastIndex = 0
+    while ((match = factPattern.exec(sentence)) !== null) {
+      const currency = (match[1] || '').toUpperCase()
+      const rawValue = match[2] || ''
+      const rawUnit = match[3] || ''
+      const value = Number(rawValue.replace(/,/g, ''))
+      if (!Number.isFinite(value)) continue
+      if (!currency && !rawUnit) continue
+      if (!rawUnit && value >= 1900 && value <= 2100) continue
+      if (rawUnit && /quarter/i.test(rawUnit) && value <= 4) continue
+      if (facts.some((fact) => fact.display === numericDisplay(rawValue, rawUnit, currency))) continue
+
+      const unit = inferNumericFactUnit(currency, rawUnit)
+      facts.push({
+        label: numericLabel(sentence, match.index, match.index + match[0].length).slice(0, 42),
+        value: normalizeNumericValue(value, rawUnit),
+        display: numericDisplay(rawValue, rawUnit, currency),
+        unit,
+      })
+    }
+  })
+
+  const tableRows = facts.slice(0, 6)
+  if (tableRows.length < 2) return null
+
+  const comparableUnit = tableRows[0].unit
+  const comparableRows = tableRows.filter((row) => row.unit === comparableUnit)
+  const sections: any[] = [
+    {
+      kind: 'table',
+      title: 'Numbers Audelle is using',
+      columns: ['Signal', 'Value'],
+      rows: tableRows.map((fact) => [fact.label, fact.display]),
+    }
+  ]
+
+  if (comparableRows.length >= 2) {
+    sections.unshift({
+      kind: comparableUnit === 'percent' ? 'deviation' : 'bar',
+      title: comparableUnit === 'percent' ? 'Change signals' : 'Comparable scale',
+      unit: comparableUnit,
+      rows: comparableRows.slice(0, 5).map((fact) => ({
+        label: fact.label,
+        value: fact.value,
+        display: fact.display,
+        unit: fact.unit,
+      })),
+    })
+  }
+
+  return {
+    id: `synthetic-${message.id}`,
+    type: 'data_explainer',
+    position: 'center',
+    size: 'medium',
+    animation: 'fade',
+    duration_ms: 180,
+    priority: 20,
+    interactive: false,
+    data: {
+      title: 'Answer read',
+      subtitle: 'Figures surfaced directly from this answer',
+      sections,
+    },
+  }
+}
+
 function firstSourceUrl(source: Record<string, any>): string {
   const urls = source?.source_urls
   if (Array.isArray(urls) && urls.length > 0) return String(urls[0] || '')
@@ -394,7 +518,10 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
     const next = new Map<string, VisualizationCommand[]>()
 
     messages.forEach((message) => {
-      const visualizations = visibleVisualizations(message).filter((command) => {
+      const existingVisualizations = visibleVisualizations(message)
+      const hasDataExplainer = existingVisualizations.some((command) => command.type === 'data_explainer')
+      const synthetic = hasDataExplainer ? null : syntheticDataExplainer(message)
+      const visualizations = [...existingVisualizations, ...(synthetic ? [synthetic] : [])].filter((command) => {
         if (command.type !== 'data_explainer') return true
         const signature = visualizationSignature(command)
         if (seenDataExplainers.has(signature)) return false
@@ -656,29 +783,6 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
             )
           })}
         </div>
-
-        {citations.length > 0 && (
-          <section id="conversation-evidence" className="mt-10 border-t border-border/25 pt-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <BookOpen className="h-4 w-4 text-gold" />
-              Source basis
-            </div>
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {citations.map((citation) => (
-                <button
-                  key={citation.id}
-                  type="button"
-                  onClick={() => handleCitationClick(citation.id)}
-                  title={`Citation ${citation.number}`}
-                  aria-label={`Open citation ${citation.number}`}
-                  className="rounded border border-border/40 px-2 py-1 text-xs text-foreground/80 hover:border-gold/50 hover:text-gold"
-                >
-                  [{citation.number}]
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
         <section className="mt-10 border-t border-border/25 pt-5">
           <p className="max-w-2xl text-sm leading-relaxed text-foreground/80">
