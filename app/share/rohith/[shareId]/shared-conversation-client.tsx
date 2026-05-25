@@ -179,6 +179,12 @@ function visualizationSignature(command: VisualizationCommand): string {
   return JSON.stringify({ type: command.type, title: data.title || '', sections })
 }
 
+function isRouteReadVisualization(command: VisualizationCommand): boolean {
+  const title = String(command?.data?.title || '').toLowerCase()
+  const id = String(command?.id || '').toLowerCase()
+  return title === 'route read' || id.startsWith('route-read-')
+}
+
 function normalizeNumericValue(value: number, unit: string): number {
   const normalizedUnit = unit.toLowerCase()
   if (normalizedUnit.includes('billion')) return value * 1000
@@ -597,6 +603,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
 
   const visibleVisualizationsByMessageId = useMemo(() => {
     const seenDataExplainers = new Set<string>()
+    let routeReadShown = false
     const next = new Map<string, VisualizationCommand[]>()
 
     messages.forEach((message) => {
@@ -609,6 +616,10 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         ...(numericSynthetic ? [numericSynthetic] : []),
         ...(routeSynthetic ? [routeSynthetic] : []),
       ].filter((command) => {
+        if (isRouteReadVisualization(command)) {
+          if (routeReadShown) return false
+          routeReadShown = true
+        }
         if (command.type !== 'data_explainer') return true
         const signature = visualizationSignature(command)
         if (seenDataExplainers.has(signature)) return false
