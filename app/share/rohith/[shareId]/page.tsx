@@ -9,6 +9,9 @@ import { serverApi } from "@/lib/server-api"
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const siteUrl = "https://app.hnwichronicles.com"
+const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-route-conversation.png?v=20260525`
+
 function sharedConversationHasMessages(conversation: any) {
   return Array.isArray(conversation?.messages) && conversation.messages.length > 0
 }
@@ -105,8 +108,7 @@ export async function generateMetadata({
 
   const title = `${conversation.title || "Audelle Conversation"} | Audelle by HNWI Chronicles`
   const description = sharedConversationDescription(conversation)
-  const siteUrl = "https://app.hnwichronicles.com"
-  const ogImage = `${siteUrl}/logo.png?v=20241220e`
+  const ogImage = audelleDubaiRouteOgImage
 
   return {
     title: {
@@ -119,13 +121,25 @@ export async function generateMetadata({
       type: "website",
       url: `${siteUrl}/share/audelle/${shareId}`,
       siteName: "HNWI Chronicles",
-      images: [{ url: ogImage, width: 650, height: 650, alt: title }]
+      images: [
+        {
+          url: ogImage,
+          width: 1254,
+          height: 1254,
+          alt: "Audelle by HNWI Chronicles decision conversation",
+        },
+      ]
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [ogImage]
+      images: [
+        {
+          url: ogImage,
+          alt: "Audelle by HNWI Chronicles decision conversation",
+        },
+      ]
     }
   }
 }
