@@ -34,6 +34,34 @@ function normalizeSharedConversation(conversation: any, shareId: string) {
   }
 }
 
+function compactText(value: string) {
+  return String(value || '')
+    .replace(/—/g, ', ')
+    .replace(/–/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function sharedConversationDescription(conversation: any) {
+  const text = compactText([
+    conversation?.title,
+    conversation?.positioningLine,
+    (conversation?.messages || []).slice(0, 3).map((message: any) => message?.content || '').join(' ')
+  ].filter(Boolean).join(' '))
+
+  if (/dubai|difc|adgm|uae/i.test(text)) {
+    return 'A public Audelle conversation on what a Dubai-linked family route must still carry before it hardens.'
+  }
+  if (/hyderabad/i.test(text)) {
+    return 'A public Audelle conversation on when a city becomes useful enough to carry family life, capital and continuity.'
+  }
+  if (/uk|london|europe|non-?dom/i.test(text)) {
+    return 'A public Audelle conversation on route pressure, proof burden and timing for UK or Europe-linked families.'
+  }
+
+  return 'A public Audelle conversation on the proof, authority, liquidity, timing and fallback questions before a family wealth route hardens.'
+}
+
 // Server-side fetch for shared conversation. Read backend contracts directly;
 // self-fetching the frontend host can resolve to the wrong deployment/runtime.
 async function getSharedConversation(shareId: string) {
@@ -76,7 +104,7 @@ export async function generateMetadata({
   }
 
   const title = `${conversation.title || "Audelle Conversation"} | Audelle by HNWI Chronicles`
-  const description = `Shared Audelle intelligence conversation with ${conversation.messageCount || conversation.messages?.length || 0} messages.`
+  const description = sharedConversationDescription(conversation)
   const siteUrl = "https://app.hnwichronicles.com"
   const ogImage = `${siteUrl}/logo.png?v=20241220e`
 

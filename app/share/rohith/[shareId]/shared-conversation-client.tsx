@@ -4,7 +4,7 @@
 'use client'
 
 import { isValidElement, useMemo, useState } from 'react'
-import { MessageCircle, Share2, Check, ArrowLeft, User, Clock, BookOpen } from 'lucide-react'
+import { MessageCircle, Share2, Check, ArrowLeft, User, Clock, BookOpen, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
 import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
@@ -224,8 +224,59 @@ function sourceQuality(source: ReturnType<typeof makePreloadedDevelopment>) {
   return score
 }
 
+function compactText(value: string): string {
+  return String(value || '')
+    .replace(/—/g, ', ')
+    .replace(/–/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function conversationSearchText(conversation: SharedConversationData, messages: SharedMessage[]): string {
+  return compactText([
+    conversation.title,
+    conversation.positioningLine,
+    messages.slice(0, 6).map((message) => message.content).join(' '),
+  ].filter(Boolean).join(' '))
+}
+
+function getRouteTopic(conversation: SharedConversationData, messages: SharedMessage[]): string {
+  const text = conversationSearchText(conversation, messages)
+  if (/dubai|difc|adgm|uae/i.test(text)) return 'Dubai-linked family move'
+  if (/singapore|sg\b/i.test(text)) return 'Singapore-linked family move'
+  if (/uk|london|europe|non-?dom/i.test(text)) return 'UK or Europe-linked family route'
+  if (/hyderabad/i.test(text)) return 'Hyderabad family-base decision'
+  if (/mumbai/i.test(text)) return 'Mumbai wealth route'
+  if (/succession|heir|inheritance/i.test(text)) return 'succession route'
+  if (/property|real estate|asset/i.test(text)) return 'asset route'
+  return 'family wealth route'
+}
+
+function getDecisionFrame(conversation: SharedConversationData, messages: SharedMessage[]): string {
+  const explicit = compactText(cleanSharedMessageContent(conversation.positioningLine || ''))
+  if (explicit && !/\bAudelle is\b/i.test(explicit)) {
+    return explicit
+  }
+
+  const topic = getRouteTopic(conversation, messages)
+  if (topic === 'Hyderabad family-base decision') {
+    return 'The question is not whether Hyderabad is rising. It is whether the city can carry work, capital, children, healthcare, movement and family continuity in one place.'
+  }
+  if (topic === 'Dubai-linked family move') {
+    return 'For Dubai-linked family moves, the question is not whether the hub is strong. It is whether the route can still carry proof, authority, liquidity, movement and fallback when timing changes.'
+  }
+
+  return 'The useful moment is before commitment, while proof, authority, liquidity, timing, fallback and family explanation can still be changed.'
+}
+
+function getPrivatePrompt(conversation: SharedConversationData, messages: SharedMessage[]): string {
+  const topic = getRouteTopic(conversation, messages)
+  return `If this is live in your room, message Rohith with the ${topic.toLowerCase()}, timing, and the one part of the route that still has to hold before commitment.`
+}
+
 export default function SharedConversationClient({ conversation, shareId }: SharedConversationClientProps) {
   const [linkCopied, setLinkCopied] = useState(false)
+  const [promptCopied, setPromptCopied] = useState(false)
   const [citationPanelOpen, setCitationPanelOpen] = useState(false)
   const [selectedCitationId, setSelectedCitationId] = useState<string | null>(null)
 
@@ -252,6 +303,26 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
     () => Array.isArray(conversation.packets) ? conversation.packets : [],
     [conversation.packets]
   )
+  const decisionFrame = useMemo(() => getDecisionFrame(conversation, messages), [conversation, messages])
+  const privatePrompt = useMemo(() => getPrivatePrompt(conversation, messages), [conversation, messages])
+
+  const handleCopyPrivatePrompt = async () => {
+    const prompt = `${privatePrompt}\n\n${window.location.href}`
+    try {
+      await navigator.clipboard.writeText(prompt)
+      setPromptCopied(true)
+      setTimeout(() => setPromptCopied(false), 2000)
+    } catch {
+      const input = document.createElement('textarea')
+      input.value = prompt
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+      setPromptCopied(true)
+      setTimeout(() => setPromptCopied(false), 2000)
+    }
+  }
 
   const { citations, citationMap } = useMemo(() => {
     const nextCitations: Citation[] = []
@@ -390,6 +461,9 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
             <h2 className="truncate text-lg font-semibold text-foreground">
               {conversation.title || 'Shared Conversation'}
             </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-foreground/75">
+              {decisionFrame}
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button
@@ -605,6 +679,31 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
             </div>
           </section>
         )}
+
+        <section className="mt-10 border-t border-border/25 pt-5">
+          <p className="max-w-2xl text-sm leading-relaxed text-foreground/80">
+            {privatePrompt}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopyPrivatePrompt}
+            className="mt-3"
+          >
+            {promptCopied ? (
+              <>
+                <Check className="mr-2 h-4 w-4" />
+                Prompt copied
+              </>
+            ) : (
+              <>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy private prompt
+              </>
+            )}
+          </Button>
+        </section>
 
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-border/20 text-center">
