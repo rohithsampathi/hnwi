@@ -584,11 +584,11 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         </div>
 
         {citations.length > 0 && (
-          <details id="conversation-evidence" className="mt-10 rounded-2xl border border-border/30 bg-card/50 px-4 py-3 shadow-sm">
-            <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground">
+          <section id="conversation-evidence" className="mt-10 border-t border-border/25 pt-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
               <BookOpen className="h-4 w-4 text-gold" />
               Source basis
-            </summary>
+            </div>
             <div className="mt-4 flex flex-wrap gap-1.5">
               {citations.map((citation) => (
                 <button
@@ -603,7 +603,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                 </button>
               ))}
             </div>
-          </details>
+          </section>
         )}
 
         {/* Footer */}
