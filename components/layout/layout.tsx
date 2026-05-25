@@ -30,9 +30,10 @@ interface LayoutProps {
   currentPage?: string
   user?: any
   isUserAuthenticated?: boolean
+  disableNavigation?: boolean
 }
 
-export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "", user: propUser, isUserAuthenticated = false }: LayoutProps) {
+export function Layout({ children, title, showBackButton = false, onNavigate, sidebarCollapsed: initialSidebarCollapsed = true, currentPage = "", user: propUser, isUserAuthenticated = false, disableNavigation = false }: LayoutProps) {
   const { theme } = useTheme()
   const { showBanner } = useBusinessMode()
   const { isCenterOpen, setCenterOpen } = useNotificationContext()
@@ -125,12 +126,14 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    if (disableNavigation) return
     if (isDecisionMemoRoute) return
     router.push("/dashboard")
   }
 
   const handleBackClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    if (disableNavigation) return
     router.back()
   }
 
@@ -151,6 +154,7 @@ export function Layout({ children, title, showBackButton = false, onNavigate, si
           currentPage={currentPage}
           isUserAuthenticated={isUserAuthenticated}
           hideInPrint={isDecisionMemoRoute}
+          disableNavigation={disableNavigation}
         />
       )}
 

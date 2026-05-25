@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageSquare, Bot, ChevronDown, ChevronUp, ChevronRight, Network, ClipboardCheck, Lock } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageCircle, ChevronDown, ChevronUp, ChevronRight, Network, Lock } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -30,6 +30,7 @@ export function SidebarNavigation({
   currentPage = "",
   isUserAuthenticated = false,
   hideInPrint = false,
+  disableNavigation = false,
 }: {
   onNavigate: (route: string) => void
   headerHeight?: number
@@ -38,6 +39,7 @@ export function SidebarNavigation({
   currentPage?: string
   isUserAuthenticated?: boolean
   hideInPrint?: boolean
+  disableNavigation?: boolean
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -207,7 +209,7 @@ export function SidebarNavigation({
     { name: "Home", icon: Brain, route: "dashboard", businessOnly: false },
     {
       name: "Ask Audelle",
-      icon: Bot,
+      icon: MessageCircle,
       route: "ask-audelle",
       description: "Audelle is the private decision ally for families carrying wealth across borders, generations, and pressure.",
       isNew: true,
@@ -258,10 +260,10 @@ export function SidebarNavigation({
       businessOnly: false
     },
     {
-      name: "Simulation",
-      icon: ClipboardCheck,
-      route: "assessment",
-      description: "Discover your wealth archetype and get personalized strategic insights tailored to your profile.",
+      name: "Decision Memo",
+      icon: BookOpen,
+      route: "decision-memo",
+      description: "Route-control memo for serious cross-border wealth decisions before they harden.",
       isNew: true,
       businessOnly: false
     },
@@ -285,23 +287,26 @@ export function SidebarNavigation({
   // Mobile items are always shown but disabled based on auth status
   const mobileNavItems = [
     { name: "Home", icon: Brain, route: "dashboard" },
-    { name: "Ask Audelle", icon: Bot, route: "ask-audelle", isNew: true },
+    { name: "Ask Audelle", icon: MessageCircle, route: "ask-audelle", isNew: true },
     { name: "War Room", icon: Shield, route: "war-room", isNew: true },
     { name: "Crown Vault", icon: Crown, route: "crown-vault" },
   ]
 
   // Additional menu items for three dots dropdown
-  // Simulation is always shown - clicking it redirects to results if completed
   const moreMenuItems = [
     { name: "Privé Exchange", icon: Gem, route: "prive-exchange" },
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
-    { name: "Simulation", icon: ClipboardCheck, route: "assessment", isNew: true },
+    { name: "Decision Memo", icon: BookOpen, route: "decision-memo", isNew: true },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 
   const handleNavigate = (route: string) => {
+    if (disableNavigation) {
+      return
+    }
+
     // On audit pages, intercept navigation for non-authenticated users only
     // War Room is always accessible (decision-memo outsiders can reach it)
     if (isAuditPage && !isUserAuthenticated && route !== 'war-room') {
@@ -373,7 +378,7 @@ export function SidebarNavigation({
             alt="HNWI Chronicles Globe"
             width={32}
             height={32}
-            style={{ width: 32, height: 32 }}
+            className="h-8 w-8 object-contain"
           />
         </div>
       </aside>
@@ -407,8 +412,13 @@ export function SidebarNavigation({
       >
         {/* Logo at top */}
         <div
-          className="flex items-center justify-center px-4 py-3 border-b border-border/30 bg-background flex-shrink-0 cursor-pointer"
-          onClick={() => handleNavigate("dashboard")}
+          className={cn(
+            "flex items-center justify-center px-4 py-3 border-b border-border/30 bg-background flex-shrink-0",
+            disableNavigation ? "cursor-default" : "cursor-pointer"
+          )}
+          onClick={() => {
+            if (!disableNavigation) handleNavigate("dashboard")
+          }}
         >
           <motion.div
             className={cn(isCollapsed ? "mr-0" : "mr-2.5")}
@@ -436,7 +446,7 @@ export function SidebarNavigation({
               alt="HNWI Chronicles Globe"
               width={32}
               height={32}
-              style={{ width: 32, height: 32 }}
+              className="h-8 w-8 object-contain"
             />
           </motion.div>
           {!isCollapsed && (
@@ -496,9 +506,10 @@ export function SidebarNavigation({
                   // On audit pages for non-auth: look disabled but still clickable (to show popup)
                   // War Room is always fully visible and clickable
                   const isWarRoom = item.route === 'war-room';
-                  const visuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
-                  const actuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
+                  const visuallyDisabled = disableNavigation || (!isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer));
+                  const actuallyDisabled = disableNavigation || (!isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer);
                   const handleClick = () => {
+                    if (disableNavigation) return
                     if (isSimulationForViewer) { setShowRequestAccess(true); return }
                     if (isAuditPage) { handleNavigate(item.route); return }
                     if (!isItemDisabled) handleNavigate(item.route)
@@ -581,9 +592,10 @@ export function SidebarNavigation({
                       );
                       const isSimulationForViewer = (isViewerSession || isDecisionMemoSession) && item.route === 'assessment';
                       const isWarRoom = item.route === 'war-room';
-                      const visuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
-                      const actuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
+                      const visuallyDisabled = disableNavigation || (!isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer));
+                      const actuallyDisabled = disableNavigation || (!isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer);
                       const handleAdditionalClick = () => {
+                        if (disableNavigation) return
                         if (isSimulationForViewer) { setShowRequestAccess(true); return }
                         if (isAuditPage) { handleNavigate(item.route); return }
                         if (!isItemDisabled) handleNavigate(item.route)
@@ -759,8 +771,8 @@ export function SidebarNavigation({
               item.route !== 'assessment' && item.route !== 'war-room' && !(isFlowActive && allowedRoutes.includes(item.route))
             );
             const isWarRoom = item.route === 'war-room';
-            const mobileVisuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled);
-            const mobileActuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage;
+            const mobileVisuallyDisabled = disableNavigation || (!isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled));
+            const mobileActuallyDisabled = disableNavigation || (!isWarRoom && isItemDisabled && !isAuditPage);
             return (
               <Button
                 key={item.route}
@@ -771,7 +783,10 @@ export function SidebarNavigation({
                   mobileVisuallyDisabled && "opacity-50 cursor-not-allowed hover:bg-background",
                   theme === 'dark' && "hover:text-white"
                 )}
-                onClick={() => isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))}
+                onClick={() => {
+                  if (disableNavigation) return
+                  isAuditPage ? handleNavigate(item.route) : (!isItemDisabled && handleNavigate(item.route))
+                }}
                 disabled={mobileActuallyDisabled}
               >
                 {'isNew' in item && item.isNew && (
@@ -831,12 +846,13 @@ export function SidebarNavigation({
                 );
                 const isSimulationForViewer = (isViewerSession || isDecisionMemoSession) && item.route === 'assessment';
                 const isWarRoom = item.route === 'war-room';
-                const dropdownVisuallyDisabled = !isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer);
-                const dropdownActuallyDisabled = !isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer;
+                const dropdownVisuallyDisabled = disableNavigation || (!isWarRoom && ((!isUserAuthenticated && isAuditPage) || isItemDisabled || isSimulationForViewer));
+                const dropdownActuallyDisabled = disableNavigation || (!isWarRoom && isItemDisabled && !isAuditPage && !isSimulationForViewer);
                 return (
                   <DropdownMenuItem
                     key={item.route}
                     onClick={() => {
+                      if (disableNavigation) return
                       if (isSimulationForViewer) { setShowRequestAccess(true); return }
                       if (isAuditPage) { handleNavigate(item.route); return }
                       if (!isItemDisabled) handleNavigate(item.route)
