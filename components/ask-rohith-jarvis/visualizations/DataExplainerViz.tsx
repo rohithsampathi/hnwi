@@ -61,9 +61,91 @@ function sectionRows(section: DataSection): DataRow[] {
     : [];
 }
 
+function isInferredPercentRow(row: DataRow, section: DataSection) {
+  const unit = String(row.unit || section.unit || '').toLowerCase();
+  const label = String(row.label || '').toLowerCase();
+  const value = Math.abs(Number(row.value || 0));
+  return label.includes('growth') && value <= 100 && (!unit || unit === 'value' || unit === 'number');
+}
+
+function unitKey(row: DataRow, section: DataSection) {
+  if (isInferredPercentRow(row, section)) return 'percent';
+  return String(row.unit || section.unit || 'value').toLowerCase();
+}
+
+function hasMixedUnits(rows: DataRow[], section: DataSection) {
+  const units = new Set(rows.map((row) => unitKey(row, section)));
+  return units.size > 1;
+}
+
+function normalizedSignalWidth(row: DataRow, rows: DataRow[], section: DataSection) {
+  const unit = unitKey(row, section);
+  const label = String(row.label || '').toLowerCase();
+  const value = Math.abs(Number(row.value || 0));
+  if (unit.includes('percent') || (label.includes('growth') && value <= 100)) {
+    return Math.max(8, Math.min(100, value));
+  }
+
+  const sameUnitValues = rows
+    .filter((item) => unitKey(item, section) === unit)
+    .map((item) => Math.abs(Number(item.value || 0)))
+    .filter((item) => Number.isFinite(item));
+  const max = Math.max(...sameUnitValues, value, 1);
+  return Math.max(8, Math.min(100, (value / max) * 100));
+}
+
+function displaySignalValue(row: DataRow, section: DataSection) {
+  const unit = row.unit || section.unit;
+  const unitText = String(unit || '').toLowerCase();
+  if (isInferredPercentRow(row, section) || unitText.includes('percent') || unitText === '%') {
+    if (row.display && /%|percent/i.test(row.display)) return row.display;
+    return `${formatValue(row.value)}%`;
+  }
+  if (row.display) return row.display;
+  return formatValue(row.value, unit);
+}
+
+function SignalSection({ section }: { section: DataSection }) {
+  const rows = sectionRows(section);
+  if (!rows.length) return null;
+
+  return (
+    <section className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-3">
+        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="space-y-3">
+        {rows.map((row, index) => {
+          const width = normalizedSignalWidth(row, rows, section);
+          return (
+            <div key={`${row.label}-${index}`} className="grid gap-1.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate text-xs font-medium text-foreground/85">{row.label}</span>
+                <span className="shrink-0 text-xs font-semibold text-foreground">
+                  {displaySignalValue(row, section)}
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary/75"
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function BarSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
+  if (hasMixedUnits(rows, section)) return <SignalSection section={section} />;
 
   return (
     <section className="py-3 first:pt-0 last:pb-0">
@@ -114,6 +196,10 @@ function BarSection({ section }: { section: DataSection }) {
 function DeviationSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
+  const values = rows.map((row) => Number(row.value || 0));
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 0);
+  const padding = Math.max(4, (max - min) * 0.15);
 
   return (
     <section className="border-t border-border/25 py-3 first:border-t-0 first:pt-0 last:pb-0">
@@ -125,18 +211,27 @@ function DeviationSection({ section }: { section: DataSection }) {
       </div>
       <div className="h-40 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={rows} margin={{ top: 10, right: 18, left: 0, bottom: 18 }}>
+          <LineChart data={rows} margin={{ top: 12, right: 28, left: 22, bottom: 34 }}>
             <CartesianGrid stroke={gridColor} strokeOpacity={0.45} vertical={false} />
             <XAxis
               dataKey="label"
               tick={{ fill: axisColor, fontSize: 11 }}
               axisLine={false}
               tickLine={false}
+              height={42}
               interval={0}
               angle={-8}
               textAnchor="end"
+              tickMargin={10}
             />
-            <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis
+              width={38}
+              domain={[min - padding, max + padding]}
+              tick={{ fill: axisColor, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={4}
+            />
             <ReferenceLine y={0} stroke={axisColor} strokeOpacity={0.55} />
             <Tooltip
               contentStyle={{

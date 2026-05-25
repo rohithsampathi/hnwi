@@ -133,12 +133,82 @@ function cleanSharedUserContent(content: string): string {
     .trim()
 }
 
+function repeatedConversationTopic(sentence: string): string {
+  const text = compactText(sentence).toLowerCase()
+  if (!text) return ''
+  if (/\b(?:airport|dxb|airspace|flight|journeys)\b/.test(text)) return 'airport-continuity'
+  return ''
+}
+
+function splitTrailingCitationText(text: string): { body: string; citations: string } {
+  const match = text.match(/((?:\s*\[[0-9]+\])+)\s*$/)
+  if (!match) return { body: text.trim(), citations: '' }
+  return {
+    body: text.slice(0, match.index).trim(),
+    citations: match[1].trim(),
+  }
+}
+
+function removeSentencesMatching(text: string, pattern: RegExp): string {
+  const { body, citations } = splitTrailingCitationText(text)
+  const sentences = body
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+  const kept = sentences.filter((sentence) => !pattern.test(sentence))
+  if (kept.length < Math.min(2, sentences.length)) return text
+  return `${kept.join(' ')}${citations ? ` ${citations}` : ''}`.trim()
+}
+
+function cleanSharedMessageContentForDisplay(content: string, seenTopics: Set<string>): string {
+  const text = cleanSharedMessageContent(content)
+  const { body, citations } = splitTrailingCitationText(text)
+  const sentences = body
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+  if (sentences.length < 3) return text
+
+  const kept: string[] = []
+  sentences.forEach((sentence, index) => {
+    const topic = repeatedConversationTopic(sentence)
+    const isRepeated = topic && seenTopics.has(topic)
+
+    if (index > 0 && isRepeated) return
+
+    kept.push(sentence)
+    if (topic) seenTopics.add(topic)
+  })
+
+  if (kept.length < Math.min(2, sentences.length)) {
+    return text
+  }
+
+  return `${kept.join(' ')}${citations ? ` ${citations}` : ''}`.trim()
+}
+
 function reactNodeToText(node: any): string {
   if (node === null || node === undefined || typeof node === 'boolean') return ''
   if (typeof node === 'string' || typeof node === 'number') return String(node)
   if (Array.isArray(node)) return node.map(reactNodeToText).join('')
   if (isValidElement(node)) return reactNodeToText((node.props as any)?.children)
   return ''
+}
+
+function normalizeVisualizationRow(row: any) {
+  if (!row || Array.isArray(row) || typeof row !== 'object') return row
+  const label = String(row.label || '').toLowerCase()
+  const value = Number(row.value)
+  const unit = String(row.unit || '').toLowerCase()
+  if (label.includes('growth') && Number.isFinite(value) && Math.abs(value) <= 100 && (!unit || unit === 'value' || unit === 'number')) {
+    return {
+      ...row,
+      unit: 'percent',
+      display: /%|percent/i.test(String(row.display || '')) ? row.display : `${value.toLocaleString(undefined, { maximumFractionDigits: 2 }).replace(/\.00$/, '')}%`,
+    }
+  }
+  return row
 }
 
 function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
@@ -152,6 +222,12 @@ function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
       const title = String(section?.title || '').toLowerCase()
       const columns = Array.isArray(section?.columns) ? section.columns.join(' ').toLowerCase() : ''
       return !title.includes('source') && !columns.includes('source')
+    }).map((section: any) => {
+      if (!Array.isArray(section?.rows)) return section
+      return {
+        ...section,
+        rows: section.rows.map(normalizeVisualizationRow),
+      }
     })
 
     return {
@@ -163,7 +239,7 @@ function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
     }
   }).filter((command: any) => {
     const title = String(command?.data?.title || '').toLowerCase()
-    if (title === 'native evidence packet' || title === 'risk assessment') return false
+    if (title === 'native evidence packet' || title === 'risk assessment' || isRouteReadVisualization(command)) return false
     if (command?.type === 'data_explainer' && Array.isArray(command?.data?.sections) && command.data.sections.length === 0) return false
     if (command?.type === 'risk_heatmap' && !visualRequested && !command?.data?.show_by_default) return false
     return true
@@ -491,6 +567,24 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
   }
 
   const messages = useMemo(() => conversation.messages || [], [conversation.messages])
+  const displayMessages = useMemo(() => {
+    const seenTopics = new Set<string>()
+    let airportAlreadyVisible = false
+    return messages.map((message) => ({
+      message,
+      displayContent: (() => {
+        if (message.role !== 'assistant') return cleanSharedUserContent(message.content)
+        let displayContent = cleanSharedMessageContentForDisplay(message.content, seenTopics)
+        if (airportAlreadyVisible) {
+          displayContent = removeSentencesMatching(displayContent, /\b(?:airport|dxb|airspace|flight|journeys)\b/i)
+        }
+        if (/\b(?:airport|dxb|airspace|flight|journeys)\b/i.test(displayContent)) {
+          airportAlreadyVisible = true
+        }
+        return displayContent
+      })(),
+    }))
+  }, [messages])
   const packets = useMemo(
     () => Array.isArray(conversation.packets) ? conversation.packets : [],
     [conversation.packets]
@@ -563,7 +657,6 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
 
   const visibleVisualizationsByMessageId = useMemo(() => {
     const seenDataExplainers = new Set<string>()
-    let routeReadShown = false
     const next = new Map<string, VisualizationCommand[]>()
 
     messages.forEach((message) => {
@@ -576,10 +669,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         ...(numericSynthetic ? [numericSynthetic] : []),
         ...(routeSynthetic ? [routeSynthetic] : []),
       ].filter((command) => {
-        if (isRouteReadVisualization(command)) {
-          if (routeReadShown) return false
-          routeReadShown = true
-        }
+        if (isRouteReadVisualization(command)) return false
         if (command.type !== 'data_explainer') return true
         const signature = visualizationSignature(command)
         if (seenDataExplainers.has(signature)) return false
@@ -681,7 +771,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
       {/* Messages */}
       <main className="w-full pt-2">
         <div className="space-y-8">
-          {messages.map((message) => {
+          {displayMessages.map(({ message, displayContent }) => {
             const messageVisualizations = visibleVisualizationsByMessageId.get(message.id) || []
             return (
             <div key={message.id}>
@@ -690,7 +780,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                   <div className="flex max-w-[min(760px,85%)] flex-col items-end">
                     <div className="mb-1 text-xs font-medium text-muted-foreground">You</div>
                     <div className="rounded-2xl rounded-tr-md bg-muted/80 px-5 py-3 text-[15px] leading-relaxed text-foreground shadow-sm ring-1 ring-border/20">
-                      <p className="whitespace-pre-wrap">{cleanSharedUserContent(message.content)}</p>
+                      <p className="whitespace-pre-wrap">{displayContent}</p>
                     </div>
                   </div>
                   <div className="mt-5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted text-muted-foreground">
@@ -802,7 +892,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                             ),
                           }}
                         >
-                          {cleanSharedMessageContent(message.content)}
+                          {displayContent}
                         </ReactMarkdown>
                       </div>
                     </div>
@@ -842,7 +932,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-border/20 text-center">
           <p className="text-xs font-medium text-muted-foreground">
-            Ask Audelle is a personalised learning engine. It gets better with feedback.
+            Audelle by HNWI Chronicles. Shared wealth-intelligence conversation for public reading.
           </p>
           <p className="mt-1 text-[10px] text-muted-foreground/70">
             © 2026 All Rights Reserved. HNWI Chronicles.

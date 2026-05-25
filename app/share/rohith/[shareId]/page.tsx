@@ -109,7 +109,9 @@ export async function generateMetadata({
   const ogImage = `${siteUrl}/logo.png?v=20241220e`
 
   return {
-    title,
+    title: {
+      absolute: title,
+    },
     description,
     openGraph: {
       title,
