@@ -96,6 +96,12 @@ function cleanSharedMessageContent(content: string): string {
   return normalizeAudelleChatText(moveSourceRowsToInlineCitations(content))
     .replace(/\[object Object\]/gi, '')
     .replace(/\s*that\s+data\s+point\s+(?:sits\s+)?(?:is\s+)?not\s+(?:yet\s+)?proven\s+by\s+(?:this|these)\s+sources?\.?\s*/gi, ' ')
+    .replace(/\bwhat\s+is\s+still\s+missing\s+is\b/gi, 'The next useful proof is')
+    .replace(/\bwhat\s+remains\s+untested\s+in\s+the\s+sources\s+is\b/gi, 'The next useful proof is')
+    .replace(/\bthe\s+record\s+still\s+lacks\s+repeated\s+demonstrations\s+of\b/gi, 'the stronger proof would be repeated demonstrations of')
+    .replace(/\buntil\s+that\s+pattern\s+appears\s+in\s+the\s+record\b/gi, 'until that pattern is visible')
+    .replace(/\buntil\s+that\s+pattern\s+appears\s+with\s+observable\s+outcomes\s+rather\s+than\s+single-quarter\s+data\b/gi, 'until that pattern is visible across more than one quarter')
+    .replace(/\buntil\s+those\s+second-\s*and\s+third-order\s+tests\s+appear\s+in\s+the\s+evidence\b/gi, 'until those second and third order tests are visible')
     .replace(/\bthe\s+2026\s+record\s+shows\b/gi, 'the 2026 evidence shows')
     .replace(/\bthe\s+record\s+shows\b/gi, 'the evidence shows')
     .replace(/\bthe\s+record\s+gives\b/gi, 'the evidence gives')
@@ -132,9 +138,28 @@ function reactNodeToText(node: any): string {
 
 function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
   const visualRequested = /chart|graph|visual|visualize|heatmap|timeline|source packet|evidence packet|show me/i.test(message.content || '')
-  return (message.visualizations || []).filter((command: any) => {
+  return (message.visualizations || []).map((command: any) => {
+    if (command?.type !== 'data_explainer' || !Array.isArray(command?.data?.sections)) {
+      return command
+    }
+
+    const sections = command.data.sections.filter((section: any) => {
+      const title = String(section?.title || '').toLowerCase()
+      const columns = Array.isArray(section?.columns) ? section.columns.join(' ').toLowerCase() : ''
+      return !title.includes('source') && !columns.includes('source')
+    })
+
+    return {
+      ...command,
+      data: {
+        ...command.data,
+        sections,
+      },
+    }
+  }).filter((command: any) => {
     const title = String(command?.data?.title || '').toLowerCase()
     if (title === 'native evidence packet' || title === 'risk assessment') return false
+    if (command?.type === 'data_explainer' && Array.isArray(command?.data?.sections) && command.data.sections.length === 0) return false
     if (command?.type === 'risk_heatmap' && !visualRequested && !command?.data?.show_by_default) return false
     return true
   })
@@ -308,13 +333,14 @@ function routeFactorExplainer(message: SharedMessage): VisualizationCommand | nu
     .map((sentence) => sentence.trim())
     .filter(Boolean)
 
-  const rows = routeFactorPatterns
-    .map((factor) => {
-      const sentence = sentences.find((item) => factor.pattern.test(item))
-      return sentence ? [factor.label, shortSentence(sentence)] : null
-    })
-    .filter((row): row is string[] => Boolean(row))
-    .slice(0, 6)
+  const usedSentences = new Set<string>()
+  const rows = routeFactorPatterns.reduce<string[][]>((acc, factor) => {
+    const sentence = sentences.find((item) => factor.pattern.test(item) && !usedSentences.has(item))
+    if (!sentence) return acc
+    usedSentences.add(sentence)
+    acc.push([factor.label, shortSentence(sentence)])
+    return acc
+  }, []).slice(0, 6)
 
   if (rows.length < 3) return null
 
