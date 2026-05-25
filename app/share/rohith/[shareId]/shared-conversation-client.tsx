@@ -112,6 +112,16 @@ function cleanSharedMessageContent(content: string): string {
     .trim()
 }
 
+function cleanSharedUserContent(content: string): string {
+  return compactText(content)
+    .replace(
+      /^I\s+went\s+back\s+into\s+the\s+family[- ]wealth\s+memory\s+we\s+have\s+been\s+building\s+since\s+day\s+one(?:\s+for\s+today['’]s\s+public\s+conversation)?\.\s*/i,
+      ''
+    )
+    .replace(/^The\s+question\s+I\s+want\s+to\s+sit\s+with\s+is\s+[^.]*\.\s*/i, '')
+    .trim()
+}
+
 function reactNodeToText(node: any): string {
   if (node === null || node === undefined || typeof node === 'boolean') return ''
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -704,7 +714,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                   <div className="flex max-w-[85%] flex-col items-end md:max-w-[70%]">
                     <div className="mb-1 text-xs font-medium text-muted-foreground">You</div>
                     <div className="rounded-3xl rounded-tr-md bg-muted/80 px-5 py-3 text-[15px] leading-relaxed text-foreground shadow-sm">
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <p className="whitespace-pre-wrap">{cleanSharedUserContent(message.content)}</p>
                     </div>
                   </div>
                   <div className="mt-5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted text-muted-foreground">
