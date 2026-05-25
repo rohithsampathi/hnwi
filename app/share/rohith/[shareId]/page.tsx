@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const siteUrl = "https://app.hnwichronicles.com"
-const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-route-conversation.png?v=20260525`
+const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-route-conversation-whatsapp.jpg?v=20260525b`
 
 function sharedConversationHasMessages(conversation: any) {
   return Array.isArray(conversation?.messages) && conversation.messages.length > 0
@@ -124,8 +124,10 @@ export async function generateMetadata({
       images: [
         {
           url: ogImage,
-          width: 1254,
-          height: 1254,
+          secureUrl: ogImage,
+          type: "image/jpeg",
+          width: 1200,
+          height: 1200,
           alt: "Audelle by HNWI Chronicles decision conversation",
         },
       ]
@@ -137,6 +139,10 @@ export async function generateMetadata({
       images: [
         {
           url: ogImage,
+          secureUrl: ogImage,
+          type: "image/jpeg",
+          width: 1200,
+          height: 1200,
           alt: "Audelle by HNWI Chronicles decision conversation",
         },
       ]
