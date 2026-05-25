@@ -268,6 +268,70 @@ function syntheticDataExplainer(message: SharedMessage): VisualizationCommand | 
   }
 }
 
+const routeFactorPatterns = [
+  { label: 'Proof', pattern: /\bproof|source[- ]of[- ]wealth|documentation|documentary|defendable|verified\b/i },
+  { label: 'Authority', pattern: /\bauthority|signer|commit|consent|principal|family decision\b/i },
+  { label: 'Liquidity', pattern: /\bliquidity|exit|buyer pool|sell|resale|window\b/i },
+  { label: 'Movement', pattern: /\bmovement|travel|airport|airspace|access|mobility|flight\b/i },
+  { label: 'Banking', pattern: /\bbank|banking|account|capital movement|onboarding\b/i },
+  { label: 'Tax', pattern: /\btax|residence|residency|domicile|non-dom|substance\b/i },
+  { label: 'Family carry', pattern: /\bschool|children|succession|explanation|family|home\b/i },
+  { label: 'Fallback', pattern: /\bfallback|contingency|alternative|if .* slows|if .* changes\b/i },
+  { label: 'Asset', pattern: /\bproperty|asset|real estate|home|penthouse|villa\b/i },
+]
+
+function shortSentence(sentence: string): string {
+  const clean = compactText(sentence)
+  if (clean.length <= 145) return clean
+  return `${clean.slice(0, 142).replace(/\s+\S*$/, '')}...`
+}
+
+function routeFactorExplainer(message: SharedMessage): VisualizationCommand | null {
+  if (message.role !== 'assistant') return null
+
+  const text = cleanSharedMessageContent(message.content)
+  if (!text || text.length < 140) return null
+
+  const sentences = text
+    .replace(/\[[0-9]+\]/g, '')
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+
+  const rows = routeFactorPatterns
+    .map((factor) => {
+      const sentence = sentences.find((item) => factor.pattern.test(item))
+      return sentence ? [factor.label, shortSentence(sentence)] : null
+    })
+    .filter((row): row is string[] => Boolean(row))
+    .slice(0, 6)
+
+  if (rows.length < 3) return null
+
+  return {
+    id: `route-read-${message.id}`,
+    type: 'data_explainer',
+    position: 'center',
+    size: 'medium',
+    animation: 'fade',
+    duration_ms: 180,
+    priority: 30,
+    interactive: false,
+    data: {
+      title: 'Route read',
+      subtitle: 'Joins surfaced directly in this answer',
+      sections: [
+        {
+          kind: 'table',
+          title: 'What has to hold',
+          columns: ['Join', 'Reading from the answer'],
+          rows,
+        },
+      ],
+    },
+  }
+}
+
 function firstSourceUrl(source: Record<string, any>): string {
   const urls = source?.source_urls
   if (Array.isArray(urls) && urls.length > 0) return String(urls[0] || '')
@@ -520,8 +584,13 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
     messages.forEach((message) => {
       const existingVisualizations = visibleVisualizations(message)
       const hasDataExplainer = existingVisualizations.some((command) => command.type === 'data_explainer')
-      const synthetic = hasDataExplainer ? null : syntheticDataExplainer(message)
-      const visualizations = [...existingVisualizations, ...(synthetic ? [synthetic] : [])].filter((command) => {
+      const numericSynthetic = hasDataExplainer ? null : syntheticDataExplainer(message)
+      const routeSynthetic = hasDataExplainer || numericSynthetic ? null : routeFactorExplainer(message)
+      const visualizations = [
+        ...existingVisualizations,
+        ...(numericSynthetic ? [numericSynthetic] : []),
+        ...(routeSynthetic ? [routeSynthetic] : []),
+      ].filter((command) => {
         if (command.type !== 'data_explainer') return true
         const signature = visualizationSignature(command)
         if (seenDataExplainers.has(signature)) return false
