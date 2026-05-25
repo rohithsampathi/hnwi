@@ -29,9 +29,9 @@ export class RohithAPI {
   private constructor() {}
 
   private rohithBase(): string {
-    return process.env.NEXT_PUBLIC_ROHITH_API_VERSION === "v5"
-      ? "/api/v5/rohith"
-      : "/api/audelle"
+    // Audelle is versionless at the product boundary. Do not let a stale
+    // deployment env route the live chat back to legacy V5/Rohith endpoints.
+    return "/api/audelle"
   }
 
   private legacyRohithBase(): string {
@@ -44,12 +44,31 @@ export class RohithAPI {
   }
 
   private extractConversationId(response: any): string {
-    return String(
-      response?.conversation_id ||
-      response?.conversationId ||
-      response?.id ||
-      ''
-    ).trim()
+    const candidates = [
+      response,
+      response?.data,
+      response?.payload,
+      response?.result,
+      response?.response,
+      response?.data?.response,
+      response?.payload?.response,
+      response?.result?.response,
+    ]
+
+    for (const candidate of candidates) {
+      const conversationId = String(
+        candidate?.conversation_id ||
+        candidate?.conversationId ||
+        candidate?.id ||
+        ''
+      ).trim()
+
+      if (conversationId) {
+        return conversationId
+      }
+    }
+
+    return ''
   }
 
   private extractResponseContent(response: any, fallback: string): string {
@@ -643,6 +662,9 @@ export class RohithAPI {
 
       const conversationId = this.extractConversationId(response)
       if (!conversationId) {
+        if (response?.status === "kingdom_native_compatibility") {
+          throw new Error("Audelle backend returned the generic Kingdom compatibility adapter instead of the conversation route. Start the HNWI backend on port 8000 locally, or deploy the Audelle route to the active backend.")
+        }
         throw new Error("Audelle start response did not include a conversation ID")
       }
 
@@ -664,7 +686,7 @@ export class RohithAPI {
         confidence_score: response.response?.confidence_score || response.response?.metadata?.confidence_score || 0.85
       }
     } catch (error) {
-      console.error("JARVIS conversation create error:", error)
+      console.error("Audelle conversation create error:", error)
       throw error
     }
   }
