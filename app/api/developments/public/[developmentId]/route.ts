@@ -18,8 +18,11 @@ export async function GET(
       )
     }
 
-    // Call backend without authentication - this should be a public endpoint
-    const backendUrl = `${API_BASE_URL}/api/developments/public/${developmentId}`
+    // Call backend without authentication. When a share ID is present, forward it
+    // so the backend can validate the citation against the public-safe packet.
+    const shareId = request.nextUrl.searchParams.get('share_id')
+    const shareQuery = shareId ? `?share_id=${encodeURIComponent(shareId)}` : ''
+    const backendUrl = `${API_BASE_URL}/api/developments/public/${encodeURIComponent(developmentId)}${shareQuery}`
     const cookie = request.headers.get('cookie')
     const authorization = request.headers.get('authorization')
     const forwardedHeaders: HeadersInit = {

@@ -40,6 +40,7 @@ interface EliteCitationPanelProps {
   onCitationSelect: (citationId: string) => void
   citationMap?: Map<string, number>
   preloadedSources?: Map<string, Development>
+  shareId?: string
 }
 
 export function EliteCitationPanel({
@@ -48,7 +49,8 @@ export function EliteCitationPanel({
   onClose,
   onCitationSelect,
   citationMap,
-  preloadedSources
+  preloadedSources,
+  shareId
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
@@ -101,7 +103,8 @@ export function EliteCitationPanel({
       try {
         const controller = new AbortController()
         const timeoutId = window.setTimeout(() => controller.abort(), 12000)
-        const response = await fetch(`/api/developments/public/${encodeURIComponent(normalizedCitationId)}`, {
+        const shareQuery = shareId ? `?share_id=${encodeURIComponent(shareId)}` : ''
+        const response = await fetch(`/api/developments/public/${encodeURIComponent(normalizedCitationId)}${shareQuery}`, {
           signal: controller.signal,
         })
         window.clearTimeout(timeoutId)
@@ -168,7 +171,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources])
+  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {
@@ -184,13 +187,15 @@ export function EliteCitationPanel({
   // Auto-scroll to selected citation tab when panel opens or citation changes
   useEffect(() => {
     if (!selectedCitationId || allCitations.length === 0) return
+    const selectedCitationNumber = allCitations.find(c => c.id === selectedCitationId)?.number
+    if (!selectedCitationNumber) return
 
     // Use requestAnimationFrame to ensure DOM is ready
     const scrollToSelected = () => {
       requestAnimationFrame(() => {
         // Try to find and scroll the selected button into view
-        const desktopButton = desktopScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
-        const mobileButton = mobileScrollRef.current?.querySelector(`[data-citation-id="${selectedCitationId}"]`) as HTMLElement
+        const desktopButton = desktopScrollRef.current?.querySelector(`[data-citation-number="${selectedCitationNumber}"]`) as HTMLElement
+        const mobileButton = mobileScrollRef.current?.querySelector(`[data-citation-number="${selectedCitationNumber}"]`) as HTMLElement
 
         if (desktopButton) {
           desktopButton.scrollIntoView({
@@ -213,7 +218,7 @@ export function EliteCitationPanel({
     // Small delay to ensure panel animation completes
     const timer = setTimeout(scrollToSelected, 300)
     return () => clearTimeout(timer)
-  }, [selectedCitationId, allCitations.length])
+  }, [selectedCitationId, allCitations])
 
   return (
     <>
@@ -239,7 +244,7 @@ export function EliteCitationPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-base">Source Documents</h3>
+              <h3 className="font-semibold text-base">Source Evidence</h3>
               <Badge variant="secondary" className="text-xs">
                 {allCitations.length}
               </Badge>
@@ -265,7 +270,8 @@ export function EliteCitationPanel({
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => handleCitationClick(citation.id)}
-                  data-citation-id={citation.id}
+                  data-citation-number={citation.number}
+                  aria-label={`Citation ${citation.number}`}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
                     selectedCitationId === citation.id
@@ -303,7 +309,7 @@ export function EliteCitationPanel({
                         return (
                           <div className="text-center py-8 text-muted-foreground">
                             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Development not found</p>
+                            <p className="text-sm">Source evidence not available in this public packet</p>
                           </div>
                         )
                       }
@@ -338,7 +344,7 @@ export function EliteCitationPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Source Documents</h3>
+              <h3 className="font-semibold text-sm">Source Evidence</h3>
               <Badge variant="secondary" className="text-xs">
                 {allCitations.length} cited
               </Badge>
@@ -364,7 +370,8 @@ export function EliteCitationPanel({
                   variant={selectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => handleCitationClick(citation.id)}
-                  data-citation-id={citation.id}
+                  data-citation-number={citation.number}
+                  aria-label={`Citation ${citation.number}`}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
                     selectedCitationId === citation.id
@@ -402,7 +409,7 @@ export function EliteCitationPanel({
                         return (
                           <div className="text-center py-8 text-muted-foreground">
                             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">Development not found</p>
+                            <p className="text-sm">Source evidence not available in this public packet</p>
                           </div>
                         )
                       }

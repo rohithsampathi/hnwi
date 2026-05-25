@@ -14,13 +14,9 @@ import { useToast } from "@/components/ui/use-toast"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
   MessageSquare,
@@ -177,7 +173,7 @@ export function ConversationSidebar({
             <Input
               placeholder="Search conversations..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               className="pl-9 h-9"
             />
           </div>
@@ -248,12 +244,12 @@ export function ConversationSidebar({
                       <div className="flex-1 min-w-0">
                         {/* Title */}
                         {editingConversationId === conversation.id ? (
-                          <div className="flex items-center gap-1 mb-1" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 mb-1" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
                             <Input
                               ref={editInputRef}
                               value={editingTitle}
-                              onChange={(e) => setEditingTitle(e.target.value)}
-                              onKeyDown={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingTitle(e.target.value)}
+                              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                 if (e.key === 'Enter') {
                                   handleSaveTitle(conversation.id)
                                 } else if (e.key === 'Escape') {
@@ -320,7 +316,7 @@ export function ConversationSidebar({
                               variant="ghost"
                               size="sm"
                               className="h-6 w-6 p-0 hover:!text-white hover:!bg-primary/70 dark:hover:!text-white dark:hover:!bg-primary/50"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
                             >
                               <MoreVertical className="h-3 w-3" />
                             </Button>
@@ -328,7 +324,7 @@ export function ConversationSidebar({
                           <DropdownMenuContent align="end">
                             {onUpdateConversationTitle && (
                               <DropdownMenuItem
-                                onClick={(e) => handleStartEditTitle(conversation.id, conversation.title, e)}
+                                onClick={(e: React.MouseEvent<HTMLDivElement>) => handleStartEditTitle(conversation.id, conversation.title, e)}
                                 className="hover:!text-white hover:!bg-primary dark:hover:!text-white dark:hover:!bg-primary/90"
                               >
                                 <Edit2 className="h-4 w-4 mr-2" />
@@ -337,7 +333,7 @@ export function ConversationSidebar({
                             )}
                             {onShareConversation && (
                               <DropdownMenuItem
-                                onClick={(e) => {
+                                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                                   e.stopPropagation()
                                   onShareConversation(conversation.id)
                                 }}
@@ -348,7 +344,7 @@ export function ConversationSidebar({
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              onClick={(e) => handleDeleteClick(conversation.id, conversation.title, e)}
+                              onClick={(e: React.MouseEvent<HTMLDivElement>) => handleDeleteClick(conversation.id, conversation.title, e)}
                               className="text-destructive hover:!bg-red-600 hover:!text-white dark:hover:!bg-red-600 dark:hover:!text-white"
                               disabled={deletingConversationId === conversation.id}
                             >
@@ -383,25 +379,25 @@ export function ConversationSidebar({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!conversationToDelete} onOpenChange={(open) => !open && setConversationToDelete(null)}>
+      <AlertDialog open={!!conversationToDelete} onOpenChange={(open: boolean) => !open && setConversationToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <h2 className="text-lg font-semibold">Are you sure?</h2>
+            <p className="text-sm text-muted-foreground">
               This will permanently delete the conversation "{conversationToDelete?.title}". This action cannot be undone.
-            </AlertDialogDescription>
+            </p>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConversationToDelete(null)}>
+            <Button variant="outline" onClick={() => setConversationToDelete(null)}>
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
               onClick={handleConfirmDelete}
               className="bg-red-600 hover:bg-red-700 text-white"
               disabled={!!deletingConversationId}
             >
               {deletingConversationId ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

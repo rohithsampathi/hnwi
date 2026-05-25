@@ -20,6 +20,7 @@ import MigrationFlowViz from './visualizations/MigrationFlowViz';
 import JurisdictionScorecardViz from './visualizations/JurisdictionScorecardViz';
 import KeyMetricsViz from './visualizations/KeyMetricsViz';
 import CostOfDelayViz from './visualizations/CostOfDelayViz';
+import DataExplainerViz from './visualizations/DataExplainerViz';
 
 /**
  * Visualization Command from backend
@@ -166,6 +167,8 @@ const VisualizationEngine = memo(function VisualizationEngine({
         return <KeyMetricsViz {...props} />;
       case 'cost_of_delay':
         return <CostOfDelayViz {...props} />;
+      case 'data_explainer':
+        return <DataExplainerViz {...props} />;
       default:
         // Fallback for unknown types
         return (
