@@ -450,23 +450,6 @@ function getRouteTopic(conversation: SharedConversationData, messages: SharedMes
   return 'family wealth route'
 }
 
-function getDecisionFrame(conversation: SharedConversationData, messages: SharedMessage[]): string {
-  const explicit = compactText(cleanSharedMessageContent(conversation.positioningLine || ''))
-  if (explicit && !/\bAudelle is\b/i.test(explicit)) {
-    return explicit
-  }
-
-  const topic = getRouteTopic(conversation, messages)
-  if (topic === 'Hyderabad family-base decision') {
-    return 'The question is not whether Hyderabad is rising. It is whether the city can carry work, capital, children, healthcare, movement and family continuity in one place.'
-  }
-  if (topic === 'Dubai-linked family move') {
-    return 'For Dubai-linked family moves, the question is not whether the hub is strong. It is whether the route can still carry proof, authority, liquidity, movement and fallback when timing changes.'
-  }
-
-  return 'The useful moment is before commitment, while proof, authority, liquidity, timing, fallback and family explanation can still be changed.'
-}
-
 function getPrivatePrompt(conversation: SharedConversationData, messages: SharedMessage[]): string {
   const topic = getRouteTopic(conversation, messages)
   return `If this is live in your room, message Rohith with the ${topic.toLowerCase()}, timing, and the one part of the route that still has to hold before commitment.`
@@ -501,7 +484,6 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
     () => Array.isArray(conversation.packets) ? conversation.packets : [],
     [conversation.packets]
   )
-  const decisionFrame = useMemo(() => getDecisionFrame(conversation, messages), [conversation, messages])
   const privatePrompt = useMemo(() => getPrivatePrompt(conversation, messages), [conversation, messages])
 
   const handleCopyPrivatePrompt = async () => {
@@ -656,20 +638,17 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
       disableNavigation
     >
       <div className="flex min-h-[calc(var(--app-viewport-height,100dvh)-190px)] flex-col gap-4 text-foreground">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <MessageCircle className="h-3.5 w-3.5 text-primary" />
-              <span>{messages.length} messages</span>
-              <span>&middot;</span>
-              <span>Audelle Conversation</span>
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/10 text-gold">
+              <MessageCircle className="h-4 w-4" />
             </div>
-            <h2 className="truncate text-lg font-semibold text-foreground">
-              {conversation.title || 'Shared Conversation'}
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-foreground/75">
-              {decisionFrame}
-            </p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground">Audelle</p>
+              <p className="text-xs text-muted-foreground">
+                {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+              </p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button
