@@ -49,7 +49,6 @@ export function EliteCitationPanel({
   onClose,
   onCitationSelect,
   citationMap,
-  preloadedSources,
   shareId
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
@@ -88,15 +87,9 @@ export function EliteCitationPanel({
       setLocalCitationMap(prev => new Map(prev).set(normalizedCitationId, nextNumber))
     }
 
-    // LAZY LOAD: Fetch development only when clicked (if not already fetched or marked as not found)
+    // LAZY LOAD: Fetch the full public development/castle brief when clicked.
+    // Do not fall back to packet witnesses here; public citations should match HNWI World source payloads.
     if (!developments.has(normalizedCitationId)) {
-      // Check preloaded sources first (e.g. KG intelligence converted to Development format)
-      if (preloadedSources?.has(normalizedCitationId)) {
-        setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSources.get(normalizedCitationId)!))
-        onCitationSelect(normalizedCitationId)
-        return
-      }
-
       setLoading(true)
       setLoadingCitationId(normalizedCitationId)
 
@@ -152,16 +145,10 @@ export function EliteCitationPanel({
             setAllCitations(newCitations)
             setLocalCitationMap(newCitationMap)
           }
-        } else if (response.status === 404) {
-          // 404 is expected - not all Dev IDs have corresponding records
-          // Mark as "not found" in developments map to avoid re-fetching
-          setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         } else {
           setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         }
       } catch (err) {
-        // Network errors or other unexpected errors
-        // Mark as "not found" to avoid re-fetching
         setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
       } finally {
         setLoading(false)
@@ -171,7 +158,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources, shareId])
+  }, [allCitations, developments, localCitationMap, onCitationSelect, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {

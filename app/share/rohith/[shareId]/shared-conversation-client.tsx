@@ -384,8 +384,8 @@ function publicEvidenceLabel(value: any): string {
   const raw = String(value || '').trim()
   if (!raw) return 'Audelle source evidence'
   const normalized = raw.toLowerCase().replace(/[_-]+/g, ' ')
-  if (normalized.includes('kgv21') || normalized.includes('castle brief')) return 'Castle brief evidence'
-  if (normalized.includes('decision memo')) return 'Decision memo evidence'
+  if (normalized.includes('kgv21') || normalized.includes('castle brief')) return 'HNWI Chronicles brief'
+  if (normalized.includes('decision memo')) return 'Decision memo'
   if (normalized.includes('web validation') || normalized.includes('official')) return 'Public validation source'
   if (normalized.includes('transaction')) return 'Transaction evidence'
   if (normalized.includes('corridor')) return 'Corridor intelligence'
@@ -674,8 +674,8 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
       isUserAuthenticated={false}
       disableNavigation
     >
-      <div className="flex min-h-[calc(var(--app-viewport-height,100dvh)-190px)] flex-col gap-4 text-foreground">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+      <div className="mx-auto flex min-h-[calc(var(--app-viewport-height,100dvh)-190px)] w-full max-w-[1040px] flex-col gap-4 text-foreground">
+        <div className="flex w-full items-center justify-between gap-3 border-b border-border/25 pb-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/10 text-gold">
               <MessageCircle className="h-4 w-4" />
@@ -719,17 +719,17 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         </div>
 
       {/* Messages */}
-      <main className="mx-auto w-full max-w-4xl py-4">
-        <div className="space-y-6">
+      <main className="w-full pt-2">
+        <div className="space-y-8">
           {messages.map((message) => {
             const messageVisualizations = visibleVisualizationsByMessageId.get(message.id) || []
             return (
             <div key={message.id}>
               {message.role === 'user' ? (
-                <div className="mb-8 flex items-start justify-end gap-3">
-                  <div className="flex max-w-[85%] flex-col items-end md:max-w-[70%]">
+                <div className="flex items-start justify-end gap-3">
+                  <div className="flex max-w-[min(760px,85%)] flex-col items-end">
                     <div className="mb-1 text-xs font-medium text-muted-foreground">You</div>
-                    <div className="rounded-3xl rounded-tr-md bg-muted/80 px-5 py-3 text-[15px] leading-relaxed text-foreground shadow-sm">
+                    <div className="rounded-2xl rounded-tr-md bg-muted/80 px-5 py-3 text-[15px] leading-relaxed text-foreground shadow-sm ring-1 ring-border/20">
                       <p className="whitespace-pre-wrap">{cleanSharedUserContent(message.content)}</p>
                     </div>
                   </div>
@@ -738,8 +738,8 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                   </div>
                 </div>
               ) : (
-                <div className="mb-9 flex items-start gap-3">
-                  <div className="mt-5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/10 text-gold">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/10 text-gold">
                     <MessageCircle className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
