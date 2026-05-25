@@ -52,6 +52,7 @@ function formatValue(value: number, unit?: string) {
   const shown = Math.abs(numeric) >= 1000
     ? numeric.toLocaleString(undefined, { maximumFractionDigits: 0 })
     : numeric.toLocaleString(undefined, { maximumFractionDigits: 2 }).replace(/\.00$/, '');
+  if (unit && (unit === '%' || unit.toLowerCase().includes('percent'))) return `${shown}%`;
   return `${shown}${unit ? ` ${unit}` : ''}`;
 }
 
@@ -61,16 +62,26 @@ function sectionRows(section: DataSection): DataRow[] {
     : [];
 }
 
-function isInferredPercentRow(row: DataRow, section: DataSection) {
-  const unit = String(row.unit || section.unit || '').toLowerCase();
+function isLabeledPercentRow(row: DataRow) {
   const label = String(row.label || '').toLowerCase();
   const value = Math.abs(Number(row.value || 0));
-  return label.includes('growth') && value <= 100 && (!unit || unit === 'value' || unit === 'number');
+  const looksLikePercent = ['growth', 'change', 'decline', 'drop'].some((word) => label.includes(word));
+  return looksLikePercent && value <= 100;
+}
+
+function isInferredPercentRow(row: DataRow, section: DataSection) {
+  const unit = String(row.unit || section.unit || '').toLowerCase();
+  return isLabeledPercentRow(row) && (!unit || unit === 'value' || unit === 'number');
 }
 
 function unitKey(row: DataRow, section: DataSection) {
-  if (isInferredPercentRow(row, section)) return 'percent';
+  if (isLabeledPercentRow(row) || isInferredPercentRow(row, section)) return 'percent';
   return String(row.unit || section.unit || 'value').toLowerCase();
+}
+
+function isPercentSignal(row: DataRow, section: DataSection) {
+  const unit = unitKey(row, section);
+  return unit === '%' || unit.includes('percent');
 }
 
 function hasMixedUnits(rows: DataRow[], section: DataSection) {
@@ -97,7 +108,7 @@ function normalizedSignalWidth(row: DataRow, rows: DataRow[], section: DataSecti
 function displaySignalValue(row: DataRow, section: DataSection) {
   const unit = row.unit || section.unit;
   const unitText = String(unit || '').toLowerCase();
-  if (isInferredPercentRow(row, section) || unitText.includes('percent') || unitText === '%') {
+  if (isLabeledPercentRow(row) || isInferredPercentRow(row, section) || unitText.includes('percent') || unitText === '%') {
     if (row.display && /%|percent/i.test(row.display)) return row.display;
     return `${formatValue(row.value)}%`;
   }
@@ -119,7 +130,8 @@ function SignalSection({ section }: { section: DataSection }) {
       </div>
       <div className="space-y-3">
         {rows.map((row, index) => {
-          const width = normalizedSignalWidth(row, rows, section);
+          const showComparableBar = isPercentSignal(row, section);
+          const width = showComparableBar ? normalizedSignalWidth(row, rows, section) : 0;
           return (
             <div key={`${row.label}-${index}`} className="grid gap-1.5">
               <div className="flex items-baseline justify-between gap-3">
@@ -128,10 +140,58 @@ function SignalSection({ section }: { section: DataSection }) {
                   {displaySignalValue(row, section)}
                 </span>
               </div>
-              <div className="h-1.5 rounded-full bg-muted">
+              {showComparableBar ? (
+                <div className="h-1.5 rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary/75"
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+              ) : (
+                <div className="h-px rounded-full bg-border/45" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function DivergenceSection({ section }: { section: DataSection }) {
+  const rows = sectionRows(section);
+  if (!rows.length) return null;
+  const maxAbs = Math.max(...rows.map((row) => Math.abs(Number(row.value || 0))), 1);
+
+  return (
+    <section className="border-t border-border/25 py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <div className="mb-3">
+        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="space-y-3">
+        {rows.map((row, index) => {
+          const value = Number(row.value || 0);
+          const width = Math.max(8, Math.min(50, (Math.abs(value) / maxAbs) * 50));
+          const positive = value >= 0;
+          return (
+            <div key={`${row.label}-${index}`} className="grid gap-1.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="min-w-0 truncate text-xs font-medium text-foreground/85">{row.label}</span>
+                <span className="shrink-0 text-xs font-semibold text-foreground">
+                  {displaySignalValue(row, section)}
+                </span>
+              </div>
+              <div className="relative h-2 rounded-full bg-muted">
+                <div className="absolute left-1/2 top-[-3px] h-4 w-px bg-border" />
                 <div
-                  className="h-full rounded-full bg-primary/75"
-                  style={{ width: `${width}%` }}
+                  className="absolute top-0 h-full rounded-full bg-primary/75"
+                  style={positive
+                    ? { left: '50%', width: `${width}%` }
+                    : { right: '50%', width: `${width}%` }
+                  }
                 />
               </div>
             </div>
@@ -196,6 +256,7 @@ function BarSection({ section }: { section: DataSection }) {
 function DeviationSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
+  if (rows.length <= 3) return <DivergenceSection section={section} />;
   const values = rows.map((row) => Number(row.value || 0));
   const min = Math.min(...values, 0);
   const max = Math.max(...values, 0);
