@@ -540,7 +540,9 @@ function AudelleCascade({ data }: { data: any }) {
                   <div key={`${edge.from}-${edge.to}-${index}`} className="rounded-md border border-border/20 bg-background/40 px-3 py-2">
                     <p className="whitespace-normal break-words text-[11px] leading-snug text-foreground/85">
                       <span className="font-semibold text-foreground">{from}</span>
-                      <span className="px-1.5 text-gold">to</span>
+                      {' '}
+                      <span className="text-gold" aria-label="leads to">-&gt;</span>
+                      {' '}
                       <span className="font-semibold text-foreground">{to}</span>
                     </p>
                   </div>
