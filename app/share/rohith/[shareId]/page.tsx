@@ -53,16 +53,16 @@ function sharedConversationDescription(conversation: any) {
   ].filter(Boolean).join(' '))
 
   if (/dubai|difc|adgm|uae/i.test(text)) {
-    return 'A public Audelle conversation on what a Dubai-linked family route must still carry before it hardens.'
+    return 'A family-wealth conversation on what a cross-border base decision must still carry before it hardens.'
   }
   if (/hyderabad/i.test(text)) {
-    return 'A public Audelle conversation on when a city becomes useful enough to carry family life, capital and continuity.'
+    return 'A family-wealth conversation on when a city becomes useful enough to carry family life, capital and continuity.'
   }
   if (/uk|london|europe|non-?dom/i.test(text)) {
-    return 'A public Audelle conversation on route pressure, proof burden and timing for UK or Europe-linked families.'
+    return 'A family-wealth conversation on route pressure, proof burden and timing for UK or Europe-linked families.'
   }
 
-  return 'A public Audelle conversation on the proof, authority, liquidity, timing and fallback questions before a family wealth route hardens.'
+  return 'A family-wealth conversation on the proof, authority, liquidity, timing and fallback questions before a route hardens.'
 }
 
 // Server-side fetch for shared conversation. Read backend contracts directly;
@@ -106,7 +106,7 @@ export async function generateMetadata({
     }
   }
 
-  const title = `${conversation.title || "Audelle Conversation"} | Audelle by HNWI Chronicles`
+  const title = `${conversation.title || "Shared Conversation"} | HNWI Chronicles`
   const description = sharedConversationDescription(conversation)
   const ogImage = audelleDubaiRouteOgImage
 
@@ -128,7 +128,7 @@ export async function generateMetadata({
           type: "image/jpeg",
           width: 1200,
           height: 630,
-          alt: "Audelle by HNWI Chronicles decision conversation",
+          alt: "HNWI Chronicles family wealth decision conversation",
         },
       ]
     },
@@ -143,7 +143,7 @@ export async function generateMetadata({
           type: "image/jpeg",
           width: 1200,
           height: 630,
-          alt: "Audelle by HNWI Chronicles decision conversation",
+          alt: "HNWI Chronicles family wealth decision conversation",
         },
       ]
     }
