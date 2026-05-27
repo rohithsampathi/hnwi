@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const siteUrl = "https://app.hnwichronicles.com"
-const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-principal-room-og.jpg?v=20260527a`
+const audelleDubaiRouteOgImage = `${siteUrl}/assets/og/audelle-dubai-principal-room-og.jpg?v=20260527b`
 
 function sharedConversationHasMessages(conversation: any) {
   return Array.isArray(conversation?.messages) && conversation.messages.length > 0

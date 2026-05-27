@@ -456,16 +456,16 @@ function routeFactorExplainer(message: SharedMessage): VisualizationCommand | nu
 }
 
 function severityClass(severity?: string) {
-  if (severity === 'critical') return 'border-red-500/35 bg-red-500/[0.08] text-red-100'
-  if (severity === 'high') return 'border-amber-500/35 bg-amber-500/[0.08] text-amber-100'
-  if (severity === 'low') return 'border-emerald-500/35 bg-emerald-500/[0.08] text-emerald-100'
-  return 'border-gold/30 bg-gold/[0.08] text-foreground'
+  if (severity === 'critical') return 'border-gold/35 bg-gold/[0.10] text-foreground shadow-[inset_2px_0_0_rgba(212,168,67,0.55)]'
+  if (severity === 'high') return 'border-gold/25 bg-gold/[0.07] text-foreground shadow-[inset_2px_0_0_rgba(212,168,67,0.38)]'
+  if (severity === 'low') return 'border-border/30 bg-background/45 text-foreground'
+  return 'border-border/30 bg-background/45 text-foreground'
 }
 
-function riskTone(score: number) {
-  if (score >= 78) return 'bg-red-400'
-  if (score >= 70) return 'bg-amber-400'
-  return 'bg-gold'
+function riskBarTone(score: number) {
+  if (score >= 78) return 'bg-gold/85'
+  if (score >= 70) return 'bg-gold/70'
+  return 'bg-gold/55'
 }
 
 function AudelleNativeVisualization({ commands }: { commands: VisualizationCommand[] }) {
@@ -483,9 +483,9 @@ function AudelleNativeVisualization({ commands }: { commands: VisualizationComma
 function AudelleNativeVisualizationCard({ command }: { command: VisualizationCommand }) {
   const data = command.data || {}
   return (
-    <figure className="my-4 overflow-hidden rounded-xl border border-gold/20 bg-[linear-gradient(135deg,rgba(212,168,67,0.08),rgba(255,255,255,0.025)_42%,rgba(212,168,67,0.05))] shadow-[0_20px_70px_rgba(0,0,0,0.18)]">
-      <figcaption className="border-b border-gold/15 px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gold/75">Audelle Decision Map</p>
+    <figure className="my-4 overflow-hidden rounded-2xl border border-border/25 bg-card/80 shadow-sm">
+      <figcaption className="border-b border-border/20 px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gold/70">Audelle Decision Map</p>
         <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">{data.title || 'Decision Map'}</h3>
       </figcaption>
       <div className="p-4">
@@ -530,14 +530,14 @@ function AudelleCascade({ data }: { data: any }) {
       </div>
       {edges.length > 0 && (
         <div className="md:col-span-3">
-          <div className="mt-2 rounded-lg border border-border/30 bg-background/35 p-3">
+          <div className="mt-2 rounded-lg border border-border/25 bg-muted/15 p-3">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dependency Read</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {edges.slice(0, 6).map((edge: any, index: number) => {
                 const from = nodes.find((node: any) => node.id === edge.from)?.label || edge.from
                 const to = nodes.find((node: any) => node.id === edge.to)?.label || edge.to
                 return (
-                  <div key={`${edge.from}-${edge.to}-${index}`} className="rounded-md border border-border/25 bg-card/30 px-3 py-2">
+                  <div key={`${edge.from}-${edge.to}-${index}`} className="rounded-md border border-border/20 bg-background/40 px-3 py-2">
                     <p className="whitespace-normal break-words text-[11px] leading-snug text-foreground/85">
                       <span className="font-semibold text-foreground">{from}</span>
                       <span className="px-1.5 text-gold">to</span>
@@ -561,7 +561,7 @@ function AudelleRails({ data }: { data: any }) {
     <div className="space-y-4">
       <div className="space-y-3">
         {flows.map((flow: any, index: number) => (
-          <div key={`${flow.from}-${flow.to}-${index}`} className="rounded-lg border border-border/30 bg-background/35 p-3">
+          <div key={`${flow.from}-${flow.to}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">
                 {flow.from} <span className="text-gold">to</span> {flow.to}
@@ -569,7 +569,7 @@ function AudelleRails({ data }: { data: any }) {
               <p className="whitespace-normal break-words text-[11px] leading-snug text-muted-foreground">{flow.label}</p>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-gold/80" style={{ width: `${Math.max(8, Math.min(100, Number(flow.volume) || 0))}%` }} />
+              <div className="h-full rounded-full bg-gold/70" style={{ width: `${Math.max(8, Math.min(100, Number(flow.volume) || 0))}%` }} />
             </div>
           </div>
         ))}
@@ -577,7 +577,7 @@ function AudelleRails({ data }: { data: any }) {
       {stats.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
           {stats.map((stat: any, index: number) => (
-            <div key={`${stat.label}-${index}`} className="rounded-lg border border-gold/15 bg-card/30 p-3">
+            <div key={`${stat.label}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
               <p className="whitespace-normal break-words text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
               <p className="mt-1 whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{stat.value}</p>
             </div>
@@ -595,13 +595,13 @@ function AudelleRiskMap({ data }: { data: any }) {
       {entries.map(([label, rawScore]) => {
         const score = Number(rawScore) || 0
         return (
-          <div key={label} className="rounded-lg border border-border/30 bg-background/35 p-3">
+          <div key={label} className="rounded-lg border border-border/25 bg-background/40 p-3">
             <div className="flex items-start justify-between gap-3">
               <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{label}</p>
               <p className="shrink-0 text-[11px] font-semibold text-gold">{score}</p>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className={`h-full rounded-full ${riskTone(score)}`} style={{ width: `${Math.max(8, Math.min(100, score))}%` }} />
+              <div className={`h-full rounded-full ${riskBarTone(score)}`} style={{ width: `${Math.max(8, Math.min(100, score))}%` }} />
             </div>
           </div>
         )
@@ -616,7 +616,7 @@ function AudelleTimeline({ data }: { data: any }) {
     <div className="relative space-y-3 pl-4">
       <div className="absolute bottom-2 left-[5px] top-2 w-px bg-gold/25" />
       {events.map((event: any, index: number) => (
-        <div key={`${event.date}-${index}`} className="relative rounded-lg border border-border/30 bg-background/35 p-3">
+        <div key={`${event.date}-${index}`} className="relative rounded-lg border border-border/25 bg-background/40 p-3">
           <div className="absolute -left-[15px] top-4 h-2.5 w-2.5 rounded-full border border-gold bg-background" />
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{event.title}</p>
@@ -641,7 +641,7 @@ function AudelleFallbackViz({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       {sections.map((section: any, index: number) => (
-        <div key={`${section.title}-${index}`} className="rounded-lg border border-border/30 bg-background/35 p-3">
+        <div key={`${section.title}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
           <p className="whitespace-normal break-words text-xs font-semibold text-foreground">{section.title}</p>
           {Array.isArray(section.rows) && (
             <div className="mt-2 space-y-2">
