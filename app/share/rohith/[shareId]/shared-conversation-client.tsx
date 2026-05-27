@@ -7,7 +7,7 @@ import { isValidElement, useMemo, useState } from 'react'
 import { MessageCircle, Share2, Check, ArrowLeft, User, Clock, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
-import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
+import { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
 import { CitationText } from '@/components/elite/citation-text'
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel'
 import { Layout } from '@/components/layout/layout'
@@ -453,6 +453,209 @@ function routeFactorExplainer(message: SharedMessage): VisualizationCommand | nu
       ],
     },
   }
+}
+
+function severityClass(severity?: string) {
+  if (severity === 'critical') return 'border-red-500/35 bg-red-500/[0.08] text-red-100'
+  if (severity === 'high') return 'border-amber-500/35 bg-amber-500/[0.08] text-amber-100'
+  if (severity === 'low') return 'border-emerald-500/35 bg-emerald-500/[0.08] text-emerald-100'
+  return 'border-gold/30 bg-gold/[0.08] text-foreground'
+}
+
+function riskTone(score: number) {
+  if (score >= 78) return 'bg-red-400'
+  if (score >= 70) return 'bg-amber-400'
+  return 'bg-gold'
+}
+
+function AudelleNativeVisualization({ commands }: { commands: VisualizationCommand[] }) {
+  if (!commands.length) return null
+
+  return (
+    <div className="space-y-4">
+      {commands.map((command) => (
+        <AudelleNativeVisualizationCard key={command.id} command={command} />
+      ))}
+    </div>
+  )
+}
+
+function AudelleNativeVisualizationCard({ command }: { command: VisualizationCommand }) {
+  const data = command.data || {}
+  return (
+    <figure className="my-4 overflow-hidden rounded-xl border border-gold/20 bg-[linear-gradient(135deg,rgba(212,168,67,0.08),rgba(255,255,255,0.025)_42%,rgba(212,168,67,0.05))] shadow-[0_20px_70px_rgba(0,0,0,0.18)]">
+      <figcaption className="border-b border-gold/15 px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gold/75">Audelle Decision Map</p>
+        <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">{data.title || 'Decision Map'}</h3>
+      </figcaption>
+      <div className="p-4">
+        {command.type === 'cascade_graph' && <AudelleCascade data={data} />}
+        {command.type === 'migration_flow' && <AudelleRails data={data} />}
+        {command.type === 'risk_heatmap' && <AudelleRiskMap data={data} />}
+        {command.type === 'regulatory_timeline' && <AudelleTimeline data={data} />}
+        {!['cascade_graph', 'migration_flow', 'risk_heatmap', 'regulatory_timeline'].includes(command.type) && (
+          <AudelleFallbackViz data={data} />
+        )}
+      </div>
+    </figure>
+  )
+}
+
+function AudelleCascade({ data }: { data: any }) {
+  const nodes = Array.isArray(data.nodes) ? data.nodes : []
+  const triggers = nodes.filter((node: any) => node.type === 'trigger')
+  const effects = nodes.filter((node: any) => node.type !== 'trigger')
+  const edges = Array.isArray(data.edges) ? data.edges : []
+
+  return (
+    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)]">
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Clears In The Room</p>
+        {triggers.map((node: any) => (
+          <div key={node.id} className={`rounded-lg border px-3 py-2 ${severityClass(node.severity)}`}>
+            <p className="whitespace-normal break-words text-xs font-semibold leading-snug">{node.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="hidden items-center justify-center md:flex">
+        <div className="h-full min-h-40 w-px bg-gradient-to-b from-transparent via-gold/45 to-transparent" />
+      </div>
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Can Still Break Later</p>
+        {effects.map((node: any) => (
+          <div key={node.id} className={`rounded-lg border px-3 py-2 ${severityClass(node.severity)}`}>
+            <p className="whitespace-normal break-words text-xs font-semibold leading-snug">{node.label}</p>
+          </div>
+        ))}
+      </div>
+      {edges.length > 0 && (
+        <div className="md:col-span-3">
+          <div className="mt-2 rounded-lg border border-border/30 bg-background/35 p-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dependency Read</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {edges.slice(0, 6).map((edge: any, index: number) => {
+                const from = nodes.find((node: any) => node.id === edge.from)?.label || edge.from
+                const to = nodes.find((node: any) => node.id === edge.to)?.label || edge.to
+                return (
+                  <div key={`${edge.from}-${edge.to}-${index}`} className="rounded-md border border-border/25 bg-card/30 px-3 py-2">
+                    <p className="whitespace-normal break-words text-[11px] leading-snug text-foreground/85">
+                      <span className="font-semibold text-foreground">{from}</span>
+                      <span className="px-1.5 text-gold">to</span>
+                      <span className="font-semibold text-foreground">{to}</span>
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AudelleRails({ data }: { data: any }) {
+  const flows = Array.isArray(data.flows) ? data.flows : []
+  const stats = Array.isArray(data.stats) ? data.stats : []
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        {flows.map((flow: any, index: number) => (
+          <div key={`${flow.from}-${flow.to}-${index}`} className="rounded-lg border border-border/30 bg-background/35 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">
+                {flow.from} <span className="text-gold">to</span> {flow.to}
+              </p>
+              <p className="whitespace-normal break-words text-[11px] leading-snug text-muted-foreground">{flow.label}</p>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-gold/80" style={{ width: `${Math.max(8, Math.min(100, Number(flow.volume) || 0))}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      {stats.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {stats.map((stat: any, index: number) => (
+            <div key={`${stat.label}-${index}`} className="rounded-lg border border-gold/15 bg-card/30 p-3">
+              <p className="whitespace-normal break-words text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
+              <p className="mt-1 whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AudelleRiskMap({ data }: { data: any }) {
+  const entries = Object.entries(data.jurisdictions || {}) as Array<[string, number]>
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {entries.map(([label, rawScore]) => {
+        const score = Number(rawScore) || 0
+        return (
+          <div key={label} className="rounded-lg border border-border/30 bg-background/35 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{label}</p>
+              <p className="shrink-0 text-[11px] font-semibold text-gold">{score}</p>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className={`h-full rounded-full ${riskTone(score)}`} style={{ width: `${Math.max(8, Math.min(100, score))}%` }} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function AudelleTimeline({ data }: { data: any }) {
+  const events = Array.isArray(data.events) ? data.events : []
+  return (
+    <div className="relative space-y-3 pl-4">
+      <div className="absolute bottom-2 left-[5px] top-2 w-px bg-gold/25" />
+      {events.map((event: any, index: number) => (
+        <div key={`${event.date}-${index}`} className="relative rounded-lg border border-border/30 bg-background/35 p-3">
+          <div className="absolute -left-[15px] top-4 h-2.5 w-2.5 rounded-full border border-gold bg-background" />
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{event.title}</p>
+            <p className="whitespace-normal break-words text-[10px] font-semibold uppercase tracking-[0.14em] text-gold/80">{event.date}</p>
+          </div>
+          {event.description && (
+            <p className="mt-2 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">{event.description}</p>
+          )}
+          {event.jurisdiction && (
+            <p className="mt-2 inline-flex rounded-full border border-gold/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold/80">
+              {event.jurisdiction}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AudelleFallbackViz({ data }: { data: any }) {
+  const sections = Array.isArray(data.sections) ? data.sections : []
+  return (
+    <div className="space-y-3">
+      {sections.map((section: any, index: number) => (
+        <div key={`${section.title}-${index}`} className="rounded-lg border border-border/30 bg-background/35 p-3">
+          <p className="whitespace-normal break-words text-xs font-semibold text-foreground">{section.title}</p>
+          {Array.isArray(section.rows) && (
+            <div className="mt-2 space-y-2">
+              {section.rows.slice(0, 6).map((row: any, rowIndex: number) => (
+                <p key={rowIndex} className="whitespace-normal break-words text-[11px] leading-relaxed text-muted-foreground">
+                  {Array.isArray(row) ? row.join('  ') : `${row.label || ''} ${row.display || row.value || ''}`}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function firstSourceUrl(source: Record<string, any>): string {
@@ -918,7 +1121,7 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
                   )}
                   {messageVisualizations.length > 0 && (
                     <div className="mt-3 max-w-[720px]">
-                      <VisualizationEngine commands={messageVisualizations} inline />
+                      <AudelleNativeVisualization commands={messageVisualizations} />
                     </div>
                   )}
                   </div>
