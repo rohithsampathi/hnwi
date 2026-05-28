@@ -77,7 +77,7 @@ export class WebShareService {
   ): Promise<boolean> {
     const shareData: ShareData = {
       title: `HNWI Chronicles: ${title}`,
-      text: 'A public Audelle conversation on what has to hold before a serious family wealth route hardens.',
+      text: 'A family-wealth route conversation on what has to hold before a serious move hardens.',
       url: `${baseUrl}/share/audelle/${shareId}`
     }
 

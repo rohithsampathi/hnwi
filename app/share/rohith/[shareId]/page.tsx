@@ -45,12 +45,42 @@ function compactText(value: string) {
     .trim()
 }
 
-function sharedConversationDescription(conversation: any) {
-  const text = compactText([
+function sharedConversationMetadataText(conversation: any) {
+  return compactText([
     conversation?.title,
+    conversation?.public_meta_title,
     conversation?.positioningLine,
     (conversation?.messages || []).slice(0, 3).map((message: any) => message?.content || '').join(' ')
   ].filter(Boolean).join(' '))
+}
+
+function isUkUsDubaiBaseConversation(text: string) {
+  return /\buk\b|london|britain|non-?dom/i.test(text)
+    && /\bus\b|united states|american/i.test(text)
+    && /dubai|difc|adgm|uae|gulf/i.test(text)
+    && /base|residen|route|family/i.test(text)
+}
+
+function sharedConversationTitle(conversation: any) {
+  const text = sharedConversationMetadataText(conversation)
+
+  if (isUkUsDubaiBaseConversation(text)) {
+    return 'UK Ties. US Exposure. Dubai On The Table.'
+  }
+
+  return compactText(
+    conversation?.public_meta_title ||
+    conversation?.title ||
+    'Shared Wealth Conversation'
+  )
+}
+
+function sharedConversationDescription(conversation: any) {
+  const text = sharedConversationMetadataText(conversation)
+
+  if (isUkUsDubaiBaseConversation(text)) {
+    return 'A family-base move with UK ties, US exposure and Dubai on the table. The route test is proof, authority, liquidity, fallback and family explanation before yes.'
+  }
 
   if (/dubai|difc|adgm|uae/i.test(text)) {
     return 'A family-wealth conversation on what a cross-border base decision must still carry before it hardens.'
@@ -106,7 +136,7 @@ export async function generateMetadata({
     }
   }
 
-  const title = `${conversation.title || "Shared Conversation"} | HNWI Chronicles`
+  const title = `${sharedConversationTitle(conversation)} | HNWI Chronicles`
   const description = sharedConversationDescription(conversation)
   const ogImage = audelleDubaiRouteOgImage
 
