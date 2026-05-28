@@ -50,7 +50,9 @@ function sharedConversationMetadataText(conversation: any) {
     conversation?.title,
     conversation?.public_meta_title,
     conversation?.positioningLine,
-    (conversation?.messages || []).slice(0, 3).map((message: any) => message?.content || '').join(' ')
+    (conversation?.sourceBasis || []).join(' '),
+    (conversation?.whatAudelleUsed || conversation?.whatAskRohithUsed || []).join(' '),
+    (conversation?.messages || []).map((message: any) => message?.content || '').join(' ')
   ].filter(Boolean).join(' '))
 }
 
