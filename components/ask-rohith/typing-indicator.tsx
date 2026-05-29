@@ -7,7 +7,7 @@ import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTheme } from "@/contexts/theme-context"
-import { Bot, Brain } from "lucide-react"
+import { MessageCircle, Brain } from "lucide-react"
 
 interface TypingIndicatorProps {
   message?: string
@@ -114,7 +114,7 @@ export function TypingIndicator({
       <Avatar className="w-8 h-8 border border-primary/20">
         <AvatarImage src="/Rohith.ico" alt="Audelle" />
         <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-          <Bot className="h-4 w-4" />
+          <MessageCircle className="h-4 w-4" />
         </AvatarFallback>
       </Avatar>
 

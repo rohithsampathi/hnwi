@@ -7,6 +7,7 @@ import type { City } from '@/components/interactive-world-map';
 import { extractDevIds } from '@/lib/parse-dev-citations';
 import type { Citation } from '@/lib/parse-dev-citations';
 import { isRecentlyAddedOpportunity } from '@/lib/opportunity-recency';
+import { resolveOpportunityCoordinates } from '@/lib/map-coordinate-resolver';
 
 interface Opportunity {
   _id?: string;
@@ -17,10 +18,22 @@ interface Opportunity {
   latitude: number;
   longitude: number;
   country: string;
+  city?: string;
+  state?: string;
+  region?: string;
+  address?: string;
   value: string;
   risk: string;
   analysis: string;
+  summary?: string;
+  description?: string;
+  hbyte_summary?: string;
+  card_summary?: string;
   source: string;
+  devid?: string;
+  mongo_article_id?: string;
+  castle_brief_id?: string;
+  source_development_id?: string;
   victor_score?: string;
   elite_pulse_analysis?: string;
   category?: string;
@@ -167,9 +180,17 @@ const transformOpportunityToCity = (
   opp: Opportunity,
   cleanCategories: boolean = false
 ): City | null => {
-  const lat = Number(opp.latitude);
-  const lng = Number(opp.longitude);
-  const displayName = opp.location || opp.country || opp.title || 'Opportunity';
+  const resolvedCoordinate = resolveOpportunityCoordinates(opp);
+  if (!resolvedCoordinate) {
+    return null;
+  }
+
+  const lat = resolvedCoordinate.latitude;
+  const lng = resolvedCoordinate.longitude;
+  const displayName =
+    resolvedCoordinate.source === 'resolved'
+      ? resolvedCoordinate.label
+      : opp.location || opp.country || opp.title || 'Opportunity';
   const sourceLower = (opp.source || '').toLowerCase();
   const opportunityType =
     sourceLower.includes('crown vault') || sourceLower === 'crown vault'
@@ -178,20 +199,19 @@ const transformOpportunityToCity = (
         ? 'prive'
         : 'hnwi';
 
-  // Validate coordinates
-  if (!lat || !lng || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-    return null;
-  }
-
-  // Skip (0, 0) coordinates
-  if (lat === 0 && lng === 0) {
-    return null;
-  }
-
   // Extract citations from both analysis fields
   const devIdsFromAnalysis = extractDevIds(opp.analysis || '');
   const devIdsFromElitePulse = extractDevIds(opp.elite_pulse_analysis || '');
-  const devIds = Array.from(new Set([...devIdsFromAnalysis, ...devIdsFromElitePulse]));
+  const structuredCitationId =
+    opp.castle_brief_id ||
+    opp.mongo_article_id ||
+    opp.devid ||
+    opp.source_development_id;
+  const devIds = Array.from(new Set([
+    ...devIdsFromAnalysis,
+    ...devIdsFromElitePulse,
+    ...(structuredCitationId ? [structuredCitationId] : []),
+  ]));
 
   // Smart category correction (for misclassified opportunities)
   let correctedCategory = opp.category ?
@@ -241,6 +261,7 @@ const transformOpportunityToCity = (
     value: opp.value,
     risk: opp.risk,
     analysis: opp.analysis,
+    summary: opp.card_summary || opp.hbyte_summary || opp.summary || opp.description,
     source: opp.source,
     victor_score: opp.victor_score,
     elite_pulse_analysis: opp.elite_pulse_analysis,
@@ -283,14 +304,11 @@ export function useOpportunities(config: UseOpportunitiesConfig = {}): UseOpport
     cleanCategories = true
   } = config;
 
-  // TEMPORARY: Always bust cache for debugging
-  // TODO: Re-enable caching after verifying data is fresh
-  const TEMPORARILY_DISABLE_CACHE = false; // ✅ Re-enabled caching to prevent rapid refetches
 
   // CRITICAL FIX: Check URL parameter to trigger cache busting on mount
   // This solves the timing issue where events are dispatched before component mounts
-  const initialBustCache = TEMPORARILY_DISABLE_CACHE || (typeof window !== 'undefined' &&
-    (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true')));
+  const initialBustCache = typeof window !== 'undefined' &&
+    (window.location.search.includes('refresh=') || window.location.search.includes('bust_cache=true'));
 
   const [bustCache, setBustCache] = useState(initialBustCache);
   const shouldUsePersonalizedView = isPersonalMode && hasCompletedAssessment;

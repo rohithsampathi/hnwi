@@ -916,6 +916,30 @@ const normalizeCrownVaultHeirNames = (asset: any): string[] => {
   );
 };
 
+export const syncCrownVaultAssetHeirDesignation = (title: unknown, heirNames: unknown[]): string => {
+  const rawTitle = typeof title === "string" || typeof title === "number"
+    ? String(title).replace(/\s+/g, " ").trim()
+    : "";
+  const cleanTitle = cleanAssetText(title) || rawTitle;
+  if (!cleanTitle) {
+    return "";
+  }
+
+  const resolvedHeirNames = uniqueCleanStrings(heirNames);
+  if (resolvedHeirNames.length === 0) {
+    return cleanTitle;
+  }
+
+  const designationPattern = /\bdesignated\s+for\s+.+$/i;
+  if (!designationPattern.test(cleanTitle)) {
+    return cleanTitle;
+  }
+
+  return cleanTitle
+    .replace(designationPattern, `designated for ${resolvedHeirNames.join(", ")}`)
+    .trim();
+};
+
 const isQuantityOnlyAssetTitle = (title: string, asset: any): boolean => {
   const normalizedTitle = title.toLowerCase().replace(/\s+/g, " ").trim();
   if (!normalizedTitle) {
@@ -1170,10 +1194,13 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         asset.asset_data?.current_price ??
         asset.asset_data?.cost_per_unit ??
         asset.cost_per_unit;
-      const derivedAssetTitle = deriveCrownVaultAssetTitle(asset);
       const derivedAssetType = deriveCrownVaultAssetTypeLabel(asset);
       const normalizedHeirIds = normalizeCrownVaultHeirIds(asset);
       const normalizedHeirNames = normalizeCrownVaultHeirNames(asset);
+      const derivedAssetTitle = syncCrownVaultAssetHeirDesignation(
+        deriveCrownVaultAssetTitle(asset),
+        normalizedHeirNames,
+      );
 
       return {
         ...asset,
@@ -1187,6 +1214,8 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
           currency: resolvedCurrency,
           location: asset.asset_data.location || '',
           notes: asset.asset_data.notes || '',
+          unit_count: asset.unit_count ?? asset.asset_data.unit_count,
+          unit_type: asset.unit_type ?? asset.asset_data.unit_type,
           purchase_month: asset.asset_data.purchase_month,
           entry_date_precision: asset.asset_data.entry_date_precision,
           entry_price: derivedEntryPrice,
@@ -1572,6 +1601,7 @@ export async function updateCrownVaultAsset(
     name?: string;
     asset_type?: string;
     unit_count?: number;
+    unit_type?: string;
     cost_per_unit?: number;
     entry_price?: number;
     value?: number; // Keep for backward compatibility
@@ -1582,6 +1612,7 @@ export async function updateCrownVaultAsset(
       name?: string;
       asset_type?: string;
       unit_count?: number;
+      unit_type?: string;
       cost_per_unit?: number;
       entry_price?: number;
       currency?: string;
@@ -1602,6 +1633,7 @@ export async function updateCrownVaultAsset(
       name: updateData.name,
       asset_type: updateData.asset_type,
       unit_count: updateData.unit_count,
+      unit_type: updateData.unit_type,
       cost_per_unit: updateData.cost_per_unit,
       entry_price: updateData.entry_price,
       currency: updateData.currency,

@@ -14,24 +14,12 @@ import { X, FileText } from "lucide-react"
 import type { Citation } from "@/lib/parse-dev-citations"
 import { extractDevIds } from "@/lib/parse-dev-citations"
 import { cn } from "@/lib/utils"
-import { pickCitationAnalysisText, pickCitationDescription } from "@/lib/development-citation"
+import {
+  buildCitationSourceDevelopment,
+  type CitationSourceDevelopment,
+} from "@/lib/development-citation"
 
-interface Development {
-  id: string
-  title: string
-  description: string
-  industry: string
-  product?: string
-  date?: string
-  summary: string
-  url?: string
-  numerical_data?: Array<{
-    number: string
-    unit: string
-    context: string
-    source?: string
-  }>
-}
+type Development = CitationSourceDevelopment
 
 interface EliteCitationPanelProps {
   citations: Citation[]
@@ -49,6 +37,7 @@ export function EliteCitationPanel({
   onClose,
   onCitationSelect,
   citationMap,
+  preloadedSources,
   shareId
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
@@ -88,9 +77,16 @@ export function EliteCitationPanel({
     }
 
     // LAZY LOAD: Fetch the full public development/castle brief when clicked.
-    // Do not fall back to packet witnesses here; public citations should match HNWI World source payloads.
+    // If the current page already carries the exact source packet for this ID,
+    // show it immediately and upgrade it only when the public source returns a
+    // real citation payload.
     if (!developments.has(normalizedCitationId)) {
-      setLoading(true)
+      const preloadedSource = preloadedSources?.get(normalizedCitationId)
+      if (preloadedSource) {
+        setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSource))
+      }
+
+      setLoading(!preloadedSource)
       setLoadingCitationId(normalizedCitationId)
 
       try {
@@ -104,26 +100,16 @@ export function EliteCitationPanel({
 
         if (response.ok) {
           const payload = await response.json()
-          const dev = payload?.development || payload?.data || payload
-          const developmentId = dev?._id || dev?.id || normalizedCitationId
-          const summary = pickCitationAnalysisText(dev)
+          const newDev = buildCitationSourceDevelopment(payload, normalizedCitationId)
 
-          const newDev: Development = {
-            id: developmentId,
-            title: dev.title || dev.name || `Development ${developmentId}`,
-            description: pickCitationDescription(dev, summary),
-            industry: dev.industry || "Market Intelligence",
-            product: dev.product,
-            date: dev.date || dev.created_at,
-            summary: summary,
-            url: dev.url,
-            numerical_data: dev.numerical_data || []
+          if (newDev) {
+            setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
+          } else if (!preloadedSource) {
+            setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
           }
 
-          setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
-
           // Extract DEV IDs from this development but don't fetch them
-          const devIdsInSummary = extractDevIds(summary)
+          const devIdsInSummary = extractDevIds(newDev?.summary || preloadedSource?.summary || "")
 
           if (devIdsInSummary.length > 0) {
             const newCitations = [...allCitations]
@@ -145,11 +131,13 @@ export function EliteCitationPanel({
             setAllCitations(newCitations)
             setLocalCitationMap(newCitationMap)
           }
-        } else {
+        } else if (!preloadedSource) {
           setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
         }
       } catch (err) {
-        setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+        if (!preloadedSource) {
+          setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
+        }
       } finally {
         setLoading(false)
         setLoadingCitationId(null)
@@ -158,7 +146,7 @@ export function EliteCitationPanel({
 
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, localCitationMap, onCitationSelect, shareId])
+  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {

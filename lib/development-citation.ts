@@ -6,6 +6,8 @@ const FULL_ANALYSIS_FIELDS = [
   "analysis",
   "content",
   "summary",
+  "brief_source_text",
+  "public_mirror_excerpt",
 ] as const
 
 const SHORT_DESCRIPTION_FIELDS = [
@@ -23,8 +25,34 @@ const FIRST_ANALYSIS_SECTION =
 
 type DevelopmentPayload = Record<string, unknown>
 
+export interface CitationSourceDevelopment {
+  id: string
+  title: string
+  description: string
+  industry: string
+  product?: string
+  date?: string
+  summary: string
+  url?: string
+  numerical_data?: Array<{
+    number: string
+    unit: string
+    context: string
+    source?: string
+  }>
+}
+
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
+}
+
+function pickFirstText(payload: DevelopmentPayload, fields: readonly string[]): string {
+  for (const field of fields) {
+    const text = cleanText(payload[field])
+    if (text) return text
+  }
+
+  return ""
 }
 
 function stripSummaryHeading(text: string): string {
@@ -122,4 +150,81 @@ export function pickCitationDescription(payload: DevelopmentPayload, analysisTex
   }
 
   return ""
+}
+
+export function buildCitationSourceDevelopment(
+  payload: unknown,
+  fallbackId: string
+): CitationSourceDevelopment | null {
+  if (!payload || typeof payload !== "object") {
+    return null
+  }
+
+  const source = payload as DevelopmentPayload
+  const status = cleanText(source.status).toLowerCase()
+  if (status === "not_found" || status === "missing") {
+    return null
+  }
+
+  const nestedPayload = (
+    (source.development && typeof source.development === "object" && source.development) ||
+    (source.data && typeof source.data === "object" && source.data) ||
+    (source.brief && typeof source.brief === "object" && source.brief) ||
+    source
+  ) as DevelopmentPayload
+
+  const summary = pickCitationAnalysisText(nestedPayload)
+  const title = pickFirstText(nestedPayload, [
+    "title",
+    "brief_title",
+    "source_title",
+    "name",
+  ])
+  const description =
+    pickCitationDescription(nestedPayload, summary) ||
+    pickFirstText(nestedPayload, [
+      "card_summary",
+      "short_summary",
+      "description",
+      "brief_source_text",
+      "public_mirror_excerpt",
+    ])
+  const id =
+    pickFirstText(nestedPayload, [
+      "_id",
+      "id",
+      "brief_id",
+      "dev_id",
+      "devid",
+      "source_development_id",
+    ]) || fallbackId
+
+  if (!title && !summary && !description) {
+    return null
+  }
+
+  return {
+    id,
+    title: title || "Source Evidence",
+    description,
+    industry:
+      pickFirstText(nestedPayload, ["industry", "category"]) ||
+      "Market Intelligence",
+    product: pickFirstText(nestedPayload, ["product"]) || undefined,
+    date:
+      pickFirstText(nestedPayload, [
+        "date",
+        "source_article_date",
+        "start_date",
+        "created_at",
+        "generated_at",
+      ]) || undefined,
+    summary,
+    url:
+      pickFirstText(nestedPayload, ["url", "source_url"]) ||
+      undefined,
+    numerical_data: Array.isArray(nestedPayload.numerical_data)
+      ? (nestedPayload.numerical_data as CitationSourceDevelopment["numerical_data"])
+      : [],
+  }
 }

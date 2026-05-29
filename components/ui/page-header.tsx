@@ -3,7 +3,7 @@
 
 "use client"
 
-import { ArrowLeft, Crown, Brain, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield, MessageSquare, Bot, Network } from "lucide-react"
+import { ArrowLeft, Crown, Brain, Gem, Globe, Users, Beaker, UserCircle2, BookOpen, Shield, MessageCircle, Network } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/contexts/theme-context"
 import { cn } from "@/lib/utils"
@@ -35,7 +35,7 @@ export function PageHeader({
     if (pathname.includes('/hnwi-world') || pathname.includes('/strategy-vault')) return Globe
     if (pathname.includes('/crown-vault')) return Crown
     if (pathname.includes('/social-hub')) return Users
-    if (pathname.includes('/ask-audelle') || pathname.includes('/ask-rohith')) return Bot
+    if (pathname.includes('/ask-audelle') || pathname.includes('/ask-rohith') || pathname.includes('/share/audelle') || pathname.includes('/share/rohith')) return MessageCircle
     if (pathname.includes('/tactics-lab') || pathname.includes('/strategy-engine')) return Beaker
     if (pathname.includes('/profile')) return UserCircle2
     if (pathname.includes('/playbooks')) return BookOpen

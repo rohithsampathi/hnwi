@@ -40,6 +40,7 @@ import {
   createHeir,
   updateHeir,
   deleteHeir,
+  syncCrownVaultAssetHeirDesignation,
   type CrownVaultAsset,
   type CrownVaultHeir,
   type CrownVaultStats
@@ -83,6 +84,14 @@ const getResolvedHeirNames = (asset: CrownVaultAsset, heirs: CrownVaultHeir[]): 
         .map(normalizeHeirValue)
         .filter(Boolean),
     ),
+  );
+};
+
+const getAssetDisplayName = (asset: CrownVaultAsset, heirs: CrownVaultHeir[]): string => {
+  return (
+    syncCrownVaultAssetHeirDesignation(asset.asset_data?.name, getResolvedHeirNames(asset, heirs)) ||
+    asset.asset_data?.name ||
+    "Unnamed Asset"
   );
 };
 
@@ -701,7 +710,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                             </div>
                             <div>
                               <div className="font-medium text-foreground">
-                                {asset.asset_data.name}
+                                {getAssetDisplayName(asset, heirs)}
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 {getAssetDisplayType(asset)} • {asset.asset_data.location || 'Location TBD'}
@@ -774,7 +783,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                 <DialogHeader className="flex flex-row items-start justify-between gap-4">
                   <div>
                     <DialogTitle className="text-xl font-semibold">
-                      {selectedAsset?.asset_data?.name || "Asset Detail"}
+                      {selectedAsset ? getAssetDisplayName(selectedAsset, heirs) : "Asset Detail"}
                     </DialogTitle>
                     {selectedAsset && (
                       <p className="mt-2 text-sm text-muted-foreground">
@@ -988,7 +997,7 @@ export function CrownVaultPage({ onNavigate = () => {} }: CrownVaultPageProps) {
                               {heirAssets.map((asset) => (
                                 <div key={asset.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                   <div>
-                                    <p className="font-medium text-foreground">{asset.asset_data.name}</p>
+                                    <p className="font-medium text-foreground">{getAssetDisplayName(asset, heirs)}</p>
                                     <p className="text-sm text-muted-foreground">
                                       {getAssetDisplayType(asset)}
                                       {asset.asset_data.location ? ` • ${asset.asset_data.location}` : ""}

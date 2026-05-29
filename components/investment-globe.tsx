@@ -5,7 +5,7 @@
 import { useRef, useEffect } from "react"
 import { useTheme } from "@/contexts/theme-context"
 import Globe, { type GlobeMethods } from "react-globe.gl"
-import * as d3 from "d3"
+import chroma from "chroma-js"
 import type { Region } from "@/lib/invest-scan-data"
 
 interface InvestmentGlobeProps {
@@ -25,9 +25,11 @@ export function InvestmentGlobe({ regions, onRegionSelect }: InvestmentGlobeProp
     }
   }, [])
 
-  const colorScale = d3
-    .scaleSequential(d3.interpolateYlOrRd)
-    .domain([0, Math.max(...regions.map((r) => r.opportunities.length))])
+  const maxOpportunities = Math.max(...regions.map((r) => r.opportunities.length)) || 1
+  const colorScale = (value: number) => {
+    const clamped = Math.max(0, Math.min(1, value / maxOpportunities))
+    return chroma.scale(["#fff5eb", "#d94801", "#7f2704"])(clamped).hex()
+  }
 
   return (
     <Globe

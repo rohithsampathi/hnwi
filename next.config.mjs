@@ -23,8 +23,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  transpilePackages: ['react-leaflet', '@react-leaflet/core'],
-
+  transpilePackages: [
+    'react-leaflet',
+    '@react-leaflet/core'
+  ],
   // Cache control headers for OG meta tags and social sharing
   async headers() {
     return [

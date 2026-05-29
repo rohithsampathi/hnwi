@@ -23,6 +23,7 @@ import {
   deleteCrownVaultAsset,
   normalizeAppreciationMetrics,
   refreshAssetPrice,
+  syncCrownVaultAssetHeirDesignation,
   updateAssetHeirs,
   updateCrownVaultAsset,
 } from "@/lib/api";
@@ -42,8 +43,10 @@ import {
   getAssetActionRationale,
   getAssetCurrency,
   getAssetChangePct,
+  getAssetCurrentUnitValue,
   getAssetCurrentValue,
   getAssetDisplayType,
+  getAssetEntryUnitValue,
   getAssetEntryValue,
   getAssetEntryDatePrecision,
   getAssetPatternTitles,
@@ -51,6 +54,8 @@ import {
   getAssetPricingAuthority,
   getAssetSignalState,
   getAssetStatusLabel,
+  getAssetUnitCount,
+  getAssetUnitLabel,
   latestAnalysisTimestamp,
   sortAssetsByChange,
 } from "@/lib/crown-vault-intelligence";
@@ -62,6 +67,20 @@ interface AssetsSectionProps {
   onAssetClick: (asset: CrownVaultAsset) => void;
   setAssets: React.Dispatch<React.SetStateAction<CrownVaultAsset[]>>;
 }
+
+const formatUnitCount = (value: number): string =>
+  Number.isInteger(value)
+    ? value.toLocaleString()
+    : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+const singularizeUnitLabel = (label: string): string => {
+  if (label === "grams") return "gram";
+  if (label === "units") return "unit";
+  return label;
+};
+
+const formatUnitPhrase = (count: number, label: string): string =>
+  `${formatUnitCount(count)} ${count === 1 ? singularizeUnitLabel(label) : label}`;
 
 // Katherine Portfolio Analysis Component
 const KatherinePortfolioAnalysis = ({ assets }: { assets: CrownVaultAsset[] }) => {
@@ -553,6 +572,28 @@ const getResolvedHeirNames = (asset: CrownVaultAsset, heirs: CrownVaultHeir[]): 
   );
 };
 
+const getHeirNamesForIds = (heirs: CrownVaultHeir[], heirIds: string[]): string[] => {
+  const heirIdSet = new Set(heirIds.map(normalizeHeirValue).filter(Boolean));
+  return heirs
+    .filter((heir) => heirIdSet.has(normalizeHeirValue(heir.id)))
+    .map((heir) => normalizeHeirValue(heir.name))
+    .filter(Boolean);
+};
+
+const applyAssetHeirAssignment = (
+  asset: CrownVaultAsset,
+  heirIds: string[],
+  heirNames: string[],
+): CrownVaultAsset => ({
+  ...asset,
+  heir_ids: heirIds,
+  heir_names: heirNames,
+  asset_data: {
+    ...asset.asset_data,
+    name: syncCrownVaultAssetHeirDesignation(asset.asset_data?.name, heirNames) || asset.asset_data?.name || "",
+  },
+});
+
 export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAssets }: AssetsSectionProps) {
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
@@ -572,12 +613,15 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
       setHeirUpdateLoading(prev => new Set([...prev, assetId]));
 
       const result = await updateAssetHeirs(assetId, newHeirIds);
+      const resolvedHeirNames = result.heir_names?.length
+        ? result.heir_names
+        : getHeirNamesForIds(heirs, newHeirIds);
 
       // Update the asset in state
       setAssets(prevAssets =>
         prevAssets.map(asset =>
           asset.asset_id === assetId
-            ? { ...asset, heir_ids: newHeirIds, heir_names: result.heir_names }
+            ? applyAssetHeirAssignment(asset, newHeirIds, resolvedHeirNames)
             : asset
         )
       );
@@ -624,7 +668,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                     ...a.asset_data,
                     cost_per_unit: result.new_price,
                     current_price: result.new_price,
-                    value: (a.asset_data.unit_count || 1) * result.new_price
+                    value: (getAssetUnitCount(a) || 1) * result.new_price
                   },
                   appreciation,
                   last_price_update: new Date().toISOString()
@@ -741,7 +785,11 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
       return false;
     }
     const displayType = getAssetDisplayType(asset).toLowerCase();
-    const matchesSearch = (asset.asset_data.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const displayName = syncCrownVaultAssetHeirDesignation(
+      asset.asset_data.name,
+      getResolvedHeirNames(asset, heirs),
+    );
+    const matchesSearch = (displayName || asset.asset_data.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          displayType.includes(searchQuery.toLowerCase()) ||
                          (asset.asset_data.location || '').toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -896,6 +944,17 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
             const isDeleting = deletingAssets.has(asset.asset_id);
             const resolvedHeirIds = getAssetHeirIds(asset);
             const resolvedHeirNames = getResolvedHeirNames(asset, heirs);
+            const assetDisplayName =
+              syncCrownVaultAssetHeirDesignation(asset.asset_data.name, resolvedHeirNames) ||
+              asset.asset_data.name ||
+              "Unnamed Asset";
+            const entryUnitValue = getAssetEntryUnitValue(asset);
+            const currentUnitValue = getAssetCurrentUnitValue(asset);
+            const unitCostValue = entryUnitValue ?? currentUnitValue;
+            const unitCostRail = entryUnitValue != null ? "entry" : "current";
+            const displayUnitCount = getAssetUnitCount(asset);
+            const unitLabel = getAssetUnitLabel(asset);
+            const unitCostLabel = unitLabel === "grams" ? "Cost per gram" : "Cost per unit";
             const primaryHeirName = resolvedHeirNames[0];
             
             return (
@@ -992,7 +1051,7 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                           className="text-left"
                         >
                           <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white/80' : 'text-black/80'}`}>
-                            {asset.asset_data.name || 'Unnamed Asset'}
+                            {assetDisplayName}
                           </h3>
                         </button>
                         {/* Value with unit details */}
@@ -1012,10 +1071,10 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            {asset.asset_data.unit_count && (asset.asset_data.entry_price || asset.asset_data.cost_per_unit) ? (
+                            {displayUnitCount && (asset.asset_data.entry_price || asset.asset_data.cost_per_unit) ? (
                               <>
                                 <p className={`text-xs font-medium ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`}>
-                                  {asset.asset_data.unit_count} units • entry basis {formatAssetValueWithLocal(asset, getAssetEntryValue(asset), "entry")}
+                                  {formatUnitPhrase(displayUnitCount, unitLabel)} • entry basis {formatAssetValueWithLocal(asset, getAssetEntryValue(asset), "entry")}
                                 </p>
                               </>
                             ) : (
@@ -1087,16 +1146,16 @@ export function AssetsSection({ assets, heirs, onAddAssets, onAssetClick, setAss
                     </div>
 
                     {/* Unit Details */}
-                    {asset.asset_data.unit_count && asset.asset_data.cost_per_unit && (
+                    {displayUnitCount && unitCostValue != null && (
                       <div className="text-left mb-4">
                         <div className="flex items-center gap-2 mb-1">
                           <BarChart3 className={`h-4 w-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-600'}`} />
                           <div>
                             <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white/70' : 'text-gray-700'}`}>
-                              Units: {asset.asset_data.unit_count}
+                              Units: {formatUnitPhrase(displayUnitCount, unitLabel)}
                             </p>
                             <p className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
-                              Cost per unit: {asset.asset_data.currency || 'USD'} {formatValue(asset.asset_data.cost_per_unit, asset.asset_data.currency)}
+                              {unitCostLabel}: {formatAssetValueWithLocal(asset, unitCostValue, unitCostRail)}
                             </p>
                           </div>
                         </div>

@@ -25,9 +25,11 @@ import {
   getAssetCurrency,
   getAssetChangeAmount,
   getAssetChangePct,
+  getAssetCurrentUnitValue,
   getAssetCurrentMarketSource,
   getAssetCurrentValue,
   getAssetEntryDatePrecision,
+  getAssetEntryUnitValue,
   getAssetImpact,
   getAssetLibraryAdvisories,
   getAssetMatchingBriefs,
@@ -78,6 +80,8 @@ export function AssetDetailsPanel({
   const impact = getAssetImpact(asset);
   const marketContext = getAssetMarketContext(asset);
   const currentValue = getAssetCurrentValue(asset);
+  const entryUnitValue = getAssetEntryUnitValue(asset) ?? undefined;
+  const currentUnitValue = getAssetCurrentUnitValue(asset) ?? undefined;
   const displayCurrency = getAssetCurrency(asset);
   const changeAmount = getAssetChangeAmount(asset);
   const changePct = getAssetChangePct(asset);
@@ -412,8 +416,8 @@ export function AssetDetailsPanel({
                       <AppreciationMetrics
                         appreciation={asset.appreciation}
                         currency={displayCurrency}
-                        entryPrice={asset.asset_data.entry_price}
-                        currentPrice={asset.asset_data.cost_per_unit || asset.asset_data.current_price}
+                        entryPrice={entryUnitValue}
+                        currentPrice={currentUnitValue}
                       />
                     </CardContent>
                   </Card>

@@ -5,6 +5,7 @@ import { RefreshCw, Brain, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CrownVaultAsset, normalizeAppreciationMetrics, refreshAssetPrice } from "@/lib/api";
+import { getAssetUnitCount } from "@/lib/crown-vault-intelligence";
 import { useToast } from "@/components/ui/use-toast";
 
 interface PriceRefreshButtonProps {
@@ -46,7 +47,7 @@ export function PriceRefreshButton({
           ...asset.asset_data,
           cost_per_unit: result.new_price,
           current_price: result.new_price,
-          value: (asset.asset_data.unit_count || 1) * result.new_price
+          value: (getAssetUnitCount(asset) || 1) * result.new_price
         },
         appreciation,
         last_price_update: new Date().toISOString()

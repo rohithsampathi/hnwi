@@ -3,20 +3,18 @@
 
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { isValidElement, useRef, useEffect, useState } from 'react';
 import { useRohith } from '@/contexts/rohith-context';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, MessageSquare, Trash2, ChevronRight, ChevronLeft, Share2, Check } from 'lucide-react';
+import { Send, Plus, MessageCircle, MessageSquare, Trash2, ChevronLeft, Share2, Check, User, Clock, BookOpen, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { secureApi } from '@/lib/secure-api';
 import { getConversationHistory } from '@/lib/rohith-api';
 import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
+import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ai-elements/conversation';
 import PremiumLoader from './PremiumLoader';
-import AssetGridViz from './visualizations/AssetGridViz';
-import ConcentrationDonutViz from './visualizations/ConcentrationDonutViz';
-import WorldMapViz from './visualizations/WorldMapViz';
-import IntelligenceCard from './IntelligenceCard';
+import VisualizationEngine from './VisualizationEngine';
 import { CitationText } from '@/components/elite/citation-text';
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel';
 import { extractDevIds } from '@/lib/parse-dev-citations';
@@ -69,6 +67,40 @@ function getKgCitationId(source: KGIntelligenceSource): string {
     .replace(/^_+|_+$/g, '')}`;
 }
 
+function sourceLabel(count: number): string {
+  return `${count} source${count === 1 ? '' : 's'}`;
+}
+
+function thoughtTimeLabel(milliseconds?: number): string {
+  if (!milliseconds || milliseconds <= 0) return '';
+  const seconds = milliseconds / 1000;
+  return `Thought for ${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
+}
+
+function normalizeAudelleChatText(content: string): string {
+  const text = content || '';
+  return text
+    .replace(/^\s*(?:\*\*)?\s*(Bottom line|Direct answer|Evidence basis|Evidence foundation|Decision implication|Missing proof|Next move):\s*(?:\*\*)?\s*\n?/gim, '')
+    .replace(/—/g, ', ')
+    .replace(/–/g, '-')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function reactNodeToText(node: any): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(reactNodeToText).join('');
+  if (isValidElement(node)) return reactNodeToText((node.props as any)?.children);
+  return '';
+}
+
+function isLegacyForcedVisualization(command: any): boolean {
+  const title = String(command?.data?.title || '').toLowerCase();
+  return title === 'native evidence packet' || title === 'risk assessment';
+}
+
 /**
  * PREMIUM ROHITH INTERFACE
  *
@@ -98,6 +130,7 @@ export default function PremiumRohithInterface({
     selectConversation,
     deleteConversation,
     clearCurrentConversation,
+    submitMessageFeedback,
     visualizations,
     predictivePrompts
   } = useRohith();
@@ -107,6 +140,7 @@ export default function PremiumRohithInterface({
   const sendInFlightRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
   const [linkCopied, setLinkCopied] = useState<string | null>(null);
+  const [submittingFeedbackId, setSubmittingFeedbackId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Unified citation panel state — handles both DEVID and KG sources
@@ -115,21 +149,13 @@ export default function PremiumRohithInterface({
   const [allCitations, setAllCitations] = useState<Citation[]>([]);
   const [citationMap, setCitationMap] = useState<Map<string, number>>(new Map());
 
-  // KG sources metadata (for IntelligenceCard matching) + Development-format map for EliteCitationPanel
-  const [kgSources, setKgSources] = useState<Map<string, {
-    label: string;
-    category: string;
-    jurisdiction: string;
-    intelligence?: string;
-    source?: string;
-  }>>(new Map());
+  // KG sources are converted to Development-format rows for the unified citation panel.
   const [kgDevelopments, setKgDevelopments] = useState<Map<string, PreloadedDevelopment>>(new Map());
 
   // Build citation list + KG Development objects from all messages
   useEffect(() => {
     const citations: Citation[] = [];
     const seenDevIds = new Set<string>();
-    const kgSourcesMap = new Map<string, { label: string; category: string; jurisdiction: string; intelligence?: string; source?: string }>();
     const kgDevsMap = new Map<string, PreloadedDevelopment>();
     let citationNumber = 1;
 
@@ -165,20 +191,12 @@ export default function PremiumRohithInterface({
               citationNumber++;
             } else if (source.type === 'kg_intelligence') {
               const kgId = getKgCitationId(source);
-              if (kgSourcesMap.has(kgId)) return;
+              if (kgDevsMap.has(kgId)) return;
 
               citations.push({
                 id: kgId,
                 number: citationNumber,
                 originalText: source.label
-              });
-              // Store KG source metadata for IntelligenceCard matching
-              kgSourcesMap.set(kgId, {
-                label: source.label,
-                category: source.category,
-                jurisdiction: source.jurisdiction,
-                intelligence: source.intelligence,
-                source: source.source
               });
               // Convert KG source to Development format for unified rendering
               const intelligenceText = source.intelligence || source.label;
@@ -213,7 +231,6 @@ export default function PremiumRohithInterface({
     });
 
     setAllCitations(citations);
-    setKgSources(kgSourcesMap);
     setKgDevelopments(kgDevsMap);
 
     const newMap = new Map<string, number>();
@@ -264,6 +281,10 @@ export default function PremiumRohithInterface({
 
   // Find visualizations for current message
   const getVisualizationsForMessage = (messageIndex: number) => {
+    const message = currentMessages[messageIndex];
+    if (message?.visualizations?.length) {
+      return message.visualizations;
+    }
     if (messageIndex === currentMessages.length - 1 && currentMessages[messageIndex].role === 'assistant') {
       return visualizations;
     }
@@ -274,11 +295,52 @@ export default function PremiumRohithInterface({
   const cleanMessageContent = (content: string): string => {
     if (!content || typeof content !== 'string') return '';
 
-    let cleaned = parseMessageContent(content).replace(/\[object Object\]/gi, '');
+    let cleaned = normalizeAudelleChatText(parseMessageContent(content)).replace(/\[object Object\]/gi, '');
     cleaned = cleaned.replace(/,\s*,/g, ',').replace(/\s+,/g, ',').replace(/,\s+/g, ', ');
     cleaned = cleaned.replace(/^[,\s]+|[,\s]+$/g, '');
 
     return cleaned;
+  };
+
+  const getMessageCitationIds = (message: typeof currentMessages[number]): string[] => {
+    const citationIds: string[] = [];
+    const seen = new Set<string>();
+    const add = (value: string) => {
+      const id = String(value || '').trim();
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      citationIds.push(id);
+    };
+
+    extractDevIds(parseMessageContent(message.content)).forEach(add);
+
+    if (Array.isArray(message.context?.sourceDocuments)) {
+      message.context.sourceDocuments.forEach((source) => {
+        const developmentId = getDevelopmentCitationId(source);
+        if (developmentId) {
+          add(developmentId);
+        } else if (isKgIntelligenceSource(source)) {
+          add(getKgCitationId(source));
+        }
+      });
+    }
+
+    if (Array.isArray(message.context?.hnwiKnowledgeSources)) {
+      message.context.hnwiKnowledgeSources.forEach((source: any) => {
+        if (source && typeof source === 'object') {
+          add(source.dev_id || source.id || source.development_id || '');
+        }
+      });
+    }
+
+    return citationIds;
+  };
+
+  const openFirstMessageSource = (message: typeof currentMessages[number]) => {
+    const [firstCitationId] = getMessageCitationIds(message);
+    if (firstCitationId) {
+      handleCitationClick(firstCitationId);
+    }
   };
 
   // Handle new conversation
@@ -369,6 +431,22 @@ export default function PremiumRohithInterface({
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const handleMessageFeedback = async (messageId: string, isPositive: boolean) => {
+    if (!messageId || submittingFeedbackId) return;
+    try {
+      setSubmittingFeedbackId(messageId);
+      await submitMessageFeedback(messageId, isPositive);
+    } catch {
+      toast({
+        title: "Feedback not saved",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingFeedbackId(null);
     }
   };
 
@@ -501,23 +579,21 @@ export default function PremiumRohithInterface({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-6 py-8">
+        <Conversation className="flex-1">
+          <ConversationContent className="mx-auto w-full max-w-4xl px-6 py-8">
             {/* Empty State */}
             {currentMessages.length === 0 && !isTyping && (
               <div className="text-center py-20">
                 <div className="mb-6">
                   <div className="w-20 h-20 mx-auto bg-gold/5 rounded-full flex items-center justify-center border border-gold/20">
-                    <MessageSquare className="w-10 h-10 text-gold/40" />
+                    <MessageCircle className="w-10 h-10 text-gold/40" />
                   </div>
                 </div>
                 <h1 className="text-2xl font-semibold text-foreground mb-2">
-                  Intelligence System Ready
+                  Ask Audelle
                 </h1>
                 <p className="text-muted-foreground text-base max-w-xl mx-auto">
-                  Access to HNWI World intelligence, Crown Vault assets, and market analysis.
-                  <br />
-                  Ask strategic questions.
+                  What should we think through?
                 </p>
               </div>
             )}
@@ -525,7 +601,11 @@ export default function PremiumRohithInterface({
             {/* Conversation */}
             <div className="space-y-6">
               {currentMessages.map((message, index) => {
-                const messageViz = getVisualizationsForMessage(index);
+                const messageViz = getVisualizationsForMessage(index).filter((command) => !isLegacyForcedVisualization(command));
+                const messageCitationIds = message.role === 'assistant' ? getMessageCitationIds(message) : [];
+                const thoughtTime = message.role === 'assistant'
+                  ? thoughtTimeLabel(message.context?.responseTime)
+                  : '';
 
                 return (
                   <motion.div
@@ -535,253 +615,193 @@ export default function PremiumRohithInterface({
                     transition={{ duration: 0.2 }}
                   >
                     {message.role === 'user' ? (
-                      // User Message - Minimal
-                      <div className="mb-6">
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-2 font-mono">
-                          Query
+                      <div className="mb-8 flex items-start justify-end gap-3">
+                        <div className="flex max-w-[85%] flex-col items-end md:max-w-[70%]">
+                          <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                            <span>You</span>
+                          </div>
+                          <div className="rounded-3xl rounded-tr-md bg-muted/80 px-5 py-3 text-[15px] leading-relaxed text-foreground shadow-sm">
+                            <p className="whitespace-pre-wrap">{message.content}</p>
+                          </div>
                         </div>
-                        <p className="text-base text-foreground/80 leading-relaxed">
-                          {message.content}
-                        </p>
+                        <div className="mt-5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted text-muted-foreground">
+                          <User className="h-4 w-4" />
+                        </div>
                       </div>
                     ) : (
-                      // Assistant Message - Structured with CitationText
-                      <div className="mb-8">
-                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/20">
-                          <div className="w-1.5 h-1.5 bg-gold rounded-full" />
-                          <div className="text-[10px] uppercase tracking-wider text-gold/80 font-mono">
-                            Audelle
-                          </div>
-                          {message.context?.responseTime && (
-                            <div className="ml-auto text-[10px] text-muted-foreground/40 font-mono">
-                              {(message.context.responseTime / 1000).toFixed(2)}s
-                            </div>
-                          )}
+                      <div className="mb-9 flex items-start gap-3">
+                        <div className="mt-5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-gold/25 bg-gold/10 text-gold">
+                          <MessageCircle className="h-4 w-4" />
                         </div>
-                        <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:text-gold prose-code:bg-gold/10 prose-code:px-1 prose-code:rounded">
-                          <ReactMarkdown
-                            components={{
-                              p: ({ children }) => {
-                                const textContent = String(children);
-                                const cleanedText = cleanMessageContent(textContent);
-                                return (
-                                  <p className="text-foreground leading-relaxed text-[15px] mb-3">
-                                    <CitationText
-                                      text={cleanedText}
-                                      onCitationClick={handleCitationClick}
-                                      citationMap={citationMap}
-                                      options={{
-                                        convertMarkdownBold: true,
-                                        preserveLineBreaks: true,
-                                        trim: true
-                                      }}
-                                    />
-                                  </p>
-                                );
-                              },
-                              strong: ({ children }) => (
-                                <strong className="font-semibold text-foreground">{children}</strong>
-                              ),
-                              em: ({ children }) => (
-                                <em className="italic text-foreground/90">{children}</em>
-                              ),
-                              ul: ({ children }) => (
-                                <ul className="list-disc list-inside space-y-1.5 my-3">{children}</ul>
-                              ),
-                              ol: ({ children }) => (
-                                <ol className="list-decimal list-inside space-y-1.5 my-3">{children}</ol>
-                              ),
-                              li: ({ children }) => {
-                                const textContent = String(children);
-                                const cleanedText = cleanMessageContent(textContent);
-                                return (
-                                  <li className="text-foreground text-[15px] leading-relaxed">
-                                    <CitationText
-                                      text={cleanedText}
-                                      onCitationClick={handleCitationClick}
-                                      citationMap={citationMap}
-                                      options={{
-                                        convertMarkdownBold: true,
-                                        preserveLineBreaks: false,
-                                        trim: true
-                                      }}
-                                    />
-                                  </li>
-                                );
-                              },
-                              h1: ({ children }) => (
-                                <h1 className="text-2xl font-bold text-foreground mt-6 mb-3">{children}</h1>
-                              ),
-                              h2: ({ children }) => (
-                                <h2 className="text-xl font-bold text-foreground mt-5 mb-2.5">{children}</h2>
-                              ),
-                              h3: ({ children }) => (
-                                <h3 className="text-lg font-semibold text-foreground mt-4 mb-2">{children}</h3>
-                              ),
-                              code: ({ children, className }) => {
-                                const isInline = !className;
-                                return isInline ? (
-                                  <code className="text-xs font-mono text-gold bg-gold/10 px-1.5 py-0.5 rounded">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-semibold text-foreground">Audelle</span>
+                            <span className="text-xs text-muted-foreground">Private decision ally</span>
+                          </div>
+                          <div className="max-w-[760px] text-[15px] leading-relaxed text-foreground">
+                            <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground prose-code:text-gold prose-code:bg-gold/10 prose-code:px-1 prose-code:rounded">
+                            <ReactMarkdown
+                              components={{
+                                p: ({ children }) => {
+                                  const textContent = reactNodeToText(children);
+                                  const cleanedText = cleanMessageContent(textContent);
+                                  return (
+                                    <p className="mb-4 text-[15px] leading-relaxed text-foreground last:mb-0">
+                                      <CitationText
+                                        text={cleanedText}
+                                        onCitationClick={handleCitationClick}
+                                        citationMap={citationMap}
+                                        options={{
+                                          convertMarkdownBold: true,
+                                          preserveLineBreaks: true,
+                                          trim: true
+                                        }}
+                                      />
+                                    </p>
+                                  );
+                                },
+                                strong: ({ children }) => (
+                                  <strong className="font-semibold text-foreground">{children}</strong>
+                                ),
+                                em: ({ children }) => (
+                                  <em className="italic text-foreground/90">{children}</em>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="my-3 list-disc space-y-1.5 pl-5">{children}</ul>
+                                ),
+                                ol: ({ children }) => (
+                                  <ol className="my-3 list-decimal space-y-1.5 pl-5">{children}</ol>
+                                ),
+                                li: ({ children }) => {
+                                  const textContent = reactNodeToText(children);
+                                  const cleanedText = cleanMessageContent(textContent);
+                                  return (
+                                    <li className="text-[15px] leading-relaxed text-foreground">
+                                      <CitationText
+                                        text={cleanedText}
+                                        onCitationClick={handleCitationClick}
+                                        citationMap={citationMap}
+                                        options={{
+                                          convertMarkdownBold: true,
+                                          preserveLineBreaks: false,
+                                          trim: true
+                                        }}
+                                      />
+                                    </li>
+                                  );
+                                },
+                                h1: ({ children }) => (
+                                  <h1 className="mb-3 mt-6 text-2xl font-bold text-foreground">{children}</h1>
+                                ),
+                                h2: ({ children }) => (
+                                  <h2 className="mb-2.5 mt-5 text-xl font-bold text-foreground">{children}</h2>
+                                ),
+                                h3: ({ children }) => (
+                                  <h3 className="mb-2 mt-4 text-lg font-semibold text-foreground">{children}</h3>
+                                ),
+                                code: ({ children, className }) => {
+                                  const isInline = !className;
+                                  return isInline ? (
+                                    <code className="rounded bg-gold/10 px-1.5 py-0.5 font-mono text-xs text-gold">
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <code className={className}>{children}</code>
+                                  );
+                                },
+                                pre: ({ children }) => (
+                                  <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-surface p-4">
                                     {children}
-                                  </code>
+                                  </pre>
+                                ),
+                                table: ({ children }) => (
+                                  <div className="my-4 overflow-x-auto rounded-xl border border-border/40 bg-card/40">
+                                    <table className="min-w-full border-collapse text-left text-sm">
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                thead: ({ children }) => (
+                                  <thead className="border-b border-border/40 bg-muted/40">{children}</thead>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="border-t border-border/30 px-3 py-2 align-top text-sm text-foreground/90">
+                                    {children}
+                                  </td>
+                                ),
+                                blockquote: ({ children }) => (
+                                  <blockquote className="my-4 border-l-2 border-gold/50 pl-4 text-foreground/85">
+                                    {children}
+                                  </blockquote>
+                                ),
+                              }}
+                            >
+                              {cleanMessageContent(message.content)}
+                            </ReactMarkdown>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground/70">
+                            {messageCitationIds.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openFirstMessageSource(message)}
+                                className="inline-flex items-center gap-1 hover:text-gold hover:underline"
+                              >
+                                <BookOpen className="h-3.5 w-3.5" />
+                                {sourceLabel(messageCitationIds.length)}
+                              </button>
+                            )}
+                            {thoughtTime && (
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                {thoughtTime}
+                              </span>
+                            )}
+                            {(message as any).feedbackSubmitted ? (
+                              <span className="inline-flex items-center gap-1 text-muted-foreground/60">
+                                {(message as any).feedbackSubmitted === 'positive' ? (
+                                  <ThumbsUp className="h-3.5 w-3.5 text-emerald-500" />
                                 ) : (
-                                  <code className={className}>{children}</code>
-                                );
-                              },
-                              pre: ({ children }) => (
-                                <pre className="bg-surface border border-border rounded-lg p-4 overflow-x-auto my-3">
-                                  {children}
-                                </pre>
-                              ),
-                            }}
-                          >
-                            {cleanMessageContent(message.content)}
-                          </ReactMarkdown>
-                        </div>
-
-                        {/* Inline Intelligence Cards - Rich Visual Display */}
-                        {(() => {
-                          const intelligenceSources = (message.context?.sourceDocuments ?? []).filter(
-                            (source): source is KGIntelligenceSource => isKgIntelligenceSource(source) && Boolean(source.intelligence)
-                          );
-                          return intelligenceSources.length > 0;
-                        })() && (
-                          <div className="mt-6">
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-3 font-mono">
-                              Intelligence Analysis
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {(message.context?.sourceDocuments ?? [])
-                                .filter((source): source is KGIntelligenceSource => isKgIntelligenceSource(source) && Boolean(source.intelligence))
-                                .slice(0, 6)
-                                .map((source, idx) => {
-                                  // Find the actual kgId from kgSources by matching properties
-                                  let kgId = `kg_${idx + 1}`;
-                                  for (const [id, data] of kgSources.entries()) {
-                                    if (
-                                      data.label === source.label &&
-                                      data.category === source.category &&
-                                      data.jurisdiction === source.jurisdiction
-                                    ) {
-                                      kgId = id;
-                                      break;
-                                    }
-                                  }
-                                  return (
-                                    <IntelligenceCard
-                                      key={`intel-${idx}`}
-                                      category={source.category}
-                                      jurisdiction={source.jurisdiction}
-                                      label={source.label}
-                                      intelligence={source.intelligence}
-                                      source={source.source}
-                                      onClick={() => handleCitationClick(kgId)}
-                                    />
-                                  );
-                                })}
-                            </div>
+                                  <ThumbsDown className="h-3.5 w-3.5 text-red-500" />
+                                )}
+                                Feedback saved
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMessageFeedback(message.messageId || message.id, true)}
+                                  disabled={submittingFeedbackId === (message.messageId || message.id)}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-emerald-500/10 hover:text-emerald-600 disabled:opacity-50"
+                                  title="Helpful response"
+                                >
+                                  <ThumbsUp className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMessageFeedback(message.messageId || message.id, false)}
+                                  disabled={submittingFeedbackId === (message.messageId || message.id)}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50"
+                                  title="Not helpful"
+                                >
+                                  <ThumbsDown className="h-3.5 w-3.5" />
+                                </button>
+                              </span>
+                            )}
                           </div>
-                        )}
 
-                        {/* Citations - Development & KG Intelligence Sources */}
-                        {((message.context?.sourceDocuments && message.context.sourceDocuments.length > 0) ||
-                          (message.context?.hnwiKnowledgeSources && message.context.hnwiKnowledgeSources.length > 0)) && (
-                          <div className="mt-4 pt-3 border-t border-border/10">
-                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground/40 mb-2 font-mono">
-                              Sources
-                            </div>
-                            <div className="space-y-1.5">
-                              {/* New sourceDocuments format (Feb 2026+) */}
-                              {message.context?.sourceDocuments && message.context.sourceDocuments.map((source, idx) => {
-                                let citationId: string;
-                                let citationNum: number;
-                                let sourceLabel: string;
-
-                                const developmentId = getDevelopmentCitationId(source);
-                                if (developmentId) {
-                                  const developmentSource = source as Record<string, any>;
-                                  citationId = developmentId;
-                                  citationNum = citationMap.get(developmentId) || idx + 1;
-                                  sourceLabel = `${developmentSource.jurisdiction || 'Global'} • ${developmentSource.title || 'Development'}`;
-                                } else if (isKgIntelligenceSource(source)) {
-                                  citationId = getKgCitationId(source);
-                                  citationNum = citationMap.get(citationId) || idx + 1;
-                                  sourceLabel = source.label;
-                                } else {
-                                  return null;
-                                }
-
-                                return (
-                                  <button
-                                    key={`source-${idx}`}
-                                    onClick={() => handleCitationClick(citationId)}
-                                    className="block w-full text-left text-xs text-muted-foreground hover:text-gold transition-colors group"
-                                    title="Click to view source details"
-                                  >
-                                    <span className="font-mono text-gold mr-2">[{citationNum}]</span>
-                                    <span className="group-hover:underline">
-                                      {sourceLabel}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-
-                              {/* Legacy hnwiKnowledgeSources format (fallback) */}
-                              {!message.context?.sourceDocuments && message.context?.hnwiKnowledgeSources?.map((source: any, idx: number) => {
-                                if (typeof source === 'string') {
-                                  return (
-                                    <div key={idx} className="text-xs text-muted-foreground">
-                                      <span className="font-mono text-gold mr-2">[{idx + 1}]</span>
-                                      {source}
-                                    </div>
-                                  );
-                                } else if (source && typeof source === 'object') {
-                                  const devId = source.dev_id || source.id;
-                                  const title = source.title || source.headline || 'Development';
-                                  const jurisdiction = source.jurisdiction || 'Global';
-                                  const citationNum = citationMap.get(devId) || idx + 1;
-
-                                  return (
-                                    <button
-                                      key={idx}
-                                      onClick={() => devId && handleCitationClick(devId)}
-                                      className="block w-full text-left text-xs text-muted-foreground hover:text-gold transition-colors group"
-                                      title="Click to view full citation"
-                                    >
-                                      <span className="font-mono text-gold mr-2">[{citationNum}]</span>
-                                      <span className="group-hover:underline">
-                                        {jurisdiction} • {title}
-                                      </span>
-                                    </button>
-                                  );
-                                }
-                                return null;
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Inline Visualizations */}
                         {messageViz.length > 0 && (
-                          <div className="mt-6 space-y-4">
-                            {messageViz.map((viz) => {
-                              let vizComponent = null;
-                              if (viz.type === 'asset_grid') {
-                                vizComponent = <AssetGridViz data={viz.data} interactive={true} />;
-                              } else if (viz.type === 'concentration_donut' || viz.type === 'concentration_chart') {
-                                vizComponent = <ConcentrationDonutViz data={viz.data} interactive={true} />;
-                              } else if (viz.type === 'world_map' || viz.type === 'geographic_intelligence' || viz.type === 'map') {
-                                vizComponent = <WorldMapViz data={viz.data} interactive={true} />;
-                              }
-
-                              return vizComponent ? (
-                                <div key={viz.id}>
-                                  {vizComponent}
-                                </div>
-                              ) : null;
-                            })}
+                          <div className="mt-4 max-w-[760px]">
+                            <VisualizationEngine commands={messageViz} inline />
                           </div>
                         )}
+                        </div>
                       </div>
                     )}
                   </motion.div>
@@ -836,20 +856,21 @@ export default function PremiumRohithInterface({
                 </div>
               </motion.div>
             )}
-          </div>
-        </div>
+          </ConversationContent>
+          <ConversationScrollButton className="bottom-6 h-9 w-9" />
+        </Conversation>
 
         {/* Input Area */}
         <div className="border-t border-border/30 bg-background">
           <div className="max-w-4xl mx-auto px-6 py-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card/70 px-3 py-2 shadow-sm">
               <input
                 ref={inputRef}
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Enter strategic query..."
-                className="flex-1 bg-transparent border-b border-border/30 px-2 py-2.5 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/40 transition-colors text-sm"
+                placeholder="Ask Audelle..."
+                className="flex-1 bg-transparent px-2 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/45 focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -863,6 +884,7 @@ export default function PremiumRohithInterface({
                 disabled={isTyping || !inputValue.trim()}
                 variant="default"
                 size="icon"
+                className="h-9 w-9 rounded-full"
               >
                 <Send className="w-4 h-4" />
               </Button>

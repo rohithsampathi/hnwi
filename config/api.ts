@@ -10,13 +10,16 @@ if (typeof window !== 'undefined') {
   throw new Error('API_BASE_URL cannot be imported in client-side code. Use secureApi instead.')
 }
 
+const LOCAL_DEV_API_BASE_URL = "http://localhost:8000";
 const KINGDOM_API_BASE_URL = "https://kingdom-core.montaigne.co";
 const LEGACY_DIGITALOCEAN_API_BASE_URL = "https://hnwi-uwind-p8oqb.ondigitalocean.app";
 const configuredApiBaseUrl = process.env.API_BASE_URL?.trim().replace(/\/$/, "");
+const defaultApiBaseUrl =
+  process.env.NODE_ENV === "development" ? LOCAL_DEV_API_BASE_URL : KINGDOM_API_BASE_URL;
 
 export const API_BASE_URL =
   !configuredApiBaseUrl || configuredApiBaseUrl === LEGACY_DIGITALOCEAN_API_BASE_URL
-    ? KINGDOM_API_BASE_URL
+    ? defaultApiBaseUrl
     : configuredApiBaseUrl;
 
 

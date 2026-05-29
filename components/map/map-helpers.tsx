@@ -186,7 +186,13 @@ export function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => 
  * Flies to destination and positions popup below the page header
  * Uses centralized MAP_CONFIG for all parameters
  */
-export function PopupZoomHandler() {
+export function PopupZoomHandler({
+  disabled = false,
+  minimumZoom = MAP_CONFIG.zoom.popupDetail,
+}: {
+  disabled?: boolean
+  minimumZoom?: number
+}) {
   const [isZooming, setIsZooming] = React.useState(false)
   const pendingTimeoutsRef = React.useRef<number[]>([])
 
@@ -200,7 +206,7 @@ export function PopupZoomHandler() {
   const map = useMapEvents({
     popupopen: (e) => {
       // Prevent multiple concurrent zoom operations
-      if (isZooming) return
+      if (disabled || isZooming) return
 
       const popup = e.popup
 
@@ -213,7 +219,7 @@ export function PopupZoomHandler() {
 
       if (latlng) {
         setIsZooming(true)
-        const targetZoom = MAP_CONFIG.zoom.popupDetail
+        const targetZoom = Math.max(map.getZoom(), minimumZoom)
 
         // Wait for popup to fully render and DOM to settle
         clearPendingTimeouts()

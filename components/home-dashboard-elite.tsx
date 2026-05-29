@@ -159,6 +159,45 @@ export function HomeDashboardElite({
     setManagedCitations(allCitations)
   }, [cities, setManagedCitations])
 
+  const preloadedCitationSources = React.useMemo(() => {
+    const sources = new Map<string, {
+      id: string
+      title: string
+      description: string
+      industry: string
+      product?: string
+      date?: string
+      summary: string
+      url?: string
+      numerical_data?: []
+    }>()
+
+    cities.forEach((city) => {
+      const summary = city.analysis || city.summary || city.elite_pulse_analysis || ""
+      const title = city.title || city.name
+      const sourceIds = [city._id, city.id].filter((id): id is string => Boolean(id))
+
+      if (sourceIds.length === 0 || (!title && !summary)) {
+        return
+      }
+
+      sourceIds.forEach((sourceId) => {
+        sources.set(sourceId, {
+          id: sourceId,
+          title: title || "Source Evidence",
+          description: city.summary || summary.slice(0, 260),
+          industry: city.category || city.industry || "Market Intelligence",
+          product: city.product,
+          date: city.start_date,
+          summary,
+          numerical_data: []
+        })
+      })
+    })
+
+    return sources
+  }, [cities])
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -728,6 +767,7 @@ export function HomeDashboardElite({
             onClose={closePanel}
             onCitationSelect={setSelectedCitationId}
             citationMap={citationMap}
+            preloadedSources={preloadedCitationSources}
           />
         </div>
       )}
@@ -743,6 +783,7 @@ export function HomeDashboardElite({
             }}
             onCitationSelect={setSelectedCitationId}
             citationMap={citationMap}
+            preloadedSources={preloadedCitationSources}
           />
         </AnimatePresence>
       )}

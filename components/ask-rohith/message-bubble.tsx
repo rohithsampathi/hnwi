@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useTheme } from "@/contexts/theme-context"
-import { Bot, User, Clock, BookOpen, Copy, Check, FileText, ThumbsUp, ThumbsDown } from "lucide-react"
+import { MessageCircle, User, Clock, BookOpen, Copy, Check, FileText, ThumbsUp, ThumbsDown } from "lucide-react"
 import { cn, parseMessageContent } from "@/lib/utils"
 import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { sanitizeRichHtml } from "@/lib/security/sanitization"
@@ -185,7 +185,7 @@ export function MessageBubble({
             <>
               <AvatarImage src="/Rohith.ico" alt="Audelle" />
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                <Bot className="h-4 w-4" />
+                <MessageCircle className="h-4 w-4" />
               </AvatarFallback>
             </>
           )}

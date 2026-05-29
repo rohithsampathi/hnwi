@@ -53,6 +53,7 @@ export interface City {
   value?: string
   risk?: string
   analysis?: string
+  summary?: string
   source?: string
   victor_score?: string
   elite_pulse_analysis?: string
@@ -204,6 +205,91 @@ function getDecisionVerdictClass(value: string): string {
   return "verdict-restructure"
 }
 
+function cleanHoverText(value?: string | null): string {
+  if (!value) return ""
+
+  return String(value)
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[#*_`>~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function truncateHoverText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value
+
+  const truncated = value.slice(0, maxLength)
+  const lastSentence = truncated.search(/[.!?]\s[^.!?]*$/)
+  if (lastSentence > 80) return truncated.slice(0, lastSentence + 1).trim()
+
+  const lastSpace = truncated.lastIndexOf(" ")
+  return `${truncated.slice(0, lastSpace > 80 ? lastSpace : maxLength).trim()}...`
+}
+
+function getCityHoverSummary(city: City): string {
+  const rawSummary =
+    city.summary ||
+    city.elite_pulse_analysis ||
+    city.katherine_analysis ||
+    city.analysis ||
+    ""
+
+  const cleaned = cleanHoverText(rawSummary)
+  return truncateHoverText(cleaned, 230)
+}
+
+function getCityLocationLabel(city: City): string {
+  if (city.name && city.country) {
+    if (city.name.includes(city.country) || city.name === city.country) return city.name
+    if (city.country.includes(city.name)) return city.name
+    return `${city.name}, ${city.country}`
+  }
+
+  return city.country || city.name || "Unknown Location"
+}
+
+function MapMarkerHoverTooltip({ cities, center }: { cities: City[]; center: City }) {
+  if (cities.length > 1) {
+    return (
+      <div className="min-w-[220px] max-w-[320px]">
+        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+          {cities.length} opportunities
+        </div>
+        <div className="space-y-1">
+          {cities.slice(0, 3).map((city) => (
+            <div key={`${city._id || city.id || city.title}-${city.latitude}-${city.longitude}`} className="text-xs leading-snug">
+              <span className="font-semibold">{city.title || city.name}</span>
+              {city.value && <span className="text-muted-foreground"> • {city.value}</span>}
+            </div>
+          ))}
+          {cities.length > 3 && (
+            <div className="text-[11px] text-muted-foreground">+{cities.length - 3} more</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const summary = getCityHoverSummary(center)
+
+  return (
+    <div className="min-w-[220px] max-w-[320px]">
+      <div className="mb-1 text-sm font-bold leading-snug text-primary">
+        {center.title || center.name}
+      </div>
+      <div className="mb-1 text-[11px] text-muted-foreground">
+        {getCityLocationLabel(center)}
+        {center.value ? ` • ${center.value}` : ""}
+      </div>
+      {summary && (
+        <div className="text-xs leading-relaxed text-foreground">
+          {summary}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface InteractiveWorldMapProps {
   width?: number | string
   height?: number | string
@@ -274,6 +360,7 @@ export function InteractiveWorldMap({
   const [hoveredDestination, setHoveredDestination] = useState<string | null>(null)
   const markerRefs = React.useRef<Map<string, any>>(new Map())
   const timeoutRefs = React.useRef<number[]>([])
+  const cityFocusActive = selectedCity !== null || flyToCity !== null || openClusterId !== null
 
   const scheduleTimeout = useCallback((callback: () => void, delayMs: number) => {
     const timeoutId = window.setTimeout(() => {
@@ -376,6 +463,9 @@ export function InteractiveWorldMap({
     setSelectedCity(city)
     setFlyToCity(city)
     setOpenClusterId(clusterId)
+    setHoveredCorridorKey(null)
+    setSelectedCorridorKey(null)
+    setHoveredDestination(null)
 
     if (expandDetails) {
       setCityToExpand(city)
@@ -621,6 +711,14 @@ export function InteractiveWorldMap({
                   />
                 )}
               </Popup>
+              <Tooltip
+                direction="top"
+                offset={[0, -14]}
+                opacity={1}
+                className="opportunity-hover-tooltip"
+              >
+                <MapMarkerHoverTooltip cities={cluster.cities} center={center} />
+              </Tooltip>
             </Marker>
           )
         })}
@@ -704,14 +802,17 @@ export function InteractiveWorldMap({
                   lineCap: 'round',
                   lineJoin: 'round'
                 }}
+                interactive={!cityFocusActive}
                 eventHandlers={{
                   mouseover: () => {
+                    if (cityFocusActive) return
                     setHoveredCorridorKey(corridorKey)
                   },
                   mouseout: () => {
                     setHoveredCorridorKey(null)
                   },
                   popupopen: () => {
+                    if (cityFocusActive) return
                     setSelectedCorridorKey(corridorKey)
                   },
                   popupclose: () => {
@@ -858,55 +959,57 @@ export function InteractiveWorldMap({
                   </Popup>
                 )}
                 {/* Tooltip that follows cursor on hover */}
-                <Tooltip
-                  permanent={false}
-                  sticky={true}
-                  direction="top"
-                  offset={[0, -10]}
-                  opacity={1}
-                  className="corridor-label-tooltip"
-                >
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '3px 5px 3px 9px',
-                      borderRadius: '12px',
-                      background: 'rgba(10,10,10,0.85)',
-                      backdropFilter: 'blur(4px)',
-                      border: `1px solid ${color}44`,
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      letterSpacing: '0.5px',
-                      fontFamily: 'Inter,system-ui,sans-serif',
-                      color: labelTextColor,
-                      whiteSpace: 'nowrap',
-                      textTransform: 'uppercase',
-                      boxShadow: `0 0 6px ${color}33`,
-                      filter: labelBlur,
-                    }}
+                {!cityFocusActive && (
+                  <Tooltip
+                    permanent={false}
+                    sticky={true}
+                    direction="top"
+                    offset={[0, -10]}
+                    opacity={1}
+                    className="corridor-label-tooltip"
                   >
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }}></span>
-                    {routeTag}
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      background: color,
-                      color: badgeTextColor,
-                      fontSize: '11px',
-                      fontWeight: '900',
-                      flexShrink: 0,
-                      lineHeight: 1
-                    }}>
-                      {auditCount}
-                    </span>
-                  </div>
-                </Tooltip>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '3px 5px 3px 9px',
+                        borderRadius: '12px',
+                        background: 'rgba(10,10,10,0.85)',
+                        backdropFilter: 'blur(4px)',
+                        border: `1px solid ${color}44`,
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        letterSpacing: '0.5px',
+                        fontFamily: 'Inter,system-ui,sans-serif',
+                        color: labelTextColor,
+                        whiteSpace: 'nowrap',
+                        textTransform: 'uppercase',
+                        boxShadow: `0 0 6px ${color}33`,
+                        filter: labelBlur,
+                      }}
+                    >
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: color, flexShrink: 0 }}></span>
+                      {routeTag}
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        background: color,
+                        color: badgeTextColor,
+                        fontSize: '11px',
+                        fontWeight: '900',
+                        flexShrink: 0,
+                        lineHeight: 1
+                      }}>
+                        {auditCount}
+                      </span>
+                    </div>
+                  </Tooltip>
+                )}
               </Polyline>
               {/* Glow layer — wider, translucent line for premium depth */}
               <Polyline
@@ -950,15 +1053,18 @@ export function InteractiveWorldMap({
                 <Marker
                   position={[flow.destination.latitude, flow.destination.longitude]}
                   icon={destinationIcon}
+                  interactive={!cityFocusActive}
                   zIndexOffset={20000}
                   eventHandlers={{
                     mouseover: () => {
+                      if (cityFocusActive) return
                       setHoveredDestination(flow.destination.name)
                     },
                     mouseout: () => {
                       setHoveredDestination(null)
                     },
                     popupopen: () => {
+                      if (cityFocusActive) return
                       setSelectedCorridorKey(corridorKey)
                     },
                     popupclose: () => {
@@ -1121,7 +1227,7 @@ export function InteractiveWorldMap({
         <ResetView shouldReset={resetView} onReset={() => setResetView(false)} minZoom={startingZoom} />
         <MapClickHandler onMapClick={handleMapClick} />
         <ZoomTracker onZoomChange={setCurrentZoom} />
-        <PopupZoomHandler />
+        <PopupZoomHandler minimumZoom={cityFocusActive ? MAP_CONFIG.zoom.cityDetail : MAP_CONFIG.zoom.popupDetail} />
       </SafeMapContainer>
 
       {/* Filter Controls - Mobile */}

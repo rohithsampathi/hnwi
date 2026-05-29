@@ -10,6 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { CrownVaultAsset, updateCrownVaultAsset } from "@/lib/api";
+import {
+  getAssetCurrentUnitValue,
+  getAssetEntryUnitValue,
+  getAssetUnitCount,
+  isGoldJewelleryAsset,
+} from "@/lib/crown-vault-intelligence";
 
 interface EditAssetModalProps {
   asset: CrownVaultAsset | null;
@@ -35,10 +41,12 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
   // Reset form data when asset changes
   useEffect(() => {
     if (asset) {
-      // Try to get unit_count and cost_per_unit from asset_data
-      const unitCount = asset.asset_data?.unit_count || 1;
-      const costPerUnit = asset.asset_data?.cost_per_unit ||
-        (asset.asset_data?.value ? asset.asset_data.value / unitCount : 0);
+      const unitCount = getAssetUnitCount(asset) || 1;
+      const rawCostPerUnit =
+        getAssetEntryUnitValue(asset) ??
+        getAssetCurrentUnitValue(asset) ??
+        asset.asset_data?.cost_per_unit;
+      const costPerUnit = rawCostPerUnit ?? (asset.asset_data?.value ? asset.asset_data.value / unitCount : 0);
       const entryPrice = asset.asset_data?.entry_price || 0;
 
       setFormData({
@@ -54,6 +62,20 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
     }
   }, [asset]);
 
+  const labelAsset: CrownVaultAsset | null = asset
+    ? {
+        ...asset,
+        asset_data: {
+          ...asset.asset_data,
+          name: formData.name,
+          asset_type: formData.asset_type,
+        },
+      }
+    : null;
+  const isGoldJewellery = labelAsset ? isGoldJewelleryAsset(labelAsset) : false;
+  const unitCountLabel = isGoldJewellery ? "Weight (grams)" : "Unit Count";
+  const unitCostLabel = isGoldJewellery ? "Cost Per Gram" : "Cost Per Unit";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -65,6 +87,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
         name: formData.name,
         asset_type: formData.asset_type,
         unit_count: parseFloat(formData.unit_count) || 1,
+        unit_type: isGoldJewellery ? "grams" : asset.asset_data?.unit_type,
         cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
         entry_price: parseFloat(formData.entry_price) || 0,
         currency: formData.currency,
@@ -86,6 +109,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
             name: formData.name,
             asset_type: formData.asset_type,
             unit_count: parseFloat(formData.unit_count) || 1,
+            unit_type: isGoldJewellery ? "grams" : asset.asset_data?.unit_type,
             cost_per_unit: parseFloat(formData.cost_per_unit) || 0,
             entry_price: parseFloat(formData.entry_price) || 0,
             value: (parseFloat(formData.unit_count) || 1) * (parseFloat(formData.cost_per_unit) || 0),
@@ -175,7 +199,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="unit_count">Unit Count</Label>
+                <Label htmlFor="unit_count">{unitCountLabel}</Label>
                 <Input
                   id="unit_count"
                   type="number"
@@ -188,7 +212,7 @@ export function EditAssetModal({ asset, isOpen, onClose, onAssetUpdated }: EditA
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cost_per_unit">Cost Per Unit</Label>
+                <Label htmlFor="cost_per_unit">{unitCostLabel}</Label>
                 <Input
                   id="cost_per_unit"
                   type="number"

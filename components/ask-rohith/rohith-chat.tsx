@@ -15,7 +15,7 @@ import { useRohith } from "@/contexts/rohith-context"
 import { CrownLoader } from "@/components/ui/crown-loader"
 import {
   Send,
-  Bot,
+  MessageCircle,
   TrendingUp,
   BarChart3,
   Sparkles,
@@ -48,7 +48,7 @@ const QUICK_PROMPTS = [
     text: "Real estate developments"
   },
   {
-    icon: Bot,
+    icon: MessageCircle,
     text: "Alternative investment trends"
   }
 ]
@@ -464,7 +464,7 @@ export function RohithChat({ conversationId, onNavigate, isSharedView = false }:
                     {/* Hero Section - Compact */}
                     <div className="space-y-3">
                       <div className="w-16 h-16 mx-auto bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center">
-                        <Bot className="h-8 w-8 text-primary" />
+                        <MessageCircle className="h-8 w-8 text-primary" />
                       </div>
                       <div className="space-y-2 text-center">
                         <h1 className="text-xl font-semibold text-foreground">

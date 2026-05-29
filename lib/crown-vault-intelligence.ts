@@ -100,6 +100,92 @@ export const getAssetCurrentValue = (asset: CrownVaultAsset): number | null => {
   );
 };
 
+const KG_UNIT_TYPES = new Set(["kg", "kgs", "kilogram", "kilograms"]);
+const GRAM_UNIT_TYPES = new Set(["g", "gm", "gms", "gram", "grams"]);
+const JEWELLERY_TERMS = [
+  "jewellery",
+  "jewelry",
+  "ornament",
+  "ornaments",
+  "necklace",
+  "bangle",
+  "bangles",
+  "bracelet",
+  "ring",
+  "chain",
+];
+
+const getRawAssetUnitType = (asset: CrownVaultAsset): string =>
+  String((asset as GenericRecord).unit_type || asset.asset_data?.unit_type || "").trim();
+
+const getRawAssetUnitCount = (asset: CrownVaultAsset): number | null => {
+  const unitCount =
+    toNumber((asset as GenericRecord).unit_count) ??
+    toNumber(asset.asset_data?.unit_count);
+
+  return unitCount && unitCount > 0 ? unitCount : null;
+};
+
+export const isGoldJewelleryAsset = (asset: CrownVaultAsset): boolean => {
+  const truth = (asset as GenericRecord).katherine_canonical_truth || {};
+  const impact = getAssetImpact(asset);
+  const rawText = [
+    truth.name,
+    truth.asset_category,
+    truth.property_type,
+    asset.asset_data?.name,
+    asset.asset_data?.asset_type,
+    asset.asset_data?.unit_type,
+    asset.asset_data?.notes,
+    (asset as GenericRecord).unit_type,
+    impact.asset_type_label,
+    impact.asset_category,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return rawText.includes("gold") && JEWELLERY_TERMS.some((term) => rawText.includes(term));
+};
+
+export const getAssetUnitCount = (asset: CrownVaultAsset): number | null => {
+  const unitCount = getRawAssetUnitCount(asset);
+  if (!unitCount) {
+    return null;
+  }
+
+  const unitType = getRawAssetUnitType(asset).toLowerCase();
+  if (isGoldJewelleryAsset(asset) && KG_UNIT_TYPES.has(unitType)) {
+    return unitCount * 1000;
+  }
+
+  return unitCount;
+};
+
+export const getAssetUnitLabel = (asset: CrownVaultAsset): string => {
+  if (isGoldJewelleryAsset(asset)) {
+    return "grams";
+  }
+
+  const rawUnitType = getRawAssetUnitType(asset);
+  if (!rawUnitType) {
+    return "units";
+  }
+
+  const normalized = rawUnitType.toLowerCase();
+  if (KG_UNIT_TYPES.has(normalized)) {
+    return "kg";
+  }
+  if (GRAM_UNIT_TYPES.has(normalized)) {
+    return "grams";
+  }
+  if (["sqyd", "sqyds", "sq yd", "sq yds", "square yard", "square yards"].includes(normalized)) {
+    return "sq yd";
+  }
+
+  return rawUnitType;
+};
+
 const COLLECTOR_FALLBACK_ONLY_TYPES = new Set([
   "luxury watch",
   "collection",
@@ -151,10 +237,7 @@ export const getAssetEntryValue = (asset: CrownVaultAsset): number | null => {
     return null;
   }
   const topLevel = asset as GenericRecord;
-  const unitCount =
-    toNumber(asset.asset_data?.unit_count) ??
-    toNumber(topLevel.unit_count) ??
-    1;
+  const unitCount = getRawAssetUnitCount(asset) ?? 1;
   const entryUnitPrice =
     toNumber(topLevel.entry_price) ??
     toNumber(asset.asset_data?.entry_price) ??
@@ -165,6 +248,26 @@ export const getAssetEntryValue = (asset: CrownVaultAsset): number | null => {
   }
 
   return toNumber(topLevel.entry_total_value);
+};
+
+export const getAssetEntryUnitValue = (asset: CrownVaultAsset): number | null => {
+  const unitCount = getAssetUnitCount(asset);
+  if (!unitCount) {
+    return null;
+  }
+
+  const entryValue = getAssetEntryValue(asset);
+  return entryValue != null ? entryValue / unitCount : null;
+};
+
+export const getAssetCurrentUnitValue = (asset: CrownVaultAsset): number | null => {
+  const unitCount = getAssetUnitCount(asset);
+  if (!unitCount) {
+    return null;
+  }
+
+  const currentValue = getAssetCurrentValue(asset);
+  return currentValue != null ? currentValue / unitCount : null;
 };
 
 export const getAssetLocalCurrency = (asset: CrownVaultAsset): string => {
