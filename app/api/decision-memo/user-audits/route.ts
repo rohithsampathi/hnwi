@@ -28,6 +28,7 @@ type FrontendAudit = {
   exposure_class: string;
   transaction_value: string;
   has_access: boolean;
+  has_output?: boolean;
 };
 
 function auditRichnessScore(audit: FrontendAudit): number {
@@ -180,7 +181,7 @@ export async function GET(request: NextRequest) {
 
     // Transform backend response to frontend Audit format
     const audits = dedupeAudits((data.memos || [])
-      .filter((memo: any) => !memo?.war_room_hidden)
+      .filter((memo: any) => !memo?.war_room_hidden && memo?.has_output !== false)
       .map((memo: any) => ({
       intake_id: memo.intake_id,
       source_jurisdiction: memo.source || '',
@@ -206,6 +207,7 @@ export async function GET(request: NextRequest) {
       transaction_value: memo.transaction_value || '',
       // Access control flag
       has_access: memo.has_access || false,
+      has_output: memo.has_output !== false,
     })));
 
     return NextResponse.json({

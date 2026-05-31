@@ -211,11 +211,12 @@ export default function PatternAuditPreviewPage() {
     shareArtifact
   } = usePatternAudit();
 
-  // SSE connection for real-time updates
+  // Audit routes are output viewers. They must not trigger the legacy SSE
+  // generation flow when a stored memo surface is missing.
   const {
     isConnected: sseConnected,
     previewReady: ssePreviewReady
-  } = useDecisionMemoSSE(isWaitingForPreview ? intakeId : null);
+  } = useDecisionMemoSSE(null);
 
   // Citation management (matching Home Dashboard / Memo page pattern)
   const [screenSize, setScreenSize] = useState<'mobile' | 'desktop'>('desktop');
@@ -376,6 +377,30 @@ export default function PatternAuditPreviewPage() {
         return data;
       };
 
+      try {
+        await fetchResolvedMemoSurface();
+        setSession(prev => ({
+          ...(prev ?? {}),
+          intakeId,
+          principalId: 'sfo_audit',
+          status: 'PAID',
+          isUnlocked: true,
+          previewUrl: `/decision-memo/audit/${intakeId}`,
+          submittedAt: '',
+          previewReadyAt: '',
+          expiresAt: '',
+          price: 2500,
+        } as AuditSession));
+        setIsWaitingForPreview(false);
+        return;
+      } catch (surfaceErr) {
+        if (surfaceErr instanceof ReportAuthRequiredError) throw surfaceErr;
+        console.error('Stored memo surface unavailable:', surfaceErr);
+        setIsWaitingForPreview(false);
+        setError('Decision memo output is not available.');
+        return;
+      }
+
       // Get session status (now returns full_artifact when unlocked)
       const sessionData = await getSession(intakeId) as any;
 
@@ -430,9 +455,10 @@ export default function PatternAuditPreviewPage() {
           setIsWaitingForPreview(false);
         }
       } else {
-        // Status is still in pre-preview processing - wait for SSE
+        // Audit routes should not display the old generation/process state.
         setSession(sessionData);
-        setIsWaitingForPreview(true);
+        setIsWaitingForPreview(false);
+        setError('Decision memo output is not available.');
       }
     } catch (err) {
       if (err instanceof ReportAuthRequiredError) {

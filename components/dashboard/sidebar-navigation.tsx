@@ -873,7 +873,7 @@ export function SidebarNavigation({
                       isActive && 'text-primary',
                       theme === 'light' && "group-hover:text-white"
                     )}>{item.name}</span>
-                    {'isNew' in item && item.isNew && (
+                    {Boolean('isNew' in item && item.isNew) && (
                       <span className="ml-auto text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium">
                         New
                       </span>

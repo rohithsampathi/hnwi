@@ -546,10 +546,13 @@ function transformSessionFromAPI(data: any): AuditSession & { fullArtifact?: ICA
     isUnlocked: data.is_unlocked || isPaid || false
   };
 
-  // If session includes full_artifact (from unlocked state), transform and include it
-  if (data.full_artifact) {
-    session.fullArtifact = transformArtifactFromAPI(data.full_artifact);
-    session.rawFullArtifact = data.full_artifact;
+  // If session includes stored output, transform and include it. Older memo rows
+  // may store the same generated artifact under `artifact` instead of
+  // `full_artifact`.
+  const storedArtifact = data.full_artifact || data.fullArtifact || data.artifact;
+  if (storedArtifact) {
+    session.fullArtifact = transformArtifactFromAPI(storedArtifact);
+    session.rawFullArtifact = storedArtifact;
   }
 
   // Pass through generated_at for immutable report date
