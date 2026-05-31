@@ -81,15 +81,16 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
-            The &ldquo;Stop-Loss&rdquo; for High-Stakes Allocations.
+            The HNWI Chronicles Reviewed layer before a family says yes.
           </p>
 
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-8">
-            Don&rsquo;t just diligence the asset. Stress-test the structure. We validate your deal against{' '}
+            Don&rsquo;t just diligence the asset. Stress-test the route. We validate your transaction against{' '}
             <span className="text-foreground font-medium">
               {briefCountLabel ? `${briefCountLabel} HNWI corridor signals` : 'live HNWI corridor signals'}
-            </span>{' '}to strip out
-            regulatory friction, tax drag, and hidden ruin pathways.
+            </span>{' '}
+            to surface adviser asymmetry, proof gaps, authority risk, reversal cost, and hidden ruin pathways before
+            the family treats the move as settled.
           </p>
 
           {/* Spec Tags */}
@@ -102,6 +103,9 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             </span>
             <span className="px-3 py-1.5 border border-border rounded-full bg-card">
               <span className="text-foreground font-medium">Asset Class:</span> Agnostic
+            </span>
+            <span className="px-3 py-1.5 border border-primary/30 rounded-full bg-primary/10 text-foreground">
+              <span className="font-medium">Output:</span> HNWI Chronicles Reviewed
             </span>
           </div>
         </motion.div>
@@ -129,7 +133,7 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             What This Audit Covers
           </h2>
           <p className="text-sm text-muted-foreground text-center max-w-xl mx-auto mb-8">
-            We analyze the three dimensions that actually kill deals.
+            We analyze the dimensions that decide whether a transaction is family-ready, not just adviser-approved.
           </p>
 
           <div className="grid md:grid-cols-3 gap-4 sm:gap-6">
@@ -156,6 +160,30 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
               sublabel="The &ldquo;No-Go&rdquo;"
               description="Your liquidity horizons, regulatory red lines, and governance requirements."
               example="Must remain liquid within 6 months; No FATCA triggers."
+            />
+            <MandateCard
+              number={4}
+              icon={Users}
+              label="THE FAMILY CARRY"
+              sublabel="The &ldquo;Who Absorbs It&rdquo;"
+              description="Authority, explanation, fallback owner, and branch-level consequence."
+              example="Who carries the decision if the preferred bank, school, property, or tax path changes?"
+            />
+            <MandateCard
+              number={5}
+              icon={AlertTriangle}
+              label="THE ASYMMETRY"
+              sublabel="The &ldquo;What Was Missed&rdquo;"
+              description="Where adviser comfort, seller framing, or internal momentum can hide a weak route."
+              example="Legal clear, tax path, and bank openness still leave proof and reversal risk unresolved."
+            />
+            <MandateCard
+              number={6}
+              icon={Shield}
+              label="THE REVIEWED STATUS"
+              sublabel="The &ldquo;Can We Defend It&rdquo;"
+              description="A family-facing record of what was tested, what remains assumed, and what must be watched."
+              example="HNWI Chronicles Reviewed does not promise perfection; it makes the remaining risk legible."
             />
           </div>
         </motion.section>
@@ -199,6 +227,11 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
               icon={Anchor}
               title="PRECEDENT ANCHORS"
               description={`Data-backed confidence levels derived from ${briefCountLabel ? `${briefCountLabel} similar patterns` : 'live similar patterns'} since 2023.`}
+            />
+            <DeliverableCard
+              icon={Shield}
+              title="HNWI CHRONICLES REVIEWED BADGE"
+              description="A transaction-facing review mark showing the family that the route was pressure-tested for asymmetry, proof, fallback, and family consequence."
             />
           </div>
         </motion.section>
@@ -248,8 +281,8 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
             </div>
 
             <p className="text-sm text-muted-foreground text-center max-w-2xl mx-auto">
-              Every mandate is matched against our live pattern library of regulatory changes,
-              tax treaties, and historical failures.
+              Every mandate is matched against our live pattern library so the family can see what was checked,
+              what remains assumed, and where the transaction became more reliable before commitment.
             </p>
           </div>
         </motion.section>
@@ -276,7 +309,8 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
               </p>
 
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto mb-8">
-                Secure your slot for the current cycle. 48-hour SLA begins upon data submission.
+                Secure your slot for the current cycle. 48-hour SLA begins upon data submission. The output is a
+                family-ready Decision Memo and reviewed route record, not generic advisory content.
               </p>
 
               {/* Steps */}
@@ -285,7 +319,7 @@ export const DecisionMemoLanding: React.FC<DecisionMemoLandingProps> = ({ onCont
                 <ArrowRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
                 <StepBadge number={2} text="Secure Brief" sub="One-Time Fee" />
                 <ArrowRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
-                <StepBadge number={3} text="Receive Audit" sub="IC Decision Memo" />
+                <StepBadge number={3} text="Receive Review" sub="Decision Memo + Badge" />
               </div>
 
               <button

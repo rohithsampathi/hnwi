@@ -30,6 +30,92 @@ function resolveAuthLoginTimeoutMs(): number {
     : DEFAULT_AUTH_LOGIN_TIMEOUT_MS
 }
 
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseJsonLikeValue(value: unknown): unknown {
+  let current = value;
+
+  for (let depth = 0; depth < 3; depth++) {
+    if (typeof current !== 'string' || !current.trim()) {
+      return current;
+    }
+
+    const text = current.trim();
+    const isJsonObjectOrArray =
+      (text.startsWith('{') && text.endsWith('}')) ||
+      (text.startsWith('[') && text.endsWith(']'));
+    const isQuotedJson =
+      text.startsWith('"') &&
+      text.endsWith('"') &&
+      (text.includes('{') || text.includes('['));
+
+    if (!isJsonObjectOrArray && !isQuotedJson) {
+      return current;
+    }
+
+    try {
+      current = JSON.parse(text);
+    } catch {
+      return current;
+    }
+  }
+
+  return current;
+}
+
+function hasAuthResponseMarker(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+
+  return [
+    'success',
+    'error',
+    'detail',
+    'message',
+    'user',
+    'requires_mfa',
+    'requiresMFA',
+    'mfa_required',
+    'mfaRequired',
+    'mfa_token',
+    'mfaToken',
+    'sessionToken',
+    'session_token',
+    'challenge',
+    'access_token',
+    'refresh_token',
+  ].some((key) => key in value);
+}
+
+function normalizeBackendLoginResponse(value: unknown, depth = 0): Record<string, any> {
+  const parsed = parseJsonLikeValue(value);
+
+  if (!isRecord(parsed) || depth > 8) {
+    return {};
+  }
+
+  const response = parsed as Record<string, any>;
+  const envelopeKeys = ['response', 'payload', 'result', 'data', 'body'];
+
+  for (const key of envelopeKeys) {
+    const child = parseJsonLikeValue(response[key]);
+    if (!isRecord(child) && !Array.isArray(child)) {
+      continue;
+    }
+
+    const normalizedChild = normalizeBackendLoginResponse(child, depth + 1);
+    if (hasAuthResponseMarker(normalizedChild)) {
+      return {
+        ...response,
+        ...normalizedChild,
+      };
+    }
+  }
+
+  return response;
+}
+
 // Helper to forward backend cookies to client with PWA-compatible settings
 function forwardBackendCookies(
   response: NextResponse,
@@ -54,7 +140,14 @@ function getBackendMfaToken(response: Record<string, any>): string | null {
     response.session_token ||
     response.challenge?.mfa_token ||
     response.challenge?.mfaToken ||
-    response.challenge?.token;
+    response.challenge?.sessionToken ||
+    response.challenge?.session_token ||
+    response.challenge?.token ||
+    response.mfa?.mfa_token ||
+    response.mfa?.mfaToken ||
+    response.mfa?.sessionToken ||
+    response.mfa?.session_token ||
+    response.mfa?.token;
 
   return typeof token === 'string' && token.trim() ? token.trim() : null;
 }
@@ -215,7 +308,8 @@ async function handlePost(request: NextRequest) {
         throw fetchError;
       }
 
-      const backendResponse = await backendFetchResponse.json();
+      const backendJson = await backendFetchResponse.json().catch(() => ({}));
+      const backendResponse = normalizeBackendLoginResponse(backendJson);
 
       // Forward Set-Cookie headers from backend
       const backendCookies = getSetCookieHeaders(backendFetchResponse.headers);
@@ -457,8 +551,8 @@ async function handlePost(request: NextRequest) {
       }
       
       const response = NextResponse.json(
-        createSafeErrorResponse('Authentication failed'),
-        { status: 401 }
+        createSafeErrorResponse('Authentication service unavailable'),
+        { status: 503 }
       );
       
       return ApiAuth.addSecurityHeaders(response);

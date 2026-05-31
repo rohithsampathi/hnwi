@@ -126,10 +126,15 @@ const AssetSignalRow = ({
 
 export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: SummarySectionProps) {
   const hasMixedCurrencies = hasMixedAssetCurrencies(assets, getAssetCurrentValue);
-  const assetCategories = processAssetCategories(
+  const valueBasedCategories = processAssetCategories(
     assets,
     hasMixedCurrencies ? { mode: "count" } : { valueResolver: getAssetCurrentValue },
   );
+  const assetCategories =
+    valueBasedCategories.length > 0
+      ? valueBasedCategories
+      : processAssetCategories(assets, { mode: "count" });
+  const chartUsesCount = hasMixedCurrencies || valueBasedCategories.length === 0;
   const totalCurrentValue = sumCurrentValue(assets);
   const totalEntryValue = sumEntryValue(assets);
   const totalChangeAmount = totalEntryValue > 0 ? totalCurrentValue - totalEntryValue : null;
@@ -292,18 +297,18 @@ export function SummarySection({ stats, assets, onAddAssets, onNavigateToTab }: 
           <div className="space-y-2">
             <h2 className="text-xl font-semibold text-foreground">Allocation and Exposure</h2>
             <p className="text-sm text-muted-foreground">
-              {hasMixedCurrencies
-                ? "Current vault composition across asset categories by asset count. Values use USD first with local currency context."
+              {chartUsesCount
+                ? "Current vault composition across asset categories by asset count. Values use USD first with local currency context when available."
                 : "Current vault composition across asset categories. This uses the current value rail, not the older static upload-only view."}
             </p>
           </div>
           <div className="grid items-center gap-8 xl:grid-cols-2">
             <SecurePieChart
               data={assetCategories}
-              totalValue={hasMixedCurrencies ? assets.length : totalCurrentValue}
-              centerLabel={hasMixedCurrencies ? "Asset Mix" : "Crown Vault"}
-              centerValueLabel={hasMixedCurrencies ? `${assets.length} assets` : undefined}
-              valueFormatter={hasMixedCurrencies ? (value) => `${value} ${value === 1 ? "asset" : "assets"}` : undefined}
+              totalValue={chartUsesCount ? assets.length : totalCurrentValue}
+              centerLabel={chartUsesCount ? "Asset Mix" : "Crown Vault"}
+              centerValueLabel={chartUsesCount ? `${assets.length} assets` : undefined}
+              valueFormatter={chartUsesCount ? (value) => `${value} ${value === 1 ? "asset" : "assets"}` : undefined}
               colors={LUXURY_COLOR_PALETTE}
               height={460}
               className="w-full"

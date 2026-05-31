@@ -1,7 +1,6 @@
 "use client"
 
 import React from "react"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { useTheme } from "@/contexts/theme-context"
 
 interface AssetData {
@@ -74,10 +73,33 @@ export function SecurePieChart({
     return `$${value.toLocaleString()}`
   }
   const renderValue = valueFormatter || formatCurrency;
+  const chartData = (data || []).filter((item) => Number.isFinite(item.value) && item.value > 0);
+  const totalChartValue = chartData.reduce((sum, item) => sum + item.value, 0);
+  const normalizedTotal = totalChartValue > 0 ? totalChartValue : totalValue;
+  const size = Math.max(240, Math.min(520, height));
+  const center = size / 2;
+  const outerRadius = size * 0.42;
+  const innerRadius = size * 0.22;
 
-  if (!data || data.length === 0) {
+  const describeArc = (startAngle: number, endAngle: number): string => {
+    const startOuter = polarToCartesian(center, center, outerRadius, endAngle);
+    const endOuter = polarToCartesian(center, center, outerRadius, startAngle);
+    const startInner = polarToCartesian(center, center, innerRadius, startAngle);
+    const endInner = polarToCartesian(center, center, innerRadius, endAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+    return [
+      "M", startOuter.x, startOuter.y,
+      "A", outerRadius, outerRadius, 0, largeArcFlag, 0, endOuter.x, endOuter.y,
+      "L", startInner.x, startInner.y,
+      "A", innerRadius, innerRadius, 0, largeArcFlag, 1, endInner.x, endInner.y,
+      "Z",
+    ].join(" ");
+  };
+
+  if (chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center h-[400px] ${className}`}>
+      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
         <div className="text-center">
           <p className="text-muted-foreground">No portfolio data available</p>
         </div>
@@ -86,58 +108,61 @@ export function SecurePieChart({
   }
 
   return (
-    <div className={`relative ${className}`}>
-      <div className="h-[400px] sm:h-[450px] relative">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              outerRadius={"103.5%"}
-              innerRadius={"44%"}
-              fill="#8884d8"
-              dataKey="value"
-              stroke="hsl(var(--background))"
-              strokeWidth={4}
-            >
-              {data.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={colors[index % colors.length]}
-                  className="hover:opacity-80 transition-opacity drop-shadow-lg"
-                  style={{ outline: 'none' }}
-                />
-              ))}
-            </Pie>
-            {showTooltip && (
-              <Tooltip 
-                wrapperStyle={{ zIndex: 99999 }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0];
-                    return (
-                      <div className="bg-popover border-2 border-primary rounded-2xl p-4 shadow-2xl" style={{ zIndex: 99999, position: 'relative' }}>
-                        <div className="text-center">
-                          <div className="font-bold text-lg text-foreground capitalize">{data.payload.displayName || data.payload.name.replace('_', ' ')}</div>
-                          <div className="text-2xl font-bold text-primary mt-1">{renderValue(Number(data.value))}</div>
-                          <div className="text-sm text-muted-foreground mt-1">
-                            {data.payload.percentage}% of portfolio
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {data.payload.count} {data.payload.count === 1 ? 'asset' : 'assets'}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-            )}
-          </PieChart>
-        </ResponsiveContainer>
+    <div className={`relative flex items-center justify-center ${className}`} style={{ minHeight: height }}>
+      <div className="relative w-full max-w-[520px]" style={{ height }}>
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="h-full w-full overflow-visible"
+          role="img"
+          aria-label={`${centerLabel} allocation chart`}
+        >
+          <circle
+            cx={center}
+            cy={center}
+            r={outerRadius}
+            fill="none"
+            stroke="hsl(var(--muted))"
+            strokeWidth={outerRadius - innerRadius}
+            opacity="0.35"
+          />
+          {chartData.reduce<Array<{ item: AssetData; start: number; end: number; index: number }>>((segments, item, index) => {
+            const start = segments[index - 1]?.end ?? -90;
+            const span = (item.value / normalizedTotal) * 360;
+            segments.push({ item, start, end: start + span, index });
+            return segments;
+          }, []).map(({ item, start, end, index }) => {
+            const span = end - start;
+            const label = `${item.displayName || item.name.replace(/_/g, " ")}: ${renderValue(item.value)} (${item.percentage}% / ${item.count} ${item.count === 1 ? "asset" : "assets"})`;
+            if (span >= 359.99) {
+              return (
+                <circle
+                  key={`${item.name}-${index}`}
+                  cx={center}
+                  cy={center}
+                  r={(outerRadius + innerRadius) / 2}
+                  fill="none"
+                  stroke={colors[index % colors.length]}
+                  strokeWidth={outerRadius - innerRadius}
+                  className="transition-opacity hover:opacity-80"
+                >
+                  {showTooltip && <title>{label}</title>}
+                </circle>
+              );
+            }
+            return (
+              <path
+                key={`${item.name}-${index}`}
+                d={describeArc(start, end)}
+                fill={colors[index % colors.length]}
+                stroke="hsl(var(--background))"
+                strokeWidth="3"
+                className="transition-opacity hover:opacity-80"
+              >
+                {showTooltip && <title>{label}</title>}
+              </path>
+            );
+          })}
+        </svg>
       </div>
       
       {showCenter && (
@@ -148,11 +173,19 @@ export function SecurePieChart({
               {centerValueLabel || renderValue(totalValue)}
             </p>
             <p className="text-xs sm:text-sm text-foreground/60 font-semibold mt-1">
-              {data.length} {data.length === 1 ? 'Category' : 'Categories'}
+              {chartData.length} {chartData.length === 1 ? 'Category' : 'Categories'}
             </p>
           </div>
         </div>
       )}
     </div>
   )
+}
+
+function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians),
+  };
 }

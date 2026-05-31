@@ -21,6 +21,7 @@ import JurisdictionScorecardViz from './visualizations/JurisdictionScorecardViz'
 import KeyMetricsViz from './visualizations/KeyMetricsViz';
 import CostOfDelayViz from './visualizations/CostOfDelayViz';
 import DataExplainerViz from './visualizations/DataExplainerViz';
+import WorldMapViz from './visualizations/WorldMapViz';
 
 /**
  * Visualization Command from backend
@@ -132,6 +133,12 @@ const VisualizationEngine = memo(function VisualizationEngine({
 
   // Render the appropriate visualization component
   const renderVisualization = (command: VisualizationCommand) => {
+    const commandType = String(command.type || '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
     const props = {
       data: command.data,
       onClose: onClose ? () => onClose(command.id) : undefined,
@@ -139,12 +146,22 @@ const VisualizationEngine = memo(function VisualizationEngine({
       interactive: command.interactive
     };
 
-    switch (command.type) {
+    switch (commandType) {
       case 'asset_grid':
         return <AssetGridViz {...props} />;
       case 'concentration_donut':
       case 'concentration_chart':
         return <ConcentrationDonutViz {...props} />;
+      case 'chain_network':
+      case 'network':
+      case 'network_graph':
+      case 'chain_graph':
+      case 'cascade_network':
+      case 'dependency_graph':
+      case 'decision_graph':
+      case 'knowledge_graph':
+      case 'graph':
+        return <CascadeGraphViz {...props} />;
       case 'development_timeline':
         return <DevelopmentTimelineViz {...props} />;
       case 'jurisdiction_map':
@@ -169,6 +186,24 @@ const VisualizationEngine = memo(function VisualizationEngine({
         return <CostOfDelayViz {...props} />;
       case 'data_explainer':
         return <DataExplainerViz {...props} />;
+      case 'bar_chart':
+      case 'bar':
+      case 'line_chart':
+      case 'line':
+      case 'pie_chart':
+      case 'pie':
+      case 'stacked_bar':
+      case 'stacked_bar_chart':
+      case 'range_chart':
+      case 'range':
+      case 'deviation_chart':
+      case 'deviation':
+      case 'stacked':
+        return <DataExplainerViz {...props} />;
+      case 'world_map':
+        return <WorldMapViz {...props} />;
+      case 'lag_timeline':
+        return <DevelopmentTimelineViz {...props} />;
       default:
         // Fallback for unknown types
         return (

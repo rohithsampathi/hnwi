@@ -25,6 +25,58 @@ export class RohithAPI {
   private userContextCache: Map<string, { data: UserPortfolioContext; timestamp: number }> = new Map()
   private conversationCache: Map<string, ConversationWithMessages> = new Map()
   private readonly CACHE_DURATION = 10 * 60 * 1000 // 10 minutes
+  private visualizationCounter: number = 0
+  private readonly visualizationKeys = new Set([
+    'visualizations',
+    'visualization',
+    'visualization_commands',
+    'visualization_command',
+    'visualisation',
+    'visualisation_commands',
+    'viz',
+    'vizs',
+    'viz_commands',
+    'chart',
+    'charts',
+    'graph',
+    'graphs',
+    'graph_payload',
+    'graph_commands',
+    'ui_block',
+    'ui_blocks',
+    'block',
+    'blocks',
+    'artifact',
+    'artifacts',
+    'structured_visualizations',
+    'structured_response',
+  ])
+  private readonly visualizationMetadataKeys = new Set([
+    'id',
+    'type',
+    'kind',
+    'component',
+    'name',
+    'visualization_type',
+    'visualisation_type',
+    'viz_type',
+    'chart_type',
+    'position',
+    'size',
+    'animation',
+    'duration_ms',
+    'priority',
+    'interactive',
+    'message_id',
+    'conversation_id',
+    'user_id',
+    'role',
+    'created_at',
+    'updated_at',
+    'content',
+    'text',
+    'message',
+  ])
 
   private constructor() {}
 
@@ -43,28 +95,358 @@ export class RohithAPI {
     return rawMode.includes("classic") ? "classic" : "jarvis"
   }
 
+  private isRecord(value: any): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+  }
+
+  private isNonEmptyString(value: any): boolean {
+    return typeof value === 'string' && value.trim().length > 0
+  }
+
+  private normalizeObjectKey(key: string): string {
+    return String(key || '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+  }
+
+  private parseJsonLikeValue(value: any): any {
+    let current = value
+
+    for (let depth = 0; depth < 3; depth++) {
+      if (!this.isNonEmptyString(current)) {
+        return current
+      }
+
+      const text = String(current).trim()
+      const isJsonObjectOrArray =
+        (text.startsWith('{') && text.endsWith('}')) ||
+        (text.startsWith('[') && text.endsWith(']'))
+      const isQuotedJson =
+        text.startsWith('"') &&
+        text.endsWith('"') &&
+        (text.includes('{') || text.includes('['))
+
+      if (!isJsonObjectOrArray && !isQuotedJson) {
+        return current
+      }
+
+      try {
+        const parsed = JSON.parse(text)
+        if (parsed === current) {
+          return current
+        }
+        current = parsed
+      } catch {
+        return current
+      }
+    }
+
+    return current
+  }
+
+  private normalizeResponsePayload(value: any, visited: Set<any> = new Set(), depth = 0): any {
+    if (depth > 12) {
+      return value
+    }
+
+    const parsed = this.parseJsonLikeValue(value)
+
+    if (this.isNonEmptyString(parsed) || typeof parsed === 'number' || typeof parsed === 'boolean' || parsed === null || parsed === undefined) {
+      return parsed
+    }
+
+    if (visited.has(parsed)) {
+      return parsed
+    }
+
+    if (this.isRecord(parsed)) {
+      visited.add(parsed)
+
+      const envelopeKeys = ['response', 'payload', 'result', 'data', 'body', 'output', 'context', 'metadata']
+
+      // If payload is wrapped in a single known envelope and the wrapper does not
+      // already expose a conversation/message id, dive into the envelope.
+      for (const key of envelopeKeys) {
+        const next = parsed[key]
+        if (!next) {
+          continue
+        }
+
+        const normalizedNext = this.normalizeResponsePayload(next, visited, depth + 1)
+        if (this.isRecord(normalizedNext) || Array.isArray(normalizedNext)) {
+          const containsConversationMarker = this.findStringValueInTree(
+            normalizedNext,
+            (innerKey, innerValue, innerPath) => {
+              if (innerKey === 'conversation_id' || innerKey === 'conversationId' || innerKey === 'message_id' || innerKey === 'messageId') {
+                return this.isNonEmptyString(innerValue)
+              }
+
+              return innerKey === 'response' || innerKey === 'narration' || innerKey === 'citations' || innerKey === 'source_documents'
+            }
+          )
+
+          if (containsConversationMarker) {
+            return normalizedNext
+          }
+        }
+      }
+
+      const normalizedRecord: Record<string, any> = {}
+      for (const [recordKey, recordValue] of Object.entries(parsed)) {
+        normalizedRecord[recordKey] = this.normalizeResponsePayload(recordValue, visited, depth + 1)
+      }
+      return normalizedRecord
+    }
+
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => this.normalizeResponsePayload(item, visited, depth + 1))
+    }
+
+    return parsed
+  }
+
+  private hasConversationContext(path: string[]): boolean {
+    return path.some(segment => /conversation|session|thread|chat/i.test(segment))
+  }
+
+  private findStringValueInTree(
+    response: any,
+    matcher: (key: string, value: any, path: string[]) => boolean,
+    maxDepth: number = 12,
+    depth: number = 0,
+    path: string[] = [],
+    visited: Set<any> = new Set(),
+  ): string {
+    const normalizedResponse = this.normalizeResponsePayload(response)
+
+    if (!normalizedResponse || depth > maxDepth) {
+      return ''
+    }
+
+    if (this.isRecord(normalizedResponse)) {
+      if (visited.has(normalizedResponse)) {
+        return ''
+      }
+      visited.add(normalizedResponse)
+
+      const keys = Object.keys(normalizedResponse)
+      for (const key of keys) {
+        const value = (normalizedResponse as Record<string, unknown>)[key]
+        const candidatePath = path.concat(key)
+        if (matcher(key, value, candidatePath) && this.isNonEmptyString(value)) {
+          return String(value).trim()
+        }
+      }
+
+      const envelopePriority = ['response', 'payload', 'result', 'data', 'context', 'metadata', 'body']
+      for (const key of envelopePriority) {
+        const nextValue = normalizedResponse[key]
+        const found = this.findStringValueInTree(
+          nextValue,
+          matcher,
+          maxDepth,
+          depth + 1,
+          path.concat(key),
+          visited,
+        )
+        if (found) {
+          return found
+        }
+      }
+
+      for (const key of keys) {
+        const value = normalizedResponse[key]
+        if (!this.isRecord(value) && !Array.isArray(value)) {
+          continue
+        }
+
+        if (envelopePriority.includes(key)) {
+          continue
+        }
+
+        const found = this.findStringValueInTree(
+          value,
+          matcher,
+          maxDepth,
+          depth + 1,
+          path.concat(key),
+          visited,
+        )
+        if (found) {
+          return found
+        }
+      }
+
+      return ''
+    }
+
+    if (Array.isArray(normalizedResponse)) {
+      for (let idx = 0; idx < normalizedResponse.length; idx++) {
+        const value = normalizedResponse[idx]
+        const found = this.findStringValueInTree(
+          value,
+          matcher,
+          maxDepth,
+          depth + 1,
+          path.concat(String(idx)),
+          visited,
+        )
+        if (found) {
+          return found
+        }
+      }
+    }
+
+    return ''
+  }
+
+  private findAllValuesInTree(
+    response: any,
+    matcher: (key: string, value: any, path: string[]) => boolean,
+    maxDepth: number = 12,
+    depth: number = 0,
+    path: string[] = [],
+    visited: Set<any> = new Set(),
+    found: any[] = [],
+  ): any[] {
+    const normalizedResponse = this.normalizeResponsePayload(response)
+
+    if (!normalizedResponse || depth > maxDepth) {
+      return found
+    }
+
+    if (this.isRecord(normalizedResponse)) {
+      if (visited.has(normalizedResponse)) {
+        return found
+      }
+      visited.add(normalizedResponse)
+
+      for (const [key, value] of Object.entries(normalizedResponse)) {
+        const candidatePath = path.concat(key)
+        if (matcher(key, value, candidatePath)) {
+          found.push(value)
+        }
+
+        if (this.isRecord(value) || Array.isArray(value)) {
+          this.findAllValuesInTree(value, matcher, maxDepth, depth + 1, candidatePath, visited, found)
+        }
+      }
+    } else if (Array.isArray(normalizedResponse)) {
+      for (let idx = 0; idx < normalizedResponse.length; idx++) {
+        const value = normalizedResponse[idx]
+        if (this.isRecord(value) || Array.isArray(value)) {
+          this.findAllValuesInTree(value, matcher, maxDepth, depth + 1, path.concat(String(idx)), visited, found)
+        }
+      }
+    }
+
+    return found
+  }
+
   private extractConversationId(response: any): string {
-    const candidates = [
-      response,
-      response?.data,
-      response?.payload,
-      response?.result,
-      response?.response,
-      response?.data?.response,
-      response?.payload?.response,
-      response?.result?.response,
+    const normalizedResponse = this.normalizeResponsePayload(response)
+
+    const direct = this.findStringValueInTree(
+      normalizedResponse,
+      (key, _value) => {
+        const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+        return normalizedKey === "conversation_id" || normalizedKey === "conversationid"
+      }
+    )
+    if (direct) {
+      return direct
+    }
+
+    const nestedConversationId = this.findStringValueInTree(
+      normalizedResponse,
+      (key, value, path) => {
+        const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+        if (normalizedKey === "id" && this.hasConversationContext(path)) {
+          return this.isNonEmptyString(value)
+        }
+
+        if (normalizedKey === "conversation" && this.isRecord(value)) {
+          const obj = value as Record<string, unknown>
+          return this.isNonEmptyString(obj.conversation_id) || this.isNonEmptyString(obj.conversationId) || this.isNonEmptyString(obj.id)
+        }
+
+        if (normalizedKey === "conversation" && this.isNonEmptyString(value)) {
+          return true
+        }
+
+        if (normalizedKey === "data" || normalizedKey === "payload" || normalizedKey === "result") {
+          const obj = value as Record<string, unknown>
+          const nestedConversation = obj.conversation as Record<string, unknown> | undefined
+          return (
+            this.isNonEmptyString(obj.conversation_id) ||
+            this.isNonEmptyString(obj.conversationId) ||
+            this.isNonEmptyString((nestedConversation || {}).id) ||
+            this.isNonEmptyString((obj as Record<string, unknown>).id)
+          )
+        }
+
+        return false
+      }
+    )
+    if (nestedConversationId) {
+      return nestedConversationId
+    }
+
+    return this.extractConversationIdLegacyFallback(normalizedResponse)
+  }
+
+  private extractConversationIdLegacyFallback(response: any): string {
+    const normalizedResponse = this.normalizeResponsePayload(response)
+    const directPaths: Array<Array<string>> = [
+      ['data', 'conversation_id'],
+      ['data', 'conversationId'],
+      ['data', 'id'],
+      ['payload', 'conversation_id'],
+      ['payload', 'conversationId'],
+      ['payload', 'conversation'],
+      ['response', 'conversation_id'],
+      ['response', 'conversationId'],
+      ['result', 'conversation_id'],
+      ['result', 'conversationId'],
+      ['result', 'id'],
+      ['conversation', 'id'],
     ]
 
-    for (const candidate of candidates) {
-      const conversationId = String(
-        candidate?.conversation_id ||
-        candidate?.conversationId ||
-        candidate?.id ||
-        ''
-      ).trim()
+    for (const path of directPaths) {
+      let current = normalizedResponse as any
+      let invalid = false
+      for (const key of path) {
+        if (!this.isRecord(current) || !(key in current)) {
+          invalid = true
+          break
+        }
+        current = current[key]
+      }
 
-      if (conversationId) {
-        return conversationId
+      if (invalid) {
+        continue
+      }
+
+      if (this.isNonEmptyString(current)) {
+        return String(current).trim()
+      }
+
+      if (this.isRecord(current)) {
+        const candidateObj = current as Record<string, unknown>
+        const candidates = [
+          candidateObj.conversation_id,
+          candidateObj.conversationId,
+          candidateObj.id,
+          candidateObj.conversation,
+        ]
+
+        for (const candidate of candidates) {
+          if (this.isNonEmptyString(candidate)) {
+            return String(candidate).trim()
+          }
+        }
       }
     }
 
@@ -72,58 +454,520 @@ export class RohithAPI {
   }
 
   private extractResponseContent(response: any, fallback: string): string {
-    const payload = response?.response
+    const payloadText = this.findStringValueInTree(response, (key, value) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'content' || normalizedKey === 'text'
+    },
+    )
 
-    if (typeof payload === 'string') {
-      return payload
+    if (payloadText) {
+      return payloadText
     }
 
-    return String(
-      payload?.content ||
-      payload?.text ||
-      response?.content ||
-      response?.message ||
-      fallback
-    )
+    return fallback
+  }
+
+  private extractResponseContentCompat(response: any, fallback: string): string {
+    const responseText = this.findStringValueInTree(response, (key, value) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'message' || normalizedKey === 'content' || normalizedKey === 'text'
+    })
+
+    return responseText || fallback
   }
 
   private extractNarration(response: any, fallback: string): { text: string; delivery: string } {
-    const payload = response?.response
-    const narration = payload?.narration || response?.narration
-    const text = typeof narration?.text === 'string'
-      ? narration.text
-      : this.extractResponseContent(response, fallback)
+    const narration = this.findAllValuesInTree(response, (key) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'narration'
+    })[0]
+    const text =
+      this.isRecord(narration) && this.isNonEmptyString((narration as Record<string, unknown>).text)
+        ? String((narration as Record<string, unknown>).text)
+        : this.extractResponseContent(response, fallback)
+
+    const delivery = this.isRecord(narration) && this.isNonEmptyString((narration as Record<string, unknown>).delivery)
+      ? String((narration as Record<string, unknown>).delivery)
+      : "word_by_word"
 
     return {
       text,
-      delivery: narration?.delivery || "word_by_word"
+      delivery,
     }
   }
 
-  private extractSourceDocuments(response: any): any[] {
-    const payload = response?.response
-    return (
-      payload?.citations ||
-      payload?.source_documents ||
-      response?.citations ||
-      response?.source_documents ||
-      []
-    )
+  private extractMessageId(response: any): string | undefined {
+    const direct = this.findStringValueInTree(response, (key) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === "message_id" || normalizedKey === "messageid"
+    })
+    if (direct) {
+      return direct
+    }
+
+    const nested = this.findStringValueInTree(response, (key, _value, path) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === "id" && this.hasConversationContext(path.concat(["message"]))
+    })
+
+    return nested || undefined
   }
 
-  private extractMessageId(response: any): string | undefined {
-    return response?.message_id || response?.messageId || response?.response?.message_id
+  private extractSourceDocuments(response: any): any[] {
+    const values = this.findAllValuesInTree(response, (key) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'citations' || normalizedKey === 'source_documents'
+    })
+    const docs: any[] = []
+
+    for (const value of values) {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item) {
+            docs.push(item)
+          }
+        }
+      } else if (value && typeof value === 'object') {
+        docs.push(value)
+      }
+    }
+
+    if (docs.length > 0) {
+      return docs
+    }
+
+    const fallback = this.findStringValueInTree(response, (key) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'source_document' || normalizedKey === 'source'
+    })
+    return this.isNonEmptyString(fallback) ? [{ id: fallback, type: 'fallback' }] : []
+  }
+
+  private shortHash(value: string, length = 8): string {
+    let hash = 0
+    for (let idx = 0; idx < value.length; idx++) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(idx)
+      hash |= 0
+    }
+    return Math.abs(hash).toString(16).padStart(length, "0").slice(0, length)
+  }
+
+  private isVisualizationKey(key: string): boolean {
+    return this.visualizationKeys.has(this.normalizeObjectKey(key))
+  }
+
+  private normalizeVisualizationType(rawType: any): string {
+    const normalizedType = this.normalizeObjectKey(String(rawType || ''))
+    if (!normalizedType) {
+      return ''
+    }
+
+    const aliases: Record<string, string> = {
+      network: 'chain_network',
+      network_graph: 'chain_network',
+      chain_graph: 'chain_network',
+      chain_network: 'chain_network',
+      cascade: 'cascade_graph',
+      cascade_network: 'cascade_graph',
+      graph: 'cascade_graph',
+      graph_payload: 'cascade_graph',
+      dependency_graph: 'cascade_graph',
+      decision_graph: 'cascade_graph',
+      knowledge_graph: 'cascade_graph',
+      linechart: 'line_chart',
+      piechart: 'pie_chart',
+      rangechart: 'range_chart',
+      deviation: 'deviation_chart',
+      stacked: 'stacked_bar',
+      stacked_bar_chart: 'stacked_bar',
+      barchart: 'data_explainer',
+      bar_chart: 'data_explainer',
+      table: 'data_explainer',
+      table_chart: 'data_explainer',
+      timeline: 'development_timeline',
+      lag: 'lag_timeline',
+      map: 'world_map',
+      worldmap: 'world_map',
+    }
+
+    return aliases[normalizedType] || normalizedType
+  }
+
+  private isKnownVisualizationType(visualType: string): boolean {
+    return new Set([
+      'asset_grid',
+      'concentration_donut',
+      'concentration_chart',
+      'chain_network',
+      'cascade_graph',
+      'development_timeline',
+      'jurisdiction_map',
+      'risk_heatmap',
+      'portfolio_stats',
+      'tax_comparison',
+      'regulatory_timeline',
+      'migration_flow',
+      'jurisdiction_scorecard',
+      'key_metrics',
+      'cost_of_delay',
+      'data_explainer',
+      'bar',
+      'bar_chart',
+      'line',
+      'line_chart',
+      'pie',
+      'pie_chart',
+      'stacked',
+      'stacked_bar',
+      'range',
+      'range_chart',
+      'deviation',
+      'deviation_chart',
+      'world_map',
+      'lag_timeline',
+    ]).has(visualType)
+  }
+
+  private normalizeDataSectionKind(rawKind: any): 'bar' | 'deviation' | 'line' | 'pie' | 'range' | 'stacked_bar' | 'table' {
+    const normalizedKind = this.normalizeObjectKey(String(rawKind || ''))
+    const aliases: Record<string, 'bar' | 'deviation' | 'line' | 'pie' | 'range' | 'stacked_bar' | 'table'> = {
+      bar: 'bar',
+      bar_chart: 'bar',
+      data_explainer: 'table',
+      deviation: 'deviation',
+      deviation_chart: 'deviation',
+      line: 'line',
+      line_chart: 'line',
+      pie: 'pie',
+      pie_chart: 'pie',
+      range: 'range',
+      range_chart: 'range',
+      stacked: 'stacked_bar',
+      stacked_bar: 'stacked_bar',
+      stacked_bar_chart: 'stacked_bar',
+      table: 'table',
+      table_chart: 'table',
+    }
+
+    return aliases[normalizedKind] || 'table'
+  }
+
+  private visualizationBaseData(candidate: Record<string, any>): Record<string, any> {
+    const parsedData = this.parseJsonLikeValue(candidate.data)
+    if (this.isRecord(parsedData)) {
+      return parsedData as Record<string, any>
+    }
+
+    if (Array.isArray(parsedData)) {
+      return { items: parsedData }
+    }
+
+    return candidate
+  }
+
+  private hasVisualizationStructure(candidate: Record<string, any>): boolean {
+    const data = this.visualizationBaseData(candidate)
+    const hasGraph = Array.isArray(data.nodes) && Array.isArray(data.edges)
+    const hasExplainer =
+      Array.isArray(data.sections) ||
+      (Array.isArray(data.rows) && (
+        this.isNonEmptyString(data.title) ||
+        this.isNonEmptyString(candidate.title) ||
+        this.isNonEmptyString(candidate.kind) ||
+        this.isNonEmptyString(candidate.chart_type) ||
+        this.isNonEmptyString(candidate.chartType)
+      ))
+    const hasTimeline = Array.isArray(data.events) || Array.isArray(data.timeline)
+    const hasFlow = Array.isArray(data.flows) || Array.isArray(data.routes)
+    const hasMap = Array.isArray(data.points) || Array.isArray(data.locations)
+    const hasRiskMap = this.isRecord(data.jurisdictions) || Array.isArray(data.jurisdictions)
+    const hasMetrics = Array.isArray(data.metrics) || Array.isArray(data.stats)
+
+    return hasGraph || hasExplainer || hasTimeline || hasFlow || hasMap || hasRiskMap || hasMetrics
+  }
+
+  private inferVisualizationType(candidate: Record<string, any>): string {
+    const directKeys = [
+      'type',
+      'kind',
+      'visualization_type',
+      'visualizationType',
+      'visualisation_type',
+      'visualisationType',
+      'viz_type',
+      'vizType',
+      'chart_type',
+      'chartType',
+      'component',
+      'name',
+    ]
+
+    for (const key of directKeys) {
+      const rawType = candidate[key]
+      if (this.isNonEmptyString(rawType)) {
+        const normalizedType = this.normalizeVisualizationType(rawType)
+        if (this.isKnownVisualizationType(normalizedType) || this.hasVisualizationStructure(candidate)) {
+          return normalizedType
+        }
+      }
+    }
+
+    const data = this.visualizationBaseData(candidate)
+    if (Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+      return 'cascade_graph'
+    }
+    if (Array.isArray(data.sections) || Array.isArray(data.rows)) {
+      return 'data_explainer'
+    }
+    if (Array.isArray(data.events) || Array.isArray(data.timeline)) {
+      return 'development_timeline'
+    }
+    if (Array.isArray(data.flows) || Array.isArray(data.routes)) {
+      return 'migration_flow'
+    }
+    if (this.isRecord(data.jurisdictions) || Array.isArray(data.jurisdictions)) {
+      return 'risk_heatmap'
+    }
+    if (Array.isArray(data.points) || Array.isArray(data.locations)) {
+      return 'world_map'
+    }
+    if (Array.isArray(data.metrics) || Array.isArray(data.stats)) {
+      return 'key_metrics'
+    }
+
+    return ''
+  }
+
+  private normalizeVisualizationData(candidate: Record<string, any>, visualType: string): Record<string, any> {
+    const parsedData = this.parseJsonLikeValue(candidate.data)
+    const data: Record<string, any> = this.isRecord(parsedData)
+      ? { ...(parsedData as Record<string, any>) }
+      : Array.isArray(parsedData)
+        ? { items: parsedData }
+        : {}
+
+    for (const [key, value] of Object.entries(candidate)) {
+      const normalizedKey = this.normalizeObjectKey(key)
+      if (this.visualizationMetadataKeys.has(normalizedKey) || normalizedKey === 'data') {
+        continue
+      }
+
+      if (data[key] === undefined) {
+        data[key] = this.parseJsonLikeValue(value)
+      }
+    }
+
+    const isExplainerType = [
+      'data_explainer',
+      'line_chart',
+      'line',
+      'pie_chart',
+      'pie',
+      'range_chart',
+      'range',
+      'deviation_chart',
+      'stacked_bar',
+    ].includes(visualType)
+
+    if (isExplainerType && !Array.isArray(data.sections) && Array.isArray(data.rows)) {
+      const rawKind = candidate.kind || candidate.chart_type || candidate.chartType || candidate.type || visualType
+      data.sections = [{
+        kind: this.normalizeDataSectionKind(rawKind),
+        title: data.title || candidate.title || 'Data',
+        unit: data.unit || candidate.unit,
+        insight: data.insight || candidate.insight,
+        rows: data.rows,
+        columns: data.columns,
+      }]
+    }
+
+    return data
+  }
+
+  private normalizeVisualizationCandidate(value: any, candidateIdx: number): any | null {
+    const parsed = this.parseJsonLikeValue(value)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null
+    }
+
+    const candidate: Record<string, any> = parsed as Record<string, any>
+    const visualType = this.inferVisualizationType(candidate)
+    if (!visualType) {
+      return null
+    }
+    const data = this.normalizeVisualizationData(candidate, visualType)
+
+    const normalizeId = (rawId: any, idx: number): string => {
+      if (typeof rawId === 'string' || typeof rawId === 'number') {
+        const trimmed = String(rawId).trim()
+        if (trimmed) {
+          return trimmed
+        }
+      }
+
+      const hashSeed = this.shortHash(JSON.stringify({
+        type: visualType,
+        position: candidate.position || 'center',
+        size: candidate.size || 'medium',
+        animation: candidate.animation || 'fade',
+        data,
+      }), 8)
+      return `${visualType.replace(/[^a-z0-9_-]/gi, '_') || 'visualization'}_${idx + 1}_${hashSeed}`
+    }
+
+    const id = normalizeId(candidate.id, candidateIdx)
+    if (!id) {
+      return null
+    }
+
+    return {
+      id,
+      type: String(visualType),
+      position: candidate.position || 'center',
+      size: candidate.size || 'medium',
+      animation: candidate.animation || 'fade',
+      duration_ms: Number(candidate.duration_ms || candidate.durationMs) || 400,
+      priority: Number(candidate.priority) || 1,
+      data,
+      interactive: Boolean(candidate.interactive),
+    }
+  }
+
+  private addVisualizationCandidates(value: any, collected: any[]): void {
+    const parsed = this.parseJsonLikeValue(value)
+
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        this.addVisualizationCandidates(item, collected)
+      }
+      return
+    }
+
+    if (!this.isRecord(parsed)) {
+      return
+    }
+
+    const candidate = parsed as Record<string, any>
+    let addedNested = false
+    for (const [key, childValue] of Object.entries(candidate)) {
+      if (!this.isVisualizationKey(key) && !['commands', 'items'].includes(this.normalizeObjectKey(key))) {
+        continue
+      }
+      this.addVisualizationCandidates(childValue, collected)
+      addedNested = true
+    }
+
+    if (!addedNested || this.hasVisualizationStructure(candidate) || this.inferVisualizationType(candidate)) {
+      collected.push(candidate)
+    }
+  }
+
+  private findVisualizationObjectsInTree(
+    response: any,
+    maxDepth: number = 12,
+    depth: number = 0,
+    visited: Set<any> = new Set(),
+    found: any[] = [],
+  ): any[] {
+    const normalizedResponse = this.normalizeResponsePayload(response)
+
+    if (!normalizedResponse || depth > maxDepth) {
+      return found
+    }
+
+    if (this.isRecord(normalizedResponse)) {
+      if (visited.has(normalizedResponse)) {
+        return found
+      }
+      visited.add(normalizedResponse)
+
+      const record = normalizedResponse as Record<string, any>
+      if (this.hasVisualizationStructure(record)) {
+        found.push(record)
+      }
+
+      for (const value of Object.values(record)) {
+        if (this.isRecord(value) || Array.isArray(value) || this.isNonEmptyString(value)) {
+          this.findVisualizationObjectsInTree(value, maxDepth, depth + 1, visited, found)
+        }
+      }
+    } else if (Array.isArray(normalizedResponse)) {
+      for (const item of normalizedResponse) {
+        this.findVisualizationObjectsInTree(item, maxDepth, depth + 1, visited, found)
+      }
+    }
+
+    return found
+  }
+
+  private extractVisualizations(response: any): any[] {
+    const thisSequenceStart = this.visualizationCounter
+
+    const normalizedResponse = this.normalizeResponsePayload(response)
+    const collected: any[] = []
+
+    for (const value of this.findAllValuesInTree(normalizedResponse, (key) => {
+      return this.isVisualizationKey(key)
+    })) {
+      this.addVisualizationCandidates(value, collected)
+    }
+
+    for (const candidate of this.findVisualizationObjectsInTree(normalizedResponse)) {
+      collected.push(candidate)
+    }
+
+    const deduped = new Map<string, any>()
+    let candidateIdx = 0
+    for (const candidate of collected) {
+      const parsedCandidate = this.normalizeVisualizationCandidate(candidate, candidateIdx)
+      candidateIdx += 1
+      if (!parsedCandidate) {
+        continue
+      }
+      const dedupeKey = this.shortHash(
+        JSON.stringify({
+          type: parsedCandidate.type,
+          position: parsedCandidate.position,
+          size: parsedCandidate.size,
+          animation: parsedCandidate.animation,
+          duration_ms: parsedCandidate.duration_ms,
+          priority: parsedCandidate.priority,
+          data: parsedCandidate.data,
+        }),
+      ) + `:${parsedCandidate.type}`
+      if (!deduped.has(dedupeKey)) {
+        deduped.set(dedupeKey, parsedCandidate)
+      }
+    }
+
+    this.visualizationCounter = thisSequenceStart + 1
+    return Array.from(deduped.values()).sort((left, right) => (left.priority || 0) - (right.priority || 0))
   }
 
   private extractProcessingTime(response: any, responseTime: number): number {
-    const payload = response?.response
-    return (
-      payload?.processing_time_ms ||
-      payload?.metadata?.processing_time_ms ||
-      response?.processing_time_ms ||
-      response?.metadata?.processing_time_ms ||
-      responseTime
+    const direct = this.findStringValueInTree(response, (key) => {
+      const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+      return normalizedKey === 'processing_time_ms'
+    })
+    if (this.isNonEmptyString(direct)) {
+      const parsed = Number(direct)
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        return parsed
+      }
+    }
+
+    const nested = Number(
+      this.findAllValuesInTree(response, (key) => {
+        const normalizedKey = String(key).toLowerCase().replace(/-/g, "_")
+        return normalizedKey === 'processing_time_ms'
+      })?.[0]
     )
+
+    if (!Number.isNaN(nested) && nested > 0) {
+      return nested
+    }
+
+    return responseTime
   }
 
   private async postJarvisEndpoint(endpoint: string, data: any): Promise<any> {
@@ -346,7 +1190,7 @@ export class RohithAPI {
           content: content,
           timestamp: timestamp,
           messageId: msg.message_id, // Include backend message ID for feedback
-          visualizations: Array.isArray(msg.visualizations) ? msg.visualizations : [],
+          visualizations: this.extractVisualizations(msg),
           context: msg.role === "assistant" ? {
             hnwiKnowledgeSources: msg.context?.generated_from ? ["HNWI Knowledge Base"] : ["audelle_api"],
             responseTime: msg.context?.response_time || 3000
@@ -607,7 +1451,7 @@ export class RohithAPI {
         mode: this.normalizeJarvisMode(response.mode),
         rawMode: response.mode || "jarvis",
         narration,
-        visualizations: response.response?.visualizations || response.visualizations || [],
+        visualizations: this.extractVisualizations(response),
         predictive_prompts: response.response?.predictive_prompts || response.predictive_prompts || [],
         // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
         source_documents: this.extractSourceDocuments(response),
@@ -675,7 +1519,7 @@ export class RohithAPI {
         mode: this.normalizeJarvisMode(response.mode),
         rawMode: response.mode || "jarvis",
         narration,
-        visualizations: response.response?.visualizations || response.visualizations || [],
+        visualizations: this.extractVisualizations(response),
         predictive_prompts: response.response?.predictive_prompts || response.predictive_prompts || [],
         // Map backend's 'citations' field to 'source_documents' (Feb 2026 backend uses 'citations')
         source_documents: this.extractSourceDocuments(response),

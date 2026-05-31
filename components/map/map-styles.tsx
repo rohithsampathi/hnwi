@@ -83,6 +83,22 @@ export function MapStyles({ theme }: MapStylesProps) {
         min-width: 280px !important;
         max-width: 340px !important;
       }
+      .opportunity-hover-tooltip.leaflet-tooltip {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        white-space: normal !important;
+        max-width: 340px !important;
+      }
+      .opportunity-hover-tooltip.leaflet-tooltip::before {
+        display: none !important;
+      }
+      .opportunity-hover-tooltip.leaflet-tooltip > * {
+        width: 340px !important;
+        max-width: min(340px, calc(100vw - 32px)) !important;
+        overflow-wrap: anywhere;
+      }
       .border-border {
         border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
       }

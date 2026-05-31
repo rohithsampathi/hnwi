@@ -8,6 +8,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Pie,
+  PieChart,
   Line,
   LineChart,
   ReferenceLine,
@@ -23,15 +25,29 @@ interface DataRow {
   display?: string;
   unit?: string;
   source?: string;
+  min?: number;
+  max?: number;
+  range_min?: number;
+  range_max?: number;
+  segment?: string;
+  segments?: Array<{ label?: string; value?: number }>;
 }
 
 interface DataSection {
-  kind: 'bar' | 'deviation' | 'table';
+  kind:
+    | 'bar'
+    | 'deviation'
+    | 'line'
+    | 'pie'
+    | 'range'
+    | 'stacked_bar'
+    | 'table';
   title: string;
   unit?: string;
   insight?: string;
   rows?: Array<DataRow | string[]>;
   columns?: string[];
+  subtitle?: string;
 }
 
 interface DataExplainerVizProps {
@@ -60,6 +76,40 @@ function sectionRows(section: DataSection): DataRow[] {
   return Array.isArray(section.rows)
     ? section.rows.filter((row): row is DataRow => !Array.isArray(row) && Number.isFinite(Number(row.value))).slice(0, 8)
     : [];
+}
+
+function sectionValueRows(section: DataSection): DataRow[] {
+  return Array.isArray(section.rows)
+    ? section.rows.filter((row): row is DataRow => !Array.isArray(row) && Number.isFinite(Number(row.value))).slice(0, 8)
+    : [];
+}
+
+function sectionRangeRows(section: DataSection): Array<{ label: string; min: number; max: number }> {
+  return Array.isArray(section.rows)
+    ? section.rows
+        .filter((row): row is DataRow => {
+          if (Array.isArray(row)) return false
+          const min = Number(row.min ?? row.range_min)
+          const max = Number(row.max ?? row.range_max)
+          return Number.isFinite(min) && Number.isFinite(max) && !Number.isNaN(min) && !Number.isNaN(max)
+        })
+        .map((row) => ({
+          label: String(row.label || '').trim() || 'Range',
+          min: Number(row.min ?? row.range_min),
+          max: Number(row.max ?? row.range_max),
+        }))
+        .slice(0, 8)
+    : [];
+}
+
+function sectionPieRows(section: DataSection): DataRow[] {
+  return Array.isArray(section.rows)
+    ? section.rows.filter((row): row is DataRow => !Array.isArray(row) && Number.isFinite(Number(row.value))).slice(0, 8)
+    : [];
+}
+
+function normalizePieTitle(section: DataSection): string {
+  return section.title || 'Distribution'
 }
 
 function isLabeledPercentRow(row: DataRow) {
@@ -253,6 +303,191 @@ function BarSection({ section }: { section: DataSection }) {
   );
 }
 
+function LineSection({ section }: { section: DataSection }) {
+  const rows = sectionValueRows(section);
+  if (!rows.length) return null;
+  if (rows.length < 3) return <SignalSection section={section} />;
+
+  return (
+    <section className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2">
+        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="h-40 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 12, right: 16, left: 20, bottom: 30 }}>
+            <CartesianGrid stroke={gridColor} strokeOpacity={0.45} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: axisColor, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+              angle={-8}
+              textAnchor="end"
+              tickMargin={10}
+            />
+            <YAxis
+              domain={['auto', 'auto']}
+              width={40}
+              tick={{ fill: axisColor, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                background: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: 8,
+                color: 'hsl(var(--foreground))',
+              }}
+              formatter={(value: any, _name: any, item: any) => [
+                formatValue(Number(value), item?.payload?.unit || section.unit),
+                section.title,
+              ]}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={barColor}
+              strokeWidth={2}
+              dot={{ r: 4, fill: 'hsl(var(--background))', stroke: barColor, strokeWidth: 2 }}
+              activeDot={{ r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+function RangeSection({ section }: { section: DataSection }) {
+  const rows = sectionRangeRows(section);
+  if (!rows.length) return null;
+  const minValue = Math.min(...rows.map((row) => row.min), 0);
+  const maxValue = Math.max(...rows.map((row) => row.max), 1);
+  const span = Math.max(1, maxValue - minValue);
+
+  return (
+    <section className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2">
+        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="space-y-3">
+        {rows.map((row, index) => {
+          const left = ((row.min - minValue) / span) * 100;
+          const width = ((row.max - row.min) / span) * 100;
+          return (
+            <div key={`${row.label}-${index}`} className="grid gap-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 truncate text-xs text-foreground/85">{row.label}</span>
+                <span className="shrink-0 text-xs font-semibold text-foreground">{formatValue(row.min)} - {formatValue(row.max)}</span>
+              </div>
+              <div className="relative h-3 rounded-full bg-muted">
+                <div
+                  className="absolute inset-y-0 rounded-full bg-primary/70"
+                  style={{ left: `${Math.max(0, Math.min(100, left))}%`, width: `${Math.max(4, Math.min(100 - left, width))}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function StackedSection({ section }: { section: DataSection }) {
+  const rows = sectionValueRows(section);
+  if (!rows.length) return null;
+  const palette = [barColor, 'hsl(var(--destructive))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+
+  return (
+    <section className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2">
+        <h4 className="text-[13px] font-semibold text-foreground">{section.title}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="divide-y divide-border/20">
+        {rows.map((row, index) => (
+          <div key={`${row.label}-${index}`} className="py-2 last:pb-0">
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <span className="text-xs font-medium text-foreground/85">{row.label}</span>
+              <span className="text-xs font-semibold text-foreground">{displaySignalValue(row, section)}</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.max(8, Math.min(100, normalizedSignalWidth(row, rows, section)))}%`,
+                  backgroundColor: palette[index % palette.length],
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PieSection({ section }: { section: DataSection }) {
+  const rows = sectionPieRows(section);
+  if (!rows.length) return null;
+
+  const data = rows.map((row) => ({ ...row, value: Number(row.value || 0) }));
+  const total = data.reduce((acc, item) => acc + (Number.isFinite(item.value) ? Math.max(0, item.value) : 0), 0);
+  if (total <= 0) return <SignalSection section={section} />;
+  const showRows = data;
+  const palette = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--destructive))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+
+  return (
+    <section className="py-3 first:pt-0 last:pb-0">
+      <div className="mb-2">
+        <h4 className="text-[13px] font-semibold text-foreground">{normalizePieTitle(section)}</h4>
+        {section.insight && (
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{section.insight}</p>
+        )}
+      </div>
+      <div className="h-48 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Tooltip
+              contentStyle={{
+                background: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: 8,
+                color: 'hsl(var(--foreground))',
+              }}
+              formatter={(value: any) => [formatValue(Number(value), section.unit), 'Share']}
+            />
+            <Pie
+              data={showRows}
+              nameKey="label"
+              dataKey="value"
+              innerRadius={28}
+              outerRadius={72}
+              paddingAngle={3}
+            >
+              {showRows.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={palette[index % palette.length]} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
 function DeviationSection({ section }: { section: DataSection }) {
   const rows = sectionRows(section);
   if (!rows.length) return null;
@@ -395,6 +630,10 @@ export default function DataExplainerViz({ data }: DataExplainerVizProps) {
         {sections.map((section, index) => {
           if (section.kind === 'bar') return <BarSection key={index} section={section} />;
           if (section.kind === 'deviation') return <DeviationSection key={index} section={section} />;
+          if (section.kind === 'line') return <LineSection key={index} section={section} />;
+          if (section.kind === 'pie') return <PieSection key={index} section={section} />;
+          if (section.kind === 'range') return <RangeSection key={index} section={section} />;
+          if (section.kind === 'stacked_bar') return <StackedSection key={index} section={section} />;
           if (section.kind === 'table') return <TableSection key={index} section={section} />;
           return null;
         })}

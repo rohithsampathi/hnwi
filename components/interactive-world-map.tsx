@@ -205,88 +205,27 @@ function getDecisionVerdictClass(value: string): string {
   return "verdict-restructure"
 }
 
-function cleanHoverText(value?: string | null): string {
-  if (!value) return ""
-
-  return String(value)
-    .replace(/\[[^\]]+\]/g, "")
-    .replace(/[#*_`>~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function truncateHoverText(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value
-
-  const truncated = value.slice(0, maxLength)
-  const lastSentence = truncated.search(/[.!?]\s[^.!?]*$/)
-  if (lastSentence > 80) return truncated.slice(0, lastSentence + 1).trim()
-
-  const lastSpace = truncated.lastIndexOf(" ")
-  return `${truncated.slice(0, lastSpace > 80 ? lastSpace : maxLength).trim()}...`
-}
-
-function getCityHoverSummary(city: City): string {
-  const rawSummary =
-    city.summary ||
-    city.elite_pulse_analysis ||
-    city.katherine_analysis ||
-    city.analysis ||
-    ""
-
-  const cleaned = cleanHoverText(rawSummary)
-  return truncateHoverText(cleaned, 230)
-}
-
-function getCityLocationLabel(city: City): string {
-  if (city.name && city.country) {
-    if (city.name.includes(city.country) || city.name === city.country) return city.name
-    if (city.country.includes(city.name)) return city.name
-    return `${city.name}, ${city.country}`
-  }
-
-  return city.country || city.name || "Unknown Location"
-}
-
-function MapMarkerHoverTooltip({ cities, center }: { cities: City[]; center: City }) {
+function MapMarkerHoverTooltip({ cities, center, theme }: { cities: City[]; center: City; theme: string }) {
   if (cities.length > 1) {
     return (
-      <div className="min-w-[220px] max-w-[320px]">
-        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
-          {cities.length} opportunities
-        </div>
-        <div className="space-y-1">
-          {cities.slice(0, 3).map((city) => (
-            <div key={`${city._id || city.id || city.title}-${city.latitude}-${city.longitude}`} className="text-xs leading-snug">
-              <span className="font-semibold">{city.title || city.name}</span>
-              {city.value && <span className="text-muted-foreground"> • {city.value}</span>}
-            </div>
-          ))}
-          {cities.length > 3 && (
-            <div className="text-[11px] text-muted-foreground">+{cities.length - 3} more</div>
-          )}
-        </div>
-      </div>
+      <MapPopupCluster
+        cities={cities}
+        theme={theme}
+        onCityClick={() => undefined}
+        clusterCities={cities.map((city) => ({ cities: [city] as [City], center: city }))}
+        clusterIndex={0}
+      />
     )
   }
 
-  const summary = getCityHoverSummary(center)
-
   return (
-    <div className="min-w-[220px] max-w-[320px]">
-      <div className="mb-1 text-sm font-bold leading-snug text-primary">
-        {center.title || center.name}
-      </div>
-      <div className="mb-1 text-[11px] text-muted-foreground">
-        {getCityLocationLabel(center)}
-        {center.value ? ` • ${center.value}` : ""}
-      </div>
-      {summary && (
-        <div className="text-xs leading-relaxed text-foreground">
-          {summary}
-        </div>
-      )}
-    </div>
+    <MapPopupSingle
+      city={center}
+      theme={theme}
+      expandedClusterId={null}
+      clusterId={`hover-${center._id || center.id || center.title || center.name}`}
+      onExpand={() => undefined}
+    />
   )
 }
 
@@ -717,7 +656,7 @@ export function InteractiveWorldMap({
                 opacity={1}
                 className="opportunity-hover-tooltip"
               >
-                <MapMarkerHoverTooltip cities={cluster.cities} center={center} />
+                <MapMarkerHoverTooltip cities={cluster.cities} center={center} theme={theme} />
               </Tooltip>
             </Marker>
           )

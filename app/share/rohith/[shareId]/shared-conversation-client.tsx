@@ -7,7 +7,7 @@ import { isValidElement, useMemo, useState } from 'react'
 import { MessageCircle, Share2, Check, ArrowLeft, User, Clock, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
-import { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
+import VisualizationEngine, { type VisualizationCommand } from '@/components/ask-rohith-jarvis/VisualizationEngine'
 import { CitationText } from '@/components/elite/citation-text'
 import { EliteCitationPanel } from '@/components/elite/elite-citation-panel'
 import { Layout } from '@/components/layout/layout'
@@ -211,37 +211,65 @@ function normalizeVisualizationRow(row: any) {
   return row
 }
 
-function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
-  const visualRequested = /chart|graph|visual|visualize|heatmap|timeline|source packet|evidence packet|show me/i.test(message.content || '')
-  return (message.visualizations || []).map((command: any) => {
-    if (command?.type !== 'data_explainer' || !Array.isArray(command?.data?.sections)) {
-      return command
-    }
+function normalizeSectionKind(kind: any): string {
+  const normalized = String(kind || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '')
+  if (['linechart', 'line_chart', 'line-chart'].includes(normalized)) return 'line'
+  if (['piechart', 'pie_chart', 'pie-chart'].includes(normalized)) return 'pie'
+  if (['stackedbar', 'stacked_bar', 'stacked-bar'].includes(normalized)) return 'stacked_bar'
+  if (['rangecolumn', 'range_chart', 'range-chart', 'range'].includes(normalized)) return 'range'
+  if (['stack', 'stacked', 'stacked_column'].includes(normalized)) return 'stacked_bar'
+  return normalized
+}
 
-    const sections = command.data.sections.filter((section: any) => {
-      const title = String(section?.title || '').toLowerCase()
-      const columns = Array.isArray(section?.columns) ? section.columns.join(' ').toLowerCase() : ''
-      return !title.includes('source') && !columns.includes('source')
-    }).map((section: any) => {
-      if (!Array.isArray(section?.rows)) return section
-      return {
-        ...section,
-        rows: section.rows.map(normalizeVisualizationRow),
-      }
-    })
+function normalizeDataExplainerSections(command: VisualizationCommand): VisualizationCommand {
+  if (!command || command.type !== 'data_explainer' || !Array.isArray((command as any).data?.sections)) {
+    return command
+  }
 
+  const nextSections = (command as any).data.sections.map((section: any) => {
+    if (!section || typeof section !== 'object') return section
     return {
-      ...command,
-      data: {
-        ...command.data,
-        sections,
-      },
+      ...section,
+      kind: normalizeSectionKind(section.kind),
     }
+  }).filter((section: any) => {
+    const title = String(section?.title || '').toLowerCase()
+    const columns = Array.isArray(section?.columns) ? section.columns.join(' ').toLowerCase() : ''
+    if (title === 'native evidence packet' || title === 'risk assessment') return false
+    if (!title && !columns && section?.kind !== 'table') return false
+    return true
+  })
+
+  return {
+    ...command,
+    data: {
+      ...(command as any).data,
+      sections: nextSections,
+    },
+  }
+}
+
+function visibleVisualizations(message: SharedMessage): VisualizationCommand[] {
+  return (message.visualizations || []).map((command: any) => {
+    if (command?.type === 'data_explainer' && Array.isArray(command?.data?.sections)) {
+      const normalized = normalizeDataExplainerSections({
+        ...command,
+        data: {
+          ...(command as any).data,
+          sections: command.data.sections.map((section: any) => ({
+            ...(section || {}),
+            rows: Array.isArray(section?.rows) ? section.rows.map(normalizeVisualizationRow) : section?.rows,
+          })),
+        },
+      } as VisualizationCommand)
+      return normalized
+    }
+
+    return command
   }).filter((command: any) => {
     const title = String(command?.data?.title || '').toLowerCase()
     if (title === 'native evidence packet' || title === 'risk assessment' || isRouteReadVisualization(command)) return false
     if (command?.type === 'data_explainer' && Array.isArray(command?.data?.sections) && command.data.sections.length === 0) return false
-    if (command?.type === 'risk_heatmap' && !visualRequested && !command?.data?.show_by_default) return false
     return true
   })
 }
@@ -472,191 +500,10 @@ function AudelleNativeVisualization({ commands }: { commands: VisualizationComma
   if (!commands.length) return null
 
   return (
-    <div className="space-y-4">
-      {commands.map((command) => (
-        <AudelleNativeVisualizationCard key={command.id} command={command} />
-      ))}
-    </div>
-  )
-}
-
-function AudelleNativeVisualizationCard({ command }: { command: VisualizationCommand }) {
-  const data = command.data || {}
-  return (
-    <figure className="my-4 overflow-hidden rounded-2xl border border-border/25 bg-card/80 shadow-sm">
-      <figcaption className="border-b border-border/20 px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gold/70">Audelle Decision Map</p>
-        <h3 className="mt-1 text-sm font-semibold leading-snug text-foreground">{data.title || 'Decision Map'}</h3>
-      </figcaption>
-      <div className="p-4">
-        {command.type === 'cascade_graph' && <AudelleCascade data={data} />}
-        {command.type === 'migration_flow' && <AudelleRails data={data} />}
-        {command.type === 'risk_heatmap' && <AudelleRiskMap data={data} />}
-        {command.type === 'regulatory_timeline' && <AudelleTimeline data={data} />}
-        {!['cascade_graph', 'migration_flow', 'risk_heatmap', 'regulatory_timeline'].includes(command.type) && (
-          <AudelleFallbackViz data={data} />
-        )}
-      </div>
-    </figure>
-  )
-}
-
-function AudelleCascade({ data }: { data: any }) {
-  const nodes = Array.isArray(data.nodes) ? data.nodes : []
-  const triggers = nodes.filter((node: any) => node.type === 'trigger')
-  const effects = nodes.filter((node: any) => node.type !== 'trigger')
-  const edges = Array.isArray(data.edges) ? data.edges : []
-
-  return (
-    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)]">
-      <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Clears In The Room</p>
-        {triggers.map((node: any) => (
-          <div key={node.id} className={`rounded-lg border px-3 py-2 ${severityClass(node.severity)}`}>
-            <p className="whitespace-normal break-words text-xs font-semibold leading-snug">{node.label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="hidden items-center justify-center md:flex">
-        <div className="h-full min-h-40 w-px bg-gradient-to-b from-transparent via-gold/45 to-transparent" />
-      </div>
-      <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Can Still Break Later</p>
-        {effects.map((node: any) => (
-          <div key={node.id} className={`rounded-lg border px-3 py-2 ${severityClass(node.severity)}`}>
-            <p className="whitespace-normal break-words text-xs font-semibold leading-snug">{node.label}</p>
-          </div>
-        ))}
-      </div>
-      {edges.length > 0 && (
-        <div className="md:col-span-3">
-          <div className="mt-2 rounded-lg border border-border/25 bg-muted/15 p-3">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Dependency Read</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {edges.slice(0, 6).map((edge: any, index: number) => {
-                const from = nodes.find((node: any) => node.id === edge.from)?.label || edge.from
-                const to = nodes.find((node: any) => node.id === edge.to)?.label || edge.to
-                return (
-                  <div key={`${edge.from}-${edge.to}-${index}`} className="rounded-md border border-border/20 bg-background/40 px-3 py-2">
-                    <p className="whitespace-normal break-words text-[11px] leading-snug text-foreground/85">
-                      <span className="font-semibold text-foreground">{from}</span>
-                      {' '}
-                      <span className="text-gold" aria-label="leads to">-&gt;</span>
-                      {' '}
-                      <span className="font-semibold text-foreground">{to}</span>
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AudelleRails({ data }: { data: any }) {
-  const flows = Array.isArray(data.flows) ? data.flows : []
-  const stats = Array.isArray(data.stats) ? data.stats : []
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        {flows.map((flow: any, index: number) => (
-          <div key={`${flow.from}-${flow.to}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">
-                {flow.from} <span className="text-gold">to</span> {flow.to}
-              </p>
-              <p className="whitespace-normal break-words text-[11px] leading-snug text-muted-foreground">{flow.label}</p>
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-gold/70" style={{ width: `${Math.max(8, Math.min(100, Number(flow.volume) || 0))}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      {stats.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {stats.map((stat: any, index: number) => (
-            <div key={`${stat.label}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
-              <p className="whitespace-normal break-words text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
-              <p className="mt-1 whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AudelleRiskMap({ data }: { data: any }) {
-  const entries = Object.entries(data.jurisdictions || {}) as Array<[string, number]>
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {entries.map(([label, rawScore]) => {
-        const score = Number(rawScore) || 0
-        return (
-          <div key={label} className="rounded-lg border border-border/25 bg-background/40 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{label}</p>
-              <p className="shrink-0 text-[11px] font-semibold text-gold">{score}</p>
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className={`h-full rounded-full ${riskBarTone(score)}`} style={{ width: `${Math.max(8, Math.min(100, score))}%` }} />
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function AudelleTimeline({ data }: { data: any }) {
-  const events = Array.isArray(data.events) ? data.events : []
-  return (
-    <div className="relative space-y-3 pl-4">
-      <div className="absolute bottom-2 left-[5px] top-2 w-px bg-gold/25" />
-      {events.map((event: any, index: number) => (
-        <div key={`${event.date}-${index}`} className="relative rounded-lg border border-border/25 bg-background/40 p-3">
-          <div className="absolute -left-[15px] top-4 h-2.5 w-2.5 rounded-full border border-gold bg-background" />
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-            <p className="whitespace-normal break-words text-xs font-semibold leading-snug text-foreground">{event.title}</p>
-            <p className="whitespace-normal break-words text-[10px] font-semibold uppercase tracking-[0.14em] text-gold/80">{event.date}</p>
-          </div>
-          {event.description && (
-            <p className="mt-2 whitespace-normal break-words text-xs leading-relaxed text-muted-foreground">{event.description}</p>
-          )}
-          {event.jurisdiction && (
-            <p className="mt-2 inline-flex rounded-full border border-gold/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-gold/80">
-              {event.jurisdiction}
-            </p>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function AudelleFallbackViz({ data }: { data: any }) {
-  const sections = Array.isArray(data.sections) ? data.sections : []
-  return (
-    <div className="space-y-3">
-      {sections.map((section: any, index: number) => (
-        <div key={`${section.title}-${index}`} className="rounded-lg border border-border/25 bg-background/40 p-3">
-          <p className="whitespace-normal break-words text-xs font-semibold text-foreground">{section.title}</p>
-          {Array.isArray(section.rows) && (
-            <div className="mt-2 space-y-2">
-              {section.rows.slice(0, 6).map((row: any, rowIndex: number) => (
-                <p key={rowIndex} className="whitespace-normal break-words text-[11px] leading-relaxed text-muted-foreground">
-                  {Array.isArray(row) ? row.join('  ') : `${row.label || ''} ${row.display || row.value || ''}`}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
+    <VisualizationEngine
+      commands={commands}
+      inline
+    />
   )
 }
 
@@ -851,9 +698,6 @@ export default function SharedConversationClient({ conversation, shareId }: Shar
         packetWitnessCitationIds(witness).forEach((developmentId) => {
           add(developmentId, witness)
         })
-      })
-      packet.devids?.forEach((developmentId) => {
-        add(developmentId, { title: `Evidence ${developmentId}`, summary: 'This source is part of the public-safe Audelle evidence packet.' })
       })
     })
 

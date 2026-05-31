@@ -560,6 +560,20 @@ const toNumber = (value: unknown): number | null => {
   return null;
 };
 
+const isDeletedCrownVaultRow = (asset: any): boolean => {
+  const status = String(asset?.status || asset?.asset_data?.status || asset?.decrypted_data?.status || "")
+    .trim()
+    .toLowerCase();
+  return Boolean(
+    asset?.deleted === true ||
+    asset?.is_deleted === true ||
+    asset?.isDeleted === true ||
+    asset?.deleted_at ||
+    asset?.deletedAt ||
+    status === "deleted",
+  );
+};
+
 const normalizeElitePulseImpact = (impact: any) => {
   if (!impact || typeof impact !== 'object') {
     return null;
@@ -1101,6 +1115,7 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
     // Ensure each asset has proper structure (supports both MongoDB _id and asset_id formats)
     return assets.filter((asset: any) =>
       asset &&
+      !isDeletedCrownVaultRow(asset) &&
       (asset._id || asset.asset_id || asset.id) // Accept MongoDB _id or other formats
     ).map((asset: any) => {
       const normalizedImpact = normalizeElitePulseImpact(asset.elite_pulse_impact);
@@ -1112,10 +1127,16 @@ export async function getCrownVaultAssets(ownerId?: string): Promise<CrownVaultA
         : {};
       const currentValueUsd =
         toNumber(asset.current_value_usd) ??
+        toNumber(asset.current_total_value_usd) ??
+        toNumber(asset.asset_data?.value_usd) ??
+        toNumber(asset.decrypted_data?.value_usd) ??
         toNumber(canonicalTruth.current_total_value_usd) ??
         toNumber(impactUsdConversion.current_total_value_usd);
       const entryValueUsd =
         toNumber(asset.entry_value_usd) ??
+        toNumber(asset.entry_total_value_usd) ??
+        toNumber(asset.asset_data?.entry_value_usd) ??
+        toNumber(asset.decrypted_data?.entry_value_usd) ??
         toNumber(canonicalTruth.entry_total_value_usd) ??
         toNumber(impactUsdConversion.entry_total_value_usd);
       const currentValueNative =
@@ -1656,13 +1677,8 @@ export async function updateCrownVaultAsset(
 // Delete Crown Vault Asset
 export async function deleteCrownVaultAsset(assetId: string): Promise<{ message: string }> {
   try {
-    const userId = getCurrentUserId();
-
-    if (!userId) {
-      throw new Error('User not authenticated. Please log in to access Crown Vault.');
-    }
-
-    const deleteUrl = `/api/crown-vault/assets/${assetId}`;
+    const ownerQuery = crownVaultOwnerQuery();
+    const deleteUrl = `/api/crown-vault/assets/${encodeURIComponent(assetId)}${ownerQuery}`;
     const result = await secureApi.delete(deleteUrl, true);
 
     return {

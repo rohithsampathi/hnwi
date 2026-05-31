@@ -29,6 +29,7 @@ interface EliteCitationPanelProps {
   citationMap?: Map<string, number>
   preloadedSources?: Map<string, Development>
   shareId?: string
+  hideUnavailablePublicSources?: boolean
 }
 
 export function EliteCitationPanel({
@@ -38,7 +39,8 @@ export function EliteCitationPanel({
   onCitationSelect,
   citationMap,
   preloadedSources,
-  shareId
+  shareId,
+  hideUnavailablePublicSources = false
 }: EliteCitationPanelProps) {
   const [loading, setLoading] = useState(false)
   const [loadingCitationId, setLoadingCitationId] = useState<string | null>(null)
@@ -54,9 +56,39 @@ export function EliteCitationPanel({
     setLocalCitationMap(citationMap || new Map())
   }, [citations, citationMap])
 
+  const visibleCitations = React.useMemo(() => {
+    if (!hideUnavailablePublicSources) {
+      return allCitations
+    }
+
+    if (!preloadedSources || preloadedSources.size === 0) {
+      return []
+    }
+
+    return allCitations.filter((citation) => {
+      const loadedDevelopment = developments.get(citation.id)
+      return Boolean(preloadedSources.get(citation.id) || loadedDevelopment)
+    })
+  }, [allCitations, developments, hideUnavailablePublicSources, preloadedSources])
+
+  const activeSelectedCitationId = React.useMemo(() => {
+    if (!hideUnavailablePublicSources) {
+      return selectedCitationId
+    }
+
+    if (!selectedCitationId) {
+      return visibleCitations[0]?.id ?? null
+    }
+
+    return visibleCitations.some((citation) => citation.id === selectedCitationId)
+      ? selectedCitationId
+      : visibleCitations[0]?.id ?? null
+  }, [hideUnavailablePublicSources, selectedCitationId, visibleCitations])
+
   // Handle citation click - fetch development lazily when clicked
   const handleCitationClick = useCallback(async (citationId: string) => {
     const normalizedCitationId = citationId.trim()
+    let resolvedSource: Development | undefined = developments.get(normalizedCitationId)
 
     // Check if citation already exists
     const existingCitation = allCitations.find(c => c.id === normalizedCitationId)
@@ -83,6 +115,7 @@ export function EliteCitationPanel({
     if (!developments.has(normalizedCitationId)) {
       const preloadedSource = preloadedSources?.get(normalizedCitationId)
       if (preloadedSource) {
+        resolvedSource = preloadedSource
         setDevelopments(prev => new Map(prev).set(normalizedCitationId, preloadedSource))
       }
 
@@ -103,6 +136,7 @@ export function EliteCitationPanel({
           const newDev = buildCitationSourceDevelopment(payload, normalizedCitationId)
 
           if (newDev) {
+            resolvedSource = newDev
             setDevelopments(prev => new Map(prev).set(normalizedCitationId, newDev))
           } else if (!preloadedSource) {
             setDevelopments(prev => new Map(prev).set(normalizedCitationId, null as any))
@@ -144,25 +178,50 @@ export function EliteCitationPanel({
       }
     }
 
+    if (hideUnavailablePublicSources && !resolvedSource && !preloadedSources?.get(normalizedCitationId)) {
+      setAllCitations(prev => prev.filter(citation => citation.id !== normalizedCitationId))
+      setLocalCitationMap(prev => {
+        const next = new Map(prev)
+        next.delete(normalizedCitationId)
+        return next
+      })
+      const nextAvailable = allCitations.find((citation) => (
+        citation.id !== normalizedCitationId &&
+        Boolean(preloadedSources?.get(citation.id) || developments.get(citation.id))
+      ))
+      if (nextAvailable) {
+        onCitationSelect(nextAvailable.id)
+      }
+      return
+    }
+
     // Select the citation
     onCitationSelect(normalizedCitationId)
-  }, [allCitations, developments, localCitationMap, onCitationSelect, preloadedSources, shareId])
+  }, [allCitations, developments, hideUnavailablePublicSources, localCitationMap, onCitationSelect, preloadedSources, shareId])
 
   // Auto-load the selected citation when panel opens (if one is selected)
   useEffect(() => {
-    if (citations.length === 0) return
+    if (visibleCitations.length === 0) return
 
     // If a citation is already selected, load it automatically
-    if (selectedCitationId && !developments.has(selectedCitationId)) {
-      handleCitationClick(selectedCitationId)
+    if (activeSelectedCitationId && !developments.has(activeSelectedCitationId)) {
+      handleCitationClick(activeSelectedCitationId)
     }
     // Otherwise, user must click a citation to load it (lazy loading)
-  }, [selectedCitationId, citations.length, developments, handleCitationClick]) // Run when selectedCitationId changes or citations are loaded
+  }, [activeSelectedCitationId, visibleCitations.length, developments, handleCitationClick]) // Run when selectedCitationId changes or citations are loaded
+
+  useEffect(() => {
+    if (!hideUnavailablePublicSources || !activeSelectedCitationId || activeSelectedCitationId === selectedCitationId) {
+      return
+    }
+
+    onCitationSelect(activeSelectedCitationId)
+  }, [activeSelectedCitationId, hideUnavailablePublicSources, onCitationSelect, selectedCitationId])
 
   // Auto-scroll to selected citation tab when panel opens or citation changes
   useEffect(() => {
-    if (!selectedCitationId || allCitations.length === 0) return
-    const selectedCitationNumber = allCitations.find(c => c.id === selectedCitationId)?.number
+    if (!activeSelectedCitationId || visibleCitations.length === 0) return
+    const selectedCitationNumber = visibleCitations.find(c => c.id === activeSelectedCitationId)?.number
     if (!selectedCitationNumber) return
 
     // Use requestAnimationFrame to ensure DOM is ready
@@ -193,7 +252,7 @@ export function EliteCitationPanel({
     // Small delay to ensure panel animation completes
     const timer = setTimeout(scrollToSelected, 300)
     return () => clearTimeout(timer)
-  }, [selectedCitationId, allCitations])
+  }, [activeSelectedCitationId, visibleCitations])
 
   return (
     <>
@@ -221,7 +280,7 @@ export function EliteCitationPanel({
               <FileText className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-base">Source Evidence</h3>
               <Badge variant="secondary" className="text-xs">
-                {allCitations.length}
+                {visibleCitations.length}
               </Badge>
             </div>
             <Button
@@ -239,17 +298,17 @@ export function EliteCitationPanel({
         <div className="px-3 py-3 border-b border-border bg-muted/30 flex-shrink-0">
           <div ref={desktopScrollRef} className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
-              {allCitations.map((citation) => (
+              {visibleCitations.map((citation) => (
                 <Button
                   key={citation.id}
-                  variant={selectedCitationId === citation.id ? "default" : "ghost"}
+                  variant={activeSelectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => handleCitationClick(citation.id)}
                   data-citation-number={citation.number}
                   aria-label={`Citation ${citation.number}`}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
-                    selectedCitationId === citation.id
+                    activeSelectedCitationId === citation.id
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted-foreground/10"
                   )}
@@ -264,22 +323,22 @@ export function EliteCitationPanel({
         {/* Desktop Content */}
         <ScrollArea className="flex-1 px-4">
           <div className="py-4">
-            {loading && loadingCitationId === selectedCitationId ? (
+            {loading && loadingCitationId === activeSelectedCitationId ? (
               <div className="flex items-center justify-center py-8">
                 <CrownLoader size="sm" text="Loading source..." />
               </div>
             ) : (
               <>
-                {selectedCitationId && (
+                {activeSelectedCitationId && (
                   <motion.div
-                    key={selectedCitationId}
+                    key={activeSelectedCitationId}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(selectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
@@ -292,7 +351,7 @@ export function EliteCitationPanel({
                       return (
                           <CitationDevelopmentCard
                           development={dev}
-                          citationNumber={citations.find(c => c.id === selectedCitationId)?.number}
+                          citationNumber={visibleCitations.find(c => c.id === activeSelectedCitationId)?.number}
                           onCitationClick={handleCitationClick}
                           citationMap={localCitationMap}
                         />
@@ -321,7 +380,7 @@ export function EliteCitationPanel({
               <FileText className="h-4 w-4 text-primary" />
               <h3 className="font-semibold text-sm">Source Evidence</h3>
               <Badge variant="secondary" className="text-xs">
-                {allCitations.length} cited
+                {visibleCitations.length} cited
               </Badge>
             </div>
             <Button
@@ -339,17 +398,17 @@ export function EliteCitationPanel({
         <div className="px-3 py-3 border-b border-border bg-muted/30">
           <div ref={mobileScrollRef} className="overflow-x-auto scrollbar-hide max-w-full">
             <div className="flex gap-1 pb-1 min-w-max">
-              {allCitations.map((citation) => (
+              {visibleCitations.map((citation) => (
                 <Button
                   key={citation.id}
-                  variant={selectedCitationId === citation.id ? "default" : "ghost"}
+                  variant={activeSelectedCitationId === citation.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => handleCitationClick(citation.id)}
                   data-citation-number={citation.number}
                   aria-label={`Citation ${citation.number}`}
                   className={cn(
                     "px-3 py-1 h-8 text-xs font-medium whitespace-nowrap flex-shrink-0 min-w-[2.5rem] transition-colors duration-200",
-                    selectedCitationId === citation.id
+                    activeSelectedCitationId === citation.id
                       ? "bg-primary text-primary-foreground"
                       : "hover:bg-muted-foreground/10"
                   )}
@@ -364,22 +423,22 @@ export function EliteCitationPanel({
         {/* Mobile Content */}
         <ScrollArea className="flex-1">
           <div className="p-4">
-            {loading && loadingCitationId === selectedCitationId ? (
+            {loading && loadingCitationId === activeSelectedCitationId ? (
               <div className="flex items-center justify-center py-8">
                 <CrownLoader size="sm" text="Loading source..." />
               </div>
             ) : (
               <>
-                {selectedCitationId && (
+                {activeSelectedCitationId && (
                   <motion.div
-                    key={selectedCitationId}
+                    key={activeSelectedCitationId}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.2 }}
                   >
                     {(() => {
-                      const dev = developments.get(selectedCitationId)
+                      const dev = developments.get(activeSelectedCitationId)
                       if (!dev) {
                         return (
                           <div className="text-center py-8 text-muted-foreground">
@@ -392,7 +451,7 @@ export function EliteCitationPanel({
                       return (
                         <CitationDevelopmentCard
                           development={dev}
-                          citationNumber={allCitations.find(c => c.id === selectedCitationId)?.number}
+                          citationNumber={visibleCitations.find(c => c.id === activeSelectedCitationId)?.number}
                           onCitationClick={handleCitationClick}
                           citationMap={localCitationMap}
                         />

@@ -175,7 +175,11 @@ export function HomeDashboardElite({
     cities.forEach((city) => {
       const summary = city.analysis || city.summary || city.elite_pulse_analysis || ""
       const title = city.title || city.name
-      const sourceIds = [city._id, city.id].filter((id): id is string => Boolean(id))
+      const sourceIds = [
+        city._id,
+        city.id,
+        ...(city.devIds || [])
+      ].filter((id): id is string => Boolean(id))
 
       if (sourceIds.length === 0 || (!title && !summary)) {
         return
@@ -768,6 +772,7 @@ export function HomeDashboardElite({
             onCitationSelect={setSelectedCitationId}
             citationMap={citationMap}
             preloadedSources={preloadedCitationSources}
+            hideUnavailablePublicSources
           />
         </div>
       )}
@@ -784,6 +789,7 @@ export function HomeDashboardElite({
             onCitationSelect={setSelectedCitationId}
             citationMap={citationMap}
             preloadedSources={preloadedCitationSources}
+            hideUnavailablePublicSources
           />
         </AnimatePresence>
       )}

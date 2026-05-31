@@ -230,6 +230,14 @@ export function SidebarNavigation({
       description: "Generational wealth architecture. Built for families that think in decades.",
       businessOnly: false
     },
+    {
+      name: "Decision Memo",
+      icon: BookOpen,
+      route: "decision-memo",
+      description: "Route-control memo for serious cross-border wealth decisions before they harden.",
+      isNew: true,
+      businessOnly: false
+    },
     // ADDITIONAL NAVIGATION (Show when expanded)
     {
       name: "Privé Exchange",
@@ -257,14 +265,6 @@ export function SidebarNavigation({
       icon: Network,
       route: "trusted-network",
       description: "Vetted executors for intelligence-driven action",
-      businessOnly: false
-    },
-    {
-      name: "Decision Memo",
-      icon: BookOpen,
-      route: "decision-memo",
-      description: "Route-control memo for serious cross-border wealth decisions before they harden.",
-      isNew: true,
       businessOnly: false
     },
     { name: "Profile", icon: UserCircle2, route: "profile", businessOnly: false },
@@ -378,7 +378,8 @@ export function SidebarNavigation({
             alt="HNWI Chronicles Globe"
             width={32}
             height={32}
-            className="h-8 w-8 object-contain"
+            className="h-8 w-auto object-contain"
+            style={{ height: "32px", width: "auto" }}
           />
         </div>
       </aside>
@@ -446,7 +447,8 @@ export function SidebarNavigation({
               alt="HNWI Chronicles Globe"
               width={32}
               height={32}
-              className="h-8 w-8 object-contain"
+              className="h-8 w-auto object-contain"
+              style={{ height: "32px", width: "auto" }}
             />
           </motion.div>
           {!isCollapsed && (
