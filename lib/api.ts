@@ -111,6 +111,18 @@ export interface SocialEvent {
   tags?: string[]
 }
 
+function parseSocialEventDate(value: unknown): Date | null {
+  if (!value) return null
+  const date = new Date(String(value))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function startOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
 export async function getEvents(): Promise<SocialEvent[]> {
   try {
     // Call new secure Family Office endpoint
@@ -118,29 +130,44 @@ export async function getEvents(): Promise<SocialEvent[]> {
     
     // Handle new response format: {events: [...], total_count, user_tier, etc.}
     if (data.events && Array.isArray(data.events)) {
-      return data.events.map((event: any) => ({
-        id: event.id,
-        name: event.name,
-        date: new Date(event.start_date).toLocaleDateString('en-US', { 
-          month: 'short',
-          day: 'numeric', 
-          year: 'numeric'
-        }),
-        time: new Date(event.start_date).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: 'numeric'
-        }),
-        location: event.location,
-        attendees: event.attendees || 0,
-        summary: event.summary,
-        category: event.category,
-        start_date: event.start_date,
-        end_date: event.end_date,
-        venue: event.venue,
-        status: event.status,
-        metadata: event.metadata,
-        tags: event.tags
-      }));
+      const today = startOfToday()
+
+      return data.events
+        .map((event: any) => {
+          const startDate = parseSocialEventDate(event.start_date)
+          return {
+            id: event.id,
+            name: event.name,
+            date: startDate?.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }) || '',
+            time: startDate?.toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: 'numeric'
+            }) || '',
+            location: event.location,
+            attendees: event.attendees || 0,
+            summary: event.summary,
+            category: event.category,
+            start_date: event.start_date,
+            end_date: event.end_date,
+            venue: event.venue,
+            status: event.status,
+            metadata: event.metadata,
+            tags: event.tags
+          } satisfies SocialEvent
+        })
+        .filter((event: SocialEvent) => {
+          const startDate = parseSocialEventDate(event.start_date)
+          return Boolean(startDate && startDate >= today)
+        })
+        .sort((a: SocialEvent, b: SocialEvent) => {
+          const aDate = parseSocialEventDate(a.start_date)?.getTime() ?? Number.MAX_SAFE_INTEGER
+          const bDate = parseSocialEventDate(b.start_date)?.getTime() ?? Number.MAX_SAFE_INTEGER
+          return aDate - bDate
+        });
     }
     
     return [];
