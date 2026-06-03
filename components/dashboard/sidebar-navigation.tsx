@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTheme } from "@/contexts/theme-context"
 import { useBusinessMode } from "@/contexts/business-mode-context"
-import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, BookOpen, Beaker, MessageCircle, ChevronDown, ChevronUp, ChevronRight, Network, Lock } from "lucide-react"
+import { Brain, Crown, UserCircle2, Globe, Gem, Menu, X, ChevronLeft, Info, MoreHorizontal, Shield, Users, Beaker, MessageCircle, ChevronDown, ChevronUp, ChevronRight, Network, Lock } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -230,14 +230,6 @@ export function SidebarNavigation({
       description: "Generational wealth architecture. Built for families that think in decades.",
       businessOnly: false
     },
-    {
-      name: "Decision Memo",
-      icon: BookOpen,
-      route: "decision-memo",
-      description: "Route-control memo for serious cross-border wealth decisions before they harden.",
-      isNew: true,
-      businessOnly: false
-    },
     // ADDITIONAL NAVIGATION (Show when expanded)
     {
       name: "Privé Exchange",
@@ -298,7 +290,6 @@ export function SidebarNavigation({
     { name: "HNWI World", icon: Globe, route: "strategy-vault" },
     { name: "Social Hub", icon: Users, route: "social-hub" },
     { name: "Executor Directory", icon: Network, route: "trusted-network" },
-    { name: "Decision Memo", icon: BookOpen, route: "decision-memo", isNew: true },
     { name: "Profile", icon: UserCircle2, route: "profile" },
   ]
 

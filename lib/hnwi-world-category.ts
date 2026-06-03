@@ -33,6 +33,11 @@ const INTERNAL_CATEGORY_VALUES = new Set([
   "promotion packet",
   "promo_packet",
   "promo packet",
+  "hnwi intelligence",
+  "castle brief",
+  "castle briefs",
+  "decision memory",
+  "decision memo",
 ])
 
 const CATEGORY_LABEL_OVERRIDES: Record<string, string> = {
@@ -101,13 +106,13 @@ export function resolveHnwiWorldCategory(development: HNWIWorldDevelopment): str
     dev.metadata?.primary_category,
     dev.classification?.category,
     dev.classification?.primary_category,
+    dev.industry,
     dev.sector,
     dev.vertical,
     dev.topic,
     dev.asset_class,
-    dev.tags,
-    dev.industry,
     dev.product,
+    dev.tags,
   ]
 
   for (const candidate of candidates) {

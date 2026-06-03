@@ -104,6 +104,11 @@ export function MapStyles({ theme }: MapStylesProps) {
         opacity: 0 !important;
         pointer-events: none !important;
       }
+      .leaflet-container:has(.leaflet-popup-pane .leaflet-popup) .opportunity-hover-tooltip.leaflet-tooltip {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
       .border-border {
         border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
       }

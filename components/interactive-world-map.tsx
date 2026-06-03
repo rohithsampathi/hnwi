@@ -297,6 +297,7 @@ export function InteractiveWorldMap({
   const [hoveredCorridorKey, setHoveredCorridorKey] = useState<string | null>(null)
   const [selectedCorridorKey, setSelectedCorridorKey] = useState<string | null>(null) // Persist highlight when popup is open
   const [hoveredDestination, setHoveredDestination] = useState<string | null>(null)
+  const [tooltipVersion, setTooltipVersion] = useState(0)
   const markerRefs = React.useRef<Map<string, any>>(new Map())
   const timeoutRefs = React.useRef<number[]>([])
   const cityFocusActive = selectedCity !== null || flyToCity !== null || openClusterId !== null
@@ -309,6 +310,19 @@ export function InteractiveWorldMap({
 
     timeoutRefs.current.push(timeoutId)
     return timeoutId
+  }, [])
+
+  const closeOpportunityTooltips = useCallback((unbind = false) => {
+    markerRefs.current.forEach((markerRef) => {
+      markerRef?.closeTooltip?.()
+      if (unbind) {
+        markerRef?.unbindTooltip?.()
+      }
+    })
+  }, [])
+
+  const remountOpportunityTooltips = useCallback(() => {
+    setTooltipVersion(version => version + 1)
   }, [])
 
   React.useEffect(() => {
@@ -399,6 +413,7 @@ export function InteractiveWorldMap({
 
   // Handle city click
   const handleCityClick = useCallback((city: City, clusterId: string, expandDetails: boolean = false) => {
+    closeOpportunityTooltips(true)
     setSelectedCity(city)
     setFlyToCity(city)
     setOpenClusterId(clusterId)
@@ -417,11 +432,10 @@ export function InteractiveWorldMap({
       const markerKey = `${city.latitude}-${city.longitude}-${city.title}`
       const markerRef = markerRefs.current.get(markerKey)
       if (markerRef) {
-        markerRef.closeTooltip?.()
         markerRef.openPopup()
       }
     }, 100)
-  }, [scheduleTimeout])
+  }, [closeOpportunityTooltips, scheduleTimeout])
 
   // Auto-expand details after zoom completes
   React.useEffect(() => {
@@ -454,33 +468,37 @@ export function InteractiveWorldMap({
 
   // Handle map reset
   const handleReset = useCallback(() => {
+    closeOpportunityTooltips(true)
     setFlyToCity(null)
     setSelectedCity(null)
     setOpenClusterId(null)
     setExpandedClusterId(null)
     setResetView(true)
+    remountOpportunityTooltips()
 
     markerRefs.current.forEach((markerRef) => {
       if (markerRef && markerRef.closePopup) {
         markerRef.closePopup()
       }
     })
-  }, [])
+  }, [closeOpportunityTooltips, remountOpportunityTooltips])
 
   // Handle map clicks
   const handleMapClick = useCallback(() => {
+    closeOpportunityTooltips(true)
     setOpenClusterId(null)
     setExpandedClusterId(null)
     setSelectedCity(null)
     setFlyToCity(null)
     setCityToExpand(null)
+    remountOpportunityTooltips()
 
     markerRefs.current.forEach((markerRef) => {
       if (markerRef && markerRef.closePopup) {
         markerRef.closePopup()
       }
     })
-  }, [])
+  }, [closeOpportunityTooltips, remountOpportunityTooltips])
 
   // Two separate zoom concepts:
   // 1. startingZoom — fills viewport with no white gaps (used as initial zoom + reset target)
@@ -589,6 +607,7 @@ export function InteractiveWorldMap({
               }}
               eventHandlers={{
                 click: () => {
+                  closeOpportunityTooltips(true)
                   if (!isCluster) {
                     handleCityClick(center, clusterId)
                   } else {
@@ -596,7 +615,6 @@ export function InteractiveWorldMap({
                     const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
                     const markerRef = markerRefs.current.get(markerKey)
                     if (markerRef) {
-                      markerRef.closeTooltip?.()
                       markerRef.openPopup()
                     }
                     setOpenClusterId(clusterId)
@@ -606,7 +624,7 @@ export function InteractiveWorldMap({
                 },
                 popupopen: () => {
                   setOpenClusterId(clusterId)
-                  markerRefs.current.forEach((markerRef) => markerRef?.closeTooltip?.())
+                  closeOpportunityTooltips(true)
                   if (!cityToExpand) {
                     setExpandedClusterId(null)
                   }
@@ -618,6 +636,7 @@ export function InteractiveWorldMap({
                     setSelectedCity(null)
                     setFlyToCity(null)
                     setCityToExpand(null)
+                    remountOpportunityTooltips()
                   }, 0)
                 }
               }}
@@ -656,6 +675,7 @@ export function InteractiveWorldMap({
               </Popup>
               {!isOpen && (
                 <Tooltip
+                  key={`opportunity-tooltip-${tooltipVersion}-${clusterId}`}
                   direction="top"
                   offset={[0, -14]}
                   opacity={1}
