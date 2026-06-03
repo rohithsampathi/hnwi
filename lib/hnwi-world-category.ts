@@ -38,6 +38,9 @@ const INTERNAL_CATEGORY_VALUES = new Set([
   "castle briefs",
   "decision memory",
   "decision memo",
+  "kingdom library",
+  "kingdom_library",
+  "library intelligence",
 ])
 
 const CATEGORY_LABEL_OVERRIDES: Record<string, string> = {

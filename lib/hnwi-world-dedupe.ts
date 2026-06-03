@@ -47,8 +47,6 @@ const qualityScore = (development: HNWIWorldDevelopment): number => {
   score += normalizeText(record.description).length
   score += normalizeText(record.title).length
 
-  if (record.library_contract) score += 2000
-  if (record.brain_contract) score += 500
   if (record.pattern_metadata) score += 300
   if (record.score != null) score += 50
 

@@ -255,7 +255,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
   const { getCachedData, setCachedData, isCacheValid } = usePageDataCache()
 
   // Check for cached data with default timeframe (no industry filter in cache key)
-  const cacheKey = 'hnwi-world-castle-v2-7d' // Default Castle brief cache key
+  const cacheKey = 'hnwi-world-castle-v3-7d' // Default Castle brief cache key
   const cachedData = getCachedData(cacheKey)
   const hasValidCache = isCacheValid(cacheKey)
   const cachedDevelopments = cachedData?.developments
@@ -417,7 +417,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
 
     try {
       // Create cache key based ONLY on timeRange (not industry - we filter client-side)
-      const dynamicCacheKey = `hnwi-world-castle-v2-${selectedTimeRange}`
+      const dynamicCacheKey = `hnwi-world-castle-v3-${selectedTimeRange}`
 
       // Check if we have valid cached data (skip API call entirely)
       if (!forceRefresh) {
@@ -492,7 +492,7 @@ export function MarketIntelligenceDashboard({ onNavigate }: MarketIntelligenceDa
         setLastUpdated(updatedDate);
 
         // Cache the data (5-minute TTL) with timestamp (no industry in cache key)
-        const dynamicCacheKey = `hnwi-world-castle-v2-${selectedTimeRange}`
+        const dynamicCacheKey = `hnwi-world-castle-v3-${selectedTimeRange}`
         setCachedData(dynamicCacheKey, {
           developments: canonicalDevelopments,
           industryTrends: processedTrends,

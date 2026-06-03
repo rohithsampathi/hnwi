@@ -19,9 +19,7 @@ import { parseDevCitations } from "@/lib/parse-dev-citations"
 import { formatAnalysis, type FormattedAnalysis, type AnalysisSection } from "@/lib/format-text"
 import { sanitizeRichHtml } from "@/lib/security/sanitization"
 import type {
-  HNWIWorldBrainContract,
   HNWIWorldDevelopment,
-  HNWIWorldLibraryContract,
   HNWIWorldPatternMetadata,
 } from "@/types/hnwi-world"
 import { resolveHnwiWorldCategory } from "@/lib/hnwi-world-category"
@@ -97,14 +95,6 @@ const getHByteText = (dev: DevelopmentRecord, analysis: FormattedAnalysis) => {
 
 const OUTWARD_TERM_LABEL_MAP: Record<string, string> = {
   "Castle Pattern Footprint": "Pattern Intelligence",
-  "Kingdom Library Contract": "Library Intelligence",
-  "Surface": "Brief Format",
-  "Projection": "Library Rail",
-  "Substrate": "Knowledge Base",
-  "Native Version": "Library Version",
-  "Write-Back Targets": "Connected Feeds",
-  "Brain Dimensions": "Intelligence Dimensions",
-  "State Channels": "Decision Channels",
   "Bundle Labels": "Pattern Clusters",
   "Signal Labels": "Signal Themes",
 }
@@ -156,24 +146,6 @@ const hasPatternMetadata = (metadata?: HNWIWorldPatternMetadata) => {
       metadata.signal_labels?.length ||
       metadata.bundle_labels?.length
   )
-}
-
-const hasLibraryContract = (contract?: HNWIWorldLibraryContract) => {
-  if (!contract) return false
-  return Boolean(
-    contract.surface ||
-      contract.canonical_projection_key ||
-      contract.substrate_family ||
-      contract.native_version ||
-      contract.validation_status ||
-      contract.verdict ||
-      contract.write_back_targets?.length
-  )
-}
-
-const hasBrainContract = (contract?: HNWIWorldBrainContract) => {
-  if (!contract) return false
-  return Boolean(contract.dimensions?.length || contract.state_channels?.length)
 }
 
 export function DevelopmentStream({
@@ -872,102 +844,6 @@ export function DevelopmentStream({
                         </div>
                       )}
 
-                      {(hasLibraryContract(dev.library_contract) || hasBrainContract(dev.brain_contract)) && (
-                        <div className="bg-muted/60 dark:bg-primary-900/20 border border-border p-4 rounded-md mt-4">
-                          <div className="flex items-center mb-3">
-                            <Brain className={`h-5 w-5 mr-2 ${theme === "dark" ? "text-primary" : "text-black"}`} />
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {outwardLabel("Kingdom Library Contract")}
-                            </h4>
-                          </div>
-
-                          {hasLibraryContract(dev.library_contract) && (
-                            <>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {dev.library_contract?.surface && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Surface")}</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.surface)}</div>
-                                  </div>
-                                )}
-                                {dev.library_contract?.canonical_projection_key && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Projection")}</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.canonical_projection_key)}</div>
-                                  </div>
-                                )}
-                                {dev.library_contract?.substrate_family && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Substrate")}</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.substrate_family)}</div>
-                                  </div>
-                                )}
-                                {dev.library_contract?.native_version && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">{outwardLabel("Native Version")}</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.native_version)}</div>
-                                  </div>
-                                )}
-                                {dev.library_contract?.validation_status && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Validation</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.validation_status)}</div>
-                                  </div>
-                                )}
-                                {dev.library_contract?.verdict && (
-                                  <div className="rounded-md border border-border/70 px-3 py-2">
-                                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Verdict</div>
-                                    <div className="text-sm font-semibold">{formatPatternValue(dev.library_contract.verdict)}</div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {(dev.library_contract?.write_back_targets?.length ?? 0) > 0 && (
-                                <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Write-Back Targets")}</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(dev.library_contract?.write_back_targets ?? []).map((target, index) => (
-                                      <Badge key={`write-back-target-${index}`} variant="outline" className="text-xs">
-                                        {formatPatternValue(target)}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-
-                          {hasBrainContract(dev.brain_contract) && (
-                            <>
-                              {(dev.brain_contract?.dimensions?.length ?? 0) > 0 && (
-                                <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("Brain Dimensions")}</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(dev.brain_contract?.dimensions ?? []).map((dimension, index) => (
-                                      <Badge key={`brain-dimension-${index}`} variant="outline" className="text-xs">
-                                        {formatPatternValue(dimension)}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {(dev.brain_contract?.state_channels?.length ?? 0) > 0 && (
-                                <div className="mt-4">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{outwardLabel("State Channels")}</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(dev.brain_contract?.state_channels ?? []).map((channel, index) => (
-                                      <Badge key={`brain-channel-${index}`} variant="outline" className="text-xs">
-                                        {formatPatternValue(channel)}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
                           </div>
                         );
                       })()}
