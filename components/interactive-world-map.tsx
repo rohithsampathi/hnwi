@@ -417,6 +417,7 @@ export function InteractiveWorldMap({
       const markerKey = `${city.latitude}-${city.longitude}-${city.title}`
       const markerRef = markerRefs.current.get(markerKey)
       if (markerRef) {
+        markerRef.closeTooltip?.()
         markerRef.openPopup()
       }
     }, 100)
@@ -520,9 +521,10 @@ export function InteractiveWorldMap({
     MAP_CONFIG.bounds.southwest,
     MAP_CONFIG.bounds.northeast
   ]
+  const suppressOpportunityTooltips = openClusterId !== null
 
   return (
-    <div className={`relative w-full h-full overflow-hidden ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
+    <div className={`relative w-full h-full overflow-hidden ${suppressOpportunityTooltips ? 'suppress-opportunity-tooltips' : ''} ${theme === 'dark' ? 'bg-[#202124]' : 'bg-[#f5f5f5]'}`}>
       <SafeMapContainer
         center={[20, 0]}
         zoom={startingZoom}
@@ -541,7 +543,7 @@ export function InteractiveWorldMap({
       >
         <TileLayer
           url={tileUrl}
-          noWrap={false}
+          noWrap={true}
           referrerPolicy="no-referrer"
           crossOrigin={true}
         />
@@ -594,6 +596,7 @@ export function InteractiveWorldMap({
                     const markerKey = `${center.latitude}-${center.longitude}-${center.title}`
                     const markerRef = markerRefs.current.get(markerKey)
                     if (markerRef) {
+                      markerRef.closeTooltip?.()
                       markerRef.openPopup()
                     }
                     setOpenClusterId(clusterId)
@@ -603,6 +606,7 @@ export function InteractiveWorldMap({
                 },
                 popupopen: () => {
                   setOpenClusterId(clusterId)
+                  markerRefs.current.forEach((markerRef) => markerRef?.closeTooltip?.())
                   if (!cityToExpand) {
                     setExpandedClusterId(null)
                   }
@@ -650,14 +654,16 @@ export function InteractiveWorldMap({
                   />
                 )}
               </Popup>
-              <Tooltip
-                direction="top"
-                offset={[0, -14]}
-                opacity={1}
-                className="opportunity-hover-tooltip"
-              >
-                <MapMarkerHoverTooltip cities={cluster.cities} center={center} theme={theme} />
-              </Tooltip>
+              {!isOpen && (
+                <Tooltip
+                  direction="top"
+                  offset={[0, -14]}
+                  opacity={1}
+                  className="opportunity-hover-tooltip"
+                >
+                  <MapMarkerHoverTooltip cities={cluster.cities} center={center} theme={theme} />
+                </Tooltip>
+              )}
             </Marker>
           )
         })}

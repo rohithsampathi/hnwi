@@ -99,6 +99,11 @@ export function MapStyles({ theme }: MapStylesProps) {
         max-width: min(340px, calc(100vw - 32px)) !important;
         overflow-wrap: anywhere;
       }
+      .suppress-opportunity-tooltips .opportunity-hover-tooltip.leaflet-tooltip {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
       .border-border {
         border-color: ${theme === "dark" ? "#555" : "#e5e5e5"} !important;
       }
@@ -245,9 +250,10 @@ export function MapStyles({ theme }: MapStylesProps) {
 
       /* ─── Crisis Overlay ──────────────────────────────────────── */
 
-      /* Clip SVG to prevent crisis polygon paths from extending across world wrap copies */
+      /* Keep Leaflet vector overlays free during zoom animation.
+         World wrapping is disabled on the tile layer, so forced SVG clipping is no longer needed. */
       .leaflet-overlay-pane svg {
-        overflow: hidden !important;
+        overflow: visible !important;
       }
 
       /* Red zones only: slow blink between dim and bright (3.5s cycle) */

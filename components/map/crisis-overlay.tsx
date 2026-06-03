@@ -129,8 +129,15 @@ export function CrisisOverlay({ visible, zoneMap, colors }: CrisisOverlayProps) 
 
   // Stable key to force GeoJSON re-render when data changes
   const renderKey = useMemo(
-    () => `crisis-${visible}-${geoData ? geoData.features.length : "pending"}`,
-    [visible, geoData]
+    () => {
+      const zoneSignature = Object.entries(zoneMap)
+        .map(([id, zone]) => `${id}:${zone.status}:${zone.crisisDomain || "macro"}`)
+        .sort()
+        .join("|");
+
+      return `crisis-${visible}-${geoData ? geoData.features.length : "pending"}-${zoneSignature}`;
+    },
+    [visible, geoData, zoneMap]
   );
 
   if (!visible || !geoData) return null;
