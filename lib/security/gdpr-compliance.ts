@@ -4,6 +4,7 @@ import { AuditLogger, SecurityEventType, SeverityLevel } from "./audit-logger";
 const KINGDOM_API_BASE_URL = "https://kingdom-core.montaigne.co";
 
 function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") return "";
   return (process.env.API_BASE_URL || KINGDOM_API_BASE_URL).trim().replace(/\/$/, "");
 }
 
