@@ -54,8 +54,13 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('access_token')?.value;
 
-    // Extract user ID from session_user or JWT
-    const userId = extractUserId(cookieStore);
+    // Extract user ID from session_user or JWT. Some private app views already
+    // pass the canonical user id after profile hydration, so keep that as a
+    // fallback when cookies are still settling after login.
+    const requestedUserId = resolveCanonicalUserId({
+      user_id: searchParams.get('user_id') || searchParams.get('owner_id') || '',
+    });
+    const userId = extractUserId(cookieStore) || requestedUserId || null;
     const includeCrownVault = requestedIncludeCrownVault && !!userId;
 
     // Build backend URL with query parameters
